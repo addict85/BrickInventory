@@ -5,7 +5,7 @@
 import type { Request } from 'express';
 import { meldeFehler } from '../../infra/fehler';
 import type { KontoDienste } from '../bereich';
-import { hashToken } from '../geraeteToken';
+import { tokenAbdruck } from '../geraeteToken';
 import { beiZugangsAenderung } from '../zugangsAenderung';
 
 export { meldeZugangsAenderung } from '../zugangsAenderung';
@@ -32,7 +32,7 @@ export async function zugangGiltNoch(konto: KontoDienste, req: Request): Promise
   }
   const kopf = String(req.headers.authorization || '');
   if (!kopf.startsWith('Bearer ')) return false;
-  return !!(await konto.gueltigerToken(hashToken(kopf.slice(7))));
+  return !!(await konto.gueltigerToken(tokenAbdruck(kopf.slice(7))));
 }
 
 /** `beenden` läuft höchstens einmal, sobald der Zugang nicht mehr gilt. Ein

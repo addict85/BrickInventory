@@ -1,7 +1,7 @@
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
-import * as repo from './repository';
+import * as repo from './repository/werte';
 import type { DbSchnittstelle } from '../../db/database';
 import type { EinstellungenKontext } from './kontext';
 
@@ -71,7 +71,7 @@ const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
 };
 
 /** Prüfen und schreiben; die Währung gilt je Haushalt und geht deshalb nur
- * über setUserSetting (src/konto/nutzerEinstellung.ts). */
+ * über nutzerEinstellungSetzen (nutzerEinstellung.ts). */
 export async function schreibeNutzerEinstellung(
   k: EinstellungenKontext,
   userId: number,
@@ -79,7 +79,7 @@ export async function schreibeNutzerEinstellung(
   value: unknown,
 ): Promise<void> {
   const v = String(value).trim();
-  if (key === 'currency') throw new Error('Währung nur über setUserSetting');
+  if (key === 'currency') throw new Error('Währung nur über nutzerEinstellungSetzen');
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fachfehler('ungueltig', 'wert_ungueltig');
   await k.repository.schreibeNutzerWert(userId, key, v);
@@ -93,7 +93,7 @@ export function nutzerWertGueltig(key: string, value: string): boolean {
 export async function nutzerStandardZustand(k: EinstellungenKontext, userId: number): Promise<'N' | 'U'> {
   const eigen = await k.repository.nutzerWert(userId, 'user_default_condition');
   if (eigen === 'N' || eigen === 'U') return eigen;
-  return globalDefaultCondition(k);
+  return globalerStandardZustand(k);
 }
 
 /** Eingabe → Bestand → Standard; eine Stelle, damit ein gebrauchtes Teil nie
@@ -110,7 +110,7 @@ export async function zustandFuerPreis(
   return nutzerStandardZustand(k, userId);
 }
 
-export async function globalDefaultCondition(k: EinstellungenKontext): Promise<'N' | 'U'> {
+export async function globalerStandardZustand(k: EinstellungenKontext): Promise<'N' | 'U'> {
   const g = await k.repository.globalerWert('default_price_condition');
   return g === 'U' ? 'U' : 'N';
 }
@@ -166,14 +166,9 @@ export async function verschluesseleGlobaleAltwerte(k: EinstellungenKontext): Pr
 }
 
 /** „Fehlt" ist etwas anderes als „leer". */
-export async function deleteGlobalSetting(k: EinstellungenKontext, ...keys: string[]) {
+export async function globaleWerteLoeschen(k: EinstellungenKontext, ...keys: string[]) {
   if (keys.length === 0) return;
   await k.repository.loescheGlobaleWerte(keys);
-}
-
-/** Danach gilt die Vorgabe der Installation. */
-export async function deleteUserSetting(k: EinstellungenKontext, userId: number, key: string) {
-  await k.repository.loescheNutzerWert(userId, key);
 }
 
 // Einstellungen LESEN — eine Fassung für beide Oberflächen, damit die Apps
@@ -199,20 +194,20 @@ const MASK_CHAR = '\u2022';
 
 /** Kein einziges Zeichen des Werts geht mit: Schon die letzten vier verkürzen
  * das Raten und verraten, ob zwei Installationen denselben tragen. */
-export function maskSecret(value: string | null | undefined) {
+export function geheimnisMaske(value: string | null | undefined) {
   return String(value ?? '') ? MASK_CHAR.repeat(12) : '';
 }
 
-export function isMaskedValue(value: unknown) {
+export function istMaskiert(value: unknown) {
   return typeof value === 'string' && value.includes(MASK_CHAR);
 }
 
 /** Nicht-Verwalter sehen die Schlüssel nicht, Verwalter maskiert. */
-export function sanitizeGlobal(global: Record<string, unknown>, isAdmin: boolean) {
+export function globaleFuerAnsicht(global: Record<string, unknown>, isAdmin: boolean) {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(global)) {
     if (SECRET_KEYS.has(k)) {
-      if (isAdmin) out[k] = maskSecret(v as string | null | undefined);
+      if (isAdmin) out[k] = geheimnisMaske(v as string | null | undefined);
       continue;
     }
     if (!isAdmin && NUR_VERWALTER.test(k)) continue;
@@ -225,9 +220,9 @@ export async function nutzerEinstellungen(k: EinstellungenKontext, userId: numbe
   return Object.fromEntries((await k.repository.nutzerWerte(userId)).map(r => [r.key, r.value]));
 }
 
-export async function readSettings(k: EinstellungenKontext, userId: number, isAdmin: boolean) {
+export async function einstellungenLesen(k: EinstellungenKontext, userId: number, isAdmin: boolean) {
   const raw = Object.fromEntries((await k.repository.globaleWerte()).map(r => [r.key, klar(r.key, r.value)]));
-  return { ...sanitizeGlobal(raw, !!isAdmin), ...(await nutzerEinstellungen(k, userId)) };
+  return { ...globaleFuerAnsicht(raw, !!isAdmin), ...(await nutzerEinstellungen(k, userId)) };
 }
 
 /** Ohne Geheimnisse: Die Datei wird weitergegeben; Schlüssel trägt man beim

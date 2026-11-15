@@ -3,7 +3,7 @@
 import { Pool } from 'pg';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
-import { katalogImporte, parseCsvLine } from '../src/katalog';
+import { erzeugeKatalogImporte, parseCsvLine } from '../src/katalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
 function send(msg: Record<string, unknown>) {
@@ -14,7 +14,7 @@ function send(msg: Record<string, unknown>) {
 // Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen,
 // also als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
 const pool = new Pool(systemVerbindung() ?? datenbankVerbindung());
-const TASKS = katalogImporte(pool, send);
+const TASKS = erzeugeKatalogImporte(pool, send);
 
 type Aufgabe = keyof typeof TASKS;
 

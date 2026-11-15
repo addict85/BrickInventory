@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { meldeFehler } from '../infra/fehler';
-import { setBildLokalEintragen } from './bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../auftraege';
@@ -214,7 +213,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
     if (fs.existsSync(datei)) {
       // kein zweiter Download
       await nurVorschau(k, r.set_number, vorschau, st);
-      if (!(await versuche('bild-job:setBildLokal', setBildLokalEintragen(k, r.set_number, r.url))).ok)
+      if (!(await versuche('bild-job:setBildLokal', k.nacharbeit.setBildLokalEintragen(r.set_number, r.url))).ok)
         erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
       continue;
     }
@@ -258,7 +257,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
     // Originaldatei.
     await vorschauErzeugen(k, lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
-    if (!(await versuche('bild-job:setBildLokal', setBildLokalEintragen(k, r.set_number, r.url))).ok)
+    if (!(await versuche('bild-job:setBildLokal', k.nacharbeit.setBildLokalEintragen(r.set_number, r.url))).ok)
       erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
     erg.geholt++;
   }

@@ -8,7 +8,7 @@ import { DESIGNS } from '../einstellungen';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
 import { versuche } from '../infra/ergebnis';
-import type { KontoKontext } from './kontext';
+import type { ProfilKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
@@ -23,7 +23,7 @@ const Z = prozessweit('indexHtml', () => ({
 }));
 
 /** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
-export function startStilHash(produktion: boolean): string {
+export function stilHashDerStartseite(produktion: boolean): string {
   const mtime =
     produktion && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
   if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;
@@ -45,7 +45,7 @@ export function startStilHash(produktion: boolean): string {
 // einfacher als LISTEN/NOTIFY für eine Einstellung, die sich selten ändert.
 const THEME_TTL_MS = 30_000;
 
-export function invalidateTheme() {
+export function vergissDesign() {
   Z.theme = null;
 }
 
@@ -84,7 +84,7 @@ export function ohneKommentare(html: string): string {
 }
 
 /** Nur die Vorgabe liegt im Zwischenspeicher; angemeldet zählt das eigene Design. */
-async function currentTheme(k: KontoKontext, userId?: number): Promise<string> {
+async function currentTheme(k: ProfilKontext, userId?: number): Promise<string> {
   if (userId) {
     const { eigenes } = await k.einstellungen.designFuer(userId);
     if (eigenes) return eigenes;
@@ -118,10 +118,10 @@ export function designStileFreigeben(html: string, theme: string): string {
 }
 
 /** Ohne Sitzung (Login-Seite) 'de'. */
-async function currentLang(k: KontoKontext, userId?: number): Promise<string> {
+async function currentLang(k: ProfilKontext, userId?: number): Promise<string> {
   if (!userId) return 'de';
   // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
-  // Ein Lesefehler geht an renderIndexHtml(), das dann die Datei unverändert liefert.
+  // Ein Lesefehler geht an startseiteHtml(), das dann die Datei unverändert liefert.
   const sprache = String((await k.einstellungen.nutzerEinstellungen(userId)).language ?? 'de');
   return LANGS.includes(sprache) ? sprache : 'de';
 }
@@ -129,12 +129,12 @@ async function currentLang(k: KontoKontext, userId?: number): Promise<string> {
 // Theme und Sprache schon im HTML.
 /** Das Design steckt im serverseitig gerenderten <html data-theme>; ohne Verwerfen käme
  * bis zum Neustart das alte. */
-export async function setzeGlobalesDesign(k: KontoKontext, theme: string): Promise<void> {
+export async function setzeGlobalesDesign(k: ProfilKontext, theme: string): Promise<void> {
   await k.einstellungen.setGlobalSetting('app_theme', theme);
-  invalidateTheme();
+  vergissDesign();
 }
 
-export async function renderIndexHtml(k: KontoKontext, userId?: number): Promise<string> {
+export async function startseiteHtml(k: ProfilKontext, userId?: number): Promise<string> {
   const html = await readIndex(k.konfig.produktion);
   try {
     const theme = await currentTheme(k, userId);

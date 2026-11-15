@@ -2,7 +2,8 @@
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
-import * as repository from './repository';
+import * as repository from './repository/werte';
+import type { DrosselDienste } from '../drossel';
 import type { Uhr } from '../infra/uhr';
 
 export interface EinstellungenAbhaengigkeiten {
@@ -10,6 +11,9 @@ export interface EinstellungenAbhaengigkeiten {
   db: Db;
   /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
   faecher: Faecher;
+  drossel: DrosselDienste;
+  /** Ein Währungswechsel stösst den Preislauf an (späte Bindung, startup/verdrahtung.ts). */
+  nacharbeit: { preisJobAnstossen(): void };
 }
 
 /** Mailserver, Registrierung, Schlüssel stellt keine eingeschleuste Abfrage um (0117). */
@@ -22,6 +26,8 @@ export const zugang = (db: Db) => ({
     schreibeNutzerWert: mit(db)(repository.schreibeNutzerWert),
     loescheNutzerWert: mit(db)(repository.loescheNutzerWert),
     nutzerWerte: mit(db)(repository.nutzerWerte),
+    ersterWertIn: mit(db)(repository.ersterWertIn),
+    fremderNutzerWert: imSystem(db, 'Verwaltung: liest den Wert eines anderen Kontos', repository.nutzerWert),
     schreibeGlobalenWert: imSystem(db, GLOBAL, repository.schreibeGlobalenWert),
     loescheGlobaleWerte: imSystem(db, GLOBAL, repository.loescheGlobaleWerte),
     globaleWerte: mit(db)(repository.globaleWerte),

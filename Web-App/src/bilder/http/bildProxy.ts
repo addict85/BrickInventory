@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { prozessweit } from '../../infra/prozessweit';
 import type { KontoDienste } from '../../konto';
-import { resolveUserId } from '../../konto/http/anmeldung';
+import { nutzerIdDerAnfrage } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, meldeFehler } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
 import { merkeCacheZuwachs, bildTyp } from '../imgCacheServe';
@@ -17,7 +17,7 @@ import { proxyAdresse, proxyCacheSchluessel } from '../images';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
-import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../fremdquellen';
+import { BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../fremdquellen';
 import zlib from 'node:zlib';
 import { setBildVollstaendig } from '../setImages';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
@@ -74,7 +74,7 @@ async function vomCdn(
   ] as const;
 
   const holen = (kopfzeilen: Record<string, string>) =>
-    oeffneBild(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
+    d.bilder.bildOeffnen(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
   let r: AbrufStrom;
   try {
     r = await holen(HEADER_SETS[0]);
@@ -299,7 +299,7 @@ async function setBildAusCache(d: BildDienste, url: string, setNummer: string, c
 
 export async function bildDurchreichen(d: BildDienste, req: Request, res: Response) {
   // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
-  const proxyUserId = await resolveUserId(d.konto, req);
+  const proxyUserId = await nutzerIdDerAnfrage(d.konto, req);
   if (!proxyUserId) return res.status(401).end();
   const ziel = proxyZiel(String(req.query.url || ''));
   if (typeof ziel === 'number') return res.status(ziel).end();

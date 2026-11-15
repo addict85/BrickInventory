@@ -1,5 +1,4 @@
 import type { Db } from '../db/database';
-import { verschluesseleGutscheinAltbestand } from '../src/gutscheine';
 import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
 import type { Dienste } from './verdrahtung';
@@ -35,7 +34,7 @@ export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluessel
     (await d.gutscheine.kopienVerschluesseln()) +
     (await d.konto.verschluesseleAltbestand()) +
     (await d.idempotenz.antwortenUmschluesseln()) +
-    (await verschluesseleGutscheinAltbestand());
+    (await d.gutscheine.verschluesseleAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await d.idempotenz.alteAbdrueckeLoeschen();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
@@ -52,7 +51,7 @@ export async function schluesselWechsel(d: Dienste): Promise<number | null> {
     (await d.konto.verschluesseleAltbestand({ alle: true })) +
     (await d.gutscheine.gutscheineNeuVerschluesseln()) +
     (await d.gutscheine.kopienVerschluesseln(true)) +
-    (await verschluesseleGutscheinAltbestand({ alle: true }));
+    (await d.gutscheine.verschluesseleAltbestand({ alle: true }));
   // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
   await d.idempotenz.alleVergessen();
   console.log(

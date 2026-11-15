@@ -375,7 +375,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // alten Stückpreis — die Zeile zeigte zwei Stück zum Preis des ersten.
   const src = require('./helpers/sources').kompakt(require('./helpers/sources').setKernQuelle());
   const fn = src.slice(
-    src.indexOf('async function adjustAcquisitionsToQuantity'),
+    src.indexOf('async function erfassungenAnMengeAngleichen'),
     src.indexOf('async function schreibeInLetzteErfassung'),
   );
   assert.doesNotMatch(
@@ -388,20 +388,20 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
     /await erfassungBuchen\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
-  // Der Preis kommt aus priceForNewAcquisition() — ausgelagert, weil der
+  // Der Preis kommt aus preisFuerNeueErfassung() — ausgelagert, weil der
   // BrickLink-Abruf darin VOR dem Advisory-Lock laufen muss (ein Netzaufruf
   // in offener Transaktion hielte Sperre und Verbindung).
   assert.match(
     fn,
-    /pricePlan \?\? \(?await priceForNewAcquisition\(sk, userId, setNumber\)/,
+    /pricePlan \?\? \(?await preisFuerNeueErfassung\(sk, userId, setNumber\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
   // Ziel der Mengenänderung ist das Konto `ziel` (ohne Angabe das eigene, im Haushalt das gewählte).
   // Die geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
   assert.match(
     src,
-    /const plan = [\s\S]{0,120}priceForNewAcquisition\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
-    'In updateSet muss der Preis VOR der Sperre stehen',
+    /const plan = [\s\S]{0,120}preisFuerNeueErfassung\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
+    'In setAendern muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
 });
@@ -410,7 +410,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Woher dieser Test kommt
   const src = require('./helpers/sources').setKernQuelle();
   const fn = src
-    .slice(src.indexOf('async function updateSet'), src.indexOf("router.put('/:setNumber'"))
+    .slice(src.indexOf('async function setAendern'), src.indexOf("router.put('/:setNumber'"))
     // Kommentare weg: Der Erklärtext oben zitiert den alten Aufruf samt
     // .catch(() => {}) und würde die Prüfung sonst selbst auslösen.
     .replace(/\/\/[^\n]*/g, '');
@@ -422,7 +422,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   );
   assert.doesNotMatch(
     fn,
-    /adjustAcquisitionsToQuantity\([^)]*\)\.catch\(/,
+    /erfassungenAnMengeAngleichen\([^)]*\)\.catch\(/,
     'Ein verschluckter Fehler hinterlässt eine Menge ohne passende Erfassungen',
   );
   assert.doesNotMatch(

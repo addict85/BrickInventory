@@ -187,7 +187,8 @@ let _datenFabrik = null;
 /** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
 const _bildwerk = {
-  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(...a),
+  setBildLaden: (...a) =>
+    require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testKontext('bilder'), ...a),
   vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).generateThumb(...a),
 };
 
@@ -221,6 +222,7 @@ function buildAndRequire() {
     'setTeileAnreichern',
     'figurenAnreichern',
     'setBilderLaden',
+    'setBildLokalEintragen',
   ])
     _nacharbeit[k] = (...a) => nacharbeit()[k](...a);
   // In einer Transaktion (Kontext `t`) die Nacharbeit über deren Zugang; ersetzte Methoden bleiben.
@@ -516,10 +518,10 @@ function setKernQuelle() {
     ['src/sets/csvImport.ts'],
     ['src/sets/anleitungen.ts'],
     ['src/sets/preise.ts'],
-    ['src/sets/setService.ts'],
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
+    ['src/sets/setInhaltImport.ts'],
   ]
     .map(p => dienstQuelle(p[0]))
     .join('\n');
@@ -557,7 +559,7 @@ function startQuelle() {
     'src/katalog/bildNachlauf.ts',
     'src/verwaltung/startNachlaeufe.ts',
     'src/verwaltung/aufraeumen.ts',
-    'src/bilder/bildlage.ts',
+    'src/katalog/bildlage.ts',
   ].map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {

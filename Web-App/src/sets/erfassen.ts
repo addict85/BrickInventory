@@ -1,6 +1,5 @@
 /** Sets erfassen: Web, App, CSV, Wanted-XML und Merkliste unter denselben Regeln. Was das
  * Netz braucht (Katalog, Bild, Marktpreis), hält die Anfrage nicht auf, es läuft als Auftrag. */
-import { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
 import { rebrickableSetBild } from '../bilder';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -44,7 +43,7 @@ export interface VorhandenesSet {
 
 /** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
  * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“. */
-export async function findSetInScope(
+export async function findeSetImBlickfeld(
   sk: SetsKontext,
   viewerId: number,
   setNumber: string,
@@ -138,10 +137,10 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       return { action: 'updated' as const, set_number: sn, besitzer };
     }
     if (e.wennVorhanden !== 'aufstocken') {
-      const vorhanden = await findSetInScope(t, e.anfragender, sn);
+      const vorhanden = await findeSetImBlickfeld(t, e.anfragender, sn);
       if (vorhanden) return { action: 'exists' as const, ...vorhanden };
     }
-    const katalog = await merkeKatalogPlatzhalter(t.db, sn);
+    const katalog = await t.katalog.merkeKatalogPlatzhalter(sn);
     await repo.legeSetZeileAn(t.db, besitzer, sn);
     await erfassungBuchen(t, erfassung);
     if (ort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
@@ -199,7 +198,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   const lokal = wertOder(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bilder.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
+  await sk.katalog.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -212,7 +211,7 @@ export async function setErgaenzen(
   sendProgress: Fortschritt | null = null,
   mitBrickset = true,
 ): Promise<{ name: string | null }> {
-  const stand = await katalogStand(sk.db, sn);
+  const stand = await sk.katalog.katalogStand(sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await katalogHolen(sk, sn, mitBrickset, sendProgress);

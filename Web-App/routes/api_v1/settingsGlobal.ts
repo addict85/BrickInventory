@@ -10,7 +10,9 @@ import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'verwaltung'>) {
+export function baueSettingsGlobalRouter(
+  d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profil' | 'verwaltung'>,
+) {
   const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -28,9 +30,11 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
     if (fertig) return {};
   });
 
-  // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
+  // Über einstellungenLesen(), damit die Maskierung nicht an der Verpackung vorbeigeht.
   router.endpunkt('GET /api/v1/settings/raw', requireToken, async req => {
-    return { settings: await d.einstellungen.readSettings(req.apiUser.user_id, await alsVerwalter(d.konto, req)) };
+    return {
+      settings: await d.einstellungen.einstellungenLesen(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
+    };
   });
 
   router.endpunkt('GET /api/v1/settings/export', requireToken, async (req, res) => {
@@ -133,7 +137,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
 
   router.endpunkt('POST /api/v1/settings/admin/theme', requireAdmin, async req => {
     const theme = req.eingabe.theme;
-    await d.konto.setzeGlobalesDesign(theme);
+    await d.profil.setzeGlobalesDesign(theme);
     return { theme };
   });
   return router;

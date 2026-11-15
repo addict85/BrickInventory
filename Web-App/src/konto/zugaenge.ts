@@ -1,6 +1,6 @@
 /** Die App-Zugänge eines Kontos in den Einstellungen: lesen und einzeln oder
  * alle anderen beenden. Der Token-Cache gälte sonst noch kurz nach. */
-import { hashToken } from './geraeteToken';
+import { tokenAbdruck } from './geraeteToken';
 import { hinweisNebenher } from './kontoHinweis';
 import { leereTokenCache } from './tokenCache';
 import type { KontoKontext } from './kontext';
@@ -30,7 +30,7 @@ export async function andereZugaengeBeenden(
   uid: number,
   eigenerToken: string | null,
 ): Promise<number> {
-  const n = await k.konten.andereZugaengeLoeschen(uid, eigenerToken ? hashToken(eigenerToken) : null);
+  const n = await k.konten.andereZugaengeLoeschen(uid, eigenerToken ? tokenAbdruck(eigenerToken) : null);
   if (n) leereTokenCache(k);
   return n;
 }

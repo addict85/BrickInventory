@@ -7,7 +7,7 @@ import { zuGrosseId } from '../../src/infra/validate';
 import type { KontoDienste } from '../../src/konto';
 import {
   loginOrTokenGuard,
-  resolveUserId,
+  nutzerIdDerAnfrage,
   sendeTokenAbsage,
   nutzerId,
   zweiterFaktorPflicht,
@@ -82,7 +82,7 @@ function eingangFuer(konto: KontoDienste) {
       };
     } else {
       // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
-      const uid = await resolveUserId(konto, req);
+      const uid = await nutzerIdDerAnfrage(konto, req);
       if (!uid) return sendeTokenAbsage(req, res);
       req.tokenUserId = uid;
     }
@@ -121,7 +121,7 @@ function tokenWaechterFuer(konto: KontoDienste) {
     }
     const token = bearerToken(req);
     konto
-      .validateToken(token, { ip: req.ip })
+      .nutzerZumToken(token, { ip: req.ip })
       .then(user => {
         if (!user) return next(new Fachfehler('nicht_angemeldet', 'token_ungueltig'));
         req.apiUser = { ...user, is_admin: user.is_admin === true };

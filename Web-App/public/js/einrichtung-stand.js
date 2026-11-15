@@ -7,7 +7,7 @@ import { toast } from './meldungen.js';
 // ═══ Stand der Ersteinrichtung (Server: routes/api_v1/einrichtung.ts) ═
 // Die Anmeldeseite prüft damit, was vor dem ersten Konto noch fehlt, und erklärt die
 // Installation des Wurzelzertifikats. Die Antwort trägt nur Schalter und das öffentliche
-// Zertifikat (src/konto/einrichtungStand.ts) — keine Konten, keine Schlüssel.
+// Zertifikat (src/profil/einrichtungStand.ts) — keine Konten, keine Schlüssel.
 
 /** Reihenfolge der Prüfungen; die Texte stehen als feste Schlüssel daneben, damit
  * kein Pfad einen i18n-Namen zusammensetzt (test/i18n-aufrufe.test.js). */

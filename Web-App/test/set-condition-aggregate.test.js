@@ -22,7 +22,7 @@ const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
-  // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
+  // Weder setsLesen()/setLesen() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
   // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
   // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
@@ -288,7 +288,10 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
-  const sets = require('./helpers/sources').setKernQuelle();
+  // Den Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen (Besitzer von price_history).
+  const sets =
+    require('./helpers/sources').setKernQuelle() +
+    fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisCache.ts'), 'utf8');
   assert.match(
     sets,
     /FROM price_history[\s\S]{0,200}ORDER BY \(condition = \$3\) DESC, recorded_at DESC/,
@@ -462,7 +465,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await hole(?:Https|Bild)\(url, \{/,
+    /await (?:k\.fremdquellen\.quellen\s*\.)?hole(?:Https|Bild)\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
   );
 });
@@ -511,7 +514,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   assert.match(src, /generateThumb/, 'generateThumb ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
-    /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:generateThumb|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Teile-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
   );
 
@@ -521,7 +524,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   );
   assert.match(
     figsLoop,
-    /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:generateThumb|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Minifiguren-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
   );
 });
@@ -591,17 +594,17 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
 const authModul = buildAndRequire()('src/konto/namensRegeln.js');
-const { isValidLoginIdentifier, USERNAME_RE, EMAIL_RE } = authModul;
+const { anmeldenameGueltig, USERNAME_RE, EMAIL_RE } = authModul;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
   // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
   // beiden Spalten — davor stand aber ein Wächter, der nur das
   // Benutzernamen-Muster zuliess. Das @ fiel durch, und die Meldung sprach von
   // erlaubten Zeichen im Benutzernamen.
-  assert.ok(isValidLoginIdentifier('marco@example.com'));
-  assert.ok(isValidLoginIdentifier('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(isValidLoginIdentifier('marco'), 'Benutzername muss weiterhin gehen');
-  assert.ok(isValidLoginIdentifier('mar_co.1-x'));
+  assert.ok(anmeldenameGueltig('marco@example.com'));
+  assert.ok(anmeldenameGueltig('marco.meier+lego@sub.example.co.uk'));
+  assert.ok(anmeldenameGueltig('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(anmeldenameGueltig('mar_co.1-x'));
 });
 
 test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
@@ -616,7 +619,7 @@ test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(isValidLoginIdentifier(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(anmeldenameGueltig(bad), false, `\`${bad}\` sollte abgelehnt werden`);
   }
 });
 

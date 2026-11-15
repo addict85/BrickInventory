@@ -3,30 +3,19 @@
 import type { KlientenZugang } from '../../clients/zugang';
 import { erzeugeBricklink } from '../../clients/bricklink';
 import { erzeugeBrickset } from '../../clients/brickset';
-import { erzeugeRebrickable } from '../../clients/rebrickable';
+import { downloadFile, erzeugeRebrickable, rebrickableRoh } from '../../clients/rebrickable';
 import { produktTitel } from '../../clients/upcitemdb';
 import { widerrufslisteAbruf } from '../../clients/googleAttestation';
 
 export { alsAbrufFehler } from '../../clients/abrufFehler';
 export { BricklinkNichtErreichbar } from '../../clients/bricklink';
-export {
-  EZB_HISTORIE,
-  EZB_TAGESKURSE,
-  ersteZipDatei,
-  ezbAbruf,
-  historieLesen,
-  tageskurseLesen,
-} from '../../clients/ezb';
-export {
-  RebrickableGesperrt,
-  ersteBlNummer,
-  downloadFile,
-  parseThrottleWait,
-  rebrickableRoh,
-} from '../../clients/rebrickable';
+export { EZB_HISTORIE, EZB_TAGESKURSE, ersteZipDatei, historieLesen, tageskurseLesen } from '../../clients/ezb';
+export { RebrickableGesperrt, ersteBlNummer, parseThrottleWait } from '../../clients/rebrickable';
 export { RbSet, RbSetFigur, rbSeite } from '../../clients/antworten';
 import { ladeKatalogCsv } from '../../clients/rebrickableCsv';
-export { oeffneBild, holeBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../clients/bildCdn';
+import { oeffneBild, holeBild } from '../../clients/bildCdn';
+import { ezbAbruf } from '../../clients/ezb';
+export { BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../clients/bildCdn';
 import { legoAbruf } from '../../clients/legoGuthaben';
 export { legoAbruf };
 export { ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../../clients/legoGuthaben';
@@ -54,6 +43,11 @@ export function baueQuellen(z: KlientenZugang) {
     /** Ohne Schlüssel; hier, damit ein Test ihn je Satz Dienste ersetzt (testQuellen). */
     legoAbruf,
     widerrufslisteAbruf,
+    downloadFile,
+    rebrickableRoh,
+    oeffneBild,
+    holeBild,
+    ezbAbruf,
   };
 }
 

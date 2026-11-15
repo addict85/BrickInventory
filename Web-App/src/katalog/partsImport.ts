@@ -2,14 +2,13 @@ import path from 'node:path';
 import type { AuftragsLauf } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, ersteBlNummer, parseThrottleWait, rebrickableRoh } from '../fremdquellen';
+import { type RbSetTeil, ersteBlNummer, parseThrottleWait } from '../fremdquellen';
 import { getAllSetParts } from './rebrickableKatalog';
-import { fehlertext, logAndContinue, meldeFehler } from '../infra/fehler';
+import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
-import * as inhalt from './repository/setInhalt';
 import type { KatalogKontext } from './kontext';
 
 /** Nach Teil und Farbe sortiert: eine feste Sperrreihenfolge gegen Verklemmungen. */
@@ -49,48 +48,37 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
   );
 }
 
-/** In einer Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt;
- * vorhandene Zeilen behalten Lagerort und Datum.
- * @returns die Zahl der Zeilen; wirft bei Fehlern (der Auftrag wiederholt dann) */
-export async function importiereTeile(k: KatalogKontext, setNumber: string, userId: number): Promise<number> {
+/** Die Teile eines Sets von Rebrickable, nach Teil und Farbe sortiert; null ohne Teile. */
+export async function setTeileLaden(
+  k: KatalogKontext,
+  setNumber: string,
+): Promise<{ n: string; zeilen: SetTeilZeile[] } | null> {
   const n = mitVersion(setNumber);
   const roh: RbSetTeil[] | null = await getAllSetParts(k, n);
-  if (!roh?.length) return 0;
+  if (!roh?.length) return null;
   const zeilen = setTeilZeilen(roh);
-  if (!zeilen.length) return 0;
-  const teile = zeilen.map(z => z.partNumber),
-    farben = zeilen.map(z => z.colorId);
-
-  for (let versuch = 1; ; versuch++) {
-    try {
-      await k.transaktion(async t => {
-        await inhalt.fuegeSetTeileEin(t.db, userId, n, teile, farben);
-        await inhalt.entferneFremdeSetTeile(t.db, userId, n, teile, farben);
-        await merkeSetTeile(t, n, zeilen, t.db);
-        await merkeBlNummern(
-          t,
-          'part',
-          zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })),
-          t.db,
-        );
-      });
-      break;
-    } catch (e) {
-      // Die feste Reihenfolge macht Verklemmungen selten, ganz ausschliessen nicht.
-      if (!fehlertext(e)?.includes('deadlock') || versuch >= 3) throw e;
-      console.warn(`[parts] Deadlock bei ${n}, Versuch ${versuch}/3`);
-      await new Promise(r => setTimeout(r, 200 * versuch));
-    }
-  }
-
-  if (zeilen.some(z => z.imageUrl && !z.imageLocal))
-    await k.auftraege.stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
-  console.log(`[parts] ${n}: ${zeilen.length} importiert`);
-  return zeilen.length;
+  return zeilen.length ? { n, zeilen } : null;
 }
 
-function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return rebrickableRoh(url, rbKey);
+/** In der Transaktion des Aufrufers (t.katalog), neben dem Eintrag in den Bestand. */
+export async function setTeileMerken(k: KatalogKontext, n: string, zeilen: SetTeilZeile[]) {
+  await merkeSetTeile(k, n, zeilen, k.db);
+  await merkeBlNummern(
+    k,
+    'part',
+    zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })),
+    k.db,
+  );
+}
+
+/** Fehlt ein Bild, lädt der Bildauftrag es nach. */
+export async function setTeilBilderEinreihen(k: KatalogKontext, n: string, zeilen: SetTeilZeile[]) {
+  if (zeilen.some(z => z.imageUrl && !z.imageLocal))
+    await k.auftraege.stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
+}
+
+function holeSeite(k: KatalogKontext, url: string, rbKey: string): Promise<{ status: number; body: string }> {
+  return k.fremdquellen.quellen.rebrickableRoh(url, rbKey);
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
@@ -115,6 +103,7 @@ export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf =
     await k.fremdquellen.drossel.hintergrund.waitForSlot();
     const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
     const result = await holeSeite(
+      k,
       `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`,
       rbKey,
     );

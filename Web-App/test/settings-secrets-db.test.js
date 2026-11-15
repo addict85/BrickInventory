@@ -1,14 +1,14 @@
 /**
  * KEINE Leseroute der Einstellungen gibt ein Geheimnis im Klartext heraus.
  *
- * Gegenprobe (durchgeführt): readSettings() in `/raw` durch die alte, rohe
+ * Gegenprobe (durchgeführt): einstellungenLesen() in `/raw` durch die alte, rohe
  * Abfrage ersetzt → beide Teilschritte für /raw werden rot (Nicht-Admin sieht
  * den Wert, Admin sieht ihn unmaskiert).
  *
  * Dazu: Mailserver, Konto und Absender sieht nur der Verwalter.
  * Gegenprobe (am 28.10.2026 gemessen): NUR_VERWALTER-Zeile in
- * sanitizeGlobal() entfernt → rot: „… bekommt smtp_host“.
- * Gegenprobe (am 29.10.2026 gemessen): maskSecret() hängt wieder die letzten
+ * globaleFuerAnsicht() entfernt → rot: „… bekommt smtp_host“.
+ * Gegenprobe (am 29.10.2026 gemessen): geheimnisMaske() hängt wieder die letzten
  * vier Zeichen an → rot: „… die Maske von bricklink_consumer_secret verrät 4711“.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

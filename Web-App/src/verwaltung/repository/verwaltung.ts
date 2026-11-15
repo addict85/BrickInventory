@@ -199,13 +199,6 @@ export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-export function probeWaehrung(db: DbSchnittstelle, uid: number): Promise<{ value: string } | undefined> {
-  return db.get<Spalten<'user_settings', 'value'>>(
-    "SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'",
-    [uid],
-  );
-}
-
 export function letzterLaufDerArt(db: DbSchnittstelle) {
   return db.get<{
     status: string;

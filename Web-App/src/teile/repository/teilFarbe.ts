@@ -60,15 +60,3 @@ export function faerbeErfassungenUm(tx: DbSchnittstelle, uid: number, partNumber
     [uid, partNumber, alt, neu],
   );
 }
-
-export function setzeTeilLagerort(tx: DbSchnittstelle, storageId: number, id: number) {
-  return tx.run('UPDATE parts SET storage_id = $1 WHERE id = $2', [storageId, id]);
-}
-
-export function loescheTeilzeile(tx: DbSchnittstelle, id: number) {
-  return tx.run('DELETE FROM parts WHERE id = $1', [id]);
-}
-
-export function faerbeTeilzeileUm(tx: DbSchnittstelle, colorId: number, id: number) {
-  return tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [colorId, id]);
-}

@@ -1,6 +1,6 @@
 /** Sitzungen und Zugänge eines Kontos beenden, wenn sich an seinem Schutz etwas ändert. */
 import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
-import { hashToken, ZUGAENGE_HOECHSTENS } from './geraeteToken';
+import { tokenAbdruck, ZUGAENGE_HOECHSTENS } from './geraeteToken';
 import { leereTokenCache } from './tokenCache';
 import { imSystemkontext } from '../infra/kontoKontext';
 import { imSystemrahmen } from '../infra/bereich';
@@ -11,7 +11,7 @@ export function begrenzeSitzungen(k: KontoKontext, userId: number, eigene: strin
 }
 
 /** In user_sessions, wo der Session-Store wirklich liegt. */
-export async function revokeAllSessions(k: KontoKontext, userId: number): Promise<void> {
+export async function alleSitzungenBeenden(k: KontoKontext, userId: number): Promise<void> {
   await erhoeheSitzungsVersion(k, userId);
   await k.zugaenge.loescheSitzungenDesKontos(userId);
 }
@@ -46,7 +46,7 @@ export async function beendeAndereZugaenge(
   sitzungsId: string | null,
 ): Promise<number> {
   return mitZugangsende(k, userId, async t => {
-    await t.zugaenge.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
+    await t.zugaenge.loescheTokensDesKontos(userId, aktuellerToken ? tokenAbdruck(aktuellerToken) : null);
     const v = await erhoeheSitzungsVersion(t, userId);
     await t.zugaenge.loescheSitzungenDesKontos(userId, sitzungsId);
     return v;

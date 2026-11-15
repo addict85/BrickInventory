@@ -6,7 +6,7 @@
  *   A  in cacheStatistik() `...ab.angabe()` gestrichen → rot: „die Cache-Zahlen
  *      sagen, welcher Teil fehlt“ (degradiert undefined)
  *   B  in Abstriche.oder() den Eintrag in `teile` weggelassen → rot: beide Teiltests
- *   C  in updateSet() wieder `wertOder(versuche(…))` für den Kaufpreis → rot:
+ *   C  in setAendern() wieder `wertOder(versuche(…))` für den Kaufpreis → rot:
  *      „eine Mengenerhöhung ohne Marktpreis sagt es“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -87,7 +87,7 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
                   VALUES ($1, $2, 10, 'N', 1)`,
       [uid, SN],
     );
-    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
+    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
     // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
     const finanzen = require('./helpers/sources').testBereich('finanzen');
     const zustandEcht = finanzen.resolveSetCondition;
@@ -101,7 +101,7 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
     preisKaputt = true;
     let r;
     try {
-      r = await updateSet(uid, SN, { quantity: 2 });
+      r = await setAendern(uid, SN, { quantity: 2 });
     } finally {
       preisKaputt = false;
     }
@@ -112,6 +112,6 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
       [uid, SN],
     );
     assert.equal(ohnePreis.n, 1, 'die neue Erfassung ohne Preis — der Nachtrag holt ihn');
-    assert.equal((await updateSet(uid, SN, { quantity: 2 })).degradiert, undefined);
+    assert.equal((await setAendern(uid, SN, { quantity: 2 })).degradiert, undefined);
   });
 });

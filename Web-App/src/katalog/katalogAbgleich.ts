@@ -1,7 +1,5 @@
 /** Alles hier gilt für alle Konten. */
 import { setTimeout as warte } from 'node:timers/promises';
-import { downloadFile } from '../fremdquellen';
-import { generateThumb } from '../bilder';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import {
@@ -53,9 +51,9 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
         imageLocal = rel;
       } else {
         await k.fremdquellen.drossel.hintergrund.waitForSlot();
-        await downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
+        await k.fremdquellen.quellen.downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
-          await generateThumb(rel).catch(logAndContinue('katalog-sync:generateThumb'));
+          await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('katalog-sync:generateThumb'));
           imageLocal = rel;
         }
       }

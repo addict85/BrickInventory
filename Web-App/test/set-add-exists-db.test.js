@@ -1,7 +1,7 @@
 /**
  * Ein Set, das schon im Blickfeld steht, wird beim Erfassen NICHT erhöht.
  *
- * Gegenprobe (durchgeführt): den findSetInScope-Zweig aus routes/api_v1/sets.ts
+ * Gegenprobe (durchgeführt): den findeSetImBlickfeld-Zweig aus routes/api_v1/sets.ts
  * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).

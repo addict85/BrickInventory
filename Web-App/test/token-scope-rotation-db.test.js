@@ -117,7 +117,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     });
     return { status: r.status, kopf: r.headers, body: await r.json().catch(() => null) };
   };
-  const zeile = klartext => db.get('SELECT * FROM api_tokens WHERE token = $1', [auth.hashToken(klartext)]);
+  const zeile = klartext => db.get('SELECT * FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(klartext)]);
   const anmelden = async (body = {}) => {
     const a = await ruf('/auth/login', {
       method: 'POST',
@@ -176,7 +176,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     await db.run(
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '2 days', expires_at = NOW() + INTERVAL '88 days',
                   ip_bereich = NULL WHERE token = $1`,
-      [auth.hashToken(tok)],
+      [auth.tokenAbdruck(tok)],
     );
     tokenCache.leereTokenCache();
     assert.equal((await ruf('/auth/me', { token: tok })).status, 200);
@@ -193,7 +193,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     await db.run(
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '23 hours',
                   expires_at = NOW() + INTERVAL '89 days 1 hour' WHERE token = $1`,
-      [auth.hashToken(tok)],
+      [auth.tokenAbdruck(tok)],
     );
     const vorher = await zeile(tok);
     tokenCache.leereTokenCache();
@@ -224,7 +224,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     // nach dem Sperrfenster gegen gleichzeitige Tausche (token-tausch-parallel-db).
     assert.equal((await ruf('/auth/me', { token: a })).status, 200, 'Der alte gilt in der Überlappung');
     await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
-      auth.hashToken(b),
+      auth.tokenAbdruck(b),
     ]);
     const r2 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r2.status, 200);
@@ -250,7 +250,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.ok(Math.abs(tageBis(z.expires_at) - 90) < 0.01, 'die Gleitfrist bleibt daneben');
     // 170 Tage nach der Anmeldung: Ein Tausch erbt die zehn restlichen Tage.
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [
-      auth.hashToken(a),
+      auth.tokenAbdruck(a),
     ]);
     tokenCache.leereTokenCache();
     const r = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
@@ -276,7 +276,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
       assert.equal(qr.body.token_info.expires_at, null);
 
       await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '31 days' WHERE token = $1`, [
-        auth.hashToken(u),
+        auth.tokenAbdruck(u),
       ]);
       tokenCache.leereTokenCache();
       const faellig = await ruf('/auth/me', { token: u });
@@ -286,7 +286,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
       assert.equal((await ruf('/settings/tokens', { token: u })).kopf.get('x-token-rotation'), 'faellig');
 
       await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '61 days' WHERE token = $1`, [
-        auth.hashToken(u),
+        auth.tokenAbdruck(u),
       ]);
       tokenCache.leereTokenCache();
       const gesperrt = await ruf('/settings/tokens', { token: u });
@@ -320,7 +320,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.match(String(e.ip_bereich), /\/(24|48)$/);
     assert.equal(e.never_expires, false);
 
-    assert.equal(e.token_id, auth.hashToken(neu).slice(0, 16), 'Es steht der neue Token da');
+    assert.equal(e.token_id, auth.tokenAbdruck(neu).slice(0, 16), 'Es steht der neue Token da');
     const weg = await ruf('/settings/tokens/' + e.token_id, {
       method: 'DELETE',
       cookie: sitzung,

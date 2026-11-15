@@ -4,9 +4,7 @@ import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/zwischenspeicher';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as altgeheimnisse from './repository/altgeheimnisse';
-import * as anmeldezaehler from './repository/anmeldezaehler';
 import * as einrichtung from './repository/einrichtung';
-import * as geraeteSchluessel from './repository/geraeteSchluessel';
 import * as konten from './repository/konten';
 import * as passkeys from './repository/passkeys';
 import * as protokoll from './repository/protokoll';
@@ -19,6 +17,8 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { MailDienste } from '../mail';
+import type { DrosselDienste } from '../drossel';
+import type { GeraeteDienste } from '../geraete';
 import type { Uhr } from '../infra/uhr';
 
 export interface KontoAbhaengigkeiten {
@@ -32,6 +32,8 @@ export interface KontoAbhaengigkeiten {
   haushalt: HaushaltDienste;
   nacharbeit: Nacharbeit;
   mail: MailDienste;
+  drossel: DrosselDienste;
+  geraete: GeraeteDienste;
 }
 
 /** Zugangsdaten liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer ohne Konto
@@ -57,32 +59,9 @@ const anmeldezugang = (db: Db) => ({
       altgeheimnisse.ersetzeFaktorGeheimnis,
     ),
   },
-  anmeldezaehler: {
-    erhoehe: mit(db)(anmeldezaehler.erhoehe),
-    gibLaufplatzFrei: mit(db)(anmeldezaehler.gibLaufplatzFrei),
-    kontoZumNamen: mit(db)(anmeldezaehler.kontoZumNamen),
-    lies: mit(db)(anmeldezaehler.lies),
-    loescheZaehler: mit(db)(anmeldezaehler.loescheZaehler),
-    loescheZaehlerMitPraefix: mit(db)(anmeldezaehler.loescheZaehlerMitPraefix),
-    raeumeAuf: mit(db)(anmeldezaehler.raeumeAuf),
-    zaehleHoch: mit(db)(anmeldezaehler.zaehleHoch),
-  },
   einrichtung: {
     kontenStand: mit(db)(einrichtung.kontenStand),
     datenbankErreichbar: mit(db)(einrichtung.datenbankErreichbar),
-  },
-  geraeteSchluessel: {
-    familieDesTokens: imSystem(db, OHNE_KONTO, geraeteSchluessel.familieDesTokens),
-    schluesselDer: imSystem(db, OHNE_KONTO, geraeteSchluessel.schluesselDer),
-    eintragDer: imSystem(db, OHNE_KONTO, geraeteSchluessel.eintragDer),
-    legeSchluesselAn: imSystem(db, OHNE_KONTO, geraeteSchluessel.legeSchluesselAn),
-    legeNonceAn: imSystem(db, OHNE_KONTO, geraeteSchluessel.legeNonceAn),
-    qrNonceDer: imSystem(db, OHNE_KONTO, geraeteSchluessel.qrNonceDer),
-    nimmNonce: imSystem(db, OHNE_KONTO, geraeteSchluessel.nimmNonce),
-    legeChallengeAn: imSystem(db, OHNE_KONTO, geraeteSchluessel.legeChallengeAn),
-    nimmChallenge: imSystem(db, OHNE_KONTO, geraeteSchluessel.nimmChallenge),
-    oeffneFreigabe: imSystem(db, OHNE_KONTO, geraeteSchluessel.oeffneFreigabe),
-    nutzeFreigabe: imSystem(db, OHNE_KONTO, geraeteSchluessel.nutzeFreigabe),
   },
 });
 
@@ -90,6 +69,7 @@ const anmeldezugang = (db: Db) => ({
 const kontenzugang = (db: Db) => ({
   konten: {
     kontoKurz: mit(db)(konten.kontoKurz),
+    kontoZumNamen: mit(db)(konten.kontoZumNamen),
     kontoVoll: mit(db)(konten.kontoVoll),
     profilZeile: mit(db)(konten.profilZeile),
     nameVergeben: mit(db)(konten.nameVergeben),

@@ -48,7 +48,7 @@ export async function getMinifigs(
     conditions: conditionsFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
   }));
 
-  // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
+  // Mit Gesamtzahl für den Endlos-Scroll, wie bei setsLesen.
   return {
     figs: await k.haushalt.besitzerAnhaengen(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,

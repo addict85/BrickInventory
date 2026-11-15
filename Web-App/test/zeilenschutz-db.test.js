@@ -319,10 +319,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {
-    const kontoDienste = dienstMit(app).konto;
+    const einstellungen = dienstMit(app).einstellungen;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
-    await als(A, () => kontoDienste.setUserSetting(A, 'currency', 'CHF'));
+    await als(A, () => einstellungen.nutzerEinstellungSetzen(A, 'currency', 'CHF'));
     const w = await su.all(`SELECT user_id, value FROM user_settings WHERE key = 'currency' AND user_id = ANY($1)`, [
       [A, B, E],
     ]);
@@ -365,10 +365,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const K = _req('src/konto/index.js');
     const token = `zeilen-token-${process.pid}`;
     await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
-      K.hashToken(token),
+      K.tokenAbdruck(token),
       C,
     ]);
-    assert.equal((await d.konto.validateToken(token))?.user_id, C);
+    assert.equal((await d.konto.nutzerZumToken(token))?.user_id, C);
     await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).alleTokensWiderrufen(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });

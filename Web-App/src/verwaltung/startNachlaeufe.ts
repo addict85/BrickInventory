@@ -1,11 +1,10 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
-import { verschluesseleGutscheinAltbestand } from '../gutscheine';
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import type { VerwaltungKontext } from './kontext';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
-  const n = (await k.konto.verschluesseleAltbestand()) + (await verschluesseleGutscheinAltbestand());
+  const n = (await k.konto.verschluesseleAltbestand()) + (await k.gutscheine.verschluesseleAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 
@@ -23,10 +22,10 @@ type Nachlauf = Nutzlast<'nachlauf'>['schritt'];
 function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> {
   return {
     geheimnisse: () => geheimnisseVerschluesseln(k),
-    vorschauen: () => k.katalog.bilder.vorschaubilderNachtragen(),
+    vorschauen: () => k.katalog.vorschaubilderNachtragen(),
     katalog: () => k.katalog.syncAllMissing(),
-    anleitungen: () => k.katalog.bilder.anleitungenNachtragen(),
-    set_bilder: () => k.katalog.bilder.setBilderNachladen(),
+    anleitungen: () => k.katalog.anleitungenNachtragen(),
+    set_bilder: () => k.katalog.setBilderNachladen(),
     kaufpreise: () => k.bestand.run(),
   };
 }

@@ -1,7 +1,7 @@
 // Guthaben einer LEGO-Geschenkkarte; greift der Bot-Schutz, folgt kein weiterer Aufruf.
 import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
-import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../fremdquellen';
+import { ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../fremdquellen';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
@@ -269,10 +269,10 @@ export async function holeGuthaben(
   vorrat: Sitzungsvorrat,
   nummer: string,
   pin: string,
-  opt: { locale?: string; abruf?: Abruf } = {},
+  opt: { locale?: string; abruf: Abruf },
 ): Promise<Guthaben> {
   const locale = opt.locale || LAND_STANDARD;
-  const abruf = opt.abruf ?? legoAbruf;
+  const abruf = opt.abruf;
 
   const warImVorrat = vorrat.has(locale);
   try {

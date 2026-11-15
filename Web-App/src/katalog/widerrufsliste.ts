@@ -1,7 +1,7 @@
 /** Googles Widerrufsliste über die Fremdquellen (im Test ersetzbar) nach laufzustand, wo die
  * Konto-Prüfung sie liest. Eine unlesbare Antwort wirft und lässt die letzte gute Liste stehen. */
 import type { AuftragsLauf } from '../auftraege';
-import { WIDERRUF_ZUSTAND, leseWiderrufsliste } from '../konto';
+import { WIDERRUF_ZUSTAND, leseWiderrufsliste } from '../geraete';
 import type { KatalogKontext } from './kontext';
 
 export async function ladeWiderrufsliste(k: KatalogKontext, lauf?: AuftragsLauf): Promise<void> {

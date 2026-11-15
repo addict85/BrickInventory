@@ -1,7 +1,7 @@
 /** Der Geräteschlüssel der App und die Freigabe heikler Schritte; nur mit
  * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
 import { waechterFuer } from './middleware';
-import { familieAus } from '../../src/konto';
+import { familieAus } from '../../src/geraete';
 import { istAppToken } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -9,14 +9,14 @@ import { fachfehler } from '../../src/infra/fehlerTexte';
 
 const familie = (req: AuthedRequest) => (istAppToken(req) ? familieAus(req.apiUser) : null);
 
-export function baueGeraetRouter(d: Pick<Dienste, 'konto'>) {
+export function baueGeraetRouter(d: Pick<Dienste, 'konto' | 'geraete'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/geraet/schluessel/nonce', requireToken, async req => {
     const f = familie(req);
     if (!f) fachfehler('verboten', 'nur_mit_app_token');
-    const nonce = await d.konto.neueNonce(f);
+    const nonce = await d.geraete.neueNonce(f);
     if (!nonce) fachfehler('verboten', 'geraeteschluessel_frist');
     return { nonce };
   });
@@ -25,7 +25,7 @@ export function baueGeraetRouter(d: Pick<Dienste, 'konto'>) {
     const f = familie(req);
     if (!f) fachfehler('verboten', 'nur_mit_app_token');
     if (!req.eingabe.kette) fachfehler('ungueltig', 'geraeteschluessel_attestation');
-    const r = await d.konto.hinterlegeSchluessel(f, req.eingabe.kette);
+    const r = await d.geraete.hinterlegeSchluessel(f, req.eingabe.kette);
     if (typeof r === 'object') {
       // Der Grund gehört ins Protokoll: Die App kann ihn nicht beheben, der Betreiber (Fingerabdruck) schon.
       console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${r.abgewiesen}`);
@@ -40,7 +40,7 @@ export function baueGeraetRouter(d: Pick<Dienste, 'konto'>) {
   router.endpunkt('POST /api/v1/geraet/schritt/challenge', requireToken, async req => {
     const f = familie(req);
     if (!f) fachfehler('verboten', 'nur_mit_app_token');
-    const c = await d.konto.neueChallenge(f, req.eingabe.aktion);
+    const c = await d.geraete.neueChallenge(f, req.eingabe.aktion);
     if (c === 'kein_schluessel') fachfehler('verboten', 'geraeteschluessel_fehlt');
     return { ...c };
   });
@@ -48,7 +48,7 @@ export function baueGeraetRouter(d: Pick<Dienste, 'konto'>) {
   router.endpunkt('POST /api/v1/geraet/schritt/freigabe', requireToken, async req => {
     const f = familie(req);
     if (!f) fachfehler('verboten', 'nur_mit_app_token');
-    const r = await d.konto.loeseEin(f, req.eingabe.challenge, req.eingabe.signatur);
+    const r = await d.geraete.loeseEin(f, req.eingabe.challenge, req.eingabe.signatur);
     if (!r) fachfehler('ungueltig', 'schritt_signatur_ungueltig');
     return { aktion: r.aktion, gueltig_bis: r.bis };
   });

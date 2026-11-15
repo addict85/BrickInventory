@@ -55,7 +55,7 @@ async function seed() {
 
   // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`, [
-    _req('src/konto/geraeteToken.js').hashToken(TOKEN),
+    _req('src/konto/geraeteToken.js').tokenAbdruck(TOKEN),
     USER.id,
   ]);
 
@@ -298,7 +298,7 @@ test('API-Parität Webapp ↔ Android', async t => {
       v1.price_cache_ttl,
       '48',
       'Ein GLOBAL gesetzter Wert erreicht die App nicht — liest die v1-Route ' +
-        'wieder selbst auf user_settings statt über readSettings()?',
+        'wieder selbst auf user_settings statt über einstellungenLesen()?',
     );
     assert.equal(v1.currency, 'CHF', 'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
   });

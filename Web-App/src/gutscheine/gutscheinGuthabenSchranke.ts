@@ -20,6 +20,7 @@ export const BOTSCHUTZ_PAUSE_MIN = 30;
 /** Vor der Grenze für alle: Ein Konto allein belegt den Platz je 30 s nicht
  * dauerhaft und löst den Bot-Schutz nicht beliebig oft für alle aus. */
 export const KONTO_JE_STUNDE = 20;
+const kontoSchluessel = (uid: number) => `guthaben-konto|${uid}`;
 
 export interface Gesperrt {
   grund: 'konto' | 'abstand' | 'botschutz';
@@ -49,7 +50,7 @@ export async function belegePlatz(
       return Number.isFinite(n) ? n : 0;
     };
 
-    const konto = await repo.kontoStand(t.db, uid);
+    const konto = await t.drossel.stundenStand(kontoSchluessel(uid));
     if (rest(konto?.anzahl) >= KONTO_JE_STUNDE)
       return { frei: false as const, grund: 'konto' as const, wartenSek: Math.max(1, rest(konto?.warten_sek)) };
 
@@ -62,7 +63,7 @@ export async function belegePlatz(
     if (abstand > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: abstand };
 
     await repo.merkeAbruf(t.db);
-    await repo.zaehleKonto(t.db, uid);
+    await t.drossel.zaehleStunde(kontoSchluessel(uid));
     return { frei: true as const };
   });
 }

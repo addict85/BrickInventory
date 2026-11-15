@@ -61,7 +61,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const zeile = klartext =>
-    db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.hashToken(klartext)]);
+    db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(klartext)]);
 
   try {
     const frist = _req('src/infra/konfig.js').konfig().tokenLeerlaufTage;
@@ -97,7 +97,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
 
     // 3. Die stille Erneuerung
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
-      auth.hashToken(appToken),
+      auth.tokenAbdruck(appToken),
     ]);
     tokenCache.leereTokenCache();
     const wer = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${appToken}` } });
@@ -117,7 +117,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     // Gegenprobe in derselben Lage: Der Browser-Token wird ebenso benutzt und
     // darf sich NICHT verlaengern.
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
-      auth.hashToken(webA.body.token),
+      auth.tokenAbdruck(webA.body.token),
     ]);
     tokenCache.leereTokenCache();
     await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${webA.body.token}` } });
@@ -125,7 +125,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     assert.ok(
       await bis(
         async () =>
-          (await db.get('SELECT last_used FROM api_tokens WHERE token = $1', [auth.hashToken(webA.body.token)]))
+          (await db.get('SELECT last_used FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(webA.body.token)]))
             ?.last_used,
       ),
       'die Benutzung wurde nicht vermerkt',

@@ -68,8 +68,8 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
         [SET, c, p],
       );
 
-    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
-    await updateSet(uid, SET, { quantity: 2 });
+    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
+    await setAendern(uid, SET, { quantity: 2 });
 
     const erf = await db.all(
       `SELECT condition, purchase_price::float AS p FROM set_acquisitions
@@ -77,7 +77,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
       [uid, SET],
     );
     assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
-    // Gegenprobe: in priceForNewAcquisition den Zustand auf
+    // Gegenprobe: in preisFuerNeueErfassung den Zustand auf
     // DEFAULT_PRICE_CONDITION festnageln -> hier steht 'N' und 100.
     assert.equal(erf[1].condition, 'U', 'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
     assert.equal(

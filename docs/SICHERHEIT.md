@@ -123,7 +123,7 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/konto/passkeys.ts` —
   `passkeys-db`. TOTP: `src/konto/zweiterFaktor.ts` — `zweiter-faktor-db`.
 - Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
-  Key Attestation an (`src/konto/attestation/`): Kette bis zu Googles Wurzel,
+  Key Attestation an (`src/geraete/attestation/`): Kette bis zu Googles Wurzel,
   kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
   Gerätesperre bei jeder Benutzung, gesperrter Bootloader und verifizierter
   Start (RootOfTrust `deviceLocked`, `verifiedBootState = Verified`), auf Wunsch
@@ -207,7 +207,7 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
   `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
-  `waehrung_geteiltes_unterkonto`: `src/konto/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
+  `waehrung_geteiltes_unterkonto`: `src/einstellungen/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
 - Datenbankrechte nach Rolle (Migration 0117, `postgres/app-rolle.sh`): Die
   Laufzeitrolle schreibt in `users` nur Vor- und Nachname und liest
@@ -316,7 +316,7 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
   darin, nach `einrichtung_erledigt` nur noch „erledigt“. Ohne Verwaltersitzung
   fehlen die Basis-URL und das Startpasswort („Konto“ heißt dann nur „es gibt
-  eines“): `src/konto/einrichtungStand.ts` — `einrichtung-stand-db`.
+  eines“): `src/profil/einrichtungStand.ts` — `einrichtung-stand-db`.
 - Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
   nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
   nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die

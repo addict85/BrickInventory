@@ -57,7 +57,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     await db.pool.end().catch(() => {});
   });
-  const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
+  const { nutzerEinstellungSetzen: setUserSetting } = _req('src/einstellungen/nutzerEinstellung.js');
   const waehrungen = async () =>
     (
       await db.all(

@@ -1,6 +1,6 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
-import { SECRET_KEYS, isMaskedValue, globalerWertGueltig } from '../einstellungen';
+import { SECRET_KEYS, istMaskiert, globalerWertGueltig } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { imSystemkontext } from '../infra/kontoKontext';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
@@ -31,7 +31,7 @@ async function heikleSchluessel(k: VerwaltungKontext, e: EinstellungsEingabe): P
   const einrichtung = !(await k.einstellungen.getGlobalSetting('einrichtung_erledigt'));
   for (const key of GLOBALE_EINSTELLUNGEN.filter(istHeikel)) {
     const neu = e[key];
-    if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
+    if (neu === undefined || (SECRET_KEYS.has(key) && istMaskiert(neu))) continue;
     const alt = String((await k.einstellungen.getGlobalSetting(key)) ?? '');
     if (
       String(neu) === alt ||
@@ -48,14 +48,14 @@ async function heikleSchluessel(k: VerwaltungKontext, e: EinstellungsEingabe): P
 async function schreibeGlobal(kx: VerwaltungKontext, uid: number, e: EinstellungsEingabe): Promise<void> {
   const geaendert: string[] = [];
   for (const key of GLOBALE_EINSTELLUNGEN) {
-    if (e[key] === undefined || (SECRET_KEYS.has(key) && isMaskedValue(e[key]))) continue;
+    if (e[key] === undefined || (SECRET_KEYS.has(key) && istMaskiert(e[key]))) continue;
     if (String(e[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
     await kx.einstellungen.setGlobalSetting(key, e[key]);
   }
   if (geaendert.length) await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBALE_EINSTELLUNGEN.some(k => k.startsWith('smtp_') && e[k] !== undefined))
-    await kx.einstellungen.deleteGlobalSetting('smtp_insecure_tls');
+    await kx.einstellungen.globaleWerteLoeschen('smtp_insecure_tls');
 }
 
 /** Alle Schreibvorgänge samt Protokoll in einer Transaktion: Scheitert ein Wert,
@@ -83,7 +83,7 @@ export async function einstellungenSpeichern(
   // Die Währung gilt für den ganzen Haushalt und braucht deshalb den Systemrahmen, der
   // sich in einer Transaktion nicht betreten lässt: vorher und für sich. Scheitert sie,
   // ist noch nichts geschrieben; der Preis-Job folgt nur einer echten Änderung.
-  if (e.currency !== undefined) await kx.konto.setUserSetting(o.uid, 'currency', e.currency);
+  if (e.currency !== undefined) await kx.einstellungen.nutzerEinstellungSetzen(o.uid, 'currency', e.currency);
   // Globale Werte schreibt nur die Systemrolle (0117): dann die ganze Transaktion in ihrem Rahmen.
   const rahmen = <T>(f: () => Promise<T>) => (global ? imSystemkontext('globale Einstellungen', f) : f());
   const bricksetAlt = await rahmen(() =>
@@ -94,7 +94,8 @@ export async function einstellungenSpeichern(
           : null;
       if (global) await schreibeGlobal(t, o.uid, e);
       for (const key of KONTO_EINSTELLUNGEN)
-        if (key !== 'currency' && e[key] !== undefined) await t.konto.setUserSetting(o.uid, key, e[key]);
+        if (key !== 'currency' && e[key] !== undefined)
+          await t.einstellungen.nutzerEinstellungSetzen(o.uid, key, e[key]);
       return alt;
     }),
   );

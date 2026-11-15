@@ -112,10 +112,10 @@ export async function lagerorte(k: BestandKontext, blickfeldWahl: Sicht | Blickf
 /** Für die Vorgabe zählt die ID: Ein umbenannter Ort bleibt die Vorgabe. */
 export const VORGABE_SCHLUESSEL = 'default_storage_id';
 
-/** Über einen JOIN auf den Vorrat: Eine Vorgabe, deren Ort gelöscht wurde,
- * ist keine, und eine fremde ID gilt nicht. */
+/** Nur ein Ort des Kontos: Eine Vorgabe, deren Ort gelöscht wurde, ist keine, und eine fremde ID gilt nicht. */
 export async function vorgabeVon(k: BestandKontext, userId: number): Promise<Lagerort | null> {
-  const row = await orte.vorgabeOrt(k.db, userId, VORGABE_SCHLUESSEL);
+  const id = Number.parseInt(String((await k.einstellungen.getSetting(userId, VORGABE_SCHLUESSEL)) ?? '').trim(), 10);
+  const row = Number.isInteger(id) ? await orte.ortDesKontos(k.db, id, userId) : undefined;
   if (!row) return null;
   return { id: parseInt(String(row.id), 10), user_id: parseInt(String(row.user_id), 10), name: row.name };
 }

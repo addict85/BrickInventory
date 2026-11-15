@@ -100,7 +100,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
   await k.katalog.merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
   await k.katalog.merkeFigur(num, eingabe.name, eingabe.bild, null, k.db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
-  await k.manuelleFiguren.legeFigurManuellAn(uid, num);
+  await k.bestand.legeFigurManuellAn(uid, num);
   if (blNum) await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum);
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
   // Erfassungshistorie und G&V stimmen.
@@ -256,7 +256,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       }
       // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
       await k.katalog.merkeFigur(figNumber, figName, imageUrl, null, k.db, eingetippt ? uid : null);
-      await k.manuelleFiguren.legeFigurManuellAn(uid, figNumber);
+      await k.bestand.legeFigurManuellAn(uid, figNumber);
       if (blFigNumber) await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber);
       await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
       added++;

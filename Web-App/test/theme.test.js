@@ -9,7 +9,7 @@
  *      „ein servergesetzter Wert gilt …“ (Abruf trotz Serverwert)
  *   C  konto.js: applyTheme() gibt null zurück statt __bimApplyTheme →
  *      rot „applyTheme läuft über den Boot-Helfer“
- *   D  routes/api_v1/settings.ts: invalidateTheme() im Admin-Speichern
+ *   D  routes/api_v1/settings.ts: vergissDesign() im Admin-Speichern
  *      entfernt → rot „der Server setzt data-theme selbst …“ (brick statt noppe)
  *   Gestrichen „GET /api/settings/theme ist ohne Login erreichbar“: deckt
  *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
@@ -206,9 +206,9 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
-  const { invalidateTheme } = _req('src/konto/indexHtml.js');
+  const { vergissDesign } = _req('src/profil/indexHtml.js');
   const sendeStartseite = (...a) =>
-    _req('src/konto/http/startseite.js').sendeStartseite(require('./helpers/sources').testDienste().konto, ...a);
+    _req('src/profil/http/startseite.js').sendeStartseite(require('./helpers/sources').testDienste().profil, ...a);
   const name = `theme_admin_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const admin = (
@@ -223,11 +223,11 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
     await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});
     if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
     else await setGlobalSetting('app_theme', vorher);
-    invalidateTheme();
+    vergissDesign();
     await db.pool.end().catch(() => {});
   });
   await setGlobalSetting('app_theme', 'brick');
-  invalidateTheme();
+  vergissDesign();
 
   const startseite = async () => {
     let gesendet = '';

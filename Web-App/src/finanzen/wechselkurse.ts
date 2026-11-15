@@ -3,7 +3,6 @@ import type { AuftragsLauf } from '../auftraege';
 import {
   EZB_HISTORIE,
   EZB_TAGESKURSE,
-  ezbAbruf,
   ersteZipDatei,
   historieLesen,
   tageskurseLesen,
@@ -31,7 +30,7 @@ export async function speichereKurse(kx: FinanzenKontext, kurse: Kurs[]): Promis
 
 export async function kurseNachladen(
   k: FinanzenKontext,
-  abruf: Abruf = ezbAbruf,
+  abruf: Abruf = k.katalog.quellen.ezbAbruf,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
   const leer = !(await k.wechselkurse.gibtEsKurse());
@@ -65,7 +64,11 @@ export async function planeKursabruf(
 }
 
 /** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
-export async function kursauftrag(k: FinanzenKontext, abruf: Abruf = ezbAbruf, lauf?: AuftragsLauf): Promise<void> {
+export async function kursauftrag(
+  k: FinanzenKontext,
+  abruf: Abruf = k.katalog.quellen.ezbAbruf,
+  lauf?: AuftragsLauf,
+): Promise<void> {
   await planeKursabruf(k, k.uhr.datum(), true);
   const r = await kurseNachladen(k, abruf, lauf?.signal);
   console.log(`[wechselkurse] ${r.kurse} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);

@@ -77,7 +77,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     qrKoppeln((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
   /** Die api_tokens-Zeile zu einem ausgegebenen Klartext-Token. */
   const zeile = token =>
-    db.get('SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1', [auth.hashToken(token)]);
+    db.get('SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(token)]);
 
   try {
     const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
@@ -168,7 +168,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '400 days',
                              created_at = NOW() - INTERVAL '400 days'
         WHERE token = $1`,
-      [auth.hashToken(rohEwig)],
+      [auth.tokenAbdruck(rohEwig)],
     );
     await auth.tokensAufraeumen();
     const nachher = await zeile(rohEwig);
@@ -178,8 +178,8 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       null,
       'Der Aufraeumjob darf ihm auch kein Ablaufdatum verpassen — sonst waere die Wahl still weg',
     );
-    tokenCache.invalidateToken(rohEwig);
-    assert.ok(await auth.validateToken(rohEwig), 'Und er muss nach dem Aufraeumen noch gelten');
+    tokenCache.tokenVergessen(rohEwig);
+    assert.ok(await auth.nutzerZumToken(rohEwig), 'Und er muss nach dem Aufraeumen noch gelten');
 
     // ── 4. Ein Wert ausserhalb der Liste weist nicht ab, er waehlt nichts ──
     //
@@ -199,7 +199,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     // ── 5. Die feste Frist sperrt auch dann aus, wenn die gleitende offen ist ──
     //
     // Der eigentliche Zweck der zweiten Spalte. Ohne die Bedingung in
-    // validateToken() waere sie nur Zierde.
+    // nutzerZumToken() waere sie nur Zierde.
     const abgelaufen = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
@@ -207,13 +207,13 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     });
     const zugang = await koppeln(abgelaufen.body, keks);
     const roh = zugang.body.token;
-    assert.ok(await auth.validateToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
+    assert.ok(await auth.nutzerZumToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`, [
-      auth.hashToken(roh),
+      auth.tokenAbdruck(roh),
     ]);
-    tokenCache.invalidateToken(roh); // sonst antwortet bis zu eine Minute der Cache
+    tokenCache.tokenVergessen(roh); // sonst antwortet bis zu eine Minute der Cache
     assert.equal(
-      await auth.validateToken(roh),
+      await auth.nutzerZumToken(roh),
       null,
       'Ist der feste Termin erreicht, gilt der Zugang nicht mehr — auch wenn die Gleitfrist noch laeuft',
     );

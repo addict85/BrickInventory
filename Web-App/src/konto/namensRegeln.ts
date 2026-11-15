@@ -32,7 +32,7 @@ export const EMAIL_RE = V.EMAIL_RE,
   emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
 /** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht. */
-export function isValidLoginIdentifier(value: unknown): boolean {
+export function anmeldenameGueltig(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || emailGueltig(v);
 }

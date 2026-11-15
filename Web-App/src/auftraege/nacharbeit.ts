@@ -9,6 +9,8 @@ export interface Nacharbeit {
   setTeileAnreichern(setNumber: string): Promise<unknown>;
   figurenAnreichern(setNumber: string): Promise<unknown>;
   setBilderLaden(setNumber: string): Promise<unknown>;
+  /** Das geladene Set-Bild im Katalog eintragen: Die Bilder liegen unter dem Katalog. */
+  setBildLokalEintragen(setNumber: string, quelle: string | null): Promise<void>;
 }
 
 export const OHNE_NACHARBEIT: Nacharbeit = Object.freeze({
@@ -18,4 +20,5 @@ export const OHNE_NACHARBEIT: Nacharbeit = Object.freeze({
   async setTeileAnreichern() {},
   async figurenAnreichern() {},
   async setBilderLaden() {},
+  async setBildLokalEintragen() {},
 });

@@ -79,7 +79,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
 
   const link = `pv-link-${P}`;
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2`, [
-    _req('src/konto/geraeteToken.js').hashToken(link),
+    _req('src/konto/geraeteToken.js').tokenAbdruck(link),
     V,
   ]);
   const { base } = testServer(_req, { t });

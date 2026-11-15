@@ -1,6 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import { mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
+import type { DrosselDienste } from '../drossel';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
@@ -8,6 +9,7 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { BilderDienste } from '../bilder';
 import * as anleitungen from './repository/anleitungen';
+import * as bildlage from './repository/bildlage';
 import * as blZuordnung from './repository/blZuordnung';
 import * as csvKatalog from './repository/csvKatalog';
 import * as katalogCache from './repository/katalogCache';
@@ -31,6 +33,7 @@ export interface KatalogAbhaengigkeiten {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   nacharbeit: Nacharbeit;
+  drossel: DrosselDienste;
 }
 
 /** Anleitungen, BrickLink-Zuordnung und CSV-Katalog. */
@@ -38,7 +41,6 @@ const anleitungszugang = (db: Db) => ({
   anleitungen: {
     zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
     anleitungenDesSets: mit(db)(anleitungen.anleitungenDesSets),
-    zaehleQuellenAufruf: mit(db)(anleitungen.zaehleQuellenAufruf),
     loescheAnleitungenDesSets: mit(db)(anleitungen.loescheAnleitungenDesSets),
     hatBrickinstructions: mit(db)(anleitungen.hatBrickinstructions),
     merkeAnleitung: mit(db)(anleitungen.merkeAnleitung),
@@ -105,10 +107,6 @@ const stammzugang = (db: Db) => ({
   },
   setInhalt: {
     figurenDesSetkatalogs: mit(db)(setInhalt.figurenDesSetkatalogs),
-    fuegeSetFigurenEin: mit(db)(setInhalt.fuegeSetFigurenEin),
-    entferneFremdeSetFiguren: mit(db)(setInhalt.entferneFremdeSetFiguren),
-    fuegeSetTeileEin: mit(db)(setInhalt.fuegeSetTeileEin),
-    entferneFremdeSetTeile: mit(db)(setInhalt.entferneFremdeSetTeile),
     teileOhneBlZuordnung: mit(db)(setInhalt.teileOhneBlZuordnung),
   },
   teileAnreicherung: {
@@ -125,5 +123,20 @@ const stammzugang = (db: Db) => ({
   },
 });
 
-export const zugang = (db: Db) => ({ ...anleitungszugang(db), ...stammzugang(db) });
+const bildzugang = (db: Db) => ({
+  bildlage: {
+    setsMitFehlendenKatalogbildern: mit(db)(bildlage.setsMitFehlendenKatalogbildern),
+    manuelleTeileOhneBild: mit(db)(bildlage.manuelleTeileOhneBild),
+    figurenOhneBild: mit(db)(bildlage.figurenOhneBild),
+    setBilderOhneDatei: mit(db)(bildlage.setBilderOhneDatei),
+    merkeSetBildLokal: mit(db)(bildlage.merkeSetBildLokal),
+    lokaleKatalogbilder: mit(db)(bildlage.lokaleKatalogbilder),
+    teilbilder: mit(db)(bildlage.teilbilder),
+    figurenbilder: mit(db)(bildlage.figurenbilder),
+    fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
+    setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
+  },
+});
+
+export const zugang = (db: Db) => ({ ...anleitungszugang(db), ...stammzugang(db), ...bildzugang(db) });
 export type KatalogKontext = Kontext<KatalogAbhaengigkeiten, ReturnType<typeof zugang>>;

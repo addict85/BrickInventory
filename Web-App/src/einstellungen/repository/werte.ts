@@ -1,6 +1,6 @@
 /** Werte so, wie sie in der Tabelle stehen; Entschlüsseln, Prüfen und Vorgaben
  * macht src/einstellungen/settings.ts. */
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 export interface Eintrag {
   key: string;
@@ -40,6 +40,15 @@ export async function schreibeNutzerWert(
 
 export async function loescheNutzerWert(db: DbSchnittstelle, userId: number, key: string): Promise<void> {
   await db.run('DELETE FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
+}
+
+/** Ein Wert aus den Konten `uids`; welches Konto ihn liefert, ist offen. */
+export async function ersterWertIn(db: DbSchnittstelle, uids: number[], key: string): Promise<string | null> {
+  const r = await db.get<{ value: string }>('SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = $2', [
+    uids,
+    key,
+  ]);
+  return r?.value ?? null;
 }
 
 export async function nutzerWerte(db: DbSchnittstelle, userId: number): Promise<Eintrag[]> {

@@ -4,6 +4,7 @@ import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
 import * as gemeinsamDienst from './gemeinsam';
 import * as gemeinsamRepo from './repository/gemeinsam';
+import * as setInhaltRepo from './repository/setInhalt';
 import * as kennzahlenDienst from './kennzahlen';
 import * as manuelleMenge from './manuelleMenge';
 import * as papierkorbDienst from './papierkorb';
@@ -33,6 +34,15 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       entferneSetInhalt: mit(k.db, gemeinsamRepo.entferneSetInhalt),
       kopiereSetInhalt: mit(k.db, gemeinsamRepo.kopiereSetInhalt),
       legeManuellAn: mit(k.db, gemeinsamRepo.legeManuellAn),
+      manuelleTeileDesKontos: mit(k.db, gemeinsamRepo.manuelleTeileDesKontos),
+      manuelleFigurenDesKontos: mit(k.db, gemeinsamRepo.manuelleFigurenDesKontos),
+      legeTeilManuellAn: mit(k.db, gemeinsamRepo.legeTeilManuellAn),
+      legeFigurManuellAn: mit(k.db, gemeinsamRepo.legeFigurManuellAn),
+      setzeTeilLagerort: mit(k.db, gemeinsamRepo.setzeTeilLagerort),
+      loescheTeilzeile: mit(k.db, gemeinsamRepo.loescheTeilzeile),
+      faerbeTeilzeileUm: mit(k.db, gemeinsamRepo.faerbeTeilzeileUm),
+      setFigurenEintragen: mit(k.db, setInhaltRepo.setFigurenEintragen),
+      setTeileEintragen: mit(k.db, setInhaltRepo.setTeileEintragen),
       applyManualCondition: mit(k)(gemeinsamDienst.applyManualCondition),
       getStats: mit(k)(kennzahlenDienst.getStats),
       passeManuelleMengeAn: mit(k)(manuelleMenge.passeManuelleMengeAn),

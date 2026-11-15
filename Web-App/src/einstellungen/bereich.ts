@@ -2,6 +2,7 @@
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as settings from './settings';
+import * as nutzerEinstellung from './nutzerEinstellung';
 import { zugang, type EinstellungenAbhaengigkeiten, type EinstellungenKontext } from './kontext';
 
 export type { EinstellungenAbhaengigkeiten, EinstellungenKontext } from './kontext';
@@ -16,13 +17,17 @@ export function erzeugeEinstellungen(
     (k: EinstellungenKontext) => ({
       schreibeNutzerEinstellung: mit(k)(settings.schreibeNutzerEinstellung),
       nutzerStandardZustand: mit(k)(settings.nutzerStandardZustand),
-      globalDefaultCondition: mit(k)(settings.globalDefaultCondition),
+      globalerStandardZustand: mit(k)(settings.globalerStandardZustand),
       setGlobalSetting: mit(k)(settings.setGlobalSetting),
       verschluesseleGlobaleAltwerte: mit(k)(settings.verschluesseleGlobaleAltwerte),
-      deleteGlobalSetting: mit(k)(settings.deleteGlobalSetting),
-      deleteUserSetting: mit(k)(settings.deleteUserSetting),
+      globaleWerteLoeschen: mit(k)(settings.globaleWerteLoeschen),
+      nutzerEinstellungSetzen: mit(k)(nutzerEinstellung.nutzerEinstellungSetzen),
+      nutzerEinstellungLoeschen: mit(k)(nutzerEinstellung.nutzerEinstellungLoeschen),
+      setzeEigenesDesign: mit(k)(nutzerEinstellung.setzeEigenesDesign),
       nutzerEinstellungen: mit(k)(settings.nutzerEinstellungen),
-      readSettings: mit(k)(settings.readSettings),
+      wertImBlickfeld: (uids: number[], key: string) => k.repository.ersterWertIn(uids, key),
+      fremderNutzerWert: (uid: number, key: string) => k.repository.fremderNutzerWert(uid, key),
+      einstellungenLesen: mit(k)(settings.einstellungenLesen),
       globaleWerteOhneGeheimnisse: mit(k)(settings.globaleWerteOhneGeheimnisse),
       designFuer: mit(k)(settings.designFuer),
       registrierungOffen: mit(k)(settings.registrierungOffen),

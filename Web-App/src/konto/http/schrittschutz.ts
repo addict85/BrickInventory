@@ -1,8 +1,8 @@
 /** Hier wird nur aus dem Request gelesen und geantwortet; die Regeln stehen in
- * src/konto/geraeteChallenge.ts. Browser-Sitzungen bleiben beim Passwort und
+ * src/geraete/geraeteChallenge.ts. Browser-Sitzungen bleiben beim Passwort und
  * zweiten Faktor: Sie haben keinen Keystore. */
 import type { Request, Response, NextFunction } from 'express';
-import { familieAus, type Schrittaktion } from '../geraeteChallenge';
+import { familieAus, type Schrittaktion } from '../../geraete';
 import { meldeFehler } from '../../infra/fehler';
 import { sendeFehler } from '../../http/httpAntwort';
 import { istVerwalter } from './anmeldung';
@@ -17,7 +17,7 @@ const GESCHUETZT: ReadonlyArray<readonly [string, RegExp, Schrittaktion]> = [
   ['POST', /^\/auth\/zweiter-faktor\/(einrichten|codes)$/, 'zweiter_faktor'],
 ];
 
-/** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (resolveUserId). */
+/** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (nutzerIdDerAnfrage). */
 export function istAppToken(req: Request): boolean {
   return !req.session?.userId && (req.headers.authorization ?? '').startsWith('Bearer ');
 }

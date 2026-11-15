@@ -31,8 +31,8 @@ import {
   meldeAnmeldung,
   type Angemeldet,
   type TokenWunsch,
-  emailWirdGeaendert,
 } from '../src/konto';
+import { emailWirdGeaendert } from '../src/profil';
 import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
@@ -116,7 +116,7 @@ async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: numb
   } as const;
 }
 
-export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto'>) {
+export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profil'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
@@ -136,7 +136,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.endpunkt('POST /api/v1/auth/logout', async (req, res) => {
     const auth = String(req.headers.authorization || '');
     // Ein Fehler geht an den Client: Hiesse die Abmeldung gelungen, bliebe der Token gültig.
-    if (auth.startsWith('Bearer ')) await d.konto.deleteToken(auth.slice(7));
+    if (auth.startsWith('Bearer ')) await d.konto.tokenLoeschen(auth.slice(7));
     // destroy gibt es nur mit Sitzungs-Middleware; die App ruft ohne Cookie auf.
     if (req.session?.destroy) {
       req.session.destroy(() => {
@@ -239,7 +239,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     // zurücksetzen; erst danach verrät die Vergabeprüfung, ob es Name oder Adresse gibt.
     if (!password_current) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, user.id, String(password_current)))) return;
-    const r = await d.konto.profilAendern(user, { username, email, first_name, last_name });
+    const r = await d.profil.profilAendern(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
     return {};
   });

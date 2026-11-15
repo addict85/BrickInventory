@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
-const { hashToken } = _req('src/konto/geraeteToken.js');
+const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
 
 async function dbReachable() {
   try {
@@ -58,7 +58,7 @@ async function neuerNutzer(name, { minutenGueltig = 60, email = `${name}@example
   const { id } = await db.get(
     `INSERT INTO users (username, password_hash, email_neu, email_neu_token, email_neu_bis, registrierung_offen)
      VALUES ($1, 'x', $2, $3, NOW() + ($4 || ' minutes')::interval, true) RETURNING id`,
-    [name, email, hashToken(token), String(minutenGueltig)],
+    [name, email, tokenAbdruck(token), String(minutenGueltig)],
   );
   return { id, token };
 }

@@ -127,7 +127,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
       [`grenze_${uid}_00`, `grenze_${uid}_54`],
     );
     const auth = _req('src/konto/geraeteToken.js');
-    const neu = auth.hashToken(await auth.tokenAnlegen(uid, 'neu'));
+    const neu = auth.tokenAbdruck(await auth.tokenAnlegen(uid, 'neu'));
     const rest = (await db.all('SELECT token FROM api_tokens WHERE user_id = $1 ORDER BY token', [uid])).map(
       z => z.token,
     );

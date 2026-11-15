@@ -12,7 +12,7 @@
  *      „Altbestand …“ (seit 01.11.2026 schlüsselt nummernNachverschluesseln()
  *      auch die PIN um)
  * Gegenprobe (am 29.10.2026 gemessen):
- *   D  maskSecret() hängt wieder die letzten vier Zeichen an → rot:
+ *   D  geheimnisMaske() hängt wieder die letzten vier Zeichen an → rot:
  *      „globale Schlüssel …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -52,7 +52,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     const roh = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
     assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
-    const gelesen = await settings.readSettings(uid, true);
+    const gelesen = await settings.einstellungenLesen(uid, true);
     assert.equal(gelesen.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
   });
 

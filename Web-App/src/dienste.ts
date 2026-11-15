@@ -3,8 +3,10 @@
 import type { AuftraegeDienste } from './auftraege';
 import type { BestandDienste } from './bestand';
 import type { BilderDienste } from './bilder';
+import type { DrosselDienste } from './drossel';
 import type { EinstellungenDienste } from './einstellungen';
 import type { FigurenDienste } from './figuren';
+import type { GeraeteDienste } from './geraete';
 import type { FinanzenDienste } from './finanzen';
 import type { FremdquellenDienste } from './fremdquellen';
 import type { GutscheineDienste } from './gutscheine';
@@ -13,6 +15,7 @@ import type { IdempotenzDienste } from './idempotenz';
 import type { KatalogDienste } from './katalog';
 import type { KontoDienste } from './konto';
 import type { MailDienste } from './mail';
+import type { ProfilDienste } from './profil';
 import type { MerklisteDienste } from './merkliste';
 import type { SammlungDienste } from './sammlung';
 import type { SetsDienste } from './sets';
@@ -20,11 +23,14 @@ import type { TeileDienste } from './teile';
 import type { VerwaltungDienste } from './verwaltung';
 
 export interface Dienste {
+  drossel: DrosselDienste;
   einstellungen: EinstellungenDienste;
   mail: MailDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
+  geraete: GeraeteDienste;
   konto: KontoDienste;
+  profil: ProfilDienste;
   idempotenz: IdempotenzDienste;
   fremdquellen: FremdquellenDienste;
   bilder: BilderDienste;

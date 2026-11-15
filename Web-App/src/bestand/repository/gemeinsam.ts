@@ -197,3 +197,50 @@ export function loescheTeilZeile(
 export function loescheFigurZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {
   return dbh.run("DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [ownerId, figNumber]);
 }
+
+/** Ohne Menge: Sie entsteht aus der ersten Erfassung. */
+export async function legeTeilManuellAn(
+  db: DbSchnittstelle,
+  uid: number,
+  partNumber: string,
+  colorId: number,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+                VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, partNumber, colorId],
+  );
+}
+
+export async function legeFigurManuellAn(db: DbSchnittstelle, uid: number, figNumber: string): Promise<void> {
+  await db.run(
+    `INSERT INTO minifigs (user_id, set_number, fig_number, source)
+                VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, figNumber],
+  );
+}
+
+export function setzeTeilLagerort(tx: DbSchnittstelle, storageId: number, id: number) {
+  return tx.run('UPDATE parts SET storage_id = $1 WHERE id = $2', [storageId, id]);
+}
+
+export function loescheTeilzeile(tx: DbSchnittstelle, id: number) {
+  return tx.run('DELETE FROM parts WHERE id = $1', [id]);
+}
+
+export function faerbeTeilzeileUm(tx: DbSchnittstelle, colorId: number, id: number) {
+  return tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [colorId, id]);
+}
+
+export function manuelleTeileDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ part_number: string; color_id: number }>(
+    "SELECT part_number, color_id FROM parts WHERE user_id = $1 AND source = 'manual'",
+    [uid],
+  );
+}
+
+export function manuelleFigurenDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ fig_number: string }>("SELECT fig_number FROM minifigs WHERE user_id = $1 AND source = 'manual'", [
+    uid,
+  ]);
+}

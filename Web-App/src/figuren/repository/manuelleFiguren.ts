@@ -29,15 +29,6 @@ export function figurZeileMitZustand(db: DbSchnittstelle, uid: number, figNumber
   );
 }
 
-/** Ohne Menge: Sie entsteht aus der ersten Erfassung. */
-export async function legeFigurManuellAn(db: DbSchnittstelle, uid: number, figNumber: string): Promise<void> {
-  await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, source)
-                VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, figNumber],
-  );
-}
-
 const NEUESTE = `(SELECT a.id FROM minifig_acquisitions a
                    WHERE a.user_id=$2 AND a.fig_number=$3
                    ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
@@ -74,4 +65,8 @@ export function figurErfassungen(db: DbSchnittstelle, uids: number[], figNumber:
      ORDER BY a.created_at ASC, a.id ASC`,
     [uids, figNumber],
   );
+}
+
+export function loescheFigurErfassungen(tx: DbSchnittstelle, besitzer: number, figNumber: string) {
+  return tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, figNumber]);
 }

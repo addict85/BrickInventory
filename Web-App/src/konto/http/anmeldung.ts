@@ -98,14 +98,14 @@ export function gnadenfristVerbrauchen(req: Request): boolean {
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
  * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header. */
-export async function resolveUserId(konto: KontoDienste, req: Request): Promise<number | null> {
+export async function nutzerIdDerAnfrage(konto: KontoDienste, req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
   const pruefung = await konto
     .pruefeToken(token, { ip: req.ip })
-    .catch(meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }));
+    .catch(meldeUndLiefere<TokenPruefung>('auth:nutzerZumToken', { nutzer: null }));
   const user = pruefung.nutzer;
   if (pruefung.grund) req.tokenAbsage = pruefung.grund;
   // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
@@ -132,7 +132,7 @@ export function loginOrTokenGuard(konto: KontoDienste, opts: { timeoutMs?: numbe
       : null;
     let uid: number | null = null;
     try {
-      uid = await resolveUserId(konto, req);
+      uid = await nutzerIdDerAnfrage(konto, req);
     } catch (_) {
       uid = null;
     }

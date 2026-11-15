@@ -19,9 +19,12 @@ import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
 import { erzeugeKonto } from '../src/konto';
+import { erzeugeProfil } from '../src/profil';
 import { meldeFehler } from '../src/infra/fehler';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
+import { erzeugeDrossel } from '../src/drossel';
+import { erzeugeGeraete } from '../src/geraete';
 import { konfig, type Konfig } from '../src/infra/konfig';
 import { systemUhr, type Uhr } from '../src/infra/uhr';
 import type { Dienste } from '../src/dienste';
@@ -43,6 +46,7 @@ export function baueNacharbeit(d: () => Dienste): Nacharbeit & { ueber(db: Db): 
     bildVormerken: (url, sn) => d().bilder.merkeGebraucht(url, sn),
     setTeileAnreichern: sn => d().katalog.enrichSetParts(sn),
     figurenAnreichern: sn => d().katalog.enrichSetMinifigs(sn),
+    setBildLokalEintragen: (sn, quelle) => d().katalog.setBildLokalEintragen(sn, quelle),
     setBilderLaden: sn =>
       d().auftraege.stelleAuftragEin(
         'bilder',
@@ -104,11 +108,17 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
 function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
-  const einstellungen = erzeugeEinstellungen({ db, uhr }, zeige('einstellungen'));
+  const drossel = erzeugeDrossel({ db }, zeige('drossel'));
+  const einstellungen = erzeugeEinstellungen({ db, uhr, drossel, nacharbeit }, zeige('einstellungen'));
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen }, zeige('haushalt'));
-  const konto = erzeugeKonto({ db, uhr, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
+  const geraete = erzeugeGeraete({ db, konfig, auftraege }, zeige('geraete'));
+  const konto = erzeugeKonto(
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail, drossel, geraete },
+    zeige('konto'),
+  );
+  const profil = erzeugeProfil({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profil'));
   const idempotenz = erzeugeIdempotenz({ db, uhr }, zeige('idempotenz'));
   const fremdquellen = erzeugeFremdquellen(
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
@@ -119,16 +129,29 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig, 
     zeige('bilder'),
   );
   const katalog = erzeugeKatalog(
-    { db, uhr, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder },
+    { db, uhr, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder, drossel },
     zeige('katalog'),
   );
-  return { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog };
+  return {
+    drossel,
+    einstellungen,
+    mail,
+    auftraege,
+    haushalt,
+    geraete,
+    konto,
+    profil,
+    idempotenz,
+    fremdquellen,
+    bilder,
+    katalog,
+  };
 }
 
 function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienste {
   const zeige = einblickIn(bauteile.kontexte);
   const grund = baueGrund(db, nacharbeit, bauteile, zeige);
-  const { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog } = grund;
+  const { drossel, einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog } = grund;
   const { konfig, uhr } = bauteile;
   const finanzen = erzeugeFinanzen(
     { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
@@ -148,13 +171,27 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienst
     { db, uhr, einstellungen, haushalt, katalog, finanzen, sets, nacharbeit },
     zeige('merkliste'),
   );
-  const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen }, zeige('gutscheine'));
+  const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, drossel }, zeige('gutscheine'));
   const sammlung = erzeugeSammlung(
     { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, figuren, merkliste },
     zeige('sammlung'),
   );
   const verwaltung = erzeugeVerwaltung(
-    { db, uhr, einstellungen, auftraege, konto, idempotenz, katalog, finanzen, bestand, sets, merkliste, mail },
+    {
+      db,
+      uhr,
+      einstellungen,
+      auftraege,
+      konto,
+      idempotenz,
+      katalog,
+      finanzen,
+      bestand,
+      sets,
+      merkliste,
+      gutscheine,
+      mail,
+    },
     zeige('verwaltung'),
   );
   return { ...grund, finanzen, bestand, sets, teile, figuren, merkliste, gutscheine, sammlung, verwaltung };

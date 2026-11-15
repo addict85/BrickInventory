@@ -3,10 +3,9 @@
  * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
  * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
 import crypto from 'node:crypto';
-import { tokenAnlegen, hashToken, ipBereich } from './geraeteToken';
+import { tokenAnlegen, tokenAbdruck, ipBereich } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
 import { fachfehler } from '../infra/fehlerTexte';
-import { neueNonce } from './geraeteChallenge';
 import type { KontoKontext } from './kontext';
 
 export type { QrStand } from './repository/qrKopplung';
@@ -24,7 +23,13 @@ export async function erzeuge(
   await k.qrKopplung.raeumeQrKopplungenAuf();
   const nonce = crypto.randomBytes(32).toString('base64url');
   const bis = new Date(k.uhr.jetzt() + QR_TTL_MS);
-  const kopplung = await k.qrKopplung.legeQrKopplungAn(hashToken(nonce), uid, bis, tage, OFFENE_KOPPLUNGEN_HOECHSTENS);
+  const kopplung = await k.qrKopplung.legeQrKopplungAn(
+    tokenAbdruck(nonce),
+    uid,
+    bis,
+    tage,
+    OFFENE_KOPPLUNGEN_HOECHSTENS,
+  );
   if (kopplung === null) fachfehler('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };
 }
@@ -38,9 +43,9 @@ export async function meldeGeraet(
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
   const abholung = crypto.randomBytes(32).toString('base64url');
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  const z = await k.qrKopplung.melde(hashToken(token.slice(4)), {
-    abholung: hashToken(abholung),
-    codeHash: hashToken(code),
+  const z = await k.qrKopplung.melde(tokenAbdruck(token.slice(4)), {
+    abholung: tokenAbdruck(abholung),
+    codeHash: tokenAbdruck(code),
     geraet: tokenLabel(geraet, 'Android App'),
     ipBereich: ipBereich(ip),
     fristS: QR_TTL_MS / 1000,
@@ -57,7 +62,7 @@ export type Abholung =
 
 const zeileZur = (k: KontoKontext, abholung: string | null | undefined) =>
   typeof abholung === 'string' && abholung
-    ? k.qrKopplung.nachAbholung(hashToken(abholung))
+    ? k.qrKopplung.nachAbholung(tokenAbdruck(abholung))
     : Promise.resolve(undefined);
 
 /** Mit [vorschau] nur das Konto: Die App zeigt es und holt den Token erst nach dem Ja.
@@ -79,8 +84,8 @@ export async function holeQrTokenAb(
     scope: 'app',
     ip,
   });
-  const familie = await k.geraeteSchluessel.familieDesTokens(hashToken(token));
-  const schluesselNonce = familie ? await neueNonce(k, familie, true) : null;
+  const familie = await k.geraete.familieDesTokens(tokenAbdruck(token));
+  const schluesselNonce = familie ? await k.geraete.neueNonce(familie, true) : null;
   return { stand: 'fertig', token, uid: z.user_id, schluesselNonce };
 }
 
@@ -100,7 +105,7 @@ export async function kopplungsStand(k: KontoKontext, kopplung: number, uid: num
 function codePasst(gespeichert: string | null, eingabe: string | number | null | undefined): boolean {
   const ziffern = String(eingabe ?? '').replace(/\s+/g, '');
   if (!gespeichert || !/^\d{6}$/.test(ziffern)) return false;
-  return crypto.timingSafeEqual(Buffer.from(hashToken(ziffern)), Buffer.from(gespeichert));
+  return crypto.timingSafeEqual(Buffer.from(tokenAbdruck(ziffern)), Buffer.from(gespeichert));
 }
 
 export type Bestaetigung = 'ok' | 'code_falsch' | 'abgelehnt' | 'nicht_wartend' | 'unbekannt';

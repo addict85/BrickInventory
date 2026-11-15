@@ -134,18 +134,6 @@ export function orteMitBestand(db: DbSchnittstelle, uids: number[]) {
   );
 }
 
-/** Sofern es den Ort noch gibt. */
-export function vorgabeOrt(db: DbSchnittstelle, userId: number, schluessel: string) {
-  return db.get<{ id: number; user_id: number; name: string }>(
-    `SELECT l.id, l.user_id, l.name
-       FROM user_settings e
-       JOIN storage_locations l
-         ON l.id = NULLIF(btrim(e.value), '')::int AND l.user_id = e.user_id
-      WHERE e.user_id = $1 AND e.key = $2`,
-    [userId, schluessel],
-  );
-}
-
 export function ortDesKontos(db: DbSchnittstelle, id: number, userId: number) {
   return db.get<{ id: number; user_id: number; name: string }>(
     'SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2',

@@ -2,6 +2,7 @@
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anleitungLaden from './anleitungLaden';
+import * as bildlageDienst from './bildlage';
 import * as blZuordnungDienst from './blZuordnung';
 import * as bricklinkLink from './bricklinkLink';
 import * as bricklinkPreise from './bricklinkPreise';
@@ -20,6 +21,7 @@ import * as teileAnreicherungDienst from './teileAnreicherung';
 import { ConcurrentRateLimiter, type FremdquellenDienste } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as setStamm from './setStamm';
 import * as widerrufsliste from './widerrufsliste';
 import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
@@ -42,9 +44,24 @@ type P<
     | 'getLimitForApi',
 > = Parameters<FremdquellenDienste[N]>;
 
+function bildDienste(k: KatalogKontext) {
+  return {
+    fuelleAusBrickset: mit(k)(bildlageDienst.fuelleAusBrickset),
+    anleitungenNachtragen: mit(k)(bildlageDienst.anleitungenNachtragen),
+    setBilderNachladen: mit(k)(bildlageDienst.setBilderNachladen),
+    vorschaubilderNachtragen: mit(k)(bildlageDienst.vorschaubilderNachtragen),
+    setBildLokalEintragen: mit(k)(bildlageDienst.setBildLokalEintragen),
+    bilderFuerNachlauf: mit(k)(bildlageDienst.bilderFuerNachlauf),
+    bilderAusKatalog: <T extends bildlageDienst.Bildposten>(posten: T[], istFigur: (p: T) => boolean) =>
+      bildlageDienst.bilderAusKatalog(k, posten, istFigur),
+  };
+}
+
 function katalogDienste(k: KatalogKontext) {
   const fq = () => k.fremdquellen;
+  // Ein Spread des fertigen Satzes läse die Getter (quellen, bilder) beim Bau; darum hier hinein.
   return {
+    ...bildDienste(k),
     anleitungLaden: mit(k)(anleitungLaden.anleitungLaden),
     // Beim Aufruf nachgeschlagen: Der Bau des Katalogs liest die Fremdquellen nicht.
     checkAndIncrementRateLimit: (...x: P<'checkAndIncrementRateLimit'>) => fq().checkAndIncrementRateLimit(...x),
@@ -95,8 +112,11 @@ function katalogDienste(k: KatalogKontext) {
     katalogTeil: mit(k)(katalogPflege.katalogTeil),
     katalogFigur: mit(k)(katalogPflege.katalogFigur),
     figurenAusKatalog: mit(k)(minifigsImport.figurenAusKatalog),
-    importiereFiguren: mit(k)(minifigsImport.importiereFiguren),
-    importiereTeile: mit(k)(partsImport.importiereTeile),
+    setFigurenLaden: mit(k)(minifigsImport.setFigurenLaden),
+    setFigurenMerken: mit(k)(minifigsImport.setFigurenMerken),
+    setTeileLaden: mit(k)(partsImport.setTeileLaden),
+    setTeileMerken: mit(k)(partsImport.setTeileMerken),
+    setTeilBilderEinreihen: mit(k)(partsImport.setTeilBilderEinreihen),
     blNummernNachladen: mit(k)(partsImport.blNummernNachladen),
     inventarFuerKandidaten: mit(k)(rbInventar.inventarFuerKandidaten),
     neuestesInventar: mit(k)(rbInventar.neuestesInventar),
@@ -109,6 +129,10 @@ function katalogDienste(k: KatalogKontext) {
     redownloadMissingImages: mit(k)(teileAnreicherungDienst.redownloadMissingImages),
     bildNachlauf: mit(k)(bildNachlauf.bildNachlauf),
     erzeugePdf: mit(k)(pdfErzeugung.erzeugePdf),
+    pdfAufgegeben: pdfErzeugung.pdfAufgegeben,
+    katalogStand: mit(k.db, setStamm.katalogStand),
+    merkeKatalogPlatzhalter: mit(k.db, setStamm.merkeKatalogPlatzhalter),
+    merkeSetKatalog: mit(k.db, setStamm.merkeSetKatalog),
     ladeWiderrufsliste: mit(k)(widerrufsliste.ladeWiderrufsliste),
   };
 }

@@ -1,5 +1,6 @@
 /** Die Währung gilt je Haushalt; geschrieben wird sie für alle Konten darin. */
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
+import { auchFremdGeteilt, haushaltAbwaerts, istUnterkonto } from '../../../db/haushaltSicht';
 
 export async function waehrungIn(tx: DbSchnittstelle, userId: number): Promise<string | null> {
   const r = await tx.get<{ value: string }>("SELECT value FROM user_settings WHERE user_id = $1 AND key = 'currency'", [
@@ -8,35 +9,22 @@ export async function waehrungIn(tx: DbSchnittstelle, userId: number): Promise<s
   return r?.value ?? null;
 }
 
-/** Nur abwärts (Haupt- → Unterkonto): Über ein geteiltes Unterkonto hinauf
- * erreichte man sonst fremde Hauptkonten. */
 export async function eigenerHaushalt(tx: DbSchnittstelle, userId: number): Promise<number[]> {
-  const rows = await tx.all<{ id: number }>(
-    `
-    WITH RECURSIVE baum(id) AS (
-      SELECT $1::int
-      UNION
-      SELECT l.sub_user_id FROM account_links l JOIN baum b ON l.main_user_id = b.id)
-    SELECT id FROM baum`,
-    [userId],
-  );
+  const rows = await tx.all<{ id: number }>(haushaltAbwaerts('$1'), [userId]);
   return rows.map(r => r.id);
 }
 
 /** Unterkonten in `ids`, die auch an einem Hauptkonto ausserhalb hängen, das eine andere Währung führt. */
 export async function fremdGeteilt(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<number[]> {
   const rows = await tx.all<{ id: number }>(
-    `
-    SELECT DISTINCT l.sub_user_id AS id FROM account_links l
-     WHERE l.sub_user_id = ANY($1::int[]) AND NOT l.main_user_id = ANY($1::int[])
-       AND konto_waehrung(l.main_user_id) <> $2`,
+    `SELECT DISTINCT g.id FROM (${auchFremdGeteilt('$1')}) g WHERE konto_waehrung(g.haupt) <> $2`,
     [ids, waehrung],
   );
   return rows.map(r => r.id);
 }
 
 export async function hatHauptkonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
-  return !!(await tx.get<Treffer>('SELECT 1 FROM account_links WHERE sub_user_id = $1 LIMIT 1', [userId]));
+  return !!(await tx.get<Treffer>(istUnterkonto('$1'), [userId]));
 }
 
 export async function setzeWaehrungFuer(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<void> {

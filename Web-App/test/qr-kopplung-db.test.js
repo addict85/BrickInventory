@@ -98,7 +98,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal(da.body.userId, ids[0]);
     assert.equal(da.body.token_info.scope, 'app');
     const zeile = await db.get('SELECT label FROM api_tokens WHERE token = $1', [
-      _req('src/konto/geraeteToken.js').hashToken(da.body.token),
+      _req('src/konto/geraeteToken.js').tokenAbdruck(da.body.token),
     ]);
     assert.equal(zeile.label, 'Pixel Probe');
     assert.equal((await abholen(m)).status, 401, 'Ein zweites Abholen gibt keinen zweiten Token');
@@ -122,7 +122,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     const n = await db.get(
       `SELECT n.aus_qr FROM geraete_nonces n JOIN api_tokens t ON t.user_id = n.user_id
          AND date_trunc('milliseconds', t.created_at) = n.familie WHERE n.nonce = $1 AND t.token = $2`,
-      [ja.body.schluessel_nonce, _req('src/konto/geraeteToken.js').hashToken(ja.body.token)],
+      [ja.body.schluessel_nonce, _req('src/konto/geraeteToken.js').tokenAbdruck(ja.body.token)],
     );
     assert.equal(n?.aus_qr, true);
   });

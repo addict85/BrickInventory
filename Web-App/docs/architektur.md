@@ -50,6 +50,9 @@ Absicht, solange es nur von unten gebraucht wird:
 - Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
   `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
   `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
+  Sie gibt nur Typen, die Fabrik (`erzeugeX`) und reine Funktionen her; was
+  Datenbank, Netz oder Dateien braucht, ruft ein anderer Bereich über den Kontext
+  (`k.katalog.…`, in einer Transaktion `t.katalog.…`). Das prüft `test/schichten.test.js`.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
   (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur Typen
@@ -63,7 +66,7 @@ Absicht, solange es nur von unten gebraucht wird:
   Konfiguration (`k.konfig`) und die Arbeitseinheit. Ein Dienst nimmt den Kontext
   als ersten Parameter (`k`) und holt alles daraus, nichts vom Prozess. Die Fabrik
   ist eine Closure über `k` (`baueBereich`, `src/infra/bereich.ts`): Jeder Dienst
-  steht ausgeschrieben da (`getSets: mit(k)(lesen.getSets)`), typgeprüft, ohne
+  steht ausgeschrieben da (`setsLesen: mit(k)(lesen.setsLesen)`), typgeprüft, ohne
   Namenslisten und ohne Proxy. `startup/verdrahtung.ts` baut alle Bereiche in
   `baueDienste(db, bauteile)`; Server und Testhilfe rufen dieselbe Funktion.
 - Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
@@ -95,7 +98,7 @@ Absicht, solange es nur von unten gebraucht wird:
   beim Anmelden in `routes/auth.ts`: ohne Token ein eigener Fehlercode).
 - Express kennen nur die Routen, `server.ts`, `src/http` (Fehlerweg, Herkunft,
   Dateiauslieferung, Vertragsrouter) und die HTTP-Seiten der Bereiche unter
-  `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Bild-Proxy in
+  `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Startseite in `profil`, Bild-Proxy in
   `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
@@ -220,22 +223,23 @@ kennen einander nicht. Von unten nach oben:
 | 2 | `src/vertrag` |
 | 3 | `src/http` |
 | 4 | `db`, `clients` |
-| 5 | `src/einstellungen` |
-| 6 | `src/mail` |
-| 7 | `src/auftraege` |
-| 8 | `src/fremdquellen` |
-| 9 | `src/haushalt` |
-| 10 | `src/konto` |
-| 11 | `src/bilder` |
-| 12 | `src/idempotenz`, `src/katalog` |
-| 13 | `src/finanzen` |
-| 14 | `src/bestand` |
-| 15 | `src/sets` |
-| 16 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 17 | `src/sammlung`, `src/verwaltung` |
-| 18 | `jobs`, `routes` |
-| 19 | `startup` |
-| 20 | `server.ts` |
+| 5 | `src/drossel` |
+| 6 | `src/einstellungen` |
+| 7 | `src/mail` |
+| 8 | `src/auftraege` |
+| 9 | `src/fremdquellen` |
+| 10 | `src/haushalt`, `src/geraete` |
+| 11 | `src/konto` |
+| 12 | `src/bilder`, `src/profil` |
+| 13 | `src/idempotenz`, `src/katalog` |
+| 14 | `src/finanzen` |
+| 15 | `src/bestand` |
+| 16 | `src/sets` |
+| 17 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 18 | `src/sammlung`, `src/verwaltung` |
+| 19 | `jobs`, `routes` |
+| 20 | `startup` |
+| 21 | `server.ts` |
 
 ## Schema
 
@@ -250,6 +254,38 @@ Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugen
 
 Von Hand geändert wird keine davon; eine Schemaänderung ist immer eine
 neue Migration.
+
+## Tabellen und Besitzer
+
+Jede Tabelle hat genau einen Besitzer: Nur sein Bereich schreibt hinein (INSERT, UPDATE,
+DELETE). Andere Bereiche rufen dessen Dienst, in einer Transaktion über den Kontext `t`.
+Fremde Bereiche lesen über Lesebausteine in `db/` (`katalogSicht.ts`, `haushaltSicht.ts`,
+`zugangSicht.ts`) oder über den Dienst des Besitzers; was noch direkt liest, zählt
+`test/gemeinsame-tabellen-db.test.js` und darf nur weniger werden. Einzige schreibende
+Ausnahme: Der Schemastart (`db/schemaStart.ts`) setzt die Zeitzone in `global_settings`,
+bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
+
+| Besitzer | Tabellen |
+|---|---|
+| `db` | `schema_migrations` |
+| `src/infra` | `app_logs` |
+| `src/drossel` | `rate_limit_attempts` |
+| `src/einstellungen` | `global_settings`, `user_settings` |
+| `src/auftraege` | `auftraege`, `auftrag_exklusiv`, `auftrag_pausen`, `auftrags_arten`, `import_stand`, `laufzustand` |
+| `src/fremdquellen` | `api_aufrufe`, `api_takt` |
+| `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
+| `src/geraete` | `geraete_nonces`, `geraete_schluessel`, `schritt_challenges`, `schritt_freigaben` |
+| `src/konto` | `api_tokens`, `api_tokens_verbraucht`, `passkeys`, `qr_login_tokens`, `user_sessions`, `users`, `verwalter_uebernahmen`, `verwaltungsprotokoll`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes` |
+| `src/bilder` | `image_misses`, `image_wanted` |
+| `src/idempotenz` | `idempotenz` |
+| `src/katalog` | `bl_zuordnung`, `bl_zuordnung_eigen`, `catalog_cache`, `figur_eigen`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_figuren`, `set_teile`, `shared_instructions`, `subsets_cache`, `teil_eigen`, `teil_farbe_eigen` |
+| `src/finanzen` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `wechselkurse` |
+| `src/bestand` | `minifigs`, `papierkorb`, `parts`, `storage_locations` |
+| `src/sets` | `instructions`, `set_acquisitions`, `sets` |
+| `src/teile` | `part_acquisitions`, `parts_katalog_offen`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
+| `src/figuren` | `minifig_acquisitions` |
+| `src/merkliste` | `wanted` |
+| `src/gutscheine` | `gutschein_guthaben_schranke`, `vouchers` |
 
 ## API-Vertrag
 
@@ -295,7 +331,8 @@ Bestand der Abweichungen (Stand 11.11.2026):
 Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 `haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
 `preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen vor allem in
-Finanzen, Katalog und Konto (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`);
+Finanzen, Katalog, Teile und Mail (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`)
+sowie `getSetting`/`getGlobalSetting`/`setGlobalSetting` der Einstellungen;
 `test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
 Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`
 (`src/infra/setNummer`), Sets verschiebt `setVerschieben` (Einstieg) über

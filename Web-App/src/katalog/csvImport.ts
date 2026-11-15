@@ -123,7 +123,7 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
   }
 }
 
-export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
+export function erzeugeKatalogImporte(pool: Pool, melde: (m: Meldung) => void) {
   const tausch = (t: Tausch) => () => importiereMitTausch(pool, melde, t);
   return {
     colors: tausch({

@@ -1,6 +1,5 @@
 /** Fehlende Bilddateien nachladen: Verweise ohne Datei finden, laden oder leeren. */
 import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
-import { downloadFile } from '../fremdquellen';
 
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import * as repo from './repository/teileAnreicherung';
@@ -8,7 +7,6 @@ import fs from 'node:fs';
 import type { PoolClient } from 'pg';
 import path from 'node:path';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { generateThumb } from '../bilder';
 import { versuche } from '../infra/ergebnis';
 import type { KatalogKontext } from './kontext';
 
@@ -154,7 +152,7 @@ async function vorschauenNachholen(k: KatalogKontext, ohneVorschau: string[]): P
     cleared: 0,
   });
   for (const web of ohneVorschau) {
-    const r = await versuche('teile-enrich:vorschau', () => generateThumb(web));
+    const r = await versuche('teile-enrich:vorschau', () => k.bilder.vorschauErzeugen(web));
     if (r.ok && r.wert) thumbsErzeugt++;
   }
   console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
@@ -206,13 +204,13 @@ async function bildNachladen(k: KatalogKontext, m: FehlendesBild): Promise<boole
     await k.cdnDrossel.acquire();
     try {
       // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
-      const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
+      const r = await versuche('teile-enrich:downloadFile', k.fremdquellen.quellen.downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {
       k.cdnDrossel.release();
     }
   }
-  if (ok) await generateThumb(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
+  if (ok) await k.bilder.vorschauErzeugen(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
   return ok;
 }
 

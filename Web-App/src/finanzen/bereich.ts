@@ -34,6 +34,8 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
         setzeAlarm: mit(k)(preisalarm.setzeAlarm),
       },
       getCurrentMarketPrice: mit(k)(marketPrice.getCurrentMarketPrice),
+      marktpreisAusCache: k.preisCache.marktpreisAusCache,
+      marktpreisAusVerlauf: k.preisCache.marktpreisAusVerlauf,
       resolvePartCondition: mit(k)(marketPrice.resolvePartCondition),
       marktpreiseAusCacheFuerFiguren: mit(k)(marketPrice.marktpreiseAusCacheFuerFiguren),
       marktpreiseAusCacheFuerTeile: mit(k)(marketPrice.marktpreiseAusCacheFuerTeile),

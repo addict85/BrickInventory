@@ -77,10 +77,10 @@ test('zwei Klienten in einem Prozess fragen jeder mit dem Schlüssel ihres Zugan
 test('über die Dienste tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async t => {
   const db = S.testDaten();
   if (!(await datenOderSkip(t, _req))) return;
-  const { setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');
+  const { setGlobalSetting, globaleWerteLoeschen } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('rebrickable_api_key', 'schluessel-zugang-1');
   t.after(async () => {
-    await deleteGlobalSetting('rebrickable_api_key');
+    await globaleWerteLoeschen('rebrickable_api_key');
     await db.pool.end().catch(() => {});
   });
   const heute = new Date().toISOString().slice(0, 10);

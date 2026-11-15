@@ -278,7 +278,7 @@ test('Haushalt im Untertitel', async () => {
 });
 
 test('Version in der Anmeldemaske', () => {
-  const { versionEinsetzen } = require('./helpers/sources').buildAndRequire()('src/konto/indexHtml.js');
+  const { versionEinsetzen } = require('./helpers/sources').buildAndRequire()('src/profil/indexHtml.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.doesNotMatch(html, /Build 20\d\d\./, 'festes Datum in index.html');
   assert.match(versionEinsetzen(html, 'ab341de'), /<div class="start-fuss" data-version>Version ab341de<\/div>/);

@@ -38,7 +38,6 @@ export const zugang = (db: Db) => ({
   manuelleFiguren: {
     figurZeileManuell: mit(db)(manuelleFiguren.figurZeileManuell),
     figurZeileMitZustand: mit(db)(manuelleFiguren.figurZeileMitZustand),
-    legeFigurManuellAn: mit(db)(manuelleFiguren.legeFigurManuellAn),
     setzeFigurpreisNeueste: mit(db)(manuelleFiguren.setzeFigurpreisNeueste),
     setzeFigurzustandNeueste: mit(db)(manuelleFiguren.setzeFigurzustandNeueste),
     figurErfassungen: mit(db)(manuelleFiguren.figurErfassungen),

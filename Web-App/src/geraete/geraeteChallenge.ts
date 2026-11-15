@@ -8,7 +8,7 @@ import type { AKTIONEN } from '../vertrag/geraet';
 import { GOOGLE_WURZELN } from './attestation/googleWurzeln';
 import { pruefeKette } from './attestation/schluesselAttestation';
 import { geltendeListe, WIDERRUF_ZUSTAND } from './attestation/widerrufsliste';
-import type { KontoKontext } from './kontext';
+import type { GeraeteKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
 
 export type { Familie };
@@ -51,7 +51,7 @@ export function leseSchluessel(b64: string): KeyObject | null {
 
 /** Was die App als Attestation-Challenge einsetzt; gilt bis zum Ende von SCHLUESSEL_FRIST_S.
  * Eine Familie aus der QR-Kopplung bekommt nur die Nonce ihrer Abholung. */
-export async function neueNonce(k: KontoKontext, f: Familie, ausQr = false): Promise<string | null> {
+export async function neueNonce(k: GeraeteKontext, f: Familie, ausQr = false): Promise<string | null> {
   if (!ausQr) {
     const qr = await k.geraeteSchluessel.qrNonceDer(f);
     if (qr) return qr.nonce;
@@ -83,7 +83,7 @@ export type Registrierung = 'neu' | 'gleich' | 'anderer' | 'frist_vorbei' | 'ung
 
 /** Die Kette muss die Prüfung bestehen und eine noch offene Nonce dieser Familie tragen. */
 export async function hinterlegeSchluessel(
-  kx: KontoKontext,
+  kx: GeraeteKontext,
   f: Familie,
   kette: readonly string[],
 ): Promise<Registrierung> {
@@ -109,7 +109,7 @@ export async function hinterlegeSchluessel(
 
 export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date } | 'kein_schluessel';
 
-export async function neueChallenge(k: KontoKontext, f: Familie, aktion: Schrittaktion): Promise<Challenge> {
+export async function neueChallenge(k: GeraeteKontext, f: Familie, aktion: Schrittaktion): Promise<Challenge> {
   if (!(await k.geraeteSchluessel.schluesselDer(f, k.konfig.geraeteschluesselAltBis))) return 'kein_schluessel';
   const challenge = randomBytes(32).toString('base64url');
   const bis = await k.geraeteSchluessel.legeChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OFFEN);
@@ -118,7 +118,7 @@ export async function neueChallenge(k: KontoKontext, f: Familie, aktion: Schritt
 
 /** Die Challenge ist danach verbraucht, auch bei falscher Signatur: Raten kostet je Versuch eine neue. */
 export async function loeseEin(
-  kx: KontoKontext,
+  kx: GeraeteKontext,
   f: Familie,
   challenge: string,
   signaturB64: string,
@@ -148,7 +148,7 @@ export async function loeseEin(
 
 export type Pruefung = 'frei' | 'kein_schluessel' | 'freigabe_noetig';
 
-export async function pruefeFreigabe(k: KontoKontext, f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
+export async function pruefeFreigabe(k: GeraeteKontext, f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
   if (await k.geraeteSchluessel.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
   return (await k.geraeteSchluessel.schluesselDer(f, k.konfig.geraeteschluesselAltBis))
     ? 'freigabe_noetig'

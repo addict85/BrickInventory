@@ -10,8 +10,6 @@ import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
-import { marktpreisSql } from '../../../db/geldSql';
-import type { Tabellen } from '../../../db/zeilen';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { sperreBisZumEnde } from '../../../db/txLock';
 
@@ -26,29 +24,6 @@ export function setImBlickfeld(db: DbSchnittstelle, ids: number[], setNumber: st
       ORDER BY (user_id = $3) DESC
       LIMIT 1`,
     [ids, setNumber, viewerId],
-  );
-}
-
-/** Der Marktpreis (marktpreisSql) ist eine der Preisspalten von price_cache. */
-type Marktpreis = { marktpreis: NonNullable<Tabellen['price_cache']['avg_price']> };
-
-/** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
-export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<Marktpreis>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
-     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
-     ORDER BY (condition = $3) DESC LIMIT 1`,
-    [setNumber, currency, zustand],
-  );
-}
-
-/** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
-export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<Marktpreis>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_history
-        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
-        ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
-    [setNumber, currency, zustand],
   );
 }
 
@@ -454,7 +429,7 @@ export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: s
                  FROM sets d
                  JOIN storage_locations lo ON lo.id = d.storage_id
                 WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage,
-              -- Besitzer wie in getSets(); besitzerAnhaengen() macht daraus Plaketten.
+              -- Besitzer wie in setsLesen(); besitzerAnhaengen() macht daraus Plaketten.
               (SELECT array_agg(DISTINCT e.user_id ORDER BY e.user_id)
                  FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s
@@ -484,4 +459,8 @@ export function besitzerDesSets(tx: DbSchnittstelle, uids: number[], setNumber: 
 export async function entferneSetZeilen(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+}
+
+export function setsDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ set_number: string }>('SELECT set_number FROM sets WHERE user_id = $1', [uid]);
 }

@@ -1,5 +1,5 @@
 /**
- * Die Prüfung der Android Key Attestation (src/konto/attestation) an
+ * Die Prüfung der Android Key Attestation (src/geraete/attestation) an
  * selbst erzeugten Ketten mit eigener Wurzel (helpers/attestation.js): Eine
  * Kette wie die des Keystores geht durch, jede Abweichung, die einen Schlüssel
  * ohne Hardware, ohne Sperre oder einer fremden App verriete, nicht.
@@ -36,10 +36,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { X509Certificate } = require('node:crypto');
 const _req = require('./helpers/sources').buildAndRequire();
-const A = _req('src/konto/attestation/schluesselAttestation.js');
-const der = _req('src/konto/attestation/der.js');
-const G = _req('src/konto/attestation/googleWurzeln.js');
-const W = _req('src/konto/attestation/widerrufsliste.js');
+const A = _req('src/geraete/attestation/schluesselAttestation.js');
+const der = _req('src/geraete/attestation/der.js');
+const G = _req('src/geraete/attestation/googleWurzeln.js');
+const W = _req('src/geraete/attestation/widerrufsliste.js');
 const T = require('./helpers/attestation');
 const fs = require('node:fs');
 const path = require('node:path');

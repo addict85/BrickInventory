@@ -11,7 +11,6 @@ import * as bildBlickfeld from './repository/bildBlickfeld';
 import * as bildFehlschlaege from './repository/bildFehlschlaege';
 import * as bildStammCdn from './repository/bildStammCdn';
 import * as bildbedarf from './repository/bildbedarf';
-import * as bildlage from './repository/bildlage';
 import type { Uhr } from '../infra/uhr';
 
 /** Set-Bild holen und verkleinern über den Kontext statt über den Import: So ersetzt ein
@@ -55,18 +54,6 @@ export const zugang = (db: Db) => ({
     loescheAlleBildwuensche: mit(db)(bildbedarf.loescheAlleBildwuensche),
     entnimmBildwuensche: mit(db)(bildbedarf.entnimmBildwuensche),
     reiheKatalogBilderEin: mit(db)(bildbedarf.reiheKatalogBilderEin),
-  },
-  bildlage: {
-    setsMitFehlendenKatalogbildern: mit(db)(bildlage.setsMitFehlendenKatalogbildern),
-    manuelleTeileOhneBild: mit(db)(bildlage.manuelleTeileOhneBild),
-    figurenOhneBild: mit(db)(bildlage.figurenOhneBild),
-    setBilderOhneDatei: mit(db)(bildlage.setBilderOhneDatei),
-    merkeSetBildLokal: mit(db)(bildlage.merkeSetBildLokal),
-    lokaleKatalogbilder: mit(db)(bildlage.lokaleKatalogbilder),
-    teilbilder: mit(db)(bildlage.teilbilder),
-    figurenbilder: mit(db)(bildlage.figurenbilder),
-    fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
-    setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
   },
 });
 export type BilderKontext = Kontext<BilderAbhaengigkeiten, ReturnType<typeof zugang>>;

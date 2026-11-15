@@ -110,14 +110,14 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
 
   const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
   const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
-  const { hashToken } = _req('src/konto/geraeteToken.js');
+  const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
   const registriert = async (name, tageAlt) => {
     const roh = crypto.randomBytes(16).toString('hex');
     const id = await K.registriere({
       username: name,
       email: `${name}@example.org`,
       passwort: PASS,
-      tokenHash: hashToken(roh),
+      tokenHash: tokenAbdruck(roh),
       bis: new Date(Date.now() + 86_400_000),
     });
     await db.run(`UPDATE users SET created_at = NOW() - make_interval(days => $2) WHERE id = $1`, [id, tageAlt]);

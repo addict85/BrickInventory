@@ -2,13 +2,15 @@
  * hier an einer Stelle entschieden wird; settingsGlobal.ts hängt dahinter. */
 import { bearerToken, waechterFuer } from './middleware';
 import { baueSettingsGlobalRouter } from './settingsGlobal';
-import { resolveUserId, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
+import { nutzerIdDerAnfrage, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'verwaltung'>) {
+export function baueSettingsRouter(
+  d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'profil' | 'verwaltung'>,
+) {
   const { requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -17,7 +19,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
   // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
   // Design, und es verrät nichts über Konten.
   router.endpunkt('GET /api/v1/settings/theme', async (req, res) => {
-    const uid = await resolveUserId(d.konto, req);
+    const uid = await nutzerIdDerAnfrage(d.konto, req);
     res.set('Cache-Control', 'no-cache');
     res.set('Vary', 'Cookie, Authorization');
     return { ...(await d.einstellungen.designFuer(uid)) };
@@ -91,8 +93,8 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
 
   router.endpunkt('GET /api/v1/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // readSettings(): price_cache_ttl und default_price_condition sind global.
-    const alle = await d.einstellungen.readSettings(uid, false);
+    // einstellungenLesen(): price_cache_ttl und default_price_condition sind global.
+    const alle = await d.einstellungen.einstellungenLesen(uid, false);
     const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
     return {
       settings: {
@@ -112,7 +114,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     for (const key of allowed) {
       if (req.eingabe[key] !== undefined) {
         // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-        await d.konto.setUserSetting(uid, key, req.eingabe[key]);
+        await d.einstellungen.nutzerEinstellungSetzen(uid, key, req.eingabe[key]);
         updated++;
       }
     }
@@ -121,7 +123,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
 
   // Der GLOBALE Default; den effektiven liefert GET /settings (effective_condition).
   router.endpunkt('GET /api/v1/settings/default-condition', requireToken, async _req => {
-    return { condition: await d.einstellungen.globalDefaultCondition() };
+    return { condition: await d.einstellungen.globalerStandardZustand() };
   });
 
   // Der wirksame Wert, für Webapp und App aus einer Route.
@@ -132,10 +134,10 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
   router.endpunkt('POST /api/v1/settings/user/default-condition', requireToken, async req => {
     const condition = req.eingabe.condition ?? '';
     if (condition === '') {
-      await d.einstellungen.deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
+      await d.einstellungen.nutzerEinstellungLoeschen(req.apiUser.user_id, 'user_default_condition');
     } else {
-      // setUserSetting(): GENAU EINE Schreibstelle für Benutzereinstellungen.
-      await d.konto.setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);
+      // nutzerEinstellungSetzen(): GENAU EINE Schreibstelle für Benutzereinstellungen.
+      await d.einstellungen.nutzerEinstellungSetzen(req.apiUser.user_id, 'user_default_condition', condition);
     }
     return { condition: condition || null };
   });
@@ -184,7 +186,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
   // Leer heisst „Vorgabe des Verwalters".
   router.endpunkt('POST /api/v1/settings/user/theme', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    await d.konto.setzeEigenesDesign(uid, req.eingabe.theme);
+    await d.einstellungen.setzeEigenesDesign(uid, req.eingabe.theme);
     return { ...(await d.einstellungen.designFuer(uid)) };
   });
 

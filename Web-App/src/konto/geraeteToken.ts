@@ -11,7 +11,7 @@ import {
   tokenAusCache,
   merkeEintrag,
   vergissEintrag,
-  invalidateToken,
+  tokenVergessen,
   leereTokenCache,
   type CacheEintrag,
   type TokenBenutzer,
@@ -24,10 +24,10 @@ export type { TokenScope, TokenBenutzer };
 
 /** Ob die Kennung (Präfix des gespeicherten Hashs) zum Token der Anfrage gehört. */
 export function eigenerZugang(token: string | null, kennung: string): boolean {
-  return !!token && hashToken(token).startsWith(kennung);
+  return !!token && tokenAbdruck(token).startsWith(kennung);
 }
 
-export function hashToken(token: string): string {
+export function tokenAbdruck(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -113,7 +113,7 @@ export async function pruefeToken(
 
   // Erst nach dem Cache: Wer einen gültigen Token im Cache hat, wird nie gebremst.
   if (zuVieleFehlversuche(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
-  const hashed = hashToken(token);
+  const hashed = tokenAbdruck(token);
   const row: TokenBenutzer | undefined = await k.zugaenge.gueltigerToken(hashed);
   if (!row) {
     vergissEintrag(k, token);
@@ -145,7 +145,7 @@ async function meldeWiederverwendung(k: KontoKontext, hash: string): Promise<boo
   return true;
 }
 
-export async function validateToken(
+export async function nutzerZumToken(
   k: KontoKontext,
   token: string | null | undefined,
   o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
@@ -229,7 +229,7 @@ export async function tokenAnlegen(
   o: TokenOptionen = {},
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  const hash = hashToken(token);
+  const hash = tokenAbdruck(token);
   await k.zugaenge.legeTokenAn({
     hash,
     userId,
@@ -264,9 +264,9 @@ export async function rotiereToken(
   alt: string,
   ip?: string | null,
 ): Promise<Tausch | null | 'laeuft'> {
-  const altHash = hashToken(alt);
+  const altHash = tokenAbdruck(alt);
   const neu = crypto.randomBytes(32).toString('hex');
-  const neuHash = hashToken(neu);
+  const neuHash = tokenAbdruck(neu);
   let kopie: { user_id: number; label: string | null } | null = null;
   // Der Tausch kommt ohne Sitzung: Der alte Token ist der einzige Ausweis.
   const ergebnis = await imSystemkontext('tokentausch', () =>
@@ -304,10 +304,10 @@ export async function rotiereToken(
   return ergebnis;
 }
 
-export async function deleteToken(k: KontoKontext, token: string): Promise<void> {
+export async function tokenLoeschen(k: KontoKontext, token: string): Promise<void> {
   if (!token) return;
-  await k.zugaenge.loescheToken(hashToken(token));
-  invalidateToken(k, token);
+  await k.zugaenge.loescheToken(tokenAbdruck(token));
+  tokenVergessen(k, token);
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer

@@ -307,9 +307,9 @@ test('die Teileliste liefert, was sie meldet', () => {
   );
 
   // Und die SET-Liste bleibt unbegrenzt
-  const getSets = src.slice(src.indexOf('async function setListe'));
+  const setsLesen = src.slice(src.indexOf('async function setListe'));
   assert.match(
-    getSets,
+    setsLesen,
     /if \(f\.seite\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +
       'page_size (Skripte, ältere App-Stände) bekämen sonst stillschweigend weniger Sets',

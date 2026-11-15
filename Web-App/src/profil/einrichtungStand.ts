@@ -5,7 +5,7 @@
  * und nennt das Zertifikat, das ohnehin unter /ca.crt öffentlich ist. */
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
-import type { KontoKontext } from './kontext';
+import type { ProfilKontext } from './kontext';
 
 export type SchrittId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
 export interface Schrittzustand {
@@ -28,14 +28,14 @@ export interface EinrichtungStandAntwort {
  * Kontenzählung): Es rechnet der erste Aufruf je Fenster, auch bei gleichzeitigen. */
 const ZWISCHENSPEICHER_MS = 5000;
 type Gemerkt = Map<boolean, { bis: number; antwort: Promise<EinrichtungStandAntwort> }>;
-const gemerkt = (k: KontoKontext) =>
+const gemerkt = (k: ProfilKontext) =>
   k.faecher.fach<Gemerkt>('einrichtungStand', () => {
     const m: Gemerkt = new Map();
     k.einstellungen.beiGlobalerAenderung(() => m.clear());
     return m;
   });
 
-export function einrichtungStandVergessen(k: KontoKontext): void {
+export function einrichtungStandVergessen(k: ProfilKontext): void {
   gemerkt(k).clear();
 }
 
@@ -44,7 +44,7 @@ export function einrichtungStandVergessen(k: KontoKontext): void {
  * Ohne Verwalter (`verwalter: false`) fehlen Basis-URL und Startpasswort: Wer die
  * Seite nur erreicht, soll nicht erfahren, dass ein Konto noch das Startpasswort trägt.
  * Beide Antworten werden getrennt gemerkt, sonst sähe die öffentliche Seite die des Verwalters. */
-export function einrichtungStand(k: KontoKontext, { verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
+export function einrichtungStand(k: ProfilKontext, { verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
   const jetzt = k.uhr.jetzt();
   const _gemerkt = gemerkt(k);
   const alt = _gemerkt.get(verwalter);
@@ -57,7 +57,7 @@ export function einrichtungStand(k: KontoKontext, { verwalter = false } = {}): P
   return antwort;
 }
 
-async function berechne(kx: KontoKontext, verwalter: boolean): Promise<EinrichtungStandAntwort> {
+async function berechne(kx: ProfilKontext, verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
   const k = kx.konfig;
   const grund = {
@@ -87,12 +87,12 @@ async function berechne(kx: KontoKontext, verwalter: boolean): Promise<Einrichtu
   ).every(Boolean);
 
   const schritte: Schrittzustand[] = [];
-  const datenbank = (await versuche('einrichtung:datenbank', kx.einrichtung.datenbankErreichbar())).ok;
+  const datenbank = (await versuche('einrichtung:datenbank', kx.konto.datenbankErreichbar())).ok;
   schritte.push({ id: 'datenbank', ok: datenbank, pflicht: true });
   schritte.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   schritte.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   schritte.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const konten = await ab.oder('konten', kx.einrichtung.kontenStand(), {
+  const konten = await ab.oder('konten', kx.konto.kontenStand(), {
     vorhanden: false,
     startpasswort: false,
   });

@@ -43,7 +43,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     // Set UND Erfassung gehoeren dem UNTERKONTO.
     await fabrik.setErfasst(subId, SET, { preis: 10, zustand: 'N' });
 
-    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
+    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
     // Kaufpreis und Zustand stehen in der Erfassung, die Menge ist ihre Summe.
     const stand = async () => ({
       set: await db.get(
@@ -61,14 +61,14 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     });
 
     // 1. Der Preis — der Zweig, der schon vorher richtig lag.
-    await updateSet(hauptId, SET, { purchase_price: 99 });
+    await setAendern(hauptId, SET, { purchase_price: 99 });
     let s = await stand();
     assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
 
     // 2. Der Zustand — genau hier verschwand die Aenderung.
     //    Gegenprobe: in schreibeInLetzteErfassung ownerId durch den Aufrufer
     //    ersetzt -> dieser Teilschritt rot (durchgefuehrt).
-    await updateSet(hauptId, SET, { condition: 'U' });
+    await setAendern(hauptId, SET, { condition: 'U' });
     s = await stand();
     assert.equal(
       s.erf.condition,
@@ -86,7 +86,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
 
     // 4. Die Menge dagegen geht bewusst auf das EIGENE Konto: Wer erhöht, bekommt
     //    einen eigenen Kaufpreis-Eintrag, statt den Bestand eines anderen Kontos zu ändern.
-    await updateSet(hauptId, SET, { quantity: 2 });
+    await setAendern(hauptId, SET, { quantity: 2 });
     const je = await db.all(
       'SELECT user_id, SUM(quantity)::int AS n FROM set_acquisitions WHERE set_number=$1 GROUP BY user_id ORDER BY user_id',
       [SET],

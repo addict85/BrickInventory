@@ -139,8 +139,8 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
       [uid],
     );
 
-    const { getSets } = require('./helpers/sources').handlerModul(_req);
-    const r = await getSets([uid], { search: '99002' });
+    const { setsLesen } = require('./helpers/sources').handlerModul(_req);
+    const r = await setsLesen([uid], { search: '99002' });
     const satz = r.sets.find(s => s.set_number === '99002-1');
     assert.ok(satz, 'Set nicht gefunden');
 

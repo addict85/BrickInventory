@@ -13,7 +13,11 @@ import type { SetsKontext } from './kontext';
 
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
-export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET /api/v1/sets'> = {}) {
+export async function setsLesen(
+  sk: SetsKontext,
+  userIdWahl: Sicht | Blickfeld,
+  query: Abfrage<'GET /api/v1/sets'> = {},
+) {
   const userId = await sk.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
@@ -81,7 +85,7 @@ export async function zustandsAggregat(sk: SetsKontext, userId: Blickfeld, setNu
   const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
-    // Dieselben Felder wie getSets(sk): Die Kachel wird nach dem Speichern ohne
+    // Dieselben Felder wie setsLesen(sk): Die Kachel wird nach dem Speichern ohne
     // Neuladen aktualisiert und verlöre sonst die zweite Plakette.
     conditions: conditionsFromAcquisitions(acqCount, usedCount),
     acq_count: acqCount,
@@ -103,7 +107,7 @@ export async function mitSetAggregat<T extends object>(
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
-export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
+export async function setLesen(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
   const userId = await sk.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
@@ -114,7 +118,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
-  // Dieselben Felder wie getSets(sk), damit ein Client die Kachel mit dem Detail
+  // Dieselben Felder wie setsLesen(sk), damit ein Client die Kachel mit dem Detail
   // überschreiben kann.
   const agg = await zustandsAggregat(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.

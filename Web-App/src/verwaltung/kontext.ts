@@ -1,5 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { MailDienste } from '../mail';
+import type { GutscheineDienste } from '../gutscheine';
 import type { Db } from '../../db/database';
 import { imSystem, type Kontext } from '../infra/bereich';
 import * as verwaltung from './repository/verwaltung';
@@ -26,6 +27,7 @@ export interface VerwaltungAbhaengigkeiten {
   bestand: BestandDienste;
   sets: SetsDienste;
   merkliste: MerklisteDienste;
+  gutscheine: GutscheineDienste;
   mail: MailDienste;
 }
 
@@ -46,7 +48,6 @@ export const zugang = (db: Db) => ({
     probePreisCache: imSystem(db, 'verwaltung', verwaltung.probePreisCache),
     probePreisVerlauf: imSystem(db, 'verwaltung', verwaltung.probePreisVerlauf),
     probeSet: imSystem(db, 'verwaltung', verwaltung.probeSet),
-    probeWaehrung: imSystem(db, 'verwaltung', verwaltung.probeWaehrung),
     protokollSeit: imSystem(db, 'verwaltung', verwaltung.protokollSeit),
     rbInventarTeile: imSystem(db, 'verwaltung', verwaltung.rbInventarTeile),
     rbTeile: imSystem(db, 'verwaltung', verwaltung.rbTeile),

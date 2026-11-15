@@ -63,7 +63,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
   await t.test('ein Widerruf aus einem anderen Prozess gilt sofort', async () => {
     const token = await auth.tokenAnlegen(uid, 'Probe', true);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: Token gilt');
-    await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.hashToken(token)]);
+    await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(token)]);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: der Zwischenspeicher trägt ihn noch');
     let gilt = true;
     for (let i = 0; i < 40 && gilt; i++) {

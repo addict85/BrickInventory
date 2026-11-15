@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
-import { downloadFile } from '../fremdquellen';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
@@ -40,7 +39,7 @@ export function anleitungenZusammenlegen<A extends object, B extends object>(get
 /** Einmal je Set und Tag für alle: Neuladen löscht für alle und kostet
  * Kontingent. In EINER Anweisung, damit zwei Anfragen nicht beide durchkommen. */
 export async function anleitungNeuLadenErlaubt(k: KatalogKontext, setNumber: string): Promise<boolean> {
-  const z = await k.anleitungen.zaehleQuellenAufruf(`anleitung-neu|${mitVersion(setNumber)}`);
+  const z = await k.drossel.einmalJeTag(`anleitung-neu|${mitVersion(setNumber)}`);
   return !!z;
 }
 
@@ -163,7 +162,7 @@ async function bdpRueckfall(k: KatalogKontext, n: string, eigenerTakt: boolean):
     fs.mkdirSync(instrDir, { recursive: true });
     const pdfDest = path.join(instrDir, pdfName);
     const relPath = `/data/instructions/${pdfName}`;
-    const ok = await downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
+    const ok = await k.fremdquellen.quellen.downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
     if (ok) {
       console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
       await k.anleitungen
@@ -229,7 +228,7 @@ async function speichereAnleitungen(k: KatalogKontext, n: string, instrList: Anl
     const safeName = `${safeBase}_${i + 1}.pdf`;
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
-    const ok = await downloadFile(instr.url, dest, undefined, PDF_ANFANG);
+    const ok = await k.fremdquellen.quellen.downloadFile(instr.url, dest, undefined, PDF_ANFANG);
     try {
       await k.anleitungen.merkeAnleitung(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
       saved++;

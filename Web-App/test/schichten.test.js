@@ -570,16 +570,16 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
 
 /** Fachabläufe (Mail, Token-Hash, Design-Cache) stehen in Diensten, nicht in Routen. */
 function routenOhneFachablauf() {
-  // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, hashToken oder
-  // invalidateTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
-  // Gegenproben (14.11.2026): `import { hashToken } from '../../src/konto'` in
+  // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, tokenAbdruck oder
+  // vergissDesign importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
+  // Gegenproben (14.11.2026): `import { tokenAbdruck } from '../../src/konto'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
   // routes/auth/registrierung.ts → rot.
   /** @type {[RegExp, string][]} */
   const MUSTER = [
     [
-      /import\s*\{[^}]*\b(?:hashToken|invalidateTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/konto'/g,
+      /import\s*\{[^}]*\b(?:tokenAbdruck|vergissDesign)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profil)'/g,
       'Werkzeug aus src/konto',
     ],
     [/import\s*\*\s*as\s*\w+\s*from\s*'[./]+\/src\/\w+'/g, 'Bereich als Namensraum'],
@@ -589,7 +589,7 @@ function routenOhneFachablauf() {
     MUSTER.every(([re], i) =>
       new RegExp(re.source).test(
         [
-          "import { hashToken } from '../../src/konto';",
+          "import { tokenAbdruck } from '../../src/konto';",
           "import * as sets from '../../src/sets';",
           "import { sendMail } from '../../src/mail';",
         ][i],
@@ -715,14 +715,74 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und inde
   assert.deepEqual(tiefe(tsUnter('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsUnter('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
   assert.ok(indizes.length >= 15, `nur ${indizes.length} index.ts gefunden`);
+  indexOhneZugang(indizes);
 });
+
+/** Mit Zugang: ein Datenbankzugang, Kontext oder Dienstesatz als Parameter, oder asynchron (Netz, Dateien). */
+const ZUGANGS_PARAMETER = /\b(?:Db|DbSchnittstelle|Pool|PoolClient|ClientBase|\w+Kontext|\w+Dienste)\b/;
+
+/** Die Deklaration eines exportierten Namens, auch über `export { … } from` und Importe weiter. */
+function deklaration(rel, name, tiefe = 0) {
+  const voll = [`${rel}.ts`, `${rel}/index.ts`, rel].find(x => fs.existsSync(path.join(ROOT, x)) && x.endsWith('.ts'));
+  if (!voll) return null;
+  const s = quelltext(voll);
+  const fn =
+    new RegExp(
+      `(?:^|\\n)(?:export )?(async )?function ${name}\\b(?:<[^(]*>)?\\(([\\s\\S]*?)\\)\\s*(?::\\s*([^{]+))?\\{`,
+    ).exec(s) ??
+    new RegExp(`export const ${name}\\s*(?::[^=]+)?=\\s*(async\\s*)?\\(([^)]*)\\)\\s*(?::\\s*([^=]+))?=>`).exec(s);
+  if (fn) return { zugang: !!fn[1] || /Promise</.test(fn[3] ?? '') || ZUGANGS_PARAMETER.test(fn[2]) };
+  if (new RegExp(`export (?:const|let|class|enum) ${name}\\b`).test(s)) return { zugang: false };
+  for (const m of s.matchAll(/(?:export|import) \{([^}]*)\} from '(\.[^']+)'/g))
+    for (const teil of m[1].split(',')) {
+      const [a, b = a] = teil.trim().split(/\s+as\s+/);
+      if (b === name && tiefe < 3) return deklaration(path.posix.join(path.posix.dirname(voll), m[2]), a, tiefe + 1);
+    }
+  return null;
+}
+
+/** Was eine index.ts als Wert hergibt, ausser der Fabrik (erzeugeX), samt Zugang. */
+function wertExporte(index) {
+  const raus = [];
+  for (const m of quelltext(index).matchAll(/export \{([^}]*)\} from '(\.[^']+)'/g))
+    for (const teil of m[1].split(',').map(x => x.trim())) {
+      if (!teil || teil.startsWith('type ')) continue;
+      const [a, b = a] = teil.split(/\s+as\s+/);
+      if (/^erzeuge[A-Z]/.test(b)) continue;
+      const d = deklaration(path.posix.join(path.posix.dirname(index), m[2]), a);
+      raus.push({ name: `${index.replace(/\/index\.ts$/, '')}.${b}`, zugang: !!d?.zugang });
+    }
+  return raus;
+}
+
+/** Ein Bereich gibt über index.ts nur Typen, seine Fabrik und reine Funktionen her: Was Datenbank,
+ * Netz oder Dateien braucht, ruft ein anderer Bereich über den Kontext (`k.<bereich>.…`), damit es
+ * in einer Transaktion über `t` läuft und ein Test es an der Verdrahtung ersetzt. */
+function indexOhneZugang(indizes) {
+  // Gegenproben (14.11.2026): `export { katalogStand } from './setStamm'` zurück in
+  // src/katalog/index.ts → rot (src/katalog.katalogStand); `export { generateThumb } from './thumbs'`
+  // in src/bilder/index.ts → rot (asynchron).
+  const alle = indizes.filter(i => !/^src\/(?:infra|vertrag|http)\//.test(i)).flatMap(wertExporte);
+  assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
+  assert.ok(
+    alle.some(x => x.name === 'src/haushalt.asIds' && !x.zugang) &&
+      deklaration('src/sets/lesen', 'setsLesen')?.zugang &&
+      deklaration('src/bilder/thumbs', 'generateThumb')?.zugang,
+    'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und generateThumb (asynchron) haben Zugang',
+  );
+  assert.deepEqual(
+    alle.filter(x => x.zugang).map(x => x.name),
+    [],
+    'Über den Kontext reichen (Dienst des Bereichs), nicht als Import',
+  );
+}
 
 /** Ein Modul ohne relative Importe (Zeilentypen, Konstanten) hängt an nichts. */
 const istBlatt = rel => !/(?:from\s+|import\(\s*)['"]\./.test(quelltext(rel + '.ts'));
 
 test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
   // Gegenproben: `import { getSetting } from '../settings'` in
-  // src/einstellungen/repository.ts → rot (31.10.2026); (05.11.2026)
+  // src/einstellungen/repository/werte.ts → rot (31.10.2026); (05.11.2026)
   // `import type { SetStamm } from '../dienst'` zurück in
   // src/sets/repository/setDetail.ts → rot.
   const treffer = [];
@@ -753,7 +813,7 @@ const istHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 
 test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen', () => {
   // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
-  // src/sets/setService.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
+  // src/sets/dienst.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
   // (10.11.2026): dasselbe in src/infra/geld.ts, src/vertrag/grund.ts und
   // db/txLock.ts → rot.
   const nutztExpress = d =>
@@ -789,7 +849,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
   // Dasselbe für src/http/: Die gemeinsamen Helfer hängen am Request, ein Dienst,
   // der sie holt, hinge es auch; umgekehrt kennt src/http nur src/infra.
   // Gegenproben (08.11.2026): `import { fehlerAntwort } from '../http/httpAntwort'`
-  // in src/konto/geraeteToken.ts → rot; `import { setKey } from '../sets/setService'` in
+  // in src/konto/geraeteToken.ts → rot; `import { setKey } from '../sets/dienst'` in
   // src/http/httpAntwort.ts → rot.
   const http = tsUnter('src').filter(d => bereichVon(d) === 'http');
   assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);
@@ -854,13 +914,14 @@ const STUFEN = [
   ['src/vertrag'],
   ['src/http'],
   ['db', 'clients'],
+  ['src/drossel'],
   ['src/einstellungen'],
   ['src/mail'],
   ['src/auftraege'],
   ['src/fremdquellen'],
-  ['src/haushalt'],
+  ['src/haushalt', 'src/geraete'],
   ['src/konto'],
-  ['src/bilder'],
+  ['src/bilder', 'src/profil'],
   ['src/idempotenz', 'src/katalog'],
   ['src/finanzen'],
   ['src/bestand'],

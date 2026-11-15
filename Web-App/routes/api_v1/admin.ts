@@ -2,7 +2,6 @@
  * Prüfung vergessen kann. */
 import { waechterFuer } from './middleware';
 import { proxyHinweisStand } from '../../src/http/proxyHinweis';
-import { bildProbe } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -172,7 +171,7 @@ export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' |
    * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden. POST,
    * weil eine fremde Seite ein GET samt Lax-Cookie per Link auslösen könnte. */
   router.endpunkt('POST /api/v1/admin/img-probe', requireApiAdmin, async req => {
-    return { ...(await bildProbe(req.eingabe.url ?? '')) };
+    return { ...(await d.verwaltung.bildProbe(req.eingabe.url ?? '')) };
   });
   /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
    * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben. */

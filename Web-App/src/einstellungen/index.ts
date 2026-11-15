@@ -3,9 +3,8 @@ export {
   DESIGNS,
   SECRET_KEYS,
   globalerWertGueltig,
-  isMaskedValue,
+  istMaskiert,
   nutzerWertGueltig,
 } from './settings';
-export { einstellungMitZugang } from './settings';
 export { erzeugeEinstellungen } from './bereich';
 export type { EinstellungenDienste, EinstellungenKontext } from './bereich';
