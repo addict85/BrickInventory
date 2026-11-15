@@ -161,15 +161,15 @@ const LAYOUT = telefon => `(() => {
     if (k < 2.995) funde.push('Sinnbild ' + k.toFixed(2) + ':1: ' + name(e));
   }
   // 6. Knopfgrenze: Ein Knopf hebt sich mit Rand oder Fläche 3:1 von der
-  //    Umgebung ab. Segmente einer Gruppe (Ansicht, Sammlungswahl) zählen über
-  //    den Rand der Gruppe; ihr aktiver Zustand wird unter 7. gemessen.
+  //    Umgebung ab. Segmente einer Gruppe (Ansicht, Sammlungswahl, Zeitraum) zählen
+  //    über den Rand der Gruppe; ihr aktiver Zustand wird unter 7. gemessen.
   const grenze = (e) => { const s = getComputedStyle(e), u = umgebung(e); if (!u) return null;
     const f = rgba(s.backgroundColor); let best = f && f.a > 0 ? kontrast(ueber(f, u), u) : 1;
     for (const seite of ['Top', 'Right', 'Bottom', 'Left']) {
       if (parseFloat(s['border' + seite + 'Width']) < 1 || s['border' + seite + 'Style'] === 'none') continue;
       const r = rgba(s['border' + seite + 'Color']); if (r && r.a > 0) best = Math.max(best, kontrast(ueber(r, u), u)); }
     return best; };
-  const KNOPF = '.btn, .period-btn, .ubadge-knopf, .v-btn, .vtgl, .sammlung-wahl';
+  const KNOPF = '.btn, .period-btn:not(.zeitraum-wahl > *), .ubadge-knopf, .v-btn, .vtgl, .zeitraum-wahl, .sammlung-wahl';
   for (const e of wurzel.querySelectorAll(KNOPF)) {
     if (!sichtbar(e) || e.closest(':disabled, [aria-disabled="true"]') || e.matches(':disabled')) continue;
     const k = grenze(e); if (k === null) continue;
