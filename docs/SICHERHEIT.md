@@ -613,12 +613,26 @@ Vorschlag.
      offline mit `openssl dgst -sha256 -sign beschreibung.pem` — und lädt
      `version-signiert.json` (Format wie im Workflow: `daten` und
      `beschreibungssignatur` in Base64) an die Release.
+   - Vor dem Hochladen gegenprüfen und zusammensetzen:
+     `openssl dgst -sha256 -verify beschreibung.pub.pem -signature beschreibung.sig version-daten.json`,
+     dann `jq -n --arg d "$(base64 -w0 version-daten.json)" --arg s "$(base64 -w0 beschreibung.sig)" '{daten:$d, beschreibungssignatur:$s}' > version-signiert.json`
+     und `gh release upload <etikett> version-signiert.json`. Der öffentliche Teil
+     muss als `-----BEGIN PUBLIC KEY-----` (SPKI) in der App stehen; offline liefert
+     ihn `openssl pkey -in beschreibung.pem -pubout`.
+   - Die Frist bleibt sieben Tage: Auch das Auffrischen braucht dann jede Woche den
+     Token. Ohne Auffrischen bietet die App eine neuere Fassung weiter an, warnt aber,
+     dass es Neueres geben könnte.
 2. **Zweiter Prüfer.** Eine zweite Person (eigenes Konto mit Zwei-Faktor) unter
    *Settings → Environments → release* und *release-beschreibung* als
    *Required reviewer* eintragen und *Prevent self-review* einschalten; der
    Workflow meldet das dann nicht mehr als Warnung. Der zweite Prüfer gibt nur
    frei, wenn Etikett, Commit und Änderungen zu einer angekündigten Fassung passen.
    *Allow administrators to bypass* bleibt aus (der Workflow prüft es).
+   - Prüfen: `gh api repos/<besitzer>/<repo>/environments/release --jq '.protection_rules'`
+     zeigt `"prevent_self_review": true` und den zweiten Prüfer; dasselbe für
+     `release-beschreibung`. Die Warnung „Selbstfreigabe“ im Lauf *APK signieren* fehlt dann.
+   - Der zweite Prüfer bekommt Leserecht am Repository, kein Schreibrecht: Er muss
+     nur freigeben, nicht pushen; *Deployment branches* bleibt auf `main`.
 3. **Haltefenster vor „Latest“.** Die App liest nur die als „Latest“ markierte
    Release. Veröffentlicht der Workflow zunächst ohne diese Marke
    (`gh release create … --latest=false`) und setzt sie erst nach 48–72 Stunden
@@ -626,6 +640,14 @@ Vorschlag.
    Release zu bemerken (GitHub-Benachrichtigung „Releases“ für das Repository
    abonnieren) und sie zu löschen, bevor ein Gerät sie lädt. Nachteil: Ein
    dringender Fix braucht ebenso lang oder einen bewussten Handgriff.
+   - Workflow-Änderung: in `android-release.yml` bei `gh release create` `--latest`
+     durch `--latest=false` ersetzen.
+   - Im Fenster: `gh release download <etikett> -p 'BrickInventory-*.apk' -p version-signiert.json`,
+     `sha256sum` des APK mit `apkSha256` aus `daten` (Base64) und mit der Summe im Lauf
+     (*Übergabe an das Signieren*) vergleichen; Commit des Etiketts gegen `main` prüfen.
+   - Erst dann `gh release edit <etikett> --latest`. Die Frist der Beschreibung läuft
+     ab dem Signieren: Bei 72 Stunden Fenster bleiben vier Tage bis zum Auffrischen.
+     Bis zur Marke prüft das nächste Etikett seine Fassung gegen die alte „Latest“.
 
 Reihenfolge nach Wirkung: 1 nimmt GitHub den Schlüssel, 2 verlangt einen
 zweiten Menschen, 3 gibt Zeit zum Bemerken. Ein Schlüssel in HSM oder Cloud-KMS
@@ -718,4 +740,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
   das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
   gilt sieben Tage; danach meldet die App sie als veraltet, bis ein neues Etikett
-  sie auffrischt.
+  sie auffrischt. Eine abgelaufene, aber neuere Fassung bietet sie trotzdem an,
+  mit dem Hinweis, dass es Neueres geben könnte; eine ältere als die installierte
+  oder als die schon gesehene nie (Rückroll-Schutz über versionCode und
+  Ausstellungszeit).

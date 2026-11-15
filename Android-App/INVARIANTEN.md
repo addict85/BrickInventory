@@ -165,8 +165,15 @@ solange „läuft nicht“ gilt. Datei: `app/csv/CsvImportViewModel.kt` · Test:
 Dateien: `dienste/service/CsvImportService.kt`, `dienste/service/PdfExportService.kt`,
 `dienste/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
 
-**FileProvider nur `pdf/`**, nie ganze Wurzeln; der Export schreibt dorthin.
-Test: `ServicePolishTest`
+**Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
+nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im Speicher
+(Proxy-Deskriptor). Auf der Platte liegt sie mit AES-GCM verschlüsselt.
+Dateien: `data/service/TeilelistenProvider.kt`, `data/util/Teilelistentresor.kt` ·
+Tests: `ServicePolishTest`, `TeilelistenAblageTest`, `InvariantenVerweiseTest`
+
+**Update nur aus signierter Beschreibung.** Ohne gültige Signatur eines
+Beschreibungsschlüssels gilt keine Beschreibung, auch keine unsignierte `version.json`.
+Datei: `update/util/UpdateSignatur.kt` · Tests: `UpdateFrischeTest`, `InvariantenVerweiseTest`
 
 **Ein CSV-Statuspfad.** SSE zuerst, Polling nur als Rückfall, die Statuslogik in
 `applyStatus()` samt Anlaufschutz. Dateien: `dienste/service/CsvImportService.kt`,
@@ -216,13 +223,13 @@ Test: `ResourceAndCacheTest`
 
 | Klasse | Inhalt | Ablage |
 |---|---|---|
-| geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
+| geheim | Token | nur AES-GCM mit Keystore-Schlüssel und AAD (`TokenTresor`); der Schlüssel früherer Fassungen wird nach dem Umschlüsseln gelöscht und nie neu angelegt (`KeystoreAltbestandTest`) |
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF nur im Speicher (memfd) |
 | vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag, Kennzahlen, Katalog-Metadaten (Room `bestand.db`), Ausgang | SQLCipher |
 | vertraulich | Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
 | vertraulich | Server-Adresse, Benutzername, Herkunft des Tokens, Widget-Zahlen, Abmeldeaufträge (WorkManager), gescheiterte Entwertungen | `Vertrauenschiffre.verschluessleAngabe`: eigener Schlüssel, nur entsperrt (`setUnlockedDeviceRequired`), überlebt das Abmelden; gesperrt heisst „später“, nie „weg“ (`VertrauenschiffreTest`, `TokenTresorTest`, `AuftragsablageTest`) |
 | vertraulich | Konto- und Lagerortfilter | nur im Speicher (`ScopeFilterSpeicher`); Reste früherer Fassungen räumt `KlartextReste` (`KlartextResteTest`) |
-| vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
+| vertraulich | Teileliste-PDF | `AblageChiffre` (`Teilelistentresor`); Klartext nur im Speicher, solange die Ziel-App über den `TeilelistenProvider` liest; nach 30 Minuten gelöscht |
 | Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden, arbeitet auch gesperrt (jede TLS-Verbindung fragt); Eintragsnamen per HMAC, kein Host im Namen; unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
 
 Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
@@ -246,9 +253,12 @@ Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
 - **Pins unter einem Schlüssel ohne Entsperr-Bedingung:** Die TLS-Prüfung braucht sie bei
   jeder Verbindung. Sie sind öffentlich (Fingerabdrücke), nur ihre Unverfälschtheit zählt;
   die Namen verraten den Server nicht.
-- **Unsignierte `version.json` bis 01.02.2027** nur für Fassungen ohne signierte
-  Beschreibung; danach löscht der Release-Lauf den Anhang.
-- **Teileliste 30 Minuten im Klartext:** Die Ziel-App kann keinen Geheimtext lesen.
+- **Abgelaufene, neuere Beschreibung bietet an:** Ohne Etikett binnen sieben Tagen
+  bliebe ein Gerät sonst auf der alten Fassung. Die App sagt dazu, dass es Neueres
+  geben könnte; eine Beschreibung unter der installierten oder schon gesehenen
+  Fassung bietet nie an (`UpdateFrischeTest`).
+- **Teileliste 30 Minuten abrufbar:** Verschlüsselt auf der Platte, aber die Ziel-App
+  liest sie im Klartext und kann sie behalten; danach löscht die App ihre Kopie.
 - **Anleitung über 64 MB in einer namenlosen Datei:** Ein memfd dieser Grösse kostete
   Arbeitsspeicher, den das System mit einem Kill zurückholte.
 - **Endmarker im verschlüsselten Dateisystem:** Eine Kürzung genau auf einen früheren flush

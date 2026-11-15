@@ -1,0 +1,17 @@
+Gegenprobe: INVARIANTEN.md behauptet wieder einen FileProvider für pdf/ (Stand vor and-sec-r3 N1)
+Modul: app
+Test: ch.brickinventoryapp.app.InvariantenVerweiseTest
+Rot: jede in INVARIANTEN genannte Quelldatei und Testklasse gibt es
+
+diff --git a/Android-App/INVARIANTEN.md b/Android-App/INVARIANTEN.md
+--- a/Android-App/INVARIANTEN.md
++++ b/Android-App/INVARIANTEN.md
+@@ -165,7 +165,7 @@
+ Dateien: `dienste/service/CsvImportService.kt`, `dienste/service/PdfExportService.kt`,
+ `dienste/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
+ 
+-**Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
++**FileProvider nur `pdf/`**, nie ganze Wurzeln. **Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
+ nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im Speicher
+ (Proxy-Deskriptor). Auf der Platte liegt sie mit AES-GCM verschlüsselt.
+ Dateien: `data/service/TeilelistenProvider.kt`, `data/util/Teilelistentresor.kt` ·
