@@ -67,7 +67,8 @@ let _angemeldetUm = 0;
 let _keksGesetzt = false;
 /** http://localhost gilt dem Browser als sicherer Kontext, trägt aber kein Secure-Cookie vom Server. */
 const ohneHttps = () => window.isSecureContext === false || location.protocol === 'http:';
-// Vorab, nicht erst nach dem Fehlschlag: Wer über http kommt, soll wissen, warum die Anmeldung scheitern kann.
+// Vorab nur der Satz für jeden Nutzer; was der Betreiber tun muss (COOKIE_SECURE), sagt auth.cookie_fehlt
+// erst, wenn das Cookie wirklich fehlt.
 const _ohneHttpsHinweis = G('login-ohne-https');
 if (_ohneHttpsHinweis) _ohneHttpsHinweis.hidden = !ohneHttps();
 
@@ -432,6 +433,7 @@ function showLogin(o = {}) {
   G('lp').value = '';
   G('lc').value = '';
   G('lc-zeile').style.display = 'none';
+  G('lc-status').textContent = '';
   // Ein angezeigtes Passwort bleibt nicht für die nächste Anmeldung sichtbar.
   if (G('lp').type !== 'password') {
     G('lp').type = 'password';
@@ -614,8 +616,13 @@ async function doLogin() {
   // Leere Pflichtfelder meldet das Feld selbst, wie in den übrigen Formularen; die Sammelmeldung oben bleibt
   // für das, was erst der Server weiss (falsche Anmeldedaten, Sperre).
   formularFehler(G('lerr'), '');
-  const leer = LOGIN_PFLICHT.filter(([id]) => !(id === 'lp' ? G(id).value : G(id).value.trim()));
-  for (const [id, schluessel] of LOGIN_PFLICHT) feldFehler(id, leer.some(([l]) => l === id) ? tRaw(schluessel) : '');
+  // Steht das Codefeld da, ist der Code Pflicht: Ohne ihn kam vom Server nur ein stilles 401, das obendrein
+  // gegen die Anmeldedrossel zählte.
+  /** @type {[string, string][]} */
+  const pflicht =
+    G('lc-zeile').style.display === 'none' ? LOGIN_PFLICHT : [...LOGIN_PFLICHT, ['lc', 'login.code_leer']];
+  const leer = pflicht.filter(([id]) => !(id === 'lp' ? G(id).value : G(id).value.trim()));
+  for (const [id, schluessel] of pflicht) feldFehler(id, leer.some(([l]) => l === id) ? tRaw(schluessel) : '');
   if (leer.length) {
     G(leer[0][0]).focus();
     return;
@@ -634,6 +641,8 @@ async function doLogin() {
   if (d.zweiter_faktor) {
     G('lc-zeile').style.display = '';
     G('lc').value = '';
+    // Der Fokus springt ins neue Feld; ohne den Satz wüsste man nicht, ob das Passwort gestimmt hat.
+    G('lc-status').textContent = code ? '' : tRaw('login.code_jetzt');
     G('lc').focus();
     // Hat das Konto Passkeys, geht einer statt des Codes (js/passkeys.js).
     G('lc-passkey').hidden = !d.passkey;
@@ -642,6 +651,7 @@ async function doLogin() {
   }
   G('lc-zeile').style.display = 'none';
   G('lc').value = '';
+  G('lc-status').textContent = '';
   if (d.success && d.keks_fehlt) {
     // Der Server hat das Cookie gar nicht gesetzt: Die App zu öffnen hiesse, gleich wieder „abgelaufen“.
     showLogin({ abgelaufen: true, hinweis: tRaw('auth.cookie_fehlt') });

@@ -531,7 +531,6 @@
   .bstat:not(:last-child):not(:nth-child(3))::after { content: "·"; margin: 0 0 0 .5em; color: var(--mut); order: -2; }
   /* Der Punkt erhöht die Zeile nicht: Mit seiner vollen Zeilenhöhe stand die Kennzahl ohne Punkt 2 px höher. */
   .bstat::after { line-height: 1; }
-  .bstat.bstat-erklaert::after { order: 0; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
   .bstat .bstat-s { display: none; }
@@ -717,6 +716,14 @@
   .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
     min-height: 44px; padding: 0; box-shadow: none; }
 }
+/* Geringe Höhe (200 % Zoom auf 1280 × 900): Schwebend deckte der Knopf bei 450 px Höhe einen Teil jeder
+   dritten Karte. Er steht dann ebenso beim Titel. */
+@media (max-width: 640px) and (max-height: 500px) {
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { min-height: 96px; }
+  .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
+    min-height: 44px; padding: 0; box-shadow: none; }
+  .erfassen-leiste .knopf-schwebend > span { display: none; }
+}
 
 /* Set-Dialog am Telefon und bei geringer Höhe (200 % Zoom auf 1440 × 900): kleines Bild links, Wert und
    Gewinn daneben, die übrigen Angaben darunter. Sonst füllte das Bild den ersten Bildschirm. */
@@ -738,12 +745,10 @@
   #set-modal .m-kopfteil .zoom-knopf { width: 7.5rem; }
 }
 
-/* Die Erklärung zu „0 Teile“ bleibt auch am Telefon stehen. */
+/* Die Erklärung zu „0 Teile“ steht am Telefon als eigene Zeile unter den Kennzahlen: In der Zeile riss
+   sie „0 Teile“ von den Minifiguren und liess einen doppelten Punkt stehen. */
 @media (max-width: 640px) {
-  .brick-stats:has(.bstat-erklaert) { flex-wrap: wrap; }
-  .bstat.bstat-erklaert { flex-wrap: wrap; flex-direction: row; border-radius: 12px; }
-  .bstat.bstat-erklaert .bstat-v { order: -1; }
-  .bstat.bstat-erklaert .bstat-s { display: block; flex: 1 1 100%; order: 1; font-size: var(--fs-0); color: var(--mut); }
+  .bstat-hinweis:not(:empty) { display: block; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); font-size: var(--fs-1); color: var(--mut); }
 }
 
 /* Hintergrundarbeiten am Telefon: Beschriftung links, die Werte untereinander in der zweiten Spalte, die
@@ -808,4 +813,21 @@
   .alarm-ue { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "bild text" ". stand" ". schwelle" ". loeschen"; }
   .alarm-ue-stand { align-items: flex-start; }
   .alarm-ue-loeschen { justify-self: start; }
+}
+
+/* Teile am Telefon auch als kompakte Liste: Eine Karte war 150 px hoch, bei 300 Teilen rollte man ewig.
+   Die Wahl Karten/Liste ist dieselbe wie am Desktop (#parts-view); die Liste setzt die Karten als Zeilen,
+   denn eine Tabellenzeile wäre am Telefon eine Bildschirmhöhe hoch. */
+@media (max-width: 640px) {
+  #tab-parts .filterleiste > .vtgl { display: flex; flex: none; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) :is(.parts-list, .parts-grid) { grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card {
+    display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; grid-template-areas: "bild name mehr" "bild num mehr" "bild farbe mehr";
+    column-gap: .75rem; align-items: center; padding: .4rem .75rem; text-align: left; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-img { grid-area: bild; width: 2.75rem; height: 2.75rem; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-name { grid-area: name; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-num { grid-area: num; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-color { grid-area: farbe; justify-content: flex-start; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .kachel-mehr { grid-area: mehr; text-align: right; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card .part-qty { margin: 0; }
 }

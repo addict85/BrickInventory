@@ -404,17 +404,13 @@ G('btn-sav-prof').onclick = async () => {
 G('btn-sav-pw').onclick = async () => {
   const pwN = G('pw-n').value,
     pwR = G('pw-r').value;
-  if (!pwN) {
-    feldFehler('pw-n', tRaw('settings.password.fill_all'));
-    return;
-  }
-  if (pwN !== pwR) {
-    feldFehler('pw-r', tRaw('settings.password.mismatch'));
-    return;
-  }
-  const regel = passwortRegelText(pwN);
-  if (regel) {
-    feldFehler('pw-n', regel);
+  // Alle Feldfehler auf einmal: Einzeln erfuhr man nach der behobenen Länge erst von der Wiederholung.
+  const fehlerN = pwN ? (passwortRegelText(pwN) ?? '') : tRaw('settings.password.fill_all');
+  const fehlerR = pwN && pwN !== pwR ? tRaw('settings.password.mismatch') : '';
+  feldFehler('pw-n', fehlerN);
+  feldFehler('pw-r', fehlerR);
+  if (fehlerN || fehlerR) {
+    G(fehlerN ? 'pw-n' : 'pw-r').focus();
     return;
   }
   const btn = G('btn-sav-pw');

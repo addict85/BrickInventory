@@ -74,6 +74,8 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     'gallery.sort.name',
     'gallery.sort.name_desc',
     'header.sets',
+    'gallery.stat.sets',
+    'gallery.stat.sets_one',
     'log.auto',
     'monitor.api.bricklink',
     'monitor.api.brickset',
