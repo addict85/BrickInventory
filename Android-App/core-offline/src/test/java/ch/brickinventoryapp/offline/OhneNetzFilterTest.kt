@@ -111,7 +111,7 @@ class OhneNetzFilterTest {
         runBlocking { teileRepo.beobachteTeile(search, Farbwahl.aus(color), Kategoriewahl.aus(category), spare).first() }
             .liste.map { "${it.partNumber}/${it.colorName}" }
 
-    private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success) }
+    private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg) }
 
     @Test
     fun `Suche, Thema, Lagerort und Sortierung der Galerie wirken ohne Netz auf die ganze lokale Liste`() {
@@ -136,7 +136,7 @@ class OhneNetzFilterTest {
 
     @Test
     fun `Farbe, Kategorie, Ersatzteile und Suche der Teileliste wirken ohne Netz`() {
-        runBlocking { assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success) }
+        runBlocking { assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Erfolg) }
         offline = true
         assertEquals(listOf("3001/Red", "3023/Red"), teileOffline(color = "Red"))
         assertEquals(listOf("3001/Red"), teileOffline(color = "Red", spare = Ersatzteilwahl.OHNE))
@@ -149,18 +149,18 @@ class OhneNetzFilterTest {
 
     @Test
     fun `die Galerie filtert in Room, der Abruf fuellt nur die Ablage`() = runBlocking {
-        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success)
+        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg)
         assertEquals("alle Sets in der Ablage", sets.size, setsRepo.beobachteSets().first().liste.size)
         val city = setsRepo.beobachteSets(thema = "City", sort = Setsortierung.NUMMER).first().liste.map { it.setNumber }
         assertEquals("die Galerie filtert in Room und sortiert wie der Server", listOf("10002-1", "21000-1"), city)
         offline = true
-        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Error)
+        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Fehler)
         assertEquals("und die Ablage bleibt", sets.size, setsRepo.beobachteSets().first().liste.size)
     }
 
     @Test
     fun `die Teile kommen ganz in die Ablage und filtern dort`() = runBlocking {
-        assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success)
+        assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Erfolg)
         assertEquals("alle Seiten der Teile in der Ablage", teile.size, teileRepo.beobachteTeile().first().liste.size)
         assertEquals("die manuellen Teile ebenso", listOf("m1"), teileRepo.beobachteManuelleTeile().first().liste.map { it.partNumber })
         val rot = teileRepo.beobachteTeile(farbe = Farbwahl.Farbe("Red"), ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }

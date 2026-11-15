@@ -14,5 +14,5 @@ index a66716f..ffce0fd 100644
 -        val anfrage = GeraeteSchluesselAnfrage(kette = kette.map { Base64.getEncoder().encodeToString(it) })
 +        val anfrage = GeraeteSchluesselAnfrage(kette = kette.map { Base64.getUrlEncoder().encodeToString(it) })
          return when (val r = sicherAufrufen { api.hinterlegeKette(anfrage) }) {
-             is Ergebnis.Success -> Schrittantwort.Frei
-             is Ergebnis.Error -> Schrittantwort.Abgelehnt(if (r is Ergebnis.Error.Server) r.message.ifBlank { null } else null)
+             is Ergebnis.Erfolg -> Schrittantwort.Frei
+             is Ergebnis.Fehler -> Schrittantwort.Abgelehnt(if (r is Ergebnis.Fehler.Server) r.message.ifBlank { null } else null)

@@ -58,7 +58,7 @@ data class MonitoringUiState(
     val zugriffEntzogen: Boolean = false,
 )
 
-private fun entzogen(r: Ergebnis<*>) = r is Ergebnis.Error && r.code == Fehlercode.NUR_ADMINS
+private fun entzogen(r: Ergebnis<*>) = r is Ergebnis.Fehler && r.code == Fehlercode.NUR_ADMINS
 
 /** Die Hintergrundarbeiten (Auftragstabelle); die Ansicht bleibt stehen, während neu geholt wird. */
 data class HintergrundUiState(
@@ -91,8 +91,8 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun ladeProtokoll(minuten: Int) {
         _verwaltungState.update { it.copy(abruf = Laden.Laedt, protokollMinuten = minuten) }
         when (val r = verwaltung.getProtokoll(minuten)) {
-            is Ergebnis.Success -> _verwaltungState.update { it.copy(protokoll = r.data, abruf = Laden.Daten(Unit)) }
-            is Ergebnis.Error -> _verwaltungState.update { it.copy(abruf = ladefehler(r)) }
+            is Ergebnis.Erfolg -> _verwaltungState.update { it.copy(protokoll = r.data, abruf = Laden.Daten(Unit)) }
+            is Ergebnis.Fehler -> _verwaltungState.update { it.copy(abruf = ladefehler(r)) }
         }
     }
 
@@ -119,8 +119,8 @@ class MonitoringViewModel @Inject constructor(
     suspend fun ladeHintergrund() {
         _hintergrund.update { it.copy(abruf = Laden.Laedt) }
         when (val r = verwaltung.getAuftraege()) {
-            is Ergebnis.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data) }
-            is Ergebnis.Error -> {
+            is Ergebnis.Erfolg -> _hintergrund.update { HintergrundUiState(ansicht = r.data) }
+            is Ergebnis.Fehler -> {
                 _hintergrund.update { it.copy(abruf = ladefehler(r)) }
                 if (entzogen(r)) _state.update { it.copy(zugriffEntzogen = true) }
             }
@@ -184,8 +184,8 @@ class MonitoringViewModel @Inject constructor(
 
     private suspend fun <T> nachAuftrag(r: Ergebnis<T>, erfolg: (T) -> Meldung): Meldung {
         val satz = when (r) {
-            is Ergebnis.Success -> erfolg(r.data)
-            is Ergebnis.Error -> fehlerMeldung(r)
+            is Ergebnis.Erfolg -> erfolg(r.data)
+            is Ergebnis.Fehler -> fehlerMeldung(r)
         }
         ladeHintergrund()
         return satz
@@ -199,7 +199,7 @@ class MonitoringViewModel @Inject constructor(
         _state.update { it.copy(aktualisiert = true) }
         val r = verwaltung.getJobs()
         _state.update {
-            if (r is Ergebnis.Success)
+            if (r is Ergebnis.Erfolg)
                 it.copy(jobs = r.data.jobs, jobSchedules = r.data.zeitplaene, aktualisiert = false)
             else it.copy(aktualisiert = false, zugriffEntzogen = it.zugriffEntzogen || entzogen(r))
         }
@@ -233,7 +233,7 @@ class MonitoringViewModel @Inject constructor(
 
     /** Wiederholt einen hängengebliebenen Eintrag; lädt die Liste danach neu. */
     internal suspend fun wiederholeEintrag(setNummer: String): Boolean {
-        val ok = verwaltung.retryBricksetEntry(setNummer) is Ergebnis.Success
+        val ok = verwaltung.retryBricksetEntry(setNummer) is Ergebnis.Erfolg
         if (ok) ladeWarteschlange()
         return ok
     }
@@ -248,7 +248,7 @@ class MonitoringViewModel @Inject constructor(
             val ohne = s.queue.datenOderNull()?.filter { it.setNumber != setNummer }
             if (ohne == null) s else s.copy(queue = Laden.Daten(ohne))
         }
-        val ok = verwaltung.deleteBricksetEntry(setNummer) is Ergebnis.Success
+        val ok = verwaltung.deleteBricksetEntry(setNummer) is Ergebnis.Erfolg
         if (!ok) ladeWarteschlange()
         return ok
     }
@@ -283,12 +283,12 @@ class MonitoringViewModel @Inject constructor(
         val gestartet = Meldung.Ressource(R.string.monitoring_started)
         return when (job) {
             Jobstart.CSV_ABGLEICH -> Meldung.Ressource(R.string.monitoring_sync_started_short)
-                .takeIf { verwaltung.triggerCsvSync() is Ergebnis.Success }
-            Jobstart.PREISLAUF -> gestartet.takeIf { verwaltung.triggerPriceJob() is Ergebnis.Success }
-            Jobstart.BESTANDSBILDER -> gestartet.takeIf { verwaltung.redownloadMissingImages() is Ergebnis.Success }
+                .takeIf { verwaltung.triggerCsvSync() is Ergebnis.Erfolg }
+            Jobstart.PREISLAUF -> gestartet.takeIf { verwaltung.triggerPriceJob() is Ergebnis.Erfolg }
+            Jobstart.BESTANDSBILDER -> gestartet.takeIf { verwaltung.redownloadMissingImages() is Ergebnis.Erfolg }
             // Die Bilder des Katalogs, nicht die des Bestands daneben.
-            Jobstart.KATALOGBILDER -> gestartet.takeIf { verwaltung.queueCatalogImages() is Ergebnis.Success }
-            Jobstart.ANLEITUNGEN -> (verwaltung.reimportInstructions() as? Ergebnis.Success)?.data
+            Jobstart.KATALOGBILDER -> gestartet.takeIf { verwaltung.queueCatalogImages() is Ergebnis.Erfolg }
+            Jobstart.ANLEITUNGEN -> (verwaltung.reimportInstructions() as? Ergebnis.Erfolg)?.data
                 ?.let { Meldung.Menge(R.plurals.monitoring_reimport_enqueued, it) }
         }
     }
@@ -299,22 +299,22 @@ class MonitoringViewModel @Inject constructor(
      * der Zustandsänderungen aber unbestimmt.
      */
     internal suspend fun ladeCacheUndGrenzen() {
-        (verwaltung.getCacheStats() as? Ergebnis.Success)?.let { r ->
+        (verwaltung.getCacheStats() as? Ergebnis.Erfolg)?.let { r ->
             _state.update { it.copy(cacheStats = r.data) }
         }
-        (verwaltung.getApiLimits() as? Ergebnis.Success)?.let { r ->
+        (verwaltung.getApiLimits() as? Ergebnis.Erfolg)?.let { r ->
             _state.update { it.copy(apiLimits = r.data) }
         }
-        (verwaltung.getCacheTtl() as? Ergebnis.Success)?.let { r ->
+        (verwaltung.getCacheTtl() as? Ergebnis.Erfolg)?.let { r ->
             _state.update { it.copy(cacheTtl = r.data) }
         }
-        (konto.getDefaultCondition() as? Ergebnis.Success)?.let { r ->
+        (konto.getDefaultCondition() as? Ergebnis.Erfolg)?.let { r ->
             _state.update { it.copy(vorgabeZustand = r.data) }
         }
     }
 
     internal suspend fun setzeCacheDauer(stunden: Int): Boolean {
-        val ok = verwaltung.setCacheTtl(stunden) is Ergebnis.Success
+        val ok = verwaltung.setCacheTtl(stunden) is Ergebnis.Erfolg
         if (ok) _state.update { it.copy(cacheTtl = stunden.toString()) }
         return ok
     }
@@ -324,7 +324,7 @@ class MonitoringViewModel @Inject constructor(
      * nichts zeigte, dass etwas passiert ist.
      */
     internal suspend fun leereCache(alles: Boolean): Boolean {
-        val ok = verwaltung.clearCache(alles) is Ergebnis.Success
+        val ok = verwaltung.clearCache(alles) is Ergebnis.Erfolg
         if (ok) ladeCacheUndGrenzen()
         return ok
     }
@@ -340,7 +340,7 @@ class MonitoringViewModel @Inject constructor(
     }
 
     internal suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
-        val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Success
+        val ok = verwaltung.setJobSchedule(name, zeit, minuten) is Ergebnis.Erfolg
         if (ok) ladeJobs()
         return ok
     }
@@ -350,7 +350,7 @@ class MonitoringViewModel @Inject constructor(
      * nicht; dort war das wirksame Design zugleich die Vorgabe.
      */
     internal suspend fun ladeDesignVorgabe() {
-        (konto.getAppTheme() as? Ergebnis.Success)?.let { r ->
+        (konto.getAppTheme() as? Ergebnis.Erfolg)?.let { r ->
             _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.wirksam) }
         }
     }
@@ -361,15 +361,15 @@ class MonitoringViewModel @Inject constructor(
      * Kaltstart überlebt.
      */
     internal suspend fun setzeDesign(theme: Design): Boolean {
-        val ok = verwaltung.setAppTheme(theme) is Ergebnis.Success
+        val ok = verwaltung.setAppTheme(theme) is Ergebnis.Erfolg
         if (ok) _state.update { it.copy(vorgabeDesign = theme) }
         return ok
     }
 
     internal suspend fun setzeGrenzwerte(rebrickable: Int, bricklink: Int, brickset: Int): Boolean {
-        val ok = verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Ergebnis.Success
+        val ok = verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Ergebnis.Erfolg
         if (ok) {
-            (verwaltung.getApiLimits() as? Ergebnis.Success)?.let { r ->
+            (verwaltung.getApiLimits() as? Ergebnis.Erfolg)?.let { r ->
                 _state.update { it.copy(apiLimits = r.data) }
             }
         }
@@ -384,7 +384,7 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun setzeVorgabeZustand(zustand: Zustand): Boolean {
         val vorher = _state.value.vorgabeZustand
         _state.update { it.copy(vorgabeZustand = zustand) }
-        val ok = verwaltung.setDefaultCondition(zustand) is Ergebnis.Success
+        val ok = verwaltung.setDefaultCondition(zustand) is Ergebnis.Erfolg
         if (!ok) _state.update { it.copy(vorgabeZustand = vorher) }
         return ok
     }

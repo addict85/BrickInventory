@@ -42,13 +42,13 @@ class AppTexteTest {
     @Test
     fun `der Satz des Servers hat Vorrang vor jedem eigenen`() {
         val satz = "Für dieses Datum gibt es schon einen Kaufpreis"
-        assertEquals(satz, texte.meldung(Ergebnis.Error.Server(409, satz)))
+        assertEquals(satz, texte.meldung(Ergebnis.Fehler.Server(409, satz)))
         assertEquals("Auch bei 401", "Benutzername oder Passwort falsch",
-            texte.meldung(Ergebnis.Error.Abgewiesen("Benutzername oder Passwort falsch")))
-        assertEquals("Auch mit Fehlercode", satz, texte.meldung(Ergebnis.Error.Server(429, satz, Fehlercode.ZU_VIELE_VERBINDUNGEN)))
+            texte.meldung(Ergebnis.Fehler.Abgewiesen("Benutzername oder Passwort falsch")))
+        assertEquals("Auch mit Fehlercode", satz, texte.meldung(Ergebnis.Fehler.Server(429, satz, Fehlercode.ZU_VIELE_VERBINDUNGEN)))
 
-        val eigen = texte.meldung(Ergebnis.Error.Server(500))
+        val eigen = texte.meldung(Ergebnis.Fehler.Server(500))
         assertTrue("Ohne Satz des Servers steht keiner da", eigen.isNotBlank())
-        assertNotEquals(eigen, texte.meldung(Ergebnis.Error.Server(429, "", Fehlercode.ZU_VIELE_VERBINDUNGEN)))
+        assertNotEquals(eigen, texte.meldung(Ergebnis.Fehler.Server(429, "", Fehlercode.ZU_VIELE_VERBINDUNGEN)))
     }
 }

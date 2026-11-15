@@ -91,10 +91,10 @@ class CatalogViewModel @Inject constructor(
     override fun loadCatalogMeta() {
         viewModelScope.launch {
             when (val r = katalog.getCatalogMeta()) {
-                is Ergebnis.Success -> _catalogState.update {
+                is Ergebnis.Erfolg -> _catalogState.update {
                     it.copy(themes = r.data.themen, yearMin = r.data.jahrMin, yearMax = r.data.jahrMax)
                 }
-                is Ergebnis.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
+                is Ergebnis.Fehler -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
             }
         }
     }
@@ -124,12 +124,12 @@ class CatalogViewModel @Inject constructor(
             )
             if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
             when (r) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     _catalogState.update {
                         it.copy(abruf = Laden.Daten(Unit), loadedPages = mapOf(1 to r.data.sets), total = r.data.gesamt)
                     }
                 }
-                is Ergebnis.Error -> {
+                is Ergebnis.Fehler -> {
                     _catalogState.update { it.copy(abruf = ladefehler(r)) }
                     if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
@@ -164,10 +164,10 @@ class CatalogViewModel @Inject constructor(
             _catalogState.update { st ->
                 val ohne = st.loadingPages - seite
                 when (r) {
-                    is Ergebnis.Success ->
+                    is Ergebnis.Erfolg ->
                         st.copy(loadingPages = ohne, loadedPages = st.loadedPages + (seite to r.data.sets),
                             total = if (r.data.gesamt > 0) r.data.gesamt else st.total)
-                    is Ergebnis.Error -> st.copy(loadingPages = ohne)
+                    is Ergebnis.Fehler -> st.copy(loadingPages = ohne)
                 }
             }
         }
@@ -184,7 +184,7 @@ class CatalogViewModel @Inject constructor(
             val r = katalog.getCatalogYearVerteilung(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
-            if (r is Ergebnis.Success) {
+            if (r is Ergebnis.Erfolg) {
                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
                 // Ihre Zahl bleibt in `total` enthalten; siehe
                 // CatalogYearMath.jahrAnPosition.
@@ -240,9 +240,9 @@ class CatalogViewModel @Inject constructor(
     fun merke(w: Merkwunsch) {
         viewModelScope.launch {
             when (val r = merkliste.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
-                is Ergebnis.Error ->
+                is Ergebnis.Fehler ->
                     meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
                     meldungen.zeige(Meldung.Ressource(if (r.data) R.string.wanted_added else R.string.wanted_already))
                 }
@@ -259,13 +259,13 @@ class CatalogViewModel @Inject constructor(
             // Der Fehler gehört in den Zustand, nicht in eine Snackbar: Der Bildschirm hat
             // ohne Detail nichts zu zeigen und braucht einen Grund und „Erneut versuchen“.
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     val detail = r.data
                     val geladen = if (detail != null) Laden.Daten(detail)
                     else Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Ressource(R.string.err_set_not_found))
                     _catalogState.update { it.copy(detail = geladen) }
                 }
-                is Ergebnis.Error -> _catalogState.update { it.copy(detail = ladefehler(r)) }
+                is Ergebnis.Fehler -> _catalogState.update { it.copy(detail = ladefehler(r)) }
             }
         }
     }

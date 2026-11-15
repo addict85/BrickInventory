@@ -122,7 +122,7 @@ class TeileViewModel @Inject constructor(
     private suspend fun aktualisiereTeile(st: TeileUiState): Ergebnis<Unit> {
         val liste = teileAbfrage(st) ?: return repo.aktualisiereTeile()
         val r = kontosicht.teileliste.aktualisiere(liste)
-        if (r is Ergebnis.Error) return r
+        if (r is Ergebnis.Fehler) return r
         return manuelleAbfrage(st)?.let { kontosicht.manuelleTeile.aktualisiere(it) } ?: repo.aktualisiereManuelleTeile()
     }
 
@@ -169,8 +169,8 @@ class TeileViewModel @Inject constructor(
             when (val r = repo.addPart(e.nummer.trim(), e.farbId, e.farbname, e.farbHex, e.menge,
                                        e.stueckpreis, e.zustand, e.besitzer,
                                        e.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Ergebnis.Success -> meldungen.zeige(erfassungsMeldung(meldungen, r.data.angelegt, r.data.nummer, r.data.preisAusZustand))
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> meldungen.zeige(erfassungsMeldung(meldungen, r.data.angelegt, r.data.nummer, r.data.preisAusZustand))
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -210,8 +210,8 @@ class TeileViewModel @Inject constructor(
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = repo.setPartStorage(nummer, farbe, ort)) {
-                is Ergebnis.Success -> inSets.mitOrt(r.data)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> inSets.mitOrt(r.data)
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

@@ -85,10 +85,10 @@ class KontoViewModel @Inject constructor(
     /** Lässt einen Fehler stehen, den das Speichern davor gesetzt hat (Mail nicht gesendet). */
     private suspend fun holeProfil() {
         when (val r = konto.getProfil()) {
-            is Ergebnis.Success -> _kontoState.update {
+            is Ergebnis.Erfolg -> _kontoState.update {
                 it.copy(abruf = Laden.Daten(Unit), profil = r.data)
             }
-            is Ergebnis.Error -> _kontoState.update { it.copy(abruf = ladefehler(r)) }
+            is Ergebnis.Fehler -> _kontoState.update { it.copy(abruf = ladefehler(r)) }
         }
     }
 
@@ -113,7 +113,7 @@ class KontoViewModel @Inject constructor(
                 code = code?.trim()?.ifBlank { null },
             )
             when (val r = konto.updateProfil(aenderung)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                         // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
                         // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
                         val neueAdresse = r.data.neueAdresse
@@ -128,7 +128,7 @@ class KontoViewModel @Inject constructor(
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
                         holeProfil()
                     }
-                is Ergebnis.Error -> abgelehnt(r)
+                is Ergebnis.Fehler -> abgelehnt(r)
             }
         }
     }
@@ -138,7 +138,7 @@ class KontoViewModel @Inject constructor(
      * Code. Fehlt er, merkt sich der Zustand das; die Oberfläche zeigt das Feld,
      * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
      */
-    private fun abgelehnt(r: Ergebnis.Error) = _kontoState.update {
+    private fun abgelehnt(r: Ergebnis.Fehler) = _kontoState.update {
         it.copy(speichern = gescheitert(r),
             codeNoetig = it.codeNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_NOETIG || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH)
     }
@@ -152,12 +152,12 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _kontoState.update { it.copy(speichern = Vorgang.Laeuft, meldung = null) }
             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     sitzungsDienst.abmelden()
                     meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
                     _kontoState.value = KontoUiState()
                 }
-                is Ergebnis.Error -> abgelehnt(r)
+                is Ergebnis.Fehler -> abgelehnt(r)
             }
         }
     }
@@ -168,7 +168,7 @@ class KontoViewModel @Inject constructor(
     fun ladeDesign() {
         viewModelScope.launch {
             val r = konto.getAppTheme()
-            if (r is Ergebnis.Success) _kontoState.update { it.copy(design = designWahl(r.data)) }
+            if (r is Ergebnis.Erfolg) _kontoState.update { it.copy(design = designWahl(r.data)) }
         }
     }
 
@@ -179,11 +179,11 @@ class KontoViewModel @Inject constructor(
     fun waehleDesign(eigenes: Design?) {
         viewModelScope.launch {
             when (val r = konto.setzeEigenesDesign(eigenes)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     r.data.wirksam?.let(sitzung::setzeDesign)
                     _kontoState.update { it.copy(design = designWahl(r.data), speichern = it.speichern.ohneFehler()) }
                 }
-                is Ergebnis.Error -> _kontoState.update { it.copy(speichern = gescheitert(r)) }
+                is Ergebnis.Fehler -> _kontoState.update { it.copy(speichern = gescheitert(r)) }
             }
         }
     }
@@ -201,8 +201,8 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _geraeteState.update { it.copy(abruf = Laden.Laedt) }
             when (val r = konto.getTokens()) {
-                is Ergebnis.Success -> _geraeteState.update { it.copy(abruf = Laden.Daten(Unit), geraete = r.data) }
-                is Ergebnis.Error -> _geraeteState.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Erfolg -> _geraeteState.update { it.copy(abruf = Laden.Daten(Unit), geraete = r.data) }
+                is Ergebnis.Fehler -> _geraeteState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }
@@ -233,23 +233,23 @@ class KontoViewModel @Inject constructor(
         _geraeteState.update { it.copy(rueckfrage = frage.copy(vorgang = Vorgang.Laeuft)) }
         val anfrage = Bestaetigung(passwort = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
-            val fehler: Ergebnis.Error? = if (frage.tokenId != null) {
+            val fehler: Ergebnis.Fehler? = if (frage.tokenId != null) {
                 when (val r = konto.revokeToken(frage.tokenId, anfrage)) {
-                    is Ergebnis.Success -> {
+                    is Ergebnis.Erfolg -> {
                         // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
                         meldungen.zeige(Meldung.Ressource(if (r.data > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                         null
                     }
-                    is Ergebnis.Error -> r
+                    is Ergebnis.Fehler -> r
                 }
             } else {
                 when (val r = konto.andereBeenden(anfrage)) {
-                    is Ergebnis.Success -> {
+                    is Ergebnis.Erfolg -> {
                         val weg = r.data
                         meldungen.zeige(Meldung.Menge(R.plurals.tokens_revoked_n, weg))
                         null
                     }
-                    is Ergebnis.Error -> r
+                    is Ergebnis.Fehler -> r
                 }
             }
             if (fehler == null) {
@@ -299,11 +299,11 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _zweiterFaktorState.update { it.copy(abruf = Laden.Laedt) }
             when (val r = abruf()) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     erfolgText?.let { meldungen.zeige(Meldung.Ressource(it)) }
                     _zweiterFaktorState.update { danach(it, r.data).copy(abruf = Laden.Daten(Unit)) }
                 }
-                is Ergebnis.Error -> _zweiterFaktorState.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Fehler -> _zweiterFaktorState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }

@@ -20,7 +20,7 @@ class AppTexte @Inject constructor(
 
     override fun angemeldet() = prefs.authTokenState.value?.isNotBlank() == true
 
-    override fun meldung(fehler: Ergebnis.Error): String {
+    override fun meldung(fehler: Ergebnis.Fehler): String {
         if (fehler.message.isNotBlank()) return fehler.message
         fehlerTextZuCode(fehler.code)?.let { return text(it) }
         val id = fehlerTextId(fehler)

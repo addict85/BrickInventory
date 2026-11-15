@@ -9,7 +9,7 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 @@ -32,8 +32,8 @@
      override fun angemeldet() = prefs.authTokenState.value?.isNotBlank() == true
  
-     override fun meldung(fehler: Ergebnis.Error): String {
+     override fun meldung(fehler: Ergebnis.Fehler): String {
 +        fehlerTextZuCode(fehler.code)?.let { return text(it) }
          if (fehler.message.isNotBlank()) return fehler.message
 -        fehlerTextZuCode(fehler.code)?.let { return text(it) }

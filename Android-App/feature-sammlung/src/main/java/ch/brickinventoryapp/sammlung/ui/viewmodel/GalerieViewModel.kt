@@ -151,7 +151,7 @@ class GalerieViewModel @Inject constructor(
     private fun ladePreise() {
         viewModelScope.launch {
             val r = finanzen.getPnl(filter.kontoFuer(ScopeFilter.View.GALLERY))
-            if (r is Ergebnis.Success) _preise.value = kachelPreise(r.data.sets)
+            if (r is Ergebnis.Erfolg) _preise.value = kachelPreise(r.data.sets)
         }
     }
 
@@ -264,6 +264,6 @@ internal fun ohneSet(k: KennzahlenAnsicht, set: SetAnsicht): KennzahlenAnsicht {
  */
 internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String, name: String = setNumber): Pair<Boolean, String?> =
     when (val r = sets.deleteSet(setNumber)) {
-        is Ergebnis.Success -> true to texte.text(R.string.vm_set_deleted, name)
-        is Ergebnis.Error -> false to texte.meldungFuerSnackbar(r)
+        is Ergebnis.Erfolg -> true to texte.text(R.string.vm_set_deleted, name)
+        is Ergebnis.Fehler -> false to texte.meldungFuerSnackbar(r)
     }
