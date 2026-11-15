@@ -2,7 +2,7 @@
  * Zwei Sätze Dienste in einem Prozess teilen weder Schlüssel noch Zwischenstände. */
 import { mit, baueKontext, type Einblick } from '../infra/bereich';
 import type { Db } from '../../db/database';
-import { BRICKSET_HOECHSTENS } from '../auftraege';
+import * as brickset from './bricksetWiedervorlage';
 import * as apiKontingentDienst from './apiKontingent';
 import * as rateLimiter from './rateLimiter';
 import { baueQuellen, type KlientenZugang, type Quellen } from './quellen';
@@ -36,11 +36,8 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     zaehle: api => kontingent.zaehleKontingent(api),
     kontingentStand: api => kontingent.kontingentStand(api),
     drossel,
-    bricksetVormerken: async (sn, fehler, bald) => ({
-      ...(await k.auftraege.bricksetVormerken(sn, fehler, bald)),
-      hoechstens: BRICKSET_HOECHSTENS,
-    }),
-    bricksetVergessen: sn => k.auftraege.bricksetAusWiedervorlage(sn),
+    bricksetVormerken: mit(k)(brickset.bricksetVormerken),
+    bricksetVergessen: mit(k)(brickset.bricksetVergessen),
   };
   const dienste = {
     /** Die Klienten dieses Zugangs; ein Test ersetzt einzelne über `ersatz`. */
@@ -49,6 +46,14 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     drossel,
     ...kontingent,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
+    /** Die Wiedervorlage der Sets, für die Brickset kein Kontingent mehr hatte. */
+    brickset: {
+      faelligAb: mit(k)(brickset.bricksetFaelligAb),
+      jetzt: mit(k)(brickset.bricksetJetzt),
+      vorziehen: mit(k)(brickset.bricksetVorziehen),
+      zahlen: mit(k)(brickset.bricksetZahlen),
+      wartende: mit(k)(brickset.bricksetWartende),
+    },
   };
   // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt
   // derselbe, damit Drosseln und Kontingent nicht je Transaktion neu entstehen.

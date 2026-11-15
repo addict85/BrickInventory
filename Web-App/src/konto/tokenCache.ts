@@ -3,6 +3,7 @@
  * gelten darf er nur, solange ein Widerruf ihn sicher erreicht. */
 import type { TokenScope } from './repository/zugaenge';
 import { meldeZugangsAenderung } from './zugangsAenderung';
+import { prozessEreignis } from '../infra/ereignis';
 import type { KontoKontext } from './kontext';
 
 /** Typisiert, weil ein vertippter Feldname `undefined` liefert und das in einer
@@ -97,9 +98,15 @@ export function tokenVergessen(k: KontoKontext, token: string | null | undefined
  * Ohne stehende Horch-Verbindung käme ein fremder Widerruf nicht an: Dann gilt
  * nur die Datenbank (fail closed). */
 const WIDERRUF_KANAL = 'token_widerrufen';
+const widerruf = (k: KontoKontext) =>
+  k.faecher.fach('tokenWiderruf', () => {
+    const e = prozessEreignis('tokenWiderruf', WIDERRUF_KANAL);
+    e.horche(() => leere(k));
+    return e;
+  });
 export function horcheAufTokenWiderruf(k: KontoKontext): void {
   speicher(k).verteilt = true;
-  k.db.benachrichtigung.listen(WIDERRUF_KANAL, () => leere(k));
+  widerruf(k).verbinde(k.db.benachrichtigung);
 }
 function cacheNutzbar(k: KontoKontext): boolean {
   if (speicher(k).verteilt && k.db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
@@ -107,7 +114,7 @@ function cacheNutzbar(k: KontoKontext): boolean {
   return false;
 }
 function meldeWiderruf(k: KontoKontext): void {
-  if (speicher(k).verteilt) void k.db.benachrichtigung.notify(WIDERRUF_KANAL);
+  if (speicher(k).verteilt) void widerruf(k).melde(k.db.benachrichtigung);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den

@@ -134,6 +134,8 @@ const bildzugang = (db: Db) => ({
     figurenbilder: mit(db)(bildlage.figurenbilder),
     fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
     setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
+    fehlendeKatalogbilder: mit(db)(bildlage.fehlendeKatalogbilder),
+    setNamen: mit(db)(bildlage.setNamen),
   },
 });
 

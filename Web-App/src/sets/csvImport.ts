@@ -1,6 +1,6 @@
 /** CSV-Import der Sets: Zeilen lesen, Auftrag starten, Stand melden. */
 import { vorDem, fehlertext, oeffentlicherFehler } from '../infra/fehler';
-import { buildJobStatus, csvImportBus } from '../auftraege';
+import { buildJobStatus } from '../auftraege';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
 import { fachfehler, type Sprache } from '../infra/fehlerTexte';
@@ -144,13 +144,7 @@ export async function csvImportStandFuerStrom(k: SetsKontext, uid: number, req: 
 
 /** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */
 export function csvImportStandAbonnieren(k: SetsKontext, uid: number, melde: () => void): () => void {
-  const lokal = () => melde();
-  csvImportBus.on(`progress:${uid}`, lokal);
-  const abmelden = k.auftraege.beiImportStand(konto => {
-    if (String(konto) === String(uid)) melde();
+  return k.auftraege.beiImportStand(konto => {
+    if (konto === undefined || String(konto) === String(uid)) melde();
   });
-  return () => {
-    csvImportBus.off(`progress:${uid}`, lokal);
-    abmelden();
-  };
 }

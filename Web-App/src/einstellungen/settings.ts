@@ -4,6 +4,7 @@ import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/glo
 import * as repo from './repository/werte';
 import type { DbSchnittstelle } from '../../db/database';
 import type { EinstellungenKontext } from './kontext';
+import { prozessEreignis } from '../infra/ereignis';
 
 /** Gespeichert ist Text; mit Vorgabe ist das Ergebnis Text oder die Vorgabe, nie `any`. */
 export async function getSetting(
@@ -122,11 +123,18 @@ export function globalerWertGueltig(key: string, value: unknown): boolean {
   return regelFuer(key)?.safeParse(value).success ?? false;
 }
 
-const abonnenten = (k: EinstellungenKontext) => k.faecher.fach('globaleAenderung', () => new Set<() => void>());
+/** Über NOTIFY: Der Job-Prozess und jeder weitere Web-Prozess schreiben auch globale Werte. */
+const globaleAenderung = (k: EinstellungenKontext) =>
+  k.faecher.fach('globaleAenderung', () => prozessEreignis('globaleAenderung', 'globale_einstellung'));
 /** Für Zwischenspeicher, die aus globalen Werten rechnen: Sie leeren sich selbst, statt dass
- * jede Schreibstelle sie kennen muss. Je Satz Dienste, sonst wüchse die Liste mit jedem. */
-export function beiGlobalerAenderung(k: EinstellungenKontext, fn: () => void): void {
-  abonnenten(k).add(fn);
+ * jede Schreibstelle sie kennen muss. */
+export function beiGlobalerAenderung(k: EinstellungenKontext, fn: () => void): () => void {
+  return globaleAenderung(k).horche(fn);
+}
+
+/** Ab jetzt leert eine Änderung in einem anderen Prozess auch die Zwischenspeicher hier. */
+export function horcheAufAenderungen(k: EinstellungenKontext): () => void {
+  return globaleAenderung(k).verbinde(k.db.benachrichtigung);
 }
 
 /** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN. */
@@ -141,12 +149,12 @@ export async function setGlobalSetting(k: EinstellungenKontext, key: string, val
     key,
     SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data,
   );
-  meldeGlobaleAenderung(k);
+  await meldeGlobaleAenderung(k);
 }
 
 /** Auch nach dem COMMIT einer Transaktion: Ein Zwischenspeicher, der dazwischen las, hielte den alten Wert. */
-export function meldeGlobaleAenderung(k: EinstellungenKontext): void {
-  for (const fn of abonnenten(k)) fn();
+export async function meldeGlobaleAenderung(k: EinstellungenKontext): Promise<void> {
+  await globaleAenderung(k).melde(k.db.benachrichtigung);
 }
 
 /** Offen nur bei genau '1'; fehlt die Zeile, bleibt sie zu. */

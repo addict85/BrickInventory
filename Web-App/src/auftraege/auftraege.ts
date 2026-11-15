@@ -1,39 +1,15 @@
-/** Der Worker kennt für jede Art einen Bearbeiter. */
-export const AUFTRAGS_ARTEN = [
-  'nacharbeit',
-  'bilder',
-  'pdf',
-  'csv_import',
-  'wechselkurse',
-  'anleitung',
-  'brickset',
-  'bildbedarf',
-  'bilder_neu_laden',
-  'nachlauf',
-  'csv_sync',
-  'preise',
-  'bild_nachlauf',
-  'aufraeumen',
-  'aufraeumen_taeglich',
-  'preise_nachladen',
-  'konto_dateien',
-  'widerrufsliste',
-] as const;
-export type AuftragsArt = (typeof AUFTRAGS_ARTEN)[number];
+import type { z } from 'zod';
 
-/** Nur diese Arten laufen ohne Konto im Systemrahmen, am Zeilenschutz vorbei; der Grund
- * steht hier. Ein Auftrag mit Konto läuft immer in dessen Namen, die übrigen Arten ohne
- * Konto arbeiten am Katalog und sehen keine Kontozeile (imNamenDesAuftrags). */
-export const KONTOUEBERGREIFEND: Readonly<Partial<Record<AuftragsArt, string>>> = {
-  nachlauf: 'Altbestand und Katalog aller Konten',
-  csv_sync: 'BrickLink-Nummern der Teile aller Konten',
-  preise: 'Preise aller Sets',
-  bild_nachlauf: 'Bilder aller Bestände',
-  bildbedarf: 'Bildbedarf aller Bestände',
-  bilder_neu_laden: 'fehlende Bilder aller Bestände',
-  aufraeumen: 'Reste aller Konten',
-  aufraeumen_taeglich: 'Reste aller Konten',
-};
+/** Je Art das zod-Schema der Nutzlast. Jeder Bereich ergänzt seine Arten per `declare module`
+ * (auftragsarten.ts des Bereichs): Das Einstellen ist geprüft, ohne dass dieser Bereich sie kennt. */
+// biome-ignore lint/suspicious/noEmptyInterface: die Bereiche ergänzen es
+export interface AuftragsNutzlasten {}
+export type AuftragsArt = keyof AuftragsNutzlasten & string;
+export type NutzlastSchema<A extends AuftragsArt> = AuftragsNutzlasten[A] extends z.ZodType
+  ? AuftragsNutzlasten[A]
+  : never;
+export type Nutzlast<A extends AuftragsArt> = z.output<NutzlastSchema<A>>;
+export type NutzlastEingabe<A extends AuftragsArt> = z.input<NutzlastSchema<A>>;
 
 export type AuftragsStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
 

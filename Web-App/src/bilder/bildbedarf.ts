@@ -1,4 +1,5 @@
 import { meldeFehler } from '../infra/fehler';
+import { ereignis } from '../infra/ereignis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import type { BilderKontext } from './kontext';
 
@@ -16,15 +17,16 @@ export function anfragenJeMinute(): number {
   return STAPEL * (60_000 / TAKT_MS);
 }
 
-type BildHorcher = (setNummer: string, quelle: string | null) => Promise<void>;
-const bildHorcher = (k: BilderKontext) => k.faecher.fach('setBildGeladen', () => new Set<BildHorcher>());
+const setBildGeladen = (k: BilderKontext) =>
+  k.faecher.fach('setBildGeladen', () => ereignis<[setNummer: string, quelle: string | null]>('setBildGeladen'));
 /** Den Eintrag beim Set macht der Katalog (höher); er horcht hier, statt dass die Bilder ihn rufen. */
-export function beiSetBildGeladen(k: BilderKontext, fn: BildHorcher): void {
-  bildHorcher(k).add(fn);
+export function beiSetBildGeladen(k: BilderKontext, fn: (setNummer: string, quelle: string | null) => unknown) {
+  return setBildGeladen(k).horche(fn);
 }
 
-export async function meldeSetBildGeladen(k: BilderKontext, setNummer: string, quelle: string | null = null) {
-  await Promise.all([...bildHorcher(k)].map(fn => fn(setNummer, quelle)));
+/** @returns false, wenn ein Horcher scheiterte (er ist protokolliert) */
+export function meldeSetBildGeladen(k: BilderKontext, setNummer: string, quelle: string | null = null) {
+  return setBildGeladen(k).melde(setNummer, quelle);
 }
 
 /** Steht er schon offen, bleibt es bei einem. */

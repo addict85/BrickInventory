@@ -1,9 +1,10 @@
 /** Die eine Stelle, an der verdrahtet wird: Bereiche und die Klienten
  * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
-import { erzeugeAuftraege } from '../src/auftraege';
+import path from 'node:path';
+import { erzeugeAuftraege, type Anmeldung } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
-import { erzeugeSets } from '../src/sets';
+import { erzeugeSets, setsAuftragsarten } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
 import { erzeugeMail } from '../src/mail';
 import { erzeugeIdempotenz } from '../src/idempotenz';
@@ -12,12 +13,12 @@ import { erzeugeTeile } from '../src/teile';
 import { erzeugeFiguren } from '../src/figuren';
 import { erzeugeMerkliste } from '../src/merkliste';
 import { erzeugeGutscheine } from '../src/gutscheine';
-import { erzeugeSammlung } from '../src/sammlung';
-import { erzeugeVerwaltung } from '../src/verwaltung';
-import { erzeugeKatalog } from '../src/katalog';
-import { type Bildwerk, erzeugeBilder } from '../src/bilder';
-import { erzeugeFinanzen } from '../src/finanzen';
-import { erzeugeKonto } from '../src/konto';
+import { erzeugeSammlung, sammlungAuftragsarten } from '../src/sammlung';
+import { erzeugeVerwaltung, verwaltungAuftragsarten } from '../src/verwaltung';
+import { erzeugeKatalog, katalogAuftragsarten } from '../src/katalog';
+import { type Bildwerk, bilderAuftragsarten, erzeugeBilder } from '../src/bilder';
+import { erzeugeFinanzen, finanzenAuftragsarten } from '../src/finanzen';
+import { erzeugeKonto, kontoAuftragsarten } from '../src/konto';
 import { erzeugeProfil } from '../src/profil';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
@@ -43,11 +44,30 @@ export interface Bauteile {
 }
 type Gesetzt = Bauteile & { konfig: Readonly<Konfig>; uhr: Uhr };
 
+// Der Katalog-Import läuft in einem eigenen Prozess; sein Einstieg liegt im Bau unter jobs/.
+const IMPORT_PROZESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
+
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. Wer einen höheren braucht,
  * horcht auf ein Ereignis des tieferen (etwa beiSetBildGeladen); späte Bindung gibt es nicht. */
 export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
-  return baueBereiche(db, { ...bauteile, konfig: bauteile.konfig ?? konfig(), uhr: bauteile.uhr ?? systemUhr });
+  const d = baueBereiche(db, { ...bauteile, konfig: bauteile.konfig ?? konfig(), uhr: bauteile.uhr ?? systemUhr });
+  meldeAuftragsartenAn(d);
+  return d;
+}
+
+/** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
+function meldeAuftragsartenAn(d: Dienste): void {
+  const arten: Anmeldung[] = [
+    ...bilderAuftragsarten(d.bilder),
+    ...kontoAuftragsarten(d.konto),
+    ...katalogAuftragsarten(d.katalog, IMPORT_PROZESS),
+    ...finanzenAuftragsarten(d.finanzen),
+    ...setsAuftragsarten(d.sets, d.katalog),
+    ...sammlungAuftragsarten(d.sammlung, d.sets),
+    ...verwaltungAuftragsarten(d.verwaltung),
+  ];
+  for (const a of arten) d.auftraege.meldeArtAn(a);
 }
 
 type Zeige = ReturnType<typeof einblickIn>;

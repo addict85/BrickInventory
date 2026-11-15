@@ -36,7 +36,6 @@ export const zugang = (db: Db) => ({
     getrennteKetten: mit(db)(repository.getrennteKetten),
     besitzerDerErfassung: mit(db)(repository.besitzerDerErfassung),
     benutzerNamen: mit(db)(repository.benutzerNamen),
-    sendeSignal: mit(db)(repository.sendeSignal),
   },
 });
 export type HaushaltKontext = Kontext<HaushaltAbhaengigkeiten, ReturnType<typeof zugang>>;

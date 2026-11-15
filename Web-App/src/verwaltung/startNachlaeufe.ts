@@ -8,6 +8,10 @@ async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 
+/** Die Schritte des Nachlaufs nach dem Start; die Nutzlast der Art 'nachlauf' kennt genau diese. */
+export const NACHLAUF_SCHRITTE = ['geheimnisse', 'vorschauen', 'katalog', 'anleitungen', 'set_bilder', 'kaufpreise'] as const;
+type Nachlauf = (typeof NACHLAUF_SCHRITTE)[number];
+
 /** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */
 const NACHLAEUFE = {
   geheimnisse: { nachSekunden: 0 },
@@ -17,7 +21,6 @@ const NACHLAEUFE = {
   set_bilder: { nachSekunden: 45 },
   kaufpreise: { nachSekunden: 45 },
 } as const satisfies Record<Nachlauf, { nachSekunden: number }>;
-type Nachlauf = Nutzlast<'nachlauf'>['schritt'];
 
 function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> {
   return {

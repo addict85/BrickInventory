@@ -5,3 +5,4 @@ export type { Nachlauf } from './startNachlaeufe';
 export { hatGlobaleWerte } from './einstellungenSpeichern';
 export { erzeugeVerwaltung } from './bereich';
 export type { VerwaltungDienste, VerwaltungKontext } from './bereich';
+export { verwaltungAuftragsarten } from './auftragsarten';

@@ -19,6 +19,7 @@ export function erzeugeSammlung(a: SammlungAbhaengigkeiten, einblick?: Einblick<
       loescheFigur: mit(k)(loeschenDienst.loescheFigur),
       loescheAllesEigene: mit(k)(loeschenDienst.loescheAllesEigene),
       fuehreImportAus: mit(k)(importAuftraege.fuehreImportAus),
+      importiere: mit(k)(importAuftraege.importiere),
     }),
     einblick,
   );

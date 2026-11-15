@@ -296,7 +296,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0046-haushalt-mehrere-eltern.sql'), 'utf8');
     await db.run('DELETE FROM household_former_links');
     await db.exec(sql);
-    household.leereHaushaltCache();
+    household.meldeHaushaltsaenderung();
 
     const st = await household.haushaltsStand(U.eltern);
     assert.deepEqual(

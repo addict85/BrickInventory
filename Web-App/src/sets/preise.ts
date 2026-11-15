@@ -68,11 +68,10 @@ export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, c
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {
-  return sk.auftraege.importiereAlsAuftrag<CsvImportBericht>(
-    uid,
-    'alarme_csv',
-    { waehrung: await waehrungVon(sk, uid), text },
-    {},
+  return sk.auftraege.warteAufAuftrag<CsvImportBericht, 'csv_import'>(
+    'csv_import',
+    { user_id: uid, quelle: 'alarme_csv', eingabe: { waehrung: await waehrungVon(sk, uid), text } },
+    { userId: uid },
   );
 }
 

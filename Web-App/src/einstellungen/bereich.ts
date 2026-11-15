@@ -34,6 +34,7 @@ export function erzeugeEinstellungen(
       zustandFuerPreis: mit(k)(settings.zustandFuerPreis),
       beiGlobalerAenderung: mit(k)(settings.beiGlobalerAenderung),
       meldeGlobaleAenderung: mit(k)(settings.meldeGlobaleAenderung),
+      horcheAufAenderungen: mit(k)(settings.horcheAufAenderungen),
       // Überladen: mit() sähe nur die letzte Signatur.
       nutzerWert: (<T>(uid: number, key: string, fallback?: T) => settings.getSetting(k, uid, key, fallback)) as {
         (uid: number, key: string): Promise<string | null | undefined>;

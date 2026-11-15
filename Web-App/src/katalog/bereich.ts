@@ -21,6 +21,8 @@ import * as teileAnreicherungDienst from './teileAnreicherung';
 import { ConcurrentRateLimiter } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as pdfAuftraege from './pdf/pdfAuftraege';
+import * as anleitungsAuftrag from './anleitungsAuftrag';
 import * as setStamm from './setStamm';
 import * as widerrufsliste from './widerrufsliste';
 import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
@@ -66,6 +68,8 @@ function katalogDienste(k: KatalogKontext) {
     cacheStand: mit(k)(bricklinkPreise.getCacheStats),
     preisfuehrer: mit(k)(bricklinkPreise.getPriceGuide),
     bricksetNachlauf: mit(k)(bricksetNachlauf.bricksetNachlauf),
+    bricksetListe: mit(k)(bricksetNachlauf.bricksetListe),
+    anleitungEinreihen: mit(k)(anleitungsAuftrag.anleitungEinreihen),
     csvAbgleich: mit(k)(csvAbgleich.csvAbgleich),
     katalogMeta: mit(k)(dienst.katalogMeta),
     jahrVerteilung: mit(k)(dienst.jahrVerteilung),
@@ -105,6 +109,13 @@ function katalogDienste(k: KatalogKontext) {
     bildNachlauf: mit(k)(bildNachlauf.bildNachlauf),
     erzeugePdf: mit(k)(pdfErzeugung.erzeugePdf),
     pdfAufgegeben: pdfErzeugung.pdfAufgegeben,
+    /** PDF-Aufträge eines Kontos: anstossen, verfolgen, verwerfen; das Aufräumen über alle. */
+    pdf: {
+      starten: mit(k)(pdfAuftraege.pdfAuftragStarten),
+      lies: mit(k)(pdfAuftraege.liesAuftrag),
+      loesche: mit(k)(pdfAuftraege.loescheAuftrag),
+      raeumeAuf: mit(k)(pdfAuftraege.cleanOldPdfJobs),
+    },
     katalogStand: mit(k.db, setStamm.katalogStand),
     merkeKatalogPlatzhalter: mit(k.db, setStamm.merkeKatalogPlatzhalter),
     merkeSetKatalog: mit(k.db, setStamm.merkeSetKatalog),

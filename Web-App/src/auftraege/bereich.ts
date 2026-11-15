@@ -1,44 +1,35 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import { versuche } from '../infra/ergebnis';
-import * as anleitungsAuftrag from './anleitungsAuftrag';
-import * as bricksetAuftrag from './bricksetAuftrag';
+import { Arten, type Anmeldung } from './arten';
+import type { AuftragsArt } from './auftraege';
 import * as dienst from './dienst';
+import * as eigene from './eigene';
 import * as hintergrund from './hintergrund';
 import * as importAlsAuftrag from './importAlsAuftrag';
 import * as importAuftrag from './importAuftrag';
-import * as jobMonitor from './jobMonitor';
-import * as pdfDienste from './pdfAuftraege';
 import * as prozess from './prozess';
 import * as startZustand from './startZustand';
+import * as wiedervorlage from './wiedervorlage';
 import * as zeitplan from './zeitplan';
 import { zugang, type AuftraegeAbhaengigkeiten, type AuftraegeKontext } from './kontext';
 
 export type { AuftraegeAbhaengigkeiten, AuftraegeKontext } from './kontext';
 
-export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick?: Einblick<AuftraegeKontext>) {
-  const d = auftraegeDienste(a, einblick);
-  // Der Preis-Cache gilt je Währung: Ein Wechsel verlangt einen vollen Preislauf.
-  a.einstellungen.beiWaehrungswechsel(
-    () => void versuche('einstellungen:preis-job-anstossen', d.ziehePlanVor('preise')),
-  );
-  return d;
-}
-
-function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick?: Einblick<AuftraegeKontext>) {
+/** Die Arten meldet die Verdrahtung an (meldeArtAn); bis dahin nimmt die Warteschlange keine. */
+export function erzeugeAuftraege(
+  a: Omit<AuftraegeAbhaengigkeiten, 'faecher' | 'arten'>,
+  einblick?: Einblick<AuftraegeKontext>,
+) {
+  const arten = new Arten();
   return baueBereich(
-    { ...a, faecher: new Faecher() },
+    { ...a, faecher: new Faecher(), arten },
     zugang,
     (k: AuftraegeKontext) => ({
-      bricksetVormerken: mit(k)(bricksetAuftrag.bricksetVormerken),
-      bricksetAusWiedervorlage: mit(k)(bricksetAuftrag.bricksetAusWiedervorlage),
-      bricksetTermineVorziehen: mit(k)(bricksetAuftrag.bricksetTermineVorziehen),
-      bricksetListe: mit(k)(bricksetAuftrag.bricksetListe),
-      bricksetZahlen: mit(k)(bricksetAuftrag.bricksetZahlen),
-      bricksetJetzt: mit(k)(bricksetAuftrag.bricksetJetzt),
-      bricksetFaelligAb: mit(k)(bricksetAuftrag.bricksetFaelligAb),
-      merkePreiseVor: mit(k)(dienst.merkePreiseVor),
+      meldeArtAn: (an: Anmeldung) => arten.melde(an),
+      angemeldeteArten: () => arten.alle(),
+      pruefeNutzlast: <A extends AuftragsArt>(art: A, roh: unknown) => arten.pruefe(art, roh),
+      ergaenzeListenAuftrag: mit(k)(dienst.ergaenzeListenAuftrag),
       setzeFortschritt: mit(k)(dienst.setzeFortschritt),
       erledigt: mit(k)(dienst.erledigt),
       fehlgeschlagen: mit(k)(dienst.fehlgeschlagen),
@@ -58,7 +49,7 @@ function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick
       auftragWiederholen: mit(k)(hintergrund.auftragWiederholen),
       setzeErgebnis: mit(k)(importAlsAuftrag.setzeErgebnis),
       setzeFachfehler: mit(k)(importAlsAuftrag.setzeFachfehler),
-      importiereAlsAuftrag: mit(k)(importAlsAuftrag.importAlsAuftrag),
+      warteAufAuftrag: mit(k)(importAlsAuftrag.warteAufAuftrag),
       meldeJobStand: mit(k)(importAuftrag.emitJobStatus),
       jobGet: mit(k)(importAuftrag.jobGet),
       jobSet: mit(k)(importAuftrag.jobSet),
@@ -69,15 +60,19 @@ function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick
       meldeAuftrag: mit(k)(importAuftrag.meldeAuftrag),
       beendeAuftrag: mit(k)(importAuftrag.beendeAuftrag),
       istAbgebrochen: mit(k)(importAuftrag.istAbgebrochen),
-      kacheln: mit(k)(jobMonitor.kacheln),
-      imgDlAdd: mit(k)(jobMonitor.imgDlAdd),
-      imgDlPending: mit(k)(jobMonitor.imgDlPending),
-      imgDlReset: mit(k)(jobMonitor.imgDlReset),
-      kachel: mit(k)(jobMonitor.kachel),
-      liesAuftrag: mit(k)(pdfDienste.liesAuftrag),
-      loescheAuftrag: mit(k)(pdfDienste.loescheAuftrag),
-      pdfAuftragStarten: mit(k)(pdfDienste.pdfAuftragStarten),
-      raeumePdfAuftraegeAuf: mit(k)(pdfDienste.cleanOldPdfJobs),
+      /** Aufträge, die ein Konto über ihren Schlüssel verfolgt. */
+      eigenerAuftrag: mit(k)(eigene.eigenerAuftrag),
+      loescheEigenen: mit(k)(eigene.loescheEigenen),
+      zaehleLaufende: mit(k)(eigene.zaehleLaufende),
+      loescheBeendete: mit(k)(eigene.loescheBeendete),
+      wiedervorlage: {
+        merkeVor: mit(k)(wiedervorlage.merkeVor),
+        vergiss: mit(k)(wiedervorlage.vergiss),
+        jetzt: mit(k)(wiedervorlage.jetzt),
+        vorziehen: mit(k)(wiedervorlage.vorziehen),
+        wartende: mit(k)(wiedervorlage.wartende),
+        zahlen: mit(k)(wiedervorlage.zahlen),
+      },
       meldeStartZustand: mit(k)(startZustand.meldeStartZustand),
       aktuellerStartZustand: mit(k)(startZustand.aktuellerStartZustand),
       zeitplanGeaendert: mit(k)(zeitplan.zeitplanGeaendert),
@@ -85,7 +80,6 @@ function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick
       planeNaechsten: mit(k)(zeitplan.planeNaechsten),
       planeAlle: mit(k)(zeitplan.planeAlle),
       taeglicheUhrzeit: mit(k)(zeitplan.taeglicheUhrzeit),
-      anleitungEinreihen: mit(k)(anleitungsAuftrag.anleitungEinreihen),
       meldeProzessAn: mit(k)(prozess.meldeProzessAn),
       meldeProzessAb: mit(k)(prozess.meldeProzessAb),
       // Pacht, Belegen und Zurückgeben für den Worker (jobs/auftragsWorker.ts).
@@ -101,6 +95,9 @@ function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick
       liesZustand: k.laufzustand.liesZustand,
       setzeZustand: k.laufzustand.setzeZustand,
       loescheZustand: k.laufzustand.loescheZustand,
+      zaehleZustand: k.laufzustand.zaehleZustand,
+      // Je Art der laufende, sonst der zuletzt beendete Auftrag: die Kacheln der Verwaltung.
+      letzteJeArt: k.auftraege.letzteJeArt,
     }),
     einblick,
   );

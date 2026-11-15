@@ -37,7 +37,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
-    hh.leereHaushaltCache();
+    hh.meldeHaushaltsaenderung();
     await db.pool.end().catch(() => {});
   });
 
@@ -67,7 +67,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     // Das Blickfeld ist gemerkt (haushalt-gedaechtnis-db.test.js); über einen
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
-    hh.leereHaushaltCache();
+    hh.meldeHaushaltsaenderung();
     assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Unterkonto ist gemerkt');
     assert.equal(await hh.darfSchreibenFuer(ids[0], ids[1]), true);
     // Von aussen gelöst, ohne dass dieser Prozess davon hört.

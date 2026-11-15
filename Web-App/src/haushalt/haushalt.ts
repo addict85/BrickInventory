@@ -2,6 +2,7 @@
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
+import { prozessEreignis } from '../infra/ereignis';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import type { HaushaltKontext } from './kontext';
 import * as repo from './repository';
@@ -26,41 +27,45 @@ import {
   type Sicht,
 } from './regeln';
 
-/** Je Satz Dienste: Der Stand zählt die Änderungen, die Abhängigen (Bilder) leeren mit. */
-const aenderungen = (k: HaushaltKontext) =>
-  k.faecher.fach('haushaltStand', () => ({ stand: 0, abhaengige: new Set<() => void>() }));
+/** Je Satz Dienste: Der Stand zählt die Änderungen, die Abhängigen (Bilder) horchen mit. */
+const stand = (k: HaushaltKontext) => k.faecher.fach('haushaltStand', () => ({ wert: 0 }));
+const haushaltsaenderung = (k: HaushaltKontext) =>
+  k.faecher.fach('haushaltsaenderung', () => {
+    const e = prozessEreignis('haushaltsaenderung', HAUSHALT_KANAL);
+    e.horche(() => {
+      stand(k).wert++;
+    });
+    return e;
+  });
 
 /** Rückruf statt Import: Bereiche, die den Haushalt brauchen, bildeten sonst einen Zyklus. */
-export function beiHaushaltsaenderung(k: HaushaltKontext, leere: () => void): void {
-  aenderungen(k).abhaengige.add(leere);
+export function beiHaushaltsaenderung(k: HaushaltKontext, leere: () => void): () => void {
+  return haushaltsaenderung(k).horche(leere);
 }
 
-export function leereHaushaltCache(k: HaushaltKontext): void {
-  const a = aenderungen(k);
-  a.stand++;
-  for (const leere of a.abhaengige) leere();
+/** Web und Jobs halten je eigene Gedächtnisse; was der eine ändert, leert der andere hierüber. */
+export function horcheAufAenderungen(k: HaushaltKontext): () => void {
+  return haushaltsaenderung(k).verbinde(k.db.benachrichtigung);
 }
 
 /** Je Zugang (zwei Datenbanken, gleiche Konto-IDs); in einer Transaktion keins, sonst bliebe nach ROLLBACK ein nie gültiger Stand. */
 function gedaechtnis(k: HaushaltKontext): Zwischenspeicher<number, Household> {
   if (k.db.inTransaktion()) return new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
-  const stand = aenderungen(k).stand;
+  const jetzt = stand(k).wert;
   const g = k.faecher.fach('haushalt', () => ({
-    stand,
+    stand: jetzt,
     speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS),
   }));
-  if (g.stand !== stand) {
-    g.stand = stand;
+  if (g.stand !== jetzt) {
+    g.stand = jetzt;
     g.speicher = new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
   }
   return g.speicher;
 }
 
-/** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist
- * die Zusicherung. */
+/** Hier sofort, anderswo nach dem COMMIT; ein verlorenes Signal heilt die Frist des Gedächtnisses. */
 export function meldeHaushaltsaenderung(k: HaushaltKontext): void {
-  leereHaushaltCache(k);
-  repo.sendeSignal(k.db, HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
+  void haushaltsaenderung(k).melde(k.db.benachrichtigung);
 }
 
 /** Nur die direkten Unterkonten: Jedes Konto im Blickfeld hat selbst einer

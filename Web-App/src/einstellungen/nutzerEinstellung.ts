@@ -1,14 +1,16 @@
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { fachfehler } from '../infra/fehlerTexte';
 import { imSystemkontext } from '../infra/kontoKontext';
+import { ereignis } from '../infra/ereignis';
 import { nutzerWertGueltig, schreibeNutzerEinstellung } from './settings';
 import * as repo from './repository/waehrung';
 import type { EinstellungenKontext } from './kontext';
 
-const waehrungsHorcher = (k: EinstellungenKontext) => k.faecher.fach('waehrungswechsel', () => new Set<() => void>());
-/** Die Aufträge liegen höher und horchen selbst (erzeugeAuftraege): Einstellungen kennen sie nicht. */
-export function beiWaehrungswechsel(k: EinstellungenKontext, fn: () => void): void {
-  waehrungsHorcher(k).add(fn);
+const waehrungswechsel = (k: EinstellungenKontext) =>
+  k.faecher.fach('waehrungswechsel', () => ereignis('waehrungswechsel'));
+/** Die Finanzen liegen höher und horchen selbst (erzeugeFinanzen): Einstellungen kennen sie nicht. */
+export function beiWaehrungswechsel(k: EinstellungenKontext, fn: () => unknown): () => void {
+  return waehrungswechsel(k).horche(fn);
 }
 
 /** Die eine Schreibstelle: Ein Währungswechsel muss den Preis-Job anstossen,
@@ -56,7 +58,7 @@ async function setzeHaushaltswaehrung(k: EinstellungenKontext, userId: number, w
     console.log(
       `[settings] Währung für Benutzer ${userId} und seinen Haushalt geändert (${vorher ?? '—'} → ${waehrung}) — Preis-Job wird angestossen`,
     );
-    for (const fn of waehrungsHorcher(k)) setImmediate(fn);
+    setImmediate(() => void waehrungswechsel(k).melde());
   }
 }
 

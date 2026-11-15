@@ -214,8 +214,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
     if (fs.existsSync(datei)) {
       // kein zweiter Download
       await nurVorschau(k, r.set_number, vorschau, st);
-      if (!(await versuche('bild-job:setBildLokal', meldeSetBildGeladen(k, r.set_number, r.url))).ok)
-        erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
+      if (!(await meldeSetBildGeladen(k, r.set_number, r.url))) erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
       continue;
     }
 
@@ -258,8 +257,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
     // Originaldatei.
     await vorschauErzeugen(k, lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
-    if (!(await versuche('bild-job:setBildLokal', meldeSetBildGeladen(k, r.set_number, r.url))).ok)
-      erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
+    if (!(await meldeSetBildGeladen(k, r.set_number, r.url))) erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
     erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.

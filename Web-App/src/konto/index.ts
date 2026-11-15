@@ -21,3 +21,4 @@ export { otpauthAdresse } from './zweiterFaktor';
 export type { VerwalterAktion } from './verwalterProtokoll';
 export { erzeugeKonto } from './bereich';
 export type { KontoDienste, KontoKontext } from './bereich';
+export { kontoAuftragsarten } from './auftragsarten';

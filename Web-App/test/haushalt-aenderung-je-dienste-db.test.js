@@ -45,7 +45,7 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
     const gerufen = [];
     a.haushalt.beiHaushaltsaenderung(() => gerufen.push('a'));
     b.haushalt.beiHaushaltsaenderung(() => gerufen.push('b'));
-    a.haushalt.leereHaushaltCache();
+    a.haushalt.meldeHaushaltsaenderung();
     assert.deepEqual(gerufen, ['a']);
   });
 
