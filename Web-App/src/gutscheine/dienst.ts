@@ -264,8 +264,8 @@ export async function guthabenAbfragen(k: GutscheineKontext, uid: number, id: nu
   const alt = await vorhanden(k, uid, id);
   if (!alt.pin) fachfehler('ungueltig', 'guthaben_pin_fehlt');
   const land = String(
-    (await k.einstellungen.getGlobalSetting('gutschein_land', '')) ||
-      landFuerWaehrung(await k.einstellungen.getSetting(uid, 'currency', 'EUR')),
+    (await k.einstellungen.globalerWert('gutschein_land', '')) ||
+      landFuerWaehrung(await k.einstellungen.nutzerWert(uid, 'currency', 'EUR')),
   );
   if (!landErlaubt(land)) fachfehler('ungueltig', 'guthaben_land_ungueltig');
   const ergebnis = await frageGuthabenAb(k, uid, alt.number, alt.pin, { locale: land });

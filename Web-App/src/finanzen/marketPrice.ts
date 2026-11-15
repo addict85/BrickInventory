@@ -21,7 +21,7 @@ export async function getCurrentMarketPrice(
   userId: number,
   condition: string | null = null,
 ) {
-  const currency = String(await k.einstellungen.getSetting(userId, 'currency', 'EUR'));
+  const currency = String(await k.einstellungen.nutzerWert(userId, 'currency', 'EUR'));
   // Parameter → Nutzer → global → 'N'.
   const effectiveCond = condition || (await k.einstellungen.nutzerStandardZustand(userId));
   // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
@@ -65,8 +65,8 @@ export async function marktpreiseAusCacheFuerFiguren(
   if (!figuren.length) return treffer;
 
   const [currency, ttlRoh] = await Promise.all([
-    kx.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
-    kx.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
+    kx.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
+    kx.einstellungen.globalerWert('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh), 10));
 
@@ -119,8 +119,8 @@ export async function marktpreiseAusCacheFuerTeile(
   if (!teile.length) return treffer;
 
   const [currency, ttlRoh] = await Promise.all([
-    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
-    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalerWert('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh), 10));
 
@@ -176,8 +176,8 @@ export async function marktpreisMitHerkunft(
   userId: number,
   condition: string | null = null,
 ) {
-  const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
-  const ttlHours = (await k.einstellungen.getGlobalSetting('price_cache_ttl', '24')) || '24';
+  const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
+  const ttlHours = (await k.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
   const effCond = condition || (await resolvePartCondition(k, userId, partNumber, colorId));
   const priceData = await preisOderKeiner(
     fetchPartPrice(k, partNumber, colorId, effCond, currency, ttlHours, null, userId),
@@ -219,11 +219,11 @@ export async function schaetzeFigurenpreis(
   condition = DEFAULT_PRICE_CONDITION,
 ): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
-    const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
+    const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
     const cond0 = zustand(condition, DEFAULT_PRICE_CONDITION);
 
     // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
-    const ttl = Math.max(1, parseInt(await k.einstellungen.getGlobalSetting('price_cache_ttl', '24'), 10));
+    const ttl = Math.max(1, parseInt(await k.einstellungen.globalerWert('price_cache_ttl', '24'), 10));
     const cached = await k.marktpreise.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl);
     const zwischengespeichert = Number(cached?.marktpreis) || 0;
     if (zwischengespeichert > 0)
@@ -232,7 +232,7 @@ export async function schaetzeFigurenpreis(
         abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null,
       };
 
-    const parts = await k.katalog.getMinifigParts(figNumber);
+    const parts = await k.katalog.figurTeile(figNumber);
     if (!parts.length) {
       console.log(`[minifig-price-estimate] ${figNumber}: keine Teile-Zusammensetzung von Rebrickable erhalten`);
       return null;
@@ -295,7 +295,7 @@ export async function figMarktpreisMitHerkunft(
   blFigNumber?: string | null,
   condition: string | null = null,
 ) {
-  const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
+  const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
   // Eine „Gebraucht"-Erfassung genügt für 'U'; ohne Erfassung der Standard.
   let effCond = condition;
   if (!effCond) {

@@ -57,11 +57,11 @@ export async function cacheStatistik(k: VerwaltungKontext) {
   const leer = { count: 0, limit: 0, remaining: 0 };
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    ab.oder('cache', k.katalog.getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
+    ab.oder('cache', k.katalog.cacheStand(), { prices: 0, subsets: 0, catalog: 0 }),
     ab.oder('veraltete_preise', k.verwaltung.veraltetePreise(), 0),
-    ab.oder('kontingent_bricklink', k.fremdquellen.getRateLimitStatus('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', k.fremdquellen.getRateLimitStatus('rebrickable'), leer),
-    ab.oder('kontingent_brickset', k.fremdquellen.getRateLimitStatus('brickset'), leer),
+    ab.oder('kontingent_bricklink', k.fremdquellen.kontingentStand('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.fremdquellen.kontingentStand('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.fremdquellen.kontingentStand('brickset'), leer),
   ]);
   return {
     ...stats,
@@ -75,8 +75,8 @@ export async function cacheStatistik(k: VerwaltungKontext) {
 export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
   await k.finanzen.leerePreisCache();
   if (alle) {
-    await k.katalog.clearSubsetsCache();
-    await k.katalog.clearCatalogCache();
+    await k.katalog.leereTeilmengenCache();
+    await k.katalog.leereKatalogCache();
   }
 }
 
@@ -84,7 +84,7 @@ export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
 export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('verwaltung:getRateLimitStatus', k.fremdquellen.getRateLimitStatus('brickset'));
+  const rl = await versuche('verwaltung:getRateLimitStatus', k.fremdquellen.kontingentStand('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
@@ -134,7 +134,7 @@ export async function preisJobStand(k: VerwaltungKontext) {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { job, rate_limit: await k.fremdquellen.getRateLimitStatus('bricklink') };
+  return { job, rate_limit: await k.fremdquellen.kontingentStand('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
@@ -163,12 +163,12 @@ export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, tim
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
     if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
-    await k.einstellungen.setGlobalSetting(
+    await k.einstellungen.setzeGlobalenWert(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
     );
   } else if (name === 'priceJob') {
-    await k.einstellungen.setGlobalSetting(
+    await k.einstellungen.setzeGlobalenWert(
       'price_job_interval_minutes',
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );

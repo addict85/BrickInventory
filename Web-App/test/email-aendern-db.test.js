@@ -46,16 +46,16 @@ const gesendet = [];
 const bestaetigt = [];
 const versuche = [];
 require('./helpers/sources').ersetzeDienste('mail', {
-  sendEmailGeaendertMail: async (an, name, neu) => {
+  mailEmailGeaendert: async (an, name, neu) => {
     gesendet.push({ an, name, neu });
     return { success: true };
   },
-  sendVerificationMail: async (an, _token, basis) => {
+  mailBestaetigung: async (an, _token, basis) => {
     bestaetigt.push(basis);
     versuche.push({ an, art: 'link' });
     return { success: true };
   },
-  sendRegistrierungsVersuchMail: async (an, _sprache, anlass) => {
+  mailRegistrierungsVersuch: async (an, _sprache, anlass) => {
     versuche.push({ an, art: anlass });
     return { success: true };
   },

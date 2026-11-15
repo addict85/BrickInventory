@@ -59,6 +59,6 @@ test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, as
     ),
   );
   await t.test('der Preislauf sieht den Fehler', () =>
-    assert.rejects(p.pruefeSet(SN, { baueAlarmMail: () => ({}), sendMail: async () => ({}) }), /Tabelle gestört/),
+    assert.rejects(p.pruefeSet(SN, { baueAlarmMail: () => ({}), sendeMail: async () => ({}) }), /Tabelle gestört/),
   );
 });

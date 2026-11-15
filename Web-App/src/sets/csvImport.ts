@@ -121,14 +121,14 @@ export async function setCsvImportStarten(sk: SetsKontext, userId: number, text:
     );
     throw e;
   }
-  await sk.auftraege.emitJobStatus(userId);
+  await sk.auftraege.meldeJobStand(userId);
   return { total: rows.length, uebersprungen, vorhanden, gestartet: true };
 }
 
 export async function setCsvImportAbbrechen(k: SetsKontext, userId: number) {
   // Ohne Fang: Schlägt das Vermerken fehl, liefe der Import weiter, während die Antwort „abgebrochen“ sagte.
   await k.auftraege.jobUpdate(userId, { status: 'cancelled' });
-  await k.auftraege.emitJobStatus(userId);
+  await k.auftraege.meldeJobStand(userId);
 }
 
 type Kopf = { headers?: Record<string, unknown> };

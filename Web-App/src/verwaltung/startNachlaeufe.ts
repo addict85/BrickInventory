@@ -23,7 +23,7 @@ function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> 
   return {
     geheimnisse: () => geheimnisseVerschluesseln(k),
     vorschauen: () => k.katalog.vorschaubilderNachtragen(),
-    katalog: () => k.katalog.syncAllMissing(),
+    katalog: () => k.katalog.gleicheFehlendeAb(),
     anleitungen: () => k.katalog.anleitungenNachtragen(),
     set_bilder: () => k.katalog.setBilderNachladen(),
     kaufpreise: () => k.bestand.run(),

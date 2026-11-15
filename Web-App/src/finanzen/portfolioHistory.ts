@@ -38,7 +38,7 @@ export async function getPortfolioHistory(
   idsWahl: Sicht | number[],
   period: string,
   db: unknown = k.db,
-  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.getSetting,
+  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.nutzerWert,
 ) {
   const ids = await k.haushalt.blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die

@@ -9,7 +9,7 @@
  *      übergebenen Zugang“ (keine Abfrage auf rb_sets gezählt)
  *   B  in teilelisteMitNacharbeit() wieder `nacharbeit().setTeileAnreichern(sn)` →
  *      rot: „die Anreicherung kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
- *   C  (15.11.2026) dort `sn => sk.katalog.enrichSetParts(sn)` durch `async () => {}`
+ *   C  (15.11.2026) dort `sn => sk.katalog.reichereSetTeileAn(sn)` durch `async () => {}`
  *      ersetzt → rot: „die Anreicherung kommt aus dem Kontext“ (nichts angestossen)
  */
 const test = require('node:test');
@@ -42,8 +42,8 @@ function zaehlenderZugang(echt, sql) {
 
 /** Ein Katalog, der mitschreibt, welche Anreicherung angestossen wurde. */
 const aufzeichnend = notiz => ({
-  enrichSetParts: async sn => {
-    notiz.push(['enrichSetParts', sn]);
+  reichereSetTeileAn: async sn => {
+    notiz.push(['reichereSetTeileAn', sn]);
   },
 });
 
@@ -87,7 +87,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     const r = await sets.teilelisteMitNacharbeit(SN);
     assert.equal(r.parts.length, 1);
     assert.ok(sql.some(s => /FROM rb_inventory_parts/.test(s)));
-    assert.deepEqual(notiz, [['enrichSetParts', SN]]);
+    assert.deepEqual(notiz, [['reichereSetTeileAn', SN]]);
     assert.deepEqual(prozessNotiz, []);
   });
 });

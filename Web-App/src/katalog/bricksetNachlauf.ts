@@ -10,8 +10,8 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
   const sn = n.set_number;
   try {
     const [limit, status] = await Promise.all([
-      k.fremdquellen.getLimitForApi('brickset'),
-      k.fremdquellen.getRateLimitStatus('brickset'),
+      k.fremdquellen.kontingentGrenze('brickset'),
+      k.fremdquellen.kontingentStand('brickset'),
     ]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
       const bis = await k.auftraege.bricksetFaelligAb(false);

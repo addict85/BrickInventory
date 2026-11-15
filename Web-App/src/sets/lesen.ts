@@ -123,7 +123,7 @@ export async function setLesen(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, s
   const agg = await zustandsAggregat(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
-    sk.katalog.resolveOne(setNumber).catch((e: unknown) => {
+    sk.katalog.blLinkAufloesen(setNumber).catch((e: unknown) => {
       meldeFehler('setdetail:bricklink', e);
       return null;
     }),

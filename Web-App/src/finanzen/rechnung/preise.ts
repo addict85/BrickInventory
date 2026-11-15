@@ -219,7 +219,7 @@ export async function fetchPrice(
     name: `Price ${setNumber}`,
     lies: c =>
       pre?.cache ? pre.cache.get(`${setNumber}|${c}`) || null : preisAusCache(k, setNumber, c, currency, ttl),
-    frage: c => k.katalog.getPriceGuide(setNumber, c, guideType, currency),
+    frage: c => k.katalog.preisfuehrer(setNumber, c, guideType, currency),
     merke: async (c, g) => {
       const p = await speicherePreis(k, setNumber, c, currency, g);
       console.log(`  Price ${setNumber} cond=${c}: avg=${p.avg} qty_avg=${p.qavg}`);

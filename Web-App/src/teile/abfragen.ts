@@ -60,10 +60,10 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
   }
 
   // Rückfall über getAllSetParts(), nur mit Rebrickable-Schlüssel.
-  const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
+  const rbKey = await k.einstellungen.globalerWert('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
-      const items = await ab.oder('rebrickable_teile', k.katalog.getAllSetParts(sn), []);
+      const items = await ab.oder('rebrickable_teile', k.katalog.alleSetTeile(sn), []);
       if (!items?.length) continue;
       const rbParts = items
         .filter((it: RbSetTeil) => !it.is_spare)

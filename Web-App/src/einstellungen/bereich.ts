@@ -17,7 +17,7 @@ export function erzeugeEinstellungen(
     (k: EinstellungenKontext) => ({
       nutzerStandardZustand: mit(k)(settings.nutzerStandardZustand),
       globalerStandardZustand: mit(k)(settings.globalerStandardZustand),
-      setGlobalSetting: mit(k)(settings.setGlobalSetting),
+      setzeGlobalenWert: mit(k)(settings.setGlobalSetting),
       verschluesseleGlobaleAltwerte: mit(k)(settings.verschluesseleGlobaleAltwerte),
       globaleWerteLoeschen: mit(k)(settings.globaleWerteLoeschen),
       nutzerEinstellungSetzen: mit(k)(nutzerEinstellung.nutzerEinstellungSetzen),
@@ -35,11 +35,11 @@ export function erzeugeEinstellungen(
       beiGlobalerAenderung: mit(k)(settings.beiGlobalerAenderung),
       meldeGlobaleAenderung: mit(k)(settings.meldeGlobaleAenderung),
       // Überladen: mit() sähe nur die letzte Signatur.
-      getSetting: (<T>(uid: number, key: string, fallback?: T) => settings.getSetting(k, uid, key, fallback)) as {
+      nutzerWert: (<T>(uid: number, key: string, fallback?: T) => settings.getSetting(k, uid, key, fallback)) as {
         (uid: number, key: string): Promise<string | null | undefined>;
         <T>(uid: number, key: string, fallback: T): Promise<string | T>;
       },
-      getGlobalSetting: (<T>(key: string, fallback?: T) => settings.getGlobalSetting(k, key, fallback)) as {
+      globalerWert: (<T>(key: string, fallback?: T) => settings.getGlobalSetting(k, key, fallback)) as {
         (key: string): Promise<string | null>;
         <T>(key: string, fallback: T): Promise<string | T>;
       },

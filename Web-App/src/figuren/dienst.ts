@@ -22,8 +22,8 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const elternSet = await kx.figurTeile.setMitFigur(figNumber);
     const anreichern = elternSet
-      ? kx.katalog.enrichSetMinifigs(elternSet.set_number)
-      : kx.katalog.enrichSetParts(figNumber);
+      ? kx.katalog.reichereSetFigurenAn(elternSet.set_number)
+      : kx.katalog.reichereSetTeileAn(figNumber);
     await anreichern.catch(logAndContinue('figuren:anreichern'));
     kat = await katalogTeile(kx, figNumber);
   }

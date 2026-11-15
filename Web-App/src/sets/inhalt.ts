@@ -48,8 +48,8 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
   if (!teile.length) {
     source = 'api';
     // Ist Rebrickable gestört, sagt die Antwort das; eine leere Liste hiesse „das Set hat keine Teile“.
-    const mit = await versuche('sets:getAllSetParts', sk.katalog.getAllSetParts(n));
-    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', sk.katalog.getAllSetParts(bare));
+    const mit = await versuche('sets:getAllSetParts', sk.katalog.alleSetTeile(n));
+    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', sk.katalog.alleSetTeile(bare));
     if (!rb.ok) return { parts: [], source: QUELLE_GESTOERT, error: rb.fehler.grund, ...eineSeite(0) };
     teile = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num,
@@ -193,5 +193,5 @@ export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: 
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
 export function teilelisteMitNacharbeit(sk: SetsKontext, setNum: string) {
-  return teilelisteDesSets(sk, setNum, sn => sk.katalog.enrichSetParts(sn));
+  return teilelisteDesSets(sk, setNum, sn => sk.katalog.reichereSetTeileAn(sn));
 }

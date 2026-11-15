@@ -70,36 +70,36 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/cache-ttl', requireApiAdmin, async _req => {
-    const ttl = await d.einstellungen.getGlobalSetting('price_cache_ttl');
+    const ttl = await d.einstellungen.globalerWert('price_cache_ttl');
     return { ttl: ttl || '24' };
   });
 
   router.endpunkt('POST /api/v1/admin/cache-ttl', requireApiAdmin, async req => {
-    await d.einstellungen.setGlobalSetting('price_cache_ttl', req.eingabe.ttl);
+    await d.einstellungen.setzeGlobalenWert('price_cache_ttl', req.eingabe.ttl);
     return { ttl: req.eingabe.ttl };
   });
 
   router.endpunkt('POST /api/v1/admin/default-condition', requireApiAdmin, async req => {
-    await d.einstellungen.setGlobalSetting('default_price_condition', req.eingabe.condition);
+    await d.einstellungen.setzeGlobalenWert('default_price_condition', req.eingabe.condition);
     return { condition: req.eingabe.condition };
   });
 
   router.endpunkt('GET /api/v1/admin/api-limits', requireApiAdmin, async _req => {
     const [rb, bl, bs] = await Promise.all([
-      d.fremdquellen.getLimitForApi('rebrickable'),
-      d.fremdquellen.getLimitForApi('bricklink'),
-      d.fremdquellen.getLimitForApi('brickset'),
+      d.fremdquellen.kontingentGrenze('rebrickable'),
+      d.fremdquellen.kontingentGrenze('bricklink'),
+      d.fremdquellen.kontingentGrenze('brickset'),
     ]);
     return { limits: { rebrickable: rb, bricklink: bl, brickset: bs } };
   });
 
   router.endpunkt('PUT /api/v1/admin/api-limits', requireApiAdmin, async req => {
     const { rebrickable, bricklink, brickset } = req.eingabe;
-    if (rebrickable !== undefined) await d.einstellungen.setGlobalSetting('api_limit_rebrickable', rebrickable);
-    if (bricklink !== undefined) await d.einstellungen.setGlobalSetting('api_limit_bricklink', bricklink);
+    if (rebrickable !== undefined) await d.einstellungen.setzeGlobalenWert('api_limit_rebrickable', rebrickable);
+    if (bricklink !== undefined) await d.einstellungen.setzeGlobalenWert('api_limit_bricklink', bricklink);
     if (brickset !== undefined) {
-      const oldLimit = parseInt((await d.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10);
-      await d.einstellungen.setGlobalSetting('api_limit_brickset', brickset);
+      const oldLimit = parseInt((await d.einstellungen.globalerWert('api_limit_brickset')) || '100', 10);
+      await d.einstellungen.setzeGlobalenWert('api_limit_brickset', brickset);
       await d.verwaltung.bricksetLimitGesetzt(oldLimit, Number(brickset));
     }
     return {};

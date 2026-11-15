@@ -53,10 +53,12 @@ async function importImStrom(
     zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
     res.end();
   });
-  await d.auftraege.importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
-    r => zeile({ success: true, ...r }),
-    (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }),
-  );
+  await d.auftraege
+    .importiereAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) })
+    .then(
+      r => zeile({ success: true, ...r }),
+      (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }),
+    );
   wache();
   if (!res.writableEnded) res.end();
 }
@@ -70,7 +72,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
     const ids = sichtVon(req);
     // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
     // gehört sie in die Abfrage.
-    const waehrung = await d.einstellungen.getSetting(req.apiUser.user_id, 'currency', 'EUR');
+    const waehrung = await d.einstellungen.nutzerWert(req.apiUser.user_id, 'currency', 'EUR');
     const merkposten = await d.merkliste.merkpostenVon(ids, undefined, waehrung, {
       suche: req.abfrage.search,
       zustand: req.abfrage.condition,
@@ -137,7 +139,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
       const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
       return {
-        ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv', {
+        ...(await d.auftraege.importiereAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv', {
           owner,
           text: req.file.buffer.toString('utf-8'),
         })),
@@ -170,7 +172,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
       };
       const uid = req.apiUser.user_id;
       if (!req.abfrage.strom)
-        return { ...(await d.auftraege.importAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
+        return { ...(await d.auftraege.importiereAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
 
       await importImStrom(d, req, res, uid, eingabe);
     },

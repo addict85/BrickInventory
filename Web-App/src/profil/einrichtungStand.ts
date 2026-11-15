@@ -73,12 +73,12 @@ async function berechne(kx: ProfilKontext, verwalter: boolean): Promise<Einricht
   // Was sich nicht lesen liess, steht auf „fehlt“ und in `degradiert`; nur die
   // Datenbankzeile ist selbst die Probe.
   const ab = new Abstriche();
-  const erledigt = !!(await ab.oder('erledigt', kx.einstellungen.getGlobalSetting('einrichtung_erledigt'), null));
+  const erledigt = !!(await ab.oder('erledigt', kx.einstellungen.globalerWert('einrichtung_erledigt'), null));
   // Nach der Einrichtung entfällt das Entschlüsseln der Schlüssel.
   if (erledigt) return { ...grund, erledigt: true, konfiguriert: true, schritte: [] };
 
   // BrickLink zählt erst mit allen vier Werten, wie in /settings/einrichtung.
-  const da = async (key: string) => !!(await ab.oder('quelle', kx.einstellungen.getGlobalSetting(key), null));
+  const da = async (key: string) => !!(await ab.oder('quelle', kx.einstellungen.globalerWert(key), null));
   const rebrickable = await da('rebrickable_api_key');
   const bricklink = (
     await Promise.all(

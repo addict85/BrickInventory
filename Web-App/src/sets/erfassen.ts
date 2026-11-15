@@ -174,7 +174,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.getSetInfo(sn));
+  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.setInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
     name = rb.name;

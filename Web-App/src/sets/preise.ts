@@ -15,8 +15,8 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
   // kannte.
   const currency = await waehrungVon(sk, uid);
-  const guideType = String(await sk.einstellungen.getSetting(uid, 'price_guide_type', 'sold'));
-  const ttlHours = String(await sk.einstellungen.getSetting(uid, 'price_cache_ttl', '24'));
+  const guideType = String(await sk.einstellungen.nutzerWert(uid, 'price_guide_type', 'sold'));
+  const ttlHours = String(await sk.einstellungen.nutzerWert(uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
     sk.finanzen.fetchPrice(
       sn,
@@ -54,7 +54,7 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
 /** Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
  * liefen beim nächsten Wechsel auseinander. */
 export async function waehrungVon(sk: SetsKontext, uid: number): Promise<string> {
-  return String(await sk.einstellungen.getSetting(uid, 'currency', 'EUR'));
+  return String(await sk.einstellungen.nutzerWert(uid, 'currency', 'EUR'));
 }
 
 export function setAlarmeLesen(sk: SetsKontext, uid: number, sn: string) {
@@ -75,7 +75,7 @@ export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, c
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {
-  return sk.auftraege.importAlsAuftrag<CsvImportBericht>(
+  return sk.auftraege.importiereAlsAuftrag<CsvImportBericht>(
     uid,
     'alarme_csv',
     { waehrung: await waehrungVon(sk, uid), text },

@@ -146,7 +146,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
       k.einstellungen.fremderNutzerWert(uid, 'currency').then(value => (value === null ? undefined : { value })),
       null,
     ),
-    k.einstellungen.getGlobalSetting('price_cache_ttl'),
+    k.einstellungen.globalerWert('price_cache_ttl'),
   ]);
 
   // Dieselbe Regel wie conditionFromAcquisitions(): Eine gebrauchte Erfassung genügt.
@@ -173,7 +173,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
   };
 
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
-  out.currency = await k.einstellungen.getSetting(uid, 'currency', 'EUR');
+  out.currency = await k.einstellungen.nutzerWert(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
   const katalog = await k.katalog.katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
@@ -190,7 +190,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
     out.live = liveWerte;
     for (const cond of ['N', 'U']) {
       try {
-        const g = await k.katalog.getPriceGuide(setNumber, cond, 'sold', cur);
+        const g = await k.katalog.preisfuehrer(setNumber, cond, 'sold', cur);
         liveWerte[cond] = {
           avg_price: g?.avg_price,
           qty_avg_price: g?.qty_avg_price,

@@ -52,7 +52,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
 
   const { zaehler, zugang } = zaehlend(db);
   const d = baueDienste(zugang);
-  const stats = await alsAnfrage({ session: { userId: uid } }, () => d.teile.getPartsStats(uid));
+  const stats = await alsAnfrage({ session: { userId: uid } }, () => d.teile.teileKennzahlen(uid));
   assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
   assert.ok(zaehler.n > 0, 'getPartsStats fragt über den übergebenen Zugang');
 });

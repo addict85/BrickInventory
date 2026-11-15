@@ -57,18 +57,18 @@ export async function taeglicheUhrzeit(
   name: (typeof DAILY_JOBS)[number]['name'],
 ): Promise<{ h: number; min: number }> {
   const meta = DAILY_JOBS.find(j => j.name === name)!;
-  return leseUhrzeit(await k.einstellungen.getGlobalSetting(`job_time_${name}`), meta.default);
+  return leseUhrzeit(await k.einstellungen.globalerWert(`job_time_${name}`), meta.default);
 }
 
 export async function naechsterLauf(k: AuftraegeKontext, art: GeplanteArt, jetzt = k.uhr.datum()): Promise<Date> {
   const plan = ZEITPLAENE[art];
   if ('taeglich' in plan) {
     return naechsteUhrzeit(
-      leseUhrzeit(await k.einstellungen.getGlobalSetting(plan.taeglich.einstellung), plan.taeglich.vorgabe),
+      leseUhrzeit(await k.einstellungen.globalerWert(plan.taeglich.einstellung), plan.taeglich.vorgabe),
       jetzt,
     );
   }
-  const roh = plan.minuten.einstellung ? await k.einstellungen.getGlobalSetting(plan.minuten.einstellung) : null;
+  const roh = plan.minuten.einstellung ? await k.einstellungen.globalerWert(plan.minuten.einstellung) : null;
   const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? ''), 10) || plan.minuten.vorgabe);
   return new Date(jetzt.getTime() + min * 60_000);
 }

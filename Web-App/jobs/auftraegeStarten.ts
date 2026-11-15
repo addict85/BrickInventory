@@ -13,7 +13,7 @@ const bearbeiter = (
   nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
     ausfuehren: async (n, k) => {
-      if (n.nur_bilder) await d.katalog.downloadSetImages(n.set_number);
+      if (n.nur_bilder) await d.katalog.ladeSetBilder(n.set_number);
       else await d.sets.ladeSetBilder(n.set_number, k);
     },
   },

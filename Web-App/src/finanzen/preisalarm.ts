@@ -132,7 +132,7 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
 
 /** Gemeldet wird der ÜBERGANG, nicht der Zustand. Der Versand kommt als Parameter,
  * damit ein Test ihn ersetzen kann, ohne das Modul umzubiegen. */
-export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendMail'>;
+export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendeMail'>;
 
 export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: AlarmPost): Promise<number> {
   const alarme = await repo.alleAktivenAlarme(k.db, setNumber);
@@ -196,7 +196,7 @@ async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AktiverAlarm, 
     preis,
     waehrung: a.currency_code,
   });
-  await post.sendMail({ to: a.email!, ...mail });
+  await post.sendeMail({ to: a.email!, ...mail });
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */

@@ -125,8 +125,8 @@ export async function computePnl(k: FinanzenKontext, viewerId: number, idsWahl: 
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
   const uids = await k.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
-    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalerWert('price_cache_ttl', '24'),
   ]);
   const sets = await k.gewinnVerlust.setsMitErfassungen(uids);
   // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.

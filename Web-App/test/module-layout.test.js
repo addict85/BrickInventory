@@ -48,7 +48,14 @@ test('die API-Kontingente heissen nach der API, nicht nach einem Pfad', () => {
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const fn of ['checkAndIncrementRateLimit', 'getRateLimitStatus', 'getLimitForApi']) {
+    for (const fn of [
+      'zaehleKontingent',
+      'kontingentStand',
+      'kontingentGrenze',
+      'checkAndIncrementRateLimit',
+      'getRateLimitStatus',
+      'getLimitForApi',
+    ]) {
       const re = new RegExp(`${fn}\\(\\s*'([^']+)'`, 'g');
       for (const m of src.matchAll(re)) {
         if (m[1].includes('/') || m[1].includes('.')) {

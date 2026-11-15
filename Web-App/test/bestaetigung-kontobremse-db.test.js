@@ -28,7 +28,7 @@ const _req = S.buildAndRequire();
 const mails = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art) => {
+  mailKontoHinweis: async (an, _name, art) => {
     mails.push({ an, art });
     return { success: true };
   },

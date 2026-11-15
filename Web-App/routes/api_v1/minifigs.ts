@@ -19,20 +19,20 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
     // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
-    const r = await d.figuren.getMinifigs(sichtVon(req), req.abfrage);
+    const r = await d.figuren.figurenListe(sichtVon(req), req.abfrage);
     return { figs: r.figs, total: r.total };
   });
 
   router.endpunkt('POST /api/v1/minifigs', requireToken, async req => {
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const result = await d.figuren.addManualFig(owner, req.eingabe);
+    const result = await d.figuren.legeManuelleFigurAn(owner, req.eingabe);
     return { ...result };
   });
 
   router.endpunkt('PUT /api/v1/minifigs/:figNumber', requireToken, async req => {
     // Ohne den Parameter das eigene Konto.
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    const r = await d.figuren.updateManualFig(besitzer, req.pfad.figNumber, req.eingabe);
+    const r = await d.figuren.aendereManuelleFigur(besitzer, req.pfad.figNumber, req.eingabe);
     return { ...r };
   });
 
@@ -58,7 +58,7 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs/manual', requireToken, async req => {
     const ab = new Abstriche();
-    const alle = await d.figuren.getManualMinifigs(
+    const alle = await d.figuren.manuelleFiguren(
       sichtVon(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '' },
@@ -70,13 +70,13 @@ export function baueMinifigsRouter(
 
   /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
   router.endpunkt('GET /api/v1/minifigs/stats', requireToken, async req => {
-    const stats = await d.figuren.getMinifigStats(sichtVon(req));
+    const stats = await d.figuren.figurenKennzahlen(sichtVon(req));
     return { stats };
   });
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const currency = await d.einstellungen.getSetting(uid, 'currency', 'EUR');
+    const currency = await d.einstellungen.nutzerWert(uid, 'currency', 'EUR');
     // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
     const data = await d.finanzen.preisverlaufFigur(sichtVon(req), req.pfad.figNumber, currency);
     return { ...data };
@@ -94,7 +94,7 @@ export function baueMinifigsRouter(
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
-        ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
+        ...(await d.auftraege.importiereAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
       };

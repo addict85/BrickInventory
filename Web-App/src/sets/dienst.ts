@@ -23,7 +23,7 @@ async function preisFuerNeueErfassung(sk: SetsKontext, userId: number, setNumber
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', sk.haushalt.blickfeldIds(userId)), [userId]);
   const cond = await sk.finanzen.resolveSetCondition(blickfeld, setNumber);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
-  const currency = String(await sk.einstellungen.getSetting(userId, 'currency', 'EUR'));
+  const currency = String(await sk.einstellungen.nutzerWert(userId, 'currency', 'EUR'));
   const cached = wertOder(
     await versuche('set-service:cached', sk.finanzen.marktpreisAusCache(setNumber, currency, cond)),
     null,
