@@ -57,15 +57,16 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const SN = `99${String(process.pid).slice(-4)}-1`;
-  const { teilelisteDesSets, figurenlisteDesSets } = require('./helpers/sources').bereichsSeite('sets');
+  const { figurenlisteDesSets } = require('./helpers/sources').bereichsSeite('sets');
+  const { teilelisteDesSets } = _req('src/sets/inhalt.js');
 
   await t.test('eine gestörte Quelle ist keine leere Liste', async () => {
     rebrickable = 'gestoert';
-    const r = await teilelisteDesSets(SN, async () => {});
+    const r = await teilelisteDesSets(require('./helpers/sources').testKontext('sets'), SN, async () => {});
     assert.equal(r.source, 'quelle_gestoert');
     assert.match(r.error, /Rebrickable antwortet nicht/);
     rebrickable = 'leer';
-    const leer = await teilelisteDesSets(SN, async () => {});
+    const leer = await teilelisteDesSets(require('./helpers/sources').testKontext('sets'), SN, async () => {});
     assert.equal(leer.source, 'not_found');
     assert.equal(leer.error, undefined);
   });

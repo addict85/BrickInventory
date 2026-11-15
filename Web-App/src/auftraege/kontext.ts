@@ -27,7 +27,7 @@ export const zugang = (db: Db) => ({
   auftraege: {
     fuegeAuftragEin: imSystem(db, WARTESCHLANGE, auftraege.fuegeAuftragEin),
     fuegeEigenenAuftragEin: mit(db)(auftraege.fuegeEigenenAuftragEin),
-    ergaenzeListenAuftrag: imSystem(db, WARTESCHLANGE, auftraege.ergaenzeListenAuftrag),
+    fuegeListeAn: imSystem(db, WARTESCHLANGE, auftraege.fuegeListeAn),
     belegeAuftrag: imSystem(db, WARTESCHLANGE, auftraege.belegeAuftrag),
     merkeExklusive: imSystem(db, WARTESCHLANGE, auftraege.merkeExklusive),
     lebenszeichen: imSystem(db, WARTESCHLANGE, auftraege.lebenszeichen),
@@ -51,7 +51,7 @@ export const zugang = (db: Db) => ({
     zieheTerminVor: imSystem(db, WARTESCHLANGE, auftraege.zieheTerminVor),
     laeuftArt: imSystem(db, WARTESCHLANGE, auftraege.laeuftArt),
     hoechsterZaehler: imSystem(db, WARTESCHLANGE, auftraege.hoechsterZaehler),
-    merkeVor: imSystem(db, WARTESCHLANGE, auftraege.merkeVor),
+    schreibeWiedervorlage: imSystem(db, WARTESCHLANGE, auftraege.schreibeWiedervorlage),
     loescheOffenen: imSystem(db, WARTESCHLANGE, auftraege.loescheOffenen),
     wartendeDerArt: imSystem(db, WARTESCHLANGE, auftraege.wartendeDerArt),
     zahlenDerArt: imSystem(db, WARTESCHLANGE, auftraege.zahlenDerArt),
@@ -77,10 +77,10 @@ export const zugang = (db: Db) => ({
     zaehleZustand: mit(db)(laufzustand.zaehleZustand),
   },
   eigene: {
-    eigenerAuftrag: mit(db)(auftraege.eigenerAuftrag),
-    zaehleLaufende: mit(db)(auftraege.zaehleLaufende),
-    loescheEigenen: mit(db)(auftraege.loescheEigenen),
-    loescheBeendete: imSystem(db, 'Aufräumen über alle Konten', auftraege.loescheBeendete),
+    eigeneZeile: mit(db)(auftraege.eigeneZeile),
+    zaehleLaufendeZeilen: mit(db)(auftraege.zaehleLaufendeZeilen),
+    loescheEigeneZeile: mit(db)(auftraege.loescheEigeneZeile),
+    loescheBeendeteZeilen: imSystem(db, 'Aufräumen über alle Konten', auftraege.loescheBeendeteZeilen),
   },
 });
 export type AuftraegeKontext = Kontext<AuftraegeAbhaengigkeiten, ReturnType<typeof zugang>>;

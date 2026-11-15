@@ -145,6 +145,6 @@ export async function csvImportStandFuerStrom(k: SetsKontext, uid: number, req: 
 /** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */
 export function csvImportStandAbonnieren(k: SetsKontext, uid: number, melde: () => void): () => void {
   return k.auftraege.beiImportStand(konto => {
-    if (konto === undefined || String(konto) === String(uid)) melde();
+    if (String(konto) === String(uid)) melde();
   });
 }

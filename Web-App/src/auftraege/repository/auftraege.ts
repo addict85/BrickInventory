@@ -68,7 +68,7 @@ export const fuegeEigenenAuftragEin = fuegeAuftragEin;
 /** Je Schlüssel ein offener Auftrag, der die neuen Einträge der Liste zu seinen dazunimmt:
  * Eine neue Liste ist kein neuer Auftrag. Läuft einer, entsteht daneben höchstens ein
  * offener (eindeutig nur unter 'offen'); doppelte Einträge gibt es nur einmal. */
-export async function ergaenzeListenAuftrag(
+export async function fuegeListeAn(
   db: DbSchnittstelle,
   art: string,
   nutzlast: object,
@@ -387,7 +387,7 @@ export async function hoechsterZaehler(db: DbSchnittstelle, schluessel: string, 
 }
 
 /** Ein schon offener Auftrag desselben Schlüssels wird umgeplant, nicht verdoppelt. */
-export async function merkeVor(
+export async function schreibeWiedervorlage(
   db: DbSchnittstelle,
   art: string,
   schluessel: string,
@@ -503,7 +503,7 @@ export async function schreibeErgebnis(
 }
 
 /** Nur der eigene: Der Schlüssel steht in der Adresse, er allein ist kein Recht. */
-export function eigenerAuftrag(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
+export function eigeneZeile(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
   return db.get<{
     status: AuftragsStatus;
     fehler: string | null;
@@ -517,7 +517,7 @@ export function eigenerAuftrag(db: DbSchnittstelle, art: string, schluessel: str
 }
 
 /** Ein hängengebliebener zählt nach `fristSek` nicht mehr. */
-export function zaehleLaufende(db: DbSchnittstelle, art: string, uid: number, fristSek: number) {
+export function zaehleLaufendeZeilen(db: DbSchnittstelle, art: string, uid: number, fristSek: number) {
   return db.get<{ n: number }>(
     `SELECT COUNT(*)::int AS n FROM auftraege
       WHERE art = $3 AND user_id = $1 AND status IN ('offen', 'laeuft')
@@ -526,7 +526,7 @@ export function zaehleLaufende(db: DbSchnittstelle, art: string, uid: number, fr
   );
 }
 
-export function loescheEigenen(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
+export function loescheEigeneZeile(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
   return db.run(`DELETE FROM auftraege WHERE art = $3 AND schluessel = $1 AND user_id = $2 AND status <> 'laeuft'`, [
     schluessel,
     uid,
@@ -535,7 +535,7 @@ export function loescheEigenen(db: DbSchnittstelle, art: string, schluessel: str
 }
 
 /** Beendete nach Ablauf der Frist; liefert ihre Schlüssel, damit Dateien mitgehen. */
-export function loescheBeendete(db: DbSchnittstelle, art: string, fristSek: number) {
+export function loescheBeendeteZeilen(db: DbSchnittstelle, art: string, fristSek: number) {
   return db.all<{ schluessel: string }>(
     `DELETE FROM auftraege WHERE art = $2 AND status IN ('erledigt', 'fehler', 'abgebrochen')
         AND aktualisiert < NOW() - make_interval(secs => $1)

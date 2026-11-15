@@ -114,7 +114,11 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
       // Und die Kachel oben — dort stand Marcos Strich. Sie rechnet seit
       // Migration 0032 aus den Erfassungen; der Bestand hat hier zwei (7.30
       // gebraucht, 12.55 neu, je ein Exemplar), der Mittelwert ist 9.925.
-      const kachel = await require('./helpers/sources').bereichsSeite('sets').zustandsAggregat([subId], SN);
+      const kachel = await _req('src/sets/lesen.js').zustandsAggregat(
+        require('./helpers/sources').testKontext('sets'),
+        [subId],
+        SN,
+      );
       assert.equal(
         kachel.avg_purchase_price,
         9.925,

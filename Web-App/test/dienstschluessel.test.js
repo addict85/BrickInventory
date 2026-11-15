@@ -78,18 +78,19 @@ const JE_BEREICH = {
   verwaltung: 28,
 };
 
-/** Quelltext ausserhalb der Tests, ohne Kommentare, je Datei. */
+/** Quelltext ausserhalb der Tests, ohne Kommentare, je Datei (Pfad ab ROOT). */
 function quellen() {
   const aus = new Map();
-  const lauf = rel => {
-    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
-      const kind = path.posix.join(rel, e.name);
-      if (e.isDirectory()) lauf(kind);
-      else if (e.name.endsWith('.ts')) aus.set(kind, ohneKommentare(fs.readFileSync(path.join(ROOT, kind), 'utf8')));
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) {
+        if (!['node_modules', 'dist', '.git', 'coverage', 'test', 'public', 'docs', 'frontend-typen'].includes(n))
+          lauf(p);
+      } else if (n.endsWith('.ts'))
+        aus.set(path.relative(ROOT, p).split(path.sep).join('/'), ohneKommentare(fs.readFileSync(p, 'utf8')));
     }
-  };
-  for (const d of ['src', 'routes', 'jobs', 'startup', 'scripts', 'db']) lauf(d);
-  aus.set('server.ts', ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8')));
+  })(ROOT);
   return aus;
 }
 

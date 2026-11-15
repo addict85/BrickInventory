@@ -18,7 +18,7 @@ export async function merkeVor<A extends AuftragsArt>(
     return { versuch, vorgemerkt: false };
   }
   const n = k.arten.pruefe(art, nutzlast(versuch));
-  await k.auftraege.merkeVor(art, schluessel, n as object, {
+  await k.auftraege.schreibeWiedervorlage(art, schluessel, n as object, {
     faelligAb: o.faelligAb,
     fehler: o.fehler,
     maxVersuche: 3,

@@ -133,7 +133,7 @@ export function beiGlobalerAenderung(k: EinstellungenKontext, fn: () => void): (
 }
 
 /** Ab jetzt leert eine Änderung in einem anderen Prozess auch die Zwischenspeicher hier. */
-export function horcheAufAenderungen(k: EinstellungenKontext): () => void {
+export function horcheAufGlobaleAenderungen(k: EinstellungenKontext): () => void {
   return globaleAenderung(k).verbinde(k.db.benachrichtigung);
 }
 

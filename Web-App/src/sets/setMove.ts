@@ -95,7 +95,7 @@ export async function manuelleErfassungUmhaengen(
   const remaining = Math.max(0, (await repo.erfassteMenge(t.db, kind, fromId, keyValues)) - movingQty);
 
   const dst = await repo.manuelleZeile(t.db, kind, toId, keyValues);
-  if (!dst) await t.bestand.manuell.legeAn(kind, toId, keyValues);
+  if (!dst) await t.bestand.manuell.legeZeileAn(kind, toId, keyValues);
 
   await t.bestand.bucheTageserfassung(kind, toId, keyValues, {
     quantity: movingQty,

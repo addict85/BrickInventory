@@ -43,7 +43,7 @@ export function legeFigurAn(k: BestandKontext, uid: number, figur: string) {
   return gemeinsamRepo.legeFigurManuellAn(k.db, uid, figur);
 }
 
-export function legeAn(k: BestandKontext, art: 'part' | 'fig', uid: number, schluessel: (string | number)[]) {
+export function legeZeileAn(k: BestandKontext, art: 'part' | 'fig', uid: number, schluessel: (string | number)[]) {
   return gemeinsamRepo.legeManuellAn(k.db, art, uid, schluessel);
 }
 

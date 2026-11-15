@@ -111,13 +111,12 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   // Dienste ohne Schlüssel dafür rufen die Module über den Kontext dieses Zugangs.
   const kontexte = {};
   const alle = baueDienste(zweite, { kontexte });
-  const modul = rel => require(path.join(ROOT, 'dist', rel));
   const sets = alle.sets;
   const prozess = zaehle(quellen.testZugang());
   t.after(() => prozess.zurueck());
 
   await t.test('Währung aus der zweiten Datenbank', async () => {
-    assert.equal(await modul('src/sets/preise.js').waehrungVon(kontexte.sets, uid), 'CHF');
+    assert.equal(await require(path.join(ROOT, 'dist/src/sets/preise.js')).waehrungVon(kontexte.sets, uid), 'CHF');
   });
 
   await t.test('Lagerort in der zweiten Datenbank', async () => {
@@ -156,7 +155,11 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   });
 
   await t.test('Teileliste aus dem Katalog der zweiten Datenbank, Bilderauftrag dort', async () => {
-    const r = await modul('src/sets/inhalt.js').teilelisteDesSets(kontexte.sets, SN, async () => {});
+    const r = await require(path.join(ROOT, 'dist/src/sets/inhalt.js')).teilelisteDesSets(
+      kontexte.sets,
+      SN,
+      async () => {},
+    );
     assert.equal(r.source, 'db');
     assert.deepEqual(
       r.parts.map(p => [p.part_number, p.total_quantity]),
@@ -189,10 +192,10 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
     alle.haushalt.meldeHaushaltsaenderung();
-    assert.deepEqual((await modul('src/haushalt/haushalt.js').haushaltVon(kontexte.haushalt, uid)).memberIds, [
-      uid,
-      UNTER,
-    ]);
+    assert.deepEqual(
+      (await require(path.join(ROOT, 'dist/src/haushalt/haushalt.js')).haushaltVon(kontexte.haushalt, uid)).memberIds,
+      [uid, UNTER],
+    );
     const imProzess = await _req('src/haushalt/haushalt.js').haushaltVon(uid);
     assert.ok(
       !imProzess.memberIds.includes(UNTER),

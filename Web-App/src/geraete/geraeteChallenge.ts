@@ -83,7 +83,7 @@ function wurzeln(pem: string): X509Certificate[] {
 export type Registrierung = 'neu' | 'gleich';
 
 /** Der Grund gehört ins Protokoll: Die App kann ihn nicht beheben, der Betreiber (Fingerabdruck) schon. */
-function abgewiesen(f: Familie, grund: string): never {
+function attestationAbgewiesen(f: Familie, grund: string): never {
   console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${grund}`);
   fachfehler('ungueltig', 'geraeteschluessel_attestation');
 }
@@ -96,7 +96,7 @@ export async function hinterlegeSchluessel(
 ): Promise<Registrierung> {
   const k = kx.konfig;
   const widerrufen = geltendeListe(await kx.auftraege.liesZustand(WIDERRUF_ZUSTAND), k.attestationWiderrufTage);
-  if (!widerrufen) abgewiesen(f, 'widerrufsliste_fehlt');
+  if (!widerrufen) attestationAbgewiesen(f, 'widerrufsliste_fehlt');
   const p = pruefeKette(kette, {
     wurzeln: wurzeln(k.attestationWurzeln ?? ''),
     paket: k.androidPaket,
@@ -104,7 +104,7 @@ export async function hinterlegeSchluessel(
     widerrufen,
     patchMindestens: k.attestationPatchMindestens,
   });
-  if (!p.ok) abgewiesen(f, p.grund);
+  if (!p.ok) attestationAbgewiesen(f, p.grund);
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
   if (!leseSchluessel(kanonisch)) fachfehler('ungueltig', 'geraeteschluessel_ungueltig');
   const da = await kx.geraeteSchluessel.eintragDer(f);
@@ -112,7 +112,8 @@ export async function hinterlegeSchluessel(
     if (da.oeffentlich !== kanonisch) fachfehler('konflikt', 'geraeteschluessel_vorhanden');
     return 'gleich';
   }
-  if (!(await kx.geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url')))) abgewiesen(f, 'challenge');
+  if (!(await kx.geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url'))))
+    attestationAbgewiesen(f, 'challenge');
   if (await kx.geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
   if ((await kx.geraeteSchluessel.eintragDer(f))?.oeffentlich !== kanonisch)
     fachfehler('verboten', 'geraeteschluessel_frist');

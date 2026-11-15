@@ -38,7 +38,7 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       manuell: {
         legeTeilAn: mit(k)(inhalt.legeTeilAn),
         legeFigurAn: mit(k)(inhalt.legeFigurAn),
-        legeAn: mit(k)(inhalt.legeAn),
+        legeZeileAn: mit(k)(inhalt.legeZeileAn),
         teileDesKontos: mit(k)(inhalt.teileDesKontos),
         figurenDesKontos: mit(k)(inhalt.figurenDesKontos),
         teilzeileUmfaerben: mit(k)(inhalt.teilzeileUmfaerben),

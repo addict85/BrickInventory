@@ -68,7 +68,7 @@ export async function ergaenzeListenAuftrag<A extends AuftragsArt>(
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
   const n = k.arten.pruefe(art, nutzlast);
-  const id = await k.auftraege.ergaenzeListenAuftrag(art, n as object, o);
+  const id = await k.auftraege.fuegeListeAn(art, n as object, o);
   await weckeWorker(k, art);
   return id;
 }

@@ -82,7 +82,7 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
   const nutzer = await neu(`${NAME}-nutzer`);
   const K = require('./helpers/sources').testDienste().konto;
   const G = _req('src/gutscheine/dienst.js');
-  const ordner = path.join(G.VOUCHER_DIR, String(nutzer));
+  const ordner = path.join(_req('src/gutscheine/index.js').VOUCHER_DIR, String(nutzer));
   t.after(async () => {
     fs.rmSync(ordner, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
