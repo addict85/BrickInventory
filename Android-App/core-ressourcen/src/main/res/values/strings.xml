@@ -860,7 +860,7 @@
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
     <string name="update_installer_fremd">The confirmation does not lead to the system installer. Nothing was opened.</string>
-    <string name="update_quelle_abgelaufen">The update description has expired: it was not re-signed in time. Either nothing has been released for a long while, or someone is holding updates back. That is why the app is not offering an update right now. Check the project\'s release page and this device\'s date and time.</string>
+    <string name="update_quelle_abgelaufen">The update description has expired; it was not re-signed in time. A newer version might exist: either nothing has been released for a long while, or someone is holding updates back. An offered update is still genuinely signed and newer than the installed version. Check the project\'s release page and this device\'s date and time.</string>
     <string name="update_quelle_zurueckgesetzt">The update description is older than one this app has already seen. The update source is outdated or has been tampered with, and newer versions may be withheld from you. That is why the app is not offering an update right now. Check the project\'s release page.</string>
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
