@@ -2311,3 +2311,16 @@ wird). Hinweise:
 - **Zeilenschutz und eingeschleustes SQL:** `docs/SICHERHEIT.md` versprach, die
   Zeilenregeln fingen eine eingeschleuste Abfrage über die Laufzeitrolle ab. Das stimmt
   nicht, `app.konto` kann jede Rolle umsetzen; der Text ist berichtigt.
+
+## 66. Runde 28 – Pfade mit Schrägstrich am Ende, Stichtag der Geräteschlüssel, Sichten (Migration 0120)
+
+- **API-Pfade mit `/` am Ende** (`/api/v1/sets/`) antworten jetzt 404. Weder Webapp
+  noch App rufen solche Pfade; ein eigenes Skript, das es tut, lässt den Schrägstrich weg.
+- **`GERAETESCHLUESSEL_ALT_BIS`** darf nicht mehr nach dem Stichtag 2027-02-01 liegen. Ein
+  späteres Datum verweigert den Start („… liegt nach 2027-02-01“); dann die Variable
+  entfernen oder ein früheres Datum setzen.
+- **Migration 0120:** Sichten lesen mit den Rechten der abfragenden Rolle
+  (`security_invoker`), die Web-Systemrolle nur noch `set_parts_catalog` und
+  `set_minifigs_catalog`. Docker: nichts zu tun. Wer 0119 von Hand erneut einspielt
+  (Abschnitt 65, Rolle erst danach angelegt), spielt danach auch
+  `db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql` ein; sie ist wiederholbar.

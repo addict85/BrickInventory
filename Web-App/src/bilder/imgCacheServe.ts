@@ -4,7 +4,7 @@ import { vorschauTyp } from './thumbs';
 import { vorDem, ohneFehlendeDatei, meldeFehler } from '../infra/fehler';
 import { prozessweit } from '../infra/prozessweit';
 import path from 'node:path';
-import { APP_ROOT } from '../infra/appPaths';
+import { APP_ROOT, SET_IMAGES_DIR } from '../infra/appPaths';
 import type { BilderKontext } from './kontext';
 
 const BILDTYPEN = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
@@ -127,6 +127,14 @@ export async function raeumeBildCacheAuf(maxBytes: number, jetzt: number): Promi
     g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
     gruppen.set(f.slice(0, 40), g);
     summe += st.size;
+  }
+  // images/sets zählt mit, wird aber nicht geräumt: Die Set-Bilder gelten auf Dauer, der Deckel
+  // gilt für alles, was der Proxy auf die Platte legt.
+  for (const f of await fs.promises
+    .readdir(SET_IMAGES_DIR)
+    .catch(ohneFehlendeDatei('bildcache:sets', [] as string[]))) {
+    const st = await fs.promises.stat(path.join(SET_IMAGES_DIR, f)).catch(ohneFehlendeDatei('img-cache:stat', null));
+    if (st?.isFile()) summe += st.size;
   }
   if (summe <= maxBytes) return weg;
   // Auf 90 % statt knapp unter die Grenze: sonst liefe das gleich wieder an.

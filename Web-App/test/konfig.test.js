@@ -25,6 +25,8 @@
  *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
  *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf entwicklungsUmgebung
  *      gestrichen → rot: „eigene Attestierungswurzeln nur in Entwicklung und Test“
+ *   I  (15.11.2026) in altschluesselBis() den Vergleich mit dem Stichtag gestrichen
+ *      (jedes gültige Datum gilt) → rot im selben Test (2099-12-31 ging durch)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -148,6 +150,9 @@ test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist 
   assert.equal(ladeKonfig({}).geraeteschluesselAltBis.toISOString(), '2027-02-01T00:00:00.000Z');
   assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2026-01-01' }).geraeteschluesselAltBis.getUTCFullYear(), 2026);
   assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: 'bald' }), /GERAETESCHLUESSEL_ALT_BIS="bald"/);
+  assert.equal(ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: '2027-02-01' }).geraeteschluesselAltBis.getUTCMonth(), 1);
+  for (const spaeter of ['2027-02-02', '2099-12-31'])
+    assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: spaeter }), /liegt nach 2027-02-01/, spaeter);
 });
 
 test('der Server startet mit falschem Wert nicht', () => {

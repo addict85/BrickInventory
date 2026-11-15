@@ -367,7 +367,8 @@ class OberflaechenRegelnTest {
             val kachel = compose.onAllNodes(hasText(ctx.getString(R.string.detail_section_market)))[0]
                 .fetchSemanticsNode().boundsInRoot.left - 12 * dichte
             compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(hasText(titel, ignoreCase = true))
-            val karte = compose.onNode(hasText(titel, ignoreCase = true), useUnmergedTree = true)
+            // Die Überschrift, nicht ihr Text in Versalien darunter: Abschnittstitel trägt beide.
+            val karte = compose.onNode(hasText(titel) and androidx.compose.ui.test.isHeading(), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot.left - 16 * dichte
             assertEquals("Preisverlauf beginnt wie die Kacheln (${karte / dichte} / ${kachel / dichte} dp)",
                 kachel / dichte, karte / dichte, 1f)
