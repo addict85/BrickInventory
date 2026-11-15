@@ -5,6 +5,7 @@ import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository/werte';
 import type { DrosselDienste } from '../drossel';
 import type { Uhr } from '../infra/uhr';
+import type { EinstellungenLesevertrag } from './lesevertrag';
 
 export interface EinstellungenAbhaengigkeiten {
   uhr: Uhr;
@@ -12,6 +13,7 @@ export interface EinstellungenAbhaengigkeiten {
   /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
   faecher: Faecher;
   drossel: DrosselDienste;
+  lesevertrag: EinstellungenLesevertrag;
 }
 
 /** Mailserver, Registrierung, Schlüssel stellt keine eingeschleuste Abfrage um (0117). */

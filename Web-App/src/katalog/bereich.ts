@@ -1,4 +1,5 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). Wer eine eigene Sperrverbindung hält, ruft das Repository direkt damit auf. */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anleitungLaden from './anleitungLaden';
@@ -32,7 +33,12 @@ export function erzeugeKatalog(
   einblick?: Einblick<KatalogKontext>,
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
-  const d = baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
+  const d = baueBereich(
+    { ...a, cdnDrossel, faecher: new Faecher() },
+    (db: Db) => zugang(db, a.lesevertrag),
+    katalogDienste,
+    einblick,
+  );
   a.bilder.beiSetBildGeladen((sn, quelle) => d.setBildLokalEintragen(sn, quelle));
   return d;
 }

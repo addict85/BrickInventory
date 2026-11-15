@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { setBestand, setErfassungen } from '../../../db/bestandSicht';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { kaufpreisIn, marktpreisSql, mittelUeber } from '../../../db/geldSql';
 
 export function tagespreiseDesSets(db: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
@@ -36,13 +36,19 @@ export function cachePreiseDesSets(db: DbSchnittstelle, setNumber: string, curre
   );
 }
 
-export function ersterKaufDesSets(db: DbSchnittstelle, uids: number[], setNumber: string, currency: string) {
+export function ersterKaufDesSets(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  uids: number[],
+  setNumber: string,
+  currency: string,
+) {
   return db.get<{ purchase_price: number | null; added_day: string }>(
     `SELECT a.purchase_price AS purchase_price,
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
-       FROM ${setBestand('= ANY($1)')} s
+       FROM ${l.setBestand('= ANY($1)')} s
        LEFT JOIN LATERAL (
-         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${setErfassungen()} e
+         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${l.setErfassungen()} e
           WHERE user_id = s.user_id AND set_number = s.set_number
           ORDER BY created_at ASC, id ASC LIMIT 1
        ) a ON true
@@ -54,11 +60,17 @@ export function ersterKaufDesSets(db: DbSchnittstelle, uids: number[], setNumber
   );
 }
 
-export function kaufschnittDesSets(db: DbSchnittstelle, uids: number[], setNumber: string, currency: string) {
+export function kaufschnittDesSets(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  uids: number[],
+  setNumber: string,
+  currency: string,
+) {
   return db.all<{ condition: string; avg_purchase: number | null; qty: string }>(
     `SELECT condition, ${mittelUeber('k')} AS avg_purchase, SUM(quantity) AS qty
        FROM (SELECT condition, quantity, ${kaufpreisIn('purchase_price', '$3')} AS k
-               FROM ${setErfassungen('= ANY($1)')} x
+               FROM ${l.setErfassungen('= ANY($1)')} x
               -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
               -- die auch die Bewertung im Haushalt anwendet.
               WHERE user_id = ANY($1) AND set_number = $2) e
@@ -111,7 +123,8 @@ export function cachePreiseNachSchluessel(
 
 export function kaufschnitteNachSchluessel(
   db: DbSchnittstelle,
-  acqTable: string,
+  l: FinanzenLesevertrag,
+  art: 'part' | 'fig',
   acqKeySql: string,
   acqKeyVals: unknown[],
   uids: number[],
@@ -120,7 +133,7 @@ export function kaufschnitteNachSchluessel(
   return db.all<{ condition: string; avg_purchase: number | null }>(
     `SELECT condition, ${mittelUeber('k')} AS avg_purchase
        FROM (SELECT condition, quantity, ${kaufpreisIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k
-               FROM ${acqTable}
+               FROM ${art === 'part' ? l.teilErfassungen() : l.figurErfassungen()} x
               WHERE ${acqKeySql} AND user_id = ANY($${acqKeyVals.length + 1})) e
       GROUP BY condition`,
     [...acqKeyVals, uids, currency],

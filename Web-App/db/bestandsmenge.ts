@@ -17,10 +17,10 @@ export function mengeSkalar(bezug: string): string {
 /** Stückzahl als gruppierte JOIN-Quelle (`<alias>.menge`). `konten`, z. B.
  * `= ANY($1)`, filtert schon in der Unterabfrage: Der Planer zieht die
  * Kontobedingung des JOIN nicht hinein und summierte sonst alle Konten. */
-export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string {
+export function mengeJoin(bezug: string, alias = 'sm', konten?: Konten): string {
   const filter = konten
     ? `
-                      WHERE a.user_id ${konten}`
+                      WHERE ${aufKonten('a.user_id', konten)}`
     : '';
   return `LEFT JOIN (SELECT a.user_id, a.set_number, ${SUMME} AS menge
                        FROM set_acquisitions a${filter}
@@ -48,6 +48,7 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
 }
 
 import type { DbSchnittstelle } from './database';
+import { aufKonten, type Konten } from './konten';
 import { colorId } from '../src/infra/validate';
 
 /** Was ein Leser hier können muss, und nicht mehr: `db` oder eine Transaktion. */
@@ -105,7 +106,7 @@ const ART = {
 
 /** Die JOIN-Quellen `<alias>_e` (Erfassungen) und `<alias>_k` (Katalog) für
  * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin]. */
-export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: string): string {
+export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: Konten): string {
   const a = ART[art];
   const farbErf = a.farbe ? `, x.color_id AS fk` : '';
   const farbVgl = a.farbe ? ` AND ${alias}_e.fk = ${bezug}.color_id` : '';
@@ -115,7 +116,7 @@ export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', kon
                         FROM ${a.erfassung} x${
                           konten
                             ? `
-                       WHERE x.user_id ${konten}`
+                       WHERE ${aufKonten('x.user_id', konten)}`
                             : ''
                         }
                        GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', x.color_id' : ''}) ${alias}_e

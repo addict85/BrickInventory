@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { setBestand } from '../../../db/bestandSicht';
+import type { BestandLesevertrag } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
@@ -143,8 +143,13 @@ export async function schreibeZurueck(
   );
 }
 
-export async function hatSetZeile(tx: DbSchnittstelle, userId: number, nummer: string): Promise<boolean> {
-  return !!(await tx.get<{ da: number }>(`SELECT 1 AS da FROM ${setBestand('= $1')} s WHERE set_number = $2`, [
+export async function hatSetZeile(
+  tx: DbSchnittstelle,
+  l: BestandLesevertrag,
+  userId: number,
+  nummer: string,
+): Promise<boolean> {
+  return !!(await tx.get<{ da: number }>(`SELECT 1 AS da FROM ${l.setBestand('= $1')} s WHERE set_number = $2`, [
     userId,
     nummer,
   ]));
