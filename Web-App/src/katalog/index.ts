@@ -9,5 +9,5 @@ export { fuerSet } from './preisvergleich';
 export { setnummerKandidaten } from './produkttitel';
 export { erzeugeKatalog } from './bereich';
 export type { KatalogDienste } from './bereich';
-export { erzeugeKatalogImporte, parseCsvLine } from './csvImport';
+export { erzeugeImportZugang, erzeugeKatalogImporte, parseCsvLine } from './csvImport';
 export type { Bildposten } from './bildlage';

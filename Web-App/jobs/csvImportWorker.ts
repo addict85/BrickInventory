@@ -1,9 +1,7 @@
 /** Eigener Prozess für den Katalog-Import, damit der grosse Heap des Imports
  * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
-import { Pool } from 'pg';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
-import { datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
-import { erzeugeKatalogImporte, parseCsvLine } from '../src/katalog';
+import { erzeugeImportZugang, erzeugeKatalogImporte, parseCsvLine } from '../src/katalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
 function send(msg: Record<string, unknown>) {
@@ -11,10 +9,9 @@ function send(msg: Record<string, unknown>) {
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
 }
 
-// Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen,
-// also als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
-const pool = new Pool(systemVerbindung() ?? datenbankVerbindung());
-const TASKS = erzeugeKatalogImporte(pool, send);
+const db = erzeugeImportZugang();
+const pool = db.pool;
+const TASKS = erzeugeKatalogImporte(db, send);
 
 type Aufgabe = keyof typeof TASKS;
 

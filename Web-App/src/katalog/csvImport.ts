@@ -3,7 +3,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import type { Pool } from 'pg';
+import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../../db/database';
+import { datenbankVerbindung, systemVerbindung } from '../infra/konfig';
 import { istJa } from '../infra/validate';
 import { logAndContinue } from '../infra/fehler';
 import { DATA_DIR } from '../infra/appPaths';
@@ -93,7 +94,7 @@ interface Tausch {
 }
 
 // Über eine Schattentabelle: Leser sehen bis zum Tausch die alte, nie eine leere Tabelle.
-async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: Tausch): Promise<number> {
+async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) => void, t: Tausch): Promise<number> {
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();
   try {
@@ -123,7 +124,21 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
   }
 }
 
-export function erzeugeKatalogImporte(pool: Pool, melde: (m: Meldung) => void) {
+/** Der Zugang des Importprozesses, ohne die Fristen des Servers: Der Tausch einer grossen
+ * Katalogtabelle dauert länger als eine Anfrage. Der Systemzugang ist auch ohne Systemrolle ein
+ * eigener Pool ohne Pipeline, wie zuvor der rohe Pool dieses Prozesses. */
+export function erzeugeImportZugang(): Db {
+  return erzeugeDb({
+    ...dbKonfigAusUmgebung(),
+    pool: { max: 2 },
+    system: systemVerbindung() ?? datenbankVerbindung(),
+  });
+}
+
+export function erzeugeKatalogImporte(db: Pick<Db, 'systemPool'>, melde: (m: Meldung) => void) {
+  // Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen, also
+  // als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
+  const pool = db.systemPool;
   const tausch = (t: Tausch) => () => importiereMitTausch(pool, melde, t);
   return {
     colors: tausch({
