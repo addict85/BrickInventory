@@ -257,9 +257,8 @@ export async function blFarbkarteAbfrage(k: TeileKontext) {
   return { map, source: 'api', ...ab.angabe() };
 }
 
-/** @param viewerId Wessen EINSTELLUNGEN gelten (Währung) — getrennt von
- *   `userId`, das sagt, wessen DATEN gelesen werden.
- * @param search  Suchtext der Filterleiste; er wirkt auf beide Listen. */
+/** @param viewerId wessen Einstellungen (Währung) gelten; `userId` sagt, wessen Daten gelesen werden.
+ * @param search Suchtext der Filterleiste, für beide Listen. */
 export async function manuelleTeileListe(
   k: TeileKontext,
   userIdWahl: Sicht | Blickfeld,

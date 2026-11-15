@@ -246,10 +246,8 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
   }
 }
 
-/** Gemischte Sets brauchen beide Preise, reine nur einen — eine Fassung für
- * den Nachtlauf und das Erfassen.
- * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT
- * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag */
+/** Gemischte Sets brauchen beide Preise, reine einen; eine Fassung für Nachtlauf und Erfassen.
+ * @param hintCondition Zustand einer Erfassung, die es noch nicht gibt */
 async function zustaendeJeSet(
   k: FinanzenKontext,
   userId: number,

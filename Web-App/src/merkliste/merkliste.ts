@@ -201,9 +201,8 @@ export async function merkpostenVon(
   });
 }
 
-/** Über setErfassen(), die eine Wahrheit fürs Erfassen: ohne Netz, deshalb
- * passt sie mit dem Streichen des Merkpostens in eine Transaktion. Katalog
- * und geschätzten Preis ergänzt der Auftrag wie bei jeder Erfassung. */
+/** Über setErfassen(): ohne Netz, deshalb mit dem Streichen des Merkpostens in einer
+ * Transaktion; Katalog und geschätzten Preis ergänzt der Auftrag. */
 export async function uebernimm(
   k: MerklisteKontext,
   leserId: number,

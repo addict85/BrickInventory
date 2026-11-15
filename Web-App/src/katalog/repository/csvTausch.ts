@@ -24,11 +24,8 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
   await c.query('RESET lock_timeout');
 }
 
-/** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. Ohne
- * CHECKs: Die Trigger der Zieltabelle (etwa die Versionsendung der Set-Nummer)
- * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. Temporär:
- * Die Laufzeitrolle darf in public nichts anlegen, und der Schatten gehört
- * ohnehin nur dieser einen Verbindung. */
+/** Mit Schlüsseln (ON CONFLICT braucht sie), ohne CHECKs (geprüft wird beim Tausch, nach den
+ * Triggern der Zieltabelle), temporär (die Laufzeitrolle darf in public nichts anlegen). */
 export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
   await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
