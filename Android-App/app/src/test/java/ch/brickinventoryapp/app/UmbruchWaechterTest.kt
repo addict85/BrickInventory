@@ -80,9 +80,10 @@ import kotlinx.coroutines.runBlocking
  *                                    Auslassung → rot „Katalog-Detail bei 100 Prozent“
  *                                    („Zur Sammlung hinzufügen“ gekürzt)
  *   standard-zustand-in-der-zeile    „Standard-Zustand“ wieder neben der Wahl → rot
- *                                    „Hintergrundarbeiten bei 100 Prozent“ („Gebraucht“ im Wort gebrochen)
+ *                                    „Hintergrundarbeiten bei 100 Prozent“ (das gewählte „Gebraucht“
+ *                                    im Wort gebrochen)
  *   gewinn-in-einer-zeile            Gewinn/Verlust wieder stets einzeilig → rot „Set-Detail schmal
- *                                    bei 200 Prozent“ („+CHF 200.90 · +19.2%“ ragt hinaus)
+ *                                    bei 200 Prozent“ („+CHF 20’200.90 · +19.2%“ ragt hinaus)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -264,10 +265,16 @@ class UmbruchWaechterTest {
         }
     }
 
-    /** Vierstellige Beträge auf 360 dp: „+CHF 200.90 · +19.2%“ ist breiter als die Kachel. */
+    /**
+     * Fünfstellige Beträge auf 360 dp: „+CHF 20’200.90 · +19.2%“ ist breiter als die Kachel.
+     * Fünfstellig, weil ein dreistelliger Gewinn bei 200 % gerade noch hineinpasst.
+     */
     private fun setDetailSchmal(schrift: Float) {
+        welt.pfade.antworten["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
+            "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
+            "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
         welt.pfade.antworten["/api/v1/sets/75192-1/price"] =
-            """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":1249.9,"min_price":1180.0,"max_price":1320.0,"qty_avg_price":1249.9}"""
+            """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":21249.9,"min_price":20180.0,"max_price":21320.0,"qty_avg_price":21249.9}"""
         welt.pfade.antworten["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
         welt.pfade.antworten["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
@@ -284,7 +291,10 @@ class UmbruchWaechterTest {
         }
     }
 
-    /** Wie das Foto der Hintergrundarbeiten: ein laufender Auftrag, darunter der Preisspeicher. */
+    /**
+     * Wie das Foto der Hintergrundarbeiten: ein laufender Auftrag, darunter der Preisspeicher.
+     * „Gebraucht“ ist gewählt: Mit dem Häkchen ist es das breiteste Segment der Zustandswahl.
+     */
     private fun hintergrundarbeiten(schrift: Float) {
         welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
             "auftraege":[
@@ -297,7 +307,7 @@ class UmbruchWaechterTest {
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         pruefe("Hintergrundarbeiten $schrift", schrift) {
-            MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
+            MonitoringScreen(MonitoringZustand(MonitoringUiState(vorgabeZustand = Zustand.GEBRAUCHT), vm.hintergrund.value, VerwaltungUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, ereignisse)
         }
     }
