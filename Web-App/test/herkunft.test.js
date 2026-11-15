@@ -18,6 +18,9 @@
  * Gegenprobe (am 01.11.2026 gemessen):
  *   F  traegtSitzungsKeks() erkennt wieder nur `connect.sid` → rot: „eine
  *      Cookie-Sitzung ohne jede Herkunftsangabe", „ein Bearer-Kopf …"
+ * Gegenprobe (am 15.11.2026 gemessen):
+ *   G  in nurEigenerHost() wieder `if (!adresse) return next()` → rot: „ohne
+ *      APP_BASE_URL nimmt der Host-Filter keinen Namen an“ (200 statt 421)
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -25,7 +28,8 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { nurEigeneHerkunft } = _req('src/http/herkunft.js');
+const { nurEigeneHerkunft, nurEigenerHost } = _req('src/http/herkunft.js');
+const http = require('node:http');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test('Herkunft schreibender Anfragen', async t => {
@@ -103,4 +107,38 @@ test('Herkunft schreibender Anfragen', async t => {
       200,
     );
   });
+});
+
+test('ohne APP_BASE_URL nimmt der Host-Filter keinen Namen an, nur Loopback und IP-Adressen', async t => {
+  umgebung({ APP_BASE_URL: undefined });
+  const app = express();
+  app.use(nurEigenerHost);
+  app.all('/{*pfad}', (_req, res) => res.json({ ok: true }));
+  const srv = app.listen(0, '127.0.0.1');
+  t.after(() => new Promise(r => srv.close(r)));
+  await new Promise(r => srv.once('listening', r));
+  const mitHost = (host, pfad = '/api/v1/auth/me') =>
+    new Promise((fertig, fehler) => {
+      const r = http.request(
+        { host: '127.0.0.1', port: srv.address().port, path: pfad, setHost: false, headers: { host } },
+        res => {
+          let text = '';
+          res.on('data', d => {
+            text += d;
+          });
+          res.on('end', () => fertig({ status: res.statusCode, text }));
+        },
+      );
+      r.on('error', fehler);
+      r.end();
+    });
+  // Ein umgebogener Name (DNS-Rebinding) zeigt auf dieselbe Adresse, trägt aber seinen Namen.
+  const fremd = await mitHost('boese.example');
+  assert.equal(fremd.status, 421);
+  assert.equal(JSON.parse(fremd.text).code, 'fremder_host');
+  assert.match(JSON.parse(fremd.text).error, /127\.0\.0\.1/, 'die Absage nennt die eigene Adresse');
+  assert.equal((await mitHost('nas.local:3000')).status, 421);
+  for (const h of ['localhost:3000', '127.0.0.1', '192.168.1.20:3000', '[fe80::1]:8080'])
+    assert.equal((await mitHost(h)).status, 200, h);
+  assert.equal((await mitHost('boese.example', '/api/v1/health')).status, 200, 'Gesundheit bleibt frei');
 });
