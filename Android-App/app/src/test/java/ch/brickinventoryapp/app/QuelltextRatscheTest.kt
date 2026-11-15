@@ -20,6 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
  *                              eines Werkzeugs …“ und „Testfunktionen, die Quelltext lesen …“
  *   geschichte-im-testkopf     Nachtragsnummer und Melder im Kopf von TabOpensAtTopTest → rot „lange
  *                              Kommentare im Workflow und in Tests …“
+ *   kuerzel-im-bau             „(sec17 B-N4)“ wieder in settings.gradle.kts → rot, derselbe Test
  *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
  *   verweis-aufs-archiv        ein „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → rot „kein Verweis
@@ -260,6 +261,13 @@ class QuelltextRatscheTest {
             geschichte.take(20).joinToString("\n  "))
         ratsche("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", GESCHICHTE, erzaehlt.size,
             erzaehlt.take(20).joinToString("\n  "))
+        // Im Code und in Build-Dateien nennt ein Kommentar das Warum, nicht die Prüfung, die es fand.
+        val kuerzel = Regex("""\((?:sec|arch|ux|perf)[0-9]+[^)]*\)|\((?:[HMN][0-9]{1,2})\)|\bNachtrag [0-9]+""")
+        val gekuerzt = (produktivDateien() + baudateien()).flatMap { f ->
+            f.readLines().filter { z -> z.trim().let { istKommentar(it) || it.startsWith("#") } && kuerzel.containsMatchIn(z) }
+                .map { "${f.name}: ${it.trim()}" }
+        }
+        ratsche("Prüfungskürzel in Kommentaren von Code und Bau", 0, gekuerzt.size, gekuerzt.take(20).joinToString("\n  "))
     }
 
     /** Zeilennummern der Kommentar-Absätze über fünf Prosazeilen, die nicht mit „Gegenprobe“ beginnen. */

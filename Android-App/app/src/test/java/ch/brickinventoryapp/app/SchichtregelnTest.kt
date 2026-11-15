@@ -56,7 +56,7 @@ class SchichtregelnTest {
     @Test
     fun `Praesentation holt nichts selbst am Netz`() {
         val f = verstoesse(::praesentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
-        assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit (H3):\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit:\n  " + f.joinToString("\n  ") }
     }
 
     /**
@@ -67,9 +67,9 @@ class SchichtregelnTest {
     @Test
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data und core-offline`() {
         val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
-        assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
         val wire = verstoesse({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
-        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data/core-offline (H2):\n  " + wire.joinToString("\n  ") }
+        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data/core-offline:\n  " + wire.joinToString("\n  ") }
     }
 
     /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */
@@ -78,6 +78,6 @@ class SchichtregelnTest {
         val f = verstoesse({ it.modul in setOf("core-zustand", "core-sitzung") && it.name != "AppTexte.kt" }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
-        assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context (M7):\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context:\n  " + f.joinToString("\n  ") }
     }
 }

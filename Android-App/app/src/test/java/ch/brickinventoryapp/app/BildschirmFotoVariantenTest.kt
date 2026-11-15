@@ -229,7 +229,7 @@ class BildschirmFotoVariantenTest {
         }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
         // Die Schrift auch in der Konfiguration: Ein Dialog hat sein eigenes Fenster und
-        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein (M2).
+        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein.
         if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
@@ -836,7 +836,7 @@ class BildschirmFotoVariantenTest {
         foto("merkliste-leer", dunkel = true)
     }
 
-    // ── Bildschirme, die bisher kein Foto hatten (M6) ──
+    // ── Bildschirme, die bisher kein Foto hatten ──
 
     private val katalogDetail = KatalogDetailAnsicht(
         setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
@@ -1039,7 +1039,7 @@ class BildschirmFotoVariantenTest {
     @Test fun snackbarTelefon() = snackbarFoto("telefon", false)
     @Test fun snackbarTabletDunkel() = snackbarFoto("tablet", true)
 
-    // ── Lücken der Prüfung (N17): Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
+    // ── Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
 
     private val katalogSets = (1..6).map { i ->
         KatalogSetAnsicht(setNumber = "1030$i-1", name = "Beispielset $i",

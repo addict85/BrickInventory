@@ -1,5 +1,5 @@
 -keepattributes *Annotation*
-# Die API-Modelle werden umbenannt wie jede Klasse (sec17 B-N10): Die Feldnamen im JSON
+# Die API-Modelle werden umbenannt wie jede Klasse: Die Feldnamen im JSON
 # stehen im erzeugten Serializer; Companion, serializer() und INSTANCE hält die Regel, die
 # kotlinx-serialization-core mitbringt (META-INF/com.android.tools/r8). Die Bibliothek lädt
 # selbst nichts über Namen, darum bleibt sie nicht mehr ganz stehen.
@@ -24,7 +24,7 @@
 -keep class com.google.android.gms.internal.mlkit_vision_barcode.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_common.** { *; }
 -keep class com.google.android.gms.internal.mlkit_common.** { *; }
-# Bewusst breit (sec17 B-N10 geprüft): Code von Google, kein eigener; sein Klartext verrät
+# Bewusst breit: Code von Google, kein eigener; sein Klartext verrät
 # nichts über die App. Enger gefasst kamen die beiden Abstürze oben.
 -keep class com.google.android.gms.common.** { *; }
 -keep class * implements com.google.firebase.components.ComponentRegistrar {

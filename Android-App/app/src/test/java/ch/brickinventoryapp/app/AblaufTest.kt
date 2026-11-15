@@ -182,7 +182,7 @@ class AblaufTest {
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
-        // Die Menge steht unter Wert-Kacheln und Marktpreis (M2); auf dem kleinen
+        // Die Menge steht unter Wert-Kacheln und Marktpreis; auf dem kleinen
         // Robolectric-Bildschirm (320 × 470 dp) ist sie erst nach dem Rollen da.
         val plus = androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.cd_qty_increase))
         compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction() and

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Nichts verlässt das Gerät, weder per Cloud-Sicherung noch per Geräteumzug: ganze
-  Domänen statt einer Liste (sec17 B-N13), damit eine neue Ablage nicht erst
+  Domänen statt einer Liste, damit eine neue Ablage nicht erst
   eingetragen werden muss. root deckt files, databases und shared_prefs ab, device_root
   den gerätegeschützten Speicher. Wer auf einem neuen Gerät weitermacht, meldet sich an;
   alles Übrige liegt auf dem Server.

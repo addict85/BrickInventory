@@ -427,7 +427,7 @@
     <!-- ══════════════ ViewModel messages ══════════════ -->
     <string name="vm_barcode_not_found">Kein Set für „%1$s“ gefunden</string>
 
-    <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
+    <!-- Meldungen der Bildschirme -->
     <string name="parts_search_placeholder">Suchen…</string>
     <string name="parts_spare_tag">Ersatzteil</string>
     <string name="setitem_used_in">Verwendet in</string>
@@ -632,8 +632,7 @@
     <string name="gallery_sort_qty_asc">Anzahl ↑</string>
     <string name="vm_add_failed">%1$s konnte nicht hinzugefügt werden: %2$s</string>
 
-    <!-- PDF-Betrachter (Nachtrag 115). Die Texte standen bisher als Literale
-         im Code — hier stehen sie in der Sprache, in der sie dort standen. -->
+    <!-- PDF-Betrachter -->
     <string name="monitoring_retry_attempt">Versuch %1$d/30 · nächster: %2$s</string>
     <string name="monitoring_cache_ttl_hours">%1$s Stunden</string>
     <string name="acq_total_quantity">Total ×%1$d</string>
@@ -815,7 +814,7 @@
     <string name="common_collapse">Zuklappen</string>
     <string name="common_expand">Aufklappen</string>
 
-    <!-- ══════════════ Meldungen, die bis Nachtrag 130 fest verdrahtet waren ══════════════ -->
+    <!-- ══════════════ Meldungen der ViewModels ══════════════ -->
     <string name="err_set_not_found">Set nicht gefunden</string>
     <string name="pdfexp_server_error">Der Server konnte das PDF nicht erstellen</string>
     <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
@@ -853,7 +852,7 @@
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
 
 
-    <!-- Merkliste (Nachtrag 179) -->
+    <!-- Merkliste -->
     <string name="nav_wanted">Merkliste</string>
     <string name="wanted_add_title">Set merken</string>
     <string name="wanted_add_submit">Auf die Merkliste</string>
