@@ -52,11 +52,13 @@ abonniere('sitzungBeendet', path => {
   set_ME(null);
   // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Das Secure-Cookie fehlt.
   // „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
-  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && ohneHttps();
+  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && !_keksGesetzt && ohneHttps();
   showLogin({ abgelaufen: true, hinweis: ohneKeks ? tRaw('auth.cookie_fehlt') : undefined });
 });
 /** Zeitpunkt der letzten Anmeldung per Formular (für den Fall oben). */
 let _angemeldetUm = 0;
+/** Der Server hat bestätigt, dass er das Cookie gesetzt hat (keks_fehlt: false); dann ist ein 401 echt. */
+let _keksGesetzt = false;
 /** http://localhost gilt dem Browser als sicherer Kontext, trägt aber kein Secure-Cookie vom Server. */
 const ohneHttps = () => window.isSecureContext === false || location.protocol === 'http:';
 // Vorab, nicht erst nach dem Fehlschlag: Wer über http kommt, soll wissen, warum die Anmeldung scheitern kann.
@@ -653,6 +655,7 @@ async function doLogin() {
     formularFehler(G('lerr'), '');
     G('login-hinweis').hidden = true;
     _angemeldetUm = Date.now();
+    _keksGesetzt = d.keks_fehlt === false;
     oeffneApp();
   } else {
     const err = d.error || tRaw('settings.error');

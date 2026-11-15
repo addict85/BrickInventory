@@ -71,13 +71,16 @@ function linienNachbarn(kind) {
   });
 }
 
-/** @param {Element} zelle */
-function obenBuendigeZelle(zelle) {
+/** Eine Zelle in einem Raster aus Feldgruppen, die alle oben bündig auf ihrer Linie stehen? @param {Element} zelle */
+function feldzelle(zelle) {
   const raster = zelle.parentElement;
   if (!raster || !/grid$/.test(getComputedStyle(raster).display)) return false;
-  const s = getComputedStyle(zelle);
-  const lage = s.alignSelf === 'auto' || s.alignSelf === 'normal' ? getComputedStyle(raster).alignItems : s.alignSelf;
-  return ['normal', 'stretch', 'start', 'flex-start', 'self-start'].includes(lage);
+  const oben = (/** @type {Element} */ x) => {
+    const s = getComputedStyle(x);
+    const lage = s.alignSelf === 'auto' || s.alignSelf === 'normal' ? getComputedStyle(raster).alignItems : s.alignSelf;
+    return ['normal', 'stretch', 'start', 'flex-start', 'self-start'].includes(lage);
+  };
+  return [zelle, ...linienNachbarn(zelle)].every(x => x.classList.contains('fg') && oben(x));
 }
 
 /**
@@ -92,9 +95,9 @@ function fehlerPlatzieren(feld, meldung) {
   let gruppe = anker.parentElement?.closest('.fg') ?? null;
   if (gruppe && !gruppe.contains(anker)) gruppe = null;
   // Im Raster ist die Feldgruppe selbst die Zelle: Die Meldung bleibt in ihrer Spalte unter dem Feld. Hinter der
-  // Zeile stand sie sonst links unter beiden Spalten, auch für das rechte Feld. Nur bei oben bündigen Zellen;
-  // unten bündig höbe sie das Feld aus der Flucht seiner Nachbarn.
-  if (gruppe?.parentElement && obenBuendigeZelle(gruppe)) {
+  // Zeile stand sie sonst links unter beiden Spalten, auch für das rechte Feld. Nur neben anderen Feldern, oben
+  // bündig; einen unten bündigen Knopf daneben schöbe die wachsende Zelle nach unten.
+  if (gruppe && feldzelle(gruppe)) {
     if (anker.nextElementSibling !== meldung) anker.insertAdjacentElement('afterend', meldung);
     return;
   }

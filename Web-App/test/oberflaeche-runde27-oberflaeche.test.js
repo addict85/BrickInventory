@@ -4,11 +4,12 @@
  *
  * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  doLogin() ohne den Zweig d.keks_fehlt → rot: „M1 … Server meldet …“ (App geht auf und lädt ohne Sitzung)
- *   B  ohneHttps() nur mit isSecureContext (ohne location.protocol) → rot: „M1 … http://localhost …“
+ *   B  ohneHttps() nur mit isSecureContext (ohne location.protocol) → rot: „M1 … älterer Server …“
  *      („Sitzung abgelaufen“) und „N1 … http://localhost“ (Hinweis verborgen)
  *   C  Hinweis login-ohne-https nie eingeblendet → rot: „N1“ in beiden Fällen ohne HTTPS
  *   D  filterBedienbar() ohne die Klasse finanzen-fehler → rot: „N3 …“ (im Fehlerfall)
  *   E  zoomStand() ohne den Zweig für den Knopf → rot: „N7 …“ (Knopf bleibt mit Bild gesperrt)
+ *   F  sitzungBeendet ohne !_keksGesetzt → rot: „M1 … Server bestätigt …“ (Cookie-Hinweis statt „abgelaufen“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -67,7 +68,19 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
       w.close();
     }
   });
-  await t.test('http://localhost gilt als sicherer Kontext: trotzdem der Cookie-Hinweis', async () => {
+  await t.test('Server bestätigt das Cookie (keks_fehlt: false): ein 401 heisst abgelaufen', async () => {
+    const { w, d } = await anmelden({
+      sicher: true,
+      login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: false },
+      danach: OHNE_SITZUNG,
+    });
+    try {
+      assert.match(text(d.getElementById('login-hinweis')), /Sitzung abgelaufen/);
+    } finally {
+      w.close();
+    }
+  });
+  await t.test('älterer Server ohne Angabe, http://localhost: trotzdem der Cookie-Hinweis', async () => {
     const { w, d } = await anmelden({
       sicher: true,
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false } },
