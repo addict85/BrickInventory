@@ -472,7 +472,8 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));
   t.after(async () => {
     for (const d of [ziel, alt]) await admin.query(`DROP DATABASE IF EXISTS ${id(d)} WITH (FORCE)`).catch(() => {});
-    for (const r of [APP, MIG, LESEN, BOESE, SYS, SYSWEB]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
+    for (const r of [APP, MIG, LESEN, BOESE, SYS, SYSWEB])
+      await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await admin.end();
     fs.rmSync(tmp, { recursive: true, force: true });
   });

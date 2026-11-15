@@ -334,7 +334,11 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
       `${d}: PGPASSWORD_FILE nicht aus db_app_password`,
     );
     const rolle = d === 'app' ? 'system_web' : 'system';
-    assert.match(block, new RegExp(`^\\s*PGSYSTEM_USER:\\s*brickinventory_${rolle}\\s*$`, 'm'), `${d} ohne Systemrolle`);
+    assert.match(
+      block,
+      new RegExp(`^\\s*PGSYSTEM_USER:\\s*brickinventory_${rolle}\\s*$`, 'm'),
+      `${d} ohne Systemrolle`,
+    );
     assert.match(block, new RegExp(`^\\s*PGSYSTEM_PASSWORD_FILE:\\s*/run/secrets/db_${rolle}_password\\s*$`, 'm'));
   }
   for (const d of ['postgres', 'db-rolle'])

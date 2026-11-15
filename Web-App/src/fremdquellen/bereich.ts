@@ -47,7 +47,10 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     quellen: mitErsatz(baueQuellen(klienten), a.ersatz),
     klienten,
     drossel,
-    ...kontingent,
+    kontingentStand: kontingent.kontingentStand,
+    kontingentFrei: kontingent.kontingentFrei,
+    setzeKontingentZurueck: kontingent.setzeKontingentZurueck,
+    kontingentGrenze: kontingent.kontingentGrenze,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
   };
   // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt

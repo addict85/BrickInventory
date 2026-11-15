@@ -77,8 +77,9 @@ services:
   # `brickinventory` ist der Superuser der Datenbank. Datenbank und Tabellen
   # gehören `brickinventory_migration` (Dienst migration); app und jobs
   # verbinden sich als `brickinventory_app` und dürfen nur Zeilen lesen und
-  # schreiben, für Arbeit über Kontogrenzen zusätzlich als `brickinventory_system`
-  # (dieselben Rechte, am Zeilenschutz vorbei). Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
+  # schreiben, für Arbeit über Kontogrenzen jobs zusätzlich als `brickinventory_system`
+  # (dieselben Rechte, am Zeilenschutz vorbei), app als `brickinventory_system_web` (nur die
+  # Zugangstabellen, Migration 0119). Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
   # nach und endet dann (UPGRADE.md#eigene-datenbankrolle, #migrationsrolle).
   db-rolle:
     image: postgres:18-alpine@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b

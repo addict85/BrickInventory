@@ -23,7 +23,6 @@ interface Rahmen {
   /** Gelesen erst beim Fragen: Die Anmeldung setzt das Konto später auf demselben Objekt. */
   quelle: KontoQuelle | null;
   system: string | null;
-  /** Eine HTTP-Anfrage: Ihr Systemrahmen geht über die Web-Systemrolle (db/database.ts). */
   web: boolean;
   /** Die offene Transaktion dieses Aufrufpfads: nur für Wachen, nie ein Weg zu ihr. */
   transaktion: PfadTransaktion | null;
@@ -55,7 +54,7 @@ export function alsAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
   return mitRahmen({ system: null, web: false, quelle }, f);
 }
 
-/** Eine HTTP-Anfrage erbt keinen Systemrahmen, auch wenn Web und Jobs in einem Prozess laufen. */
+/** Eine HTTP-Anfrage erbt keinen Systemrahmen; ihren eigenen trägt die Web-Systemrolle (db/database.ts). */
 export function alsWebAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
   return mitRahmen({ system: null, web: true, quelle }, f);
 }

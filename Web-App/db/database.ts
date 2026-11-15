@@ -6,7 +6,7 @@ import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { Benachrichtigung, type Signale } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import { fehlerCode, meldeFehler } from '../src/infra/fehler';
-import { konfig, datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
+import { konfig, datenbankVerbindung, systemVerbindung, systemWebVerbindung } from '../src/infra/konfig';
 import { queryWithRetry, istLesend } from './wiederholung';
 import { inTransaktionsPfad, zeilenKontext } from '../src/infra/kontoKontext';
 import {
@@ -78,7 +78,7 @@ export function dbKonfigAusUmgebung(): DbKonfig {
   return {
     verbindung: datenbankVerbindung(),
     system: systemVerbindung(),
-    systemWeb: systemVerbindung(process.env, 'PGSYSTEM_WEB'),
+    systemWeb: systemWebVerbindung(),
     streng: K.nodeEnv === 'test',
     erfassungZeitzone: K.erfassungZeitzone,
     pool: {
@@ -364,7 +364,14 @@ function neuerPlatz(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const { pool, systemPool, systemWebPool } = erzeugePools(k);
-  const r: Rahmen = { ich: {}, pool, systemPool, systemWebPool, streng: k.streng === true, jeVerbindung: new WeakMap() };
+  const r: Rahmen = {
+    ich: {},
+    pool,
+    systemPool,
+    systemWebPool,
+    streng: k.streng === true,
+    jeVerbindung: new WeakMap(),
+  };
   const zaehler = { sicherungspunkte: 0 };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche

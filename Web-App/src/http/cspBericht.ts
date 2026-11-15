@@ -21,8 +21,7 @@ export function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
     F.gedrosselt = 0;
     F.seit = jetzt;
   }
-  // Ohne gemeinsame Quote: Sonst schöpfte ein Fremder sie aus, und echte Berichte
-  // gingen in seiner Flut unter. IPv6 je /64 wie bei der Anmeldung, auch verkürzt.
+  // Je Absender statt gemeinsam, sonst gingen echte Berichte in fremder Flut unter; IPv6 je /64.
   const a = drosselAdresse(adresse);
   const n = (_jeAdresse.get(a) ?? 0) + 1;
   const frei = n <= JE_ADRESSE && (_jeAdresse.has(a) || _jeAdresse.size < HOECHSTENS_ADRESSEN);

@@ -106,8 +106,7 @@ test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', t => {
   fs.chmodSync(path.join(s.ort, 'geheimnisse'), 0o755);
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
-  for (const n of NAMEN.filter(n => n !== 'pgweb_db_password'))
-    assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
+  for (const n of NAMEN.filter(n => n !== 'pgweb_db_password')) assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
   assert.equal(fs.statSync(path.join(s.ort, 'geheimnisse')).mode & 0o777, 0o700, 'ein offener Ordner bleibt offen');
   const pw = s.lies('pgweb_db_password');

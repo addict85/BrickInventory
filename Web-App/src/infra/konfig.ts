@@ -467,7 +467,7 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
 
 /** Die Systemrolle (BYPASSRLS) für Arbeit über Kontogrenzen, sonst null: Mit
  * einer einzigen Rolle, der die Tabellen gehören, greift der Zeilenschutz nicht. */
-export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art: 'PGSYSTEM' | 'PGSYSTEM_WEB' = 'PGSYSTEM') {
+export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
   geheimnisseAusDateien(env);
   const user = env[`${art}_USER`]?.trim();
   if (!user) return null;
@@ -479,6 +479,8 @@ export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art: 'PGS
   u.password = encodeURIComponent(password);
   return { connectionString: u.toString() };
 }
+
+export const systemWebVerbindung = (env: NodeJS.ProcessEnv = process.env) => systemVerbindung(env, 'PGSYSTEM_WEB');
 
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
 export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
