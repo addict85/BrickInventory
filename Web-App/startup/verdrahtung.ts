@@ -2,7 +2,7 @@
  * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
 import path from 'node:path';
-import { erzeugeAuftraege, type Anmeldung } from '../src/auftraege';
+import { erzeugeAuftraege, type Anmeldung, type AuftragsArt } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
@@ -56,6 +56,31 @@ export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
   return d;
 }
 
+/** Jede deklarierte Art (AuftragsNutzlasten): Der Übersetzer verlangt hier jede, der Start prüft ihre Anmeldung. */
+export const DEKLARIERTE_ARTEN: Record<AuftragsArt, true> = {
+  anleitung: true,
+  aufraeumen: true,
+  aufraeumen_taeglich: true,
+  bild_nachlauf: true,
+  bildbedarf: true,
+  bilder: true,
+  bilder_neu_laden: true,
+  brickset: true,
+  csv_import: true,
+  csv_sync: true,
+  katalog_nachzug: true,
+  konto_dateien: true,
+  nacharbeit: true,
+  nachlauf: true,
+  pdf: true,
+  preise: true,
+  preise_nachladen: true,
+  wechselkurse: true,
+  widerrufsliste: true,
+};
+
+export class ArtNichtAngemeldet extends Error {}
+
 /** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
 function meldeAuftragsartenAn(d: Dienste): void {
   const arten: Anmeldung[] = [
@@ -69,6 +94,9 @@ function meldeAuftragsartenAn(d: Dienste): void {
     ...d.verwaltung.auftragsarten(),
   ];
   for (const a of arten) d.auftraege.meldeArtAn(a);
+  const angemeldet = new Set(d.auftraege.angemeldeteArten().map(a => a.art));
+  const fehlt = Object.keys(DEKLARIERTE_ARTEN).filter(a => !angemeldet.has(a as AuftragsArt));
+  if (fehlt.length) throw new ArtNichtAngemeldet(`Auftragsart ohne Anmeldung: ${fehlt.join(', ')}`);
 }
 
 type Zeige = ReturnType<typeof einblickIn>;

@@ -57,7 +57,11 @@ export async function cacheStatistik(k: VerwaltungKontext) {
   const leer = { count: 0, limit: 0, remaining: 0 };
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    ab.oder('cache', k.katalog.cacheStand(), { prices: 0, subsets: 0, catalog: 0 }),
+    ab.oder(
+      'cache',
+      Promise.all([k.katalog.cacheStand(), k.verwaltung.preiseImCache()]).then(([c, prices]) => ({ ...c, prices })),
+      { prices: 0, subsets: 0, catalog: 0 },
+    ),
     ab.oder('veraltete_preise', k.verwaltung.veraltetePreise(), 0),
     ab.oder('kontingent_bricklink', k.fremdquellen.kontingentStand('bricklink'), leer),
     ab.oder('kontingent_rebrickable', k.fremdquellen.kontingentStand('rebrickable'), leer),
@@ -158,7 +162,12 @@ export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
 }
 
 /** Der offene geplante Auftrag bekommt sofort den neuen Termin. */
-export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, time: unknown, minutes: unknown) {
+export async function jobZeitplanSetzen(
+  k: VerwaltungKontext,
+  name: string,
+  time: string | null | undefined,
+  minutes: number | string | null | undefined,
+) {
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());

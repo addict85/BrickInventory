@@ -34,36 +34,6 @@ export async function rbFarbcode(db: DbSchnittstelle, colorId: number): Promise<
   return (await db.get<{ rgb: string | null }>('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]))?.rgb || null;
 }
 
-const NEUESTE = `(SELECT a.id FROM part_acquisitions a
-                   WHERE a.user_id=$2 AND a.part_number=$3 AND a.color_id = $4
-                   ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
-
-/** 0 heisst in der Erfassung „für nichts gekauft"; ohne Preis steht NULL. */
-export async function setzeTeilpreisNeueste(
-  db: DbSchnittstelle,
-  uid: number,
-  partNumber: string,
-  colorId: number,
-  preis: number | null,
-): Promise<void> {
-  await db.run(`UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE}`, [
-    preis,
-    uid,
-    partNumber,
-    colorId,
-  ]);
-}
-
-export async function setzeTeilzustandNeueste(
-  db: DbSchnittstelle,
-  uid: number,
-  partNumber: string,
-  colorId: number,
-  zustand: string,
-): Promise<void> {
-  await db.run(`UPDATE part_acquisitions SET condition=$1 WHERE id = ${NEUESTE}`, [zustand, uid, partNumber, colorId]);
-}
-
 export function teilErfassungen(db: DbSchnittstelle, uids: number[], partNumber: string, colorId: number) {
   return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
@@ -74,12 +44,4 @@ export function teilErfassungen(db: DbSchnittstelle, uids: number[], partNumber:
      ORDER BY a.created_at ASC, a.id ASC`,
     [uids, partNumber, colorId],
   );
-}
-
-export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, partNumber: string, colorId: number) {
-  return tx.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3', [
-    besitzer,
-    partNumber,
-    colorId,
-  ]);
 }

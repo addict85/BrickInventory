@@ -185,7 +185,7 @@ function stilleFaengeDerOberflaeche() {
   // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
-  const SCHRANKE = 90;
+  const SCHRANKE = 84;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
@@ -425,7 +425,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
   // (src/vertrag, src/infra, src/http) und Fehlerparameter.
   // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
-  const SCHRANKE_UNKNOWN = 73;
+  const SCHRANKE_UNKNOWN = 63;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
     ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
@@ -1152,7 +1152,6 @@ test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, n
     'public/js/init.js plGenerate',
     'public/js/init.js plExportPdf',
     'public/js/minifigs.js renderFigs',
-    'public/js/set-csv-import.js startSetCsvImport',
   ];
   const alle = funktionsLaengen();
   assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
@@ -1328,7 +1327,7 @@ test('Funktionen im Server (über 80/150 Zeilen, englische Exportnamen) werden w
   // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
   // Gegenproben: buildPdf in src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
   // erzeugeDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
-  const SCHRANKE_80 = 18,
+  const SCHRANKE_80 = 17,
     SCHRANKE_150 = 0,
     BEKANNT_100 = [];
   const dateien = quellen().filter(

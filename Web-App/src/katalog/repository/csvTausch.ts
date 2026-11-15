@@ -7,6 +7,25 @@ import { logAndContinue } from '../../infra/fehler';
 /** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */
 
+/** Nur diese Tabellen tauscht das Repository; ein anderer Name wirft, statt eine fremde zu leeren. */
+export const CSV_TABELLEN = [
+  'rb_colors',
+  'rb_part_categories',
+  'rb_parts',
+  'rb_sets',
+  'rb_inventories',
+  'rb_themes',
+  'rb_inventory_minifigs',
+  'rb_inventory_parts',
+] as const;
+export type CsvTabelle = (typeof CSV_TABELLEN)[number];
+
+function nurCsvTabelle(tabelle: string): CsvTabelle {
+  const t = CSV_TABELLEN.find(x => x === tabelle);
+  if (!t) throw new Error(`keine CSV-Tabelle: ${tabelle}`);
+  return t;
+}
+
 function sperrschluessel(tabelle: string): number {
   let h = 0;
   for (let i = 0; i < tabelle.length; i++) h = (Math.imul(h, 31) + tabelle.charCodeAt(i)) | 0;
@@ -26,9 +45,9 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
 
 /** Mit Schlüsseln (ON CONFLICT braucht sie), ohne CHECKs (geprüft wird beim Tausch, nach den
  * Triggern der Zieltabelle), temporär (die Laufzeitrolle darf in public nichts anlegen). */
-export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
+export async function legeSchattenAn(c: PoolClient, tabelle: CsvTabelle, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
-  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
+  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${nurCsvTabelle(tabelle)} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */
@@ -68,10 +87,11 @@ async function imSchritt(c: PoolClient, schritte: () => Promise<void>): Promise<
   }
 }
 
-export function tausche(c: PoolClient, tabelle: string, schatten: string, spalten: string[]): Promise<void> {
+export function tausche(c: PoolClient, tabelle: CsvTabelle, schatten: string, spalten: string[]): Promise<void> {
+  const ziel = nurCsvTabelle(tabelle);
   return imSchritt(c, async () => {
-    await c.query(`DELETE FROM ${tabelle}`);
-    await c.query(`INSERT INTO ${tabelle} (${spalten.join(',')}) SELECT ${spalten.join(',')} FROM ${schatten}`);
+    await c.query(`DELETE FROM ${ziel}`);
+    await c.query(`INSERT INTO ${ziel} (${spalten.join(',')}) SELECT ${spalten.join(',')} FROM ${schatten}`);
   });
 }
 

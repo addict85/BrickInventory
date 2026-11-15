@@ -270,6 +270,11 @@ export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() 
 export const routen = {
   // Die Zeilen eines laufenden Imports: so viele, wie die eine Datei hat.
   'GET /api/v1/sets/import/csv/status': { klein: true, antwort: CsvImportStatus },
+  'GET /api/v1/sets/import/csv/stream': {
+    art: 'strom',
+    ereignis: CsvImportStatus,
+    abfrage: abfrage({ sprache: Q.text(2) }),
+  },
   'GET /api/v1/admin/logs': { klein: true, antwort: ProtokollResponse, abfrage: abfrage({ minutes: Q.zahl() }) },
   'GET /api/v1/admin/jobs': { antwort: JobsResponse, klein: true },
   'GET /api/v1/admin/brickset-queue': { antwort: BricksetQueueResponse, abfrage: abfrage(SEITE) },

@@ -1,3 +1,4 @@
+import { lagerorte } from '../../../db/bestandSicht';
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
@@ -202,7 +203,7 @@ export async function seiteLive(db: DbSchnittstelle, uids: number[], f: TeileFil
     (f.set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`) +
     ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}` +
     ` ${blJoin('p.part_number', 'part', 'p.user_id')}` +
-    ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id' +
+    ` LEFT JOIN ${lagerorte()} lo ON lo.id = p.storage_id` +
     ` ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}`;
   // Dieselben Joins wie die Hauptabfrage: Jeder hängt am Primärschlüssel und ändert die Zahl nicht.
   const countSql = `SELECT COUNT(*)::int AS c FROM (
@@ -450,7 +451,7 @@ export function manuelleTeile(
     ${teilmengeJoin('t', 'part')}
     ${blJoin('t.part_number', 'part', 't.user_id')}
     ${teilSichtJoin('t.user_id', 't.part_number', 't.color_id')}
-    LEFT JOIN storage_locations lo ON lo.id = t.storage_id
+    LEFT JOIN ${lagerorte()} lo ON lo.id = t.storage_id
     -- Die neueste Erfassung: dieselbe Ordnung wie überall, sonst hätten
     -- „neuester Preis“ und „neueste Erfassung“ zwei Bedeutungen.
     LEFT JOIN LATERAL (

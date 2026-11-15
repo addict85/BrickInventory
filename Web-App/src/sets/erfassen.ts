@@ -147,7 +147,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       if (vorhanden) return { action: 'exists' as const, ...vorhanden };
     }
     const katalog = await t.katalog.merkeKatalogPlatzhalter(sn);
-    await repo.legeSetZeileAn(t.db, besitzer, sn);
+    await t.bestand.legeSetAn(besitzer, sn);
     await erfassungBuchen(t, erfassung);
     if (ort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
     await nacharbeit('ergaenzen');

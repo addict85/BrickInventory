@@ -12,6 +12,7 @@ import * as kaufpreisNachtrag from './kaufpreisNachtrag';
 import * as lagerortRechte from './lagerortRechte';
 import * as lagerortDienst from './lagerort';
 import * as lagerortSetzen from './lagerortSetzen';
+import { schreibwege } from './schreibwege';
 import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kontext';
 
 export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
@@ -28,8 +29,7 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       teileAlsCsv: mit(k)(bestandExportDienst.teileCsv),
       figurenAlsCsv: mit(k)(bestandExportDienst.figurenCsv),
       verwendendeSets: mit(k)(gemeinsamDienst.verwendendeSets),
-      loescheManuellesTeil: mit(k)(gemeinsamDienst.loescheManuellesTeil),
-      loescheManuelleFigur: mit(k)(gemeinsamDienst.loescheManuelleFigur),
+      loescheManuell: mit(k)(gemeinsamDienst.loescheManuell),
       setInhalt: {
         teileEintragen: mit(k)(inhalt.teileEintragen),
         figurenEintragen: mit(k)(inhalt.figurenEintragen),
@@ -37,8 +37,6 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
         kopieren: mit(k)(inhalt.kopieren),
       },
       manuell: {
-        legeTeilAn: mit(k)(inhalt.legeTeilAn),
-        legeFigurAn: mit(k)(inhalt.legeFigurAn),
         legeZeileAn: mit(k)(inhalt.legeZeileAn),
         teileDesKontos: mit(k)(inhalt.teileDesKontos),
         figurenDesKontos: mit(k)(inhalt.figurenDesKontos),
@@ -64,6 +62,8 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
         vorgabeVon: mit(k)(lagerortDienst.vorgabeVon),
         setzeLagerort: mit(k)(lagerortSetzen.setzeLagerort),
       },
+
+      ...schreibwege(k),
 
       setzeVorgabe: mit(k)(lagerortRechte.setzeVorgabe),
       lagerSchreibkonto: mit(k)(lagerortRechte.lagerSchreibkonto),

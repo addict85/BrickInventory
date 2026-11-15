@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { naechsteUhrzeit } from '../auftraege';
+import { auftragsart, naechsteUhrzeit, type Anmeldung, type Bearbeiter } from '../auftraege';
 import type { FremdquellenKontext } from './kontext';
 
 /** Je Set ein Auftrag, fällig zur eingestellten Uhrzeit. `versuch` zählt über
@@ -15,6 +15,11 @@ declare module '../auftraege/auftraege' {
   interface AuftragsNutzlasten {
     brickset: typeof BricksetNutzlast;
   }
+}
+
+/** Typ und Anmeldung der Art stehen hier, wo sie eingereiht wird; den Lauf gibt der Katalog, der die Sets kennt. */
+export function bricksetAuftragsart(ausfuehren: Bearbeiter<'brickset'>['ausfuehren']): Anmeldung {
+  return auftragsart({ art: 'brickset', nutzlast: BricksetNutzlast, ausfuehren, exklusiv: true });
 }
 
 const schluessel = (sn: string) => `brickset:${sn}`;

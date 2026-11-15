@@ -8,15 +8,22 @@ import _pdfFs from 'node:fs/promises';
 import { pdfSchluessel } from '../../src/katalog';
 import { antwortSprache, fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 import type { Request, Response } from 'express';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
+import { inHuelle, vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-type PdfJobStatus = {
-  status?: string | undefined;
+function stromStand(job: {
+  status: string;
   error?: string | null;
   etaSeconds?: number | null;
-  missingImages?: number | null;
-};
+  missingImages?: unknown;
+}) {
+  return inHuelle({
+    status: job.status,
+    error: job.error || null,
+    etaSeconds: job.etaSeconds ?? null,
+    missingImages: job.missingImages ?? null,
+  });
+}
 
 /** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
 function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, id: string, userId: number) {
@@ -42,7 +49,7 @@ function folgeAuftrag(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, strom
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
-    if (job) strom.sende({ status: job.status, error: job.error || null } satisfies PdfJobStatus);
+    if (job) strom.sende(stromStand(job));
     if (!job || fertig(job.status)) strom.ende();
   };
   strom.beiEnde(
@@ -110,12 +117,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'
       const initial = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
       if (!initial) nichtGefunden('job_nicht_gefunden');
       const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true });
-      strom.sende({
-        status: initial.status,
-        error: initial.error || null,
-        etaSeconds: initial.etaSeconds ?? null,
-        missingImages: initial.missingImages ?? null,
-      } satisfies PdfJobStatus);
+      strom.sende(stromStand(initial));
       if (fertig(initial.status)) strom.ende();
       else folgeAuftrag(d, strom, jobId, req.apiUser.user_id);
     },

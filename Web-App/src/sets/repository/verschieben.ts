@@ -1,12 +1,14 @@
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
-export type Inhalt = 'parts' | 'minifigs' | 'instructions';
-
-export async function hatInhalt(tx: DbSchnittstelle, tabelle: Inhalt, uid: number, sn: string): Promise<boolean> {
-  return !!(await tx.get<Treffer>(`SELECT 1 AS ok FROM ${tabelle} WHERE user_id=$1 AND set_number=$2 LIMIT 1`, [
+export async function hatAnleitungen(tx: DbSchnittstelle, uid: number, sn: string): Promise<boolean> {
+  return !!(await tx.get<Treffer>('SELECT 1 AS ok FROM instructions WHERE user_id=$1 AND set_number=$2 LIMIT 1', [
     uid,
     sn,
   ]));
+}
+
+export async function entferneAnleitungen(tx: DbSchnittstelle, uid: number, sn: string): Promise<void> {
+  await tx.run('DELETE FROM instructions WHERE user_id=$1 AND set_number=$2', [uid, sn]);
 }
 
 /** Teile und Figuren kopiert der Bestand (src/bestand/gemeinsam.ts). */
@@ -48,96 +50,4 @@ export function erfassungenZumVerschieben(tx: DbSchnittstelle, uid: number, sn: 
       ORDER BY created_at ASC, id ASC`,
     [uid, sn],
   );
-}
-
-export async function legeSetAn(tx: DbSchnittstelle, uid: number, sn: string, addedAt: string): Promise<void> {
-  await tx.run('INSERT INTO sets (user_id, set_number, added_at) VALUES ($1,$2,$3)', [uid, sn, addedAt]);
-}
-
-export async function loescheSetErfassung(tx: DbSchnittstelle, id: number, konten: number[]): Promise<void> {
-  await tx.run('DELETE FROM set_acquisitions WHERE id=$1 AND user_id = ANY($2)', [id, konten]);
-}
-
-/** Manuelle Teile und Figuren bleiben. */
-export async function entferneSet(tx: DbSchnittstelle, uid: number, sn: string): Promise<void> {
-  for (const t of ['parts', 'minifigs'])
-    await tx.run(`DELETE FROM ${t} WHERE user_id=$1 AND set_number=$2 AND COALESCE(source,'set') <> 'manual'`, [
-      uid,
-      sn,
-    ]);
-  await tx.run('DELETE FROM instructions WHERE user_id=$1 AND set_number=$2', [uid, sn]);
-  await tx.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [uid, sn]);
-  await tx.run('DELETE FROM sets WHERE user_id=$1 AND set_number=$2', [uid, sn]);
-}
-
-export type Art = 'part' | 'fig';
-const TAB = { part: 'parts', fig: 'minifigs' } as const;
-const ERF = { part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
-const SCHLUESSEL = { part: 'part_number = $2 AND color_id = $3', fig: 'fig_number = $2' } as const;
-
-export type ManuelleErfassung = {
-  id: number;
-  quantity: number;
-  unit_price: number | null;
-  condition: string;
-  created_at: string;
-  price_estimated: boolean;
-  currency: string;
-};
-
-/** Unter dem Schlüssel der Anfrage: Sonst buchte das Verschieben die Menge einer fremden
- * Position beim Ziel unter dem Schlüssel der Anfrage. */
-export function manuelleErfassung(
-  tx: DbSchnittstelle,
-  art: Art,
-  id: number,
-  uid: number,
-  schluessel: (string | number)[],
-) {
-  const bedingung = art === 'part' ? 'part_number = $3 AND color_id = $4' : 'fig_number = $3';
-  return tx.get<ManuelleErfassung>(
-    `SELECT id, quantity, unit_price, COALESCE(condition,'N') AS condition, created_at, price_estimated, currency
-       FROM ${ERF[art]} WHERE id = $1 AND user_id = $2 AND ${bedingung}`,
-    [id, uid, ...schluessel],
-  );
-}
-
-export function manuelleZeile(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[]) {
-  return tx.get<{ id: number; part_number?: string; color_id?: number; fig_number?: string }>(
-    `SELECT * FROM ${TAB[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]} AND COALESCE(source,'set') = 'manual'`,
-    [uid, ...schluessel],
-  );
-}
-
-export async function erfassteMenge(
-  tx: DbSchnittstelle,
-  art: Art,
-  uid: number,
-  schluessel: (string | number)[],
-): Promise<number> {
-  const r = await tx.get<{ summe: number }>(
-    `SELECT COALESCE(SUM(quantity), 0)::int AS summe FROM ${ERF[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]}`,
-    [uid, ...schluessel],
-  );
-  return Number(r?.summe ?? 0);
-}
-
-export async function loescheManuelleErfassung(
-  tx: DbSchnittstelle,
-  art: Art,
-  id: number,
-  konten: number[],
-): Promise<void> {
-  await tx.run(`DELETE FROM ${ERF[art]} WHERE id = $1 AND user_id = ANY($2)`, [id, konten]);
-}
-
-export async function entferneManuell(
-  tx: DbSchnittstelle,
-  art: Art,
-  uid: number,
-  schluessel: (string | number)[],
-  zeile: number,
-): Promise<void> {
-  await tx.run(`DELETE FROM ${ERF[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]}`, [uid, ...schluessel]);
-  await tx.run(`DELETE FROM ${TAB[art]} WHERE id = $1 AND user_id = $2`, [zeile, uid]);
 }

@@ -74,7 +74,7 @@ async function stelleKaeufeWiederHer(
       waehrung: k.currency == null ? null : String(k.currency),
     });
     if (gleich && (await kauf.stockeErfassungAuf(tx, 'set', gleich, e.user_id, menge))) continue;
-    await repo.schreibeZurueck(tx, 'set_acquisitions', [k]);
+    await repo.schreibeZurueck(tx, 'set', { set_acquisitions: [k] });
   }
   return true;
 }
@@ -123,8 +123,7 @@ export async function stelleWiederHer(
         await repo.entferneEintrag(t.db, id);
         return { art, nummer: e.nummer, user_id: e.user_id };
       }
-      for (const tabelle of repo.tabellenDerArt(art))
-        await repo.schreibeZurueck(t.db, tabelle, e.zeilen?.[tabelle] ?? []);
+      await repo.schreibeZurueck(t.db, art, e.zeilen ?? {});
       await repo.entferneEintrag(t.db, id);
       return { art, nummer: e.nummer, user_id: e.user_id };
     });

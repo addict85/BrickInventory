@@ -10,21 +10,16 @@ export async function loescheTeil(
 ): Promise<number | null> {
   return k.transaktion(async t => {
     const id = await t.bestand.legeInPapierkorb('teil', besitzer, pn, cid);
-    const r = await t.bestand.loescheManuellesTeil(besitzer, pn, cid);
-    if (r.changes === 0) return null;
-    // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
-    await t.teile.loescheTeilErfassungen(besitzer, pn, cid || 0);
-    return id;
+    const r = await t.bestand.loescheManuell('part', besitzer, [pn, cid]);
+    return r.changes === 0 ? null : id;
   });
 }
 
 export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: string): Promise<number | null> {
   return k.transaktion(async t => {
     const id = await t.bestand.legeInPapierkorb('figur', besitzer, fn);
-    const r = await t.bestand.loescheManuelleFigur(besitzer, fn);
-    if (r.changes === 0) return null;
-    await t.figuren.loescheFigurErfassungen(besitzer, fn);
-    return id;
+    const r = await t.bestand.loescheManuell('fig', besitzer, [fn]);
+    return r.changes === 0 ? null : id;
   });
 }
 

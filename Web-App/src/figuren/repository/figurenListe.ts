@@ -1,3 +1,4 @@
+import { lagerorte, setBestand } from '../../../db/bestandSicht';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import type { Zeile, DbSchnittstelle } from '../../../db/database';
@@ -83,9 +84,9 @@ export async function figurenGruppiert(
     ${mengeJoin('m')}
     ${teilmengeJoin('m', 'fig')}
     -- Die sets-Zeile nur für added_at; die Menge kommt aus mengeJoin().
-    LEFT JOIN sets s ON s.user_id = m.user_id AND s.set_number = m.set_number
+    LEFT JOIN ${setBestand()} s ON s.user_id = m.user_id AND s.set_number = m.set_number
     -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste fällt.
-    LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+    LEFT JOIN ${lagerorte()} lo ON lo.id = m.storage_id
     -- Über den Primärschlüssel, also höchstens eine Zeile je Treffer.
     ${figurSichtJoin('m.user_id', 'm.fig_number')}
     -- Die neueste Erfassung je Figur — dieselbe Ordnung wie latestSql in
@@ -152,7 +153,7 @@ export async function manuelleFigurenListe(
        ${teilmengeJoin('m', 'fig')}
        ${blJoin('m.fig_number', 'fig', 'm.user_id')}
        ${figurSichtJoin('m.user_id', 'm.fig_number')}
-       LEFT JOIN storage_locations lo ON lo.id = m.storage_id
+       LEFT JOIN ${lagerorte()} lo ON lo.id = m.storage_id
        LEFT JOIN LATERAL (
          SELECT a.unit_price, a.condition
            FROM minifig_acquisitions a

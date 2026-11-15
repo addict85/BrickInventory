@@ -381,9 +381,9 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
-  const mv = kompakt(read('src/sets/setMove.ts'));
+  const mv = kompakt(read('src/bestand/umhaengen.ts'));
   assert.match(mv, /export async function manuelleErfassungUmhaengen/);
-  assert.match(mv, /bucheTageserfassung\(kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
+  assert.match(mv, /kaufAmTagErfassen\(t, kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
   // Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
   // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an
@@ -392,7 +392,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
   const f = 'src/sammlung/erfassungen.ts';
   const src = kompakt(read(f));
-  assert.ok(src.includes('t.sets.manuelleErfassungUmhaengen(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.ok(src.includes('t.bestand.manuelleErfassungUmhaengen(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
     /if \(to === null\) fachfehler\('verboten', 'kein_schreibrecht'\)/,
@@ -413,5 +413,5 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
     /t\.sets\.setErfassungenUmhaengen\(String\(keys\[0\]\), from, to, \[id\]\)/,
     'Sets wandern über dieselbe Umsetzung wie beim Verschieben',
   );
-  assert.match(v1, /t\.sets\.manuelleErfassungUmhaengen\(art, keys, id, from, to\)/);
+  assert.match(v1, /t\.bestand\.manuelleErfassungUmhaengen\(art, keys, id, from, to\)/);
 });
