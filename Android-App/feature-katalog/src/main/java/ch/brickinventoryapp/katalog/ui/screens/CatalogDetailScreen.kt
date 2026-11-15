@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import androidx.compose.foundation.ScrollState
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
@@ -129,97 +130,149 @@ fun CatalogDetailScreen(
                 FehlerHinweis(geladen.meldung.satz(), { onLoad(setNumber) }, geladen.art)
             }
             detail == null -> LadeKreis(Modifier.padding(padding))
-            else -> BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
-                // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
-                // vor, derselbe Server-Check wie in der Katalog-Liste.
-                val fullUrl = remember(detail.setNumber, serverUrl) {
-                    resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
-                }
-                // Antippen öffnet den Zoom wie im Set-Detail. Weisser Bildgrund, im Dunkeln
-                // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
-                val bild: @Composable (Modifier) -> Unit = { m ->
-                    ProduktBild(
-                        model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
-                        imageLoader = imageLoader,
-                        contentDescription = detail.name,
-                        modifier = m.clip(Formen.karte)
-                            .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { showImageZoom = true },
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                        ersatzGroesse = 64.dp,
-                        bildgrund = true,
-                        innenAbstand = Abstaende.mittel,
-                    )
-                }
-                val angaben: @Composable ColumnScope.() -> Unit = {
-                    KatalogAngaben(
-                        detail = detail,
-                        gemerkt = gemerkt,
-                        onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
-                        onAufnehmen = { showAddDialog = true },
-                        onOpenInGallery = onOpenInGallery,
-                        onBrickLink = { url ->
-                            // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
-                            if (!oeffneExtern(ctx, externeAdresse(url))) {
-                                bereich.launch { meldungen.showSnackbar(keineAppText) }
-                            }
-                        },
-                    )
-                }
-                // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
-                // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
-                // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
-                if (zweiSpaltig(maxWidth.value)) {
-                    Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
-                        Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),
-                            contentAlignment = Alignment.TopCenter) {
-                            bild(Modifier.widthIn(max = BILD_HOECHSTENS).fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
-                        }
-                        Column(
-                            Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
-                            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-                        ) { angaben() }
+            else -> KatalogDetailInhalt(
+                detail, serverUrl, imageLoader, gemerkt, rollen, Modifier.padding(padding),
+                onZoom = { showImageZoom = true },
+                onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
+                onAufnehmen = { showAddDialog = true },
+                onOpenInGallery = onOpenInGallery,
+                onBrickLink = { url ->
+                    // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
+                    if (!oeffneExtern(ctx, externeAdresse(url))) {
+                        bereich.launch { meldungen.showSnackbar(keineAppText) }
                     }
-                } else Column(
-                    Modifier.fillMaxSize().verticalScroll(rollen).padding(Abstaende.gross),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-                ) {
-                    bild(Modifier.fillMaxWidth().height(220.dp))
-                    angaben()
-                }
-            }
+                },
+            )
         }
     }
 
-    if (showWishDialog && detail != null) {
+    KatalogDetailDialoge(
+        detail = detail, merken = showWishDialog, aufnehmen = showAddDialog, zoom = showImageZoom,
+        defaultCondition = defaultCondition, householdMembers = householdMembers,
+        lagerorte = lagerorte, lagerortVorgabe = lagerortVorgabe, serverUrl = serverUrl, imageLoader = imageLoader,
+        onWish = onWish, onAddToGallery = onAddToGallery,
+        onSchliessen = { showWishDialog = false; showAddDialog = false; showImageZoom = false },
+    )
+}
+
+/** Bild und Angaben; ab „expanded“ in zwei Spalten. */
+@Composable
+private fun KatalogDetailInhalt(
+    detail: KatalogDetailAnsicht,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    gemerkt: MerkpostenAnsicht?,
+    rollen: ScrollState,
+    modifier: Modifier,
+    onZoom: () -> Unit,
+    onMerken: () -> Unit,
+    onAufnehmen: () -> Unit,
+    onOpenInGallery: (String) -> Unit,
+    onBrickLink: (String) -> Unit,
+) {
+    val ctx = LocalContext.current
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
+        // vor, derselbe Server-Check wie in der Katalog-Liste.
+        val fullUrl = remember(detail.setNumber, serverUrl) {
+            resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
+        }
+        // Antippen öffnet den Zoom wie im Set-Detail. Weisser Bildgrund, im Dunkeln
+        // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
+        val bild: @Composable (Modifier) -> Unit = { m ->
+            ProduktBild(
+                model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                imageLoader = imageLoader,
+                contentDescription = detail.name,
+                modifier = m.clip(Formen.karte)
+                    .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { onZoom() },
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                ersatzGroesse = 64.dp,
+                bildgrund = true,
+                innenAbstand = Abstaende.mittel,
+            )
+        }
+        val angaben: @Composable ColumnScope.() -> Unit = {
+            KatalogAngaben(
+                detail = detail,
+                gemerkt = gemerkt,
+                onMerken = onMerken,
+                onAufnehmen = onAufnehmen,
+                onOpenInGallery = onOpenInGallery,
+                onBrickLink = onBrickLink,
+            )
+        }
+        // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
+        // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
+        // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
+        if (zweiSpaltig(maxWidth.value)) {
+            Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),
+                    contentAlignment = Alignment.TopCenter) {
+                    bild(Modifier.widthIn(max = BILD_HOECHSTENS).fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
+                }
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+                ) { angaben() }
+            }
+        } else Column(
+            Modifier.fillMaxSize().verticalScroll(rollen).padding(Abstaende.gross),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+        ) {
+            bild(Modifier.fillMaxWidth().height(220.dp))
+            angaben()
+        }
+    }
+}
+
+/** Merken, Aufnehmen und Zoom des Katalog-Details; [onSchliessen] schliesst, was offen ist. */
+@Composable
+private fun KatalogDetailDialoge(
+    detail: KatalogDetailAnsicht?,
+    merken: Boolean,
+    aufnehmen: Boolean,
+    zoom: Boolean,
+    defaultCondition: Zustand,
+    householdMembers: List<MitgliedAnsicht>,
+    lagerorte: List<String>,
+    lagerortVorgabe: String,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onWish: (Merkwunsch) -> Unit,
+    onAddToGallery: (Erfassungswunsch) -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    if (merken && detail != null) {
         MerkpostenDialog(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
-            onDismiss = { showWishDialog = false },
+            onDismiss = onSchliessen,
             onWish = { zustand, richtung, schwelle, konto ->
                 onWish(Merkwunsch(detail.setNumber, zustand, richtung, schwelle, konto))
-                showWishDialog = false
+                onSchliessen()
             },
         )
     }
 
-    if (showAddDialog && detail != null) {
+    if (aufnehmen && detail != null) {
         CatalogAddDialog(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
             lagerorte = lagerorte,
             lagerortVorgabe = lagerortVorgabe,
-            onDismiss = { showAddDialog = false },
+            onDismiss = onSchliessen,
             onAdd = { wunsch ->
-                showAddDialog = false
+                onSchliessen()
                 onAddToGallery(wunsch.copy(setNumber = detail.setNumber))
             }
         )
     }
 
-    if (showImageZoom) {
+    if (zoom) {
         // Dieselbe Adresse wie das Vorschaubild oben: resolveFullUrl() liefert
         // bereits die volle Auflösung (kein Thumb) — ein zweiter Aufruf mit
         // anderen Werten würde nur auseinanderlaufen.
@@ -229,7 +282,7 @@ fun CatalogDetailScreen(
                 imageUrl = zoomUrl,
                 contentDescription = detail?.name,
                 imageLoader = imageLoader,
-                onDismiss = { showImageZoom = false }
+                onDismiss = onSchliessen
             )
         }
     }
