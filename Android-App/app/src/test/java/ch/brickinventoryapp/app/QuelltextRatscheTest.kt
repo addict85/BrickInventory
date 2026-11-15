@@ -657,16 +657,19 @@ class QuelltextRatscheTest {
             }
         }
         // Beide Zahlen stehen auf 0; dass das Muster noch greift, zeigt eine alte Form.
-        for (alteForm in listOf("galleryLoading", "bestandLaeuft", "isExporting", "speichert", "laedtPruefung")) {
-            val probe = eigenschaft.find("    val $alteForm: Boolean = false,")?.destructured?.component1()
-            assertTrue("Das Muster erkennt $alteForm nicht mehr", probe != null && laden.matches(probe))
-        }
+        val unerkannt = listOf("galleryLoading", "bestandLaeuft", "isExporting", "speichert", "laedtPruefung")
+            .filterNot { erkannt(laden, it) }
+        assertTrue("Das Muster erkennt $unerkannt nicht mehr", unerkannt.isEmpty())
         assertTrue("Nur $zustaende Zustandsdateien — greift die Suche noch?", zustaende >= 10)
         ratsche("alte Ladeformen (Boolean laedt/…laeuft/speichert/…ing)", ALT, alt,
             "Laden<T> (model/ui/Laden.kt) für Abrufe, Vorgang (model/ui/Vorgang.kt) für Handlungen nehmen.")
         ratsche("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texte,
             "Meldung (model/ui/Meldung.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
     }
+
+    /** Ob [muster] eine Boolean-Eigenschaft dieses Namens als alte Ladeform zählt. */
+    private fun erkannt(muster: Regex, name: String): Boolean =
+        eigenschaft.find("    val $name: Boolean = false,")?.destructured?.component1()?.let(muster::matches) == true
 
     /** Die Hauptquellen eines Moduls, Zeile für Zeile; die Regeln unten lesen nur Zeilenanfänge. */
     private fun zeilenJeModul(): List<Pair<String, List<String>>> = Quellen.module.flatMap { m ->

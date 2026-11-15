@@ -43,6 +43,12 @@ data class Teilefilter(
 ) : Serializable {
     /** Die drei Reihenfolgen der Webapp; die Regeln stehen in sortiert() (TeileOrdnung.kt). */
     enum class Ordnung { FARBE, NAME, MENGE }
+
+    private companion object {
+        // Fest, sonst rechnet die JVM die Kennung aus der Klassenform, und jede neue Fassung
+        // der App verwürfe den gemerkten Filter.
+        private const val serialVersionUID: Long = 1L
+    }
 }
 
 /** Der Teile-Reiter: Liste, Filter mit ihren Auswahllisten, Kennzahlen. */
