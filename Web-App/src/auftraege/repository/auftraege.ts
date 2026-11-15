@@ -36,15 +36,6 @@ export interface AuftragsListenZeile {
   wartet: boolean;
   set_number: string | null;
 }
-export interface WiedervorlageZeile {
-  set_number: string;
-  name: string | null;
-  attempts: number;
-  retry_after: string | null;
-  last_error: string | null;
-  created_at: Date | null;
-}
-
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
 export async function fuegeAuftragEin(
   db: DbSchnittstelle,
@@ -74,27 +65,27 @@ export async function fuegeAuftragEin(
 /** Derselbe Schreibweg ohne Systemrahmen gebunden (src/auftraege/kontext.ts). */
 export const fuegeEigenenAuftragEin = fuegeAuftragEin;
 
-/** Je Schlüssel ein offener Auftrag, der die neuen Posten zu seinen dazunimmt:
- * Jede Bewertung meldet, was noch fehlt; eine neue Liste ist kein neuer Auftrag.
- * Läuft einer, entsteht daneben höchstens ein offener (eindeutig nur unter 'offen'). */
-export async function ergaenzePreisAuftrag(
+/** Je Schlüssel ein offener Auftrag, der die neuen Einträge der Liste zu seinen dazunimmt:
+ * Eine neue Liste ist kein neuer Auftrag. Läuft einer, entsteht daneben höchstens ein
+ * offener (eindeutig nur unter 'offen'); doppelte Einträge gibt es nur einmal. */
+export async function fuegeListeAn(
   db: DbSchnittstelle,
-  schluessel: string,
-  nutzlast: { user_id: number; posten: unknown[] },
-  hoechstens: number,
+  art: string,
+  nutzlast: object,
+  o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
   const z = await db.get<{ id: string }>(
-    `INSERT INTO auftraege (art, nutzlast, user_id, schluessel) VALUES ('preise_nachladen', $2, $3, $1)
+    `INSERT INTO auftraege (art, nutzlast, user_id, schluessel) VALUES ($5, $2, $3, $1)
      ON CONFLICT (schluessel) WHERE status = 'offen' DO UPDATE SET aktualisiert = NOW(),
-       nutzlast = jsonb_set(auftraege.nutzlast, '{posten}', (
+       nutzlast = jsonb_set(auftraege.nutzlast, ARRAY[$6::text], (
          SELECT COALESCE(jsonb_agg(p ORDER BY n), '[]'::jsonb) FROM (
            SELECT p, MIN(n) AS n FROM (
-             SELECT p, n FROM jsonb_array_elements(auftraege.nutzlast->'posten') WITH ORDINALITY AS alt(p, n)
+             SELECT p, n FROM jsonb_array_elements(auftraege.nutzlast->$6) WITH ORDINALITY AS alt(p, n)
              UNION ALL
-             SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.nutzlast->'posten') WITH ORDINALITY AS neu(p, n)
+             SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.nutzlast->$6) WITH ORDINALITY AS neu(p, n)
            ) beide GROUP BY p ORDER BY MIN(n) LIMIT $4) vereint))
      RETURNING id`,
-    [schluessel, JSON.stringify(nutzlast), nutzlast.user_id, hoechstens],
+    [o.schluessel, JSON.stringify(nutzlast), o.userId, o.hoechstens, art, o.liste],
   );
   return String(z!.id);
 }
@@ -182,12 +173,12 @@ export function schreibeFortschritt(
   );
 }
 /** PDF und CSV tragen ganze Listen; erledigt braucht die niemand mehr. */
-export function setzeErledigt(db: DbSchnittstelle, a: Belegung): Promise<Stand> {
+export function setzeErledigt(db: DbSchnittstelle, a: Belegung, nutzlastVerwerfen: boolean): Promise<Stand> {
   return db.get(
     `UPDATE auftraege SET status = 'erledigt', belegt_von = NULL, fehler = NULL, frist_bis = NULL, aktualisiert = NOW(),
-            nutzlast = CASE WHEN art IN ('pdf', 'csv_import') THEN '{}'::jsonb ELSE nutzlast END
+            nutzlast = CASE WHEN $3 THEN '{}'::jsonb ELSE nutzlast END
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-    [a.id, a.belegt_von],
+    [a.id, a.belegt_von, nutzlastVerwerfen],
   );
 }
 export function setzeFehlgeschlagen(
@@ -385,30 +376,31 @@ export async function laeuftArt(db: DbSchnittstelle, art: string): Promise<boole
   return !!(await db.get<Treffer>(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]));
 }
 
-export async function hoechsterBricksetVersuch(db: DbSchnittstelle, schluessel: string): Promise<number> {
+/** Der höchste Zähler `feld` der Nutzlast unter den wartenden Aufträgen dieses Schlüssels. */
+export async function hoechsterZaehler(db: DbSchnittstelle, schluessel: string, feld: string): Promise<number> {
   const z = await db.get<{ v: number }>(
-    `SELECT COALESCE(MAX((nutzlast->>'versuch')::int), 0) AS v FROM auftraege
+    `SELECT COALESCE(MAX((nutzlast->>$2)::int), 0) AS v FROM auftraege
       WHERE schluessel = $1 AND status IN ('offen', 'laeuft')`,
-    [schluessel],
+    [schluessel, feld],
   );
   return z?.v ?? 0;
 }
 
-/** Ein schon offener Auftrag desselben Sets wird umgeplant, nicht verdoppelt. */
-export async function merkeBricksetVor(
+/** Ein schon offener Auftrag desselben Schlüssels wird umgeplant, nicht verdoppelt. */
+export async function schreibeWiedervorlage(
   db: DbSchnittstelle,
+  art: string,
   schluessel: string,
-  nutzlast: Record<string, unknown>,
-  faelligAb: Date,
-  fehler: string,
+  nutzlast: object,
+  o: { faelligAb: Date; fehler: string; maxVersuche: number },
 ): Promise<void> {
   await db.run(
     `INSERT INTO auftraege (art, nutzlast, schluessel, max_versuche, faellig_ab, fehler)
-     VALUES ('brickset', $2, $1, 3, $3, $4)
+     VALUES ($5, $2, $1, $6, $3, $4)
      ON CONFLICT (schluessel) WHERE status = 'offen'
        DO UPDATE SET nutzlast = EXCLUDED.nutzlast, faellig_ab = EXCLUDED.faellig_ab,
                      fehler = EXCLUDED.fehler, aktualisiert = NOW()`,
-    [schluessel, JSON.stringify(nutzlast), faelligAb, fehler],
+    [schluessel, JSON.stringify(nutzlast), o.faelligAb, o.fehler, art, o.maxVersuche],
   );
 }
 
@@ -416,22 +408,27 @@ export async function loescheOffenen(db: DbSchnittstelle, schluessel: string): P
   await db.run(`DELETE FROM auftraege WHERE schluessel = $1 AND status = 'offen'`, [schluessel]);
 }
 
-/** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt. */
-export function bricksetWiedervorlage(db: DbSchnittstelle) {
-  return db.all<WiedervorlageZeile>(
-    `SELECT a.nutzlast->>'set_number' AS set_number, to_char(a.faellig_ab, 'YYYY-MM-DD') AS retry_after,
-            COALESCE((a.nutzlast->>'versuch')::int, 1) AS attempts, a.fehler AS last_error,
-            a.erstellt AS created_at, rs.name
-       FROM auftraege a LEFT JOIN rb_sets rs ON rs.set_num = a.nutzlast->>'set_number'
-      WHERE a.art = 'brickset' AND a.status IN ('offen', 'laeuft')
-      ORDER BY a.faellig_ab, 1`,
+export interface WartendeZeile {
+  nutzlast: Record<string, unknown>;
+  faellig_ab: Date;
+  fehler: string | null;
+  erstellt: Date | null;
+}
+
+/** Wartende und laufende einer Art, nach Fälligkeit. */
+export function wartendeDerArt(db: DbSchnittstelle, art: string) {
+  return db.all<WartendeZeile>(
+    `SELECT nutzlast, faellig_ab, fehler, erstellt FROM auftraege
+      WHERE art = $1 AND status IN ('offen', 'laeuft') ORDER BY faellig_ab, id`,
+    [art],
   );
 }
 
-export function bricksetWartende(db: DbSchnittstelle) {
+export function zahlenDerArt(db: DbSchnittstelle, art: string) {
   return db.get<{ wartend: number; faellig: number }>(
     `SELECT COUNT(*)::int AS wartend, COUNT(*) FILTER (WHERE faellig_ab <= NOW())::int AS faellig
-       FROM auftraege WHERE art = 'brickset' AND status IN ('offen', 'laeuft')`,
+       FROM auftraege WHERE art = $1 AND status IN ('offen', 'laeuft')`,
+    [art],
   );
 }
 
@@ -486,11 +483,12 @@ export function auftragsStand(db: DbSchnittstelle, id: string, uid: number) {
   );
 }
 
-export function zieheBricksetTermineVor(db: DbSchnittstelle, bis: Date) {
-  return db.run(
-    `UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`,
-    [bis],
-  );
+/** Was später fällig war, kommt bis `bis` dran. */
+export function zieheTermineVor(db: DbSchnittstelle, art: string, bis: Date) {
+  return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = $2 AND status = 'offen' AND faellig_ab > NOW()`, [
+    bis,
+    art,
+  ]);
 }
 
 export async function schreibeErgebnis(
@@ -502,4 +500,46 @@ export async function schreibeErgebnis(
     id,
     ergebnis === null ? null : JSON.stringify(ergebnis),
   ]);
+}
+
+/** Nur der eigene: Der Schlüssel steht in der Adresse, er allein ist kein Recht. */
+export function eigeneZeile(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
+  return db.get<{
+    status: AuftragsStatus;
+    fehler: string | null;
+    user_id: number | null;
+    fortschritt: Fortschritt | null;
+  }>(
+    `SELECT status, fehler, user_id, fortschritt FROM auftraege
+      WHERE art = $3 AND schluessel = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1`,
+    [schluessel, uid, art],
+  );
+}
+
+/** Ein hängengebliebener zählt nach `fristSek` nicht mehr. */
+export function zaehleLaufendeZeilen(db: DbSchnittstelle, art: string, uid: number, fristSek: number) {
+  return db.get<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM auftraege
+      WHERE art = $3 AND user_id = $1 AND status IN ('offen', 'laeuft')
+        AND erstellt > NOW() - make_interval(secs => $2)`,
+    [uid, fristSek, art],
+  );
+}
+
+export function loescheEigeneZeile(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
+  return db.run(`DELETE FROM auftraege WHERE art = $3 AND schluessel = $1 AND user_id = $2 AND status <> 'laeuft'`, [
+    schluessel,
+    uid,
+    art,
+  ]);
+}
+
+/** Beendete nach Ablauf der Frist; liefert ihre Schlüssel, damit Dateien mitgehen. */
+export function loescheBeendeteZeilen(db: DbSchnittstelle, art: string, fristSek: number) {
+  return db.all<{ schluessel: string }>(
+    `DELETE FROM auftraege WHERE art = $2 AND status IN ('erledigt', 'fehler', 'abgebrochen')
+        AND aktualisiert < NOW() - make_interval(secs => $1)
+     RETURNING schluessel`,
+    [fristSek, art],
+  );
 }

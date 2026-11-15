@@ -3,6 +3,7 @@ import path from 'node:path';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { KEINE_FARBE } from '../infra/validate';
 import { versuche } from '../infra/ergebnis';
+import { anleitungEinreihen } from './anleitungsAuftrag';
 import type { KatalogKontext } from './kontext';
 
 export async function bilderFuerNachlauf(k: KatalogKontext) {
@@ -73,7 +74,7 @@ export async function bilderAusKatalog<T extends Bildposten>(
 export async function anleitungenNachtragen(k: KatalogKontext): Promise<void> {
   const missing = await k.bildlage.setsOhneAnleitungsabruf();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-  for (const set_number of missing) await k.auftraege.anleitungEinreihen(set_number);
+  for (const set_number of missing) await anleitungEinreihen(k, set_number);
 }
 
 /** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag

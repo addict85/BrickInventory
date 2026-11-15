@@ -698,7 +698,6 @@ export type Fehlercode =
   | 'aktuelles_passwort_falsch'
   | 'passwort_wechsel_noetig'
   | 'letzter_verwalter'
-  | 'verwalter_muss_bleiben'
   | 'zweiter_faktor_pflicht'
   | 'alle_felder_erforderlich'
   | 'passwort_reset_nicht_eingerichtet'

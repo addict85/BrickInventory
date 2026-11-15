@@ -16,7 +16,6 @@ export function erzeugeGutscheine(
     { ...a, faecher: new Faecher() },
     zugang,
     (k: GutscheineKontext) => ({
-      gutscheinMitPdfAnlegen: mit(k)(dienst.gutscheinMitPdfAnlegen),
       gutscheinBearbeiten: mit(k)(dienst.gutscheinBearbeiten),
       gutscheinKlartext: mit(k)(dienst.gutscheinKlartext),
       pdfFreigeben: mit(k)(dienst.pdfFreigeben),

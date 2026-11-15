@@ -392,12 +392,12 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       ['eigen'],
     );
     assert.deepEqual(
-      (await anfrage(A, () => d.konto.zugaengeListe(A))).map(z => z.label),
+      (await anfrage(A, () => d.konto.sitzungen.zugaengeListe(A))).map(z => z.label),
       ['eigen'],
     );
     // Ein fremdes Konto, auch mit dessen ID gefragt: nichts, und nichts zu löschen.
     assert.deepEqual(await anfrage(A, () => d.konto.passkeysDesKontos(C)), []);
-    assert.deepEqual(await anfrage(A, () => d.konto.zugaengeListe(C)), []);
+    assert.deepEqual(await anfrage(A, () => d.konto.sitzungen.zugaengeListe(C)), []);
     const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
     assert.equal(await anfrage(A, () => d.konto.loeschePasskey(C, pkC.id)), false);
     assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
@@ -429,7 +429,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(ids(await als(A, alleSets)), [A, B]);
     const anfrage = f => alsAnfrage({ apiUser: { user_id: A } }, f);
     assert.deepEqual(await anfrage(() => d.konto.passkeysDesKontos(B)), []);
-    assert.deepEqual(await anfrage(() => d.konto.zugaengeListe(B)), []);
+    assert.deepEqual(await anfrage(() => d.konto.sitzungen.zugaengeListe(B)), []);
     // Anlegen für das Unterkonto: abgewiesen, auch wo der Zeilenschutz der Bestände es erlaubt.
     const rls = /row-level security/;
     for (const sql of [
@@ -480,11 +480,11 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     );
     st.after(() => su.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`]));
     const anfrage = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
-    assert.equal((await anfrage(C, () => d.auftraege.liesAuftrag(kennung, C)))?.user_id, C);
+    assert.equal((await anfrage(C, () => d.katalog.pdf.lies(kennung, C)))?.user_id, C);
     // Mit der eigenen ID gefragt (wie die Route): keiner; mit der fremden: der Zeilenschutz verbirgt ihn.
-    assert.equal(await anfrage(A, () => d.auftraege.liesAuftrag(kennung, A)), null);
-    assert.equal(await anfrage(A, () => d.auftraege.liesAuftrag(kennung, C)), null);
-    await anfrage(A, () => d.auftraege.loescheAuftrag(kennung, C));
+    assert.equal(await anfrage(A, () => d.katalog.pdf.lies(kennung, A)), null);
+    assert.equal(await anfrage(A, () => d.katalog.pdf.lies(kennung, C)), null);
+    await anfrage(A, () => d.katalog.pdf.loesche(kennung, C));
     assert.equal((await su.all('SELECT 1 FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`])).length, 1);
   });
 });

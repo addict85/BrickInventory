@@ -72,7 +72,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
       c.release();
     }
   }
-  const { neueJobId, pdfDateiPfad } = _req('src/auftraege/pdfAuftraege.js');
+  const { neueJobId, pdfDateiPfad } = _req('src/katalog/pdf/pdfAuftraege.js');
   const jobId = neueJobId(Date.now());
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);

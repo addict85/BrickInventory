@@ -41,7 +41,8 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
   const D_ = _req('src/auftraege/dienst.js');
-  const D = { ...D_, merkePreiseVor: n => alsKonto(uid, () => D_.merkePreiseVor(n)) };
+  const { merkePreiseVor } = _req('src/finanzen/preisPosten.js');
+  const D = { ...D_, merkePreiseVor: n => alsKonto(uid, () => merkePreiseVor(n)) };
   const repo = require('./helpers/sources').testBereich('auftraege').auftraege;
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const leeren = () => db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);

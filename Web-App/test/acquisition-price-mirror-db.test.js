@@ -51,7 +51,8 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
   };
   // Was die Kachel zeigt: das Aggregat aus den Erfassungen, keine gespiegelte Spalte.
   const kachel = async () =>
-    (await require('./helpers/sources').bereichsSeite('sets').zustandsAggregat([uid], SN)).avg_purchase_price;
+    (await _req('src/sets/lesen.js').zustandsAggregat(require('./helpers/sources').testKontext('sets'), [uid], SN))
+      .avg_purchase_price;
 
   try {
     for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([

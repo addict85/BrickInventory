@@ -104,7 +104,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 120_000 }, asy
   const faktor = uid => db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [uid]);
   const faellig = async uid => {
     await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [uid]);
-    return S.testDienste().konto.fuehreFaelligeUebernahmenAus();
+    return S.testDienste().konto.verwalter.fuehreFaelligeUebernahmenAus();
   };
   const offen = async uid => (await db.all('SELECT art FROM verwalter_uebernahmen WHERE ziel_id = $1', [uid])).length;
 
@@ -131,7 +131,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 120_000 }, asy
       assert.ok(stunden > 23.9 && stunden <= 24, `wirksam_ab ${r.body.wirksam_ab}`);
     }
     assert.deepEqual(await stand(vw), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
-    assert.equal(await S.testDienste().konto.fuehreFaelligeUebernahmenAus(), 0, 'vor der Frist');
+    assert.equal(await S.testDienste().konto.verwalter.fuehreFaelligeUebernahmenAus(), 0, 'vor der Frist');
     assert.equal(await faellig(vw), 2);
     assert.deepEqual(await stand(vw), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
     assert.equal(await offen(vw), 0);

@@ -94,7 +94,7 @@ export function baueMinifigsRouter(
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
-        ...(await d.auftraege.importiereAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
+        ...(await d.sammlung.importiere<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
       };

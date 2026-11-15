@@ -889,12 +889,24 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   // handleRouteError(res, e, undefined, req); }` gehüllt → rot (31.10.2026). In parts.ts
   // `return sendeFehler(req, res, 404, 'teil_nicht_manuell')` statt nichtGefunden → rot
   // „sendeFehler in Routen“; in settings.ts wieder `String(req.eingabe.condition ?? '')` → rot
-  // „Umwandlungen geprüfter Eingaben“ (14.11.2026).
+  // „Umwandlungen geprüfter Eingaben“ (14.11.2026). Absagen der Dienste (15.11.2026): in
+  // routes/auth/benutzer.ts wieder `if (r === LETZTER_VERWALTER) fachfehler(…)` → rot „Route
+  // übersetzt eine Absage“; ebenso `if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
+  // fachfehler(…)` in routes/auth.ts → rot.
   const ist = new Map();
   const senden = new Map();
   const umwandlungen = [];
+  const absagen = [];
   for (const d of tsUnter('routes')) {
     const q = quelltext(d);
+    // Eine Absage wirft der Dienst (fachfehler); ein Zustand, der die Antwort formt, bleibt erlaubt.
+    const ergebnisse = [...q.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*await\s+d\./g)].map(m => m[1]);
+    const vergleich = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
+    for (const z of q.split('\n')) {
+      const wirft = /\b(?:fachfehler|nichtGefunden)\(|\bthrow\b/.test(z);
+      if (wirft && (ergebnisse.some(n => vergleich(n).test(z)) || /\(await d\.[^;]*\)\s*[!=]==\s*'/.test(z)))
+        absagen.push(`${d}: ${z.trim()}`);
+    }
     const n = (q.match(/\btry\s*\{/g) || []).length;
     if (n) ist.set(d, n);
     const s = (q.match(/\bsendeFehler\(/g) || []).length;
@@ -908,6 +920,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   assert.deepEqual(Object.fromEntries(senden), Object.fromEntries(SENDEFEHLER_IN_ROUTEN), 'sendeFehler in Routen');
   // Der Vertrag liefert das Fachformat (z.transform); eine Route wandelt nicht nach.
   assert.deepEqual(umwandlungen, [], 'Umwandlungen geprüfter Eingaben in Routen');
+  assert.deepEqual(absagen, [], 'Route übersetzt eine Absage des Dienstes');
 });
 
 // ── Rangfolge der Bereiche ──────────────────────────────────────────────────
@@ -1024,4 +1037,43 @@ test('docs/architektur.md nennt die Rangfolge der Bereiche wie STUFEN', () => {
   );
   assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
   assert.deepEqual(stufen, STUFEN);
+});
+
+test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse laufen über ereignis.ts', () => {
+  // Gegenproben (15.11.2026): `import type { KatalogDienste } from '../katalog'` in
+  // src/auftraege/dienst.ts → rot (Kante src/auftraege → src/katalog); `const P = z.object({})` in
+  // src/auftraege/arten.ts → rot (Nutzlastform); `'brickset'` zurück in src/auftraege/dienst.ts → rot.
+  const ERLAUBT = new Set(['src/infra', 'src/einstellungen', 'db']);
+  const fremd = bereichsKanten()
+    .filter(k => k.von === 'src/auftraege' && !ERLAUBT.has(k.nach))
+    .map(k => `${k.d} -> ${k.ziel}`);
+  assert.deepEqual(fremd, [], 'src/auftraege importiert einen Fachbereich');
+
+  const dateien = tsUnter('src/auftraege');
+  const formen = dateien.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(quelltext(d)));
+  assert.deepEqual(formen, [], 'Nutzlastform in src/auftraege: in den Bereich, der die Art anmeldet');
+
+  // Die Arten stehen dort, wo die Bereiche ihre Nutzlast melden (declare module … AuftragsNutzlasten).
+  const arten = tsUnter('src')
+    .flatMap(d => [...quelltext(d).matchAll(/interface AuftragsNutzlasten \{([^}]*)\}/g)])
+    .flatMap(m => [...m[1].matchAll(/^\s*(\w+):/gm)].map(a => a[1]));
+  assert.ok(arten.length > 15, `nur ${arten.length} angemeldete Arten gefunden — greift die Suche noch?`);
+  const literale = dateien.flatMap(d =>
+    [...quelltext(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => arten.includes(m[1])).map(m => `${d}: ${m[1]}`),
+  );
+  assert.deepEqual(literale, [], 'src/auftraege nennt eine Auftragsart');
+
+  // Ereignisse laufen über src/infra/ereignis.ts, nicht über eigene Horcher.
+  // Gegenproben (15.11.2026): in src/einstellungen/nutzerEinstellung.ts wieder
+  // `fach('waehrungswechsel', () => new Set<() => void>())` → rot (eigene Horcher);
+  // in src/auftraege/importAuftrag.ts wieder `k.db.benachrichtigung.listen('csv_import_progress', f)`
+  // → rot (NOTIFY von Hand); `new EventEmitter()` zurück in importAuftrag.ts → rot.
+  const EREIGNIS = 'src/infra/ereignis.ts';
+  const alle = tsUnter('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);
+  const treffer = muster =>
+    alle.flatMap(d => [...quelltext(d).matchAll(muster)].map(m => `${d}: ${m[0].replace(/\s+/g, ' ')}`));
+  assert.ok(/new Set<Horcher<A>>/.test(quelltext(EREIGNIS)), 'Selbstbeweis: die Horcher stehen in ereignis.ts');
+  assert.deepEqual(treffer(/new Set<\s*(?:\(|\w*Horcher\b)/g), [], 'eigene Horcher: ereignis() nehmen');
+  assert.deepEqual(treffer(/\bbenachrichtigung\s*\.\s*(?:listen|unlisten|notify)\(/g), [], 'NOTIFY von Hand');
+  assert.deepEqual(treffer(/\bnew EventEmitter\b/g), [], 'eigener Ereignisbus');
 });

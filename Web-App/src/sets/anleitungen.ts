@@ -50,7 +50,7 @@ export async function anleitungenNeuLaden(sk: SetsKontext, uid: number, roh: str
     if (!(await sk.katalog.anleitungNeuLadenErlaubt(sn)))
       fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  const auftrag = await sk.auftraege.anleitungEinreihen(sn, { jetzt: true });
+  const auftrag = await sk.katalog.anleitungEinreihen(sn, { jetzt: true });
   const instructions = anleitungenZusammenlegen(await sk.katalog.anleitungenZuSet(sn), []);
   return { instructions, auftrag };
 }

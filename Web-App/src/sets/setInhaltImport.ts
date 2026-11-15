@@ -7,7 +7,7 @@ export async function importiereFiguren(k: SetsKontext, setNumber: string, userI
   if (!figuren.length) return 0;
   const nummern = figuren.map(f => f.fig_number);
   await k.transaktion(async t => {
-    await t.bestand.setFigurenEintragen(userId, setNumber, nummern);
+    await t.bestand.setInhalt.figurenEintragen(userId, setNumber, nummern);
     await t.katalog.setFigurenMerken(setNumber, figuren, ausQuelle);
   });
   console.log(`[minifigs] ${setNumber}: ${figuren.length} importiert`);
@@ -24,7 +24,7 @@ export async function importiereTeile(k: SetsKontext, setNumber: string, userId:
   for (let versuch = 1; ; versuch++) {
     try {
       await k.transaktion(async t => {
-        await t.bestand.setTeileEintragen(userId, n, teile, farben);
+        await t.bestand.setInhalt.teileEintragen(userId, n, teile, farben);
         await t.katalog.setTeileMerken(n, zeilen);
       });
       break;

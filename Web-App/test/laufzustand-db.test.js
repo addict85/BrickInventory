@@ -70,7 +70,9 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
     }
   });
 
-  const jm = _req('src/auftraege/jobMonitor.js');
+  const jm = _req('src/verwaltung/kacheln.js');
+  const { auftraege } = require('./helpers/sources').testDienste();
+  const imgDlAdd = n => auftraege.zaehleZustand('imgdl_pending_count', n);
 
   await t.test('die Kacheln lesen den Stand aus der Auftragstabelle', async () => {
     await db.run("DELETE FROM auftraege WHERE art = 'preise'");
@@ -90,9 +92,9 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
 
   await t.test('der Bildzähler zählt gleichzeitige Aufrufe genau', async () => {
     await jm.imgDlReset();
-    await Promise.all(Array.from({ length: 20 }, () => jm.imgDlAdd(1)));
+    await Promise.all(Array.from({ length: 20 }, () => imgDlAdd(1)));
     assert.equal(await jm.imgDlPending(), 20);
-    await jm.imgDlAdd(-50);
+    await imgDlAdd(-50);
     assert.equal(await jm.imgDlPending(), 0, 'nie unter 0');
   });
 });

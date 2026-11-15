@@ -1,6 +1,6 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
-import * as aufraeumen from './aufraeumen';
+import { verwaltungAuftragsarten } from './auftragsarten';
 import * as datenexport from './datenexport';
 import * as diagnose from './diagnose';
 import * as dienst from './dienst';
@@ -8,7 +8,6 @@ import * as gesundheit from './gesundheit';
 import * as jobUebersicht from './jobUebersicht';
 import * as einstellungenSpeichern from './einstellungenSpeichern';
 import * as hintergrund from './hintergrund';
-import * as startNachlaeufe from './startNachlaeufe';
 import { zugang, type VerwaltungAbhaengigkeiten, type VerwaltungKontext } from './kontext';
 
 export type { VerwaltungAbhaengigkeiten, VerwaltungKontext } from './kontext';
@@ -18,8 +17,7 @@ export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten, einblick?: Einbl
     a,
     zugang,
     (k: VerwaltungKontext) => ({
-      aufraeumen: mit(k)(aufraeumen.aufraeumen),
-      aufraeumenTaeglich: mit(k)(aufraeumen.aufraeumenTaeglich),
+      auftragsarten: () => verwaltungAuftragsarten(k),
       datenZip: mit(k)(datenexport.datenZip),
       konfigImport: mit(k)(datenexport.konfigImport),
       konfigExport: mit(k)(datenexport.konfigExport),
@@ -47,7 +45,6 @@ export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten, einblick?: Einbl
       einstellungenSpeichern: mit(k)(einstellungenSpeichern.einstellungenSpeichern),
       auftragsUebersicht: mit(k)(hintergrund.auftragsUebersicht),
       auftragsArtLeeren: mit(k)(hintergrund.auftragsArtLeeren),
-      nachlauf: mit(k)(startNachlaeufe.nachlauf),
     }),
     einblick,
   );

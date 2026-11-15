@@ -48,7 +48,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       c.release();
     }
   }
-  const auftraege = _req('src/auftraege/pdfAuftraege.js');
+  const auftraege = _req('src/katalog/pdf/pdfAuftraege.js');
   const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
@@ -182,7 +182,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
           Object.assign({}, _req('src/auftraege/auftraege.js'), {
             ..._req('src/auftraege/dienst.js'),
             ...require('./helpers/sources').testBereich('auftraege').auftraege,
-          }).erledigt({ id: String(zeile.id), belegt_von: 'test' }),
+          }).erledigt({ id: String(zeile.id), belegt_von: 'test', art: 'pdf' }),
         300,
       );
       while (!text.includes('"done"') && Date.now() - start < 8000) {

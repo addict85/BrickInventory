@@ -163,7 +163,11 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_katalog_offen')).n;
     assert.equal(await offen(), 1, 'die Anfrage hat die Warteschlange geleert');
     assert.ok(await db.get(`SELECT 1 FROM auftraege WHERE art = 'katalog_nachzug' AND status = 'offen'`));
-    await imSystemkontext('Test', () => quellen.testDienste().teile.zieheKatalogNach());
+    const nachzug = quellen
+      .testDienste()
+      .auftraege.angemeldeteArten()
+      .find(a => a.art === 'katalog_nachzug');
+    await imSystemkontext('Test', () => nachzug.ausfuehren({}, {}));
     assert.equal(await offen(), 0, 'der Auftrag leert sie');
   });
 

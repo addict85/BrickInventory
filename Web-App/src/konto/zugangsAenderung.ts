@@ -1,16 +1,14 @@
+import { ereignis } from '../infra/ereignis';
 import { prozessweit } from '../infra/prozessweit';
 /** Offene Ströme prüfen ihren Zugang im Takt; endet ein Zugang in diesem
  * Prozess (Widerruf, Abmelden, neue Sitzungsversion, fremder Widerruf per
  * NOTIFY), sollen sie es sofort merken und nicht erst beim nächsten Takt. */
-const hoerer = prozessweit('zugangsHoerer', () => new Set<() => void>());
+const zugangsAenderung = prozessweit('zugangsHoerer', () => ereignis('zugangsAenderung'));
 
-export function beiZugangsAenderung(f: () => void): () => void {
-  hoerer.add(f);
-  return () => {
-    hoerer.delete(f);
-  };
+export function beiZugangsAenderung(f: () => unknown): () => void {
+  return zugangsAenderung.horche(f);
 }
 
 export function meldeZugangsAenderung(): void {
-  for (const f of [...hoerer]) f();
+  void zugangsAenderung.melde();
 }

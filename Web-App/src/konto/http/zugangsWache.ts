@@ -26,7 +26,7 @@ function sitzungLebt(req: Request): Promise<boolean> {
 export async function zugangGiltNoch(konto: KontoDienste, req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
-    if ((await konto.sitzungsVersionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
+    if ((await konto.sitzungen.versionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
     // Abmelden löscht nur diese eine Sitzung, die Version bleibt.
     return sitzungLebt(req);
   }

@@ -182,9 +182,3 @@ export function benutzerNamen(db: DbSchnittstelle, l: HaushaltLesevertrag, uids:
     [uids],
   );
 }
-
-/** NOTIFY wie db/pgNotify.ts notify(), über den Zugang des Aufrufers: In einer
- * Transaktion geht das Signal erst mit ihrem COMMIT hinaus. */
-export async function sendeSignal(db: DbSchnittstelle, kanal: string): Promise<void> {
-  await db.run('SELECT pg_notify($1, $2)', [kanal, '']);
-}

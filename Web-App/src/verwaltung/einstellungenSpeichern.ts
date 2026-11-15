@@ -101,7 +101,7 @@ export async function einstellungenSpeichern(
   );
   if (!global) return true;
   // Erst nach dem COMMIT: Ein Zwischenspeicher läse vorher noch den alten Wert ein.
-  kx.einstellungen.meldeGlobaleAenderung();
+  await kx.einstellungen.meldeGlobaleAenderung();
   if (heikel.some(k => !k.startsWith('smtp_')))
     kx.konto.verwalterHinweisNebenher('einstellungen_geaendert', { konto: heikel.join(', '), durch: o.name });
   if (bricksetAlt !== null) await bricksetLimitGesetzt(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));

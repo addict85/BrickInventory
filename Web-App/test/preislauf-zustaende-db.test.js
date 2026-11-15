@@ -34,14 +34,20 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
   });
   const [GEMISCHT, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
   for (const sn of [GEMISCHT, REIN, GEMERKT]) await katalogSet(db, sn, { name: 'Probe' });
-  const { erfassungBuchen } = require('./helpers/sources').bereichsSeite('sets');
+  const { erfassungBuchen } = _req('src/sets/erfassen.js');
   for (const [sn, z] of [
     [GEMISCHT, 'N'],
     [GEMISCHT, 'U'],
     [REIN, 'U'],
   ]) {
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2) ON CONFLICT DO NOTHING', [uid, sn]);
-    await erfassungBuchen({ konto: uid, setNumber: sn, menge: 1, kaufpreis: 10, zustand: z });
+    await erfassungBuchen(require('./helpers/sources').testKontext('sets'), {
+      konto: uid,
+      setNumber: sn,
+      menge: 1,
+      kaufpreis: 10,
+      zustand: z,
+    });
   }
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, GEMERKT]);
   const { zustaendeJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');

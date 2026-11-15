@@ -3,16 +3,31 @@
  * findet der Worker den Auftrag in seinem Takt. */
 import { alsAnfrage, imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
-import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
-import { AuftragVerloren, KONTOUEBERGREIFEND } from './auftraege';
+import {
+  AuftragVerloren,
+  type AuftragsArt,
+  type AuftragsStatus,
+  type AuftragsZeile,
+  type Belegung,
+  type Einstellen,
+  type Fortschritt,
+  type NutzlastEingabe,
+} from './auftraege';
 import { logAndContinue } from '../infra/fehler';
-import { PREISPOSTEN_HOECHSTENS, pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
+import { signal } from '../infra/ereignis';
 import type { AuftraegeKontext } from './kontext';
 
-export { AUFTRAG_KANAL, AUFTRAG_STAND_KANAL } from './repository/auftraege';
+/** Ein neuer oder wieder fälliger Auftrag weckt den Job-Prozess; die Nutzlast nennt die Art. */
+export const NEUER_AUFTRAG = signal(repo.AUFTRAG_KANAL);
+/** Ein Statuswechsel weckt die Statusströme; die Nutzlast nennt den Schlüssel. */
+export const AUFTRAGS_STAND = signal(repo.AUFTRAG_STAND_KANAL);
+
+export function weckeWorker(k: AuftraegeKontext, art: string): Promise<void> {
+  return NEUER_AUFTRAG.melde(k.db.benachrichtigung, art);
+}
 
 async function meldeStand(k: AuftraegeKontext, z: { s: string } | undefined): Promise<void> {
-  if (z) await k.db.benachrichtigung.notify(repo.AUFTRAG_STAND_KANAL, z.s);
+  if (z) await AUFTRAGS_STAND.melde(k.db.benachrichtigung, z.s);
 }
 
 /** 30 s, verdoppelt je Versuch, höchstens eine Stunde. */
@@ -26,8 +41,8 @@ export async function stelleAuftragEin<A extends AuftragsArt>(
   nutzlast: NutzlastEingabe<A>,
   o: Einstellen = {},
 ): Promise<string | null> {
-  const id = await k.auftraege.fuegeAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
-  await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
+  const id = await k.auftraege.fuegeAuftragEin(art, k.arten.pruefe(art, nutzlast), o);
+  await weckeWorker(k, art);
   return id;
 }
 
@@ -39,24 +54,22 @@ export async function stelleEigenenAuftragEin<A extends AuftragsArt>(
   nutzlast: NutzlastEingabe<A>,
   o: Einstellen & { userId: number },
 ): Promise<string | null> {
-  const id = await k.auftraege.fuegeEigenenAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
-  await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
+  const id = await k.auftraege.fuegeEigenenAuftragEin(art, k.arten.pruefe(art, nutzlast), o);
+  await weckeWorker(k, art);
   return id;
 }
 
-/** Fehlende Preise eines Kontos in einer Währung: höchstens ein wartender Auftrag,
- * der jede neue Meldung aufnimmt (repository: ergaenzePreisAuftrag). */
-export async function merkePreiseVor(
+/** Je Schlüssel höchstens ein wartender Auftrag, der die neuen Einträge der Liste `liste` zu
+ * seinen nimmt: Jede Meldung ergänzt, statt einen zweiten Auftrag anzulegen. */
+export async function ergaenzeListenAuftrag<A extends AuftragsArt>(
   k: AuftraegeKontext,
-  nutzlast: NutzlastEingabe<'preise_nachladen'>,
+  art: A,
+  nutzlast: NutzlastEingabe<A>,
+  o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
-  const n = pruefeNutzlast('preise_nachladen', nutzlast);
-  const id = await k.auftraege.ergaenzePreisAuftrag(
-    `preise_nachladen:${n.user_id}:${n.waehrung}`,
-    n,
-    PREISPOSTEN_HOECHSTENS,
-  );
-  await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, 'preise_nachladen');
+  const n = k.arten.pruefe(art, nutzlast);
+  const id = await k.auftraege.fuegeListeAn(art, n as object, o);
+  await weckeWorker(k, art);
   return id;
 }
 
@@ -78,8 +91,8 @@ export async function setzeFortschritt(
   return !!z;
 }
 
-export async function erledigt(k: AuftraegeKontext, a: Belegung): Promise<boolean> {
-  const z = await k.auftraege.setzeErledigt(a);
+export async function erledigt(k: AuftraegeKontext, a: Belegung & Pick<AuftragsZeile, 'art'>): Promise<boolean> {
+  const z = await k.auftraege.setzeErledigt(a, !!k.arten.von(a.art)?.nutzlastVerwerfen);
   await meldeStand(k, z);
   return !!z;
 }
@@ -114,7 +127,7 @@ export async function verschoben(
 
 export async function beendePause(k: AuftraegeKontext, art: AuftragsArt): Promise<void> {
   await k.auftraege.loeschePause(art);
-  await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
+  await weckeWorker(k, art);
 }
 
 /** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
@@ -126,13 +139,13 @@ export async function brichAb(k: AuftraegeKontext, id: string): Promise<Auftrags
 
 export async function wiederhole(k: AuftraegeKontext, id: string): Promise<boolean> {
   const ja = await k.auftraege.stelleWiederEin(id);
-  if (ja) await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, 'wiederholt');
+  if (ja) await weckeWorker(k, 'wiederholt');
   return ja;
 }
 
 export async function zieheVor(k: AuftraegeKontext, art: AuftragsArt, schluessel?: string): Promise<number> {
   const n = await k.auftraege.macheFaellig(art, schluessel);
-  if (n > 0) await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
+  if (n > 0) await weckeWorker(k, art);
   return n;
 }
 
@@ -151,28 +164,30 @@ export async function imNamenDesAuftrags<T>(
   a: Pick<AuftragsZeile, 'art' | 'user_id'>,
   f: () => Promise<T>,
 ): Promise<T> {
-  if (a.user_id == null) return imAuftragsrahmen(a, f);
+  if (a.user_id == null) return imAuftragsrahmen(k, a, f);
   const u = await k.auftraege.kontoRolle(a.user_id);
   return alsAnfrage({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
 }
 
 /** Ein Auftrag ohne Konto: im Systemrahmen nur, wenn seine Art als kontoübergreifend
- * markiert ist (KONTOUEBERGREIFEND), sonst ohne Konto und ohne Systemrahmen. */
-export function imAuftragsrahmen<T>(a: Pick<AuftragsZeile, 'art'>, f: () => Promise<T>): Promise<T> {
-  const grund = KONTOUEBERGREIFEND[a.art];
+ * angemeldet ist (Anmeldung.kontouebergreifend), sonst ohne Konto und ohne Systemrahmen. */
+export function imAuftragsrahmen<T>(
+  k: AuftraegeKontext,
+  a: Pick<AuftragsZeile, 'art'>,
+  f: () => Promise<T>,
+): Promise<T> {
+  const grund = k.arten.von(a.art)?.kontouebergreifend;
   return grund ? imSystemkontext(`auftrag ${a.art}: ${grund}`, f) : alsAnfrage({}, f);
 }
 
 /** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */
 export function beiAuftragsStand(k: AuftraegeKontext, f: (schluessel?: string) => void): () => void {
-  k.db.benachrichtigung.listen(repo.AUFTRAG_STAND_KANAL, f);
-  return () => k.db.benachrichtigung.unlisten(repo.AUFTRAG_STAND_KANAL, f);
+  return AUFTRAGS_STAND.horche(k.db.benachrichtigung, f);
 }
 
 /** Weckt, sobald irgendwo ein Auftrag eingestellt wird; gibt das Abmelden zurück. */
 export function beiNeuemAuftrag(k: AuftraegeKontext, f: () => void): () => void {
-  k.db.benachrichtigung.listen(repo.AUFTRAG_KANAL, f);
-  return () => k.db.benachrichtigung.unlisten(repo.AUFTRAG_KANAL, f);
+  return NEUER_AUFTRAG.horche(k.db.benachrichtigung, f);
 }
 
 /** Ein Abbruch über die Verwaltung meldet sich per NOTIFY: Die betroffenen laufenden Aufträge sehen sofort

@@ -4,7 +4,8 @@
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in der Strom-Route der erste send() vor die Anmeldung der Hörer
  *      gezogen → rot: „der CSV-Fortschrittsstrom überlebt Gegendruck …“
- *      (ReferenceError in cleanup); csvImportBus.off() in cleanup gestrichen → rot
+ *      (ReferenceError in cleanup); das Abmelden (csvImportStandAbonnieren) in cleanup gestrichen → rot
+ *      „kein Hörer bleibt …“ (15.11.2026: 1 angemeldet, 0 abgemeldet)
  * Gestrichen, weil anderswo ausgeführt: Sitzungsschlüssel in Produktion →
  * startverbot.test.js K/L, compose.yaml ohne SESSION_SECRET → compose-
  * geheimnisse A; Pfad-Normalisierung → sicherheit-querschnitt-db I.
@@ -251,7 +252,22 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   t.after(() => new Promise(r => srv.close(r)));
   // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
   t.after(() => testZugang().benachrichtigung.close());
-  const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
+  // Der Strom horcht über den Signalweg des Zugangs; gezählt wird an ihm.
+  const signale = testZugang().benachrichtigung;
+  const zahl = { an: 0, ab: 0 };
+  const { listen, unlisten } = signale;
+  signale.listen = (kanal, h) => {
+    if (kanal === 'csv_import_progress') zahl.an++;
+    return listen.call(signale, kanal, h);
+  };
+  signale.unlisten = (kanal, h) => {
+    if (kanal === 'csv_import_progress') zahl.ab++;
+    return unlisten.call(signale, kanal, h);
+  };
+  t.after(() => {
+    signale.listen = listen;
+    signale.unlisten = unlisten;
+  });
   const r = await fetch(`http://localhost:${portVon(srv)}/api/v1/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),
   });
@@ -263,6 +279,8 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     [],
     'cleanup() greift auf noch nicht angelegte Hörer zu',
   );
-  // Aufgeräumt: kein Hörer bleibt am Bus hängen.
-  assert.equal(csvImportBus.listenerCount(`progress:${uid}`), 0);
+  // Aufgeräumt: kein Hörer bleibt am Signalweg hängen.
+  for (let i = 0; i < 40 && zahl.ab < zahl.an; i++) await new Promise(r => setTimeout(r, 50));
+  assert.ok(zahl.an > 0, 'der Strom horchte gar nicht — greift die Zählung noch?');
+  assert.equal(zahl.ab, zahl.an, 'kein Hörer bleibt am Signalweg hängen');
 });

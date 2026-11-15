@@ -41,7 +41,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [HAUPT])).id;
   const sub = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SUB])).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, sub]);
-  H.leereHaushaltCache();
+  H.meldeHaushaltsaenderung();
   await haeltSet(db, haupt, '10179-1');
   await haeltSet(db, sub, '75192-1');
   const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();

@@ -2,7 +2,7 @@
  * damit die Routen keine Schichten überspringen. */
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import { naechsteUhrzeit, DAILY_JOBS } from '../auftraege';
+import { DAILY_JOBS } from './tageszeiten';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
@@ -89,14 +89,14 @@ export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, ne
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  await k.auftraege.bricksetJetzt();
+  await k.fremdquellen.brickset.jetzt();
 }
 
 export async function anleitungenNeuEinreihen(k: VerwaltungKontext) {
   const fehlend = await k.verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
     await k.katalog.loescheAnleitungen(set_number);
-    await k.auftraege.anleitungEinreihen(set_number);
+    await k.katalog.anleitungEinreihen(set_number);
   }
   return fehlend.length;
 }
@@ -149,12 +149,12 @@ export const katalogAbgleichJetzt = (k: VerwaltungKontext) => k.auftraege.zieheP
 /** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {
   await k.fremdquellen.setzeKontingentZurueck('brickset');
-  await k.auftraege.bricksetJetzt(sn);
+  await k.fremdquellen.brickset.jetzt(sn);
 }
 
 export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
   await k.fremdquellen.quellen.ausRetryWarteschlange(sn);
-  await k.auftraege.anleitungEinreihen(sn, { nurAusweichquelle: true });
+  await k.katalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
 /** Der offene geplante Auftrag bekommt sofort den neuen Termin. */
@@ -181,8 +181,7 @@ export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, tim
 export async function zeitplanNeuPlanen(k: VerwaltungKontext) {
   await k.auftraege.zeitplanGeaendert('csv_sync');
   await k.auftraege.zeitplanGeaendert('preise');
-  const bis = naechsteUhrzeit(await k.auftraege.taeglicheUhrzeit('brickset_retry'), k.uhr.datum());
-  await k.auftraege.bricksetTermineVorziehen(bis);
+  await k.fremdquellen.brickset.vorziehen(await k.fremdquellen.brickset.faelligAb(false));
 }
 
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen

@@ -139,7 +139,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
       zwei,
     ]);
-    assert.equal(await S.testDienste().konto.fuehreFaelligeUebernahmenAus(), 1);
+    assert.equal(await S.testDienste().konto.verwalter.fuehreFaelligeUebernahmenAus(), 1);
   };
 
   await t.test('entfernter zweiter Faktor', async () => {

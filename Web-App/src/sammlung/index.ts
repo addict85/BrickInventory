@@ -2,3 +2,5 @@
 export type { ErfassungsArt } from './erfassungen';
 export { erzeugeSammlung } from './bereich';
 export type { SammlungDienste, SammlungKontext } from './bereich';
+export { WantedKorrekturen } from './importAuftraege';
+export type { ImportEingabe, ImportQuelle } from './importAuftraege';

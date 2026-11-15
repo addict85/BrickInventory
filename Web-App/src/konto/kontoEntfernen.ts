@@ -8,13 +8,12 @@ import * as repo from './repository/konten';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { leereTokenCache } from './tokenCache';
 import { meldeFehler } from '../infra/fehler';
+import { fachfehler, nichtGefunden } from '../infra/fehlerTexte';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
 
-export type KontoEntfernt = 'entfernt' | 'nicht_gefunden' | typeof repo.LETZTER_VERWALTER;
-
 /** @param durch der Verwalter, der löscht; null, wenn das Konto sich selbst löscht */
-export async function kontoEntfernen(k: KontoKontext, ziel: number, durch: number | null): Promise<KontoEntfernt> {
+export async function kontoEntfernen(k: KontoKontext, ziel: number, durch: number | null): Promise<void> {
   // Immer im Systemrahmen: Sitzungen und die Kopien vor Migrationen sieht nur die Systemrolle.
   const fremd = durch !== null && durch !== ziel;
   const loeschen = () =>
@@ -22,23 +21,17 @@ export async function kontoEntfernen(k: KontoKontext, ziel: number, durch: numbe
       // Vor dem Löschen: Danach ist der Name für das Protokoll nicht mehr zu ermitteln.
       if (durch !== null && fremd) await t.protokoll.protokolliere(durch, ziel, 'konto_geloescht');
       const weg = durch === null ? await t.konten.loescheEigenesKonto(ziel) : await t.konten.loescheKonto(ziel, durch);
-      if (weg === repo.LETZTER_VERWALTER) throw new Abbruch(weg);
-      if (!weg) throw new Abbruch(durch === null ? repo.LETZTER_VERWALTER : 'nicht_gefunden');
+      if (weg === repo.LETZTER_VERWALTER || (!weg && durch === null)) fachfehler('konflikt', 'letzter_verwalter');
+      if (!weg) nichtGefunden('benutzer_nicht_gefunden_oder_eigenes');
       // user_sessions hat keinen Fremdschlüssel auf users.
       await erhoeheSitzungsVersion(t, ziel);
       await t.zugaenge.loescheSitzungenDesKontos(ziel);
-      return 'entfernt' as const;
     });
-  const r = await imSystemkontext('kontenverwaltung', loeschen).catch((e: unknown) => {
-    if (e instanceof Abbruch) return e.ergebnis;
-    throw e;
-  });
-  if (r !== 'entfernt') return r;
+  await imSystemkontext('kontenverwaltung', loeschen);
   // Nach dem Festschreiben: Caches und Nachbarprozesse sollen das Konto erst vergessen, wenn es weg ist.
   leereTokenCache(k);
   k.haushalt.meldeHaushaltsaenderung();
   await kontoDateienEntfernen(k, ziel);
-  return r;
 }
 
 /** Ausgleich statt Fehlschlag: Das Konto ist gelöscht, nur seine Dateien liegen
@@ -63,10 +56,4 @@ export async function loescheKontoDateien(userId: number): Promise<void> {
   if (!Number.isInteger(userId) || userId <= 0) return;
   for (const art of ['uploads', 'vouchers'])
     await fs.promises.rm(path.join(DATA_DIR, art, String(userId)), { recursive: true, force: true });
-}
-
-class Abbruch extends Error {
-  constructor(readonly ergebnis: Exclude<KontoEntfernt, 'entfernt'>) {
-    super(ergebnis);
-  }
 }

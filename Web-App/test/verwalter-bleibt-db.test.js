@@ -25,6 +25,9 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
+/** Die Absage wirft der Dienst; hier wird sie zum Wert, damit gleichzeitige Aufrufe zählbar bleiben. */
+const LETZTER = 'letzter_verwalter';
+const alsWert = p => p.catch(e => (e?.code === LETZTER ? LETZTER : Promise.reject(e)));
 /** Wie kontoEntfernen(), ohne Protokoll: Dessen Eintrag zum gleichzeitig gelöschten Verwalter stiesse an den Fremdschlüssel. */
 /** Im Systemrahmen wie dort: Konten löscht nur die Systemrolle (0117). */
 const entferne = (ziel, durch) =>
@@ -69,7 +72,7 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
     for (let i = 0; i < RUNDEN; i++) {
       const [x, y] = await zuruecksetzen();
       const r = await Promise.all([aufruf(x, y), aufruf(y, x)]);
-      const abgelehnt = r.filter(e => e === K.LETZTER_VERWALTER).length;
+      const abgelehnt = r.filter(e => e === LETZTER).length;
       assert.equal(abgelehnt, 1, `Runde ${i}: ${JSON.stringify(r)}`);
       assert.equal(await aktiveVerwalter(), 1, `Runde ${i}: kein aktiver Verwalter mehr`);
     }
@@ -78,9 +81,9 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
   await t.test('der letzte Verwalter behält die Rolle und das Konto aktiv', async () => {
     const [x, y] = await zuruecksetzen();
     assert.deepEqual(await K.setzeVerwalterRolle(y, false), { geaendert: true });
-    assert.equal(await K.setzeVerwalterRolle(x, false), K.LETZTER_VERWALTER);
-    assert.equal(await K.setzeAktiv(x, false), K.LETZTER_VERWALTER);
-    assert.equal(await entferne(x, y), K.LETZTER_VERWALTER);
+    assert.equal(await alsWert(K.setzeVerwalterRolle(x, false)), LETZTER);
+    assert.equal(await alsWert(K.setzeAktiv(x, false)), LETZTER);
+    assert.equal(await entferne(x, y), LETZTER);
     await assert.rejects(
       K.loescheKonto(x, y),
       /nur in einer Transaktion/,
@@ -90,15 +93,17 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
     // Ein anderer Verwalter darf wieder gehen, die Rolle von Nicht-Verwaltern ist frei.
     assert.deepEqual(await K.setzeVerwalterRolle(y, true), { geaendert: true });
     assert.deepEqual(await K.setzeAktiv(y, false), { geaendert: true });
-    assert.equal(await K.setzeVerwalterRolle(999999999, false), null);
+    await assert.rejects(K.setzeVerwalterRolle(999999999, false), { code: 'benutzer_nicht_gefunden' });
   });
 
   await t.test('gleichzeitiger Entzug der Rolle', async () => {
-    await gleichzeitig(ziel => K.setzeVerwalterRolle(ziel, false).then(r => (r?.geaendert === true ? 'ok' : r)));
+    await gleichzeitig(ziel =>
+      alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.geaendert === true ? 'ok' : r)),
+    );
   });
 
   await t.test('gleichzeitiges Deaktivieren', async () => {
-    await gleichzeitig(ziel => K.setzeAktiv(ziel, false).then(r => (r?.geaendert === true ? 'ok' : r)));
+    await gleichzeitig(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.geaendert === true ? 'ok' : r)));
   });
 
   await t.test('gleichzeitiges Löschen', async () => {
@@ -108,8 +113,8 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
   await t.test('Entzug gegen Deaktivieren, gleichzeitig', async () => {
     for (let i = 0; i < RUNDEN; i++) {
       const [x, y] = await zuruecksetzen();
-      const r = await Promise.all([K.setzeVerwalterRolle(x, false), K.setzeAktiv(y, false)]);
-      assert.equal(r.filter(e => e === K.LETZTER_VERWALTER).length, 1, `Runde ${i}: ${JSON.stringify(r)}`);
+      const r = await Promise.all([alsWert(K.setzeVerwalterRolle(x, false)), alsWert(K.setzeAktiv(y, false))]);
+      assert.equal(r.filter(e => e === LETZTER).length, 1, `Runde ${i}: ${JSON.stringify(r)}`);
       assert.equal(await aktiveVerwalter(), 1, `Runde ${i}`);
     }
   });

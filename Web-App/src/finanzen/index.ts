@@ -2,3 +2,4 @@
 
 export { erzeugeFinanzen } from './bereich';
 export type { FinanzenDienste, FinanzenKontext } from './bereich';
+export { PREISPOSTEN_HOECHSTENS } from './preisPosten';

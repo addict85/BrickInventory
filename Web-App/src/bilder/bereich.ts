@@ -5,6 +5,7 @@ import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as bildbedarfDienst from './bildbedarf';
 import * as bildbedarfLauf from './bildbedarfLauf';
+import { bilderAuftragsarten } from './auftragsarten';
 import * as imageMisses from './imageMisses';
 import * as bildBlickfeldDienst from './bildBlickfeld';
 import * as bildNachschlagen from './bildNachschlagen';
@@ -43,7 +44,7 @@ export function erzeugeBilder(
       bildbedarfAnstossen: mit(k)(bildbedarfDienst.bildbedarfAnstossen),
       merkeGebraucht: mit(k)(bildbedarfDienst.merkeGebraucht),
       bildEinmalVormerken: mit(k)(bildbedarfDienst.bildEinmalVormerken),
-      bildbedarfAbarbeiten: mit(k)(bildbedarfLauf.bildbedarfAbarbeiten),
+      auftragsarten: () => bilderAuftragsarten(k),
       starteBildbedarf: mit(k)(bildbedarfLauf.bildbedarfEinrichten),
       stoppeBildbedarf: mit(k)(bildbedarfLauf.stoppeBildbedarf),
       beiSetBildGeladen: mit(k)(bildbedarfDienst.beiSetBildGeladen),

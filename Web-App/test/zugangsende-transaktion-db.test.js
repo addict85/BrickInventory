@@ -83,7 +83,9 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('andere Zugänge: der Token bleibt', async () => {
-    await mitBremse(() => assert.rejects(zugangsende.beendeAndereZugaenge(uid, null, null), /erzwungen/));
+    await mitBremse(() =>
+      assert.rejects(zugangsende.beendeAndere(uid, { sitzung: null, token: null, zugaenge: true }), /erzwungen/),
+    );
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 

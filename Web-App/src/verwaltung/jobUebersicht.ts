@@ -1,7 +1,8 @@
 /** Die Kacheln der Überwachungsseite: Stand je Hintergrundauftrag und Zeitplan. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { DAILY_JOBS } from '../auftraege';
+import { DAILY_JOBS } from './tageszeiten';
+import { imgDlPending, imgDlReset, kachel, kacheln } from './kacheln';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import { meldeFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
@@ -63,7 +64,7 @@ function anleitungsKachel(alt: Kachel, a: { offen: number; erledigt: number; feh
 }
 
 async function bricksetKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> {
-  const { wartend, faellig } = await ab.oder('brickset', k.auftraege.bricksetZahlen(), { wartend: 0, faellig: 0 });
+  const { wartend, faellig } = await ab.oder('brickset', k.fremdquellen.brickset.zahlen(), { wartend: 0, faellig: 0 });
   return {
     label: 'Brickset Retry Queue',
     status: wartend === 0 ? 'done' : 'idle',
@@ -93,9 +94,9 @@ const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit 
  * während der Hintergrund-Job nachlädt. */
 /** Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz. */
 async function bilderImLauf(k: VerwaltungKontext, ab: Abstriche, offen: number): Promise<number> {
-  const aktiv = await ab.oder('bilder', k.auftraege.imgDlPending(), 0);
+  const aktiv = await ab.oder('bilder', imgDlPending(k), 0);
   if (offen === 0 && aktiv > 0) {
-    await k.auftraege.imgDlReset();
+    await imgDlReset(k);
     return 0;
   }
   return Math.min(aktiv, offen);
@@ -126,7 +127,7 @@ async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> 
     zahl(ab, k.verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
-  const job = await ab.oder('bilder', k.auftraege.kachel('imgDl'), null);
+  const job = await ab.oder('bilder', kachel(k, 'imgDl'), null);
   const aktiv = await bilderImLauf(k, ab, offen);
   const { reDl, laeuft: reDlLaeuft, sub: reDlSub } = await neuLadenStand(k, ab);
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
@@ -246,7 +247,7 @@ async function zeitplaene(
 
 /** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
 export async function jobUebersicht(k: VerwaltungKontext) {
-  const jobs: Kacheln = await k.auftraege.kacheln(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+  const jobs: Kacheln = await kacheln(k); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
     anleitungsAuftraege(k, ab),

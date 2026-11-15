@@ -14,7 +14,7 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
       k.fremdquellen.kontingentStand('brickset'),
     ]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
-      const bis = await k.auftraege.bricksetFaelligAb(false);
+      const bis = await k.fremdquellen.brickset.faelligAb(false);
       await k.auftraege.pausiereArt('brickset', bis, 'Brickset-Tageskontingent erschöpft');
       throw new AuftragVerschieben(bis, 'Brickset-Tageskontingent erschöpft');
     }
@@ -33,4 +33,23 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
   await k.auftraege.pausiereArt('brickset', new Date(k.uhr.jetzt() + 1000), 'Abstand zwischen zwei Abrufen');
 }
 
-export { bricksetNachlauf };
+const tag = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt; die Namen aus dem Katalog. */
+async function bricksetListe(k: KatalogKontext) {
+  const wartend = await k.fremdquellen.brickset.wartende();
+  const namen = new Map(
+    (await k.bildlage.setNamen([...new Set(wartend.map(w => w.set_number))])).map(z => [z.set_num, z.name]),
+  );
+  return wartend.map(w => ({
+    set_number: w.set_number,
+    name: namen.get(w.set_number) ?? null,
+    attempts: w.versuch,
+    retry_after: tag(new Date(w.faellig_ab)),
+    last_error: w.fehler,
+    created_at: w.erstellt,
+  }));
+}
+
+export { bricksetListe, bricksetNachlauf };

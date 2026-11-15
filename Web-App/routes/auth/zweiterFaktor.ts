@@ -20,7 +20,7 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
   const requireLogin = requireLoginOrToken;
 
   router.endpunkt('GET /api/v1/auth/zweiter-faktor', requireLogin, async req => {
-    return { ...(await d.konto.stand(angemeldeteNutzerId(req))) };
+    return { ...(await d.konto.faktor.stand(angemeldeteNutzerId(req))) };
   });
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
@@ -32,10 +32,10 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
       if (!((await zweiterFaktorPflicht(d.konto, req)) && gnadenfristVerbrauchen(req)))
         fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
     } else if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    const geheimnis = await d.konto.beginneEinrichtung(uid);
+    const geheimnis = await d.konto.faktor.beginneEinrichtung(uid);
     if (!geheimnis) fachfehler('konflikt', 'zweiter_faktor_schon_aktiv');
     const u = await d.konto.kontoKurzVon(uid);
-    return { geheimnis, otpauth: d.konto.otpauthFuer(geheimnis, u?.username ?? String(uid)) };
+    return { geheimnis, otpauth: d.konto.faktor.otpauthFuer(geheimnis, u?.username ?? String(uid)) };
   });
 
   // Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort
@@ -45,11 +45,11 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
     const codes = await d.konto.bestaetigeEinrichtungGebremst(uid, zugangVon(req), req.eingabe.code);
     if (!Array.isArray(codes)) fachfehler(codes.art, codes.code, codes.vars);
     const kopf = String(req.headers.authorization || '');
-    const version = await d.konto.beendeAndereZugaenge(
-      uid,
-      kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
-      req.session?.userId ? req.sessionID : null,
-    );
+    const { version } = await d.konto.sitzungen.beendeAndere(uid, {
+      sitzung: req.session?.userId ? req.sessionID : null,
+      token: kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
+      zugaenge: true,
+    });
     if (req.session?.userId) req.session.sitzungsVersion = version;
     d.konto.hinweisNebenher(uid, 'zweiter_faktor_eingerichtet');
     return { codes };
@@ -57,18 +57,18 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
     const uid = angemeldeteNutzerId(req);
-    if (!(await d.konto.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
+    if (!(await d.konto.faktor.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    await d.konto.schalteAb(uid);
+    await d.konto.faktor.schalteAb(uid);
     d.konto.hinweisNebenher(uid, 'zweiter_faktor_abgeschaltet');
     return {};
   });
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/codes', requireLogin, async (req, res) => {
     const uid = angemeldeteNutzerId(req);
-    if (!(await d.konto.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
+    if (!(await d.konto.faktor.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
     if (!(await bestaetigeCode(d.konto, req, res, uid, req.eingabe.code))) return;
-    return { codes: await d.konto.erneuereCodes(uid) };
+    return { codes: await d.konto.faktor.erneuereCodes(uid) };
   });
   return router;
 }

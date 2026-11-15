@@ -25,7 +25,8 @@ import { zaehle } from './abfragen';
 import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
-import { PREISPOSTEN_HOECHSTENS, type Nutzlast } from '../../auftraege';
+import type { Nutzlast } from '../../auftraege';
+import { PREISPOSTEN_HOECHSTENS, merkePreiseVor } from '../preisPosten';
 import { fehlerText } from '../../infra/fehlerTexte';
 import type { FinanzenKontext } from '../kontext';
 
@@ -63,9 +64,9 @@ async function merkePreiseFuerKontoVor(
   posten: Posten[],
 ): Promise<number> {
   if (!posten.length) return 0;
-  await k.auftraege
-    .merkePreiseVor({ user_id: viewerId, waehrung, posten: posten.slice(0, PREISPOSTEN_HOECHSTENS) })
-    .catch(logAndContinue('bewertung:preise vormerken'));
+  await merkePreiseVor(k, { user_id: viewerId, waehrung, posten: posten.slice(0, PREISPOSTEN_HOECHSTENS) }).catch(
+    logAndContinue('bewertung:preise vormerken'),
+  );
   return posten.length;
 }
 

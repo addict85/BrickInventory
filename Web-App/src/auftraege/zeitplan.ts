@@ -1,41 +1,18 @@
-import type { AuftragsArt } from './auftraege';
-import { AUFTRAG_KANAL, stelleAuftragEin } from './dienst';
-import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
+import type { AuftragsArt, NutzlastEingabe } from './auftraege';
+import type { Zeitplan } from './arten';
+import { weckeWorker, stelleAuftragEin } from './dienst';
 import type { AuftraegeKontext } from './kontext';
 
-/** Je geplanter Art genau ein offener Auftrag `plan:<art>`; eine geänderte
- * Uhrzeit verschiebt nur faellig_ab — kein Zeitgeber muss neu gestellt werden. */
-type Zeitplan =
-  | { taeglich: { einstellung: string; vorgabe: string } }
-  | { minuten: { einstellung?: string; vorgabe: number; mindestens?: number } };
-
-export type GeplanteArt =
-  | 'csv_sync'
-  | 'preise'
-  | 'bild_nachlauf'
-  | 'aufraeumen'
-  | 'aufraeumen_taeglich'
-  | 'widerrufsliste';
-type PlanNutzlast = NutzlastEingabe<GeplanteArt>;
-
-export const ZEITPLAENE: Record<GeplanteArt, Zeitplan> = {
-  csv_sync: { taeglich: { einstellung: 'job_time_csv_sync', vorgabe: '03:00' } },
-  preise: { minuten: { einstellung: 'price_job_interval_minutes', vorgabe: 60, mindestens: 5 } },
-  bild_nachlauf: { minuten: { vorgabe: 60 } },
-  aufraeumen: { minuten: { vorgabe: 60 } },
-  aufraeumen_taeglich: { minuten: { vorgabe: 24 * 60 } },
-  widerrufsliste: { minuten: { vorgabe: 6 * 60 } },
-};
-
-/** Brickset hat keinen geplanten Lauf: Jeder wartende Eintrag ist ein Auftrag,
- * fällig zur eingestellten Uhrzeit. */
-export const DAILY_JOBS = [
-  { name: 'brickset_retry', monitorKey: 'bricksetRetry', default: '04:00' },
-  { name: 'csv_sync', monitorKey: 'csvImport', default: '03:00' },
-] as const;
-
+/** Je geplanter Art genau ein offener Auftrag `plan:<art>`: Eine geänderte Uhrzeit verschiebt nur faellig_ab. */
 export const planSchluessel = (art: AuftragsArt) => `plan:${art}`;
-export const hatZeitplan = (art: AuftragsArt): art is GeplanteArt => Object.hasOwn(ZEITPLAENE, art);
+
+function planVon(k: AuftraegeKontext, art: AuftragsArt): Zeitplan {
+  const plan = k.arten.von(art)?.zeitplan;
+  if (!plan) throw new Error(`${art} hat keinen Zeitplan`);
+  return plan;
+}
+
+export const hatZeitplan = (k: AuftraegeKontext, art: AuftragsArt): boolean => !!k.arten.von(art)?.zeitplan;
 
 export function leseUhrzeit(s: string | null | undefined, vorgabe: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(vorgabe);
@@ -54,30 +31,28 @@ export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt: Date): 
 
 export async function taeglicheUhrzeit(
   k: AuftraegeKontext,
-  name: (typeof DAILY_JOBS)[number]['name'],
+  einstellung: string,
+  vorgabe: string,
 ): Promise<{ h: number; min: number }> {
-  const meta = DAILY_JOBS.find(j => j.name === name)!;
-  return leseUhrzeit(await k.einstellungen.globalerWert(`job_time_${name}`), meta.default);
+  return leseUhrzeit(await k.einstellungen.globalerWert(einstellung), vorgabe);
 }
 
-export async function naechsterLauf(k: AuftraegeKontext, art: GeplanteArt, jetzt = k.uhr.datum()): Promise<Date> {
-  const plan = ZEITPLAENE[art];
-  if ('taeglich' in plan) {
-    return naechsteUhrzeit(
-      leseUhrzeit(await k.einstellungen.globalerWert(plan.taeglich.einstellung), plan.taeglich.vorgabe),
-      jetzt,
-    );
-  }
+export async function naechsterLauf(k: AuftraegeKontext, art: AuftragsArt, jetzt = k.uhr.datum()): Promise<Date> {
+  const plan = planVon(k, art);
+  if ('taeglich' in plan)
+    return naechsteUhrzeit(await taeglicheUhrzeit(k, plan.taeglich.einstellung, plan.taeglich.vorgabe), jetzt);
   const roh = plan.minuten.einstellung ? await k.einstellungen.globalerWert(plan.minuten.einstellung) : null;
   const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? ''), 10) || plan.minuten.vorgabe);
   return new Date(jetzt.getTime() + min * 60_000);
 }
 
-export async function planeNaechsten(
+/** Ohne Zeitplan nichts: Der Worker ruft es nach jedem Auftrag. */
+export async function planeNaechsten<A extends AuftragsArt>(
   k: AuftraegeKontext,
-  art: GeplanteArt,
-  nutzlast: PlanNutzlast = {},
+  art: A,
+  nutzlast: NutzlastEingabe<A> = {} as NutzlastEingabe<A>,
 ): Promise<string | null> {
+  if (!hatZeitplan(k, art)) return null;
   return stelleAuftragEin(k, art, nutzlast, {
     schluessel: planSchluessel(art),
     faelligAb: await naechsterLauf(k, art),
@@ -86,23 +61,24 @@ export async function planeNaechsten(
 }
 
 export async function planeAlle(k: AuftraegeKontext): Promise<void> {
-  for (const art of Object.keys(ZEITPLAENE) as GeplanteArt[]) await planeNaechsten(k, art);
+  for (const a of k.arten.alle()) if (a.zeitplan) await planeNaechsten(k, a.art);
 }
 
-export async function zeitplanGeaendert(k: AuftraegeKontext, art: GeplanteArt): Promise<void> {
+export async function zeitplanGeaendert(k: AuftraegeKontext, art: AuftragsArt): Promise<void> {
   await k.auftraege.setzeFaelligkeit(planSchluessel(art), await naechsterLauf(k, art));
-  await k.db.benachrichtigung.notify(AUFTRAG_KANAL, art);
+  await weckeWorker(k, art);
 }
 
 /** @returns false, wenn er gerade läuft */
-export async function ziehePlanVor(
+export async function ziehePlanVor<A extends AuftragsArt>(
   k: AuftraegeKontext,
-  art: GeplanteArt,
+  art: A,
   sekunden = 0,
-  nutzlast: PlanNutzlast = {},
+  nutzlast: NutzlastEingabe<A> = {} as NutzlastEingabe<A>,
 ): Promise<boolean> {
-  if (await k.auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) {
-    await k.db.benachrichtigung.notify(AUFTRAG_KANAL, art);
+  planVon(k, art);
+  if (await k.auftraege.zieheTerminVor(planSchluessel(art), sekunden, k.arten.pruefe(art, nutzlast))) {
+    await weckeWorker(k, art);
     return true;
   }
   if (await k.auftraege.laeuftArt(art)) return false;
