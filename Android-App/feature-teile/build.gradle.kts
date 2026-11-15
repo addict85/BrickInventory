@@ -22,6 +22,8 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
+    // Die Testserver antworten im Wire-Format.
+    testImplementation(project(":core-vertrag"))
     // Die Tests bauen Ablage und Bearbeitungen selbst.
     testImplementation(project(":core-offline"))
     // Die Erfassen-Dialoge werden unter Robolectric bedient, nicht nur gelesen.

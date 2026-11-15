@@ -232,6 +232,8 @@ dependencies {
     implementation(project(":feature-konto"))
     implementation(project(":feature-verwaltung"))
     testImplementation(project(":core-testing"))
+    // Die Testserver antworten im Wire-Format.
+    testImplementation(project(":core-vertrag"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     // GeraeteSchutzTest baut die TokenAblage auf einem eigenen DataStore.

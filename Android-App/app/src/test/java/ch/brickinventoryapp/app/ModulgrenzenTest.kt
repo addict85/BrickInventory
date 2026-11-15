@@ -64,7 +64,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-netz per api ein →
- *      rot „Modulkanten per api nur zu core-model und core-vertrag: [core-data → core-netz]“ (Schichtung …)
+ *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
  *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
  *      rot „core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
  *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-sitzung bindet core-ui ein →
@@ -221,11 +221,14 @@ class ModulgrenzenTest {
     }
 
     /**
-     * Die Regel selbst, an Kanten, die es im Baum nicht gibt. Gegenproben (mit kotlinc gemessen):
+     * Die Regel selbst, an Kanten, die es im Baum nicht gibt.
+     *
+     * Gegenproben (mit kotlinc gemessen):
      *   gegenproben/kantenregel-ohne-testausnahme.patch: Testkonfigurationen zählen mit → rot hier
      *   die api-Zeile gestrichen → rot hier, „Modulkanten per api …“ fehlt
      *   core-ui in kerne["core-zustand"] eingetragen → rot hier
      *   gegenproben/tiefe-kerne-offen.patch: die Regel zu tiefeKerne gestrichen → rot hier
+ *   gegenproben/wire-format-fuer-alle.patch: die Regel zu wireKenner gestrichen → rot hier
      *
      *   in oberflaecheVerstoss `modul in ohneOberflaeche &&` gestrichen → rot hier (core-navigation)
      *   gegenproben/zustand-darf-oberflaeche.patch: core-zustand fehlt in ohneOberflaeche → rot hier
@@ -236,7 +239,13 @@ class ModulgrenzenTest {
         assertEquals(listOf("feature-teile hängt an feature-katalog"), pruefe("feature-teile", "implementation", "feature-katalog"))
         assertEquals(listOf("feature-teile hängt an app"), pruefe("feature-teile", "implementation", "app"))
         assertEquals(listOf("Schichtung der Kernmodule: core-zustand hängt an core-ui"), pruefe("core-zustand", "implementation", "core-ui"))
-        assertEquals(listOf("Modulkanten per api nur zu core-model und core-vertrag: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
+        assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
+        assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-vertrag"), pruefe("core-data", "api", "core-vertrag"))
+        assertEquals(listOf("feature-teile kennt das Wire-Format: Nur core-data und core-offline bilden es ab"),
+            pruefe("feature-teile", "implementation", "core-vertrag"))
+        assertEquals(listOf("app kennt das Wire-Format: Nur core-data und core-offline bilden es ab"), pruefe("app", "implementation", "core-vertrag"))
+        assertEquals(emptyList<String>(), pruefe("feature-teile", "testImplementation", "core-vertrag"))
+        assertEquals(emptyList<String>(), pruefe("core-data", "implementation", "core-vertrag"))
         assertEquals(listOf("feature-konto bindet core-testing nicht nur für Tests ein"), pruefe("feature-konto", "implementation", "core-testing"))
         assertEquals(listOf("feature-konto hängt an core-sicherheit, das unter dem Zustand liegt"),
             pruefe("feature-konto", "implementation", "core-sicherheit"))

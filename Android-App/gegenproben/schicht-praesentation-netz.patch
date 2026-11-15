@@ -6,18 +6,18 @@ Rot: Praesentation holt nichts selbst am Netz
 diff --git a/Android-App/feature-sammlung/build.gradle.kts b/Android-App/feature-sammlung/build.gradle.kts
 --- a/Android-App/feature-sammlung/build.gradle.kts
 +++ b/Android-App/feature-sammlung/build.gradle.kts
-@@ -23,6 +23,7 @@
+@@ -25,6 +25,7 @@
      implementation(libs.bundles.camera)
      implementation(libs.mlkit.barcode)
      implementation(libs.mlkit.textrec)
 +    implementation(libs.retrofit)
  
      testImplementation(project(":core-testing"))
-     testImplementation(platform(libs.androidx.compose.bom))
+     // Die Testserver antworten im Wire-Format.
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -4,6 +4,7 @@
+@@ -6,6 +6,7 @@
  import ch.brickinventoryapp.model.fach.Merksortierung
  import ch.brickinventoryapp.model.fach.Erfassungswunsch
  import ch.brickinventoryapp.ui.components.nebenKnopfFarben
