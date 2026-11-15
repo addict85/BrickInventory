@@ -32,13 +32,8 @@ export function erneuereLebenszeichen(d: Dienste, worker: JobsLauf['worker']): P
     .catch(logAndContinue('jobs:lebenszeichen'));
 }
 
-/**
- * Die Hintergrundarbeit dieses Prozesses (ROLLE=jobs oder beides): Alles ist
- * ein Auftrag. Beim Start bekommt jede geplante Art ihren Termin, der
- * Katalogabgleich und die ersten Läufe werden vorgezogen, und die Nachläufe
- * kommen einmal je Start dazu. Ein zweiter Job-Prozess wäre unschädlich:
- * Aufträge belegt jeder nur mit SKIP LOCKED.
- */
+/** Die Hintergrundarbeit (ROLLE=jobs oder beides) läuft nur über Aufträge; ein
+ * zweiter Job-Prozess wäre unschädlich, weil jeder Aufträge mit SKIP LOCKED belegt. */
 export async function starteJobs(d: Dienste): Promise<JobsLauf> {
   const uebernommen = await d.auftraege.meldeProzessAn();
   if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);

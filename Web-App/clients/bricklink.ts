@@ -20,14 +20,8 @@ async function getCredentials(kl: Pick<KlientenZugang, 'schluessel'>) {
   return c;
 }
 
-/**
- * Die vier BrickLink-Zugangsdaten aus den globalen Einstellungen.
- *
- * Ausgeschrieben statt `any`: Ein Tippfehler in einem dieser vier Namen ergaebe
- * `undefined` in der Signatur, und die Anfrage kaeme mit 401 zurueck — ein
- * Fehlerbild, das nach abgelaufenen Schluesseln aussieht statt nach einem
- * Schreibfehler.
- */
+/** Die vier BrickLink-Zugangsdaten, ausgeschrieben: Ein Tippfehler im Namen
+ * sähe sonst aus wie ein abgelaufener Schlüssel (401). */
 type BricklinkZugang = {
   bricklink_consumer_key: string;
   bricklink_consumer_secret: string;

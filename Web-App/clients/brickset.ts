@@ -86,27 +86,14 @@ function checkStatus(status: number, body: string, label: string) {
     console.log(`  Brickset 429 (rate limit) for ${label}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     throw new BricksetQuotaError();
   }
-  // Jeden anderen Nicht-200-Status protokollieren.
-  //
-  // VORHER wurde hier stillschweigend `false` geliefert; setAngaben(kl) gab
-  // daraufhin null zurück, ohne eine Zeile zu schreiben. Im Log stand dann nur
-  // "Retry queue processing done (0/1 processed)" — ohne jeden Hinweis, WARUM
-  // nichts verarbeitet wurde. Bei einem 502 von Cloudflare (Brickset kurz
-  // nicht erreichbar) sah das aus, als täte die Warteschlange gar nichts.
+  // Jeder andere Status ins Log: Sonst sähe eine 502 aus, als täte die Warteschlange nichts.
   if (status !== 200)
     console.log(`  Brickset HTTP ${status} for ${label}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   return status === 200;
 }
 
-/**
- * Zur Wiedervorlage vormerken; false, wenn das Set
- * schon zu oft vorgemerkt war — dann gilt die Ausweichquelle.
- * @param {string} setNumber
- * @param {string|null} errorMsg
- * @param {boolean} [soon] Bald erneut versuchen statt zur Tageszeit. Für vorübergehende
- *        Fehler der Gegenseite (5xx) — die haben mit dem Tageskontingent nichts
- *        zu tun, und einen Tag zu warten ist dafür sinnlos lang.
- */
+/** Zur Wiedervorlage vormerken; false, wenn das Set schon zu oft vorgemerkt war (dann gilt
+ * die Ausweichquelle). `soon` für 5xx der Gegenseite: Sie hängen nicht am Tageskontingent. */
 async function enqueueRetry(kl: KlientenZugang, setNumber: string, errorMsg: string | null = null, soon = false) {
   const r = await versuche('brickset:vormerken', kl.bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon));
   if (!r.ok) return false;
