@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.vertrag.BrickColorsResponse
 import ch.brickinventoryapp.vertrag.FigValuationItem
@@ -22,7 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 
@@ -62,8 +63,6 @@ internal class Teile(
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
-    /** Der Satz zum Fehler, der in der leeren Liste stehen bleibt (wie in der Galerie). */
-    private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
     private val listen: TeileLokal,
 ) {
     private val _state = MutableStateFlow(PartsUiState())
@@ -117,11 +116,11 @@ internal class Teile(
             },
             folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l.map { it.alsAnsicht() }) },
         )
-        _state.update { it.copy(partsLoading = true, partsFehler = null) }
+        _state.update { it.copy(teileAbruf = Laden.Laedt) }
         val r = ablage.aktualisiereTeile(st)
         ausgang(r, ablage.teile(st).first().stand,
-            { s, stand -> s.copy(partsLoading = false, teileOfflineStand = stand) },
-            { s, r -> s.copy(partsLoading = false, partsFehler = beschreibeFehler(r), partsFehlerKlasse = fehlerklasse(r)) })
+            { s, stand -> s.copy(teileAbruf = Laden.Daten(Unit), teileOfflineStand = stand) },
+            { s, r -> s.copy(teileAbruf = ladefehler(r)) })
         ladeKennzahlen()
     }
 
@@ -222,11 +221,11 @@ internal class Teile(
             folge(ablage.figuren(st)) { s, l -> s.copy(minifigs = l.map { it.alsAnsicht() }) },
             folge(ablage.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l.map { it.alsAnsicht() }) },
         )
-        _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
+        _state.update { it.copy(figurenAbruf = Laden.Laedt) }
         val r = ablage.aktualisiereFiguren(st)
         ausgang(r, ablage.figuren(st).first().stand,
-            { s, stand -> s.copy(minifigsLoading = false, figurenOfflineStand = stand) },
-            { s, r -> s.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r), minifigsFehlerKlasse = fehlerklasse(r)) })
+            { s, stand -> s.copy(figurenAbruf = Laden.Daten(Unit), figurenOfflineStand = stand) },
+            { s, r -> s.copy(figurenAbruf = ladefehler(r)) })
     }
 
     fun setzeFigurSuche(q: String) {

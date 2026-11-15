@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.ui.model.KaufAnsicht
 import ch.brickinventoryapp.model.ui.model.KaufSummenAnsicht
@@ -14,7 +15,7 @@ data class ManualItemDetailUiState(
     val acquisitions: List<KaufAnsicht> = emptyList(),
     /** Summenzeile vom Server — siehe SetDetailUiState.acquisitionTotals. */
     val acquisitionTotals: KaufSummenAnsicht = KaufSummenAnsicht(),
-    val isLoading: Boolean = false,
+    val kaeufeAbruf: Laden<Unit> = Laden.Daten(Unit),
     // Identifiziert das aktuell geöffnete Element
     val itemType: Postenart? = null,
     val itemId: String = "",         // part_number oder fig_number
@@ -26,5 +27,5 @@ data class ManualItemDetailUiState(
     // unmittelbar danach neu.
     /** Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set. */
     val priceHistory: PreisverlaufAnsicht? = null,
-    val priceHistoryLoading: Boolean = false,
+    val verlaufAbruf: Laden<Unit> = Laden.Daten(Unit),
 )

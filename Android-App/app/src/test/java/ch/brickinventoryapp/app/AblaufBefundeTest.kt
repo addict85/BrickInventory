@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Alarmrichtung
@@ -150,7 +152,7 @@ class AblaufBefundeTest {
         compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
             .let { assertTrue("Alarm vor dem Löschen", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
-        warte("Detail") { !vm.merkpostenDetailState.value.laedt }
+        warte("Detail") { !vm.merkpostenDetailState.value.abruf.laedt }
         // Ab hier die Uhr von Hand: Sonst liefe die Snackbar im Takt der Testuhr sofort ab.
         compose.mainClock.autoAdvance = false
         fun schritt() = repeat(5) { compose.mainClock.advanceTimeBy(100); shadowOf(Looper.getMainLooper()).idle() }
@@ -272,7 +274,7 @@ class AblaufBefundeTest {
     fun `N1 im Fehlerzustand steht kein Erfassen-Knopf, wie in Galerie und Merkliste`() {
         welt.pfade.codes["/api/v1/parts"] = 500
         val vm = welt.teile().also { it.loadParts() }
-        warte("Fehler") { vm.partsState.value.let { !it.partsLoading && it.partsFehler != null } }
+        warte("Fehler") { vm.partsState.value.let { it.teileAbruf is Laden.Fehler } }
         zeige { PartsRoute(vm = vm, imageLoader = bilder) }
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.parts_add)).assertCountEquals(0)
     }

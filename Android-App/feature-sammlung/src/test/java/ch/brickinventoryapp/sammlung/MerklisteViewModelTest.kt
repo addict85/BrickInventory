@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -155,7 +156,7 @@ class MerklisteViewModelTest {
     fun `ein Preisalarm im Merkposten wird entprellt gespeichert und neu geladen`() {
         val vm = vm()
         vm.ladeMerkpostenDetail("10294-1")
-        assertTrue("Detail geladen", !vm.merkpostenDetailState.value.laedt)
+        assertTrue("Detail geladen", !vm.merkpostenDetailState.value.abruf.laedt)
         assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
         val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
 

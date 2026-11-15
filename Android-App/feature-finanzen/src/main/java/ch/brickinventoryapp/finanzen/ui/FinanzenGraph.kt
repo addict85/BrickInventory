@@ -38,13 +38,8 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val financeListState = remember { LazyListState() }
         val finanzen: FinanzViewModel = hiltViewModel()
-        val state by finanzen.state.collectAsStateWithLifecycle()
         val financeState by finanzen.financeState.collectAsStateWithLifecycle()
-        LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank() && financeState.valuation == null) finanzen.loadValuation() }
         navigation.Reiter(stringResource(R.string.nav_finance)) {
-            LaunchedEffect(state.serverUrl) {
-                if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) finanzen.loadPortfolioHistory()
-            }
             ScrollPositionKeeper(
                 FinanzZiel.Finance.rollSchluessel, financeListState,
                 financeState.valuation != null, navigation.rollgedaechtnis)

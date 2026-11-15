@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.data.repository.SetDateienRepository
@@ -32,7 +34,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import javax.inject.Inject
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
@@ -139,39 +140,37 @@ class SetDetailViewModel @Inject constructor(
     }
 
     private fun ladeDetail() = starte(Abschnitt.DETAIL) {
-        _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
+        _setDetailState.update { it.copy(detailAbruf = Laden.Laedt) }
         when (val r = katalog.getSetDetail(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data, setDetailLoading = false) }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
-                setDetailFehlerKlasse = fehlerklasse(r)) }
+            is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data, detailAbruf = Laden.Daten(Unit)) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(detailAbruf = ladefehler(r)) }
         }
     }
 
     private fun ladePreis() = starte(Abschnitt.PREIS) {
-        _setDetailState.update { it.copy(setPriceLoading = true, preisFehler = null) }
+        _setDetailState.update { it.copy(preisAbruf = Laden.Laedt) }
         when (val r = finanzen.getSetPrice(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data, setPriceLoading = false) }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false, preisFehler = meldungen.meldung(r),
-                preisFehlerKlasse = fehlerklasse(r)) }
+            is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data, preisAbruf = Laden.Daten(Unit)) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(preisAbruf = ladefehler(r)) }
         }
     }
 
     private fun ladeVerlauf() = starte(Abschnitt.VERLAUF) {
-        _setDetailState.update { it.copy(priceHistoryLoading = true, verlaufFehler = null) }
+        _setDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
         when (val r = finanzen.getSetPriceHistory(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data, priceHistoryLoading = false) }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false, verlaufFehler = meldungen.meldung(r)) }
+            is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
         }
     }
 
     private fun ladeKaeufe() = starte(Abschnitt.KAEUFE) {
-        _setDetailState.update { it.copy(acquisitionsLoading = true) }
+        _setDetailState.update { it.copy(kaeufeAbruf = Laden.Laedt) }
         when (val r = haushalt.getAcquisitions(setNumber)) {
             is Ergebnis.Success -> _setDetailState.update {
                 it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen,
-                        acquisitionsLoading = false)
+                        kaeufeAbruf = Laden.Daten(Unit))
             }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }
+            is Ergebnis.Error -> _setDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
         }
     }
 

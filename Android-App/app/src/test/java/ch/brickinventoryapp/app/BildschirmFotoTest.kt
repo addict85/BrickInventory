@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
@@ -131,7 +132,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun galerie() {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
-        foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }, { vm.galleryState.value }) {
+        foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.abruf.laedt } }, { vm.galleryState.value }) {
             GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -143,7 +144,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         // in eigenen Abrufen, und ein Foto mitten im Laden weicht vom Referenzbild ab.
         val fertig = { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
-                !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }
+                !s.detailAbruf.laedt && !s.preisAbruf.laedt && !s.verlaufAbruf.laedt && !s.kaeufeAbruf.laedt } }
         foto("set-detail", fertig, { vm.setDetailState.value }) {
             SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
@@ -172,7 +173,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         // Teile, Figuren und G&V lädt loadValuation() erst nach der Bewertung nach.
         foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
             it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
-            !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
+            !it.bewertung.laedt && !it.verlauf.laedt } }, { vm.financeState.value }) {
             FinanceRoute(vm = vm, imageLoader = bilder)
         }
     }

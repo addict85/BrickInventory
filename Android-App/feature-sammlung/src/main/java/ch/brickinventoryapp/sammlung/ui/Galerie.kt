@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
@@ -17,8 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
-import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 
 /**
  * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
@@ -69,17 +70,16 @@ internal class Galerie(
             }
         }
         listJob = scope.launch {
-            _state.update { it.copy(galleryLoading = true, galleryFehler = null) }
+            _state.update { it.copy(abruf = Laden.Laedt) }
             val r = aktualisiere(st)
             // Ohne Netz zählt, was die Quelle schon hält; sie hat sich durch den Fehlschlag nicht geändert.
             val stand = if (r is Ergebnis.Error && r.transient) liste.first().stand else null
             when {
-                r is Ergebnis.Success -> _state.update { it.copy(galleryLoading = false, offlineStand = null) }
+                r is Ergebnis.Success -> _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = null) }
                 r is Ergebnis.Error && r.transient && stand != null ->
-                    _state.update { it.copy(galleryLoading = false, offlineStand = stand) }
+                    _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = stand) }
                 r is Ergebnis.Error -> {
-                    _state.update { it.copy(galleryLoading = false, galleryFehler = fehlerMeldung(r),
-                        galleryFehlerKlasse = fehlerklasse(r)) }
+                    _state.update { it.copy(abruf = ladefehler(r)) }
                     meldeFehler(r)
                 }
             }
@@ -140,4 +140,4 @@ internal typealias GalerieAnzeige = Ladeanzeige
  * ein gescheitertes Neuladen lässt die alte Liste stehen.
  */
 internal fun galerieAnzeige(g: GalleryUiState, gefiltert: Boolean): GalerieAnzeige =
-    ladeanzeige(g.sets.isNotEmpty(), g.galleryLoading, g.galleryFehler != null, gefiltert)
+    ladeanzeige(g.sets.isNotEmpty(), g.abruf.laedt, g.abruf is Laden.Fehler, gefiltert)

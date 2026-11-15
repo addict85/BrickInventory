@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
@@ -80,11 +83,11 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 internal fun LazyListScope.setDetailPriceSection(
     detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung, onErneut: () -> Unit,
 ) {
-    if (price != null && !price.noPrice || detailState.setPriceLoading || detailState.preisFehler != null) {
+    if (price != null && !price.noPrice || detailState.preisAbruf !is Laden.Daten) {
         item {
             // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
             // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
-            val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.priceHistoryLoading
+            val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.verlaufAbruf.laedt
             SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
                 PreisKarteInhalt(detailState, price, history, currency, onErneut)
             }
@@ -96,10 +99,11 @@ internal fun LazyListScope.setDetailPriceSection(
 private fun PreisKarteInhalt(
     detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung, onErneut: () -> Unit,
 ) {
-    if (detailState.setPriceLoading && price == null) {
+    val preisFehler = detailState.preisAbruf as? Laden.Fehler
+    if (detailState.preisAbruf.laedt && price == null) {
         PreisLaedtZeile()
-    } else if (price == null && detailState.preisFehler != null) {
-        FehlerHinweis(detailState.preisFehler, onErneut, detailState.preisFehlerKlasse)
+    } else if (price == null && preisFehler != null) {
+        FehlerHinweis(preisFehler.meldung.satz(), onErneut, preisFehler.art)
     } else if (price != null && !price.noPrice) {
         // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
         // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
@@ -112,12 +116,12 @@ private fun PreisKarteInhalt(
         if (chart != null && chart.values.isNotEmpty()) {
             Spacer(Modifier.height(Abstaende.klein))
             PriceChart(chart, currency)
-        } else if (detailState.priceHistoryLoading) {
+        } else if (detailState.verlaufAbruf.laedt) {
             Spacer(Modifier.height(Abstaende.klein))
             PreisLaedtZeile()
-        } else if (detailState.verlaufFehler != null) {
+        } else if (detailState.verlaufAbruf is Laden.Fehler) {
             Spacer(Modifier.height(Abstaende.klein))
-            FehlerHinweis(detailState.verlaufFehler, onErneut)
+            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut)
         }
     }
 }

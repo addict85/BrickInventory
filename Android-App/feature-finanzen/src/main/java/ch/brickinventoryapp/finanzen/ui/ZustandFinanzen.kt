@@ -9,7 +9,8 @@ import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
 import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
 import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
 import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Finanzen: Bewertung, Gewinn/Verlust und Portfolio-Verlauf — eigener Fluss, weil
@@ -22,14 +23,11 @@ data class FinanceUiState(
     val figsValuation: FigurenBewertungAnsicht? = null,
     val pnl: GewinnAnsicht? = null,
     /**
-     * Die Bewertung wird geholt — ein eigenes Feld statt eines geteilten `isLoading`,
-     * das fremde Ladeanzeigen beendete.
+     * Der Abruf der Bewertung, getrennt vom Verlauf: Ein geteilter Ladezustand beendete
+     * fremde Anzeigen. Ohne den Fehler zeigte der Reiter „keine Preisdaten“.
      */
-    val valuationLoading: Boolean = false,
-    /** Warum die Bewertung nicht kam; ohne sie zeigte der Reiter „keine Preisdaten“. */
-    val valuationFehler: String? = null,
-    val valuationFehlerKlasse: Fehlerklasse? = null,
-    val historyLoading: Boolean = false,
+    val bewertung: Laden<Unit> = Laden.Daten(Unit),
+    val verlauf: Laden<Unit> = Laden.Daten(Unit),
     val historyPeriodChangePct: Double? = null,
     /**
      * Punkte und Achse, wie der Server sie schickt. Übersetzt werden sie erst beim
@@ -71,9 +69,8 @@ data class FinanceUiState(
  */
 data class GutscheinUiState(
     val gutscheine: List<GutscheinAnsicht> = emptyList(),
-    val laedt: Boolean = false,
-    /** Warum die Liste nicht kam; sonst stünde „keine Gutscheine“ da. */
-    val fehler: String? = null,
+    /** Ein Fehler steht statt „keine Gutscheine“, solange die Liste leer ist. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     /** ids, deren PIN gerade im Klartext steht. */
     val pinSichtbar: Set<Int> = emptySet(),
     /** Der Gutschein, der gerade bearbeitet wird; null = neuer Eintrag. */
@@ -159,7 +156,7 @@ data class GutscheinBestaetigung(
     val id: Int?,
     /** Der Server hat den Code des zweiten Faktors verlangt. */
     val codeNoetig: Boolean = false,
-    val fehler: String? = null,
+    val fehler: Meldung? = null,
     val laeuft: Boolean = false,
 )
 

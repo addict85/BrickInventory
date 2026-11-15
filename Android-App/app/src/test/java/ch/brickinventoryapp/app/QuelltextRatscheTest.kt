@@ -596,7 +596,7 @@ class QuelltextRatscheTest {
         // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
         // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
         // core-vertrag, dessen Namen dem Wire-Format folgen.
-        val GRENZE = 999
+        val GRENZE = 971
         val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
         val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
         val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",
@@ -616,7 +616,7 @@ class QuelltextRatscheTest {
     fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
         // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
-        val LADEND = 14
+        val LADEND = 12
         val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
         val funde = produktivDateien().flatMap { f ->
@@ -628,8 +628,8 @@ class QuelltextRatscheTest {
         // Ein Bildschirmzustand trägt Laden<T> (model/ui/Laden.kt) statt eines Paars aus
         // `laedt: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
         // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
-        val ALT = 16
-        val TEXT = 13
+        val ALT = 0
+        val TEXT = 3
         val laden = Regex("""(?i)^(laedt|laden|.*loading|.*laedt)$""")
         val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
         val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")

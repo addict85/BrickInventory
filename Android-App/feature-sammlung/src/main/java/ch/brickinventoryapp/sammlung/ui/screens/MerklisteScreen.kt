@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.ui.fehlerArt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -172,8 +175,8 @@ internal fun MerklisteScreen(
     val gefiltert = zustand.query.isNotBlank() ||
         zustand.zustandFilter != null ||
         scopeModus != ScopeFilter.ALL
-    val fehler = zustand.fehler?.satz()
-    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, fehler, gefiltert)
+    val fehler = zustand.abruf.fehlerMeldung?.satz()
+    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.abruf.laedt, fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
@@ -241,7 +244,7 @@ internal fun MerklisteScreen(
                         }
                     },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
-                    fehlerKlasse = zustand.fehlerKlasse,
+                    fehlerKlasse = zustand.abruf.fehlerArt,
                 ) {
                     BoxWithConstraints {
                     val mehrspaltig = maxWidth >= MERKLISTE_SPALTE * 2

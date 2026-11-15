@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laedt
 import android.content.Context
 import android.graphics.Color as Farbe
 import android.os.Looper
@@ -347,7 +348,7 @@ class UxPruefungZweiTest {
         }
         warte("Galerie und Detail") {
             galerie.galleryState.value.sets.isNotEmpty() &&
-                (offen == null || detail.setDetailState.value.let { it.setDetail != null && !it.setDetailLoading })
+                (offen == null || detail.setDetailState.value.let { it.setDetail != null && !it.detailAbruf.laedt })
         }
     }
 

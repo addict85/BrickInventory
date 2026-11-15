@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.zustand
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
@@ -160,7 +161,7 @@ class KaeufeViewModelTest {
         // 3002 hat keinen Verlauf auf dem Testserver: Er bleibt leer, statt den
         // von 3001 weiter zu zeigen.
         vm.loadManualAcquisitions(Postenart.PART, "3002", 5)
-        assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.isLoading && !vm.manDetailState.value.priceHistoryLoading)
+        assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.kaeufeAbruf.laedt && !vm.manDetailState.value.verlaufAbruf.laedt)
         assertNull(vm.manDetailState.value.priceHistory)
     }
 

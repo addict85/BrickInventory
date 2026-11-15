@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
@@ -269,12 +271,12 @@ class BildschirmFotoVariantenTest {
         }))
 
     private fun galerieFertig(vm: GalerieViewModel) =
-        { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }
+        { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.abruf.laedt } }
 
     private fun detailFertig(vm: SetDetailViewModel) = {
         vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
-                !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading }
+                !s.detailAbruf.laedt && !s.preisAbruf.laedt && !s.verlaufAbruf.laedt && !s.kaeufeAbruf.laedt }
     }
 
     @Composable
@@ -364,7 +366,7 @@ class BildschirmFotoVariantenTest {
     private fun finanzenFoto(name: String, sprache: String? = DEUTSCH, schrift: Float = 1f) {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
         zeige(name, sprache = sprache, schrift = schrift, bereit = { vm.financeState.value.let { it.valuation != null &&
-            it.pnl != null && it.historyPoints.isNotEmpty() && !it.valuationLoading && !it.historyLoading } },
+            it.pnl != null && it.historyPoints.isNotEmpty() && !it.bewertung.laedt && !it.verlauf.laedt } },
             zustand = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = bilder) }
         foto(name)
     }
@@ -633,7 +635,7 @@ class BildschirmFotoVariantenTest {
         compose.waitForIdle()
         // Erst fotografieren, wenn Preis und Verlauf da sind — sonst stand „Preis wird geladen“
         // neben dem Preis in der Liste.
-        bereitstellen("merkliste-detail (offen)", { vm.merkpostenDetailState.value.let { !it.laedt && it.preise != null } },
+        bereitstellen("merkliste-detail (offen)", { vm.merkpostenDetailState.value.let { !it.abruf.laedt && it.preise != null } },
             { vm.merkpostenDetailState.value })
         compose.waitForIdle()
         anhalten()
@@ -817,7 +819,7 @@ class BildschirmFotoVariantenTest {
         deutschVorDemLaden()
         welt.pfade.codes["/api/v1/sets"] = 500
         val galerie = welt.galerie().also { it.loadSets() }
-        zeige("galerie-fehler", bereit = { galerie.galleryState.value.let { !it.galleryLoading && it.galleryFehler != null } },
+        zeige("galerie-fehler", bereit = { galerie.galleryState.value.let { !it.abruf.laedt && it.abruf is Laden.Fehler } },
             zustand = { galerie.galleryState.value }) { Galerie(galerie) }
         anhalten()
         foto("galerie-fehler")
@@ -931,7 +933,7 @@ class BildschirmFotoVariantenTest {
         }
         compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
             androidx.compose.ui.test.hasClickAction()).performClick()
-        bereitstellen("teil-detail (offen)", { !vm.setItemState.value.laedt }, { vm.setItemState.value })
+        bereitstellen("teil-detail (offen)", { !vm.setItemState.value.abruf.laedt }, { vm.setItemState.value })
         anhalten()
         if (geraet == "telefon") blattFoto(R.string.setitem_used_in, "teil-detail", "classic", dunkel, geraet)
         else foto("teil-detail", dunkel = dunkel, geraet = geraet)
@@ -1094,7 +1096,7 @@ class BildschirmFotoVariantenTest {
     fun teileLeer() {
         welt.pfade.antworten["/api/v1/parts"] = """{"success":true,"total":0,"parts":[]}"""
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teile-leer", bereit = { vm.partsState.value.let { !it.partsLoading && it.partsFehler == null } },
+        zeige("teile-leer", bereit = { vm.partsState.value.let { it.teileAbruf is Laden.Daten } },
             zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         anhalten()
         foto("teile-leer")
@@ -1105,7 +1107,7 @@ class BildschirmFotoVariantenTest {
         deutschVorDemLaden()
         welt.pfade.codes["/api/v1/parts"] = 500
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teile-fehler", dunkel = true, bereit = { vm.partsState.value.let { !it.partsLoading && it.partsFehler != null } },
+        zeige("teile-fehler", dunkel = true, bereit = { vm.partsState.value.let { it.teileAbruf is Laden.Fehler } },
             zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         anhalten()
         foto("teile-fehler", dunkel = true)
@@ -1116,7 +1118,7 @@ class BildschirmFotoVariantenTest {
         deutschVorDemLaden()
         welt.pfade.codes["/api/v1/finance/valuation"] = 500
         val vm = welt.finanzen().also { it.loadValuation() }
-        zeige("finanzen-fehler", bereit = { vm.financeState.value.let { !it.valuationLoading && !it.historyLoading && it.valuationFehler != null } },
+        zeige("finanzen-fehler", bereit = { vm.financeState.value.let { !it.bewertung.laedt && !it.verlauf.laedt && it.bewertung is Laden.Fehler } },
             zustand = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = bilder) }
         anhalten()
         foto("finanzen-fehler")

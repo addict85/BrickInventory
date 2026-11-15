@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.fehlerArt
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -175,7 +179,7 @@ class SetDetailViewModelTest {
         // Der erste Abruf ist abgebrochen und bekommt keine Antwort mehr; nur der zweite kommt an.
         assertEquals(1, preisAbrufe())
         assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
-        assertEquals(false, vm.setDetailState.value.setPriceLoading)
+        assertEquals(false, vm.setDetailState.value.preisAbruf.laedt)
     }
 
     @Test
@@ -184,14 +188,14 @@ class SetDetailViewModelTest {
         pfade.codes["/api/v1/sets/75192-1/price-history"] = 500
         val vm = vm()
         geladen(vm)
-        assertEquals("fehler", vm.setDetailState.value.preisFehler)
-        assertEquals("fehler", vm.setDetailState.value.verlaufFehler)
-        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.preisFehlerKlasse)
+        assertTrue(vm.setDetailState.value.preisAbruf is Laden.Fehler)
+        assertTrue(vm.setDetailState.value.verlaufAbruf is Laden.Fehler)
+        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.preisAbruf.fehlerArt)
 
         pfade.codes.clear()
         vm.aktualisiere()
-        assertEquals(null, vm.setDetailState.value.preisFehler)
-        assertEquals(null, vm.setDetailState.value.verlaufFehler)
+        assertEquals(null, vm.setDetailState.value.preisAbruf.fehlerMeldung)
+        assertEquals(null, vm.setDetailState.value.verlaufAbruf.fehlerMeldung)
         assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
     }
 }

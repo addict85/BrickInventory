@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -15,7 +17,6 @@ import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.model.ui.model.TeilAnsicht
 import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
 import ch.brickinventoryapp.model.ui.model.VerwendendesSetAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 
@@ -64,10 +65,8 @@ data class PartsUiState(
      * eine Katalog-ID als Text), nicht die Beschriftung — der Server filtert danach.
      */
     val partsCategoryFilter: String = "",
-    val partsLoading: Boolean = false,
-    /** Warum die Teile nicht kamen; null, solange nichts scheiterte. */
-    val partsFehler: String? = null,
-    val partsFehlerKlasse: Fehlerklasse? = null,
+    /** Der letzte Abruf der Teile; die Liste kommt aus der Ablage und bleibt stehen. */
+    val teileAbruf: Laden<Unit> = Laden.Daten(Unit),
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val teileOfflineStand: Long? = null,
     val minifigs: List<FigurAnsicht> = emptyList(),
@@ -75,9 +74,7 @@ data class PartsUiState(
     val manualFigs: List<ManuelleFigurAnsicht>? = null,
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
     val minifigStats: FigurenKennzahlenAnsicht = FigurenKennzahlenAnsicht(),
-    val minifigsLoading: Boolean = false,
-    val minifigsFehler: String? = null,
-    val minifigsFehlerKlasse: Fehlerklasse? = null,
+    val figurenAbruf: Laden<Unit> = Laden.Daten(Unit),
     /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val figurenOfflineStand: Long? = null,
     /**
@@ -109,10 +106,9 @@ data class SetItemUiState(
     val art: Postenart? = null,
     val nummer: String = "",
     val colorId: Int = OHNE_FARBE,
-    val laedt: Boolean = false,
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     val kopf: BestandteilKopfAnsicht? = null,
     val sets: List<VerwendendesSetAnsicht> = emptyList(),
-    val fehler: String? = null,
 ) {
     val offen: Boolean get() = art != null
 }
@@ -126,14 +122,15 @@ data class TeilelisteUiState(
     val sets: List<PlSet> = emptyList(),
     val parts: List<PlPart> = emptyList(),
     val generated: Boolean = false,
-    val isLoading: Boolean = false,
-    /** Fortschritt, Ergebnis oder Fehler der letzten Handlung, in der Sprache der App. */
-    val status: String = "",
+    /** Das Erzeugen der Liste; Fehler einzelner Sets nennt [status]. */
+    val erzeugen: Laden<Unit> = Laden.Daten(Unit),
+    /** Fortschritt, Ergebnis oder Fehler der letzten Handlung; null heisst nichts zu sagen. */
+    val status: Meldung? = null,
     val nurLose: Boolean = false,
     val mitUnterkonten: Boolean = false,
     val bestandLaeuft: Boolean = false,
     val isExporting: Boolean = false,
-    val pdfError: String? = null,
+    val pdfFehler: Meldung? = null,
     /** Fertiges PDF, das der Bildschirm einmal zum Öffnen anbietet. */
     val pdfDatei: java.io.File? = null,
 )

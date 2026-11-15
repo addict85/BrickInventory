@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -204,9 +207,9 @@ private fun GuthabenLaufZeile(lauf: GuthabenLauf, onAbbrechen: () -> Unit) {
  */
 @Composable
 private fun LeerOderFehler(zustand: GutscheinUiState, onErneut: () -> Unit) {
-    if (zustand.gutscheine.isNotEmpty() || zustand.laedt) return
-    val fehler = zustand.fehler
-    if (fehler != null) FehlerHinweis(fehler, onErneut)
+    if (zustand.gutscheine.isNotEmpty() || zustand.abruf.laedt) return
+    val fehler = zustand.abruf as? Laden.Fehler
+    if (fehler != null) FehlerHinweis(fehler.meldung.satz(), onErneut)
     else Text(stringResource(R.string.vouchers_empty), style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
@@ -231,7 +234,7 @@ private fun GutscheinRueckfrage(
         },
         bestaetigen = stringResource(if (loeschen) R.string.common_delete else R.string.vouchers_confirm_button),
         codeNoetig = frage.codeNoetig,
-        fehler = frage.fehler,
+        fehler = frage.fehler?.satz(),
         laeuft = frage.laeuft,
         onBestaetigen = onBestaetigen,
         onAbbrechen = onAbbrechen,

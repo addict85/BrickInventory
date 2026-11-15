@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.fehlerArt
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
@@ -88,40 +92,40 @@ class FehlerZustandTest {
         val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
             testKatalogRepository(t.api), testFinanzenRepository(t.api), SavedStateHandle()))
         vm.ladeMerkliste()
-        assertTrue("Fehler", vm.merklisteState.value.fehler != null)
+        assertTrue("Fehler", vm.merklisteState.value.abruf.fehlerMeldung != null)
         // Kein fertiger Satz im Zustand: die Ressource zur Art samt HTTP-Status.
-        assertEquals(Meldung.Ressource(R.string.err_server, listOf(404)), vm.merklisteState.value.fehler)
-        assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.fehlerKlasse)
+        assertEquals(Meldung.Ressource(R.string.err_server, listOf(404)), vm.merklisteState.value.abruf.fehlerMeldung)
+        assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.abruf.fehlerArt)
 
         pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.ladeMerkliste()
         assertTrue("Inhalt", vm.merklisteState.value.merkposten.isNotEmpty())
-        assertNull(vm.merklisteState.value.fehler)
+        assertNull(vm.merklisteState.value.abruf.fehlerMeldung)
     }
 
     @Test
     fun `die Bewertung meldet den Fehler und vergisst ihn beim Neuladen`() {
         val vm = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFinanzenRepository(t.api), SavedStateHandle()))
         vm.loadValuation()
-        assertTrue("Fehler", vm.financeState.value.valuationFehler != null)
-        assertEquals(Fehlerklasse.SERVER, vm.financeState.value.valuationFehlerKlasse)
+        assertTrue("Fehler", vm.financeState.value.bewertung is Laden.Fehler)
+        assertEquals(Fehlerklasse.SERVER, vm.financeState.value.bewertung.fehlerArt)
 
         pfade.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
         assertTrue("Bewertung", vm.financeState.value.valuation != null)
-        assertNull(vm.financeState.value.valuationFehler)
+        assertNull(vm.financeState.value.bewertung.fehlerMeldung)
     }
 
     @Test
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
         val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
         vm.loadParts()
-        assertTrue("Teilefehler", vm.partsState.value.partsFehler != null)
+        assertTrue("Teilefehler", vm.partsState.value.teileAbruf is Laden.Fehler)
         vm.loadMinifigs()
-        assertTrue("Figurenfehler", vm.partsState.value.minifigsFehler != null)
-        assertEquals("fehler", vm.partsState.value.partsFehler)
-        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.partsFehlerKlasse)
-        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.minifigsFehlerKlasse)
+        assertTrue("Figurenfehler", vm.partsState.value.figurenAbruf is Laden.Fehler)
+        assertTrue(vm.partsState.value.teileAbruf.fehlerMeldung != null)
+        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.teileAbruf.fehlerArt)
+        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.figurenAbruf.fehlerArt)
     }
 
     @Test
@@ -130,9 +134,9 @@ class FehlerZustandTest {
         val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
             testFinanzenRepository(t.api), testHaushaltRepository(t.api), leser,
             SavedStateHandle(mapOf("setNumber" to "75192-1"))))
-        assertTrue("Fehler", vm.setDetailState.value.setDetailFehler != null)
-        assertEquals(false, vm.setDetailState.value.setDetailLoading)
-        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.setDetailFehlerKlasse)
+        assertTrue("Fehler", vm.setDetailState.value.detailAbruf is Laden.Fehler)
+        assertEquals(false, vm.setDetailState.value.detailAbruf.laedt)
+        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.detailAbruf.fehlerArt)
     }
 
     @Test
@@ -144,7 +148,7 @@ class FehlerZustandTest {
             meldungen = t.meldungen,
         )
         vm.ladeGutscheine()
-        assertTrue("Fehler", vm.state.value.fehler != null)
-        assertEquals("fehler", vm.state.value.fehler)
+        assertTrue("Fehler", vm.state.value.abruf is Laden.Fehler)
+        assertEquals(Fehlerklasse.SERVER, vm.state.value.abruf.fehlerArt)
     }
 }

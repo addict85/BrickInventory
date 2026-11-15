@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.vertrag.BrickColorsResponse
 import ch.brickinventoryapp.vertrag.FigValuationItem
@@ -162,7 +164,7 @@ class TeileTest {
         t.ladeFiguren()
         advanceTimeBy(10); runCurrent()
         assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertFalse(t.state.value.minifigsLoading)
+        assertFalse(t.state.value.figurenAbruf.laedt)
         advanceUntilIdle()
         assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
         assertEquals(FigurenKennzahlenAnsicht(), t.state.value.minifigStats)
@@ -183,7 +185,7 @@ class TeileTest {
         val t = teile()
         t.ladeFiguren(); runCurrent()
         assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertNull("ohne Netz bleiben die Figuren stehen", t.state.value.minifigsFehler)
+        assertNull("ohne Netz bleiben die Figuren stehen", t.state.value.figurenAbruf.fehlerMeldung)
         assertEquals(4L, t.state.value.figurenOfflineStand)
     }
 

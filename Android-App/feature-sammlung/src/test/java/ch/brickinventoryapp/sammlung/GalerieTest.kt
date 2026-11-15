@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -129,7 +132,7 @@ class GalerieTest {
         val g = galerie(Quelle(Lokal(emptyList(), null))) { Ergebnis.Error.Server(504, "Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
-        assertEquals(Meldung.Text("Zeitüberschreitung"), st.galleryFehler)
+        assertEquals(Meldung.Text("Zeitüberschreitung"), st.abruf.fehlerMeldung)
         assertEquals(GalerieAnzeige.FEHLER, galerieAnzeige(st, gefiltert = false))
     }
 
@@ -140,7 +143,7 @@ class GalerieTest {
         g.laden(); advanceUntilIdle()
         kaputt = false
         g.laden(); advanceUntilIdle()
-        assertNull(g.state.value.galleryFehler)
+        assertNull(g.state.value.abruf.fehlerMeldung)
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(g.state.value, gefiltert = false))
     }
 
@@ -149,7 +152,7 @@ class GalerieTest {
         val g = galerie(Quelle(Lokal(listOf(set(7)), 5L))) { Ergebnis.Error.Netz() }
         g.laden(); advanceUntilIdle()
         assertEquals(listOf("7-1x1"), kurz(g.state.value.sets))
-        assertNull("ohne Netz bleibt die Ablage stehen", g.state.value.galleryFehler)
+        assertNull("ohne Netz bleibt die Ablage stehen", g.state.value.abruf.fehlerMeldung)
         assertEquals(5L, g.state.value.offlineStand)
     }
 
@@ -168,12 +171,12 @@ class GalerieTest {
     fun `eine leere Sammlung ist kein Fehler`() {
         assertEquals(GalerieAnzeige.LEER, galerieAnzeige(GalleryUiState(), gefiltert = false))
         assertEquals(GalerieAnzeige.KEINE_TREFFER, galerieAnzeige(GalleryUiState(), gefiltert = true))
-        assertEquals(GalerieAnzeige.LAEDT, galerieAnzeige(GalleryUiState(galleryLoading = true), gefiltert = false))
+        assertEquals(GalerieAnzeige.LAEDT, galerieAnzeige(GalleryUiState(abruf = Laden.Laedt), gefiltert = false))
     }
 
     @Test
     fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
-        val st = GalleryUiState(sets = listOf(set(1)), galleryFehler = Meldung.Text("Netz"))
+        val st = GalleryUiState(sets = listOf(set(1)), abruf = Laden.Fehler(Fehlerklasse.OFFLINE, Meldung.Text("Netz")))
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
     }
 }

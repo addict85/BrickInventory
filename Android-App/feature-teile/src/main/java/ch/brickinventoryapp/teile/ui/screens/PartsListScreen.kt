@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.teile.ui.normalisiert
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -160,8 +162,8 @@ fun PartsListScreen(
     val setFeldFokus = remember { FocusRequester() }
     val sets = zustand.sets
     val parts = zustand.parts
-    val isLoading = zustand.isLoading
-    val status = zustand.status
+    val isLoading = zustand.erzeugen.laedt
+    val status = zustand.status?.satz().orEmpty()
     val generated = zustand.generated
     val nurLose = zustand.nurLose
     val mitUnterkonten = zustand.mitUnterkonten
@@ -287,7 +289,7 @@ fun PartsListScreen(
                     }
                 }
                 if (generated && parts.isNotEmpty()) {
-                    PdfKnopf(zustand.isExporting, zustand.pdfError, onExportPdf, onPdfFehlerGesehen)
+                    PdfKnopf(zustand.isExporting, zustand.pdfFehler?.satz(), onExportPdf, onPdfFehlerGesehen)
                 }
 
                 // ── Eigener Bestand: eine Zeile für sich ──

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.testing.testGutscheineRepository
@@ -89,7 +90,7 @@ class GutscheinViewModelTest {
     fun `die Liste wird geladen und ein Gutschein ins Formular geholt`() {
         server.enqueue(antwort(zweiKarten))
         vm.ladeGutscheine()
-        bis("Liste") { vm.state.value.gutscheine.size == 2 && !vm.state.value.laedt }
+        bis("Liste") { vm.state.value.gutscheine.size == 2 && !vm.state.value.abruf.laedt }
 
         vm.bearbeiteGutschein(1)
         val s = vm.state.value

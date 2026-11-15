@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Figurenerfassung
 import ch.brickinventoryapp.model.fach.Teilerfassung
@@ -114,7 +118,6 @@ class TeileViewModel @Inject constructor(
         },
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         vergissScroll = { scrollMemory.vergiss("parts") },
-        beschreibeFehler = { meldungen.meldung(it) },
         listen = TeileLokal(
             teile = { st -> teileAbfrage(st)?.let { kontosicht.teileliste.beobachte(it) }
                 ?: repo.beobachteTeile(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter, st.partsSpare) },
@@ -300,7 +303,7 @@ class TeileViewModel @Inject constructor(
     // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
 
     override fun oeffneSetItem(art: Postenart, nummer: String, colorId: Int) {
-        _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, laedt = true)
+        _setItemState.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, abruf = Laden.Laedt)
         viewModelScope.launch {
             val blick = filter.kontoFuer(if (art == Postenart.FIG) ScopeFilter.View.MINIFIGS else ScopeFilter.View.PARTS)
             val r = if (art == Postenart.FIG) figuren.getSetsMitFigur(nummer, blick)
@@ -310,10 +313,11 @@ class TeileViewModel @Inject constructor(
             if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
             when (r) {
                 is Ergebnis.Success -> _setItemState.update {
-                    it.copy(laedt = false, kopf = r.data.item?.alsAnsicht(), sets = r.data.sets.map { s -> s.alsAnsicht() },
-                            fehler = if (r.data.success) null else r.data.error)
+                    it.copy(kopf = r.data.item?.alsAnsicht(), sets = r.data.sets.map { s -> s.alsAnsicht() },
+                            abruf = if (r.data.success) Laden.Daten(Unit)
+                                    else Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Text(r.data.error.orEmpty())))
                 }
-                is Ergebnis.Error -> _setItemState.update { it.copy(laedt = false, fehler = meldungen.meldung(r)) }
+                is Ergebnis.Error -> _setItemState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }

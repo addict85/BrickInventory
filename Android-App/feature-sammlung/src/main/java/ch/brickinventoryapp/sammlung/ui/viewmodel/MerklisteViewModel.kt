@@ -256,7 +256,7 @@ class MerklisteViewModel @Inject constructor(
     /** Katalogdaten, Preise und Verlauf eines Merkpostens — je für sich, was fehlt, bleibt leer. */
     override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {
-            _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
+            _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, abruf = Laden.Laedt)
             if (merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
             val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)?.data
@@ -264,7 +264,7 @@ class MerklisteViewModel @Inject constructor(
             val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Success)?.data
             _merkpostenDetailState.update { it.copy(preise = preise) }
             val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)?.data
-            _merkpostenDetailState.update { it.copy(historie = historie, laedt = false) }
+            _merkpostenDetailState.update { it.copy(historie = historie, abruf = Laden.Daten(Unit)) }
         }
     }
 

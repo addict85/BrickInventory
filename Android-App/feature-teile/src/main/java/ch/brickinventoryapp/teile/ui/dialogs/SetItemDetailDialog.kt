@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.teile.ui.dialogs
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
@@ -121,11 +124,11 @@ private fun SetItemDetail(
     val inhalt: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth()) {
                 when {
-                    zustand.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.sehrGross), Alignment.Center) {
+                    zustand.abruf.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.sehrGross), Alignment.Center) {
                         CircularProgressIndicator(Modifier.size(28.dp))
                     }
-                    zustand.fehler != null -> Text(
-                        zustand.fehler,
+                    zustand.abruf is Laden.Fehler -> Text(
+                        zustand.abruf.meldung.satz(),
                         color = MaterialTheme.colorScheme.error,
                     )
                     else -> {

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.ui.fehlerArt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Setsortierung
@@ -204,7 +207,7 @@ internal fun GalleryScreen(
             OfflineHinweis(galerie.offlineStand, onErneut = ereignisse.aktualisieren)
             // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
             // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
-            PullToRefreshBox(isRefreshing = galerie.galleryLoading && anzeige == GalerieAnzeige.LISTE,
+            PullToRefreshBox(isRefreshing = galerie.abruf.laedt && anzeige == GalerieAnzeige.LISTE,
                              onRefresh = ereignisse.aktualisieren, modifier = Modifier.fillMaxSize()) {
                 GalerieInhalt(anzeige, zustand, searchInput, imageLoader, gridState, onSetClick,
                     onScanBarcode, onErfassen = { showAddDialog = true }, onRefresh = ereignisse.aktualisieren)
@@ -283,8 +286,8 @@ private fun GalerieInhalt(
         // Fehler und leere Sammlung sehen verschieden aus und bieten
         // Verschiedenes an: hier den Grund und einen neuen Versuch.
         GalerieAnzeige.FEHLER -> GalerieHinweis {
-            FehlerHinweis(galerie.galleryFehler?.satz(), onRefresh,
-                galerie.galleryFehlerKlasse)
+            FehlerHinweis(galerie.abruf.fehlerMeldung?.satz(), onRefresh,
+                galerie.abruf.fehlerArt)
         }
         GalerieAnzeige.LEER -> GalerieLeer(onErfassen, onScanBarcode)
         GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {

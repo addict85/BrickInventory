@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
@@ -316,11 +317,11 @@ internal fun ManualItemDetailScreen(
             //
             // Der Ladezustand gehört in die Bedingung: Sonst erschiene der Abschnitt erst mit
             // der Antwort, und bis dahin wäre „lädt noch“ nicht von „keine Marktpreise“ zu
-            // unterscheiden — wie setPriceLoading in SetDetailSections.kt.
+            // unterscheiden — wie preisAbruf in SetDetailSections.kt.
             val history = manDetailState.priceHistory
             val byCond  = history?.byCondition
             val chart   = history?.chart
-            val laedt   = manDetailState.priceHistoryLoading
+            val laedt   = manDetailState.verlaufAbruf.laedt
             if (byCond?.present()?.isNotEmpty() == true || chart?.values?.isNotEmpty() == true || laedt) {
                 item {
                     SectionCard(title = stringResource(R.string.detail_section_market)) {

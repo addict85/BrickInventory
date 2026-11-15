@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
@@ -157,11 +159,10 @@ internal fun SetDetailScreen(
 
         if (set == null) {
             // Ohne Detail und ohne Vorschau: laden oder gescheitert — nie ein Kringel ohne Ende.
-            val fehler = detailState.setDetailFehler
-            if (fehler != null && !detailState.setDetailLoading) {
+            val fehler = detailState.detailAbruf as? Laden.Fehler
+            if (fehler != null) {
                 ZustandsHinweis(Modifier.padding(padding)) {
-                    FehlerHinweis(fehler, aktionen::aktualisiere,
-                        detailState.setDetailFehlerKlasse)
+                    FehlerHinweis(fehler.meldung.satz(), aktionen::aktualisiere, fehler.art)
                 }
             } else LadeKreis(Modifier.padding(padding))
             return@Scaffold

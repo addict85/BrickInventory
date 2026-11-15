@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -103,7 +104,7 @@ internal fun AcquisitionManagementScreen(
     // `stringResource` geht nicht, weil die Zahlen erst in der Antwort entstehen;
     // LocalResources ist die konfigurationsbewusste Form.
     val res = androidx.compose.ui.platform.LocalResources.current
-    val isLoading    = manDetailState.isLoading
+    val isLoading    = manDetailState.kaeufeAbruf.laedt
 
     LaunchedEffect(type, id, colorId) {
         when (type) {

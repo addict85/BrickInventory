@@ -6,9 +6,9 @@ Rot: der Marktpreis steht einmal in den Wert-Kacheln
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
-@@ -104,6 +104,7 @@
-     } else if (price == null && detailState.preisFehler != null) {
-         FehlerHinweis(detailState.preisFehler, onErneut, detailState.preisFehlerKlasse)
+@@ -105,6 +105,7 @@
+     } else if (price == null && preisFehler != null) {
+         FehlerHinweis(preisFehler.meldung.satz(), onErneut, preisFehler.art)
      } else if (price != null && !price.noPrice) {
 +        Text(fmtMoney(price.avgPrice ?: 0.0, currency))
          // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen

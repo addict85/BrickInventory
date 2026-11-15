@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
@@ -81,7 +84,9 @@ internal fun MinifigsScreen(
 
     val figs = partsState.minifigs
     val minifigStats = partsState.minifigStats
-    val isLoading = partsState.minifigsLoading
+    val isLoading = partsState.figurenAbruf.laedt
+    val fehler = partsState.figurenAbruf as? Laden.Fehler
+    val fehlerText = fehler?.meldung?.satz()
     val serverUrl = state.serverUrl
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: Zustand.NEU
@@ -116,7 +121,7 @@ internal fun MinifigsScreen(
     // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
     // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
     val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
-    val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
+    val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, fehlerText, figurenGefiltert)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
@@ -134,7 +139,7 @@ internal fun MinifigsScreen(
         when (anzeige) {
             Ladeanzeige.LAEDT ->
                 SkelettRaster(LesbareSpalten(140.dp), kachelHoehe = 196.dp)
-            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }
+            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(fehlerText, onRefresh, fehler?.art) }
             // Wie der leere Teile-Reiter: Satz und Handlung, keine Kennzahlen neben „leer“.
             Ladeanzeige.LEER -> ZustandsHinweis {
                 HinweisText(Icons.Default.Person, stringResource(R.string.minifigs_none),

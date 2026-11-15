@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
@@ -90,10 +93,11 @@ internal fun FinanceScreen(
     val financeState = zustand.financeState
 
     val valuation = financeState.valuation
-    val isLoading = financeState.valuationLoading
+    val isLoading = financeState.bewertung.laedt
+    val bewertungsFehler = financeState.bewertung as? Laden.Fehler
     val serverUrl = state.serverUrl
     val priceCondition = state.priceCondition
-    val historyLoading = financeState.historyLoading
+    val historyLoading = financeState.verlauf.laedt
     val historyPeriod = financeState.historyPeriod
     val historyPeriodChangePct = financeState.historyPeriodChangePct
     // Achsen in der Sprache der Anzeige: Die Konfiguration ist der Schlüssel, damit ein
@@ -131,11 +135,12 @@ internal fun FinanceScreen(
     // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
     // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
     if (valuation == null) {
+        val fehlerText = bewertungsFehler?.meldung?.satz()
         Ladezustand(
-            anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = financeState.valuationFehler, gefiltert = false),
-            fehler = financeState.valuationFehler,
+            anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = fehlerText, gefiltert = false),
+            fehler = fehlerText,
             onErneut = onRefresh,
-            fehlerKlasse = financeState.valuationFehlerKlasse,
+            fehlerKlasse = bewertungsFehler?.art,
             laedt = {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {

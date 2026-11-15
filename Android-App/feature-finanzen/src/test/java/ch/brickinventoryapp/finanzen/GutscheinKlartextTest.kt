@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.finanzen.ui.GutscheinPdfZiel
@@ -82,7 +83,7 @@ class GutscheinKlartextTest {
         )
         server.enqueue(antwort(maskiert))
         vm.ladeGutscheine()
-        warteBis("Liste") { vm.state.value.gutscheine.size == 1 && !vm.state.value.laedt }
+        warteBis("Liste") { vm.state.value.gutscheine.size == 1 && !vm.state.value.abruf.laedt }
         server.takeRequest()
     }
 
@@ -152,7 +153,7 @@ class GutscheinKlartextTest {
         server.shutdown()
         vm.bestaetige("geheim", null)
         warteBis("Absage") { vm.state.value.bestaetigung?.let { !it.laeuft && it.fehler != null } == true }
-        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.bestaetigung?.fehler)
+        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.bestaetigung?.fehler.text)
         assertEquals("Der Gutschein steht noch da", 1, vm.state.value.gutscheine.size)
     }
 

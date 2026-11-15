@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
@@ -89,8 +90,8 @@ internal fun MerkpostenDetailScreen(
 
     // Der Merkposten ist weg (geloescht oder uebernommen) — dann gehoert dieser
     // Bildschirm ebenfalls weg, statt eine Leiche zu zeigen.
-    LaunchedEffect(merkposten == null, liste.laedt) {
-        if (merkposten == null && !liste.laedt && liste.merkposten.isNotEmpty()) onBack()
+    LaunchedEffect(merkposten == null, liste.abruf.laedt) {
+        if (merkposten == null && !liste.abruf.laedt && liste.merkposten.isNotEmpty()) onBack()
     }
 
     fun preis(v: Double?) = if (v == null) "—"
@@ -211,7 +212,7 @@ internal fun MerkpostenDetailScreen(
                         if (chart != null && chart.values.isNotEmpty()) {
                             Spacer(Modifier.height(Abstaende.klein))
                             PriceChart(chart, appState.currency)
-                        } else if (detail.laedt) {
+                        } else if (detail.abruf.laedt) {
                             Spacer(Modifier.height(Abstaende.klein))
                             PreisLaedtZeile()
                         }

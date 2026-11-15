@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
@@ -75,7 +77,7 @@ class KaeufeViewModel @Inject constructor(
             _manDetailState.update {
                 // Der Verlauf eines anderen Eintrags darf nicht stehen bleiben.
                 val gleich = it.itemId == id && it.colorId == colorId && it.itemType == type
-                it.copy(isLoading = true, itemType = type, itemId = id, colorId = colorId,
+                it.copy(kaeufeAbruf = Laden.Laedt, itemType = type, itemId = id, colorId = colorId,
                         priceHistory = if (gleich) it.priceHistory else null)
             }
             val r = when (type) {
@@ -85,20 +87,20 @@ class KaeufeViewModel @Inject constructor(
             }
             when (r) {
                 is Ergebnis.Success -> _manDetailState.update {
-                    it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen, isLoading = false)
+                    it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen, kaeufeAbruf = Laden.Daten(Unit))
                 }
-                is Ergebnis.Error -> _manDetailState.update { it.copy(isLoading = false) }
+                is Ergebnis.Error -> _manDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
             }
         }
     }
 
     fun loadManualPriceHistory(type: Postenart, id: String, colorId: Int = KEINE_FARBE) {
         viewModelScope.launch {
-            _manDetailState.update { it.copy(priceHistoryLoading = true) }
+            _manDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
             val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
-                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data, priceHistoryLoading = false) }
-                is Ergebnis.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
+                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+                is Ergebnis.Error -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
             }
         }
     }

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Fehlercode
@@ -62,11 +65,11 @@ class GutscheinViewModel @Inject constructor(
     }
 
     private suspend fun lade() {
-        _state.update { it.copy(laedt = true, fehler = null) }
+        _state.update { it.copy(abruf = Laden.Laedt) }
         when (val r = repo.liste()) {
-            is Ergebnis.Success -> _state.update { it.copy(gutscheine = r.data, laedt = false) }
+            is Ergebnis.Success -> _state.update { it.copy(gutscheine = r.data, abruf = Laden.Daten(Unit)) }
             is Ergebnis.Error -> {
-                _state.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                _state.update { it.copy(abruf = ladefehler(r)) }
                 meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
@@ -129,7 +132,7 @@ class GutscheinViewModel @Inject constructor(
                     codeNoetig = it.bestaetigung.codeNoetig || fehler.code in FAKTOR_CODES,
                     // Offline gibt es kein Löschen auf Vorrat: Das Passwort bliebe sonst liegen.
                     fehler = if (fehler.transient && b.schritt == GutscheinSchritt.LOESCHEN)
-                        texte.text(R.string.vouchers_delete_offline) else texte.meldung(fehler)))
+                        Meldung.Ressource(R.string.vouchers_delete_offline) else fehlerMeldung(fehler)))
             }
         }
     }

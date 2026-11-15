@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
@@ -328,7 +329,7 @@ class OberflaechenRegelnTest {
                 SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
             }
-            warte("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.setPriceLoading } }
+            warte("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.preisAbruf.laedt } }
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             // Die G&V-Kachel nennt Betrag und Prozent (812.50 − 700.00); der Prozentwert allein steht
             // weiter unten in der Plakette je Zustand.
@@ -354,7 +355,7 @@ class OberflaechenRegelnTest {
             GalleryRoute(vm = vm, erfassung = erfassung,
                 imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
-        warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+        warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.abruf.laedt }
     }
 
     /**
@@ -560,7 +561,7 @@ class OberflaechenRegelnTest {
                 GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+            warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.abruf.laedt }
             val scan = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
             scan.assertCountEquals(1)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
@@ -640,7 +641,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.historyLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.verlauf.laedt } }
             val verlauf = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val falcon = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -752,7 +753,7 @@ class OberflaechenRegelnTest {
             welt.pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
             val vm = welt.merkliste().also { it.ladeMerkliste() }
             zeige { MerklisteRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnenEinzeln = { _, _ -> }) }
-            treibeBis("Merkliste", bereit = { !(welt.pfade.anfragen.none { "/api/v1/wanted" in it } || vm.merklisteState.value.laedt) })
+            treibeBis("Merkliste", bereit = { !(welt.pfade.anfragen.none { "/api/v1/wanted" in it } || vm.merklisteState.value.abruf.laedt) })
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
@@ -800,7 +801,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation() }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.bewertung.laedt } }
             val zeile = setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
@@ -828,7 +829,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation() }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.bewertung.laedt } }
             compose.waitForIdle()
             // Die Zahlen der Beispiele, nicht aus finanzKopf: Sonst prüfte der Test die Rechnung mit sich selbst.
             val einstand = BigDecimal("1500.00")

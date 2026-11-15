@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
@@ -109,7 +112,9 @@ internal fun PartsScreen(
     val parts = partsState.parts
     val stats = partsState.partsStats
     val total = partsState.partsTotal
-    val isLoading = partsState.partsLoading
+    val isLoading = partsState.teileAbruf.laedt
+    val fehler = partsState.teileAbruf as? Laden.Fehler
+    val fehlerText = fehler?.meldung?.satz()
     val currentPage = partsState.partsPage
     val colors = partsState.partsColors
     val serverUrl = state.serverUrl
@@ -182,7 +187,7 @@ internal fun PartsScreen(
     // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
     val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
         lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
-    val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
+    val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, fehlerText, teileGefiltert)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Im Fehlerzustand weder Suche noch Filter — ohne Liste gibt es nichts zu suchen.
@@ -201,7 +206,7 @@ internal fun PartsScreen(
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
-            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
+            ZustandsHinweis { FehlerHinweis(fehlerText, onRefresh, fehler?.art) }
         } else if (anzeige == Ladeanzeige.KEINE_TREFFER) {
             // Die Kennzahlen meinen die ganze Sammlung; ohne Treffer bleibt der Weg zurück.
             if (stats != null) Box(Modifier.padding(Abstaende.mittel)) { TeileKennzahlen(stats) }

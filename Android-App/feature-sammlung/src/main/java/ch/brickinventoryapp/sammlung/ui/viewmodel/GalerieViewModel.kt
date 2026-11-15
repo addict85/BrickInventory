@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.sitzung.abgeleitet
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
@@ -130,7 +131,7 @@ class GalerieViewModel @Inject constructor(
      */
     fun ladeWennLeer() {
         val g = galerie.state.value
-        if (sitzung.state.value.serverUrl.isBlank() || g.sets.isNotEmpty() || g.galleryLoading) return
+        if (sitzung.state.value.serverUrl.isBlank() || g.sets.isNotEmpty() || g.abruf.laedt) return
         loadSets()
         loadStats()
     }

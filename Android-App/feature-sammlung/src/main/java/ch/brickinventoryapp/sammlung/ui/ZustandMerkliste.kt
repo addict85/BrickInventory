@@ -7,11 +7,7 @@ import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.model.ui.model.MerkpostenPreiseAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.fehlerArt
-import ch.brickinventoryapp.model.ui.fehlerMeldung
 
 /**
  * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt
@@ -30,13 +26,7 @@ data class MerklisteUiState(
     /** null: beide Zustände. */
     val zustandFilter: Zustand? = null,
     val sortierung: Merksortierung = Merksortierung.VORGABE,
-) {
-    val laedt: Boolean get() = abruf is Laden.Laedt
-
-    /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
-    val fehler: Meldung? get() = abruf.fehlerMeldung
-    val fehlerKlasse: Fehlerklasse? get() = abruf.fehlerArt
-}
+)
 
 /**
  * Was das Detail eines Merkpostens zusätzlich braucht — eigener Zustand wie beim
@@ -62,7 +52,7 @@ data class MerkpostenDetailUiState(
      * price_cache, diese Antwort füllt ihn — so stehen die Preise sofort da.
      */
     val preise: MerkpostenPreiseAnsicht? = null,
-    val laedt: Boolean = false,
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     /** Die Preisalarme dieses Sets — dieselben wie im Set-Detail. */
     val preisalarme: List<PreisalarmAnsicht> = emptyList(),
 )

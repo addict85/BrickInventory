@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
@@ -259,7 +260,7 @@ class FeinschliffRegelnTest {
                 GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            treibeBis("Galerie", bereit = { !(vm.galleryState.value.let { it.sets.isEmpty() || it.galleryLoading }) })
+            treibeBis("Galerie", bereit = { !(vm.galleryState.value.let { it.sets.isEmpty() || it.abruf.laedt }) })
             compose.waitForIdle()
             ganzEineZeile(ctx.getString(R.string.gallery_search_placeholder),
                 if (schrift == 1f) "Such-Platzhalter" else "Such-Platzhalter 200 %")
@@ -320,7 +321,7 @@ class FeinschliffRegelnTest {
             val kachel = androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
                 androidx.compose.ui.test.hasClickAction()
             compose.onNode(kachel).performClick()
-            warte("Teil") { !vm.setItemState.value.laedt }
+            warte("Teil") { !vm.setItemState.value.abruf.laedt }
             val zu = compose.onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.detail_close)))
                 .fetchSemanticsNode().boundsInRoot
             val liste = compose.onNode(kachel).fetchSemanticsNode().boundsInRoot
