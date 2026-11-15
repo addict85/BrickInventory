@@ -15,6 +15,9 @@
  *      doppelt“ (der spätere überschriebe den früheren still)
  *   E  (05.11.2026) `klein: true` an 'GET /api/v1/storage' entfernt → rot:
  *      „jede lange Liste nimmt Seiten“ nennt /api/v1/storage
+ *   F  (15.11.2026) SetItem.added_at wieder `.optional()` → rot: „Antwortfelder sind
+ *      Pflicht …“ (720 freiwillige, erlaubt 719); SetItem.acq_count wieder `.nullable()`
+ *      → rot (701 nullbare, erlaubt 700)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,4 +92,49 @@ test('jede lange Liste nimmt Seiten', () => {
   }
   assert.deepEqual(ohne, []);
   assert.deepEqual(limit, [], 'Seitengrösse heisst page_size; limit nur noch veraltet');
+});
+
+/** Felder der Antwortschemas (alles, was eine 200 erreicht): wie viele, wie viele freiwillig, wie viele nullbar. */
+function antwortFelder(o) {
+  const S = o.components.schemas;
+  const erreicht = new Set();
+  const folge = s => {
+    if (!s || typeof s !== 'object') return;
+    if (s.$ref) {
+      const n = s.$ref.split('/').pop();
+      if (erreicht.has(n)) return;
+      erreicht.add(n);
+      folge(S[n]);
+      return;
+    }
+    for (const v of Object.values(s)) folge(v);
+  };
+  for (const ops of Object.values(o.paths)) for (const op of Object.values(ops)) folge(op.responses?.['200']);
+  const nullbar = s =>
+    !!s && (s.type === 'null' || (Array.isArray(s.type) && s.type.includes('null')) || (s.anyOf ?? []).some(nullbar));
+  const z = { felder: 0, frei: 0, nullbar: 0 };
+  const zaehle = s => {
+    if (!s || typeof s !== 'object' || s.$ref) return;
+    const pflicht = new Set(s.required ?? []);
+    for (const [k, v] of Object.entries(s.properties ?? {})) {
+      z.felder++;
+      if (!pflicht.has(k)) z.frei++;
+      if (nullbar(v)) z.nullbar++;
+    }
+    for (const [k, v] of Object.entries(s)) if (typeof v === 'object') zaehle(k === 'properties' ? null : v);
+    for (const v of Object.values(s.properties ?? {})) zaehle(v);
+  };
+  for (const n of erreicht) zaehle(S[n]);
+  return z;
+}
+
+test('Antwortfelder sind Pflicht, wo der Server sie immer liefert: freiwillige und nullbare werden weniger', () => {
+  // Ein freiwilliges oder nullbares Feld wird in OpenAPI, den Typen der Oberfläche und in Kotlin nullbar.
+  const SCHRANKE = { frei: 719, nullbar: 700 };
+  const z = antwortFelder(openapi());
+  assert.ok(z.felder > 1500, `nur ${z.felder} Antwortfelder — greift die Suche noch?`);
+  assert.ok(z.frei <= SCHRANKE.frei, `${z.frei} freiwillige Antwortfelder, erlaubt sind ${SCHRANKE.frei}`);
+  assert.ok(z.nullbar <= SCHRANKE.nullbar, `${z.nullbar} nullbare Antwortfelder, erlaubt sind ${SCHRANKE.nullbar}`);
+  if (z.frei < SCHRANKE.frei || z.nullbar < SCHRANKE.nullbar)
+    console.log(`  ℹ Antwortfelder frei ${z.frei}, nullbar ${z.nullbar} — Schranke nachziehen`);
 });

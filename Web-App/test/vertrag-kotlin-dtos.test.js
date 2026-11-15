@@ -16,6 +16,8 @@
  *      „gleichnamige Formen werden eine …“
  *   F  in mitFachtyp() den Fachtyp nicht eingesetzt (String bleibt) → rot: „ein Fachtyp
  *      ersetzt den Text …“
+ *   G  (15.11.2026) in klasse() `|| ohneLeerwert(t)` gestrichen → rot: „ein Pflichtfeld,
+ *      dessen Form keinen Leerwert hat …“ und „die eingecheckten Kotlin-Typen …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -73,6 +75,22 @@ test('jedes Antwortfeld hat eine Vorgabe: Leerwert, null nur mit null-Zweig', ()
     },
   );
   assert.match(nullbar, /val name: String\? = null,/, 'Z.NULLBAR: fehlt heisst null');
+});
+
+test('ein Pflichtfeld, dessen Form keinen Leerwert hat, bekommt keine Vorgabe', () => {
+  const kt = aus(
+    {
+      Konto: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
+      Probe: {
+        type: 'object',
+        properties: { user: { $ref: '#/components/schemas/Konto' }, alt: { $ref: '#/components/schemas/Konto' } },
+        required: ['user'],
+      },
+    },
+    { STRENG: new Set(['Konto.id']) },
+  );
+  assert.match(kt, /val user: Konto,/, 'Konto() gäbe es nicht: Konto hat ein Pflichtfeld ohne Vorgabe');
+  assert.match(kt, /val alt: Konto\? = null,/);
 });
 
 test('ein Feld mit null-Zweig ist nullbar', () => {

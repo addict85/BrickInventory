@@ -173,7 +173,7 @@ class KontoViewModelTest {
         server.enqueue(antwort("""{"success":true,"tokens":[
             {"token_prefix":"abcd1234","token_id":"abcd1234abcd1234","label":"Rechner","created_at":"2026-01-01T00:00:00Z",
              "last_used":null,"expires_at":"2027-03-01T00:00:00Z","hard_expires_at":"2026-12-01T00:00:00Z",
-             "never_expires":false,"scope":"voll","ip_bereich":"192.168.1.0/24","rotiert_am":null,"aktuell":false},
+             "never_expires":false,"scope":"voll","ip_bereich":"192.168.1.0/24","rotiert_am":"2026-09-01T00:00:00Z","aktuell":false},
             {"token_prefix":"ffff0000","token_id":"ffff0000ffff0000","label":"","created_at":"2026-01-01T00:00:00Z",
              "last_used":null,"expires_at":null,"hard_expires_at":null,"never_expires":true,"scope":"app",
              "ip_bereich":null,"rotiert_am":"2026-10-01T00:00:00Z","aktuell":true}]}"""))

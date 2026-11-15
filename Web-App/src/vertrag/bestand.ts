@@ -11,12 +11,12 @@ export const Acquisition = z.looseObject({
   purchase_price: z.number().nullable().optional(),
   unit_price: z.number().nullable().optional(),
   condition: z.string(),
-  created_at: zeit.nullable().optional(),
-  owner_user_id: z.number().int().nullable().optional(),
+  created_at: zeit.nullable(),
+  owner_user_id: z.number().int(),
   price_estimated: z.boolean(),
-  currency: z.string().nullable().optional(),
+  currency: z.string().nullable(),
   /** Der Preis in der Währung des Kontos (Kurs des Kauftags); null ohne Preis oder ohne Kurs. */
-  preis_konto: z.number().nullable().optional(),
+  preis_konto: z.number().nullable(),
 });
 
 export const AcquisitionTotals = z.looseObject({
@@ -43,7 +43,7 @@ export const DeleteWithQuantityResponse = z.looseObject({
 });
 
 export const Lagerort = z.looseObject({
-  figuren: z.number().int().nullable().optional(),
+  figuren: z.number().int().nullable(),
   ort: z.string(),
   sets: z.number().int(),
   teile: z.number().int(),
@@ -56,28 +56,28 @@ export const LagerortEintrag = z.looseObject({
 });
 
 export const LagerortEintragResponse = z.looseObject({
-  success: z.boolean().optional(),
-  ort: LagerortEintrag.nullable().optional(),
+  success: z.boolean(),
+  ort: LagerortEintrag.nullable(),
   error: z.string().nullable().optional(),
 });
 
 export const LagerortResponse = z.looseObject({
-  success: z.boolean().optional(),
+  success: z.boolean(),
   storage: z.string().nullable().optional(),
   changed: z.number().int().optional(),
   error: z.string().nullable().optional(),
 });
 
 export const LagerortVorgabeResponse = z.looseObject({
-  success: z.boolean().optional(),
-  vorgabe: LagerortEintrag.nullable().optional(),
+  success: z.boolean(),
+  vorgabe: LagerortEintrag.nullable(),
   error: z.string().nullable().optional(),
 });
 
 export const LagerortVorratResponse = z.looseObject({
   success: z.boolean(),
   orte: z.array(LagerortEintrag),
-  vorgabe: LagerortEintrag.nullable().optional(),
+  vorgabe: LagerortEintrag.nullable(),
   error: z.string().nullable().optional(),
 });
 
