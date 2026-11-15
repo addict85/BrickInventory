@@ -1166,12 +1166,12 @@ input.suchfeld{width:220px}
   /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus mobile.js): ein runder Knopf mit Rand
      statt eines Schriftzeichens, das neben dem Text nicht auffiel. Ein Verlauf blendete weisse Knöpfe in
      weissen Grund. sticky hält den Pfeil beim Rollen am Rand der Leiste. */
-  .einst-nav[data-mehr*="r"]::after,.einst-nav[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
+  :is(.einst-nav,.konto-nav)[data-mehr*="r"]::after,:is(.einst-nav,.konto-nav)[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
     justify-content:center;align-self:center;box-sizing:border-box;width:2.25rem;height:2.25rem;border-radius:50%;
     background:var(--sur);border:2px solid var(--b600);box-shadow:var(--sh1,0 1px 4px rgba(15,23,42,.25));
     font-size:var(--fs-5);font-weight:800;line-height:1;color:var(--b600);pointer-events:none;z-index:1}
-  .einst-nav[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2.25rem}
-  .einst-nav[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2.25rem}
+  :is(.einst-nav,.konto-nav)[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2.25rem}
+  :is(.einst-nav,.konto-nav)[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2.25rem}
   #global-settings-grid > .einst-nav a{flex:none}
   #global-settings-grid > .ssec{grid-column:1}
 }
@@ -1618,7 +1618,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 }
 
 /* Konto: dieselben Reiter als Sprungleiste über allen Abschnitten; am Telefon eine rollende Reihe. */
-.konto-nav{gap:0;border-bottom:1px solid var(--bdr);margin-bottom:1rem}
+.konto-nav{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--bdr);margin-bottom:1rem;grid-column:1/-1}
 .konto-nav .einst-link{border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
 #tab-profil [tabindex="-1"]{scroll-margin-top:72px}
 @media(max-width:700px){.konto-nav{flex-wrap:nowrap;overflow-x:auto}.konto-nav .einst-link{flex:none}}

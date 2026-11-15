@@ -206,7 +206,7 @@ test('N5 Konto: Sprungleiste zu allen Abschnitten', async () => {
   const { w, d } = await oeffneOberflaeche();
   try {
     await sicht(w, 'profil');
-    const nav = d.querySelector('#tab-profil [role="navigation"].einst-nav');
+    const nav = d.querySelector('#tab-profil [role="navigation"].konto-nav');
     assert.ok(nav, 'keine Leiste');
     assert.equal(nav.getAttribute('aria-label'), 'Abschnitte');
     const links = [...nav.querySelectorAll('a')];
