@@ -1,8 +1,10 @@
 import path from 'node:path';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { PDF_JOB_DIR } from '../../infra/appPaths';
 import { meldeFehler, ohneFehlendeDatei } from '../../infra/fehler';
+import { Fachfehler, fachfehler, nichtGefunden } from '../../infra/fehlerTexte';
 import type { NutzlastEingabe } from '../../auftraege';
 import { mitVersion } from '../../infra/setNummer';
 import type { KatalogKontext } from '../kontext';
@@ -44,6 +46,16 @@ export async function liesAuftrag(k: KatalogKontext, id: string, uid: number): P
         etaSeconds: typeof etaSekunden === 'number' ? etaSekunden : null,
       }
     : null;
+}
+
+/** `status` zeigt der Oberfläche, wie weit ein noch nicht fertiger Auftrag ist. */
+export async function fertigeDatei(k: KatalogKontext, id: string, uid: number): Promise<string> {
+  const job = await liesAuftrag(k, id, uid);
+  if (!job) nichtGefunden('job_nicht_gefunden');
+  if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
+  const datei = pdfDateiPfad(id);
+  if (!datei || !fs.existsSync(datei)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
+  return datei;
 }
 
 export async function loescheAuftrag(k: KatalogKontext, id: string, uid: number): Promise<void> {

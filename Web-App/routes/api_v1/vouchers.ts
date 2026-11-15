@@ -4,7 +4,7 @@ import multer from 'multer';
 import { FORMULAR_GRENZEN, gesamtReichtFuer, uploadGesamtMb } from '../../src/http/dateiEmpfang';
 import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
 import { Fachfehler, dateiFehler, type FehlerCode, fachfehler } from '../../src/infra/fehlerTexte';
-import { ABSTAND_SEK, TICKET_SEK, maskiert, type GutscheinWerte, type GutscheinZeile } from '../../src/gutscheine';
+import { ABSTAND_SEK, TICKET_SEK, alsGelesen, maskiert, type GutscheinZeile } from '../../src/gutscheine';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { seiteAus } from '../../src/infra/seite';
@@ -25,13 +25,6 @@ function fuerAussen(z: GutscheinZeile) {
     guthaben_geprueft_am: z.guthaben_geprueft_am,
   };
 }
-
-const alsGelesen = (g: GutscheinWerte) => ({
-  number: g.nummer,
-  pin: g.pin,
-  currency: g.waehrung,
-  ...(g.betrag == null ? {} : { amount: g.betrag }),
-});
 
 /** `wartenSek` geht mit, danach taktet sich die Oberfläche. */
 function gesperrt(grund: string, wartenSek: number): never {
@@ -85,10 +78,6 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
       const r = await d.gutscheine.gutscheinAusPdf(req.apiUser.user_id, req.file.buffer, req.eingabe);
       // Eigener Block, damit die Oberfläche an einem Feld erkennt, welcher Fall eintrat.
       if (r.art === 'stapel') return { mehrere: r.bericht };
-      if (r.art === 'abgelehnt') fachfehler('nicht_verarbeitbar', r.code, r.vars);
-      // 422: Die Anfrage war in Ordnung, nur das PDF gab nicht alles her; `gelesen` belegt die Felder vor.
-      if (r.art === 'unvollstaendig')
-        throw new Fachfehler('nicht_verarbeitbar', r.code, undefined, { gelesen: alsGelesen(r.gelesen) });
       return { voucher: fuerAussen(r.zeile), gelesen: alsGelesen(r.gelesen) };
     },
   );

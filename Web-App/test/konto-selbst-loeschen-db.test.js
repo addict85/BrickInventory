@@ -128,7 +128,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     const alt = await registriert(NAMEN[3], 8),
       neu = await registriert(NAMEN[4], 6);
     const bestaetigt = await registriert(NAMEN[6], 8);
-    assert.equal((await verifiziereEmailToken(bestaetigt.roh)).ok, true);
+    assert.ok((await verifiziereEmailToken(bestaetigt.roh)).userId);
     // Ein altes Konto, dessen neue Adresse noch nicht bestätigt ist.
     const adresse = await konto(NAMEN[5]);
     await db.run(

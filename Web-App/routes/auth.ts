@@ -185,7 +185,6 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
       if (!alt || !(await d.konto.pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
         fachfehler('nicht_angemeldet', 'token_ungueltig');
       const t = await d.konto.rotiereToken(alt, req.ip);
-      if (t === 'laeuft') fachfehler('konflikt', 'tausch_laeuft');
       if (!t) fachfehler('nicht_angemeldet', 'token_ungueltig');
       return {
         token: t.token,
@@ -248,7 +247,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.endpunkt('DELETE /api/v1/auth/konto', requireLogin, async (req, res) => {
     const uid = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt') fachfehler('konflikt', 'letzter_verwalter');
+    await d.konto.kontoEntfernen(uid, null);
     console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
     req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true }));
   });

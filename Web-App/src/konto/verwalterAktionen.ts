@@ -1,16 +1,9 @@
 /** Verwalteraktionen an fremden Konten: Änderung und Protokolleintrag in einer
  * Transaktion. Ein fehlender Eintrag verschwiege die Änderung, ein Eintrag ohne
  * Änderung behauptete eine, die nie geschah. */
-import {
-  LETZTER_VERWALTER,
-  kontoAnzeigeName,
-  setzeAktiv,
-  setzeFremdesPasswort,
-  setzeVerwalterRolle,
-  zugaengeBeenden,
-} from './konten';
+import { kontoAnzeigeName, setzeAktiv, setzeFremdesPasswort, setzeVerwalterRolle, zugaengeBeenden } from './konten';
 import { mitZugangsende, zugangsTransaktion } from './zugangsende';
-import { doppeltAls } from '../infra/fehlerTexte';
+import { doppeltAls, fachfehler } from '../infra/fehlerTexte';
 import { schalteAb } from './zweiterFaktor';
 import { verwalterAktionMerken } from './verwalterProtokoll';
 import { hinweisNebenher, verwalterHinweisNebenher } from './kontoHinweis';
@@ -19,32 +12,30 @@ import { vergissSitzungsVersion } from './sitzungsVersion';
 import type { Uebernahme, UebernahmeArt } from './repository/uebernahmen';
 import type { KontoKontext } from './kontext';
 
-type Ergebnis = { geaendert: boolean } | typeof LETZTER_VERWALTER | null;
-const geaendert = (r: Ergebnis): r is { geaendert: true } => !!r && r !== LETZTER_VERWALTER && r.geaendert;
-
-export function verwalterRolleSetzen(k: KontoKontext, durch: number, ziel: number, soll: boolean): Promise<Ergebnis> {
+export function verwalterRolleSetzen(k: KontoKontext, durch: number, ziel: number, soll: boolean) {
   return mitZugangsende(k, ziel, async t => {
     const r = await setzeVerwalterRolle(t, ziel, soll);
-    if (geaendert(r)) await verwalterAktionMerken(t, durch, ziel, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
+    if (r.geaendert) await verwalterAktionMerken(t, durch, ziel, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
     return r;
   });
 }
 
-export function aktivSetzen(k: KontoKontext, durch: number, ziel: number, soll: boolean): Promise<Ergebnis> {
+export function aktivSetzen(k: KontoKontext, durch: number, ziel: number, soll: boolean) {
   return mitZugangsende(k, ziel, async t => {
     const r = await setzeAktiv(t, ziel, soll);
-    if (geaendert(r)) await verwalterAktionMerken(t, durch, ziel, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
+    if (r.geaendert) await verwalterAktionMerken(t, durch, ziel, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
     return r;
   });
 }
 
 /** 23505 heisst: Ein anderes Konto hat die Adresse gleichzeitig bekommen. */
-export function registrierungFreischalten(k: KontoKontext, durch: number, ziel: number) {
-  return zugangsTransaktion(k, async t => {
+export async function registrierungFreischalten(k: KontoKontext, durch: number, ziel: number): Promise<void> {
+  const r = await zugangsTransaktion(k, async t => {
     const r = await t.konten.schalteRegistrierungFrei(ziel);
     if (r === 'ok') await verwalterAktionMerken(t, durch, ziel, 'konto_freigeschaltet');
     return r;
   }).catch(doppeltAls('vergeben' as const));
+  if (r !== 'ok') fachfehler('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
 }
 
 /** Wer den Faktor verlor, war vielleicht nicht der, der ihn entfernen liess: Sitzungen und Tokens enden mit. */

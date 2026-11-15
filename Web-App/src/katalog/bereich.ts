@@ -102,6 +102,7 @@ function katalogDienste(k: KatalogKontext) {
     pdf: {
       starten: mit(k)(pdfAuftraege.pdfAuftragStarten),
       lies: mit(k)(pdfAuftraege.liesAuftrag),
+      fertigeDatei: mit(k)(pdfAuftraege.fertigeDatei),
       loesche: mit(k)(pdfAuftraege.loescheAuftrag),
       raeumeAuf: mit(k)(pdfAuftraege.cleanOldPdfJobs),
     },

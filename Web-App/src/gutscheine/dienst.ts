@@ -3,7 +3,7 @@
  * die Antwort. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { Fachfehler, alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { ohneFehlendeDatei } from '../infra/fehler';
 import type { GutscheinZeile } from './repository/gutscheine';
 import {
@@ -125,9 +125,15 @@ export async function gutscheinMitPdfAnlegen(
 
 export type AusPdf =
   | { art: 'stapel'; bericht: Awaited<ReturnType<typeof stapelAnlegen>> }
-  | { art: 'abgelehnt'; code: FehlerCode; vars?: Record<string, number> }
-  | { art: 'unvollstaendig'; code: FehlerCode; gelesen: GutscheinWerte }
   | { art: 'angelegt'; zeile: GutscheinZeile; gelesen: GutscheinWerte };
+
+/** Die Felder der Formulare: So belegt die Oberfläche sie nach einer Absage vor. */
+export const alsGelesen = (g: GutscheinWerte) => ({
+  number: g.nummer,
+  pin: g.pin,
+  currency: g.waehrung,
+  ...(g.betrag == null ? {} : { amount: g.betrag }),
+});
 
 const NICHTS_GELESEN: GutscheinWerte = { nummer: null, pin: null, betrag: null, waehrung: null };
 
@@ -141,14 +147,14 @@ export async function gutscheinAusPdf(
 ): Promise<AusPdf> {
   const lesung = await liesImHintergrund(pdf);
   if (lesung.art === 'zu_viele_seiten')
-    return { art: 'abgelehnt', code: 'pdf_zu_viele_seiten', vars: { seiten: lesung.seiten, max: HOECHSTENS_SEITEN } };
-  if (lesung.art === 'unlesbar') return { art: 'abgelehnt', code: 'pdf_unlesbar' };
+    fachfehler('nicht_verarbeitbar', 'pdf_zu_viele_seiten', { seiten: lesung.seiten, max: HOECHSTENS_SEITEN });
+  if (lesung.art === 'unlesbar') fachfehler('nicht_verarbeitbar', 'pdf_unlesbar');
   if (lesung.stapel.length >= 2) return { art: 'stapel', bericht: await stapelAnlegen(k, uid, lesung.stapel) };
   // Der Medientyp ist eine Behauptung des Klienten: Geprüft wird die Signatur, denn
   // die Datei geht später als application/pdf hinaus. Eine Entpackbombe gäbe der
   // Export an pdf-lib, das ohne Grenze entpackt.
   if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-' || lesung.einzeln === 'zu_gross')
-    return { art: 'abgelehnt', code: 'pdf_unlesbar' };
+    fachfehler('nicht_verarbeitbar', 'pdf_unlesbar');
   const gelesen = typeof lesung.einzeln === 'object' ? lesung.einzeln : NICHTS_GELESEN;
   const roh = {
     number: getippt.number ?? gelesen.nummer,
@@ -163,7 +169,8 @@ export async function gutscheinAusPdf(
   const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
   const code: FehlerCode =
     lesung.einzeln === 'fehler' ? 'pdf_unlesbar' : nichtsGelesen && nichtsGetippt ? 'kein_gutschein_im_pdf' : w.code;
-  return { art: 'unvollstaendig', code, gelesen };
+  // 422: Die Anfrage war in Ordnung, nur das PDF gab nicht alles her; `gelesen` belegt die Felder vor.
+  throw new Fachfehler('nicht_verarbeitbar', code, undefined, { gelesen: alsGelesen(gelesen) });
 }
 
 export interface GutscheinAenderung {

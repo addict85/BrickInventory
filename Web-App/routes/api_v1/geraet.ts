@@ -25,24 +25,14 @@ export function baueGeraetRouter(d: Pick<Dienste, 'konto' | 'geraete'>) {
     const f = familie(req);
     if (!f) fachfehler('verboten', 'nur_mit_app_token');
     if (!req.eingabe.kette) fachfehler('ungueltig', 'geraeteschluessel_attestation');
-    const r = await d.geraete.hinterlegeSchluessel(f, req.eingabe.kette);
-    if (typeof r === 'object') {
-      // Der Grund gehört ins Protokoll: Die App kann ihn nicht beheben, der Betreiber (Fingerabdruck) schon.
-      console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${r.abgewiesen}`);
-      fachfehler('ungueltig', 'geraeteschluessel_attestation');
-    }
-    if (r === 'ungueltig') fachfehler('ungueltig', 'geraeteschluessel_ungueltig');
-    if (r === 'anderer') fachfehler('konflikt', 'geraeteschluessel_vorhanden');
-    if (r === 'frist_vorbei') fachfehler('verboten', 'geraeteschluessel_frist');
+    await d.geraete.hinterlegeSchluessel(f, req.eingabe.kette);
     return {};
   });
 
   router.endpunkt('POST /api/v1/geraet/schritt/challenge', requireToken, async req => {
     const f = familie(req);
     if (!f) fachfehler('verboten', 'nur_mit_app_token');
-    const c = await d.geraete.neueChallenge(f, req.eingabe.aktion);
-    if (c === 'kein_schluessel') fachfehler('verboten', 'geraeteschluessel_fehlt');
-    return { ...c };
+    return { ...(await d.geraete.neueChallenge(f, req.eingabe.aktion)) };
   });
 
   router.endpunkt('POST /api/v1/geraet/schritt/freigabe', requireToken, async req => {

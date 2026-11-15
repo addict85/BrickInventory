@@ -5,9 +5,8 @@ import { streamFileToResponse } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
-import _fsSync from 'node:fs';
-import { pdfSchluessel, pdfDateiPfad } from '../../src/katalog';
-import { antwortSprache, fachfehler, nichtGefunden, Fachfehler } from '../../src/infra/fehlerTexte';
+import { pdfSchluessel } from '../../src/katalog';
+import { antwortSprache, fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 import type { Request, Response } from 'express';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -124,12 +123,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'
 
   router.endpunkt('GET /api/v1/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
     const jobId = req.pfad.jobId;
-    const job = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
-    if (!job) nichtGefunden('job_nicht_gefunden');
-    // `status` zeigt der Oberfläche, wie weit der Auftrag ist.
-    if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
-    const pdfPath = pdfDateiPfad(jobId);
-    if (!pdfPath || !_fsSync.existsSync(pdfPath)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
+    const pdfPath = await d.katalog.pdf.fertigeDatei(jobId, req.apiUser.user_id);
     liefereUndRaeumeAuf(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });
   return router;

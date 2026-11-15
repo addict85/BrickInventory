@@ -889,12 +889,24 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   // handleRouteError(res, e, undefined, req); }` gehüllt → rot (31.10.2026). In parts.ts
   // `return sendeFehler(req, res, 404, 'teil_nicht_manuell')` statt nichtGefunden → rot
   // „sendeFehler in Routen“; in settings.ts wieder `String(req.eingabe.condition ?? '')` → rot
-  // „Umwandlungen geprüfter Eingaben“ (14.11.2026).
+  // „Umwandlungen geprüfter Eingaben“ (14.11.2026). Absagen der Dienste (15.11.2026): in
+  // routes/auth/benutzer.ts wieder `if (r === LETZTER_VERWALTER) fachfehler(…)` → rot „Route
+  // übersetzt eine Absage“; ebenso `if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
+  // fachfehler(…)` in routes/auth.ts → rot.
   const ist = new Map();
   const senden = new Map();
   const umwandlungen = [];
+  const absagen = [];
   for (const d of tsUnter('routes')) {
     const q = quelltext(d);
+    // Eine Absage wirft der Dienst (fachfehler); ein Zustand, der die Antwort formt, bleibt erlaubt.
+    const ergebnisse = [...q.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*await\s+d\./g)].map(m => m[1]);
+    const vergleich = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
+    for (const z of q.split('\n')) {
+      const wirft = /\b(?:fachfehler|nichtGefunden)\(|\bthrow\b/.test(z);
+      if (wirft && (ergebnisse.some(n => vergleich(n).test(z)) || /\(await d\.[^;]*\)\s*[!=]==\s*'/.test(z)))
+        absagen.push(`${d}: ${z.trim()}`);
+    }
     const n = (q.match(/\btry\s*\{/g) || []).length;
     if (n) ist.set(d, n);
     const s = (q.match(/\bsendeFehler\(/g) || []).length;
@@ -908,6 +920,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   assert.deepEqual(Object.fromEntries(senden), Object.fromEntries(SENDEFEHLER_IN_ROUTEN), 'sendeFehler in Routen');
   // Der Vertrag liefert das Fachformat (z.transform); eine Route wandelt nicht nach.
   assert.deepEqual(umwandlungen, [], 'Umwandlungen geprüfter Eingaben in Routen');
+  assert.deepEqual(absagen, [], 'Route übersetzt eine Absage des Dienstes');
 });
 
 // ── Rangfolge der Bereiche ──────────────────────────────────────────────────
