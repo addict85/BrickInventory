@@ -190,7 +190,6 @@ export async function raeumeAnmeldezaehlerAuf(k: KontoKontext): Promise<number> 
   return k.drossel.raeumeAuf(BEKANNT_MIN);
 }
 
-/** Je Adresse und Topf; die Adresse kürzt drosselAdresse auf das Netz des Absenders. */
 export function zaehleAnfrage(
   k: KontoKontext,
   bucket: string,

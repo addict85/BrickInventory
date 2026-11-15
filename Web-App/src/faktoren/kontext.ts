@@ -12,12 +12,10 @@ export interface FaktorenAbhaengigkeiten {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  /** Der Start verschlüsselt die globalen Altwerte im selben Lauf wie die Faktorgeheimnisse. */
   einstellungen: EinstellungenDienste;
 }
 
-/** Faktoren liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer vor der
- * Anmeldung oder an einem fremden Konto prüft; das eigene Konto liest ohne ihn. */
+/** Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer vor der Anmeldung oder an fremden Konten prüft. */
 const OHNE_KONTO = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 const FREMDES_KONTO = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
 const VOR_ANMELDUNG = 'Anmeldeprüfung: fragt, bevor das Konto angemeldet ist';

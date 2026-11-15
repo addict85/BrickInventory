@@ -4,7 +4,6 @@ import { fehlertext } from '../infra/fehler';
 import { prozessweit } from '../infra/prozessweit';
 import type { DrosselKontext } from './kontext';
 
-/** Typisiert: Ein vertippter Feldname ergäbe `undefined >= MAX`, also keine Sperre. */
 export interface Zaehlerstand {
   count: number;
   waitMin: number;
@@ -15,7 +14,6 @@ export type Stand = Zaehlerstand & { laufend: number };
 type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend: number };
 const rueckfall = () =>
   prozessweit('anmeldeRueckfall', () => ({ eintraege: new Map<string, Eintrag>(), gemeldetAm: 0 }));
-/** Ohne Aufräumen wüchse der Speicher mit jedem Rateversuch. */
 const SPEICHER_HOECHSTENS = 5000;
 
 function imSpeicher(wo: string, e: unknown): void {
@@ -76,8 +74,7 @@ export async function zaehleVersuch(k: DrosselKontext, key: string, fensterMin: 
   }
 }
 
-/** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche einander sehen;
- * ein Platz, dessen Prüfung nie gemeldet wurde, verfällt nach `verfallS`. */
+/** BEVOR geprüft wird, unter einer Zeilensperre: Gleichzeitige Versuche sehen einander. */
 export async function reserviere(
   k: DrosselKontext,
   key: string,
@@ -172,8 +169,7 @@ export async function zaehleImFenster(
   }
 }
 
-/** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch.
- * `bekanntMin`: so lange bleiben die Zeilen bekannter Adressen. */
+/** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
 export function raeumeAuf(k: DrosselKontext, bekanntMin: number): Promise<number> {
   return k.zaehler.loescheAlteZaehler(bekanntMin);
 }

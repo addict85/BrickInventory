@@ -19,7 +19,6 @@ export function erzeugeDrossel(a: DrosselAbhaengigkeiten, einblick?: Einblick<Dr
       zaehleImFenster: mit(k)(zaehler.zaehleImFenster),
       raeumeAuf: mit(k)(zaehler.raeumeAuf),
       einmalJeTag: mit(k)(zaehler.einmalJeTag),
-      // Die Guthabenschranke prüft und zählt in ihrer eigenen Transaktion (src/gutscheine).
       stundenStand: k.zaehler.stundenStand,
       zaehleStunde: k.zaehler.zaehleStunde,
     }),

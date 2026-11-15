@@ -1,5 +1,4 @@
-/** Was Start und Aufräumlauf im Konto erledigen, als Liste einzelner Schritte: Der Aufrufer
- * meldet jeden Fehler für sich, ein scheiternder Schritt hält die übrigen nicht auf. */
+/** Einzelne Schritte statt eines Laufs: Ein scheiternder Schritt hält die übrigen nicht auf. */
 import { tokensAufraeumen } from './geraeteToken';
 import { meldeAusstehendeAdressen, meldeUngueltigeAdressen, raeumeOffeneRegistrierungenAuf } from './konten';
 import { raeumeAnmeldezaehlerAuf } from './loginLimiter';

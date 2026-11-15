@@ -63,8 +63,7 @@ export async function kontoAnzeigeName(k: KontoKontext, id: number): Promise<str
   return (await k.konten.kontoKurz(id))?.username ?? String(id);
 }
 
-/** Verwalterrechte ohne TOTP trägt das Passwort allein nicht; ein Passkey zählt nicht, weil die
- * Anmeldung mit Passwort nur bei aktivem TOTP einen zweiten Faktor verlangt. */
+/** Verwalterrechte trägt das Passwort allein nicht; ein Passkey ersetzt TOTP hier nicht. */
 export async function faktorPflichtOffen(k: KontoKontext, uid: number, verwalter: boolean): Promise<boolean> {
   return verwalter && !(await k.faktoren.istAktiv(uid));
 }
