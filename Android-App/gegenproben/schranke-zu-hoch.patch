@@ -12,6 +12,6 @@ diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/QuelltextRat
      fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
 -        val FUNKTIONEN = 211
 +        val FUNKTIONEN = 212
-         val NUR_QUELLTEXT = 34
+         val NUR_QUELLTEXT = 33
          val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
              .filter { it.name != "QuelltextRatscheTest.kt" }.toList()

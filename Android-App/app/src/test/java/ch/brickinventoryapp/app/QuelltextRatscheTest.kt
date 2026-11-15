@@ -93,7 +93,7 @@ class QuelltextRatscheTest {
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
         val FUNKTIONEN = 211
-        val NUR_QUELLTEXT = 34
+        val NUR_QUELLTEXT = 33
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
         val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }

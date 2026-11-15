@@ -24,7 +24,10 @@ internal object SicherheitModule {
     @Provides
     @Singleton
     fun provideTokenVerschluesselung(): TokenVerschluesselung =
-        EntsperrTresor(KeystoreTokenTresor(KeystoreTokenTresor.ALIAS_ENTSPERRT, nurEntsperrt = true), KeystoreTokenTresor())
+        EntsperrTresor(
+            KeystoreTokenTresor(KeystoreTokenTresor.ALIAS_ENTSPERRT, nurEntsperrt = true),
+            KeystoreTokenTresor(nurLesen = true),
+        )
 
     /** Gesperrt heisst hier: Der Schlüssel des Tokens gibt gerade nichts frei (EntsperrTresor). */
     @Provides
@@ -44,7 +47,10 @@ internal object SicherheitModule {
     fun provideAblageschluessel(@ApplicationContext context: Context): Ablageschluessel =
         Ablageschluessel(
             File(context.noBackupFilesDir, "ablage.schluessel"),
-            EntsperrTresor(KeystoreTokenTresor(ALIAS_ABLAGE_ENTSPERRT, nurEntsperrt = true), KeystoreTokenTresor(ALIAS_ABLAGE)),
+            EntsperrTresor(
+                KeystoreTokenTresor(ALIAS_ABLAGE_ENTSPERRT, nurEntsperrt = true),
+                KeystoreTokenTresor(ALIAS_ABLAGE, nurLesen = true),
+            ),
         )
 
     /**
