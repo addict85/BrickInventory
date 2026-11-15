@@ -12,8 +12,8 @@ import ch.brickinventoryapp.testing.testGutscheineRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.testTeileRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.ressourcen.R

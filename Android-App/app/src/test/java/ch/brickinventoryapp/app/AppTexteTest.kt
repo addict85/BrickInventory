@@ -3,6 +3,7 @@ package ch.brickinventoryapp.app
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.model.util.Textquelle
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
@@ -31,7 +32,10 @@ import org.robolectric.annotation.Config
 class AppTexteTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val texte = AppTexte(ctx, object : Anmeldestand {
+    private val texte = AppTexte(object : Textquelle {
+        override fun text(id: Int, vararg args: Any?) = ctx.getString(id, *args)
+        override fun menge(id: Int, anzahl: Int, vararg args: Any?) = ctx.resources.getQuantityString(id, anzahl, *args)
+    }, object : Anmeldestand {
         override val authTokenState: StateFlow<String?> = MutableStateFlow("token")
     })
 

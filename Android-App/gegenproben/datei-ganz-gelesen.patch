@@ -1,12 +1,12 @@
 Gegenprobe: Eine gewählte Datei wird ganz gelesen und erst danach an der Grenze gemessen
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.DateiGrenzeTest
+Modul: core-data
+Test: ch.brickinventoryapp.data.DateiGrenzeTest
 Rot: ein endloser Strom wird nach der Grenze nicht weiter gelesen
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
-@@ -84,15 +84,6 @@
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt
+@@ -78,15 +78,6 @@
  internal const val DATEI_HOECHSTENS = 50L * 1024 * 1024
  
  /** Bis [grenze] Bytes und eines mehr zur Probe; null, wenn der Strom länger ist. Der Rest bleibt ungelesen. */

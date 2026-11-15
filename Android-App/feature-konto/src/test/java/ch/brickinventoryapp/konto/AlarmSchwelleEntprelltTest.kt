@@ -5,8 +5,8 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

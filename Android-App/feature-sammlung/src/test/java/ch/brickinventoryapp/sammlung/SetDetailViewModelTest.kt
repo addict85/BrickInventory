@@ -18,8 +18,8 @@ import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

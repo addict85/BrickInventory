@@ -10,8 +10,8 @@ import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.testing.testTeileRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
