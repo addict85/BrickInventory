@@ -168,7 +168,6 @@ window.I18N_EN = {
   'finance.filter.minifigs': 'Minifigures',
   'finance.total_pnl': 'Profit/loss',
   'finance.bereich': 'Category',
-  'finance.grand.parts': 'Manually added parts',
   'finance.grand.total': 'Total',
   'finance.gift': 'Gift',
 
@@ -185,8 +184,7 @@ window.I18N_EN = {
   'api.unreachable': 'No connection to the server — please try again later.',
   'auth.cookie_fehlt':
     'Signed in, but the browser did not store the session cookie. The app needs HTTPS – or COOKIE_SECURE=0 on the server (see README, “Ohne HTTPS”).',
-  'auth.ohne_https':
-    'This page is served without HTTPS: password and session travel unencrypted, and signing in only lasts with COOKIE_SECURE=0 on the server (see README, “Ohne HTTPS”).',
+  'auth.ohne_https': 'Connection not encrypted: password and session travel unprotected over the network.',
   'auth.session_expired': 'Session expired — please sign in again.',
   'api.server_error': 'The server responded with an error ({status}).',
   'api.unexpected': 'Unexpected error — see the browser console for details.',
@@ -1344,6 +1342,8 @@ window.I18N_EN = {
   'vouchers.deleted': 'Voucher deleted',
   'login.user_leer': 'Please enter your username or email.',
   'login.passwort_leer': 'Please enter your password.',
+  'login.code_leer': 'Please enter the code.',
+  'login.code_jetzt': 'Password correct – now enter the code.',
   'login.code': 'Code from your authenticator app',
   'login.code_hint': 'Or one of your recovery codes.',
   'zf.title': 'Two-factor authentication',
@@ -1604,6 +1604,14 @@ window.I18N_EN = {
   'zeit.morgen': 'tomorrow {zeit}',
   'zeit.gestern': 'yesterday {zeit}',
   'gallery.stat.verschieden': '{n} distinct',
+  'gallery.stat.sets': 'Sets',
+  'gallery.stat.sets_one': 'Set',
+  'gallery.stat.teile': 'Parts',
+  'gallery.stat.teile_one': 'Part',
+  'gallery.stat.figuren': 'Minifigures',
+  'gallery.stat.figuren_one': 'Minifigure',
+  'gallery.stat.anleitungen': 'Instructions',
+  'gallery.stat.anleitungen_one': 'Instruction',
   'csv.vorhanden_titel': 'Sets already in the collection',
   'csv.vorhanden_text':
     '{n} sets from the file are already in the collection ({nummern}). The import increases their quantity. Import anyway?',
