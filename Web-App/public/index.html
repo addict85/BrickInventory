@@ -197,6 +197,7 @@
       <h1 class="vh" data-i18n="login.submit">Anmelden</h1>
       <div class="lerr" id="lerr" role="alert"></div>
       <div class="login-hinweis" id="login-hinweis" role="status" hidden></div>
+      <p class="login-hinweis login-warnung" id="login-ohne-https" data-i18n="auth.ohne_https" hidden>Diese Seite läuft ohne HTTPS: Passwort und Sitzung gehen unverschlüsselt durchs Netz, und die Anmeldung hält nur mit COOKIE_SECURE=0 auf dem Server (siehe README, „Ohne HTTPS“).</p>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten: … -->
       <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
@@ -1511,10 +1512,16 @@
         <span id="job-status-detail"></span>
         <div id="job-progress-wrap"><div id="job-prog-bar"></div><span id="job-prog-txt"></span></div>
       </div>
+      <div class="konto-nav" role="navigation" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
+        <a class="einst-link" href="#mon-t-kontingente" data-click="kontoSprung" data-arg="mon-t-kontingente" data-i18n="monitor.api_calls">Kontingente heute</a>
+        <a class="einst-link" href="#mon-t-speicher" data-click="kontoSprung" data-arg="mon-t-speicher" data-i18n="monitor.cache_status">Zwischenspeicher</a>
+        <a class="einst-link" href="#mon-t-dienste" data-click="kontoSprung" data-arg="mon-t-dienste" data-i18n="monitor.services">Dienste und Zeitpläne</a>
+        <a class="einst-link" href="#mon-t-auftraege" data-click="kontoSprung" data-arg="mon-t-auftraege" data-i18n="monitor.auftraege.titel">Aufträge</a>
+      </div>
       <p class="mon-einleitung" data-i18n="monitor.intro">Was der Server im Hintergrund holt und rechnet: Kontingente der Dienste, Zwischenspeicher und anstehende Aufträge.</p>
 
       <section class="card mon-teil" aria-labelledby="mon-t-kontingente">
-        <h2 class="mon-titel" id="mon-t-kontingente"><svg class="ico" aria-hidden="true"><use href="#i-uhr"/></svg><span data-i18n="monitor.api_calls">Kontingente heute</span></h2>
+        <h2 class="mon-titel" id="mon-t-kontingente" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-uhr"/></svg><span data-i18n="monitor.api_calls">Kontingente heute</span></h2>
         <p class="mon-hinweis" data-i18n="monitor.api_calls_hint">API-Aufrufe seit Mitternacht und die Tagesgrenze je Dienst.</p>
         <div class="mon-kacheln" id="rl-stats">
           <div class="mon-kachel"><div class="mon-kachel-l" data-i18n="monitor.api.rebrickable">Rebrickable</div><div class="mon-kachel-v" id="rl-rebrickable">—</div><div class="mon-balken"><div id="rl-rebrickable-balken"></div></div></div>
@@ -1524,7 +1531,7 @@
       </section>
 
       <section class="card mon-teil" aria-labelledby="mon-t-speicher">
-        <h2 class="mon-titel" id="mon-t-speicher"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="monitor.cache_status">Zwischenspeicher</span></h2>
+        <h2 class="mon-titel" id="mon-t-speicher" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="monitor.cache_status">Zwischenspeicher</span></h2>
         <dl class="mon-zahlen">
           <div><dt data-i18n="monitor.prices_cached">Gespeicherte Preise</dt><dd id="cs-prices">—</dd></div>
           <div><dt data-i18n="monitor.parts_lists">Baulisten</dt><dd id="cs-subsets">—</dd></div>
@@ -1542,7 +1549,7 @@
       </section>
 
       <section class="card mon-teil" aria-labelledby="mon-t-dienste">
-        <h2 class="mon-titel" id="mon-t-dienste"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
+        <h2 class="mon-titel" id="mon-t-dienste" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
         <div id="monitor-content">
           <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="monitor.loading">Lade…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
         </div>
@@ -1655,7 +1662,7 @@
     <div class="m-kopfteil">
       <!-- Links unter dem Bild Wert und Preisverlauf: Die Spalte stand am Rechner sonst ~800 px leer. -->
       <div class="m-links">
-        <img id="m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+        <button type="button" class="zoom-knopf" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-klick="openImageLightboxFromEl" aria-hidden="true" disabled><img id="m-img" alt="" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" /></button>
         <div id="m-det-links"></div>
       </div>
       <div id="m-det"></div>
@@ -1686,7 +1693,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="schliesseMerkpostenDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="mk-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+    <button type="button" class="zoom-knopf" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-klick="openImageLightboxFromEl" aria-hidden="true" disabled><img id="mk-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" /></button>
     <div id="mk-m-det"></div>
     <div id="mk-m-market-rows"></div>
     <div class="abstand-o-075" id="mk-m-price-chart">
@@ -1743,7 +1750,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="cat-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+    <button type="button" class="zoom-knopf" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-klick="openImageLightboxFromEl" aria-hidden="true" disabled><img id="cat-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" /></button>
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">

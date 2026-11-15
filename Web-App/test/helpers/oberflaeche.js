@@ -224,7 +224,8 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
- * @param {{ angemeldet?: boolean, sprache?: string, browserSprache?: string, vorher?: (w: any) => void }} [opt]
+ * @param {{ angemeldet?: boolean, sprache?: string, browserSprache?: string, vorher?: (w: any) => void, url?: string }} [opt]
+ *   url: Adresse der Seite (Vorgabe http://localhost/), etwa https:// für eine Seite mit TLS.
  */
 async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
@@ -235,7 +236,11 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
       success: true,
       settings: { ...ANMELDUNG['/v1/settings/raw'].settings, language: opt.sprache },
     };
-  const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/', pretendToBeVisual: true });
+  const dom = new jsdom.JSDOM(HTML, {
+    runScripts: 'outside-only',
+    url: opt.url || 'http://localhost/',
+    pretendToBeVisual: true,
+  });
   const w = dom.window;
   const aufrufe = [];
   try {

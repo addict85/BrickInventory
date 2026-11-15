@@ -250,7 +250,12 @@ async function anmeldenOhneKeks(sicher) {
       '/v1/sets': () => (angemeldet ? ohneSitzung : { success: true, sets: [], count: 0, total: 0, themes: [] }),
       '/v1/stats': () => (angemeldet ? ohneSitzung : { success: true, stats: {} }),
     },
-    { angemeldet: false, vorher: w => Object.defineProperty(w, 'isSecureContext', { value: sicher }) },
+    {
+      angemeldet: false,
+      vorher: w => Object.defineProperty(w, 'isSecureContext', { value: sicher }),
+      // Seit Runde 27 zählt auch http: allein als „ohne HTTPS“; die sichere Seite ist also https.
+      ...(sicher ? { url: 'https://localhost/' } : {}),
+    },
   );
   await warte(() => typeof o.d.getElementById('btn-login')?.onclick === 'function');
   o.d.getElementById('lu').value = 'anna';

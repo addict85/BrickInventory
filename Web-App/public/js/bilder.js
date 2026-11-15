@@ -136,6 +136,15 @@ export function setzeDialogbild(el, src, orig) {
 export function zoomStand(img) {
   if (!img.classList.contains('zoombar')) return;
   const leer = !img.getAttribute('src') || img.getAttribute('src') === PLATZHALTER_SET;
+  // Die Dialogbilder liegen in einem echten Knopf (Tastatur, Vorleser); gesperrt ist er kein Tab-Halt.
+  const knopf = img.parentElement;
+  if (knopf instanceof HTMLButtonElement && knopf.classList.contains('zoom-knopf')) {
+    knopf.disabled = leer;
+    knopf.toggleAttribute('aria-hidden', leer);
+    if (leer) knopf.removeAttribute('data-click');
+    else knopf.dataset.click = knopf.dataset.zoomKlick || '';
+    return;
+  }
   // Auch der Klick ruht: Eine Maus-Klickfläche ohne Tab-Halt wäre nur für die Maus da.
   if (leer) {
     img.removeAttribute('role');

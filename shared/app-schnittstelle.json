@@ -2076,6 +2076,7 @@
     "kaufpreis_waehrung",
     "kaufpreise_fremde_waehrung",
     "kaufpreise_umgerechnet",
+    "keks_fehlt",
     "kette",
     "konfiguriert",
     "kopplung",
@@ -3942,7 +3943,8 @@
         "error",
         "zweiter_faktor",
         "never_expires",
-        "token_info"
+        "token_info",
+        "keks_fehlt"
       ],
       "pflicht": [
         "success"
@@ -4923,6 +4925,7 @@
         "zweiter_faktor",
         "never_expires",
         "token_info",
+        "keks_fehlt",
         "wartet",
         "username",
         "isAdmin",

@@ -118,6 +118,7 @@ export async function passkeyAnmelden() {
     G('lerr').style.display = 'block';
     return;
   }
+  if (keksFehlt(d)) return;
   // Der Start liest die Sitzung neu (GET /auth/me) — derselbe Weg wie nach einem Neuladen.
   location.reload();
 }
@@ -137,7 +138,18 @@ export async function passkeyZweiterFaktor() {
     G('lerr').style.display = 'block';
     return;
   }
+  if (keksFehlt(d)) return;
   location.reload();
+}
+
+/** Ohne Cookie brächte das Neuladen nur die Maske zurück, ohne Grund; der Hinweis bleibt stehen.
+ * @param {{ keks_fehlt?: boolean }} d */
+function keksFehlt(d) {
+  if (!d.keks_fehlt) return false;
+  const h = G('login-hinweis');
+  h.textContent = tRaw('auth.cookie_fehlt');
+  h.hidden = false;
+  return true;
 }
 
 // ── Konto ────────────────────────────────────────────────────────────────────
