@@ -307,11 +307,7 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
   // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.
-  assert.match(
-    px,
-    /const setAusUrl = \(\) => setNummerAusBildAdresse\(/,
-    'Die Setnummer wird nicht aus der Adresse gelesen',
-  );
+  assert.match(px, /const setNummer = setNummerAusBildAdresse\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
   assert.equal(
     _req('routes/imgProxy.js').setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
     '10294-1',

@@ -120,12 +120,13 @@ async function vomCdn(
 
 /** Was der Proxy vollständig hat, wird das Set-Bild: Ein zweiter Abruf beim CDN
  * scheiterte, wo der erste ging. Die Vorschau erzeugt der Auftrag bildbedarf. */
-async function alsSetBildAblegen(cacheFile: string, setNummer: string): Promise<void> {
+async function alsSetBildAblegen(d: BildDienste, cacheFile: string, setNummer: string): Promise<void> {
   const ziel = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
   const teil = `${ziel}.${process.pid}-${randomUUID()}.teil`;
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
   await fs.promises.copyFile(cacheFile, teil);
   await fs.promises.rename(teil, ziel);
+  merkeCacheZuwachs((await fs.promises.stat(ziel)).size, d.bilder.bildGrenzen().cacheMaxBytes);
 }
 
 /** Der entpackte Strom geht nebenher in den Cache — erst in .tmp, dann atomar. */
@@ -292,7 +293,7 @@ function ausSetBildern(
 /** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
 async function setBildAusCache(d: BildDienste, url: string, setNummer: string, cacheFile: string): Promise<void> {
   try {
-    await alsSetBildAblegen(cacheFile, setNummer);
+    await alsSetBildAblegen(d, cacheFile, setNummer);
   } catch (e) {
     return ohneFehlendeDatei('img-proxy:setbild')(e);
   }
@@ -315,16 +316,22 @@ export async function bildDurchreichen(d: BildDienste, req: Request, res: Respon
   // gen=0: Die Anfrage rechnet nichts, sie hinterlässt eine Notiz für den
   // Auftrag 'bildbedarf' — gedrosselt und nur im Job-Prozess.
   const darfErzeugen = req.query.gen !== '0';
-  const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
+  const setNummer = setNummerAusBildAdresse(String(url || ''));
+  // images/sets gilt für alle Konten und hat keinen Deckel: Ablegen und vormerken nur für ein Set
+  // im Blickfeld des Kontos, sonst füllte ein Konto die Platte mit erfundenen Nummern.
+  const ablegen =
+    !!setNummer &&
+    (await d.bilder.setNummerImBlickfeld(proxyUserId, setNummer).catch(e => {
+      meldeFehler('img-proxy:blickfeld', e);
+      return false;
+    }));
   const notiere = () => {
-    const sn = setAusUrl();
-    if (sn) d.bilder.merkeGebraucht(String(url), sn);
+    if (ablegen && setNummer) d.bilder.merkeGebraucht(String(url), setNummer);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
-  const setNummer = setAusUrl();
-  const setFehlt = setNummer ? await setBildFehlt(d, setNummer, url) : false;
+  const setFehlt = ablegen && setNummer ? await setBildFehlt(d, setNummer, url) : false;
   // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
   // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
   // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
@@ -457,6 +464,8 @@ function weiterreichen(
 export function setNummerAusBildAdresse(adresse: string): string | null {
   const u = urlOderNull(adresse);
   if (u?.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
-  const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})(?:\/\d{1,12})?\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
+  // Nur das Hauptbild: Unter /media/sets/<set>/<n>.jpg liegen Zusatzbilder, das erste gefragte
+  // würde sonst für alle Konten das Set-Bild.
+  const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})\.jpg$/.exec(u.pathname);
   return m?.[1] ?? null;
 }
