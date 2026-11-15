@@ -2,7 +2,7 @@
 // Kaufpreis-Dialog; wer ihn von unten öffnen muss, nimmt springe('setDetail', …) aus ziele.js.
 import { stelleZielBereit } from './ziele.js';
 import { registerActions, echt } from './registry.js';
-import { CURRENCY, ME, curSet, set_curSet } from './zustand.js';
+import { kontoWaehrung, angemeldetesKonto, offenesSet, setzeOffenesSet } from './zustand.js';
 import { escJs, esc, html, sichereUrl, ungeprueft } from './escapen.js';
 import { api } from './api.js';
 import { fullUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
@@ -38,7 +38,7 @@ let _detailLauf = 0;
 let _schreibbar = null;
 
 /** Im Haushalt: Gehört das Set (auch) einem anderen Konto? @param {import('../../frontend-typen/vertrag').SetItem | null} set */
-const imHaushalt = set => (set?.owners || []).some(o => !ME || o.id !== ME.id);
+const imHaushalt = set => (set?.owners || []).some(o => !angemeldetesKonto || o.id !== angemeldetesKonto.id);
 
 /** Ein Name für die Oberfläche: das eigene Konto heisst „ich“. @param {{ id: number, username: string }} o */
 const kontoName = kontoAnzeige;
@@ -49,13 +49,19 @@ const kontoName = kontoAnzeige;
  * @param {import('../../frontend-typen/vertrag').SetItem} set @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs
  */
 function mengenJeKonto(set, acqs) {
-  const besitzer = set.owners?.length ? set.owners : ME ? [{ id: ME.id, username: ME.username }] : [];
+  const besitzer = set.owners?.length
+    ? set.owners
+    : angemeldetesKonto
+      ? [{ id: angemeldetesKonto.id, username: angemeldetesKonto.username }]
+      : [];
   return besitzer
     .map(o => ({
       ...o,
-      menge: acqs.filter(a => (a.owner_user_id ?? ME?.id) === o.id).reduce((s, a) => s + (a.quantity || 0), 0),
+      menge: acqs
+        .filter(a => (a.owner_user_id ?? angemeldetesKonto?.id) === o.id)
+        .reduce((s, a) => s + (a.quantity || 0), 0),
     }))
-    .sort((a, b) => Number(b.id === ME?.id) - Number(a.id === ME?.id));
+    .sort((a, b) => Number(b.id === angemeldetesKonto?.id) - Number(a.id === angemeldetesKonto?.id));
 }
 
 /**
@@ -91,7 +97,9 @@ function mengenBlock(set, acqs) {
  * das Set dem anderen allein. @param {import('../../frontend-typen/vertrag').SetItem} set */
 function untertitel(set) {
   const konten = imHaushalt(set)
-    ? (set.owners || []).slice().sort((a, b) => Number(b.id === ME?.id) - Number(a.id === ME?.id))
+    ? (set.owners || [])
+        .slice()
+        .sort((a, b) => Number(b.id === angemeldetesKonto?.id) - Number(a.id === angemeldetesKonto?.id))
     : [];
   // Nur die Setnummer in Festbreite; die Konten sind Fliesstext wie überall.
   const nr = set.name ? html`<span class="setnr">${set.set_number}</span>` : '';
@@ -101,10 +109,10 @@ function untertitel(set) {
   return html`${nr}${nr && wem ? ' · ' : ''}${wem}`;
 }
 
-/** Inhalt des Set-Dialogs aus curSet und den Erfassungen: Wert und Verlauf links unter dem Bild, die Angaben
+/** Inhalt des Set-Dialogs aus offenesSet und den Erfassungen: Wert und Verlauf links unter dem Bild, die Angaben
  * rechts. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
-  const set = curSet;
+  const set = offenesSet;
   if (!set) return null;
   const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
   // Marktpreis und Entwicklung je Zustand, aus derselben Abfrage wie der Preisverlauf; hier nur der
@@ -146,7 +154,11 @@ function setDetailHtml(sn, acqs) {
     ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(
       t('detail.alert'),
-      alarmBlock(sn, 'm', (curSet?.conditions || []).includes('N') || !(curSet?.conditions || []).length ? 'N' : 'U'),
+      alarmBlock(
+        sn,
+        'm',
+        (offenesSet?.conditions || []).includes('N') || !(offenesSet?.conditions || []).length ? 'N' : 'U',
+      ),
       {
         klasse: 'alarm-zeile',
         zeilenStil: 'align-items:flex-start',
@@ -174,7 +186,7 @@ function ladeSetNachtraege(sn, acqs) {
   const mittel = new Set(['N', 'U'].filter(z => preise(z).size > 1));
   // Die Antwort kann nach dem Schliessen oder einem Setwechsel kommen; dann gehört sie nicht in den Dialog.
   api('GET', `/v1/sets/${sn}/price-history`).then(ph => {
-    if (!curSet || curSet.set_number !== sn) return;
+    if (!offenesSet || offenesSet.set_number !== sn) return;
     renderMarketRows(ph);
     const el = G('m-sparkline-content');
     if (!el) return;
@@ -232,7 +244,7 @@ export async function openModal(sn) {
   }
   const set = d.set;
   if (!set) return;
-  set_curSet(set);
+  setzeOffenesSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent = set.name || set.set_number;
   setzeHtml(G('m-untertit'), untertitel(set));
@@ -260,7 +272,7 @@ export async function openModal(sn) {
 
 /** Aus „Weitere Aktionen“ im Set-Detail: das offene Set. */
 function teileNeuImportieren() {
-  if (curSet?.set_number) reimportParts(curSet.set_number);
+  if (offenesSet?.set_number) reimportParts(offenesSet.set_number);
 }
 
 // openModal defined below (with price history)
@@ -309,7 +321,7 @@ export function renderInstructions(instr, sn) {
     html`
     <div class="zeile umbruch mittig" data-stil="margin:12px 0 7px;gap:8px">
       <h3 class="bereich-titel" data-stil="margin:0">${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}</h3>
-      ${ME?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
+      ${angemeldetesKonto?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
     </div>
     ${items ? ungeprueft(items) : html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
     ${uploadForm}`,
@@ -381,7 +393,7 @@ let _autosaveTimer = null;
 /** Die noch nicht gespeicherte Mengenänderung; null, wenn nichts aussteht. @type {(() => void) | null} */
 let _mengeAusstehend = null;
 
-/** Beim Schliessen sofort speichern: Der Dialog vergisst curSet, und 400 ms nach „−“ geschlossen ging die
+/** Beim Schliessen sofort speichern: Der Dialog vergisst offenesSet, und 400 ms nach „−“ geschlossen ging die
  * Änderung verloren. Beobachtet statt an jedem Schliessweg (Knopf, Esc, Hintergrund, Kaufpreis-Dialog). */
 function mengeSofortSpeichern() {
   if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
@@ -394,10 +406,10 @@ if (typeof MutationObserver === 'function')
   }).observe(G('set-modal'), { attributes: true, attributeFilter: ['class'] });
 
 export function autosaveSet() {
-  if (!curSet) return;
+  if (!offenesSet) return;
   setzeMengenfeld();
   if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
-  const set = curSet;
+  const set = offenesSet;
   _mengeAusstehend = () => {
     _mengeAusstehend = null;
     const qty = parseInt(G('m-qty').value, 10) || 1;
@@ -411,9 +423,9 @@ export function autosaveSet() {
 function mengeJeKonto(konto, schritt) {
   const id = Number(konto),
     n = Number(schritt);
-  if (!curSet || !Number.isInteger(id) || !n) return;
+  if (!offenesSet || !Number.isInteger(id) || !n) return;
   const knopf = document.querySelector(`#m-menge [data-konto="${id}"] [data-arg2="${n}"]`);
-  aendereMenge({ quantity_delta: n, ...(id === ME?.id ? {} : { owner_user_id: id }) }, n, knopf);
+  aendereMenge({ quantity_delta: n, ...(id === angemeldetesKonto?.id ? {} : { owner_user_id: id }) }, n, knopf);
 }
 
 /**
@@ -423,7 +435,7 @@ function mengeJeKonto(konto, schritt) {
  * @param {{ quantity?: number, quantity_delta?: number, owner_user_id?: number }} body @param {number} schritt
  * @param {Element | null} feld @param {import('./zustand.js').Kachel | null} [set] das Set, auch wenn der Dialog schon zu ist
  */
-async function aendereMenge(body, schritt, feld, set = curSet) {
+async function aendereMenge(body, schritt, feld, set = offenesSet) {
   if (!set || !schritt) return;
   const sn = set.set_number;
   const d = await api('PUT', `/v1/sets/${esc(sn)}`, body);
@@ -445,15 +457,15 @@ async function aendereMenge(body, schritt, feld, set = curSet) {
 function meldeEntfallen(sn, d, konto) {
   const weg = d.entfallen || [];
   const k = weg[0];
-  const preis = k?.purchase_price != null ? ` (${fmtGeld(k.purchase_price, k.currency || CURRENCY)})` : '';
-  const wem = konto ? (curSet?.owners || []).find(o => o.id === konto) : null;
+  const preis = k?.purchase_price != null ? ` (${fmtGeld(k.purchase_price, k.currency || kontoWaehrung)})` : '';
+  const wem = konto ? (offenesSet?.owners || []).find(o => o.id === konto) : null;
   const text =
     weg.length === 1 && k
       ? tRaw('detail.kauf_entfernt', { datum: fmtDatum(k.date || ''), preis })
       : tRaw('detail.kaeufe_entfernt', { n: weg.length });
   const ids = typeof d.papierkorb === 'number' ? [d.papierkorb] : d.papierkorb || [];
   geloeschtMitRueckgaengig(wem ? `${text} · ${kontoName(wem)}` : text, { papierkorb: ids }, () => {
-    if (curSet?.set_number === sn) frischeDetailAuf(sn, null);
+    if (offenesSet?.set_number === sn) frischeDetailAuf(sn, null);
   });
 }
 
@@ -467,8 +479,8 @@ async function frischeDetailAuf(sn, feld) {
     api('GET', `/v1/sets/${esc(sn)}`),
     api('GET', `/v1/sets/${esc(sn)}/acquisitions`),
   ]);
-  if (!d?.success || !d.set || curSet?.set_number !== sn || !G('set-modal').classList.contains('open')) return ad;
-  set_curSet(d.set);
+  if (!d?.success || !d.set || offenesSet?.set_number !== sn || !G('set-modal').classList.contains('open')) return ad;
+  setzeOffenesSet(d.set);
   const acqs = ad?.acquisitions || [];
   const fokus = feld && feld === document.activeElement ? feld : null;
   const menge = G('m-menge');
@@ -510,7 +522,7 @@ function meldeNeueExemplare(sn, acqs, n) {
   const mehrere = n > 1 ? 'exemplare' : 'exemplar';
   const text =
     preis != null && neu.price_estimated
-      ? tRaw(`acq.${mehrere}_geschaetzt`, { n, preis: fmtGeld(preis, neu.currency || CURRENCY) })
+      ? tRaw(`acq.${mehrere}_geschaetzt`, { n, preis: fmtGeld(preis, neu.currency || kontoWaehrung) })
       : preis == null
         ? tRaw(`acq.${mehrere}_ohne_preis`, { n })
         : tRaw('settings.saved');
@@ -520,8 +532,8 @@ function meldeNeueExemplare(sn, acqs, n) {
 // Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog schliesst nur, wenn wirklich gelöscht
 // wurde; sonst stünde er nach einem „Abbrechen" leer da.
 G('btn-md').onclick = async () => {
-  if (!curSet) return;
-  if (await delSet(curSet.set_number)) closeModal();
+  if (!offenesSet) return;
+  if (await delSet(offenesSet.set_number)) closeModal();
 };
 
 /**
@@ -532,7 +544,7 @@ async function redownloadInstr(sn) {
   const d = await api('POST', `/v1/sets/${sn}/instructions`);
   if (d.success) {
     if (!d.auftrag_id) toast(tRaw('instr.loaded', { count: d.instructions.length }), 'success');
-    if (curSet) {
+    if (offenesSet) {
       openModal(sn);
     }
     loadStats();

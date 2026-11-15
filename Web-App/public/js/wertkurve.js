@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { scopeMode } from './scope.js';
-import { CURRENCY, finKopfWert } from './zustand.js';
+import { kontoWaehrung, finKopfWert } from './zustand.js';
 import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './diagramme.js';
 
 // Wertentwicklung des Bestands: Zeitraum, Kurve und ihre Bezugslinie (Einstand) aus den Kennzahlen.
@@ -55,7 +55,7 @@ function kurveNachzeichnen() {
   _kurveBreite = b;
   setzeHtml(
     el,
-    portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY, _einstandText || undefined),
+    portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || kontoWaehrung, _einstandText || undefined),
   );
 }
 window.addEventListener('resize', kurveNachzeichnen);
@@ -113,7 +113,7 @@ export async function loadPortfolioChart() {
     return;
   }
 
-  const cur = d.currency || CURRENCY;
+  const cur = d.currency || kontoWaehrung;
   // New API: points has {x_label, value, y_frac}, y_axis has {label, value, frac} Convert to legacy format
   // for portfolioChartSVG: [{day, total}]
   const grandTotal = finKopfWert || d.points[d.points.length - 1].value;

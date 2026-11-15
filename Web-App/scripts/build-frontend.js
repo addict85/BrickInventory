@@ -43,7 +43,16 @@ const STANDALONE = new Set([
  * liegt; die Schicht steht deshalb hier, und test/frontend-architektur.test.js
  * prüft, dass Kern und Bausteine keine Ansicht importieren. Alles übrige ist Ansicht.
  */
-const KERN = ['stile.js', 'escapen.js', 'ereignisse.js', 'ziele.js', 'zustand.js', 'registry.js', 'theme-boot.js'];
+const KERN = [
+  'stile.js',
+  'escapen.js',
+  'ereignisse.js',
+  'ziele.js',
+  'zustand.js',
+  'lader.js',
+  'registry.js',
+  'theme-boot.js',
+];
 const BAUSTEINE = [
   'dom.js',
   'format.js',

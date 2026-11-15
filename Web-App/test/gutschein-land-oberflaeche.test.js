@@ -5,7 +5,7 @@
  * sofort den Hinweis „nicht CHF wie das Ausgabeland“.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  in ladeGutscheine() wieder `_settingsCache?.gutschein_land || 'de-CH'` → rot: „EUR-Konto“
+ *   A  in ladeGutscheine() wieder `einstellungsStand?.gutschein_land || 'de-CH'` → rot: „EUR-Konto“
  *   B  landFuerWaehrung() gibt immer LAND_STANDARD → rot: „Server: …“
  */
 const test = require('node:test');

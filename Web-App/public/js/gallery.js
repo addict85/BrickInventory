@@ -17,6 +17,7 @@ import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { html, ungeprueft } from './escapen.js';
 import { fehlerMeldung, api } from './api.js';
+import { generationen } from './lader.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
 import {
   leerZustand,
@@ -40,7 +41,16 @@ import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './scope.js
 import { loadParts, loadManualParts } from './parts.js';
 import { loadMinifigs } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { CURRENCY, ME, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache, set_pnlCache } from './zustand.js';
+import {
+  kontoWaehrung,
+  angemeldetesKonto,
+  setzeLetztenImport,
+  setzeGalerieSets,
+  galerieSets,
+  offenesSet,
+  guvJeSet,
+  setzeGuvJeSet,
+} from './zustand.js';
 import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
 import { springe } from './ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
@@ -99,16 +109,15 @@ const alsKarten = () => curView === 'grid' || telefonBreite();
  */
 export function applySetAggregate(agg) {
   if (!agg?.set_number) return;
-  const before = allSets;
-  setAllSets(allSets.map(s => (s.set_number === agg.set_number ? { ...s, ...agg } : s)));
-  if (allSets !== before) renderGallery();
+  const before = galerieSets;
+  setzeGalerieSets(galerieSets.map(s => (s.set_number === agg.set_number ? { ...s, ...agg } : s)));
+  if (galerieSets !== before) renderGallery();
 }
 // ── Endlos-Scroll der Galerie ───────────────────────────────────────────────
-// Wie im Katalog und in der Teileansicht. Filtern und Sortieren macht der Server: Über allSets gefiltert,
-// durchsuchte ein Filter beim seitenweisen Laden nur die bereits geladenen Seiten.
+// Filtern und Sortieren macht der Server: Über galerieSets durchsuchte ein Filter nur die geladenen Seiten.
 const GAL_PAGE_SIZE = 60;
-let _galGen = 0,
-  _galPage = 1,
+const galerieLaden = generationen();
+let _galPage = 1,
   _galDone = false,
   _galLoadingMore = false,
   _galTotal = 0;
@@ -135,25 +144,25 @@ function galleryParams(page, pageSize = GAL_PAGE_SIZE) {
 async function loadGalleryMore() {
   if (_galLoadingMore || _galDone) return;
   _galLoadingMore = true;
-  const gen = _galGen;
+  const gen = galerieLaden.jetzt();
   try {
-    const d = await api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`);
-    if (gen !== _galGen) return; // Filter hat sich zwischenzeitlich geändert
+    const d = await galerieLaden.aktuell(api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`));
+    if (d === undefined) return;
     const batch = d.sets || [];
     if (!batch.length) {
       _galDone = true;
       return;
     }
     _galPage++;
-    setAllSets(allSets.concat(batch));
-    if (allSets.length >= (_galTotal || 0)) _galDone = true;
+    setzeGalerieSets(galerieSets.concat(batch));
+    if (galerieSets.length >= (_galTotal || 0)) _galDone = true;
     appendGallery(batch);
     updateGalleryPrices();
     kickGallerySentinel(); // s. Erklärung dort
   } catch (_) {
     /* stumm: der Sentinel versucht es beim nächsten Scrollen erneut */
   } finally {
-    if (gen === _galGen) _galLoadingMore = false;
+    if (galerieLaden.gilt(gen)) _galLoadingMore = false;
   }
 }
 
@@ -240,39 +249,34 @@ export async function loadGallery(opts = {}) {
   // Nachladen nicht mehr.
   const holen = Math.min(tiefe * GAL_PAGE_SIZE, 480);
 
-  // Spinner NUR beim ersten Laden. Vorher wurde das Grid bei jedem Aufruf sofort geleert — also auch dann,
-  // wenn schon gültige Kacheln standen und bloss aufgefrischt wurde. Genau das war die kurz leere Wand beim
-  // Neuladen und nach dem Login. Sind bereits Sets da, bleiben sie stehen, bis die neue Antwort da ist; erst
-  // dann wird einmal neu gezeichnet.
+  // Platzhalter nur ohne Kacheln: Stehende bleiben bis zur Antwort, sonst blitzte eine leere Wand auf.
   const gal = G('gallery');
-  if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
+  if (!galerieSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
     setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
   }
-  _galGen++;
+  galerieLaden.neu();
   _galPage = 1;
   // Bis die erste Seite da ist, lädt der Sentinel nichts nach: Er fragte sonst Seite 2 einer alten Liste ab.
   _galDone = true;
   _galLoadingMore = false;
-  const gen = _galGen;
-  const hatteListe = allSets.length > 0;
-  const d = await api('GET', `/v1/sets?${galleryParams(1, holen)}`);
-  if (gen !== _galGen) return;
+  const hatteListe = galerieSets.length > 0;
+  const d = await galerieLaden.aktuell(api('GET', `/v1/sets?${galleryParams(1, holen)}`));
+  if (d === undefined) return;
   if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) {
     if (hatteListe) renderGallery();
     return;
   }
-  setAllSets(d.sets || []);
-  _galTotal = d.total ?? allSets.length;
+  setzeGalerieSets(d.sets || []);
+  _galTotal = d.total ?? galerieSets.length;
   // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste Folgeseite am richtigen
   // Versatz ansetzt.
-  _galPage = Math.max(1, Math.ceil(allSets.length / GAL_PAGE_SIZE));
-  _galDone = allSets.length >= _galTotal;
+  _galPage = Math.max(1, Math.ceil(galerieSets.length / GAL_PAGE_SIZE));
+  _galDone = galerieSets.length >= _galTotal;
   bindGallerySentinel();
   // Füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis.
   requestAnimationFrame(maybeLoadMoreGallery);
 
-  // Populate theme dropdown Themen kommen vom Server: allSets enthält seit der Paginierung nur noch die erste
-  // Seite, das Auswahlfeld wäre sonst unvollständig.
+  // Die Themen nennt der Server: galerieSets hält nur die geladenen Seiten.
   const themeEl = G('gtheme');
   if (themeEl && Array.isArray(d.themes)) {
     const current = themeEl.value;
@@ -297,7 +301,7 @@ export function renderGallery() {
   // Filtern und Sortieren macht der Server (setsLesen in src/sets/lesen.ts) — hier wird nur noch gezeichnet,
   // was geladen ist. Andernfalls würde ein Filter bloss die aktuell geladene Seite durchsuchen.
   const q = G('gs')?.value?.toLowerCase() || '';
-  const list = allSets;
+  const list = galerieSets;
   const c = G('gallery');
   // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde „Noch keine Sets“ über einer
   // Sammlung, die nur ausgeblendet ist.
@@ -343,7 +347,7 @@ export function renderGallery() {
  * erneut ein und liessen die Galerie flackern.
  */
 export function updateGalleryPrices() {
-  const bySet = new Map(allSets.map(x => [x.set_number, x]));
+  const bySet = new Map(galerieSets.map(x => [x.set_number, x]));
   alle('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor ?? '');
     if (!s) return;
@@ -367,9 +371,9 @@ function preisZeile(s) {
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
   const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
-  const kaufBetrag = kauf != null ? fmtGeld(kauf, CURRENCY) : s._price ? fmtGeld(s._price, CURRENCY) : '';
+  const kaufBetrag = kauf != null ? fmtGeld(kauf, kontoWaehrung) : s._price ? fmtGeld(s._price, kontoWaehrung) : '';
   const betrag = markt
-    ? fmtN(s._price, CURRENCY)
+    ? fmtN(s._price, kontoWaehrung)
     : s.kaufpreis_geschaetzt && kaufBetrag
       ? String(geschaetztKauf(kaufBetrag))
       : kaufBetrag;
@@ -396,8 +400,7 @@ function gridCard(s) {
   const img = src
     ? bildTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
     : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-  // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand hier max_purchase_price — bei
-  // 2x100 und 1x160 zeigte die Kachel 160 statt der tatsächlichen 120.
+  // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis, nicht der höchste.
   const preis = preisZeile(s);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import für alle Sets derselbe Tag und
   // sagte nichts. Bei mehreren Käufen (oft im Haushalt) sagt die Kachel, dass es der letzte ist.
@@ -558,8 +561,7 @@ async function doAddSet() {
       ev => {
         handleSseEvent(ev, num);
         if (ev.step === 'done' && ev.action === 'exists') {
-          // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben (Marcos Festlegung,
-          // src/sets/erfassen.ts). Statt einer Meldung öffnet sich die Detailansicht, genau wie in der App.
+          // Schon im Blickfeld, der Server schrieb nichts: Die Detailansicht statt einer Meldung, wie in der App.
           streamFertig();
           hideProgress();
           G('add-num').value = '';
@@ -587,7 +589,7 @@ async function doAddSet() {
                 'success',
               );
             // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
-            set_lastImportAt(Date.now());
+            setzeLetztenImport(Date.now());
             // Konnte der Strom nicht ergänzen, holt ein Auftrag Name und Bild nach einer Minute.
             for (const delay of [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])])
               setTimeout(() => {
@@ -655,13 +657,13 @@ G('gsort').addEventListener('change', () => loadGallery());
  */
 async function loeschWahl(sn, name, set) {
   const titel = tRaw('gallery.delete.title');
-  const fremd = (set?.owners || []).some(o => o.id !== ME?.id);
+  const fremd = (set?.owners || []).some(o => o.id !== angemeldetesKonto?.id);
   if (!fremd) return (await confirmDelete(titel, tRaw('gallery.delete.name_parts', { name }))) ? '' : null;
   const ad = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/acquisitions`);
   const konten = (set?.owners || []).map(o => ({
     ...o,
     n: (ad?.acquisitions || [])
-      .filter(a => (a.owner_user_id ?? ME?.id) === o.id)
+      .filter(a => (a.owner_user_id ?? angemeldetesKonto?.id) === o.id)
       .reduce((s, a) => s + (a.quantity || 0), 0),
   }));
   const liste = konten.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
@@ -679,7 +681,8 @@ async function loeschWahl(sn, name, set) {
  */
 export async function delSet(sn) {
   const bekannt =
-    (curSet && curSet.set_number === sn ? curSet : null) || (allSets || []).find(x => x.set_number === sn);
+    (offenesSet && offenesSet.set_number === sn ? offenesSet : null) ||
+    (galerieSets || []).find(x => x.set_number === sn);
   const name = bekannt?.name || sn;
   const konto = await loeschWahl(sn, name, bekannt);
   if (konto === null) return false;
@@ -711,26 +714,23 @@ export async function reimportParts(sn) {
 }
 
 export async function enrichGalleryWithPrices() {
-  // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion steht am Ende von loadGallery(),
-  // und loadGallery() laeuft bei jedem Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
-  // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
-  //
+  // Mit Kontofilter wie loadStats(): loadGallery() ruft dies bei jedem Wechsel des Filters.
   const pnl = await api('GET', `/v1/finance/pnl${scopeQuery('gallery')}`);
   if (!pnl.success) return;
-  set_pnlCache({});
+  setzeGuvJeSet({});
   // Betrag und G&V der Kachel rechnet der Server (kachel_preis, kachel_pnl_pct in /finance/pnl,
   // src/finanzen/setValue.ts kachelWerte); im Haushalt tragen alle Zeilen eines Sets dieselben Werte.
   for (const s of pnl.sets) {
-    if (!_pnlCache[s.set_number])
-      _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
+    if (!guvJeSet[s.set_number])
+      guvJeSet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
   }
   // Inject price data into cached sets
-  setAllSets(
-    allSets.map(s => ({
+  setzeGalerieSets(
+    galerieSets.map(s => ({
       ...s,
-      _price: _pnlCache[s.set_number]?.price || 0,
-      _quelle: _pnlCache[s.set_number]?.quelle,
-      _pnl_pct: _pnlCache[s.set_number]?.pnl_pct ?? undefined,
+      _price: guvJeSet[s.set_number]?.price || 0,
+      _quelle: guvJeSet[s.set_number]?.quelle,
+      _pnl_pct: guvJeSet[s.set_number]?.pnl_pct ?? undefined,
     })),
   );
   // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen — ein voller renderGallery()

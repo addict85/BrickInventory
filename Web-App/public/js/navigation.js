@@ -3,7 +3,7 @@
 import { stelleZielBereit } from './ziele.js';
 import { registerActions } from './registry.js';
 import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
-import { ME, _lastImportAt } from './zustand.js';
+import { angemeldetesKonto, letzterImport } from './zustand.js';
 import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
 import { initCatalog, katalogZuruecksetzen } from './catalog.js';
@@ -100,10 +100,10 @@ export function filterUmschalten() {
 function zeigeEinstellungsZugriff() {
   const f = G('einst-kein-zugriff');
   if (!f) return;
-  f.hidden = !!ME?.isAdmin;
+  f.hidden = !!angemeldetesKonto?.isAdmin;
   setzeHtml(
     f,
-    ME?.isAdmin
+    angemeldetesKonto?.isAdmin
       ? ''
       : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
   );
@@ -176,7 +176,7 @@ export function bindTabs() {
         loadManualParts();
         loadBrickColors();
         // War der Import eben erst, nach dem Hintergrundauftrag noch einmal laden
-        if (Date.now() - _lastImportAt < 30000)
+        if (Date.now() - letzterImport < 30000)
           setTimeout(() => {
             loadParts();
             loadManualParts();
@@ -184,7 +184,7 @@ export function bindTabs() {
       }
       if (tab === 'minifigs') {
         loadMinifigs();
-        if (Date.now() - _lastImportAt < 30000) setTimeout(loadMinifigs, 5000);
+        if (Date.now() - letzterImport < 30000) setTimeout(loadMinifigs, 5000);
       }
       if (tab === 'finance') {
         loadFinance();
@@ -198,7 +198,7 @@ export function bindTabs() {
       if (tab === 'settings') {
         zeigeEinstellungsZugriff();
         loadSettings();
-        if (ME?.isAdmin) {
+        if (angemeldetesKonto?.isAdmin) {
           loadApiLimits();
           loadCacheTtl();
           ladeZeitplaene();

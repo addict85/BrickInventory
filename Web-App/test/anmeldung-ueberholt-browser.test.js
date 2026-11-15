@@ -3,7 +3,7 @@
  * unterwegs ist, bleibt angemeldet: Die späte Antwort „nein“ darf die App
  * nicht zurück auf die Anmeldemaske werfen.
  *
- * Gegenprobe (31.10.2026 gemessen): in checkAuth() die Zeile `if (ME) return;`
+ * Gegenprobe (31.10.2026 gemessen): in checkAuth() die Zeile `if (angemeldetesKonto) return;`
  * entfernt → rot: „die App bleibt sichtbar“ (#app hat display: none, die
  * Anmeldemaske steht wieder da). Am 11.11.2026 mit ruhig() statt 5 s Pause
  * wiederholt: ebenso rot.
