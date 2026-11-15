@@ -10,8 +10,8 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzl
              var pause = erstePause
              repeat(versuche - 1) {
                  val r = call()
--                if (r !is Ergebnis.Error || !r.transient || netz() == Art.KEIN_NETZ) return r
-+                if (r !is Ergebnis.Error || !r.transient) return r
+-                if (r !is Ergebnis.Fehler || !r.transient || netz() == Art.KEIN_NETZ) return r
++                if (r !is Ergebnis.Fehler || !r.transient) return r
                  warte(pause)
                  pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
              }

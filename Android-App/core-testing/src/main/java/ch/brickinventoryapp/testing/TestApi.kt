@@ -112,7 +112,7 @@ object TestApi {
 object NummernTexte : Texte {
     override fun text(id: Int, vararg args: Any?) = "t$id"
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-    override fun meldung(fehler: Ergebnis.Error) = "fehler"
+    override fun meldung(fehler: Ergebnis.Fehler) = "fehler"
     override fun angemeldet() = true
 }
 

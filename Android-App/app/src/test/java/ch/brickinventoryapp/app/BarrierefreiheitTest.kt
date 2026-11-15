@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
 import ch.brickinventoryapp.testing.testVerwaltungRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.text.AnnotatedString
@@ -93,7 +93,7 @@ import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungAktionen
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiLeser
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateAktionen
 import java.util.Locale

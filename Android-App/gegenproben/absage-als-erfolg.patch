@@ -10,8 +10,8 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
   */
  internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, satz: (T) -> String?, f: (T) -> R): Ergebnis<R> =
      when (this) {
--        is Ergebnis.Success -> if (erfolg(data)) Ergebnis.Success(f(data), stand, gepuffert)
-+        is Ergebnis.Success -> if (true) Ergebnis.Success(f(data), stand, gepuffert)
-             else Ergebnis.Error.Absage(satz(data).orEmpty())
-         is Ergebnis.Error -> this
+-        is Ergebnis.Erfolg -> if (erfolg(data)) Ergebnis.Erfolg(f(data), stand, gepuffert)
++        is Ergebnis.Erfolg -> if (true) Ergebnis.Erfolg(f(data), stand, gepuffert)
+             else Ergebnis.Fehler.Absage(satz(data).orEmpty())
+         is Ergebnis.Fehler -> this
      }

@@ -16,10 +16,12 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
  *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.KontoApi` in AppTexte → dasselbe rot
+ *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-zustand und core-sitzung kennen keinen Context“
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
  *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
  *                               „ein Bereich kennt … das Wire-Format nur core-data“
+ *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → rot, derselbe Test
  */
 class SchichtregelnTest {
 
@@ -62,7 +64,8 @@ class SchichtregelnTest {
     /**
      * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
      * Das Wire-Format übersetzt nur core-data (Abbildungen in core-vertrag); jedes andere
-     * Modul, auch die Ablage, nimmt Fachtypen. Die Kante dazu prüft Modulkanten.
+     * Modul, auch die Ablage, nimmt Fachtypen. Die Kante dazu prüft Modulkanten. Die Umsetzungen
+     * der Repositories sind öffentlich, weil core-testing sie baut; benutzen darf sie sonst niemand.
      */
     @Test
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data`() {
@@ -70,12 +73,16 @@ class SchichtregelnTest {
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
         val wire = verstoesse({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
         assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
+        val umsetzung = verstoesse({ it.modul !in setOf("core-data", "core-testing") }) {
+            Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
+        }
+        assert(umsetzung.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + umsetzung.joinToString("\n  ") }
     }
 
-    /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */
+    /** Texte und Dateien kommen über Textquelle und DateiLeser aus core-data, ohne Ausnahme. */
     @Test
     fun `core-zustand und core-sitzung kennen keinen Context`() {
-        val f = verstoesse({ it.modul in setOf("core-zustand", "core-sitzung") && it.name != "AppTexte.kt" }) {
+        val f = verstoesse({ it.modul in setOf("core-zustand", "core-sitzung") }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
         assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context:\n  " + f.joinToString("\n  ") }

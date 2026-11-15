@@ -34,12 +34,12 @@ internal class SetItemAblauf(
             val jetzt = _zustand.value
             if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
             when (r) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     _zustand.update { it.copy(abruf = Laden.Daten(Unit), kopf = r.data.kopf, sets = r.data.sets) }
                     // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer, nicht dem Betrachter.
                     nachKopf(r.data.kopf?.ownerIds ?: emptyList())
                 }
-                is Ergebnis.Error -> _zustand.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Fehler -> _zustand.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }

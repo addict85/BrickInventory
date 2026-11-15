@@ -24,8 +24,8 @@ import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals

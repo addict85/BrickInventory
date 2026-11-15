@@ -53,7 +53,7 @@ class CsvImportBeobachter @Inject constructor(
     }
 
     private suspend fun FlowCollector<CsvImportStandAnsicht>.frageAb() {
-        val stand = fangeAusserAbbruch { (dateien.getCsvImportStatus() as? Ergebnis.Success)?.data }.getOrNull()
+        val stand = fangeAusserAbbruch { (dateien.getCsvImportStatus() as? Ergebnis.Erfolg)?.data }.getOrNull()
         if (stand != null) emit(stand)
     }
 

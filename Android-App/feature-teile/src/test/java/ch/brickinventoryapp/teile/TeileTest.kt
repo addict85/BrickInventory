@@ -65,14 +65,14 @@ class TeileTest {
     private class Kennzahlen : TeileQuelle {
         var figurAbrufe = 0
         var figurDauer = 0L
-        override suspend fun teileKennzahlen(): Ergebnis<TeileKennzahlenAnsicht?> = Ergebnis.Error.Server(503, "aus")
-        override suspend fun filterFarben() = Ergebnis.Success(emptyList<FilterFarbeAnsicht>())
-        override suspend fun kategorien() = Ergebnis.Success(emptyList<KategorieAnsicht>())
-        override suspend fun alleFarben() = Ergebnis.Success(emptyList<FarbeAnsicht>())
+        override suspend fun teileKennzahlen(): Ergebnis<TeileKennzahlenAnsicht?> = Ergebnis.Fehler.Server(503, "aus")
+        override suspend fun filterFarben() = Ergebnis.Erfolg(emptyList<FilterFarbeAnsicht>())
+        override suspend fun kategorien() = Ergebnis.Erfolg(emptyList<KategorieAnsicht>())
+        override suspend fun alleFarben() = Ergebnis.Erfolg(emptyList<FarbeAnsicht>())
         suspend fun figurKennzahlen(): Ergebnis<FigurenKennzahlenAnsicht> {
             figurAbrufe++
             delay(figurDauer)
-            return Ergebnis.Error.Server(500, "Zählung gescheitert")
+            return Ergebnis.Fehler.Server(500, "Zählung gescheitert")
         }
     }
 
@@ -85,7 +85,7 @@ class TeileTest {
     private val teileAbrufe = mutableListOf<TeileUiState>()
     private val manuelleSuchen = mutableListOf<String>()
     private val figurAbrufe = mutableListOf<String>()
-    private var figurenAntwort: Ergebnis<Unit> = Ergebnis.Success(Unit)
+    private var figurenAntwort: Ergebnis<Unit> = Ergebnis.Erfolg(Unit)
     private var vergessen = 0
 
     /**
@@ -102,7 +102,7 @@ class TeileTest {
                 (f.suche.isBlank() || it.partNumber.contains(f.suche) || it.partName.orEmpty().contains(f.suche)) &&
                     (f.farbe == Farbwahl.Alle || it.colorName == f.farbe.wert) }) } },
             manuelleTeile = { st -> manuelleSuchen += st.filter.suche; manuelleTeile },
-            aktualisiere = { st -> teileAbrufe += st; Ergebnis.Success(Unit) },
+            aktualisiere = { st -> teileAbrufe += st; Ergebnis.Erfolg(Unit) },
         ),
     )
 
@@ -163,7 +163,7 @@ class TeileTest {
         val neu = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "neu")), 1L))
         val t = Teile(scope = vordergrund(), quelle = kennzahlen, meldeFehler = {}, vergissScroll = {},
             listen = TeileLokal(teile = { st -> if (st.filter.farbe == Farbwahl.Alle) alt else neu },
-                manuelleTeile = { manuelleTeile }, aktualisiere = { Ergebnis.Success(Unit) }))
+                manuelleTeile = { manuelleTeile }, aktualisiere = { Ergebnis.Erfolg(Unit) }))
         t.laden(); runCurrent()
         t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; runCurrent()
         alt.value = Lokal(listOf(TeilAnsicht(partNumber = "spaet")), 2L)
@@ -195,7 +195,7 @@ class TeileTest {
 
     @Test
     fun `ohne Netz bleiben die Figuren stehen, mit ihrem Stand`() = runTest {
-        figurenAntwort = Ergebnis.Error.Netz()
+        figurenAntwort = Ergebnis.Fehler.Netz()
         val t = figurenliste()
         t.laden(); runCurrent()
         assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })

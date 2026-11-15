@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/v
          _state.update { it.copy(queue = Laden.Laedt) }
          val r = verwaltung.getBricksetQueue()
 -        _state.update { it.copy(queue = r.alsLaden()) }
-+        _state.update { it.copy(queue = Laden.Daten((r as? Ergebnis.Success)?.data.orEmpty())) }
++        _state.update { it.copy(queue = Laden.Daten((r as? Ergebnis.Erfolg)?.data.orEmpty())) }
      }
  
      override fun wiederhole(setNummer: String) = meldeNach(

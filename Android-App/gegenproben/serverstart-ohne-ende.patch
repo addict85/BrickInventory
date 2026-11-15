@@ -10,8 +10,8 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
          if (prefs.serverUrlJetzt().isBlank()) return
          while (true) {
              val r = verwaltung.getStartupStatus()
--            if (r !is Ergebnis.Success || r.data.bereit) {
-+            if (r !is Ergebnis.Success) {
+-            if (r !is Ergebnis.Erfolg || r.data.bereit) {
++            if (r !is Ergebnis.Erfolg) {
                  sitzung.serverstartGeaendert(null)
                  return
              }

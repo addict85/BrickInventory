@@ -9,9 +9,7 @@ import ch.brickinventoryapp.zustand.ui.Abmelden
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.zustand.ui.SammlungVorwaermen
 import ch.brickinventoryapp.zustand.ui.ScopeFilterAblage
-import ch.brickinventoryapp.zustand.ui.viewmodel.AppDateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.sitzung.Abmeldevorgang
 import ch.brickinventoryapp.sitzung.Vorwaermung
@@ -32,13 +30,10 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 @InstallIn(SingletonComponent::class)
 object ZustandModule {
 
-    // Die herausgelösten ViewModels sehen Texte und Dateien nur über diese
-    // Schnittstellen — so laufen sie im JVM-Test ohne Context.
+    // Die herausgelösten ViewModels sehen Texte nur über diese Schnittstelle
+    // (Dateien über DateiLeser aus core-data) — so laufen sie im JVM-Test ohne Context.
     @Provides
     fun provideTexte(t: AppTexte): Texte = t
-
-    @Provides
-    fun provideDateiLeser(l: AppDateiLeser): DateiLeser = l
 
     @Provides
     fun provideAbmeldevorgang(a: Abmelden): Abmeldevorgang = a

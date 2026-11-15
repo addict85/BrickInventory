@@ -82,7 +82,7 @@ class FigurenViewModel @Inject constructor(
     private suspend fun aktualisiere(st: FigurenUiState): Ergebnis<Unit> {
         val a = abfrage(st) ?: return figuren.aktualisiereFiguren()
         val r = kontosicht.figurenliste.aktualisiere(a)
-        return if (r is Ergebnis.Error) r else kontosicht.manuelleFiguren.aktualisiere(a)
+        return if (r is Ergebnis.Fehler) r else kontosicht.manuelleFiguren.aktualisiere(a)
     }
 
     private val figurenBeobachtet = Beobachtet(liste.zustand)
@@ -111,8 +111,8 @@ class FigurenViewModel @Inject constructor(
             when (val r = figuren.addMinifig(e.nummer.trim(), e.blNummer, e.menge, e.stueckpreis,
                                           e.zustand, e.besitzer,
                                           e.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Ergebnis.Success -> meldungen.zeige(erfassungsMeldung(meldungen, r.data.angelegt, r.data.nummer, r.data.preisAusZustand))
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> meldungen.zeige(erfassungsMeldung(meldungen, r.data.angelegt, r.data.nummer, r.data.preisAusZustand))
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

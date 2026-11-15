@@ -159,10 +159,10 @@ internal class TokenTausch(
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Ergebnis.Success -> return gelungen(vorher, r.data)
-                is Ergebnis.Error -> {
+                is Ergebnis.Erfolg -> return gelungen(vorher, r.data)
+                is Ergebnis.Fehler -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
-                    if (r is Ergebnis.Error.Abgewiesen) return Tauschergebnis.NEU_KOPPELN
+                    if (r is Ergebnis.Fehler.Abgewiesen) return Tauschergebnis.NEU_KOPPELN
                     if (!r.transient) return Tauschergebnis.SPAETER
                     val pause = pausen.getOrNull(versuch) ?: break
                     if (uhr() - beginn + pause > UEBERLAPPUNG_MS) break

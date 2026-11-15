@@ -56,6 +56,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.sammlung.ui.ALARM_ZUSTAND_VORGABE
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.GemeinsamesBild
+import ch.brickinventoryapp.ui.components.MengenKnopf
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.SegmentWahl
@@ -198,10 +199,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     MitTooltip(stringResource(R.string.cd_qty_decrease)) {
-                        FilledTonalIconButton(
-                            onClick = { if (qty > 1) { qty--; takt(); aktionen.aendereMengeUm(set.setNumber, -1) } },
-                            shape = Formen.etikett
-                        ) {
+                        MengenKnopf(onClick = { if (qty > 1) { qty--; takt(); aktionen.aendereMengeUm(set.setNumber, -1) } }) {
                             Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
                                 Modifier.size(mitSchrift(18.dp)))
                         }
@@ -214,10 +212,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                         textAlign = TextAlign.Center
                     )
                     MitTooltip(stringResource(R.string.cd_qty_increase)) {
-                        FilledTonalIconButton(
-                            onClick = { qty++; takt(); aktionen.aendereMengeUm(set.setNumber, 1) },
-                            shape = Formen.etikett
-                        ) {
+                        MengenKnopf(onClick = { qty++; takt(); aktionen.aendereMengeUm(set.setNumber, 1) }) {
                             Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
                                 Modifier.size(mitSchrift(18.dp)))
                         }

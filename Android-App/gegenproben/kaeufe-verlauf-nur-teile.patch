@@ -13,5 +13,5 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 -            val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
 +            val r = finanzen.getPartPriceHistory(id, colorId)
              when (r) {
-                 is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
-                 is Ergebnis.Error -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
+                 is Ergebnis.Erfolg -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+                 is Ergebnis.Fehler -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }

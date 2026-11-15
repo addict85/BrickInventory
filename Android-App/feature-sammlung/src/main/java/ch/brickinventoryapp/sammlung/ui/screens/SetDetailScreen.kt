@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ANLEITUNG_TYPEN
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 
 /** Das Set-Detail am Navigationsziel: sammelt die Flüsse und reicht sie an [SetDetailScreen]. */
 @Composable

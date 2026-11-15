@@ -90,8 +90,8 @@ class KontoRepositoryImpl @Inject constructor(
             } else antwort
         }
         return when (r) {
-            is Ergebnis.Success -> Ergebnis.Success(Anmeldeantwort(r.data.alsAnmeldung(), wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
-            is Ergebnis.Error -> r
+            is Ergebnis.Erfolg -> Ergebnis.Erfolg(Anmeldeantwort(r.data.alsAnmeldung(), wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
+            is Ergebnis.Fehler -> r
         }
     }
 
@@ -188,8 +188,8 @@ class KontoRepositoryImpl @Inject constructor(
                 .also { herkunft = NetworkPolicy.herkunft(it.raw().request.url.toString()) }
         }
         return when (r) {
-            is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data.token, herkunft), stand = r.stand, gepuffert = r.gepuffert)
-            is Ergebnis.Error -> r
+            is Ergebnis.Erfolg -> Ergebnis.Erfolg(GetauschterToken(r.data.token, herkunft), stand = r.stand, gepuffert = r.gepuffert)
+            is Ergebnis.Fehler -> r
         }
     }
 

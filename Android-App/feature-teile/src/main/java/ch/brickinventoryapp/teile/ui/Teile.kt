@@ -60,7 +60,7 @@ internal class FigurenLokal(
 internal class Listenfolge<S>(
     private val scope: CoroutineScope,
     private val zustand: MutableStateFlow<S>,
-    private val meldeFehler: (Ergebnis.Error) -> Unit,
+    private val meldeFehler: (Ergebnis.Fehler) -> Unit,
     private val suchPause: Long,
 ) {
     private var folgen: List<Job> = emptyList()
@@ -81,11 +81,11 @@ internal class Listenfolge<S>(
     fun folgeAllen(neu: List<Job>) { folgen = neu }
 
     /** Ohne Netz bleibt die Ablage mit ihrem Stand; ohne Ablage ist es ein Fehler. */
-    fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Error) -> S) {
+    fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Fehler) -> S) {
         when {
-            r is Ergebnis.Success -> zustand.update { fertig(it, null) }
-            r is Ergebnis.Error && r.transient && stand != null -> zustand.update { fertig(it, stand) }
-            r is Ergebnis.Error -> {
+            r is Ergebnis.Erfolg -> zustand.update { fertig(it, null) }
+            r is Ergebnis.Fehler && r.transient && stand != null -> zustand.update { fertig(it, stand) }
+            r is Ergebnis.Fehler -> {
                 zustand.update { fehler(it, r) }
                 meldeFehler(r)
             }
@@ -106,7 +106,7 @@ internal class Listenfolge<S>(
 internal class Teile(
     private val scope: CoroutineScope,
     private val quelle: TeileQuelle,
-    meldeFehler: (Ergebnis.Error) -> Unit,
+    meldeFehler: (Ergebnis.Fehler) -> Unit,
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     suchPause: Long = 350,
@@ -143,7 +143,7 @@ internal class Teile(
 
     /** Kennzahlen sind Beiwerk: Ein Fehlschlag lässt die Liste stehen. */
     suspend fun ladeKennzahlen() {
-        (quelle.teileKennzahlen() as? Ergebnis.Success)
+        (quelle.teileKennzahlen() as? Ergebnis.Erfolg)
             ?.let { s -> _state.update { it.copy(partsStats = s.data) } }
     }
 
@@ -167,9 +167,9 @@ internal class Teile(
      */
     fun ladeFilter() {
         scope.launch {
-            (quelle.filterFarben() as? Ergebnis.Success)?.data
+            (quelle.filterFarben() as? Ergebnis.Erfolg)?.data
                 ?.let { d -> _state.update { it.copy(partsFilterColors = d) } }
-            (quelle.kategorien() as? Ergebnis.Success)?.data
+            (quelle.kategorien() as? Ergebnis.Erfolg)?.data
                 ?.let { d -> _state.update { it.copy(partsCategories = d) } }
         }
     }
@@ -177,7 +177,7 @@ internal class Teile(
     /** Farbauswahl im Erfassungsdialog; fehlt sie, tippt man die Farb-ID. */
     fun ladeFarben() {
         scope.launch {
-            (quelle.alleFarben() as? Ergebnis.Success)?.data
+            (quelle.alleFarben() as? Ergebnis.Erfolg)?.data
                 ?.let { d -> _state.update { it.copy(partsColors = d) } }
         }
     }
@@ -195,7 +195,7 @@ internal class Teile(
 /** Zustand der Figurenliste, gebaut wie [Teile]. */
 internal class Figuren(
     private val scope: CoroutineScope,
-    meldeFehler: (Ergebnis.Error) -> Unit,
+    meldeFehler: (Ergebnis.Fehler) -> Unit,
     suchPause: Long = 350,
     private val listen: FigurenLokal,
 ) {
@@ -204,7 +204,7 @@ internal class Figuren(
     private val folge = Listenfolge(scope, _zustand, meldeFehler, suchPause)
 
     suspend fun ladeKennzahlen() {
-        (listen.kennzahlen() as? Ergebnis.Success)
+        (listen.kennzahlen() as? Ergebnis.Erfolg)
             ?.let { r -> _zustand.update { it.copy(minifigStats = r.data) } }
     }
 

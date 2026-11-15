@@ -17,7 +17,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.ui.components.Unterseite
 
 /**
