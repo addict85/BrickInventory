@@ -317,21 +317,21 @@ export async function bildDurchreichen(d: BildDienste, req: Request, res: Respon
   // Auftrag 'bildbedarf' — gedrosselt und nur im Job-Prozess.
   const darfErzeugen = req.query.gen !== '0';
   const setNummer = setNummerAusBildAdresse(String(url || ''));
-  // images/sets gilt für alle Konten und hat keinen Deckel: Ablegen und vormerken nur für ein Set
-  // im Blickfeld des Kontos, sonst füllte ein Konto die Platte mit erfundenen Nummern.
-  const ablegen = !!setNummer && (await d.bilder.setNummerImBlickfeld(proxyUserId, setNummer));
-  const notiere = () => {
-    if (ablegen && setNummer) d.bilder.merkeGebraucht(String(url), setNummer);
-  };
   const thumbFile = cacheFile + '_thumb.jpg';
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
-  const setFehlt = ablegen && setNummer ? await setBildFehlt(d, setNummer, url) : false;
+  const setFehlt = setNummer ? await setBildFehlt(d, setNummer, url) : false;
+  // images/sets gilt für alle Konten und hat keinen Deckel: Ablegen und vormerken nur für ein Set
+  // im Blickfeld des Kontos, sonst füllte ein Konto die Platte mit erfundenen Nummern.
+  const ablegen = setFehlt && !!setNummer && (await d.bilder.setNummerImBlickfeld(proxyUserId, setNummer));
+  const notiere = () => {
+    if (ablegen && setNummer) d.bilder.merkeGebraucht(String(url), setNummer);
+  };
   // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
   // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
   // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
-  const originalFehlt = setFehlt && !(await liegtDa(cacheFile));
-  if (setFehlt && setNummer && !originalFehlt) await setBildAusCache(d, url, setNummer, cacheFile);
+  const originalFehlt = ablegen && !(await liegtDa(cacheFile));
+  if (ablegen && setNummer && !originalFehlt) await setBildAusCache(d, url, setNummer, cacheFile);
 
   // Liegt das Set-Bild samt Vorschau in images/sets, kommt es von dort statt aus
   // Cache oder CDN: Den Proxy-Cache räumt die Pflege nach 30 Tagen, images/sets nicht.
@@ -366,7 +366,7 @@ export async function bildDurchreichen(d: BildDienste, req: Request, res: Respon
 
   const r = await vomCdn(d, url, cacheKey, res, ersatz);
   if (!r) return;
-  const setZiel = setFehlt ? setNummer : null;
+  const setZiel = ablegen ? setNummer : null;
   return weiterreichen(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel });
 }
 

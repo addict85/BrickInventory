@@ -131,9 +131,10 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1'), ($2, '10002-1')`, [a, b]);
     // Eine neue Sicht über eine Kontotabelle, danach 0119 erneut (UPGRADE.md, Abschnitt 65) und 0120.
     await db.run(`CREATE VIEW ${name} AS SELECT user_id, set_number FROM sets`);
-    const mig = f => fs.readFileSync(path.join(ROOT, 'db', 'migrations', f), 'utf8');
-    await db.run(mig('0119-systemrolle-web.sql'));
-    await db.run(mig('0120-sichten-mit-rechten-der-abfragenden.sql'));
+    await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0119-systemrolle-web.sql'), 'utf8'));
+    await db.run(
+      fs.readFileSync(path.join(ROOT, 'db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql'), 'utf8'),
+    );
     const sichten = await db.all(
       `SELECT c.relname AS v, coalesce('security_invoker=true' = ANY (c.reloptions), false) AS invoker,
               has_table_privilege($1, c.oid, 'SELECT') AS web

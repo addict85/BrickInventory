@@ -146,7 +146,8 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
   await t.test('ein Schrägstrich am Ende ist eine andere Route', async () => {
     const falsch = [],
       schluessel = [];
-    for (const { m, url } of ROUTEN)
+    // `/api/v1/` steht so im Vertrag; `//` am Ende ist dort derselbe Pfad.
+    for (const { m, url } of ROUTEN.filter(r => !r.url.endsWith('/')))
       for (const anders of [url + '/', url + '//']) {
         const r = await rufe(m, anders);
         schluessel.push(r.schluessel);

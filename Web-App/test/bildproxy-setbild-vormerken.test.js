@@ -20,6 +20,8 @@ const path = require('node:path');
 // Ein Abruf beim CDN je Minute: Die Probe über der Drossel braucht so kein Netz.
 process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
+// Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
+require('./helpers/sources').ersetzeDienste('bilder', { setNummerImBlickfeld: async () => true });
 
 test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const express = require('express');
