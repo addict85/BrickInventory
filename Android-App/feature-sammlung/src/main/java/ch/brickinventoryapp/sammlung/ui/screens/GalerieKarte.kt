@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung.ui.screens
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.background

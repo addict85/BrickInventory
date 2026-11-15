@@ -74,8 +74,8 @@ import ch.brickinventoryapp.ui.components.LadeKreis
 import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.components.katalogName
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogSetCard
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.konto.ui.screens.EinstellungenZustand

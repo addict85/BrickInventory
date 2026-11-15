@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import ch.brickinventoryapp.vertrag.CsvImportStatus
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow

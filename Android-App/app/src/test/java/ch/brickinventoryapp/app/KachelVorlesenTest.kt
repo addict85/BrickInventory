@@ -8,9 +8,9 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogSetCard
 import ch.brickinventoryapp.teile.ui.screens.MinifigCard
 import ch.brickinventoryapp.teile.ui.screens.PartCard

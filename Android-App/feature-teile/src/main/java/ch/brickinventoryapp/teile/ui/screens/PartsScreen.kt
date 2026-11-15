@@ -10,7 +10,7 @@ import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*

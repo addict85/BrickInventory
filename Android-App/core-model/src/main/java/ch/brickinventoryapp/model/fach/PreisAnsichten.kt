@@ -1,7 +1,5 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Zustand
 
 // Marktpreise und ihr Verlauf je Zustand.
 

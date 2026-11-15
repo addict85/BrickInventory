@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.finanzen
 
-import ch.brickinventoryapp.model.ui.model.BewertungsKaufAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.BewertungsKaufAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
 import ch.brickinventoryapp.finanzen.ui.figurZeilen
 import ch.brickinventoryapp.finanzen.ui.teilZeilen
 import org.junit.Assert.assertEquals

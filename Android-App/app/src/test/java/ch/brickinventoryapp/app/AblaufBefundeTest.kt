@@ -54,10 +54,10 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeDialogZustand
 import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultDialog
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAlarmAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAlarmAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.katalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.konto.ui.screens.HaushaltRoute

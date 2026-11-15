@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.sammlung.ui.screens.SetCard

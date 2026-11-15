@@ -20,8 +20,8 @@ import ch.brickinventoryapp.model.fach.Registrierung
 import ch.brickinventoryapp.model.fach.Registrierungsstand
 import ch.brickinventoryapp.model.fach.ZweiterFaktorEinrichtung
 import ch.brickinventoryapp.model.fach.ZweiterFaktorStand
-import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
-import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
 import kotlinx.serialization.json.JsonObject
 
 /**

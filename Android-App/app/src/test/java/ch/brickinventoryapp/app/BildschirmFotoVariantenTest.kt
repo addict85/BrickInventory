@@ -85,9 +85,9 @@ import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.OfflineHinweis
-import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.AddSetDialog
 import ch.brickinventoryapp.sammlung.ui.screens.GalerieUndDetail
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen

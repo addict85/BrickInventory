@@ -3,9 +3,9 @@ package ch.brickinventoryapp.gemeinsam.ui
 import ch.brickinventoryapp.ui.components.WahlChip
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.selectableGroup
-import ch.brickinventoryapp.model.ui.model.kontoOptionen
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.kontoOptionen
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

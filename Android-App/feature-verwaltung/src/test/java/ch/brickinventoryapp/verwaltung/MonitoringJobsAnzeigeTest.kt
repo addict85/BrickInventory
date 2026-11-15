@@ -11,8 +11,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.model.ui.model.JobZustandAnsicht
-import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
+import ch.brickinventoryapp.model.fach.JobZustandAnsicht
+import ch.brickinventoryapp.model.fach.ZeitplanAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState

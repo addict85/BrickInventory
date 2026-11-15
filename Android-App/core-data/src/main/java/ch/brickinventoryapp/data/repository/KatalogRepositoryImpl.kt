@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogMetaAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogSeiteAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.KatalogMetaAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSeiteAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung

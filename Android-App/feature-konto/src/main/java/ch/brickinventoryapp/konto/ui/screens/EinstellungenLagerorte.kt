@@ -16,7 +16,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ui.components.ErfassenDialog
 import ch.brickinventoryapp.ui.components.Rueckfrage
-import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.ui.components.MitTooltip

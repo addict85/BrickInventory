@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,8 +18,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.model.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
 import ch.brickinventoryapp.ui.theme.Abstaende

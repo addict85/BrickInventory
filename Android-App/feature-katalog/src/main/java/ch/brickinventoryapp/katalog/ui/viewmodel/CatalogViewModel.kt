@@ -8,7 +8,7 @@ import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
@@ -30,7 +30,7 @@ import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

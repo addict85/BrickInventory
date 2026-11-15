@@ -1,6 +1,5 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Zustand
 
 // Teile und Minifiguren — aus Sets und manuell erfasst.
 

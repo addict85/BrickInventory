@@ -13,8 +13,8 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetPreisAnsicht
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sammlung.ui.SetDetailUiState

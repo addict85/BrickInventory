@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.model.fach.PdfAuftragsstand
 import ch.brickinventoryapp.model.fach.Teilelistenauftrag
-import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
 import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import ch.brickinventoryapp.vertrag.PdfAuftragSet
 import ch.brickinventoryapp.vertrag.PdfAuftragStand

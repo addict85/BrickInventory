@@ -10,12 +10,12 @@ import ch.brickinventoryapp.vertrag.ProtokollZeile
 import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.vertrag.elternkonten
 import ch.brickinventoryapp.vertrag.neuAngelegt
-import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
-import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
-import ch.brickinventoryapp.model.ui.model.GetrenntesKontoAnsicht
-import ch.brickinventoryapp.model.ui.model.HaushaltStatusAnsicht
-import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
-import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.fach.CsvErgebnisAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.GetrenntesKontoAnsicht
+import ch.brickinventoryapp.model.fach.HaushaltStatusAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
 
 /** Verwalterrecht wirkt nur mit vollem Token: Mit "app" antwortet der Server auf Verwalteradressen 403. */
 val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL

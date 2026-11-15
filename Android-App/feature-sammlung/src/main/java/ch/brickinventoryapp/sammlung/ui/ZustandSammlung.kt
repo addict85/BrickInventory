@@ -2,13 +2,13 @@ package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.KaufSummenAnsicht
-import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KaufSummenAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetPreisAnsicht
 
 /**
  * Galerie: Liste, Filter, Blätterstand und Kennzahlen. Eigener Fluss, weil sich

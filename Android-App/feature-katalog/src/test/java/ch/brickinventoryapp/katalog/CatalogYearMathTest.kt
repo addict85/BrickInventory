@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.katalog
 
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import ch.brickinventoryapp.katalog.ui.CatalogYearMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

@@ -20,7 +20,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.titel
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.konto.ui.CsvHochladenUiState
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
+import ch.brickinventoryapp.model.fach.CsvImportArt
 import ch.brickinventoryapp.konto.ui.viewmodel.CSV_MAX_BYTES
 
 /**

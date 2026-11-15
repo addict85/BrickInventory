@@ -21,7 +21,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
-import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.util.fmtTag

@@ -13,7 +13,7 @@ import ch.brickinventoryapp.data.Startziel
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.util.zahlenLocale
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.qualifiers.ApplicationContext

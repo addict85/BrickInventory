@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.dienste.alarm
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.ui.model.AlarmabrufAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.AlarmabrufAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
 import java.text.NumberFormat
 import java.util.Currency

@@ -12,7 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
 import ch.brickinventoryapp.model.util.fmtUhrzeit
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import android.text.format.DateFormat

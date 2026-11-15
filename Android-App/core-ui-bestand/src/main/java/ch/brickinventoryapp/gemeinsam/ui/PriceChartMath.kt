@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.model.util.fmtDatum
 

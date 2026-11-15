@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.teile
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
 import ch.brickinventoryapp.teile.ui.PartsUiState
 import ch.brickinventoryapp.teile.ui.sortiert
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel

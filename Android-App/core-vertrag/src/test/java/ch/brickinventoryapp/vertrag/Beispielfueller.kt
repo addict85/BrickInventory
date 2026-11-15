@@ -76,7 +76,7 @@ object Beispielfueller {
      * Getter ohne Gegenstück landen in [ohne]. Gibt die Zahl der verglichenen Felder.
      */
     fun vergleiche(dto: Any?, ansicht: Any?, pfad: String, ohne: MutableSet<String>): Int {
-        if (ansicht == null || dto == null || !ansicht.javaClass.name.startsWith("ch.brickinventoryapp.model.ui.model.")) {
+        if (ansicht == null || dto == null || !ansicht.javaClass.name.startsWith("ch.brickinventoryapp.model.fach.")) {
             assertEquals(pfad, dto, ansicht)
             return 1
         }

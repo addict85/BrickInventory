@@ -3,7 +3,7 @@ package ch.brickinventoryapp.gemeinsam
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
 import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

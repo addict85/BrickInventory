@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.SetErfasst
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal

@@ -11,8 +11,8 @@ import ch.brickinventoryapp.teile.ui.PartsUiState
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.gemeinsam.ui.AnsichtAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.FilterAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen

@@ -1,7 +1,5 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Laufstatus
-import ch.brickinventoryapp.model.fach.Waehrung
 
 // Konto, Haushalt, Server-Protokoll und CSV in den Einstellungen.
 

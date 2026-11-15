@@ -47,7 +47,7 @@ class BildschirmHoltDatenNichtSelbstTest {
     }
 
     /**
-     * Bildschirme sehen UI-Modelle (ui/model), keine Server-Modelle: Ein neues
+     * Bildschirme sehen Fachtypen (model.fach), keine Server-Modelle: Ein neues
      * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
      * auffallen, nicht in einem Composable. Ohne Ausnahme.
      * Gegenprobe: in GutscheineCard.kt wieder
@@ -59,7 +59,7 @@ class BildschirmHoltDatenNichtSelbstTest {
         assert(bildschirme.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
         val mitModell = bildschirme.filter { "brickinventoryapp.vertrag" in Quellen.ohneKommentare(it.readText()) }.map { it.name }
         assert(mitModell.isEmpty()) {
-            "Diese Bildschirme greifen auf das Wire-Format (vertrag) zu: $mitModell — UI-Modell aus ui/model nehmen, " +
+            "Diese Bildschirme greifen auf das Wire-Format (vertrag) zu: $mitModell — Fachtyp aus model.fach nehmen, " +
                 "die Abbildung gehört ins ViewModel."
         }
     }

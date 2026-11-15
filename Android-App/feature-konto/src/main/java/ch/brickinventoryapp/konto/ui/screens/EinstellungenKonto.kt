@@ -32,7 +32,7 @@ import ch.brickinventoryapp.model.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.DesignWahl
 import ch.brickinventoryapp.konto.ui.KontoUiState
-import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.components.SperrGrund
 import ch.brickinventoryapp.ui.components.WahlChips

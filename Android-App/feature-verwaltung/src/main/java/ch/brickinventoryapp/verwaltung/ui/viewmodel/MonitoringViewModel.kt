@@ -9,11 +9,11 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
-import ch.brickinventoryapp.model.ui.model.ApiGrenzenAnsicht
-import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.JobZustandAnsicht
-import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
+import ch.brickinventoryapp.model.fach.ApiGrenzenAnsicht
+import ch.brickinventoryapp.model.fach.BricksetEintragAnsicht
+import ch.brickinventoryapp.model.fach.CacheKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.JobZustandAnsicht
+import ch.brickinventoryapp.model.fach.ZeitplanAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.model.ui.model.HintergrundAnsicht
+import ch.brickinventoryapp.model.fach.HintergrundAnsicht
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.datenOderNull

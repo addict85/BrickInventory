@@ -29,7 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import androidx.compose.foundation.text.KeyboardActions
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.ui.util.NumericInput

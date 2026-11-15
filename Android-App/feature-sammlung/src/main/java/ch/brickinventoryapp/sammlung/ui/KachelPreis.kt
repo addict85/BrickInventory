@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui
 
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnZeileAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.GewinnZeileAnsicht
 import java.math.BigDecimal
 import java.math.RoundingMode
 

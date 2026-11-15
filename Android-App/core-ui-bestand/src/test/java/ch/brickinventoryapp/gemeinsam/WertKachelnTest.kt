@@ -22,7 +22,7 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
 import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.vertrag.PnlSetZeile
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import org.junit.Assert.assertEquals

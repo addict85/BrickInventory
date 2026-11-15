@@ -1,9 +1,5 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.KEINE_FARBE
 
 /** „Keine Farbe“ für die Oberfläche — derselbe Wert wie im Server-Modell, ein Name. */
 const val OHNE_FARBE: Int = KEINE_FARBE

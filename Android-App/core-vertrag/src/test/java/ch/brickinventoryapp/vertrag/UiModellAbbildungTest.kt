@@ -4,9 +4,9 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.model.ui.model.KontoAnsicht
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.CsvImportArt
+import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsDaten
 import org.junit.Assert.assertEquals
@@ -17,7 +17,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Die Abbildungen von Server-Modellen auf UI-Modelle (ui/model): Was die
+ * Die Abbildungen von Server-Modellen auf Fachtypen (model.fach): Was die
  * Oberfläche bekommt, ist schon aufbereitet — Anteile gerechnet, Richtung als
  * Wahrheitswert, die CSV-Art hin und zurück verlustfrei.
  *
@@ -96,7 +96,7 @@ class UiModellAbbildungTest {
     }
 
     /**
-     * Jede Abbildung `alsAnsicht()` in ui/model, gegen ein Server-Modell, in dem
+     * Jede Abbildung `alsAnsicht()` nach model.fach, gegen ein Server-Modell, in dem
      * jedes Feld einen eigenen Wert trägt: Jedes Feld der Ansicht mit gleichem
      * Namen kommt unverändert an, verschachtelte Ansichten und Listen ebenso.
      * Getter ohne Gegenstück stehen in [OHNE_GEGENSTUECK] und sind oben einzeln geprüft.

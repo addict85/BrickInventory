@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import org.junit.Assert.assertEquals

@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
-import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.WertverlaufAnsicht
+import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.fach.GewinnAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.fach.SetPreisAnsicht
+import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.WertverlaufAnsicht
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 /**

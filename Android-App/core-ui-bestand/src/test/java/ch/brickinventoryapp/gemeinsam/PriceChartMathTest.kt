@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.gemeinsam
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
+import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
+import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

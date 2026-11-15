@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
-import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
+import ch.brickinventoryapp.model.fach.DiagrammPunkt
 
 /**
  * Was TalkBack über das Wertdiagramm sagt: von wann bis wann, Anfangs- und

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.ui.util.NumericInput
 
 /**

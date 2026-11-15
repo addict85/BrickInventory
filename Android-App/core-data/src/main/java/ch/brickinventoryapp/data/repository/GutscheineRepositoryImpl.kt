@@ -5,8 +5,8 @@ import ch.brickinventoryapp.model.fach.Bestaetigung
 import ch.brickinventoryapp.model.fach.Guthabenauskunft
 import ch.brickinventoryapp.model.fach.Gutscheinangabe
 import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage

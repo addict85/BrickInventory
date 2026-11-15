@@ -58,7 +58,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   T  gegenproben/bereich-kennt-bereich.patch: feature-teile bindet feature-katalog ein →
  *      rot „feature-teile hängt an feature-katalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
- *      model.ui.model → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
+ *      model.fach → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
  *   S  gegenproben/ui-neuer-bildschirm.patch: eine neue Datei in core-ui/ui/screens →
  *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
@@ -204,15 +204,15 @@ class ModulgrenzenTest {
     }
 
     /**
-     * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer eine Ansicht
-     * (model.ui.model) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
-     * und gehört in den Bereich oder nach core-ui-bestand.
+     * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer einen Fachtyp
+     * (model.fach) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
+     * und gehört in den Bereich oder nach core-ui-bestand; nur Beträge und Währung formatiert es.
      */
     private fun pruefeUiOhneFachwissen() {
         val wurzel = File(projekt, "core-ui/src/main/java")
         val dateien = wurzel.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         assertTrue("Nur ${dateien.size} Dateien in core-ui — Pfad veraltet?", dateien.size >= 40)
-        val fach = Regex("""\bch\.brickinventoryapp\.model\.(data|ui\.model)\b""")
+        val fach = Regex("""\bch\.brickinventoryapp\.model\.(data|fach\.(?!(Waehrung|Geld)\b))""")
         val funde = dateien.filter { fach.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.relativeTo(wurzel).path }
         assertTrue("core-ui kennt Fachmodelle: $funde", funde.isEmpty())
         // Die Kamera-Bausteine heissen noch ui.screens; neue Bildschirme oder Bausteine kommen nicht dorthin.

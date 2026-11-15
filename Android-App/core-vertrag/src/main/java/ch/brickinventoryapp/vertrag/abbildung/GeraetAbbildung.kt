@@ -2,7 +2,7 @@ package ch.brickinventoryapp.vertrag.abbildung
 
 import ch.brickinventoryapp.vertrag.AppToken
 import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
-import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
 
 fun AppToken.alsGeraet(): GeraetAnsicht = GeraetAnsicht(
     tokenId = tokenId,

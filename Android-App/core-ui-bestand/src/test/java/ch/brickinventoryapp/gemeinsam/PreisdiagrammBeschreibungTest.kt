@@ -8,9 +8,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
+import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
+import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

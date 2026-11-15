@@ -6,8 +6,8 @@ import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.model.fach.Erfasst
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.TeilBestand
-import ch.brickinventoryapp.model.ui.model.Teilschluessel
+import ch.brickinventoryapp.model.fach.TeilBestand
+import ch.brickinventoryapp.model.fach.Teilschluessel
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.SpeicherAusgang
 import ch.brickinventoryapp.offline.SpeicherBestand

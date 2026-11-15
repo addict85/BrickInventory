@@ -8,7 +8,7 @@ import ch.brickinventoryapp.vertrag.CatalogSetItem
 import ch.brickinventoryapp.vertrag.CatalogSetsResponse
 import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
 import ch.brickinventoryapp.vertrag.JahrAnzahl
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.fach.Alarmrichtung

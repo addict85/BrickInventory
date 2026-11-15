@@ -7,13 +7,13 @@ import ch.brickinventoryapp.vertrag.JobSchedule
 import ch.brickinventoryapp.vertrag.JobStatus
 import ch.brickinventoryapp.vertrag.RateLimit
 import ch.brickinventoryapp.vertrag.RateLimits
-import ch.brickinventoryapp.model.ui.model.ApiGrenzenAnsicht
-import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.JobZustandAnsicht
-import ch.brickinventoryapp.model.ui.model.KontingentAnsicht
-import ch.brickinventoryapp.model.ui.model.KontingenteAnsicht
-import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
+import ch.brickinventoryapp.model.fach.ApiGrenzenAnsicht
+import ch.brickinventoryapp.model.fach.BricksetEintragAnsicht
+import ch.brickinventoryapp.model.fach.CacheKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.JobZustandAnsicht
+import ch.brickinventoryapp.model.fach.KontingentAnsicht
+import ch.brickinventoryapp.model.fach.KontingenteAnsicht
+import ch.brickinventoryapp.model.fach.ZeitplanAnsicht
 
 fun JobStatus.alsAnsicht() = JobZustandAnsicht(
     label = label,

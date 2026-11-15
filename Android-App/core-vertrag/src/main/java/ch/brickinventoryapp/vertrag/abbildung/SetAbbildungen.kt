@@ -5,11 +5,11 @@ import ch.brickinventoryapp.vertrag.Instruction
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.MerkpostenAlarm
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.model.ui.model.AnleitungAnsicht
-import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAlarmAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.AnleitungAnsicht
+import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAlarmAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 
 fun SetItem.alsAnsicht() = SetAnsicht(
     setNumber = setNumber,

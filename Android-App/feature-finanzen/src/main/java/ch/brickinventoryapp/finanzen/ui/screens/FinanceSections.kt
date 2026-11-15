@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
 import ch.brickinventoryapp.finanzen.ui.FinanzZeile
-import ch.brickinventoryapp.model.ui.model.BewertungSetAnsicht
+import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ui.components.AuswahlChip
 
@@ -12,10 +12,10 @@ import ch.brickinventoryapp.ui.components.AuswahlChip
  * eintragen.
  */
 
-import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.fach.GewinnAnsicht
+import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.lazy.LazyListScope
 import coil3.ImageLoader
@@ -50,7 +50,7 @@ import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
 import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
 import ch.brickinventoryapp.gemeinsam.ui.FinanzBild

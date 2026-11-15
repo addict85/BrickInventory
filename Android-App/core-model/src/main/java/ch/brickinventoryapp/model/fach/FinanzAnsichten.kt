@@ -1,7 +1,5 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Zustand
 
 // Bewertung, Gewinn und Kennzahlen; Beträge kommen fertig vom Server.
 

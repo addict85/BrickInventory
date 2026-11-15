@@ -13,19 +13,19 @@ import ch.brickinventoryapp.vertrag.ValuationAcquisition
 import ch.brickinventoryapp.vertrag.VerwendendesSet
 import ch.brickinventoryapp.vertrag.VerwendendeSetsResponse
 import ch.brickinventoryapp.vertrag.VorratsOrt
-import ch.brickinventoryapp.model.ui.model.VerwendungAnsicht
-import ch.brickinventoryapp.model.ui.model.VorratsOrtAnsicht
-import ch.brickinventoryapp.model.ui.model.BestandteilKopfAnsicht
-import ch.brickinventoryapp.model.ui.model.BewertungsKaufAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.VerwendendesSetAnsicht
+import ch.brickinventoryapp.model.fach.VerwendungAnsicht
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
+import ch.brickinventoryapp.model.fach.BestandteilKopfAnsicht
+import ch.brickinventoryapp.model.fach.BewertungsKaufAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.VerwendendesSetAnsicht
 
 fun Part.alsAnsicht() = TeilAnsicht(
     partNumber = partNumber,

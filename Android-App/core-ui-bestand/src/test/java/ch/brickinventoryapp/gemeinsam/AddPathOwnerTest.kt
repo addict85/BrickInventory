@@ -2,7 +2,7 @@ package ch.brickinventoryapp.gemeinsam
 
 import ch.brickinventoryapp.model.fach.Zustand
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen

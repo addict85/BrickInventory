@@ -6,12 +6,12 @@ import ch.brickinventoryapp.vertrag.HouseholdMember
 import ch.brickinventoryapp.vertrag.KontoName
 import ch.brickinventoryapp.vertrag.Lagerort
 import ch.brickinventoryapp.vertrag.LagerortEintrag
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.KaufSummenAnsicht
-import ch.brickinventoryapp.model.ui.model.KontoAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KaufSummenAnsicht
+import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 
 fun HouseholdMember.alsAnsicht() = MitgliedAnsicht(
     id = id,

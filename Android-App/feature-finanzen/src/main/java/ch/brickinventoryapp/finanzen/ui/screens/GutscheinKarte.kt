@@ -23,14 +23,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.finanzen.ui.inVierergruppen
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**

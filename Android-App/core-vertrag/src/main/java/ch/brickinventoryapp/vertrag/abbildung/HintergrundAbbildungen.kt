@@ -2,10 +2,10 @@ package ch.brickinventoryapp.vertrag.abbildung
 
 import ch.brickinventoryapp.vertrag.Auftrag
 import ch.brickinventoryapp.vertrag.AuftraegeResponse
-import ch.brickinventoryapp.model.ui.model.AuftragAnsicht
-import ch.brickinventoryapp.model.ui.model.AuftragStatus
-import ch.brickinventoryapp.model.ui.model.AuftragsPauseAnsicht
-import ch.brickinventoryapp.model.ui.model.HintergrundAnsicht
+import ch.brickinventoryapp.model.fach.AuftragAnsicht
+import ch.brickinventoryapp.model.fach.AuftragStatus
+import ch.brickinventoryapp.model.fach.AuftragsPauseAnsicht
+import ch.brickinventoryapp.model.fach.HintergrundAnsicht
 
 fun Auftrag.alsAnsicht() = AuftragAnsicht(
     id = id, art = art, status = AuftragStatus.aus(status),

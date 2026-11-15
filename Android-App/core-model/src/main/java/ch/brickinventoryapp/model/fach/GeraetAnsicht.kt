@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
 /**
  * Ein angemeldetes Gerät, wie die Geräteliste es zeigt. Die Frist ist schon

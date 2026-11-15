@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
 
 // Was das Gutschein-Repository nimmt und liefert, in Fachwerten statt Wire-Typen.
 

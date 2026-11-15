@@ -4,10 +4,10 @@ import ch.brickinventoryapp.vertrag.CatalogSetDetail
 import ch.brickinventoryapp.vertrag.CatalogSetItem
 import ch.brickinventoryapp.vertrag.CatalogTheme
 import ch.brickinventoryapp.vertrag.JahrAnzahl
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogThemaAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.KatalogThemaAnsicht
 
 fun CatalogSetItem.alsAnsicht() = KatalogSetAnsicht(
     setNumber = setNumber,
