@@ -19974,6 +19974,9 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -22608,6 +22611,9 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -24705,6 +24711,9 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           },
           "wartet": {
             "type": "boolean"
