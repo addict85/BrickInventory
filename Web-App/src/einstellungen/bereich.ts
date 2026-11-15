@@ -15,7 +15,6 @@ export function erzeugeEinstellungen(
     { ...a, faecher: new Faecher() },
     zugang,
     (k: EinstellungenKontext) => ({
-      schreibeNutzerEinstellung: mit(k)(settings.schreibeNutzerEinstellung),
       nutzerStandardZustand: mit(k)(settings.nutzerStandardZustand),
       globalerStandardZustand: mit(k)(settings.globalerStandardZustand),
       setGlobalSetting: mit(k)(settings.setGlobalSetting),

@@ -131,7 +131,6 @@ function konten(k: KontoKontext) {
 function verwaltung(k: KontoKontext) {
   return {
     registrierungFreischalten: mit(k)(verwalterAktionen.registrierungFreischalten),
-    zweitenFaktorEntfernen: mit(k)(verwalterAktionen.zweitenFaktorEntfernen),
     aktivSetzen: mit(k)(verwalterAktionen.aktivSetzen),
     verwalterRolleSetzen: mit(k)(verwalterAktionen.verwalterRolleSetzen),
     passwortDurchVerwalter: mit(k)(verwalterAktionen.passwortDurchVerwalter),

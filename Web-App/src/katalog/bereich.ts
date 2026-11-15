@@ -44,9 +44,6 @@ function bildDienste(k: KatalogKontext) {
     setBilderNachladen: mit(k)(bildlageDienst.setBilderNachladen),
     vorschaubilderNachtragen: mit(k)(bildlageDienst.vorschaubilderNachtragen),
     setBildLokalEintragen: mit(k)(bildlageDienst.setBildLokalEintragen),
-    bilderFuerNachlauf: mit(k)(bildlageDienst.bilderFuerNachlauf),
-    bilderAusKatalog: <T extends bildlageDienst.Bildposten>(posten: T[], istFigur: (p: T) => boolean) =>
-      bildlageDienst.bilderAusKatalog(k, posten, istFigur),
   };
 }
 

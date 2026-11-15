@@ -48,7 +48,6 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     klienten,
     drossel,
     ...kontingent,
-    rebrickableDailyStatus: mit(k)(rateLimiter.rebrickableDailyStatus),
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
   };
   // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt
