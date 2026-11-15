@@ -551,6 +551,7 @@
     th[aria-sort="descending"] .sort-knopf::after{content:" ▼";font-size:.8em}
     .fin-suche-zeile{display:flex;margin:0 0 .75rem}
     .fin-suche-zeile .suchfeld{flex:1 1 16rem;max-width:28rem}
+    .fin-suche-zeile .suchfeld:disabled{opacity:.5;cursor:not-allowed}
     /* Eigene Regel statt Inline-Stil: 23 px hoch lag der Knopf unter der Mindestgrösse für Tippziele. */
     .prog-minimieren{position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400;min-width:32px;min-height:28px}
     .zf-qr{background:#fff;padding:8px;align-self:center;border-radius:8px;line-height:0}
@@ -1615,6 +1616,12 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
   .einst-link{min-height:44px;border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
   #global-settings-grid > .einst-nav .einst-link[aria-current="page"]{border-bottom-color:var(--b600)}
 }
+
+/* Konto: dieselben Reiter als Sprungleiste über allen Abschnitten; am Telefon eine rollende Reihe. */
+.konto-nav{gap:0;border-bottom:1px solid var(--bdr);margin-bottom:1rem}
+.konto-nav .einst-link{border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
+#tab-profil [tabindex="-1"]{scroll-margin-top:72px}
+@media(max-width:700px){.konto-nav{flex-wrap:nowrap;overflow-x:auto}.konto-nav .einst-link{flex:none}}
 
 /* Einrichtung: ein Dienst je Schritt, die Knöpfe in einer festen Fussleiste (M8). */
 .ew-titel{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:var(--fs-4);font-weight:700;margin:0 0 .5rem}

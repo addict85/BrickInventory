@@ -112,8 +112,7 @@
     const mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
     if (nav.dataset.mehr !== mehr) nav.dataset.mehr = mehr;
   }
-  const einstNav = /** @type {HTMLElement | null} */ (document.querySelector('.einst-nav'));
-  if (einstNav) {
+  for (const einstNav of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.einst-nav'))) {
     einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
     if (typeof ResizeObserver === 'function')
       new ResizeObserver(() => requestAnimationFrame(() => randHinweis(einstNav))).observe(einstNav);

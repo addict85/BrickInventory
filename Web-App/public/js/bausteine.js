@@ -112,7 +112,7 @@ export function fehlerZustand(o) {
  * @param {HTMLElement|null} ziel
  * @template D
  * @param {D} d          Antwort von api() — null zählt als Fehler
- * @param {{ erneut: string, arg?: string, behalten?: boolean }} o
+ * @param {{ erneut: string, arg?: string, behalten?: boolean, titel?: string }} o
  * @returns {d is Extract<D, { success: false }>} true, wenn es ein Fehler war und der Aufrufer aufhören soll
  */
 export function listeLadefehler(ziel, d, o) {
@@ -138,7 +138,7 @@ export function listeLadefehler(ziel, d, o) {
       { text: tRaw('liste.erneut'), fn: nochmal },
       gedrosselt ? undefined : [grund, details].filter(Boolean).join(' — '),
     );
-  else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg }));
+  else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg, titel: o.titel }));
   return true;
 }
 

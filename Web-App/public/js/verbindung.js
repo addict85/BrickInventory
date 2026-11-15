@@ -207,6 +207,7 @@ export const LESENDE_AKTIONEN = new Set([
   'gutscheinPdfOeffnen',
   'gutscheinPinUmschalten',
   'hideProgress',
+  'kontoSprung',
   'ladeGutscheine',
   'ladeMerkliste',
   'ladePasskeys',

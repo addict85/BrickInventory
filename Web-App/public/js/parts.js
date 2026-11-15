@@ -628,7 +628,8 @@ export function renderManualParts() {
         : '';
       // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
-      const priceStr = partPrice != null ? fmtN(partPrice, CURRENCY) : '—';
+      // Stückpreis wie in den Finanzen mit „je“; neben „×{n}“ läse sich der blanke Betrag als Summe.
+      const priceStr = partPrice != null ? esc(tRaw('finance.je', { preis: fmtN(partPrice, CURRENCY) })) : '—';
       const condBadge = condBadges(p);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">
