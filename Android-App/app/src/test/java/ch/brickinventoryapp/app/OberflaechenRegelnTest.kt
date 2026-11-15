@@ -119,7 +119,7 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-segmente  Zustandsfilter der Merkliste wieder als Segmente → rot „Merkliste filtert …“
- *   umschalter-chips-bei-200        Sets | Teile | Minifiguren wieder über SegmentWahl (Chips ab 130 %)
+ *   umschalter-chips-bei-200        Sets | Teile | Minifiguren ab 130 % als Chipreihe statt Segmente
  *                                   → rot „der Sammlungs-Umschalter zeigt bei 200 Prozent …“ (Abstand)
  *   umschalter-zeile-bei-200        Segmente auch bei 200 % in einer Zeile → rot „der Sammlungs-Umschalter
  *                                   zeigt bei 200 Prozent …“ („Minifiguren … abgeschnitten“)
