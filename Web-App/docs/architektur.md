@@ -216,8 +216,9 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
 
 ## Rangfolge der Bereiche
 
-Ein Bereich importiert nur Bereiche tieferer Stufen; Bereiche derselben Stufe
-kennen einander nicht. Von unten nach oben:
+Ein Bereich importiert nur Bereiche tieferer Stufen, auch mit `import type`;
+Bereiche derselben Stufe kennen einander nicht. Die Kanten löst der Übersetzer
+auf (`tsc --explainFiles`). Von unten nach oben:
 
 | Stufe | Bereiche |
 |---|---|
@@ -239,9 +240,10 @@ kennen einander nicht. Von unten nach oben:
 | 16 | `src/sets` |
 | 17 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
 | 18 | `src/sammlung`, `src/verwaltung` |
-| 19 | `jobs`, `routes` |
-| 20 | `startup` |
-| 21 | `server.ts` |
+| 19 | `src/dienste.ts` |
+| 20 | `jobs`, `routes` |
+| 21 | `startup` |
+| 22 | `server.ts` |
 
 ## Schema
 
