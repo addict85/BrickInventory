@@ -17,7 +17,7 @@ export function stelleTicketAus(k: GutscheineKontext, uid: number, ziel: string)
   return ticket;
 }
 
-export function loeseTicketEin(k: GutscheineKontext, roh: unknown, uid: number, ziel: string): boolean {
+export function loeseTicketEin(k: GutscheineKontext, roh: string | undefined, uid: number, ziel: string): boolean {
   if (typeof roh !== 'string' || !roh) return false;
   const tickets = ticketsVon(k);
   const h = hash(roh),

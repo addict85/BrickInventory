@@ -1,7 +1,6 @@
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
-/** Schreibwege auf Sets und ihre Käufe: Die Zeilen gehören dem Bestand (docs/architektur.md),
- * src/sets ruft sie über t.bestand.setZeilen. */
+/** Sets und ihre Käufe gehören dem Bestand; src/sets schreibt über t.bestand.setZeilen. */
 
 export function loescheSetErfassungNachId(dbh: DbSchnittstelle, id: number) {
   return dbh.run('DELETE FROM set_acquisitions WHERE id=$1', [id]);

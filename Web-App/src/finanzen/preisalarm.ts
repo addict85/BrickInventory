@@ -32,14 +32,21 @@ function alsAlarm<Z extends repo.AlarmZeile>(z: Z): Omit<Z, 'richtung' | 'zuletz
   return { ...z, richtung: z.richtung as Richtung, zuletzt_am: z.zuletzt_am?.toISOString() ?? null };
 }
 
-function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown) {
+/** Der Vertrag prüft die Form, die CSV-Datei nur Text: Die Regeln gelten für beide. */
+export interface AlarmEingabe {
+  richtung: string;
+  schwelle: number | string | null | undefined;
+  condition?: string | undefined;
+}
+
+function pruefeEingabe(richtung: string, schwelle: AlarmEingabe['schwelle'], condition: string | undefined) {
   const r = String(richtung ?? '');
   if (r !== 'unter' && r !== 'ueber') fachfehler('ungueltig', 'alarm_richtung_ungueltig');
   const s = Number(schwelle);
   // Number.isFinite fängt auch NaN aus einer leeren Eingabe; `> 0` allein
   // meldete zwei verschiedene Fehler gleich.
   if (!Number.isFinite(s) || s <= 0) fachfehler('ungueltig', 'alarm_schwelle_ungueltig');
-  const c = String(condition ?? 'N').toUpperCase();
+  const c = (condition ?? 'N').toUpperCase();
   if (!ZUSTAENDE.has(c)) fachfehler('ungueltig', 'alarm_zustand_ungueltig');
   return { richtung: r as Richtung, schwelle: s, condition: c };
 }
@@ -50,7 +57,7 @@ export async function setzeAlarm(
   userId: number,
   setNumber: string,
   waehrung: string,
-  eingabe: { richtung?: unknown; schwelle?: unknown; condition?: unknown },
+  eingabe: AlarmEingabe,
 ): Promise<Preisalarm> {
   const { richtung, schwelle, condition } = pruefeEingabe(eingabe.richtung, eingabe.schwelle, eingabe.condition);
   await repo.schreibeAlarm(k.db, userId, setNumber, condition, richtung, schwelle, waehrung);
@@ -102,7 +109,7 @@ export async function alleAlarme(k: FinanzenKontext, userId: number): Promise<Al
 }
 
 /** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server. */
-export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: unknown) {
+export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: Date | string | null | undefined) {
   // Die Zeit der Datenbank: Postgres speichert Mikro-, JavaScript nur
   // Millisekunden; mit der JS-Uhr käme eine Meldung zweimal.
   const jetztRow = await repo.datenbankJetzt(k.db);

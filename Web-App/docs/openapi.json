@@ -12896,18 +12896,14 @@
                 "properties": {
                   "number": {
                     "type": "string",
-                    "maxLength": 40
+                    "pattern": "^[0-9 -]{4,40}$"
                   },
                   "pin": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\s*([0-9]{3,10})?\\s*$"
                   },
                   "amount": {
                     "type": "number",
@@ -12916,15 +12912,11 @@
                     "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "currency": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^([A-Za-z]{3})?$"
                   }
                 },
                 "required": [
@@ -12983,18 +12975,14 @@
                 "properties": {
                   "number": {
                     "type": "string",
-                    "maxLength": 40
+                    "pattern": "^([0-9 -]{4,40}|…[0-9]{4})$"
                   },
                   "pin": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(\\s*([0-9]{3,10})?\\s*|•••)$"
                   },
                   "amount": {
                     "type": "number",
@@ -13003,15 +12991,11 @@
                     "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "currency": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 40
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^([A-Za-z]{3})?$"
                   }
                 },
                 "additionalProperties": false
@@ -13592,11 +13576,14 @@
                   },
                   "number": {
                     "type": "string",
-                    "maxLength": 40
+                    "pattern": "^[0-9 -]{4,40}$"
                   },
                   "pin": {
-                    "type": "string",
-                    "maxLength": 40
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\s*([0-9]{3,10})?\\s*$"
                   },
                   "amount": {
                     "type": "number",
@@ -13605,8 +13592,11 @@
                     "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
                   },
                   "currency": {
-                    "type": "string",
-                    "maxLength": 40
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^([A-Za-z]{3})?$"
                   }
                 },
                 "additionalProperties": false

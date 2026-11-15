@@ -162,7 +162,12 @@ export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
 }
 
 /** Der offene geplante Auftrag bekommt sofort den neuen Termin. */
-export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, time: unknown, minutes: unknown) {
+export async function jobZeitplanSetzen(
+  k: VerwaltungKontext,
+  name: string,
+  time: string | null | undefined,
+  minutes: number | string | null | undefined,
+) {
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
