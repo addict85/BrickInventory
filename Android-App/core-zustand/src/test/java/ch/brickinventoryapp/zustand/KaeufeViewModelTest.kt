@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.zustand
 
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.testing.testFigurenRepository
@@ -50,6 +53,8 @@ import ch.brickinventoryapp.testing.text
  *   H  in loadManualPriceHistory() immer getPartPriceHistory
  *      (gegenproben/kaeufe-verlauf-nur-teile.patch) → rot „der Preisverlauf kommt für
  *      Teile und Figuren …“ (Figur ohne Verlauf; nur in der CI messbar)
+ *   kaeufe-laden-nicht-beim-zeigen  (gegenproben/) kaeufeVon ohne Abruf beim ersten Beobachter
+ *      → rot „die Kaeufe eines Eintrags laden, sobald …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KaeufeViewModelTest {
@@ -95,6 +100,19 @@ class KaeufeViewModelTest {
         val kachel = runBlocking { t.sets().beobachteSets().first().liste.single() }
         assertEquals("die Kachel der Galerie liest die Zusammenfassung", 1, kachel.usedCount)
         assertTrue("ohne den ganzen Bestand neu zu holen", pfade.anfragenAn("GET /api/v1/sets?").isEmpty())
+    }
+
+    @Test
+    fun `die Kaeufe eines Eintrags laden, sobald seine Seite sie zeigt`() {
+        val vm = vm()
+        val zustand = vm.kaeufeVon(Postenart.PART, "3001", 5)
+        assertTrue("ohne Beobachter kein Abruf", pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").isEmpty())
+        val seite = CoroutineScope(Dispatchers.Main).launch { zustand.collect {} }
+        assertEquals(listOf(9), zustand.value.acquisitions.map { it.id })
+        seite.cancel()
+        val set = CoroutineScope(Dispatchers.Main).launch { vm.kaeufeVon(Postenart.SET, "75192-1", 0).collect {} }
+        assertTrue("ein Set fragt seine Käufe", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").isNotEmpty())
+        set.cancel()
     }
 
     @Test
