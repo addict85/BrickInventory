@@ -3,8 +3,8 @@
 // Sitzungsende nur als Ereignis; reagiert wird hier.
 import { registerActions } from './registry.js';
 import { html } from './escapen.js';
-import { abonniere } from './ereignisse.js';
-import { resetScopeModes } from './scope.js';
+import { abonniere, melde } from './ereignisse.js';
+import { resetScopeModes } from './kontofilter.js';
 import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';
 import { api, apiRoh, leereZwischenspeicher } from './api.js';
 import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
@@ -18,7 +18,6 @@ import {
   setzeKontoWaehrung,
   angemeldetesKonto,
 } from './zustand.js';
-import { loadGallery, loadStats } from './gallery.js';
 import { routeBeimStart } from './router.js';
 import { plInit, resetPartsList, plRenderSets } from './init.js';
 import { bindGlobalErrorHandlers } from './fehlerfang.js';
@@ -26,7 +25,7 @@ import { frageSitzung, sitzungUngeklaert, startgeruestWeg, waitForStartup, zeige
 import { gibCheckOnLoad, gibZuruecksetzen } from './fortschritt.js';
 import { pruefeEinrichtung } from './einrichtung.js';
 import { einrichtungKnopfPruefen } from './einrichtung-stand.js';
-import { initScrollbalken } from './scrollbar.js';
+import { initScrollbalken } from './rollbalken.js';
 import { bindTabs, seitennameAktualisieren } from './navigation.js';
 import { loadHouseholdMembers } from './konten-orte.js';
 import { mitZweitemFaktor } from './rueckfrage.js';
@@ -588,8 +587,7 @@ function showApp() {
     .catch(() => {})
     .finally(() => {
       if (angemeldetesKonto?.isAdmin) rbHinweisZeigen();
-      loadGallery();
-      loadStats();
+      melde('sammlungLaden');
     });
   // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
   // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.

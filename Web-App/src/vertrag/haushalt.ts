@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT_ODER_LEER } from './grund';
 import { DEGRADIERT, GenericResponse } from './gemeinsam';
 
+export const HaushaltBeigetreten = GenericResponse.extend({ linked_to: KontoName });
+
+export const HaushaltGeloest = GenericResponse.extend({ removed: z.number().int() });
+
 export const GetrenntesKonto = z.looseObject({
   id: z.number().int(),
   username: z.string(),
@@ -12,7 +16,6 @@ export const HouseholdInviteResponse = z.looseObject({
   success: z.boolean(),
   code: z.string().nullable(),
   expires_in: z.number().int().nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const HouseholdInviteCheckResponse = z.looseObject({
@@ -43,7 +46,6 @@ export const HouseholdStatusResponse = z.looseObject({
   sub_accounts: z.array(HouseholdMember),
   open_invites: z.number().int(),
   former_links: z.array(GetrenntesKonto),
-  error: z.string().nullable().optional(),
   degradiert: DEGRADIERT,
 });
 
@@ -56,7 +58,7 @@ export const routen = {
     eingabe: z.strictObject({ code: TEXT_ODER_LEER(64) }),
   },
   'POST /api/v1/settings/household/redeem': {
-    antwort: GenericResponse,
+    antwort: HaushaltBeigetreten,
     ...bestaetigt({ code: TEXT_ODER_LEER(64) }, 'password', 'faktor_code'),
   },
   'POST /api/v1/settings/household/unlink': {
@@ -64,10 +66,10 @@ export const routen = {
       sub_user_id: KENNUNG.nullable().optional(),
       main_user_id: KENNUNG.nullable().optional(),
     }),
-    antwort: GenericResponse,
+    antwort: HaushaltGeloest,
   },
   'POST /api/v1/settings/household/former/dismiss': {
     eingabe: z.strictObject({ sub_user_id: KENNUNG }),
-    antwort: GenericResponse,
+    antwort: HaushaltGeloest,
   },
 } satisfies Record<string, Route>;

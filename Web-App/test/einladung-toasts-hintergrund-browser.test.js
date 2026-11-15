@@ -14,7 +14,7 @@
  *      Änderung: Titel und neue Adresse“
  *   D  verwirfToasts wieder „alle mit Knopf bleiben“ → rot: „Toast der Ansicht
  *      schliesst beim Wechsel“
- *   E  Entf-Zweig in actions.js entfernt → rot: „Lösch-Kreuz: Entf auf der Karte“
+ *   E  Entf-Zweig in aktionen.js entfernt → rot: „Lösch-Kreuz: Entf auf der Karte“
  *   F  preisZeile wieder mit Geschenk im Preiskasten → rot: „Geschenk als Plakette“
  *   G  jobIconSvg ohne imgDl und pdfJobs → rot: „Hintergrundarbeiten: jeder Dienst
  *      mit Symbol“
@@ -40,7 +40,7 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
 const CODE = /^[2-9A-HJKMNP-Z]{4}(-[2-9A-HJKMNP-Z]{4}){3}$/;
 
-test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async t => {
+test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }, async t => {
   const NAME = `r13_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r13x_${process.pid}`;

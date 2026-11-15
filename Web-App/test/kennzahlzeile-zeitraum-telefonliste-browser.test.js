@@ -29,7 +29,10 @@ async function groesse(b, breite, hoehe, telefon) {
   });
 }
 
-test('UX-Prüfung 28 im Browser', { concurrency: 1, timeout: 420_000 }, async t => {
+test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
+  concurrency: 1,
+  timeout: 420_000,
+}, async t => {
   const app = await starteApp(t, { name: `r28_${process.pid}`, bestand: musterHaushalt });
   if (app.grund) {
     t.skip(app.grund);

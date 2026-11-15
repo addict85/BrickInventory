@@ -1,6 +1,6 @@
 /** Preise, die eine Bewertung im Cache nicht fand (src/finanzen/rechnung/bewertung.ts):
  * hier im Job-Prozess geholt, mit Kontingent und Abbruch, nicht in der Anfrage. */
-import { fetchPrice, fetchPartPrice, fetchMinifigPrice } from './rechnung/preise';
+import { holePreis, fetchPartPrice, fetchMinifigPrice } from './rechnung/preise';
 import { schaetzeFigurenpreis } from './marketPrice';
 import { pruefeAbbruch, AuftragVerschieben, type AuftragsKontext, type Nutzlast } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';
@@ -9,7 +9,7 @@ import type { FinanzenKontext } from './kontext';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
 
 async function holeEinen(k: FinanzenKontext, p: Posten, uid: number, waehrung: string, ttl: string): Promise<void> {
-  if (p.art === 'set') await fetchPrice(k, p.nummer, p.zustand, 'sold', waehrung, ttl);
+  if (p.art === 'set') await holePreis(k, p.nummer, p.zustand, 'sold', waehrung, ttl);
   else if (p.art === 'teil') await fetchPartPrice(k, p.nummer, p.farbe, p.zustand, waehrung, ttl);
   else if (p.art === 'figur') await fetchMinifigPrice(k, p.nummer, p.zustand, waehrung, ttl);
   else await schaetzeFigurenpreis(k, p.nummer, uid, p.zustand);

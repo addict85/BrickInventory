@@ -25,11 +25,7 @@ export interface GespeicherteListe {
 }
 
 /** null: keine Liste oder älter als [hoechstensTage]; dann nimmt der Server keinen Schlüssel an. */
-export function geltendeListe(
-  wert: string | null,
-  hoechstensTage: number,
-  jetzt = new Date(),
-): ReadonlySet<string> | null {
+export function geltendeListe(wert: string | null, hoechstensTage: number, jetzt: Date): ReadonlySet<string> | null {
   if (!wert) return null;
   let l: GespeicherteListe;
   try {

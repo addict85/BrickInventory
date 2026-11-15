@@ -37,7 +37,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Seitengrösse der Galerie, wie in der Webapp (public/js/gallery.js): Zwei
+ * Seitengrösse der Galerie, wie in der Webapp (public/js/sammlung.js): Zwei
  * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
  */
 internal const val GALLERY_PAGE_SIZE = 60

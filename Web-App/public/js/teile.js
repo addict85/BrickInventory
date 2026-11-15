@@ -1,6 +1,6 @@
 // Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
-import { abonniere } from './ereignisse.js';
+import { abonniere, melde } from './ereignisse.js';
 import {
   ladeAnzeige,
   skelettKacheln,
@@ -30,13 +30,12 @@ import {
 } from './dom.js';
 import { fmtBig, fmtN } from './format.js';
 import { toast } from './meldungen.js';
-import { addScopeParam, addLagerParam, scopeQuery } from './scope.js';
+import { addScopeParam, addLagerParam, scopeQuery } from './kontofilter.js';
 import { galerieSets, kontoWaehrung } from './zustand.js';
 import { confirmDelete } from './rueckfrage.js';
 import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { loadFinance } from './finance.js';
-/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_sets_setNumber_parts_list['parts'][number]} TeilZeile */
+/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_parts['parts'][number]} TeilZeile */
 
 // ── PARTS ─────────────────────────────────────────────
 /** @type {import('../../frontend-typen/vertrag').PartsFilterColor[]} */
@@ -438,7 +437,7 @@ function ersatzteilPlakette(p) {
 /** @param {TeilZeile} p */
 function partsCard(p) {
   const k = kachelName();
-  // data-orig speist den Zoom (actions.js, openImageLightboxFromEl): ÜBER den Server-Proxy in voller
+  // data-orig speist den Zoom (aktionen.js, openImageLightboxFromEl): ÜBER den Server-Proxy in voller
   // Auflösung (imgUrl(fullUrl(...), false)), nicht mehr die rohe CDN-Adresse direkt im Browser. Anders als
   // bei Sets bewusst so — auf Nutzerwunsch soll auch das Detailbild der Teile über das Backend laufen, nicht
   // am Server vorbei direkt zum CDN.
@@ -666,7 +665,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
   if (d.success) {
     toast(tRaw('settings.saved'), 'success');
     loadManualParts();
-    if (aktiverReiter() === 'finance') loadFinance();
+    if (aktiverReiter() === 'finance') melde('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -705,6 +704,7 @@ abonniere('bestandGeaendert', () => {
   loadParts();
   loadManualParts();
 });
+abonniere('teileLaden', () => loadParts());
 
 // ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
 registerActions({

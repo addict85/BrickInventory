@@ -24,7 +24,7 @@ function ohneModul(src) {
 }
 
 /**
- * Eine Funktion aus settings.js in einer Sandbox ausführen.
+ * Eine Funktion aus einstellungen.js in einer Sandbox ausführen.
  *
  * Nur die Funktion selbst, nicht die ganze Datei: Sie zieht ein halbes Dutzend
  * andere Module nach sich (Galerie, Teile, Minifiguren), und die hier

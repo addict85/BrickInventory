@@ -44,14 +44,12 @@ export const MerklisteResponse = z.looseObject({
   success: z.boolean(),
   ...SEITEN_ANGABE,
   merkposten: z.array(Merkposten),
-  error: z.string().nullable().optional(),
 });
 
 export const MerkpostenAntwort = z.looseObject({
   success: z.boolean(),
   war_neu: z.boolean(),
   merkposten: Merkposten.nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const MerkpostenInhaberAntwort = z.looseObject({
@@ -59,7 +57,6 @@ export const MerkpostenInhaberAntwort = z.looseObject({
   verschoben: z.boolean(),
   zusammengefuehrt: z.boolean(),
   owner_user_id: z.number().int().nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const MerkpostenPreiseResponse = z.looseObject({
@@ -67,7 +64,6 @@ export const MerkpostenPreiseResponse = z.looseObject({
   set_number: z.string(),
   currency: z.string(),
   current: CurrentByCondition,
-  error: z.string().nullable().optional(),
   degradiert: DEGRADIERT,
 });
 
@@ -77,7 +73,6 @@ export const MerkpostenUebernahmeResponse = z.looseObject({
   success: z.boolean(),
   action: z.string().nullable(),
   set_number: z.string().nullable(),
-  error: z.string().nullable().optional(),
 });
 
 /** Einlesen einer BrickLink-Wanted-List; mit `vorschau` ohne zu speichern. */

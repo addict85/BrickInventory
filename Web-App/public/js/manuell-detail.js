@@ -1,3 +1,4 @@
+import { melde } from './ereignisse.js';
 import { detailZeile } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
@@ -8,14 +9,13 @@ import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './dom.js';
 import { betragFuerFeld } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
-import { loadFinance } from './finance.js';
 import { deleteManualFig, loadManualFigsTable, manuelleFiguren, updateManualFig } from './minifigs.js';
 import { angemeldetesKonto } from './zustand.js';
 import { lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { acqSummary, renderManAcqSummary, kurzfassungMan } from './kaufpreis-anzeige.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
-import { deleteManualPart, loadManualParts, manuelleTeile, updateManualPart } from './parts.js';
+import { deleteManualPart, loadManualParts, manuelleTeile, updateManualPart } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
 import {
   erfassung,
@@ -26,12 +26,12 @@ import {
   gespeichertMarke,
   zeigeGespeichert,
 } from './erfassung-zustand.js';
-import { closeAcqModal } from './acquisition-modals.js';
+import { closeAcqModal } from './kauf-dialoge.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
 
 // Detailfenster und Erfassungen manuell erfasster Teile und Minifiguren; das Fenster #acq-modal teilt es mit
-// dem Kaufpreis-Dialog des Sets (acquisition-modals.js).
+// dem Kaufpreis-Dialog des Sets (kauf-dialoge.js).
 // ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
 /** @type {{ type: string, id: string, colorId: number, owner?: number } | null} */
 let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefined }
@@ -304,7 +304,7 @@ async function speichereTeilFarbe() {
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
-  if (aktiverReiter() === 'finance') loadFinance();
+  if (aktiverReiter() === 'finance') melde('finanzenLaden');
   await openManDetail('part', nummer, neu);
 }
 

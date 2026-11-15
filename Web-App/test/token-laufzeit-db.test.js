@@ -238,7 +238,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   );
 
   // Und die Auswahl muss es im Markup ueberhaupt geben — ein Feld, das
-  // settings.js liest, aber niemand fuellt, waere still wirkungslos.
+  // einstellungen.js liest, aber niemand fuellt, waere still wirkungslos.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 

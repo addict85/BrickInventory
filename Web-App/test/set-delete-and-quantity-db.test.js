@@ -24,7 +24,7 @@ const db = testDaten();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/gallery.js'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/sammlung.js'), 'utf8'));
   const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
 
   // Der Knopf im Detail-Dialog darf NICHT selbst fragen.
@@ -39,7 +39,7 @@ test('das Löschen fragt genau einmal', () => {
   assert.match(handler, /await delSet\(/, 'Er muss über delSet() gehen');
 
   // …und delSet fragt genau einmal: über loeschWahl(), je nach Haushalt mit oder ohne Kontenwahl
-  // (UX-Prüfung 23, M1; das Verhalten prüft oberflaeche-runde23-browser).
+  // (UX-Prüfung 23, M1; das Verhalten prüft abmelden-loeschen-kontrast-browser).
   const fn = src.slice(src.indexOf('async function loeschWahl'), src.indexOf('export async function reimportParts'));
   assert.equal((fn.match(/confirmDelete\(/g) || []).length, 1, 'delSet() muss GENAU EINE Rückfrage stellen');
   assert.equal((fn.match(/loeschenMitWahl\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
@@ -47,7 +47,11 @@ test('das Löschen fragt genau einmal', () => {
   // Und die Rückfrage muss abbrechen können, ohne dass gelöscht wird.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
   // loadGallery() lädt die Kennzahlen mit; die Teile und Minifiguren des Sets sind mit weg.
-  assert.match(fn, /loadGallery\(\);\s*loadParts\(\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
+  assert.match(
+    fn,
+    /loadGallery\(\);\s*melde\('teileLaden'\);/,
+    'Nach dem Löschen müssen Sammlung und Teile nachziehen',
+  );
 });
 
 test('die Mengen-Multiplikation steht an allen Stellen', () => {

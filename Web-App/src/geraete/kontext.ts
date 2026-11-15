@@ -1,5 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Konfig } from '../infra/konfig';
+import type { Uhr } from '../infra/uhr';
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { GeraeteLesevertrag } from './lesevertrag';
@@ -9,6 +10,7 @@ import * as geraeteSchluessel from './repository/geraeteSchluessel';
 export interface GeraeteAbhaengigkeiten {
   konfig: Readonly<Konfig>;
   db: Db;
+  uhr: Uhr;
   /** Der Laufzustand hält die Widerrufsliste der Attestation (katalog/widerrufsliste.ts lädt sie). */
   auftraege: AuftraegeDienste;
   lesevertrag: GeraeteLesevertrag;

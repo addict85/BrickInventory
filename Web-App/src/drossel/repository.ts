@@ -142,7 +142,7 @@ export async function zaehleStunde(tx: DbSchnittstelle, key: string): Promise<vo
 
 /** Zählen und Stand liefern in einem Schritt: eine Zeile, wenn der Tag frei war. */
 export function einmalJeTag(db: DbSchnittstelle, key: string) {
-  return db.get(
+  return db.get<{ key: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()
        WHERE rate_limit_attempts.first_at < NOW() - INTERVAL '1 day'

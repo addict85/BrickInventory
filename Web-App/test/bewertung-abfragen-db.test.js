@@ -79,7 +79,7 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
 
     gesehen.length = 0;
     zaehlen = true;
-    const ergebnis = await fc.computePartsValuation(UID, [UID]);
+    const ergebnis = await fc.bewerteTeile(UID, [UID]);
     zaehlen = false;
 
     assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');

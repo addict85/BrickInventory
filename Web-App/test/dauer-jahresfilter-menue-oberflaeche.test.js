@@ -7,7 +7,7 @@
  * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  formatDur wieder mit toFixed(1) und „s“ ohne Leerzeichen → rot: „Dauer
  *      in der Schreibweise der Sprache“ („1.5s“)
- *   B  in catalog.js die Jahresoption wieder nur mit `${y}` → rot: „Jahresfilter
+ *   B  in katalog.js die Jahresoption wieder nur mit `${y}` → rot: „Jahresfilter
  *      …“ („2016“ statt „ab 2016“)
  *   C  an #m-img wieder tabindex="0" role="button" data-click → rot: „Set ohne
  *      Bild …“ (vor dem ersten Öffnen ein Tab-Halt)

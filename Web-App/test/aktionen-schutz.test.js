@@ -1,5 +1,5 @@
 /**
- * Der Aktions-Dispatcher (public/js/actions.js) ist kein Skript-Gadget:
+ * Der Aktions-Dispatcher (public/js/aktionen.js) ist kein Skript-Gadget:
  * Eingeschleustes Markup ohne Skript löst keine gefährliche Aktion aus, kein
  * Überfahren mit der Maus löst überhaupt etwas aus, und globale Funktionen
  * sind über data-click nicht erreichbar. Echte Knöpfe aus Vorlagen und aus
@@ -11,7 +11,7 @@
  *   B  mouseenter wieder in DELEGATED → rot: „Überfahren löst aus"
  *   C  NUR-Prüfung für change entfernt → rot: „change mit fremdem Handler"
  *   D  Rückfall auf window in resolveAction() zurück → rot: „window.open"
- *   E  echt() aus nutzerKnopf() in settings.js entfernt → rot: „echter
+ *   E  echt() aus nutzerKnopf() in einstellungen.js entfernt → rot: „echter
  *      Knopf der Benutzerliste wirkt"
  *   F  ein Name aus NUR.change gestrichen → rot: „jeder Handler im Markup
  *      steht in der Liste seines Ereignisses"
@@ -126,9 +126,9 @@ test('echte Knöpfe aus Vorlage und Markup wirken weiter', async () => {
 });
 
 test('jeder Handler im Markup steht in der Liste seines Ereignisses', () => {
-  // Struktur: Die Listen in actions.js müssen das Markup abdecken, sonst
+  // Struktur: Die Listen in aktionen.js müssen das Markup abdecken, sonst
   // wäre ein echtes Feld tot. Die Gegenrichtung prüft der Test darüber.
-  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'aktionen.js'), 'utf8');
   const liste = typ => {
     const m = quelle.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
     assert.ok(m, `Liste für ${typ} nicht gefunden`);
@@ -159,7 +159,7 @@ test('jeder Handler im Markup steht in der Liste seines Ereignisses', () => {
 
 test('jede Vorlage mit gefährlicher Aktion trägt echt()', () => {
   // Sonst wäre der Knopf tot: Der Dispatcher weist ihn ab.
-  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'aktionen.js'), 'utf8');
   const gefaehrlich = new Set(
     [...quelle.match(/GEFAEHRLICH = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),
   );

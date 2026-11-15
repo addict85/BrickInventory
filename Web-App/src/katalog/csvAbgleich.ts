@@ -211,7 +211,7 @@ async function ladeBlFarben(k: KatalogKontext): Promise<void> {
     for (const c of data.results || []) {
       const blId = blFarbnummerAus(c);
       if (blId != null) {
-        await merkeBlFarbnummer(k, Number(c.id), blId).catch(logAndContinue('rb-csv:merkeBlFarbnummer'));
+        await merkeBlFarbnummer(k, Number(c.id), blId);
         count++;
       }
     }

@@ -1,7 +1,7 @@
 /**
  * Ein Sets-Bereich mit eigenem Zugang (baueDienste(zweite, …)) liest und schreibt nur
  * dort, auch über Haushalt, Einstellungen, Lagerort, Preisalarm, Papierkorb, Katalog (Inventar),
- * Finanzen (fetchPrice, preisverlaufSet) und Aufträge. Der Zugang des Prozesses zählt mit und
+ * Finanzen (holePreis, preisverlaufSet) und Aufträge. Der Zugang des Prozesses zählt mit und
  * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
@@ -15,7 +15,7 @@
  *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   D  setPreis() in src/sets/preise.ts ruft fetchPrice() ohne den Zugang der
+ *   D  setPreis() in src/sets/preise.ts ruft holePreis() ohne den Zugang der
  *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
  *      Prozesszugang …“
  *   E  setPreisVerlauf() ruft preisverlaufSet() ohne sk.finanzen → rot:

@@ -166,7 +166,7 @@ export function schreibeFortschritt(
   f: Fortschritt,
   fristSek: number,
 ): Promise<Stand> {
-  return db.get(
+  return db.get<{ s: string }>(
     `UPDATE auftraege SET fortschritt = $3, frist_bis = NOW() + make_interval(secs => $4), aktualisiert = NOW()
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
     [a.id, a.belegt_von, JSON.stringify(f), fristSek],
@@ -174,7 +174,7 @@ export function schreibeFortschritt(
 }
 /** PDF und CSV tragen ganze Listen; erledigt braucht die niemand mehr. */
 export function setzeErledigt(db: DbSchnittstelle, a: Belegung, nutzlastVerwerfen: boolean): Promise<Stand> {
-  return db.get(
+  return db.get<{ s: string }>(
     `UPDATE auftraege SET status = 'erledigt', belegt_von = NULL, fehler = NULL, frist_bis = NULL, aktualisiert = NOW(),
             nutzlast = CASE WHEN $3 THEN '{}'::jsonb ELSE nutzlast END
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
@@ -189,7 +189,7 @@ export function setzeFehlgeschlagen(
   wartezeitSek: number,
 ): Promise<Stand> {
   return nochmalBeiZwilling(() =>
-    db.get(
+    db.get<{ s: string }>(
       `UPDATE auftraege SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
               fehler = $4, belegt_von = NULL, frist_bis = NULL, aktualisiert = NOW(),
               faellig_ab = NOW() + make_interval(secs => $5)
@@ -209,7 +209,7 @@ export function setzeVerschoben(
   zaehlt: boolean,
 ): Promise<Stand> {
   return nochmalBeiZwilling(() =>
-    db.get(
+    db.get<{ s: string }>(
       `UPDATE auftraege SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
               wartet = NOT $3, fehler = $4, faellig_ab = $5, belegt_von = NULL, frist_bis = NULL,
               versuche = CASE WHEN $6 THEN versuche ELSE GREATEST(versuche - 1, 0) END, aktualisiert = NOW()

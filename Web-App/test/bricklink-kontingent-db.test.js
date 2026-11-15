@@ -4,7 +4,7 @@
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  die Zählung in bricklinkRequest() entfernt → rot: beide Fälle
- *   B  in fetchPrice wieder kontingentPruefenUndZaehlen statt kontingentFrei
+ *   B  in holePreis wieder kontingentPruefenUndZaehlen statt kontingentFrei
  *      → rot: beide Fälle (der Vorabcheck zählt mit)
  *   C  in bricklinkRequest den Abbruch bei erschöpftem Kontingent entfernt
  *      → rot: „ein erschöpftes Kontingent hält auch den Rückfall an“
@@ -78,7 +78,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
   const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang) await setze(k, 'test');
   await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
-  const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+  const { holePreis } = _req('src/finanzen/financeCalc.js');
   t.after(async () => {
     await setze('api_limit_bricklink', vorher?.value ?? '4000');
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
@@ -91,7 +91,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
   await t.test('sold und stock zählen je einmal', async () => {
     await setze('api_limit_bricklink', '100');
     await neuerTag();
-    const p = await fetchPrice(SN, 'N', 'sold', 'EUR', 24);
+    const p = await holePreis(SN, 'N', 'sold', 'EUR', 24);
     assert.equal(parseFloat(p.avg_price), 12.5, 'der Rückfall auf Angebote hat keinen Preis geliefert');
     assert.equal(aufrufe.length, 2, `erwartet zwei Abrufe, gesehen: ${aufrufe.join(' | ')}`);
     assert.equal(await zaehler(), 2, 'das Kontingent zählt nicht jeden Abruf');
@@ -100,7 +100,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
   await t.test('ein erschöpftes Kontingent hält auch den Rückfall an', async () => {
     await setze('api_limit_bricklink', '1');
     await neuerTag();
-    await fetchPrice(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
+    await holePreis(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
     assert.equal(aufrufe.length, 1, `über das Limit hinaus abgerufen: ${aufrufe.join(' | ')}`);
     assert.equal(await zaehler(), 1);
   });

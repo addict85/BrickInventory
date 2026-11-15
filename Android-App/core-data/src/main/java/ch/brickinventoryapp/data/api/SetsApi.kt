@@ -7,6 +7,7 @@ import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LagerortRequest
 import ch.brickinventoryapp.vertrag.LagerortResponse
+import ch.brickinventoryapp.vertrag.MengeGeaendert
 import ch.brickinventoryapp.vertrag.MerklisteResponse
 import ch.brickinventoryapp.vertrag.MerkpostenAntwort
 import ch.brickinventoryapp.vertrag.MerkpostenInhaberAntwort
@@ -136,7 +137,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
         @Path("setNumber") setNumber: String,
         @Body request: UpdateQuantityRequest,
         @Header("Idempotency-Key") schluessel: String? = null,
-    ): Response<GenericResponse>
+    ): Response<MengeGeaendert>
 
     @DELETE("api/v1/sets/{setNumber}")
     suspend fun deleteSet(

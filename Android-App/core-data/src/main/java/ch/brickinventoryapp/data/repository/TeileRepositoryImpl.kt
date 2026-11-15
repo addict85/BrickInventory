@@ -100,7 +100,7 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun getOwnedParts(teile: List<Teilschluessel>,
                               konten: Kontoauswahl?): Ergebnis<Map<Teilschluessel, TeilBestand>> =
         sicherAufrufen { api.getOwnedParts(BestandRequest(teile = teile.map { BestandTeil(it.nummer, it.farbe) }), konten?.anfrage) }
-            .zugesagt({ it.success }, { it.error }) { r ->
+            .zugesagt({ it.success }) { r ->
                 teile.mapNotNull { t -> r.bestand["${t.nummer}|${t.farbe}"]?.let { t to TeilBestand(it.gesamt, it.lose) } }.toMap()
             }
 
@@ -108,7 +108,7 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String): Ergebnis<String?> =
         ablage.nachgezogen({ r -> Nachzug.TeilLagerort(partNumber, colorId, r.storage).takeIf { r.success } }) {
             sicherAufrufen { api.setPartStorage(partNumber, colorId, LagerortRequest(storage = ort)) }
-        }.zugesagt({ it.success }, { it.error }) { it.storage }
+        }.zugesagt({ it.success }) { it.storage }
 
     /**
      * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
@@ -116,7 +116,7 @@ class TeileRepositoryImpl @Inject constructor(
      * im Vorschlag fehlen.
      */
     override suspend fun getLagerorte(konten: Kontoauswahl?): Ergebnis<List<LagerortAnsicht>> =
-        sicherAufrufen { api.getLagerorte(konten?.anfrage) }.zugesagt({ it.success }, { it.error }) { r -> r.orte.map { it.alsAnsicht() } }
+        sicherAufrufen { api.getLagerorte(konten?.anfrage) }.zugesagt({ it.success }) { r -> r.orte.map { it.alsAnsicht() } }
 
     // ── Der Vorrat an Lagerorten ──
     //
@@ -135,27 +135,27 @@ class TeileRepositoryImpl @Inject constructor(
 
     override suspend fun getLagerortVorrat(besitzer: List<Int>): Ergebnis<List<LagerortEintragAnsicht>> =
         sicherAufrufen { api.getLagerortVorrat(besitzer.takeIf { it.isNotEmpty() }?.joinToString(",")) }
-            .zugesagt({ it.success }, { it.error }) { r -> r.orte.map { it.alsAnsicht() } }
+            .zugesagt({ it.success }) { r -> r.orte.map { it.alsAnsicht() } }
 
     override suspend fun legeLagerortAn(name: String): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it.alsAnsicht()) } }) {
             sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name = name)) }
-        }.zugesagt({ it.success }, { it.error }) { }
+        }.zugesagt({ it.success }) { }
 
     override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it.alsAnsicht()) } }) {
             sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name = name)) }
-        }.zugesagt({ it.success }, { it.error }) { }
+        }.zugesagt({ it.success }) { }
 
     override suspend fun loescheLagerort(id: Int): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> Nachzug.LagerortGeloescht(id).takeIf { r.success } }) { sicherAufrufen { api.loescheLagerort(id) } }
-            .zugesagt({ it.success }, { it.error }) { }
+            .zugesagt({ it.success }) { }
 
     /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab; es gilt, was der Server meldet. */
     override suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> Nachzug.LagerortVorgabe(r.vorgabe?.id).takeIf { r.success } }) {
             sicherAufrufen { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id = id)) }
-        }.zugesagt({ it.success }, { it.error }) { }
+        }.zugesagt({ it.success }) { }
 
     // ── In welchen Sets steckt dieses Teil / diese Figur? ──
     //
@@ -164,7 +164,7 @@ class TeileRepositoryImpl @Inject constructor(
     // ungültig, wenn ein Set dazukommt oder verschwindet.
     override suspend fun getSetsMitTeil(partNumber: String, colorId: Int,
                                konten: Kontoauswahl?): Ergebnis<VerwendungAnsicht> =
-        sicherAufrufen { api.getSetsMitTeil(partNumber, colorId, konten?.anfrage) }.zugesagt({ it.success }, { it.error }) { it.alsAnsicht() }
+        sicherAufrufen { api.getSetsMitTeil(partNumber, colorId, konten?.anfrage) }.zugesagt({ it.success }) { it.alsAnsicht() }
 
     override suspend fun getBrickColors(): Ergebnis<List<FarbeAnsicht>> =
         sicherAufrufen { api.getBrickColors() }.zugesagt({ it.success }, { null }) { r -> r.colors.map { it.alsAnsicht() } }
@@ -182,7 +182,7 @@ class TeileRepositoryImpl @Inject constructor(
         return ablage.schreibe(Bearbeitung.TeilErfassen(erfassung),
             { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
             sicherAufrufen { api.addPart(anfrage, schluessel) }
-        }.zugesagt({ it.success }, { it.error }) { Erfasst(it.action == "added", it.partNumber, it.priceFromCondition) }
+        }.zugesagt({ it.success }) { Erfasst(it.action == "added", it.partNumber, it.priceFromCondition) }
     }
 
     /**
@@ -221,6 +221,6 @@ class TeileRepositoryImpl @Inject constructor(
         val hex = farbHex.takeUnless { neueFarbe == KEINE_FARBE }
         return ablage.nachgezogen({ r -> Nachzug.TeilFarbe(partNumber, colorId, neueFarbe, name, hex, owner).takeIf { r.success } }) {
             sicherAufrufen { api.setPartColor(partNumber, colorId, TeilFarbeRequest(colorId = neueFarbe, colorName = name, colorHex = hex), owner) }
-        }.zugesagt({ it.success }, { it.error }) { }
+        }.zugesagt({ it.success }) { }
     }
 }

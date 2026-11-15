@@ -94,9 +94,9 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
     );
 
     // 2. Derselbe Fall ueber den Anfrageweg hinterlaesst dasselbe.
-    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    const { holePreis } = _req('src/finanzen/financeCalc.js');
     abrufe = [];
-    await fetchPrice(WEG, 'N', 'sold', 'EUR', 24);
+    await holePreis(WEG, 'N', 'sold', 'EUR', 24);
     const abrufeWeg = abrufe.length;
 
     const j = await spuren(JOB),

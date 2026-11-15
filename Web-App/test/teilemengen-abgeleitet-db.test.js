@@ -480,7 +480,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   // Bewertung und CSV
   const B = _req('src/finanzen/rechnung/bewertung.js');
-  const bewP = await B.computePartsValuation(haupt, [haupt]);
+  const bewP = await B.bewerteTeile(haupt, [haupt]);
   const bewZeile = (bewP.parts || []).find(x => x.part_number === '3070b');
   assert.ok(bewZeile, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(bewP).slice(0, 200)}`);
   assert.equal(Number(bewZeile.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${bewZeile.quantity}`);
@@ -489,7 +489,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'Das Set-Teil steht in der Teile-Bewertung — dann wird es zweimal bewertet, ' +
       'einmal hier und einmal ueber sein Set',
   );
-  const bewM = await B.computeMinifigsValuation(haupt, [haupt]);
+  const bewM = await B.bewerteFiguren(haupt, [haupt]);
   const bewFig = (bewM.figs || []).find(x => x.fig_number === 'fig-m');
   assert.ok(bewFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(bewM).slice(0, 200)}`);
   assert.equal(Number(bewFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);

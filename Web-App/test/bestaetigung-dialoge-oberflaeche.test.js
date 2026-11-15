@@ -5,9 +5,9 @@
  * Passkey) und wiederholt die Anfrage. Echtes Bündel in jsdom.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in settings.js „Alles löschen" wieder api() direkt → rot: „Alles
+ *   A  in einstellungen.js „Alles löschen" wieder api() direkt → rot: „Alles
  *      löschen fragt den Code nach" und „der Passkey ersetzt den Code"
- *   B  in settings.js das Anlegen eines Kontos wieder api() direkt → rot:
+ *   B  in einstellungen.js das Anlegen eines Kontos wieder api() direkt → rot:
  *      „ein Konto anlegen fragt den Code nach"
  *   C  in passkeys.js setzePasskeyHolen() nicht aufgerufen → rot: „der
  *      Passkey ersetzt den Code"

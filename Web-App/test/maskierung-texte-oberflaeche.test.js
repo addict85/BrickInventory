@@ -6,7 +6,7 @@
  * wörtlich da, nicht als „&amp;“.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in gallery.js delSet() wieder t('gallery.delete.name_parts') →
+ *   A  in sammlung.js delSet() wieder t('gallery.delete.name_parts') →
  *      typecheck:frontend rot (SicheresHtml ist kein string); mit
  *      String(t(…)) erzwungen → rot: „Löschdialog nennt den Set-Namen
  *      wörtlich“ (stand „A &amp; B &lt;C&gt;“)

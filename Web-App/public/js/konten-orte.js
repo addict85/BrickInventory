@@ -2,7 +2,7 @@
 // gemeinsame Quelle, damit alle Formulare dieselbe Liste zeigen.
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
-import { SCOPE_VIEWS, scopeMode, setScopeMode } from './scope.js';
+import { SCOPE_VIEWS, scopeMode, setScopeMode } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock } from './detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { html, ungeprueft } from './escapen.js';

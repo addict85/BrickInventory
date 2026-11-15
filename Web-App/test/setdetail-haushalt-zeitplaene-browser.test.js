@@ -185,7 +185,7 @@ async function pfadKachelnAchse(_t, a) {
   );
 }
 
-test('UX-Prüfung 19 im Browser', { concurrency: 1, timeout: 300_000 }, async t => {
+test('Set-Detail im Haushalt, Zeitpläne, Kacheln', { concurrency: 1, timeout: 300_000 }, async t => {
   const a = await starteApp(t, { name: `r19_${process.pid}`, bestand: musterHaushalt });
   if (a.grund) {
     t.skip(a.grund);

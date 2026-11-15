@@ -11,12 +11,12 @@ export interface BarcodeTreffer {
   unsicher: boolean;
   set_number: string;
   name: string | null;
-  year?: number | null;
-  pieces?: number | null;
-  theme?: string | null;
+  year: number | null;
+  pieces: number | null;
+  theme: string | null;
   minifigs: number | null;
   image_url: string | null;
-  image_local?: string | null | undefined;
+  image_local: string | null;
   source: string;
 }
 
@@ -40,7 +40,7 @@ async function barcodeErgebnis(
 
   const minifigs = mfData?.count ?? local?.minifigs ?? null;
   const image_url = rbData?.set_img_url || local?.image_url || null;
-  const image_local = local?.image_local ? resolveImageLocal(local.image_local) : null;
+  const image_local = (local?.image_local ? resolveImageLocal(local.image_local) : null) ?? null;
   const unsicher = istVermutung(source);
 
   if (local) {
@@ -82,10 +82,12 @@ async function barcodeErgebnis(
       theme: null,
       minifigs,
       image_url,
+      image_local,
       source,
     };
   }
-  return { unsicher, set_number: setNumber, name, minifigs, image_url, source };
+  const leer = { year: null, pieces: null, theme: null, image_local };
+  return { unsicher, set_number: setNumber, name, minifigs, image_url, source, ...leer };
 }
 
 async function imKatalog(
@@ -132,7 +134,7 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
     // markierte Vermutung stehen.
     const titel = await sk.fremdquellen.quellen.produktTitel(ean13);
     if (titel) {
-      const kandidaten = setnummerKandidaten(titel);
+      const kandidaten = setnummerKandidaten(titel, sk.uhr.datum().getFullYear());
       for (const k of kandidaten) {
         const bekannt = await imKatalog(sk, k, normalisiereSetNummer(k));
         if (bekannt) return barcodeErgebnis(sk, bekannt.set_number, titel, 'upcitemdb');

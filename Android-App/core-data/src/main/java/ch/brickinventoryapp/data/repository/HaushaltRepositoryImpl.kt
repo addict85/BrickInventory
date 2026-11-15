@@ -38,7 +38,7 @@ class HaushaltRepositoryImpl @Inject constructor(
         sicherAufrufen { api.getHouseholdMembers() }.abgebildet { r -> r.members.map { it.alsAnsicht() } }
 
     override suspend fun createHouseholdInvite(): Ergebnis<EinladungAnsicht> =
-        sicherAufrufen { api.createHouseholdInvite() }.zugesagt({ it.success }, { it.error }) { EinladungAnsicht(it.code.orEmpty(), it.expiresIn) }
+        sicherAufrufen { api.createHouseholdInvite() }.zugesagt({ it.success }) { EinladungAnsicht(it.code.orEmpty(), it.expiresIn) }
 
     /**
      * [passwort]: das aktuelle Passwort des einlösenden Kontos — der Server prüft es.
@@ -102,13 +102,13 @@ class HaushaltRepositoryImpl @Inject constructor(
      * Kachel folgt ohne neue Liste; sonst muss der Aufrufer den Stand holen.
      */
     private suspend fun mitZusammenfassung(call: suspend () -> retrofit2.Response<GenericResponse>): Ergebnis<Kaufaenderung> =
-        sicherAufrufen(call).zugesagt({ it.success }, { it.error }) { it }.let { r ->
+        sicherAufrufen(call).zugesagt({ it.success }) { it }.let { r ->
             when (r) {
                 is Ergebnis.Fehler -> r
                 is Ergebnis.Erfolg -> {
                     val agg = r.data.set?.takeIf { it.setNumber.isNotBlank() }
                     agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it.alsZusammenfassung())) }
-                    Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts ?: 0, r.data.minifigs ?: 0))
+                    Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
                 }
             }
         }

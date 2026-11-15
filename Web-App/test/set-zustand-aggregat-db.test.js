@@ -10,13 +10,13 @@
  *      dessen Teil aufbaut)
  *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot
  *      „der im Formular gewählte Zustand kommt beim Anlegen an“
- *   D  getCurrentMarketPrice: `if (!condition)` → `if (true)` → rot „ein
+ *   D  aktuellerMarktpreis: `if (!condition)` → `if (true)` → rot „ein
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
  *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
  *      „setLesen …“ und „manuelle Teile und Minifiguren …“
  *   F  probeErfassungen sortiert nach `added_at` → rot „die Preis-Probe …“;
  *      ohne `price_cache: cacheRows` in der Antwort ebenso
- *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „computePnl
+ *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „gewinnUndVerlust
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
  *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
  *   H  (09.11.2026) Route und Vertrag der Preis-Probe wieder als GET → rot
@@ -113,10 +113,10 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   const { setsLesen, setLesen } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
-    const { getCurrentMarketPrice } = _req('src/finanzen/marketPrice.js');
-    assert.equal(await getCurrentMarketPrice(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
+    const { aktuellerMarktpreis } = _req('src/finanzen/marketPrice.js');
+    assert.equal(await aktuellerMarktpreis(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
     assert.equal(
-      await getCurrentMarketPrice(SN, uid, 'U'),
+      await aktuellerMarktpreis(SN, uid, 'U'),
       33,
       'Der angefragte Zustand wurde von der Bewertung der Erfassungen überstimmt',
     );
@@ -202,9 +202,9 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.equal(figur?.condition, 'U', 'Figur mit gebrauchter Erfassung steht als neu da');
   });
 
-  await t.test('computePnl bewertet nach dem Zustand der Erfassungen', async () => {
-    const { computePnl } = _req('src/finanzen/financeCalc.js');
-    const pnl = await computePnl(uid, [uid]);
+  await t.test('gewinnUndVerlust bewertet nach dem Zustand der Erfassungen', async () => {
+    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
+    const pnl = await gewinnUndVerlust(uid, [uid]);
     const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');
     assert.equal(

@@ -441,7 +441,7 @@ async function abmelden(_t, a, name) {
   await bis(`!/•••/.test(${text('#gallery .empty p')})`, 'Hinweis am Rechner');
 }
 
-test('UX-Prüfung 23 im Browser', { concurrency: 1, timeout: 600_000 }, async t => {
+test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrency: 1, timeout: 600_000 }, async t => {
   const name = `r23_${process.pid}`;
   const a = await starteApp(t, {
     name,

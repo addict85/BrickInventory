@@ -181,7 +181,6 @@ fun ValuationAcquisition.alsAnsicht() = BewertungsKaufAnsicht(
     pnlPct = pnlPct,
     pnlProzent = pnlProzent,
     createdAt = zeitpunkt(createdAt),
-    ownerUserId = ownerUserId,
 )
 
 fun VerwendendeSetsResponse.alsAnsicht() = VerwendungAnsicht(kopf = item?.alsAnsicht(), sets = sets.map { it.alsAnsicht() })

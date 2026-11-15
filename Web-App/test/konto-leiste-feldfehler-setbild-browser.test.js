@@ -35,7 +35,7 @@ async function groesse(b, breite, hoehe, telefon) {
 }
 const sichtbar = sel => `[...document.querySelectorAll(${JSON.stringify(sel)})].map(e => e.checkVisibility())`;
 
-test('UX-Prüfung 27 im Browser', { concurrency: 1, timeout: 420_000 }, async t => {
+test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency: 1, timeout: 420_000 }, async t => {
   const app = await starteApp(t, {
     name: `r27_${process.pid}`,
     bestand: async (db, uid) => {

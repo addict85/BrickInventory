@@ -100,11 +100,11 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
   const knopf = menueKnopf(document);
 
   // Die ID bleibt gefordert: menueSchliessen() und benutzerMenue() in
-  // js/gallery.js führen `aria-expanded` über G('btn-umenu') mit.
+  // js/sammlung.js führen `aria-expanded` über G('btn-umenu') mit.
   assert.equal(
     knopf.id,
     'btn-umenu',
-    'Der Menüknopf heißt nicht mehr `btn-umenu` — gallery.js führt `aria-expanded` darüber mit',
+    'Der Menüknopf heißt nicht mehr `btn-umenu` — sammlung.js führt `aria-expanded` darüber mit',
   );
 
   assert.equal(knopf.getAttribute('aria-haspopup'), 'true');

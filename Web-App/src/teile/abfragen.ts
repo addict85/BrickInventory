@@ -66,11 +66,11 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
       const items = await ab.oder('rebrickable_teile', k.katalog.alleSetTeile(sn), []);
       if (!items?.length) continue;
       const rbParts = items
-        .filter((it: RbSetTeil) => !it.is_spare)
+        .filter((it: RbSetTeil) => !it.is_spare && it.part?.part_num)
         .map((it: RbSetTeil) => ({
-          part_number: it.part?.part_num,
-          bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num,
-          part_name: it.part?.name || it.part?.part_num,
+          part_number: it.part?.part_num ?? '',
+          bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num || null,
+          part_name: it.part?.name || it.part?.part_num || null,
           color_id: it.color?.id ?? 0,
           color_name: it.color?.name || '',
           color_hex: it.color?.rgb || null,
@@ -81,8 +81,7 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
           total_quantity: it.quantity,
           quantity: it.quantity,
           in_sets: set_number,
-        }))
-        .filter((p: { part_number?: string | null }) => p.part_number);
+        }));
       if (rbParts.length)
         return {
           parts: rbParts,
@@ -110,7 +109,7 @@ function teilAlsAntwort(r: repo.TeilZeile) {
     ...r,
     total_quantity: parseInt(String(r.total_quantity), 10) || 0,
     is_spare: istErsatzteil(r.is_spare),
-    image_local: resolveImageLocal(r.image_local),
+    image_local: resolveImageLocal(r.image_local) ?? null,
   };
 }
 
@@ -258,9 +257,8 @@ export async function blFarbkarteAbfrage(k: TeileKontext) {
   return { map, source: 'api', ...ab.angabe() };
 }
 
-/** @param viewerId Wessen EINSTELLUNGEN gelten (Währung) — getrennt von
- *   `userId`, das sagt, wessen DATEN gelesen werden.
- * @param search  Suchtext der Filterleiste; er wirkt auf beide Listen. */
+/** @param viewerId wessen Einstellungen (Währung) gelten; `userId` sagt, wessen Daten gelesen werden.
+ * @param search Suchtext der Filterleiste, für beide Listen. */
 export async function manuelleTeileListe(
   k: TeileKontext,
   userIdWahl: Sicht | Blickfeld,

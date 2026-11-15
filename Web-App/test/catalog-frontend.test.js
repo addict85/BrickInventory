@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/catalog.js in jsdom (devDependency).
+ * Frontend-Tests für public/js/katalog.js in jsdom (devDependency).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +34,7 @@ const CODE =
   '\n' +
   stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'lader.js'), 'utf8')) +
   '\n' +
-  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8'));
+  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'katalog.js'), 'utf8'));
 const dom = new JSDOM(
   `<!doctype html><html><body>
   <input id="cat-search" />
@@ -133,14 +133,14 @@ w.eval(`
   window.locale = () => 'de-CH';
   window.toast = () => {}; window.meldeTreffer = () => {};
   window.PLATZHALTER_SET = '/assets/set-placeholder.svg'; window.setzeDialogbild = (img, src) => { img.src = src; };
-  // Das Teile-Symbol kommt aus gallery.js und wird hier nur als Marke
+  // Das Teile-Symbol kommt aus sammlung.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit einer früheren Runde steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
   // Bild und Platzhalter kommen aus bilder.js; hier zählt nur die Kachel.
   window.bildTag = o => '<img src="' + o.src + '" alt="">';
   window.platzhalterInhalt = () => '';
-  // Den gemeinsamen Scrollbalken stellt js/scrollbar.js; hier zählt nur, DASS
+  // Den gemeinsamen Scrollbalken stellt js/rollbalken.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
   window.__scrollLabelFn = undefined;
   window.setScrollLabel = fn => { window.__scrollLabelFn = fn; };
@@ -226,7 +226,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // Kacheln nachladen und die Seite länger wird.
   check('Griff folgt der wachsenden Seite', /ResizeObserver/.test(kern), null);
 
-  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'katalog.js'), 'utf8');
   check('kein eigener Scrollkasten mehr', !/cat-scroller/.test(quelle), null);
   // Der Beobachter misst wieder gegen das FENSTER.
   check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(quelle), null);

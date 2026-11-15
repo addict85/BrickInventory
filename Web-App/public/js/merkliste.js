@@ -1,3 +1,4 @@
+import { melde } from './ereignisse.js';
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft, verbinde } from './escapen.js';
@@ -17,8 +18,7 @@ import { fmtDatum, fmtN, leseBetrag } from './format.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { detailZeile, kachelName, listeLadefehler, skelettZeilen, csvHochladen } from './bausteine.js';
-import { loadGallery, loadStats } from './gallery.js';
-import { addScopeParam } from './scope.js';
+import { addScopeParam } from './kontofilter.js';
 import { kontoWaehrung } from './zustand.js';
 import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './detailfelder.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
@@ -360,8 +360,7 @@ export async function bestaetigeUebernahme() {
     // er stünde sonst für etwas, das man längst hat.
     toast(tRaw(d.action === 'exists' ? 'wanted.taken_existing' : 'wanted.taken'), 'success');
     await ladeMerkliste();
-    await loadGallery();
-    await loadStats();
+    melde('sammlungLaden');
   } finally {
     frei();
   }

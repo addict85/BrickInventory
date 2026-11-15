@@ -354,7 +354,7 @@
        darueber gibt jedem select width:100%.
        Stand bis jetzt viermal gleichlautend im style-Attribut; die Klasse gab
        es schon, sie trug nur nichts. Was DORT bleibt, bleibt mit Grund:
-       display:none schaltet JavaScript um (gallery.js setzt style.display
+       display:none schaltet JavaScript um (sammlung.js setzt style.display
        leer, was eine CSS-Regel nicht ueberschreiben koennte), margin-left:auto
        gilt nur fuer die Finanzen-Auswahl. */
     .scope-select{width:auto}

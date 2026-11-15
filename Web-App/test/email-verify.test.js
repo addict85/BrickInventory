@@ -65,7 +65,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     // Einziger Weg ist POST /api/v1/auth/email-bestaetigen (der Knopf auf der
     // Seite hinter dem Mail-Link). GET /verify in server.ts liefert nur die
     // Seite; löste er wieder selbst ein, bestätigte schon ein Link-Scanner.
-    // Das Verhalten prüft sicherheit-runde11-db am echten Server.
+    // Das Verhalten prüft sicherheit-server-grenzen-db am echten Server.
     assert.match(
       lies('routes/auth/registrierung.ts'),
       /verifiziereEmailToken\s*\(/,

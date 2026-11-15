@@ -72,28 +72,28 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
   const f = _req('src/finanzen/financeCalc.js');
 
   await t.test('Bewertung', async () => {
-    const sets = await f.computeSetsValuation(uid, [uid]);
+    const sets = await f.bewerteSets(uid, [uid]);
     const s = sets.sets.find(z => z.set_number === SET);
     assert.equal(s.avg_price, SET_PREIS);
     assert.equal(s.wert_gesamt, 75);
-    const teile = await f.computePartsValuation(uid, [uid]);
+    const teile = await f.bewerteTeile(uid, [uid]);
     assert.equal(teile.parts.find(z => z.part_number === TEIL).avg_price, TEIL_PREIS);
     assert.equal(teile.wert_gesamt, 1);
-    const figuren = await f.computeMinifigsValuation(uid, [uid]);
+    const figuren = await f.bewerteFiguren(uid, [uid]);
     assert.equal(figuren.figs.find(z => z.fig_number === FIGUR).avg_price, FIGUR_PREIS);
     assert.equal(figuren.wert_gesamt, FIGUR_PREIS);
   });
 
   await t.test('G&V', async () => {
-    const pnl = await f.computePnl(uid, [uid]);
+    const pnl = await f.gewinnUndVerlust(uid, [uid]);
     assert.equal(pnl.sets.find(z => z.set_number === SET).current_price, SET_PREIS);
     // 2 × 37,50 + 4 × 0,25 + 1 × 8
     assert.equal(pnl.totals.grand_total, '84.00');
   });
 
   await t.test('Wertkurve', async () => {
-    const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
-    const kurve = await getPortfolioHistory(uid, [uid], 'month');
+    const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
+    const kurve = await portfolioVerlauf(uid, [uid], 'month');
     assert.ok(kurve.points.length > 0, 'keine Punkte');
     assert.equal(kurve.points.at(-1).value, 75);
   });

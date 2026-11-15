@@ -34,7 +34,7 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
     [FORTSCHRITT],
     'protokollZeile() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
       'zwei Stellen, an denen die nächste Schranke fehlt — und genau das war ' +
-      'der Fall, als dieselben drei Zeilen hier und in gallery.js standen.',
+      'der Fall, als dieselben drei Zeilen hier und in sammlung.js standen.',
   );
 });
 

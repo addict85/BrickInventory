@@ -5,7 +5,7 @@ import { html } from './escapen.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
-import { scopeMode } from './scope.js';
+import { scopeMode } from './kontofilter.js';
 import { kontoWaehrung, finKopfWert } from './zustand.js';
 import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './diagramme.js';
 

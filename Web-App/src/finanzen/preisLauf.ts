@@ -246,10 +246,8 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
   }
 }
 
-/** Gemischte Sets brauchen beide Preise, reine nur einen — eine Fassung für
- * den Nachtlauf und das Erfassen.
- * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT
- * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag */
+/** Gemischte Sets brauchen beide Preise, reine einen; eine Fassung für Nachtlauf und Erfassen.
+ * @param hintCondition Zustand einer Erfassung, die es noch nicht gibt */
 async function zustaendeJeSet(
   k: FinanzenKontext,
   userId: number,
@@ -297,7 +295,7 @@ async function conditionsNeededFor(
   return (await zustaendeJeSet(k, userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
 }
 
-async function refreshPriceForSet(
+async function preisFuerSetHolen(
   k: FinanzenKontext,
   setNumber: string,
   userId: number,
@@ -343,4 +341,4 @@ async function merkeStand(k: FinanzenKontext, neu: Record<string, unknown>): Pro
     .catch(logAndContinue('preis-job:stand'));
 }
 
-export { runPriceRefresh, refreshPriceForSet, fetchAndCachePrice, zustaendeJeSet, conditionsNeededFor };
+export { runPriceRefresh, preisFuerSetHolen, fetchAndCachePrice, zustaendeJeSet, conditionsNeededFor };

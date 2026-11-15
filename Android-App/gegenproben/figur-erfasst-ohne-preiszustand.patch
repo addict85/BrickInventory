@@ -10,8 +10,8 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
              ablage.schreibe(Bearbeitung.FigurErfassen(erfassung),
                  { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
                  sicherAufrufen { api.addMinifig(anfrage, schluessel) }
--            }.zugesagt({ it.success }, { it.error }) { Erfasst(it.action == "added", it.figNumber, it.priceFromCondition) }
-+            }.zugesagt({ it.success }, { it.error }) { Erfasst(it.action == "added", it.figNumber) }
+-            }.zugesagt({ it.success }) { Erfasst(it.action == "added", it.figNumber, it.priceFromCondition) }
++            }.zugesagt({ it.success }) { Erfasst(it.action == "added", it.figNumber) }
          }
  
      /**

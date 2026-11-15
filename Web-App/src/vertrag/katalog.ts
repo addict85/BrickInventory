@@ -19,7 +19,6 @@ export const CatalogMetaResponse = z.looseObject({
   year_min: z.number().int().nullable(),
   year_max: z.number().int().nullable(),
   year_counts: z.array(CatalogYearCount),
-  error: z.string().nullable().optional(),
 });
 
 export const CatalogSetDetail = z.looseObject({
@@ -41,7 +40,6 @@ export const CatalogSetDetail = z.looseObject({
 export const CatalogSetDetailResponse = z.looseObject({
   success: z.boolean(),
   set: CatalogSetDetail.nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const CatalogSetItem = z.looseObject({
@@ -64,7 +62,6 @@ export const CatalogSetsResponse = z.looseObject({
   page_size: z.number().int(),
   pages: z.number().int(),
   sets: z.array(CatalogSetItem),
-  error: z.string().nullable().optional(),
 });
 
 export const JahrAnzahl = z.looseObject({

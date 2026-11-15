@@ -1,7 +1,6 @@
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
  * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
  * dahin gilt die CDN-Adresse. */
-import { logAndContinue } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
@@ -146,7 +145,7 @@ async function ergaenzeBlNummern(
           const key = `${part.part_num}|${colorId}`;
           if (apiParts[key]) apiParts[key].bl_part_num = blId;
         }
-        await merkeBlNummer(kx, 'part', part.part_num, blId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
+        await merkeBlNummer(kx, 'part', part.part_num, blId);
       }
     }
   }
@@ -167,20 +166,11 @@ async function merkeTeileDesSets(
     const info: Partial<ApiTeil> = apiParts[key] ?? {};
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
     // In die ZUORDNUNG: Die Nummer hängt am Teil, nicht an Set, Teil und Farbe.
-    if (blPartNum)
-      await merkeBlNummer(k, 'part', p.part_num, blPartNum).catch(logAndContinue('teile-enrich:merkeBlNummer'));
+    if (blPartNum) await merkeBlNummer(k, 'part', p.part_num, blPartNum);
     // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
-    const melde = logAndContinue('katalog:setteil');
-    await merkeTeil(k, p.part_num, info.part_name).catch(melde);
-    await merkeTeilFarbe(
-      k,
-      p.part_num,
-      p.color_id ?? KEINE_FARBE,
-      info.color_name,
-      info.color_hex,
-      info.image_url,
-    ).catch(melde);
-    await merkeSetTeil(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
+    await merkeTeil(k, p.part_num, info.part_name);
+    await merkeTeilFarbe(k, p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url);
+    await merkeSetTeil(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
   }
 }
 
@@ -199,12 +189,12 @@ async function ergaenzeSetFiguren(k: KatalogKontext, n: string, rbKey: string): 
       await merkeFiguren(
         k,
         figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })),
-      ).catch(logAndContinue('teile-enrich:figuren merken'));
+      );
       await merkeSetFiguren(
         k,
         n,
         figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })),
-      ).catch(logAndContinue('teile-enrich:setfiguren merken'));
+      );
     }
   }
 }
@@ -262,7 +252,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
         const finalId = blId || p.part_num;
         apiBlMap[p.part_num] = finalId;
 
-        await merkeBlNummer(k, 'part', p.part_num, finalId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
+        await merkeBlNummer(k, 'part', p.part_num, finalId);
       }
     }
   }
@@ -276,9 +266,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_zuordnung.
-      await merkeSetTeil(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(
-        logAndContinue('katalog:figurteil'),
-      );
+      await merkeSetTeil(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
     }
   }
 }

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { type Route, zeit, ganz, OHNE_RUMPF, TEXT, JA_NEIN, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
 import { GenericAdminResponse, ImportZeile } from './gemeinsam';
+
+export { ImportZeile };
 import { GLOBALE_REGELN } from './globaleRegeln';
 
 export const ApiLimits = z.looseObject({
@@ -199,7 +201,6 @@ export const ProtokollResponse = z.looseObject({
   minutes: z.number().int(),
   count: z.number().int(),
   logs: z.array(ProtokollZeile),
-  error: z.string().nullable().optional(),
 });
 
 export const PreisJobStand = z.looseObject({
@@ -250,7 +251,16 @@ export const Endpunkte = z.looseObject({
 });
 
 /** Sammelantworten der Verwaltung mit dem, was die einzelne Route dazu sagt. */
-export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string().optional() });
+export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string() });
+/** Anleitungen neu eingereiht; ohne fehlende sagt `message` warum keine. */
+export const AnleitungenEingereiht = GenericAdminResponse.extend({ enqueued: ganz, message: z.string().optional() });
+export const KatalogBilderEingereiht = GenericAdminResponse.extend({
+  queued: ganz,
+  pending: ganz,
+  skipped: ganz,
+  verworfen: ganz,
+  dauer_minuten: ganz,
+});
 export const VerwaltungGestartet = GenericAdminResponse.extend({ started: z.boolean() });
 export const VerwaltungSet = GenericAdminResponse.extend({ set_number: z.string() });
 export const VerwaltungTtl = GenericAdminResponse.extend({ ttl: z.union([z.string(), ganz]) });
@@ -287,7 +297,7 @@ export const routen = {
   },
   'POST /api/v1/admin/catalog-images': {
     eingabe: z.strictObject({ alle_erneut: JA_NEIN.optional() }),
-    antwort: GenericAdminResponse,
+    antwort: KatalogBilderEingereiht,
   },
   'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
   'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
@@ -313,7 +323,7 @@ export const routen = {
   'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: OHNE_RUMPF, antwort: AuftragsArtStart },
   'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: OHNE_RUMPF, antwort: AuftragsArtLeerung },
   'POST /api/v1/admin/trigger-csv-sync': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
-  'POST /api/v1/admin/reimport-instructions': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
+  'POST /api/v1/admin/reimport-instructions': { eingabe: OHNE_RUMPF, antwort: AnleitungenEingereiht },
   'POST /api/v1/admin/trigger-price-job': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
   'POST /api/v1/admin/default-condition': {
     eingabe: z.strictObject({ condition: GLOBALE_REGELN.default_price_condition }),

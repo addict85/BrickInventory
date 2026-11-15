@@ -1189,7 +1189,7 @@
     {
       "methode": "PUT",
       "pfad": "/api/v1/sets/{setNumber}",
-      "typ": "GenericResponse",
+      "typ": "MengeGeaendert",
       "abfrage": [],
       "rumpf": "UpdateQuantityRequest",
       "rumpffelder": [
@@ -2479,8 +2479,7 @@
         "action",
         "fig_number",
         "fig_name",
-        "price_from_condition",
-        "error"
+        "price_from_condition"
       ],
       "pflicht": [
         "success"
@@ -2512,8 +2511,7 @@
         "action",
         "part_number",
         "part_name",
-        "price_from_condition",
-        "error"
+        "price_from_condition"
       ],
       "pflicht": [
         "success"
@@ -2543,8 +2541,7 @@
         "katalog_offen",
         "ergaenzung",
         "owner_user_id",
-        "is_self",
-        "error"
+        "is_self"
       ],
       "pflicht": []
     },
@@ -2606,8 +2603,7 @@
         "success",
         "theme",
         "vorgabe",
-        "eigenes",
-        "error"
+        "eigenes"
       ],
       "pflicht": []
     },
@@ -2763,8 +2759,7 @@
         "image_url",
         "image_local",
         "source",
-        "unsicher",
-        "error"
+        "unsicher"
       ],
       "pflicht": [
         "success"
@@ -2806,8 +2801,7 @@
     "BestandResponse": {
       "felder": [
         "success",
-        "bestand",
-        "error"
+        "bestand"
       ],
       "pflicht": []
     },
@@ -2929,8 +2923,7 @@
     "BrickColorsResponse": {
       "felder": [
         "success",
-        "colors",
-        "error"
+        "colors"
       ],
       "pflicht": [
         "success"
@@ -3017,8 +3010,7 @@
         "themes",
         "year_min",
         "year_max",
-        "year_counts",
-        "error"
+        "year_counts"
       ],
       "pflicht": []
     },
@@ -3045,8 +3037,7 @@
     "CatalogSetDetailResponse": {
       "felder": [
         "success",
-        "set",
-        "error"
+        "set"
       ],
       "pflicht": [
         "success"
@@ -3074,8 +3065,7 @@
         "page",
         "page_size",
         "pages",
-        "sets",
-        "error"
+        "sets"
       ],
       "pflicht": []
     },
@@ -3128,17 +3118,15 @@
     },
     "CsvImportErgebnis": {
       "felder": [
-        "results",
-        "waehrung_hinweis",
         "success",
-        "skipped",
-        "skipped_hint",
         "total",
         "added",
-        "imported",
         "updated",
         "errors",
-        "error",
+        "results",
+        "skipped",
+        "skipped_hint",
+        "waehrung_hinweis",
         "gestartet",
         "vorhanden",
         "vorhanden_nummern"
@@ -3161,28 +3149,6 @@
         "err",
         "error",
         "beendet_am"
-      ],
-      "pflicht": []
-    },
-    "CsvImportStatusResultsEintrag": {
-      "felder": [
-        "set_number",
-        "zeile",
-        "success",
-        "action",
-        "isWarning",
-        "error",
-        "code",
-        "menge",
-        "katalog_offen",
-        "part_number",
-        "fig_number",
-        "fig_name",
-        "condition",
-        "vars",
-        "waehrung_angepasst",
-        "waehrung_datei",
-        "waehrung_konto"
       ],
       "pflicht": []
     },
@@ -3356,8 +3322,7 @@
         "total_value",
         "wert_gesamt",
         "preise_ausstehend",
-        "kaufpreise_fremde_waehrung",
-        "error"
+        "kaufpreise_fremde_waehrung"
       ],
       "pflicht": [
         "success",
@@ -3402,38 +3367,38 @@
     },
     "FigValuationItem": {
       "felder": [
+        "id",
+        "quantity",
+        "image_url",
+        "image_local",
+        "purchase_price",
+        "avg_price",
+        "condition",
+        "conditions",
+        "user_id",
+        "owners",
+        "fig_number",
+        "bl_fig_number",
+        "fig_name",
+        "set_number",
+        "source",
+        "storage_id",
         "ausstehend",
         "from_cache",
         "max_price",
         "min_price",
-        "set_number",
-        "source",
-        "storage_id",
-        "acq_count",
-        "used_count",
-        "id",
-        "fig_number",
-        "bl_fig_number",
-        "fig_name",
-        "quantity",
-        "image_url",
-        "image_local",
-        "unit_price",
-        "purchase_price",
-        "avg_purchase_price",
         "qty_avg_price",
-        "avg_price",
         "pnl_pct",
         "pnl_prozent",
         "display_value",
         "total_value",
         "wert_gesamt",
-        "condition",
-        "conditions",
-        "user_id",
-        "owners",
         "acquisitions",
-        "storage"
+        "acq_count",
+        "used_count",
+        "avg_purchase_price",
+        "storage",
+        "unit_price"
       ],
       "pflicht": []
     },
@@ -3473,17 +3438,16 @@
     },
     "GenericAdminResponse": {
       "felder": [
-        "dauer_minuten",
-        "pending",
+        "success",
+        "enqueued",
+        "message",
         "queued",
+        "pending",
         "skipped",
         "verworfen",
-        "success",
-        "error",
-        "enqueued",
+        "dauer_minuten",
         "theme",
         "started",
-        "message",
         "set_number",
         "ttl",
         "condition"
@@ -3494,6 +3458,10 @@
     },
     "GenericResponse": {
       "felder": [
+        "success",
+        "instruction",
+        "papierkorb",
+        "updated",
         "new_quantity",
         "from_user_id",
         "to_user_id",
@@ -3501,20 +3469,14 @@
         "unchanged",
         "acquisitions",
         "instructions",
-        "papierkorb",
-        "removed",
-        "linked_to",
-        "success",
-        "error",
         "set",
         "parts",
         "minifigs",
         "source_emptied",
         "quantity",
         "degradiert",
-        "instruction",
-        "updated",
-        "entfallen",
+        "linked_to",
+        "removed",
         "geloescht"
       ],
       "pflicht": [
@@ -3654,8 +3616,7 @@
       "felder": [
         "success",
         "code",
-        "expires_in",
-        "error"
+        "expires_in"
       ],
       "pflicht": []
     },
@@ -3687,7 +3648,6 @@
         "sub_accounts",
         "open_invites",
         "former_links",
-        "error",
         "degradiert"
       ],
       "pflicht": []
@@ -3851,16 +3811,14 @@
     "LagerortEintragResponse": {
       "felder": [
         "success",
-        "ort",
-        "error"
+        "ort"
       ],
       "pflicht": []
     },
     "LagerorteResponse": {
       "felder": [
         "success",
-        "orte",
-        "error"
+        "orte"
       ],
       "pflicht": []
     },
@@ -3885,8 +3843,7 @@
       "felder": [
         "success",
         "storage",
-        "changed",
-        "error"
+        "changed"
       ],
       "pflicht": []
     },
@@ -3899,8 +3856,7 @@
     "LagerortVorgabeResponse": {
       "felder": [
         "success",
-        "vorgabe",
-        "error"
+        "vorgabe"
       ],
       "pflicht": []
     },
@@ -3908,8 +3864,7 @@
       "felder": [
         "success",
         "orte",
-        "vorgabe",
-        "error"
+        "vorgabe"
       ],
       "pflicht": []
     },
@@ -3957,7 +3912,6 @@
         "page",
         "page_size",
         "figs",
-        "error",
         "degradiert"
       ],
       "pflicht": []
@@ -3982,8 +3936,17 @@
         "page",
         "page_size",
         "parts",
-        "error",
         "degradiert"
+      ],
+      "pflicht": []
+    },
+    "MengeGeaendert": {
+      "felder": [
+        "success",
+        "quantity",
+        "papierkorb",
+        "degradiert",
+        "entfallen"
       ],
       "pflicht": []
     },
@@ -4018,8 +3981,7 @@
         "total",
         "page",
         "page_size",
-        "merkposten",
-        "error"
+        "merkposten"
       ],
       "pflicht": []
     },
@@ -4063,8 +4025,7 @@
       "felder": [
         "success",
         "war_neu",
-        "merkposten",
-        "error"
+        "merkposten"
       ],
       "pflicht": []
     },
@@ -4083,8 +4044,7 @@
         "success",
         "verschoben",
         "zusammengefuehrt",
-        "owner_user_id",
-        "error"
+        "owner_user_id"
       ],
       "pflicht": []
     },
@@ -4115,7 +4075,6 @@
         "set_number",
         "currency",
         "current",
-        "error",
         "degradiert"
       ],
       "pflicht": []
@@ -4146,8 +4105,7 @@
         "name",
         "success",
         "action",
-        "set_number",
-        "error"
+        "set_number"
       ],
       "pflicht": []
     },
@@ -4155,7 +4113,6 @@
       "felder": [
         "id",
         "in_sets",
-        "owner_ids",
         "set_number",
         "storage",
         "unit_price",
@@ -4163,6 +4120,7 @@
         "condition",
         "conditions",
         "owners",
+        "owner_ids",
         "avg_purchase_price",
         "fig_name",
         "quantity",
@@ -4180,8 +4138,8 @@
       "felder": [
         "success",
         "total",
-        "source",
         "figs",
+        "source",
         "error"
       ],
       "pflicht": [
@@ -4226,8 +4184,7 @@
         "instructions",
         "source_emptied",
         "from_user_id",
-        "to_user_id",
-        "error"
+        "to_user_id"
       ],
       "pflicht": []
     },
@@ -4261,21 +4218,21 @@
     },
     "Part": {
       "felder": [
-        "condition",
-        "storage",
         "part_number",
         "bl_part_number",
         "part_name",
         "color_id",
-        "bl_color_id",
         "color_name",
         "color_hex",
-        "category_name",
         "image_url",
-        "image_local",
         "total_quantity",
+        "is_spare",
+        "condition",
+        "storage",
+        "category_name",
+        "image_local",
         "in_sets",
-        "is_spare"
+        "bl_color_id"
       ],
       "pflicht": [
         "part_number"
@@ -4321,8 +4278,8 @@
         "page",
         "page_size",
         "parts",
-        "error",
-        "degradiert"
+        "degradiert",
+        "error"
       ],
       "pflicht": [
         "success"
@@ -4358,8 +4315,7 @@
         "total_value",
         "wert_gesamt",
         "preise_ausstehend",
-        "kaufpreise_fremde_waehrung",
-        "error"
+        "kaufpreise_fremde_waehrung"
       ],
       "pflicht": [
         "success",
@@ -4368,41 +4324,41 @@
     },
     "PartValuationItem": {
       "felder": [
-        "ausstehend",
-        "from_cache",
-        "max_price",
-        "min_price",
-        "acq_count",
-        "used_count",
-        "category_name",
-        "created_at",
-        "source",
         "id",
+        "quantity",
+        "image_url",
+        "image_local",
+        "purchase_price",
+        "avg_price",
+        "condition",
+        "conditions",
+        "user_id",
+        "owners",
         "part_number",
         "bl_part_number",
         "part_name",
         "color_id",
         "color_name",
         "color_hex",
-        "quantity",
-        "image_url",
-        "image_local",
         "unit_price",
-        "purchase_price",
+        "acq_count",
+        "used_count",
         "avg_purchase_price",
+        "storage",
+        "category_name",
+        "created_at",
+        "source",
+        "ausstehend",
+        "from_cache",
+        "max_price",
+        "min_price",
         "qty_avg_price",
-        "avg_price",
         "pnl_pct",
         "pnl_prozent",
         "display_value",
         "total_value",
         "wert_gesamt",
-        "condition",
-        "conditions",
-        "user_id",
-        "owners",
-        "acquisitions",
-        "storage"
+        "acquisitions"
       ],
       "pflicht": []
     },
@@ -4575,8 +4531,7 @@
       "felder": [
         "success",
         "alerts",
-        "now",
-        "error"
+        "now"
       ],
       "pflicht": []
     },
@@ -4588,8 +4543,7 @@
         "page_size",
         "currency",
         "totals",
-        "sets",
-        "error"
+        "sets"
       ],
       "pflicht": [
         "success",
@@ -4689,8 +4643,7 @@
     "PreisalarmeResponse": {
       "felder": [
         "success",
-        "alerts",
-        "error"
+        "alerts"
       ],
       "pflicht": []
     },
@@ -4709,8 +4662,7 @@
       "felder": [
         "success",
         "alert",
-        "removed",
-        "error"
+        "removed"
       ],
       "pflicht": []
     },
@@ -4844,24 +4796,7 @@
     },
     "ProfilGespeichert": {
       "felder": [
-        "new_quantity",
-        "from_user_id",
-        "to_user_id",
-        "merged",
-        "unchanged",
-        "acquisitions",
-        "instructions",
-        "papierkorb",
-        "removed",
-        "linked_to",
         "success",
-        "error",
-        "set",
-        "parts",
-        "minifigs",
-        "source_emptied",
-        "quantity",
-        "degradiert",
         "emailChanged",
         "emailSent"
       ],
@@ -4891,8 +4826,7 @@
         "success",
         "minutes",
         "count",
-        "logs",
-        "error"
+        "logs"
       ],
       "pflicht": [
         "success"
@@ -5209,7 +5143,8 @@
         "min_price",
         "max_price",
         "qty_avg_price",
-        "no_price"
+        "no_price",
+        "error"
       ],
       "pflicht": [
         "success"
@@ -5218,8 +5153,7 @@
     "SetResponse": {
       "felder": [
         "success",
-        "set",
-        "error"
+        "set"
       ],
       "pflicht": [
         "success"
@@ -5231,8 +5165,7 @@
         "count",
         "sets",
         "total",
-        "themes",
-        "error"
+        "themes"
       ],
       "pflicht": [
         "success"
@@ -5241,8 +5174,7 @@
     "SettingsResponse": {
       "felder": [
         "success",
-        "settings",
-        "error"
+        "settings"
       ],
       "pflicht": [
         "success"
@@ -5339,8 +5271,7 @@
         "success",
         "zusammengelegt",
         "verschoben",
-        "vereint",
-        "error"
+        "vereint"
       ],
       "pflicht": []
     },
@@ -5520,7 +5451,6 @@
         "pnl_pct",
         "pnl_prozent",
         "created_at",
-        "owner_user_id",
         "kaufpreis_original",
         "kaufpreis_waehrung",
         "price_estimated"
@@ -5544,8 +5474,7 @@
         "ttl_stunden",
         "kaufpreise_fremde_waehrung",
         "sets",
-        "totals",
-        "error"
+        "totals"
       ],
       "pflicht": [
         "success"
@@ -5593,8 +5522,7 @@
       "felder": [
         "success",
         "item",
-        "sets",
-        "error"
+        "sets"
       ],
       "pflicht": []
     },

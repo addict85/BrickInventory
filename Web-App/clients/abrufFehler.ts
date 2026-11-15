@@ -12,14 +12,8 @@ type AbrufFehler = Error & {
   detail?: { meta?: { code?: number } } & Record<string, unknown>;
 };
 
-/**
- * Einen gefangenen Wert als Abruf-Fehler lesen.
- *
- * Gibt IMMER ein Error-artiges Objekt zurueck, auch wenn etwas anderes
- * geworfen wurde — sonst muesste jede Verzweigung darunter erneut pruefen, ob
- * ueberhaupt ein Objekt vorliegt. Die Zusatzfelder sind optional; ein `false`
- * und ein fehlendes Feld sind fuer jede Verzweigung dasselbe.
- */
+/** Einen gefangenen Wert als Abruf-Fehler lesen; immer ein Error, damit keine
+ * Verzweigung darunter erneut prüfen muss, ob überhaupt ein Objekt vorliegt. */
 function alsAbrufFehler(e: unknown): AbrufFehler {
   if (e instanceof Error) return e as AbrufFehler;
   // Kein Error: Wir behalten die Zusatzfelder, falls doch welche da sind, und

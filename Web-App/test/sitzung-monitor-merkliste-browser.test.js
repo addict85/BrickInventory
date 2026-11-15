@@ -9,9 +9,9 @@
  *   B  monitor.js plant die nächste Runde ohne wennSichtbar() → rot: „Hintergrundarbeiten“ (Abfrage im
  *      verborgenen Tab)
  *   C  fehlerfang.js meldet wieder jedes Ereignis ohne Fehlerobjekt → rot: „200 % Schrift“ (roter Toast)
- *   D  finance.js immer mit 'finance.basis.gerechnet' → rot: „Rechenbasis“
+ *   D  finanzen.js immer mit 'finance.basis.gerechnet' → rot: „Rechenbasis“
  *   T  wertkurve.js zeichnet wieder im ResizeObserver selbst nach → rot: „200 % Schrift“ (Schleife)
- *   E  settings.js wieder mit `z?.prices || 0` ohne Ersatztext → rot: „Leeren ohne Zahl“ („Löscht 0 …“)
+ *   E  einstellungen.js wieder mit `z?.prices || 0` ohne Ersatztext → rot: „Leeren ohne Zahl“ („Löscht 0 …“)
  *   F  merkliste.js wieder mit dem Selektor `.mk-zeile, .leer` → rot: „Neuladen nach Fehler“ (Merkliste)
  *   G  loadMinifigs() ohne das Gerüst → rot: ebenda (Figuren)
  *   H  #mon-app-theme ohne data-change → rot: „Design sofort“
@@ -412,7 +412,7 @@ async function sitzungUngeklaert(_t, a) {
   }
 }
 
-test('UX-Prüfung 21 im Browser', { concurrency: 1, timeout: 400_000 }, async t => {
+test('Sitzung, Monitor, Fehlerfang, Merkliste', { concurrency: 1, timeout: 400_000 }, async t => {
   const a = await starteApp(t, { name: `r21_pruefer_${process.pid}`, bestand: musterHaushalt });
   if (a.grund) {
     t.skip(a.grund);

@@ -504,7 +504,7 @@ async function merklisteZu(_t, a) {
   }
 }
 
-test('UX-Prüfung 25 im Browser', { concurrency: 1, timeout: 900_000 }, async t => {
+test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout: 900_000 }, async t => {
   const name = `r25_${process.pid}`;
   const req = require('./helpers/sources').buildAndRequire();
   const a = await starteApp(t, {

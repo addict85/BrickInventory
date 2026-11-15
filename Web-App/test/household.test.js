@@ -309,14 +309,14 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
   // Jede der fünf Ansichten hängt ihn an ihre Abfragen.
-  assert.match(read('public/js/gallery.js'), /addScopeParam\(p, 'gallery'\)/);
-  assert.match(read('public/js/parts.js'), /addScopeParam\(p, 'parts'\)/);
+  assert.match(read('public/js/sammlung.js'), /addScopeParam\(p, 'gallery'\)/);
+  assert.match(read('public/js/teile.js'), /addScopeParam\(p, 'parts'\)/);
   assert.match(read('public/js/minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
   assert.match(read('public/js/merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
 
   // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.
-  const fin = read('public/js/finance.js') + read('public/js/wertkurve.js');
+  const fin = read('public/js/finanzen.js') + read('public/js/wertkurve.js');
   // Adressen seit Etappe 5 unter /v1 — die Regel ist unverändert: ALLE vier
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of [
@@ -342,7 +342,7 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // niemand ansieht — und dabei Preisabrufe auslösen.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
-  assert.match(gal, /if \(view === 'finance'\) loadFinance\(\);/);
+  assert.match(gal, /if \(view === 'finance'\) melde\('finanzenLaden'\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
   // manuell erfassten. Der manuelle Bereich lädt über einen eigenen Endpunkt
   // und blieb sonst ungefiltert stehen.

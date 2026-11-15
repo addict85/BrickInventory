@@ -19,7 +19,7 @@ import org.junit.Test
 
 /**
  * Teile- und Figuren-Repository geben Fachwerte zurück: Ein `success: false` des Servers
- * ist eine Absage mit seinem Satz, der Bestand der Teileliste ist je gefragtem Teil abgelegt.
+ * ist eine Absage (ihren Satz schickt er mit einem Fehlerstatus), der Bestand der Teileliste ist je gefragtem Teil abgelegt.
  *
  * Gegenproben (Patches unter gegenproben/):
  *   teile-absage-als-erfolg      legeLagerortAn() bildet ohne zugesagt ab → rot „ein success false …“
@@ -31,7 +31,7 @@ class TeileFachwerteTest {
     @Volatile private var bereich: String? = "a"
     private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { bereich })
     private val pfade = PfadServer(
-        "/api/v1/storage/locations" to """{"success":false,"error":"Den Ort gibt es schon"}""",
+        "/api/v1/storage/locations" to """{"success":false}""",
         "/api/v1/parts/owned" to """{"success":true,"bestand":{"3001|5":{"gesamt":7,"lose":2}}}""",
         "/api/v1/minifigs" to """{"success":true,"action":"added","fig_number":"sw0001","price_from_condition":"U"}""",
     )
@@ -43,8 +43,8 @@ class TeileFachwerteTest {
     fun zu() = pfade.server.shutdown()
 
     @Test
-    fun `ein success false ist eine Absage mit dem Satz des Servers`() = runBlocking {
-        assertEquals(Ergebnis.Fehler.Absage("Den Ort gibt es schon"), teile.legeLagerortAn("Keller"))
+    fun `ein success false ist eine Absage`() = runBlocking {
+        assertEquals(Ergebnis.Fehler.Absage(), teile.legeLagerortAn("Keller"))
     }
 
     @Test

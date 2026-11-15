@@ -716,7 +716,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/POST_api_v1_sets_import_csv_cancel"
+                  "$ref": "#/components/schemas/KatalogBilderEingereiht"
                 }
               }
             }
@@ -1282,7 +1282,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VerwaltungMeldung"
+                  "$ref": "#/components/schemas/AnleitungenEingereiht"
                 }
               }
             }
@@ -1562,7 +1562,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/GenericResponse"
                 }
               }
             }
@@ -1973,7 +1973,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/GenericResponse"
                 }
               }
             }
@@ -4113,7 +4113,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/GenericResponse"
                 }
               }
             }
@@ -5705,7 +5705,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/StueckGeaendert"
                 }
               }
             }
@@ -5952,7 +5952,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/Erfassungsantwort"
                 }
               }
             }
@@ -6969,7 +6969,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GET_api_v1_sets_setNumber_parts_list"
+                  "$ref": "#/components/schemas/GET_api_v1_parts"
                 }
               }
             }
@@ -7182,7 +7182,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/StueckGeaendert"
                 }
               }
             }
@@ -7445,7 +7445,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/Erfassungsantwort"
                 }
               }
             }
@@ -9009,7 +9009,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/Erfassungsantwort"
                 }
               }
             }
@@ -9172,7 +9172,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/Erfassungsantwort"
                 }
               }
             }
@@ -9470,7 +9470,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/GenericResponse"
                 }
               }
             }
@@ -9581,7 +9581,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GET_api_v1_minifigs"
+                  "$ref": "#/components/schemas/SetFigurenResponse"
                 }
               }
             }
@@ -9673,7 +9673,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GET_api_v1_sets_setNumber_parts_list"
+                  "$ref": "#/components/schemas/SetTeileResponse"
                 }
               }
             }
@@ -10308,7 +10308,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/POST_api_v1_minifigs_import_csv"
+                  "$ref": "#/components/schemas/SetCsvImportGestartet"
                 }
               }
             }
@@ -11402,7 +11402,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/HaushaltGeloest"
                 }
               }
             }
@@ -11500,7 +11500,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/HaushaltBeigetreten"
                 }
               }
             }
@@ -11651,7 +11651,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/HaushaltGeloest"
                 }
               }
             }
@@ -13033,7 +13033,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/GenericResponse"
                 }
               }
             }
@@ -14448,12 +14448,6 @@
               "string",
               "null"
             ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -14482,12 +14476,6 @@
             ]
           },
           "price_from_condition": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "error": {
             "type": [
               "string",
               "null"
@@ -14536,12 +14524,6 @@
           },
           "is_self": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -14572,6 +14554,27 @@
         "required": [
           "success",
           "deleted"
+        ],
+        "additionalProperties": {}
+      },
+      "AnleitungenEingereiht": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "enqueued": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "enqueued"
         ],
         "additionalProperties": {}
       },
@@ -14611,235 +14614,8 @@
       "AnleitungHochgeladen": {
         "type": "object",
         "properties": {
-          "new_quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merged": {
-            "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "papierkorb": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              }
-            ]
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "set": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "minifigs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source_emptied": {
-            "type": "boolean"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "degradiert": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "instruction": {
             "type": "object",
@@ -14956,12 +14732,6 @@
             ]
           },
           "eigenes": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "error": {
             "type": [
               "string",
               "null"
@@ -15419,17 +15189,19 @@
           },
           "unsicher": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
           "success",
           "set_number",
+          "name",
+          "year",
+          "pieces",
+          "theme",
+          "minifigs",
+          "image_url",
+          "image_local",
+          "source",
           "unsicher"
         ],
         "additionalProperties": {}
@@ -15508,12 +15280,6 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/BestandEintrag"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -15780,12 +15546,6 @@
             "items": {
               "$ref": "#/components/schemas/BrickColor"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -16022,12 +15782,6 @@
             "items": {
               "$ref": "#/components/schemas/CatalogYearCount"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -16193,12 +15947,6 @@
                 "type": "null"
               }
             ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -16327,12 +16075,6 @@
             "items": {
               "$ref": "#/components/schemas/CatalogSetItem"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -16497,75 +16239,7 @@
           "results": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "set_number": {
-                  "type": "string"
-                },
-                "zeile": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "success": {
-                  "type": "boolean"
-                },
-                "action": {
-                  "type": "string"
-                },
-                "isWarning": {
-                  "type": "boolean"
-                },
-                "error": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "code": {
-                  "type": "string"
-                },
-                "menge": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "katalog_offen": {
-                  "type": "boolean"
-                },
-                "part_number": {
-                  "type": "string"
-                },
-                "fig_number": {
-                  "type": "string"
-                },
-                "fig_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "condition": {
-                  "type": "string"
-                },
-                "vars": {
-                  "type": "object",
-                  "propertyNames": {
-                    "type": "string"
-                  },
-                  "additionalProperties": {}
-                },
-                "waehrung_angepasst": {
-                  "type": "boolean"
-                },
-                "waehrung_datei": {
-                  "type": "string"
-                },
-                "waehrung_konto": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/ImportZeile"
             }
           },
           "success": {
@@ -16771,71 +16445,8 @@
       "DELETE_api_v1_minifigs_figNumber": {
         "type": "object",
         "properties": {
-          "new_quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merged": {
+          "success": {
             "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "papierkorb": {
             "type": "array",
@@ -16844,158 +16455,11 @@
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
             }
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "set": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "minifigs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source_emptied": {
-            "type": "boolean"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "degradiert": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
-          "papierkorb",
-          "success"
+          "success",
+          "papierkorb"
         ],
         "additionalProperties": {}
       },
@@ -17169,41 +16633,72 @@
       "EinstellungenGespeichert": {
         "type": "object",
         "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "updated": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "success",
+          "updated"
+        ],
+        "additionalProperties": {}
+      },
+      "Endpunkte": {
+        "type": "object",
+        "properties": {
+          "auth": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "api": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "endpoints": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "api",
+          "version",
+          "endpoints"
+        ],
+        "additionalProperties": {}
+      },
+      "Erfassungsantwort": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
           "new_quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "merged": {
             "type": "boolean"
@@ -17212,91 +16707,14 @@
             "type": "boolean"
           },
           "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "papierkorb": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              }
-            ]
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "set": {
             "anyOf": [
@@ -17355,28 +16773,14 @@
             ]
           },
           "parts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "minifigs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "source_emptied": {
             "type": "boolean"
@@ -17398,47 +16802,10 @@
             "items": {
               "type": "string"
             }
-          },
-          "updated": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           }
         },
         "required": [
-          "success",
-          "updated"
-        ],
-        "additionalProperties": {}
-      },
-      "Endpunkte": {
-        "type": "object",
-        "properties": {
-          "auth": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
-          },
-          "api": {
-            "type": "string"
-          },
-          "version": {
-            "type": "string"
-          },
-          "endpoints": {
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
-          }
-        },
-        "required": [
-          "api",
-          "version",
-          "endpoints"
+          "success"
         ],
         "additionalProperties": {}
       },
@@ -17716,72 +17083,6 @@
             "items": {
               "type": "object",
               "properties": {
-                "ausstehend": {
-                  "type": "boolean"
-                },
-                "from_cache": {
-                  "type": "boolean"
-                },
-                "max_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "min_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "set_number": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "storage_id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "acq_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "used_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
                 "id": {
                   "anyOf": [
                     {
@@ -17792,21 +17093,6 @@
                     {
                       "type": "null"
                     }
-                  ]
-                },
-                "fig_number": {
-                  "type": "string"
-                },
-                "bl_fig_number": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "fig_name": {
-                  "type": [
-                    "string",
-                    "null"
                   ]
                 },
                 "quantity": {
@@ -17826,66 +17112,13 @@
                     "null"
                   ]
                 },
-                "unit_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
                 "purchase_price": {
                   "type": [
                     "number",
                     "null"
                   ]
                 },
-                "avg_purchase_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "qty_avg_price": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
                 "avg_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "pnl_pct": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "pnl_prozent": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "display_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "total_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": "string"
-                },
-                "wert_gesamt": {
                   "type": [
                     "number",
                     "null"
@@ -17935,6 +17168,104 @@
                     ],
                     "additionalProperties": {}
                   }
+                },
+                "fig_number": {
+                  "type": "string"
+                },
+                "bl_fig_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fig_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "set_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "storage_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ausstehend": {
+                  "type": "boolean"
+                },
+                "from_cache": {
+                  "type": "boolean"
+                },
+                "max_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "qty_avg_price": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pnl_prozent": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "display_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "total_value": {
+                  "type": "string",
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+                },
+                "wert_gesamt": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
                 },
                 "acquisitions": {
                   "type": "array",
@@ -17998,18 +17329,6 @@
                           "null"
                         ]
                       },
-                      "owner_user_id": {
-                        "anyOf": [
-                          {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
                       "kaufpreis_original": {
                         "type": "number"
                       },
@@ -18023,22 +17342,39 @@
                     "required": [
                       "id",
                       "condition",
-                      "quantity"
+                      "quantity",
+                      "purchase_price",
+                      "avg_price",
+                      "total_avg",
+                      "wert_gesamt",
+                      "pnl_prozent",
+                      "created_at"
                     ],
                     "additionalProperties": {}
                   }
-                },
-                "storage": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
                 }
               },
               "required": [
-                "fig_number",
+                "id",
                 "quantity",
+                "image_url",
+                "image_local",
+                "purchase_price",
+                "avg_price",
+                "condition",
                 "conditions",
+                "user_id",
+                "fig_number",
+                "bl_fig_number",
+                "fig_name",
+                "set_number",
+                "source",
+                "storage_id",
+                "qty_avg_price",
+                "pnl_prozent",
+                "display_value",
+                "total_value",
+                "wert_gesamt",
                 "acquisitions"
               ],
               "additionalProperties": {}
@@ -18064,12 +17400,6 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -18191,6 +17521,18 @@
         ],
         "additionalProperties": {}
       },
+      "GenericResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": {}
+      },
       "Gesundheit": {
         "type": "object",
         "properties": {
@@ -18233,9 +17575,6 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "source": {
-            "type": "string"
-          },
           "figs": {
             "type": "array",
             "items": {
@@ -18258,14 +17597,6 @@
                     "string",
                     "null"
                   ]
-                },
-                "owner_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  }
                 },
                 "set_number": {
                   "type": [
@@ -18321,6 +17652,14 @@
                     "additionalProperties": {}
                   }
                 },
+                "owner_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
                 "avg_purchase_price": {
                   "type": [
                     "number",
@@ -18373,23 +17712,29 @@
                 }
               },
               "required": [
+                "id",
+                "in_sets",
+                "set_number",
+                "storage",
+                "unit_price",
                 "fig_number",
+                "condition",
                 "conditions",
+                "fig_name",
                 "quantity",
-                "source"
+                "total_quantity",
+                "image_url",
+                "image_local",
+                "source",
+                "set_added_at"
               ],
               "additionalProperties": {}
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
           "success",
+          "total",
           "figs"
         ],
         "additionalProperties": {}
@@ -18536,12 +17881,6 @@
               ],
               "additionalProperties": {}
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -18550,7 +17889,7 @@
         ],
         "additionalProperties": {}
       },
-      "GET_api_v1_sets_setNumber_parts_list": {
+      "GET_api_v1_parts": {
         "type": "object",
         "properties": {
           "source": {
@@ -18582,18 +17921,6 @@
             "items": {
               "type": "object",
               "properties": {
-                "condition": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "storage": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
                 "part_number": {
                   "type": "string"
                 },
@@ -18614,18 +17941,6 @@
                   "minimum": -9007199254740991,
                   "maximum": 9007199254740991
                 },
-                "bl_color_id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
                 "color_name": {
                   "type": [
                     "string",
@@ -18638,13 +17953,33 @@
                     "null"
                   ]
                 },
-                "category_name": {
+                "image_url": {
                   "type": [
                     "string",
                     "null"
                   ]
                 },
-                "image_url": {
+                "total_quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "is_spare": {
+                  "type": "boolean"
+                },
+                "condition": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "storage": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "category_name": {
                   "type": [
                     "string",
                     "null"
@@ -18656,35 +17991,28 @@
                     "null"
                   ]
                 },
-                "total_quantity": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
                 "in_sets": {
                   "type": [
                     "string",
                     "null"
                   ]
-                },
-                "is_spare": {
-                  "type": "boolean"
                 }
               },
               "required": [
                 "part_number",
+                "bl_part_number",
+                "part_name",
                 "color_id",
+                "color_name",
+                "color_hex",
+                "image_url",
                 "total_quantity",
-                "is_spare"
+                "is_spare",
+                "category_name",
+                "image_local"
               ],
               "additionalProperties": {}
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "degradiert": {
             "type": "array",
@@ -18694,6 +18022,7 @@
           }
         },
         "required": [
+          "source",
           "success",
           "total",
           "page",
@@ -19001,6 +18330,55 @@
         ],
         "additionalProperties": {}
       },
+      "HaushaltBeigetreten": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "linked_to": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "username"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "success",
+          "linked_to"
+        ],
+        "additionalProperties": {}
+      },
+      "HaushaltGeloest": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "removed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "success",
+          "removed"
+        ],
+        "additionalProperties": {}
+      },
       "HouseholdInviteCheckResponse": {
         "type": "object",
         "properties": {
@@ -19054,12 +18432,6 @@
               {
                 "type": "null"
               }
-            ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
             ]
           }
         },
@@ -19201,12 +18573,6 @@
               "$ref": "#/components/schemas/GetrenntesKonto"
             }
           },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "degradiert": {
             "type": "array",
             "items": {
@@ -19226,6 +18592,77 @@
           "open_invites",
           "former_links"
         ],
+        "additionalProperties": {}
+      },
+      "ImportZeile": {
+        "type": "object",
+        "properties": {
+          "set_number": {
+            "type": "string"
+          },
+          "zeile": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "action": {
+            "type": "string"
+          },
+          "isWarning": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "menge": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "katalog_offen": {
+            "type": "boolean"
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "fig_number": {
+            "type": "string"
+          },
+          "fig_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "condition": {
+            "type": "string"
+          },
+          "vars": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "waehrung_angepasst": {
+            "type": "boolean"
+          },
+          "waehrung_datei": {
+            "type": "string"
+          },
+          "waehrung_konto": {
+            "type": "string"
+          }
+        },
         "additionalProperties": {}
       },
       "Instruction": {
@@ -19568,6 +19005,48 @@
         ],
         "additionalProperties": {}
       },
+      "KatalogBilderEingereiht": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "queued": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "verworfen": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "dauer_minuten": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "success",
+          "queued",
+          "pending",
+          "skipped",
+          "verworfen",
+          "dauer_minuten"
+        ],
+        "additionalProperties": {}
+      },
       "KonfigExport": {
         "type": "object",
         "properties": {
@@ -19777,12 +19256,6 @@
                 "type": "null"
               }
             ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -19802,12 +19275,6 @@
             "items": {
               "$ref": "#/components/schemas/Lagerort"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -19832,12 +19299,6 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -19859,12 +19320,6 @@
               {
                 "type": "null"
               }
-            ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
             ]
           }
         },
@@ -19894,12 +19349,6 @@
               {
                 "type": "null"
               }
-            ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
             ]
           }
         },
@@ -19995,340 +19444,8 @@
           "figs": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "ausstehend": {
-                  "type": "boolean"
-                },
-                "from_cache": {
-                  "type": "boolean"
-                },
-                "max_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "min_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "set_number": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "storage_id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "acq_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "used_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "fig_number": {
-                  "type": "string"
-                },
-                "bl_fig_number": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "fig_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "quantity": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "image_url": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "image_local": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "unit_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "purchase_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "avg_purchase_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "qty_avg_price": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "avg_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "pnl_pct": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "pnl_prozent": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "display_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "total_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": "string"
-                },
-                "wert_gesamt": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "condition": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "conditions": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "user_id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "owners": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "username": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "username"
-                    ],
-                    "additionalProperties": {}
-                  }
-                },
-                "acquisitions": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "condition": {
-                        "type": "string"
-                      },
-                      "quantity": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "purchase_price": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "avg_price": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "total_avg": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "wert_gesamt": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "pnl_pct": {
-                        "deprecated": true,
-                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "pnl_prozent": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "created_at": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "owner_user_id": {
-                        "anyOf": [
-                          {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
-                      "kaufpreis_original": {
-                        "type": "number"
-                      },
-                      "kaufpreis_waehrung": {
-                        "type": "string"
-                      },
-                      "price_estimated": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "condition",
-                      "quantity"
-                    ],
-                    "additionalProperties": {}
-                  }
-                },
-                "storage": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "required": [
-                "fig_number",
-                "quantity",
-                "conditions"
-              ],
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/ManuelleFigur"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "degradiert": {
             "type": "array",
@@ -20370,352 +19487,8 @@
           "parts": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "ausstehend": {
-                  "type": "boolean"
-                },
-                "from_cache": {
-                  "type": "boolean"
-                },
-                "max_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "min_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "acq_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "used_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "category_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "created_at": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "part_number": {
-                  "type": "string"
-                },
-                "bl_part_number": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "part_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "color_id": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "color_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "color_hex": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "quantity": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "image_url": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "image_local": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "unit_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "purchase_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "avg_purchase_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "qty_avg_price": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "avg_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "pnl_pct": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "pnl_prozent": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "display_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "total_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": "string"
-                },
-                "wert_gesamt": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "condition": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "conditions": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "user_id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "owners": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "username": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "username"
-                    ],
-                    "additionalProperties": {}
-                  }
-                },
-                "acquisitions": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "condition": {
-                        "type": "string"
-                      },
-                      "quantity": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      "purchase_price": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "avg_price": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "total_avg": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "wert_gesamt": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "pnl_pct": {
-                        "deprecated": true,
-                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "pnl_prozent": {
-                        "type": [
-                          "number",
-                          "null"
-                        ]
-                      },
-                      "created_at": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "owner_user_id": {
-                        "anyOf": [
-                          {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
-                      "kaufpreis_original": {
-                        "type": "number"
-                      },
-                      "kaufpreis_waehrung": {
-                        "type": "string"
-                      },
-                      "price_estimated": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "condition",
-                      "quantity"
-                    ],
-                    "additionalProperties": {}
-                  }
-                },
-                "storage": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "required": [
-                "part_number",
-                "color_id",
-                "quantity",
-                "conditions"
-              ],
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/ManuellesTeil"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "degradiert": {
             "type": "array",
@@ -20733,10 +19506,10 @@
         ],
         "additionalProperties": {}
       },
-      "MengeGeaendert": {
+      "ManuelleFigur": {
         "type": "object",
         "properties": {
-          "new_quantity": {
+          "id": {
             "anyOf": [
               {
                 "type": "integer",
@@ -20748,180 +19521,108 @@
               }
             ]
           },
-          "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "quantity": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
-          "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merged": {
-            "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "papierkorb": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              }
-            ]
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "error": {
+          "image_url": {
             "type": [
               "string",
               "null"
             ]
           },
-          "set": {
+          "image_local": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "user_id": {
             "anyOf": [
               {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
                 },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
+                "username": {
+                  "type": "string"
+                }
               },
-              {
-                "type": "null"
-              }
+              "required": [
+                "id",
+                "username"
+              ],
+              "additionalProperties": {}
+            }
+          },
+          "fig_number": {
+            "type": "string"
+          },
+          "bl_fig_number": {
+            "type": [
+              "string",
+              "null"
             ]
           },
-          "parts": {
+          "fig_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "set_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "storage_id": {
             "anyOf": [
               {
                 "type": "integer",
@@ -20933,7 +19634,7 @@
               }
             ]
           },
-          "minifigs": {
+          "acq_count": {
             "anyOf": [
               {
                 "type": "integer",
@@ -20945,7 +19646,274 @@
               }
             ]
           },
-          "source_emptied": {
+          "used_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_purchase_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "storage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "quantity",
+          "image_url",
+          "image_local",
+          "purchase_price",
+          "avg_price",
+          "condition",
+          "conditions",
+          "user_id",
+          "fig_number",
+          "bl_fig_number",
+          "fig_name",
+          "set_number",
+          "source",
+          "storage_id",
+          "acq_count",
+          "used_count",
+          "avg_purchase_price",
+          "storage",
+          "unit_price"
+        ],
+        "additionalProperties": {}
+      },
+      "ManuellesTeil": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_local": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "condition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "username": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "username"
+              ],
+              "additionalProperties": {}
+            }
+          },
+          "part_number": {
+            "type": "string"
+          },
+          "bl_part_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "part_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color_id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "color_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color_hex": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "acq_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "used_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avg_purchase_price": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "storage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "quantity",
+          "image_url",
+          "image_local",
+          "purchase_price",
+          "avg_price",
+          "condition",
+          "conditions",
+          "user_id",
+          "part_number",
+          "bl_part_number",
+          "part_name",
+          "color_id",
+          "color_name",
+          "color_hex",
+          "unit_price",
+          "acq_count",
+          "used_count",
+          "avg_purchase_price",
+          "storage",
+          "category_name",
+          "created_at",
+          "source"
+        ],
+        "additionalProperties": {}
+      },
+      "MengeGeaendert": {
+        "type": "object",
+        "properties": {
+          "success": {
             "type": "boolean"
           },
           "quantity": {
@@ -20959,6 +19927,11 @@
                 "type": "null"
               }
             ]
+          },
+          "papierkorb": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "degradiert": {
             "type": "array",
@@ -21020,7 +19993,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "quantity"
         ],
         "additionalProperties": {}
       },
@@ -21124,12 +20098,6 @@
             "items": {
               "$ref": "#/components/schemas/Merkposten"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -21298,12 +20266,6 @@
                 "type": "null"
               }
             ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -21316,235 +20278,8 @@
       "MerkpostenGeloescht": {
         "type": "object",
         "properties": {
-          "new_quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merged": {
-            "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "papierkorb": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              }
-            ]
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "set": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "minifigs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source_emptied": {
-            "type": "boolean"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "degradiert": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "geloescht": {
             "type": "integer",
@@ -21581,12 +20316,6 @@
                 "type": "null"
               }
             ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -21611,12 +20340,6 @@
           },
           "current": {
             "$ref": "#/components/schemas/CurrentByCondition"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "degradiert": {
             "type": "array",
@@ -21655,12 +20378,6 @@
             ]
           },
           "set_number": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "error": {
             "type": [
               "string",
               "null"
@@ -21771,12 +20488,6 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -22094,66 +20805,6 @@
             "items": {
               "type": "object",
               "properties": {
-                "ausstehend": {
-                  "type": "boolean"
-                },
-                "from_cache": {
-                  "type": "boolean"
-                },
-                "max_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "min_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "acq_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "used_count": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "category_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "created_at": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "source": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
                 "id": {
                   "anyOf": [
                     {
@@ -22164,38 +20815,6 @@
                     {
                       "type": "null"
                     }
-                  ]
-                },
-                "part_number": {
-                  "type": "string"
-                },
-                "bl_part_number": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "part_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "color_id": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "color_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "color_hex": {
-                  "type": [
-                    "string",
-                    "null"
                   ]
                 },
                 "quantity": {
@@ -22215,66 +20834,13 @@
                     "null"
                   ]
                 },
-                "unit_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
                 "purchase_price": {
                   "type": [
                     "number",
                     "null"
                   ]
                 },
-                "avg_purchase_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "qty_avg_price": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
                 "avg_price": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "pnl_pct": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "pnl_prozent": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                },
-                "display_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "total_value": {
-                  "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
-                  "type": "string"
-                },
-                "wert_gesamt": {
                   "type": [
                     "number",
                     "null"
@@ -22324,6 +20890,103 @@
                     ],
                     "additionalProperties": {}
                   }
+                },
+                "part_number": {
+                  "type": "string"
+                },
+                "bl_part_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "part_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "color_id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "color_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "color_hex": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unit_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "ausstehend": {
+                  "type": "boolean"
+                },
+                "from_cache": {
+                  "type": "boolean"
+                },
+                "max_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "min_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "qty_avg_price": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "pnl_pct": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pnl_prozent": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "display_value": {
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "total_value": {
+                  "type": "string",
+                  "deprecated": true,
+                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+                },
+                "wert_gesamt": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
                 },
                 "acquisitions": {
                   "type": "array",
@@ -22387,18 +21050,6 @@
                           "null"
                         ]
                       },
-                      "owner_user_id": {
-                        "anyOf": [
-                          {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
-                      },
                       "kaufpreis_original": {
                         "type": "number"
                       },
@@ -22412,23 +21063,40 @@
                     "required": [
                       "id",
                       "condition",
-                      "quantity"
+                      "quantity",
+                      "purchase_price",
+                      "avg_price",
+                      "total_avg",
+                      "wert_gesamt",
+                      "pnl_prozent",
+                      "created_at"
                     ],
                     "additionalProperties": {}
                   }
-                },
-                "storage": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
                 }
               },
               "required": [
-                "part_number",
-                "color_id",
+                "id",
                 "quantity",
+                "image_url",
+                "image_local",
+                "purchase_price",
+                "avg_price",
+                "condition",
                 "conditions",
+                "user_id",
+                "part_number",
+                "bl_part_number",
+                "part_name",
+                "color_id",
+                "color_name",
+                "color_hex",
+                "unit_price",
+                "qty_avg_price",
+                "pnl_prozent",
+                "display_value",
+                "total_value",
+                "wert_gesamt",
                 "acquisitions"
               ],
               "additionalProperties": {}
@@ -22454,12 +21122,6 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -22910,12 +21572,6 @@
               "string",
               "null"
             ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -22957,12 +21613,6 @@
             "items": {
               "$ref": "#/components/schemas/PnlSetZeile"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -23323,96 +21973,8 @@
       "POST_api_v1_minifigs_import_csv": {
         "type": "object",
         "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "set_number": {
-                  "type": "string"
-                },
-                "zeile": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "success": {
-                  "type": "boolean"
-                },
-                "action": {
-                  "type": "string"
-                },
-                "isWarning": {
-                  "type": "boolean"
-                },
-                "error": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "code": {
-                  "type": "string"
-                },
-                "menge": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "katalog_offen": {
-                  "type": "boolean"
-                },
-                "part_number": {
-                  "type": "string"
-                },
-                "fig_number": {
-                  "type": "string"
-                },
-                "fig_name": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "condition": {
-                  "type": "string"
-                },
-                "vars": {
-                  "type": "object",
-                  "propertyNames": {
-                    "type": "string"
-                  },
-                  "additionalProperties": {}
-                },
-                "waehrung_angepasst": {
-                  "type": "boolean"
-                },
-                "waehrung_datei": {
-                  "type": "string"
-                },
-                "waehrung_konto": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": {}
-            }
-          },
-          "waehrung_hinweis": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "skipped": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "skipped_hint": {
-            "type": "string"
           },
           "total": {
             "type": "integer",
@@ -23420,11 +21982,6 @@
             "maximum": 9007199254740991
           },
           "added": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "imported": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
@@ -23439,108 +21996,42 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportZeile"
+            }
           },
-          "gestartet": {
-            "type": "boolean"
-          },
-          "vorhanden": {
+          "skipped": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "vorhanden_nummern": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "skipped_hint": {
+            "type": "string"
+          },
+          "waehrung_hinweis": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
-          "success"
+          "success",
+          "total",
+          "added",
+          "updated",
+          "errors",
+          "results"
         ],
         "additionalProperties": {}
       },
       "POST_api_v1_sets_import_csv_cancel": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -23633,12 +22124,6 @@
             "items": {
               "$ref": "#/components/schemas/Preisalarm"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -23667,12 +22152,6 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -24047,235 +22526,8 @@
       "ProfilGespeichert": {
         "type": "object",
         "properties": {
-          "new_quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merged": {
-            "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "papierkorb": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              }
-            ]
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "set": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "minifigs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source_emptied": {
-            "type": "boolean"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "degradiert": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "emailChanged": {
             "type": "boolean"
@@ -24363,12 +22615,6 @@
             "items": {
               "$ref": "#/components/schemas/ProtokollZeile"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -24424,245 +22670,6 @@
           },
           "wirksam_ab": {
             "type": "string"
-          }
-        },
-        "required": [
-          "success"
-        ],
-        "additionalProperties": {}
-      },
-      "PUT_api_v1_sets_setNumber_acquisitions_acqId": {
-        "type": "object",
-        "properties": {
-          "new_quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "from_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "to_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "merged": {
-            "type": "boolean"
-          },
-          "unchanged": {
-            "type": "boolean"
-          },
-          "acquisitions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "instructions": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "papierkorb": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              }
-            ]
-          },
-          "removed": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "linked_to": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "username": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "id",
-                  "username"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "success": {
-            "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "set": {
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "set_number": {
-                    "type": "string"
-                  },
-                  "condition": {
-                    "type": "string"
-                  },
-                  "acq_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "used_count": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
-                  },
-                  "conditions": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "max_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  },
-                  "avg_purchase_price": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "set_number",
-                  "condition",
-                  "acq_count",
-                  "used_count",
-                  "conditions",
-                  "max_purchase_price",
-                  "avg_purchase_price"
-                ],
-                "additionalProperties": {}
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parts": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "minifigs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source_emptied": {
-            "type": "boolean"
-          },
-          "quantity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "degradiert": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
@@ -25055,6 +23062,49 @@
         ],
         "additionalProperties": {}
       },
+      "SetCsvImportGestartet": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "gestartet": {
+            "type": "boolean"
+          },
+          "vorhanden": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "vorhanden_nummern": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "skipped_hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "total",
+          "gestartet",
+          "vorhanden",
+          "vorhanden_nummern"
+        ],
+        "additionalProperties": {}
+      },
       "SetExistsResponse": {
         "type": "object",
         "properties": {
@@ -25087,6 +23137,97 @@
           "success",
           "exists",
           "set_number"
+        ],
+        "additionalProperties": {}
+      },
+      "SetFigurenResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "figs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fig_number": {
+                  "type": "string"
+                },
+                "fig_name": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "total_quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "image_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": "string"
+                },
+                "conditions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "owners": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "username": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "username"
+                    ],
+                    "additionalProperties": {}
+                  }
+                }
+              },
+              "required": [
+                "fig_number",
+                "fig_name",
+                "quantity",
+                "total_quantity",
+                "image_url",
+                "source",
+                "conditions",
+                "owners"
+              ],
+              "additionalProperties": {}
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "source",
+          "figs"
         ],
         "additionalProperties": {}
       },
@@ -25470,6 +23611,9 @@
           },
           "no_price": {
             "type": "boolean"
+          },
+          "error": {
+            "type": "string"
           }
         },
         "required": [
@@ -25498,12 +23642,6 @@
               {
                 "type": "null"
               }
-            ]
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
             ]
           }
         },
@@ -25540,12 +23678,6 @@
             "items": {
               "type": "string"
             }
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -25553,6 +23685,126 @@
           "count",
           "sets",
           "total"
+        ],
+        "additionalProperties": {}
+      },
+      "SetTeileResponse": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part_number": {
+                  "type": "string"
+                },
+                "bl_part_number": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "part_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "color_id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "color_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "color_hex": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "image_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "total_quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "is_spare": {
+                  "type": "boolean"
+                },
+                "bl_color_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "part_number",
+                "bl_part_number",
+                "part_name",
+                "color_id",
+                "color_name",
+                "color_hex",
+                "image_url",
+                "total_quantity",
+                "is_spare",
+                "bl_color_id"
+              ],
+              "additionalProperties": {}
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "success",
+          "total",
+          "page",
+          "page_size",
+          "parts"
         ],
         "additionalProperties": {}
       },
@@ -25564,12 +23816,6 @@
           },
           "settings": {
             "$ref": "#/components/schemas/UserSettings"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -25742,6 +23988,23 @@
         ],
         "additionalProperties": {}
       },
+      "StueckGeaendert": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": {}
+      },
       "TeileGeladen": {
         "type": "object",
         "properties": {
@@ -25785,12 +24048,6 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -26211,12 +24468,6 @@
           },
           "totals": {
             "$ref": "#/components/schemas/Totals"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -26451,18 +24702,6 @@
                     "null"
                   ]
                 },
-                "owner_user_id": {
-                  "anyOf": [
-                    {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
                 "kaufpreis_original": {
                   "type": "number"
                 },
@@ -26476,7 +24715,13 @@
               "required": [
                 "id",
                 "condition",
-                "quantity"
+                "quantity",
+                "purchase_price",
+                "avg_price",
+                "total_avg",
+                "wert_gesamt",
+                "pnl_prozent",
+                "created_at"
               ],
               "additionalProperties": {}
             }
@@ -26545,79 +24790,8 @@
       "VerwaltungDesign": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "theme": {
             "type": "string"
@@ -26632,79 +24806,8 @@
       "VerwaltungGestartet": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "started": {
             "type": "boolean"
@@ -26719,165 +24822,24 @@
       "VerwaltungMeldung": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "message": {
             "type": "string"
           }
         },
         "required": [
-          "success"
+          "success",
+          "message"
         ],
         "additionalProperties": {}
       },
       "VerwaltungSet": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "set_number": {
             "type": "string"
@@ -26892,79 +24854,8 @@
       "VerwaltungTtl": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "ttl": {
             "anyOf": [
@@ -26988,79 +24879,8 @@
       "VerwaltungZustand": {
         "type": "object",
         "properties": {
-          "dauer_minuten": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pending": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "queued": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "skipped": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "verworfen": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "success": {
             "type": "boolean"
-          },
-          "error": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enqueued": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
           },
           "condition": {
             "type": [

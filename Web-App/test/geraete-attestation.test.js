@@ -56,6 +56,7 @@ const erwartung = (o = {}) => ({
   paket: T.PAKET,
   digests: [T.DIGEST_HEX],
   widerrufen: new Set(),
+  jetzt: new Date(),
   ...o,
 });
 const pruefe = (k, e = erwartung()) => A.pruefeKette(k.kette, e);

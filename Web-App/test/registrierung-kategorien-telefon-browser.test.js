@@ -38,7 +38,7 @@ const rechteck = sel => `(() => { const r = document.querySelector(${JSON.string
   return r ? { l: Math.round(r.left), r: Math.round(r.right), o: Math.round(r.top), u: Math.round(r.bottom), b: Math.round(r.width) } : null; })()`;
 const schneiden = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
 
-test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async t => {
+test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async t => {
   const NAME = `r14_${process.pid}`,
     KIND = `${NAME}_kind`,
     WARTET = `${NAME}_wartet`;

@@ -8,7 +8,7 @@
  *   B  finanzenFehlen() ohne titel → rot: „N2 …“ (Die Liste konnte nicht geladen werden); ohne
  *      filterBedienbar(false) → rot: ebenda (Chip „Sets“ bedienbar); ohne filterBedienbar(true) → rot: ebenda
  *      (nach „Erneut versuchen“ gesperrt)
- *   C  parts.js wieder fmtN() ohne „je“ → rot: „N3 …“ (Teil „0,12 €“); minifigs.js ebenso → rot: ebenda (Figur)
+ *   C  teile.js wieder fmtN() ohne „je“ → rot: „N3 …“ (Teil „0,12 €“); minifigs.js ebenso → rot: ebenda (Figur)
  *   D  doLogin() ohne die Prüfung der Pflichtfelder → rot: „N4 …“ (alle drei Teilfälle); fehlerPlatzieren()
  *      ohne .geheim-feld → rot: „beide leer“ (Meldung zwischen Passwortfeld und Augen-Knopf)
  *   E  kontoSprung() ohne focus() → rot: „N5 …“ (Fokus bleibt auf dem Link)

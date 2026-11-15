@@ -99,7 +99,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
     await t.test('die Bewertung rechnet es nicht mehr mit', async () => {
       // Der eigentliche Schaden: `quantity || 1` machte aus 0 eine 1, das
       // gelöschte Set trug mit 20 CHF zum Portfolio bei.
-      const val = await FC.computeSetsValuation(uid, [uid]);
+      const val = await FC.bewerteSets(uid, [uid]);
       const nummern = (val.sets || []).map(s => s.set_number);
       assert.deepEqual(nummern, [BLEIBT], `Bewertung enthält noch: ${nummern.join(', ')}`);
       assert.equal(

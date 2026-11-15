@@ -10,7 +10,7 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
      override suspend fun legeLagerortAn(name: String): Ergebnis<Unit> =
          ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it.alsAnsicht()) } }) {
              sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name = name)) }
--        }.zugesagt({ it.success }, { it.error }) { }
+-        }.zugesagt({ it.success }) { }
 +        }.abgebildet { }
  
      override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<Unit> =

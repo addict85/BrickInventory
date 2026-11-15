@@ -60,7 +60,7 @@ class MerklisteRepositoryImpl @Inject constructor(
                                               vonId: Int, zuId: Int): Ergebnis<Boolean> =
         ablage.nachgezogen({ r -> Nachzug.MerkpostenVerschoben(setNumber, condition, vonId, zuId).takeIf { r.success } }) {
             sicherAufrufen { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(ownerUserId = vonId, neuerInhaber = zuId)) }
-        }.zugesagt({ it.success }, { it.error }) { it.zusammengefuehrt }
+        }.zugesagt({ it.success }) { it.zusammengefuehrt }
 
     override suspend fun loescheMerkposten(setNumber: String, condition: Zustand,
                                            ownerUserId: Int?): Ergebnis<Unit> =

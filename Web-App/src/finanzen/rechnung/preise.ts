@@ -25,11 +25,7 @@ type Stunden = string | number;
 
 /** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
  * auseinandergelaufen waren. */
-export async function resolveSetCondition(
-  k: FinanzenKontext,
-  uid: number | number[],
-  setNumber: string,
-): Promise<'N' | 'U'> {
+export async function setZustand(k: FinanzenKontext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto.
   const row = await k.preisCache.setZustandsZaehler(asIds(uid), setNumber);
   return effectiveCondition(row);
@@ -199,7 +195,7 @@ export async function preisOderKeiner(abruf: Promise<PreisDaten>): Promise<Preis
 
 const stunden = (ttlHours: Stunden) => Math.max(1, parseInt(String(ttlHours), 10));
 
-export async function fetchPrice(
+export async function holePreis(
   k: FinanzenKontext,
   setNumber: string,
   condition: string,
@@ -312,10 +308,8 @@ function nachschlagwerk<S, W>(uhr: Uhr, hole: (schluessel: S) => Promise<W | nul
   return frage;
 }
 
-/** Die ganze Tabelle (rund 200 Zeilen): Je Schlüssel bliebe eine unbekannte
- * Farbe je Teil eine eigene Abfrage, weil Fehlschläge nicht gemerkt werden. */
-// Der Ladevorgang wird geteilt, nicht nur sein Ergebnis: Parallele Bewerter
-// lüden sonst je selbst. Je Zugang, weil die Karte aus seiner Datenbank kommt.
+/** Die ganze Tabelle (rund 200 Zeilen), einmal je Zugang geladen und geteilt: Je Schlüssel
+ * bliebe jede unbekannte Farbe eine eigene Abfrage, parallele Bewerter lüden je selbst. */
 type Farbstand = { karte: Map<number, number> | null; zeit: number; ladung: Promise<Map<number, number>> | null };
 export async function farbkarte(k: FinanzenKontext): Promise<Map<number, number>> {
   const st = k.faecher.fach<Farbstand>('farbkarte', () => ({ karte: null, zeit: 0, ladung: null }));

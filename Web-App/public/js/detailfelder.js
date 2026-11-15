@@ -9,7 +9,7 @@ import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { feldFehler } from './formular.js';
 import { kontoWaehrung, angemeldetesKonto, galerieSets, offenesSet, setzeOffenesSet } from './zustand.js';
-import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './scope.js';
+import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './kontofilter.js';
 import { tRaw } from '../i18n.js';
 
 /**
@@ -171,7 +171,7 @@ export function lagerortGewaehlt(id) {
   feld.style.display = 'none';
   feld.value = sel.value;
   // Das change-Ereignis von Hand: Ein programmatisch gesetzter Wert loest keines aus. Ueber die
-  // Ereignis-Delegation (actions.js) landet es bei genau dem Handler, der auch eine Eingabe von Hand
+  // Ereignis-Delegation (aktionen.js) landet es bei genau dem Handler, der auch eine Eingabe von Hand
   // speichert.
   feld.dispatchEvent(new Event('change', { bubbles: true }));
 }

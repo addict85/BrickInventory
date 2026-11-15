@@ -236,7 +236,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   });
 
   await t.test('die Bewertung liefert je Kaufpreis eine Zeile, Altbestand ohne', async () => {
-    const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
+    const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
     await db.run(
       `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-preis', 5, 'manual'),
                   ($1, 'ma-alt', 5, 'manual')`,
@@ -258,8 +258,8 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
         [uid, preis, tag],
       );
     }
-    const teile = (await computePartsValuation(uid, [uid])).parts;
-    const figuren = (await computeMinifigsValuation(uid, [uid])).figs;
+    const teile = (await bewerteTeile(uid, [uid])).parts;
+    const figuren = (await bewerteFiguren(uid, [uid])).figs;
     const preise = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
     assert.deepEqual(preise(teile.find(p => p.part_number === 'ma-preis')), [2, 4], 'Teil: eine Zeile je Kaufpreis');
     assert.deepEqual(

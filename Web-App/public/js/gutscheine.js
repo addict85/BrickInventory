@@ -26,7 +26,7 @@ let _bearbeitet = null;
 /** @param {string} id */
 const el = (/** @type {string} */ id) => /** @type {Feld} */ (document.getElementById(id));
 
-// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der Verteiler in actions.js reicht
+// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der Verteiler in aktionen.js reicht
 // `data-arg`, `data-arg2` … in dieser Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)`
 // waere also still verdreht — die id landete in `ev`.
 

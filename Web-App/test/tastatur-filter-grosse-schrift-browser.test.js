@@ -452,7 +452,7 @@ async function leereSammlung(_t, a, kid) {
   }
 }
 
-test('UX-Prüfung 24 im Browser', { concurrency: 1, timeout: 600_000 }, async t => {
+test('Tastatur in Formularen, Filterleiste, grosse Schrift', { concurrency: 1, timeout: 600_000 }, async t => {
   const name = `r24_${process.pid}`;
   let kid = 0;
   const a = await starteApp(t, {

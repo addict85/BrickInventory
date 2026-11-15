@@ -23,7 +23,7 @@ test('jeder Fall des gemeinsamen Korpus liefert denselben ersten Kandidaten', ()
     ohneKandidat = 0,
     dreistellig = 0;
   for (const [i, fall] of korpus.entries()) {
-    const k = setnummerKandidaten(fall.text);
+    const k = setnummerKandidaten(fall.text, 2026);
     const ist = k[0] ?? null;
     assert.equal(
       ist,

@@ -69,6 +69,16 @@ const BAUSTEINE = [
   'rueckfrage.js',
   'fadenkreuz.js',
   'diagramme.js',
+  // Von mehreren Ansichten geteilt, ohne selbst Ansicht zu sein (kein Reiter, kein eigener Bildschirm).
+  'kontofilter.js',
+  'kaufpreis-anzeige.js',
+  'rollbalken.js',
+  'erfassung-zustand.js',
+  'router.js',
+  'detailfelder.js',
+  'konten-orte.js',
+  'papierkorb.js',
+  'kennzahlen.js',
 ];
 
 /** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */

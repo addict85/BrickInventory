@@ -13,5 +13,5 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
 -                    val agg = r.data.set?.takeIf { it.setNumber.isNotBlank() }
 +                    val agg = r.data.set?.takeIf { false }
                      agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it.alsZusammenfassung())) }
-                     Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts ?: 0, r.data.minifigs ?: 0))
+                     Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
                  }

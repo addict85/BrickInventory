@@ -36,7 +36,7 @@ const TEIL = {
   color_id: 4,
   color_name: 'Red',
   color_hex: 'C91A09',
-  quantity: 6,
+  total_quantity: 6,
 };
 
 async function erstelle(teile, nummern = '10294') {
@@ -169,7 +169,10 @@ test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () =>
 });
 
 test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
-  const { w, d } = await erstelle([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', quantity: 10 }]);
+  const { w, d } = await erstelle([
+    TEIL,
+    { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 },
+  ]);
   try {
     assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
     assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);

@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { teileAufschluesselung } from './bausteine.js';
 import { G } from './dom.js';
 import { fmtBig } from './format.js';
-import { scopeQuery } from './scope.js';
+import { scopeQuery } from './kontofilter.js';
 
 /**
  * Zahl und Etikett einer Kennzahl in Ein- oder Mehrzahl („1 Set“). Schlüssel und Zahl stehen am Etikett,

@@ -6,7 +6,7 @@
  * noch der gesperrte Knopf den Inhalt.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  computeSetsValuation sammelt die Käufe wieder nur nach Setnummer →
+ *   A  bewerteSets sammelt die Käufe wieder nur nach Setnummer →
  *      rot: „Finanzen: ein Kauf je Zeile, mit Konto“ (4 Zeilen Tree House)
  *   B  setsMitErfassungen ohne GROUP BY → rot: „Finanzen: Summen ohne
  *      Doppelzählung“ (Kaufpreise 2149.97 statt 1739.98)
@@ -33,7 +33,7 @@ const { musterHaushalt } = require('./helpers/bestand');
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t => {
+test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async t => {
   const NAME = `r12_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r12x_${process.pid}`;

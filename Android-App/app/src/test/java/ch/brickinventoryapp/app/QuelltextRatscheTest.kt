@@ -663,7 +663,7 @@ class QuelltextRatscheTest {
         // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
         // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
         // core-vertrag, dessen Namen dem Wire-Format folgen.
-        val GRENZE = 962
+        val GRENZE = 961
         val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
         val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
         val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",

@@ -40,7 +40,7 @@ export async function preiseBeiderZustaende(k: MerklisteKontext, uid: number, se
 export interface Merkposten {
   set_number: string;
   condition: string;
-  created_at: string;
+  created_at: Date | string;
   /** Im Kontenbaum sieht man fremde Merkposten mit. */
   user_id: number;
   /** Im Zustand DIESES Merkpostens, aus dem Cache — null, solange keiner bekannt ist. */
@@ -176,32 +176,15 @@ export async function merkpostenVon(
     waehrung,
   );
 
-  type Zeile = Omit<
-    Merkposten,
-    'year' | 'num_parts' | 'owned' | 'alarm' | 'preisvergleich_url' | 'image_local' | 'marktpreis' | 'waehrung'
-  > & {
-    year: string | number | null;
-    num_parts: string | number | null;
-    owned: unknown;
-    alarm_richtung: string | null;
-    alarm_schwelle: string | number | null;
-    alarm_ausgeloest: unknown;
-    marktpreis: string | number | null;
-  };
   // Das Bild hier bestellen: Der Proxy legt nur für Vorschauen eine Notiz an,
   // das Detail fragt aber das volle Bild.
-
-  return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
+  return rows.map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel
     // wie beim Ablegen (src/bilder/setImages.ts).
     const lokal = bildFallsVorhanden(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
     if (!lokal && r.image_url) k.bilder.merkeGebraucht(String(r.image_url), String(r.set_number));
     return {
       ...r,
-      year: r.year == null ? null : Number(r.year),
-      num_parts: r.num_parts == null ? null : Number(r.num_parts),
-      // Number() als Netz: Der Zeilentyp lässt `string | number` zu.
-      marktpreis: r.marktpreis == null ? null : Number(r.marktpreis),
       waehrung,
       owned: !!r.owned,
       preisvergleich_url: fuerSet(r.set_number, r.name),
@@ -211,16 +194,15 @@ export async function merkpostenVon(
           ? null
           : {
               richtung: alarm_richtung,
-              schwelle: parseFloat(String(alarm_schwelle)),
+              schwelle: Number(alarm_schwelle),
               ausgeloest: !!alarm_ausgeloest,
             },
     };
   });
 }
 
-/** Über setErfassen(), die eine Wahrheit fürs Erfassen: ohne Netz, deshalb
- * passt sie mit dem Streichen des Merkpostens in eine Transaktion. Katalog
- * und geschätzten Preis ergänzt der Auftrag wie bei jeder Erfassung. */
+/** Über setErfassen(): ohne Netz, deshalb mit dem Streichen des Merkpostens in einer
+ * Transaktion; Katalog und geschätzten Preis ergänzt der Auftrag. */
 export async function uebernimm(
   k: MerklisteKontext,
   leserId: number,

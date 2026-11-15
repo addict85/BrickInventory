@@ -36,7 +36,6 @@ export type AddMinifigResponse = {
   fig_number: string;
   fig_name?: string | null;
   price_from_condition?: string | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type AddPartResponse = {
@@ -45,7 +44,6 @@ export type AddPartResponse = {
   part_number: string;
   part_name?: string | null;
   price_from_condition?: string | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type AddSetResponse = {
@@ -57,13 +55,18 @@ export type AddSetResponse = {
   ergaenzung?: 'ausstehend' | 'erledigt';
   owner_user_id?: number;
   is_self?: boolean;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type AndereBeendet = {
   success: true;
   deleted: number;
   zugaenge?: number;
+  [feld: string]: unknown;
+};
+export type AnleitungenEingereiht = {
+  success: boolean;
+  enqueued: number;
+  message?: string;
   [feld: string]: unknown;
 };
 export type AnleitungenGeladen = {
@@ -74,37 +77,7 @@ export type AnleitungenGeladen = {
   [feld: string]: unknown;
 };
 export type AnleitungHochgeladen = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb?: number | number[];
-  removed?: number | null;
-  linked_to?: {
-    id: number;
-    username: string;
-    [feld: string]: unknown;
-  } | null;
   success: boolean;
-  error?: string | null;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number | null;
-  minifigs?: number | null;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degradiert?: string[];
   instruction: {
     url: string;
     description: string | null;
@@ -137,7 +110,6 @@ export type AppThemeResponse = {
   theme: string;
   vorgabe: string | null;
   eigenes: string | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type AppToken = {
@@ -221,16 +193,15 @@ export type AuftragZaehler = {
 export type BarcodeResponse = {
   success: boolean;
   set_number: string;
-  name?: string | null;
-  year?: number | null;
-  pieces?: number | null;
-  theme?: string | null;
-  minifigs?: number | null;
-  image_url?: string | null;
-  image_local?: string | null;
-  source?: string | null;
+  name: string | null;
+  year: number | null;
+  pieces: number | null;
+  theme: string | null;
+  minifigs: number | null;
+  image_url: string | null;
+  image_local: string | null;
+  source: string | null;
   unsicher: boolean;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type BestandEintrag = {
@@ -249,7 +220,6 @@ export type BestandGeleert = {
 export type BestandResponse = {
   success: boolean;
   bestand: Record<string, BestandEintrag>;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type BildDiagnose = {
@@ -312,7 +282,6 @@ export type BrickColor = {
 export type BrickColorsResponse = {
   success: boolean;
   colors: BrickColor[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type BricklinkVerweise = {
@@ -360,7 +329,6 @@ export type CatalogMetaResponse = {
   year_min: number | null;
   year_max: number | null;
   year_counts: CatalogYearCount[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type CatalogSetDetail = {
@@ -389,7 +357,6 @@ export type CatalogSetDetail = {
 export type CatalogSetDetailResponse = {
   success: boolean;
   set: CatalogSetDetail | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type CatalogSetItem = {
@@ -412,7 +379,6 @@ export type CatalogSetsResponse = {
   page_size: number;
   pages: number;
   sets: CatalogSetItem[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type CatalogTheme = {
@@ -452,26 +418,7 @@ export type ConditionValuation = {
 };
 export type CsvImportStatus = {
   code?: string | null;
-  results?: Array<{
-    set_number?: string;
-    zeile?: number;
-    success?: boolean;
-    action?: string;
-    isWarning?: boolean;
-    error?: string | null;
-    code?: string;
-    menge?: number;
-    katalog_offen?: boolean;
-    part_number?: string;
-    fig_number?: string;
-    fig_name?: string | null;
-    condition?: string;
-    vars?: Record<string, unknown>;
-    waehrung_angepasst?: boolean;
-    waehrung_datei?: string;
-    waehrung_konto?: string;
-    [feld: string]: unknown;
-  }>;
+  results?: ImportZeile[];
   success: boolean;
   status?: string;
   total?: number;
@@ -517,37 +464,8 @@ export type DefaultConditionResponse = {
   [feld: string]: unknown;
 };
 export type DELETE_api_v1_minifigs_figNumber = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb: number[];
-  removed?: number | null;
-  linked_to?: {
-    id: number;
-    username: string;
-    [feld: string]: unknown;
-  } | null;
   success: boolean;
-  error?: string | null;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number | null;
-  minifigs?: number | null;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degradiert?: string[];
+  papierkorb: number[];
   [feld: string]: unknown;
 };
 export type DELETE_api_v1_papierkorb_id = {
@@ -596,22 +514,26 @@ export type EinrichtungStand = {
   [feld: string]: unknown;
 };
 export type EinstellungenGespeichert = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
+  success: boolean;
+  updated: number;
+  [feld: string]: unknown;
+};
+export type Endpunkte = {
+  auth?: Record<string, unknown>;
+  api: string;
+  version: string;
+  endpoints: Record<string, unknown>;
+  [feld: string]: unknown;
+};
+export type Erfassungsantwort = {
+  success: boolean;
+  new_quantity?: number;
+  from_user_id?: number;
+  to_user_id?: number;
   merged?: boolean;
   unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb?: number | number[];
-  removed?: number | null;
-  linked_to?: {
-    id: number;
-    username: string;
-    [feld: string]: unknown;
-  } | null;
-  success: boolean;
-  error?: string | null;
+  acquisitions?: number;
+  instructions?: number;
   set?: {
     set_number: string;
     condition: string;
@@ -622,19 +544,11 @@ export type EinstellungenGespeichert = {
     avg_purchase_price: number | null;
     [feld: string]: unknown;
   } | null;
-  parts?: number | null;
-  minifigs?: number | null;
+  parts?: number;
+  minifigs?: number;
   source_emptied?: boolean;
   quantity?: number | null;
   degradiert?: string[];
-  updated: number;
-  [feld: string]: unknown;
-};
-export type Endpunkte = {
-  auth?: Record<string, unknown>;
-  api: string;
-  version: string;
-  endpoints: Record<string, unknown>;
   [feld: string]: unknown;
 };
 export type Fehler = {
@@ -864,65 +778,58 @@ export type FigsValuationResponse = {
   page_size: number;
   currency: string;
   figs: Array<{
-    ausstehend?: boolean;
-    from_cache?: boolean;
-    max_price?: number | null;
-    min_price?: number | null;
-    set_number?: string | null;
-    source?: string | null;
-    storage_id?: number | null;
-    acq_count?: number | null;
-    used_count?: number | null;
-    id?: number | null;
-    fig_number: string;
-    bl_fig_number?: string | null;
-    fig_name?: string | null;
+    id: number | null;
     quantity: number;
-    image_url?: string | null;
-    image_local?: string | null;
-    unit_price?: number | null;
-    purchase_price?: number | null;
-    avg_purchase_price?: number | null;
-    qty_avg_price?: number | null;
-    avg_price?: number | null;
-    pnl_pct?: string | null;
-    pnl_prozent?: number | null;
-    display_value?: string | null;
-    total_value?: string;
-    wert_gesamt?: number | null;
-    condition?: string | null;
+    image_url: string | null;
+    image_local: string | null;
+    purchase_price: number | null;
+    avg_price: number | null;
+    condition: string | null;
     conditions: string[];
-    user_id?: number | null;
+    user_id: number | null;
     owners?: {
       id: number;
       username: string;
       [feld: string]: unknown;
     }[];
+    fig_number: string;
+    bl_fig_number: string | null;
+    fig_name: string | null;
+    set_number: string | null;
+    source: string | null;
+    storage_id: number | null;
+    ausstehend?: boolean;
+    from_cache?: boolean;
+    max_price?: number | null;
+    min_price?: number | null;
+    qty_avg_price: number | null;
+    pnl_pct?: string | null;
+    pnl_prozent: number | null;
+    display_value: string | null;
+    total_value: string;
+    wert_gesamt: number | null;
     acquisitions: Array<{
       id: number;
       condition: string;
       quantity: number;
-      purchase_price?: number | null;
-      avg_price?: number | null;
-      total_avg?: string | null;
-      wert_gesamt?: number | null;
+      purchase_price: number | null;
+      avg_price: number | null;
+      total_avg: string | null;
+      wert_gesamt: number | null;
       pnl_pct?: string | null;
-      pnl_prozent?: number | null;
-      created_at?: string | null;
-      owner_user_id?: number | null;
+      pnl_prozent: number | null;
+      created_at: string | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
       price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
-    storage?: string | null;
     [feld: string]: unknown;
   }>;
   total_value: string;
   wert_gesamt: number | null;
   preise_ausstehend: number;
   kaufpreise_fremde_waehrung: number;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type FigurTeile = {
@@ -949,6 +856,10 @@ export type Geloescht = {
   deleted: number;
   [feld: string]: unknown;
 };
+export type GenericResponse = {
+  success: boolean;
+  [feld: string]: unknown;
+};
 export type Gesundheit = {
   status: 'ok' | 'starting';
   startup?: StartupStatus;
@@ -958,34 +869,32 @@ export type Gesundheit = {
 };
 export type GET_api_v1_minifigs = {
   success: boolean;
-  total?: number;
-  source?: string;
+  total: number;
   figs: Array<{
-    id?: number | null;
-    in_sets?: string | null;
-    owner_ids?: number[];
-    set_number?: string | null;
-    storage?: string | null;
-    unit_price?: number | null;
+    id: number | null;
+    in_sets: string | null;
+    set_number: string | null;
+    storage: string | null;
+    unit_price: number | null;
     fig_number: string;
-    condition?: string | null;
+    condition: string | null;
     conditions: string[];
     owners?: {
       id: number;
       username: string;
       [feld: string]: unknown;
     }[];
+    owner_ids?: number[];
     avg_purchase_price?: number | null;
-    fig_name?: string | null;
+    fig_name: string | null;
     quantity: number;
-    total_quantity?: number | null;
-    image_url?: string | null;
-    image_local?: string | null;
+    total_quantity: number | null;
+    image_url: string | null;
+    image_local: string | null;
     source: string;
-    set_added_at?: string | null;
+    set_added_at: string | null;
     [feld: string]: unknown;
   }>;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type GET_api_v1_minifigs_figNumber_sets = {
@@ -1014,34 +923,31 @@ export type GET_api_v1_minifigs_figNumber_sets = {
     owner_user_id: number;
     [feld: string]: unknown;
   }>;
-  error?: string | null;
   [feld: string]: unknown;
 };
-export type GET_api_v1_sets_setNumber_parts_list = {
-  source?: string | null;
+export type GET_api_v1_parts = {
+  source: string | null;
   success: boolean;
   total: number;
   page: number;
   page_size: number;
   parts: Array<{
+    part_number: string;
+    bl_part_number: string | null;
+    part_name: string | null;
+    color_id: number;
+    color_name: string | null;
+    color_hex: string | null;
+    image_url: string | null;
+    total_quantity: number;
+    is_spare: boolean;
     condition?: string | null;
     storage?: string | null;
-    part_number: string;
-    bl_part_number?: string | null;
-    part_name?: string | null;
-    color_id: number;
-    bl_color_id?: number | null;
-    color_name?: string | null;
-    color_hex?: string | null;
-    category_name?: string | null;
-    image_url?: string | null;
-    image_local?: string | null;
-    total_quantity: number;
+    category_name: string | null;
+    image_local: string | null;
     in_sets?: string | null;
-    is_spare: boolean;
     [feld: string]: unknown;
   }>;
-  error?: string | null;
   degradiert?: string[];
   [feld: string]: unknown;
 };
@@ -1106,6 +1012,20 @@ export type GutscheinStapel = {
   total: number;
   [feld: string]: unknown;
 };
+export type HaushaltBeigetreten = {
+  success: boolean;
+  linked_to: {
+    id: number;
+    username: string;
+    [feld: string]: unknown;
+  };
+  [feld: string]: unknown;
+};
+export type HaushaltGeloest = {
+  success: boolean;
+  removed: number;
+  [feld: string]: unknown;
+};
 export type HouseholdInviteCheckResponse = {
   success: boolean;
   inviter: {
@@ -1119,7 +1039,6 @@ export type HouseholdInviteResponse = {
   success: boolean;
   code: string | null;
   expires_in: number | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type HouseholdMember = {
@@ -1153,8 +1072,27 @@ export type HouseholdStatusResponse = {
   sub_accounts: HouseholdMember[];
   open_invites: number;
   former_links: GetrenntesKonto[];
-  error?: string | null;
   degradiert?: string[];
+  [feld: string]: unknown;
+};
+export type ImportZeile = {
+  set_number?: string;
+  zeile?: number;
+  success?: boolean;
+  action?: string;
+  isWarning?: boolean;
+  error?: string | null;
+  code?: string;
+  menge?: number;
+  katalog_offen?: boolean;
+  part_number?: string;
+  fig_number?: string;
+  fig_name?: string | null;
+  condition?: string;
+  vars?: Record<string, unknown>;
+  waehrung_angepasst?: boolean;
+  waehrung_datei?: string;
+  waehrung_konto?: string;
   [feld: string]: unknown;
 };
 export type Instruction = {
@@ -1219,6 +1157,15 @@ export type JobStatus = {
   }>;
   [feld: string]: unknown;
 };
+export type KatalogBilderEingereiht = {
+  success: boolean;
+  queued: number;
+  pending: number;
+  skipped: number;
+  verworfen: number;
+  dauer_minuten: number;
+  [feld: string]: unknown;
+};
 export type KonfigExport = {
   version?: string;
   exported_at?: string;
@@ -1263,33 +1210,28 @@ export type LagerortEintrag = {
 export type LagerortEintragResponse = {
   success: boolean;
   ort: LagerortEintrag | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type LagerorteResponse = {
   success: boolean;
   orte: Lagerort[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type LagerortResponse = {
   success: boolean;
   storage?: string | null;
   changed?: number;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type LagerortVorgabeResponse = {
   success: boolean;
   vorgabe: LagerortEintrag | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type LagerortVorratResponse = {
   success: boolean;
   orte: LagerortEintrag[];
   vorgabe: LagerortEintrag | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type Lebenszeichen = {
@@ -1311,62 +1253,7 @@ export type ManualFigsResponse = {
   total: number;
   page: number;
   page_size: number;
-  figs: Array<{
-    ausstehend?: boolean;
-    from_cache?: boolean;
-    max_price?: number | null;
-    min_price?: number | null;
-    set_number?: string | null;
-    source?: string | null;
-    storage_id?: number | null;
-    acq_count?: number | null;
-    used_count?: number | null;
-    id?: number | null;
-    fig_number: string;
-    bl_fig_number?: string | null;
-    fig_name?: string | null;
-    quantity: number;
-    image_url?: string | null;
-    image_local?: string | null;
-    unit_price?: number | null;
-    purchase_price?: number | null;
-    avg_purchase_price?: number | null;
-    qty_avg_price?: number | null;
-    avg_price?: number | null;
-    pnl_pct?: string | null;
-    pnl_prozent?: number | null;
-    display_value?: string | null;
-    total_value?: string;
-    wert_gesamt?: number | null;
-    condition?: string | null;
-    conditions: string[];
-    user_id?: number | null;
-    owners?: {
-      id: number;
-      username: string;
-      [feld: string]: unknown;
-    }[];
-    acquisitions?: Array<{
-      id: number;
-      condition: string;
-      quantity: number;
-      purchase_price?: number | null;
-      avg_price?: number | null;
-      total_avg?: string | null;
-      wert_gesamt?: number | null;
-      pnl_pct?: string | null;
-      pnl_prozent?: number | null;
-      created_at?: string | null;
-      owner_user_id?: number | null;
-      kaufpreis_original?: number;
-      kaufpreis_waehrung?: string;
-      price_estimated?: boolean;
-      [feld: string]: unknown;
-    }>;
-    storage?: string | null;
-    [feld: string]: unknown;
-  }>;
-  error?: string | null;
+  figs: ManuelleFigur[];
   degradiert?: string[];
   [feld: string]: unknown;
 };
@@ -1375,99 +1262,73 @@ export type ManualPartsResponse = {
   total: number;
   page: number;
   page_size: number;
-  parts: Array<{
-    ausstehend?: boolean;
-    from_cache?: boolean;
-    max_price?: number | null;
-    min_price?: number | null;
-    acq_count?: number | null;
-    used_count?: number | null;
-    category_name?: string | null;
-    created_at?: string | null;
-    source?: string | null;
-    id?: number | null;
-    part_number: string;
-    bl_part_number?: string | null;
-    part_name?: string | null;
-    color_id: number;
-    color_name?: string | null;
-    color_hex?: string | null;
-    quantity: number;
-    image_url?: string | null;
-    image_local?: string | null;
-    unit_price?: number | null;
-    purchase_price?: number | null;
-    avg_purchase_price?: number | null;
-    qty_avg_price?: number | null;
-    avg_price?: number | null;
-    pnl_pct?: string | null;
-    pnl_prozent?: number | null;
-    display_value?: string | null;
-    total_value?: string;
-    wert_gesamt?: number | null;
-    condition?: string | null;
-    conditions: string[];
-    user_id?: number | null;
-    owners?: {
-      id: number;
-      username: string;
-      [feld: string]: unknown;
-    }[];
-    acquisitions?: Array<{
-      id: number;
-      condition: string;
-      quantity: number;
-      purchase_price?: number | null;
-      avg_price?: number | null;
-      total_avg?: string | null;
-      wert_gesamt?: number | null;
-      pnl_pct?: string | null;
-      pnl_prozent?: number | null;
-      created_at?: string | null;
-      owner_user_id?: number | null;
-      kaufpreis_original?: number;
-      kaufpreis_waehrung?: string;
-      price_estimated?: boolean;
-      [feld: string]: unknown;
-    }>;
-    storage?: string | null;
-    [feld: string]: unknown;
-  }>;
-  error?: string | null;
+  parts: ManuellesTeil[];
   degradiert?: string[];
   [feld: string]: unknown;
 };
-export type MengeGeaendert = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb?: number | number[];
-  removed?: number | null;
-  linked_to?: {
+export type ManuelleFigur = {
+  id: number | null;
+  quantity: number;
+  image_url: string | null;
+  image_local: string | null;
+  purchase_price: number | null;
+  avg_price: number | null;
+  condition: string | null;
+  conditions: string[];
+  user_id: number | null;
+  owners?: {
     id: number;
     username: string;
     [feld: string]: unknown;
-  } | null;
-  success: boolean;
-  error?: string | null;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
+  }[];
+  fig_number: string;
+  bl_fig_number: string | null;
+  fig_name: string | null;
+  set_number: string | null;
+  source: string | null;
+  storage_id: number | null;
+  acq_count: number | null;
+  used_count: number | null;
+  avg_purchase_price: number | null;
+  storage: string | null;
+  unit_price: number | null;
+  [feld: string]: unknown;
+};
+export type ManuellesTeil = {
+  id: number | null;
+  quantity: number;
+  image_url: string | null;
+  image_local: string | null;
+  purchase_price: number | null;
+  avg_price: number | null;
+  condition: string | null;
+  conditions: string[];
+  user_id: number | null;
+  owners?: {
+    id: number;
+    username: string;
     [feld: string]: unknown;
-  } | null;
-  parts?: number | null;
-  minifigs?: number | null;
-  source_emptied?: boolean;
-  quantity?: number | null;
+  }[];
+  part_number: string;
+  bl_part_number: string | null;
+  part_name: string | null;
+  color_id: number;
+  color_name: string | null;
+  color_hex: string | null;
+  unit_price: number | null;
+  acq_count: number | null;
+  used_count: number | null;
+  avg_purchase_price: number | null;
+  storage: string | null;
+  category_name: string | null;
+  created_at: string | null;
+  source: string | null;
+  [feld: string]: unknown;
+};
+export type MengeGeaendert = {
+  success: boolean;
+  quantity: number | null;
+  papierkorb?: number;
   degradiert?: string[];
   entfallen?: Array<{
     id: number;
@@ -1503,7 +1364,6 @@ export type MerklisteResponse = {
   page: number;
   page_size: number;
   merkposten: Merkposten[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type Merkposten = {
@@ -1534,41 +1394,10 @@ export type MerkpostenAntwort = {
   success: boolean;
   war_neu: boolean;
   merkposten: Merkposten | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type MerkpostenGeloescht = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb?: number | number[];
-  removed?: number | null;
-  linked_to?: {
-    id: number;
-    username: string;
-    [feld: string]: unknown;
-  } | null;
   success: boolean;
-  error?: string | null;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number | null;
-  minifigs?: number | null;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degradiert?: string[];
   geloescht: number;
   [feld: string]: unknown;
 };
@@ -1577,7 +1406,6 @@ export type MerkpostenInhaberAntwort = {
   verschoben: boolean;
   zusammengefuehrt: boolean;
   owner_user_id: number | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type MerkpostenPreiseResponse = {
@@ -1585,7 +1413,6 @@ export type MerkpostenPreiseResponse = {
   set_number: string;
   currency: string;
   current: CurrentByCondition;
-  error?: string | null;
   degradiert?: string[];
   [feld: string]: unknown;
 };
@@ -1595,7 +1422,6 @@ export type MerkpostenUebernahmeResponse = {
   success: boolean;
   action: string | null;
   set_number: string | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type MinifigStats = {
@@ -1622,7 +1448,6 @@ export type MoveSetResponse = {
   source_emptied: boolean;
   from_user_id: number;
   to_user_id: number;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type Papierkorb = {
@@ -1691,68 +1516,59 @@ export type PartsValuationResponse = {
   page_size: number;
   currency: string;
   parts: Array<{
-    ausstehend?: boolean;
-    from_cache?: boolean;
-    max_price?: number | null;
-    min_price?: number | null;
-    acq_count?: number | null;
-    used_count?: number | null;
-    category_name?: string | null;
-    created_at?: string | null;
-    source?: string | null;
-    id?: number | null;
-    part_number: string;
-    bl_part_number?: string | null;
-    part_name?: string | null;
-    color_id: number;
-    color_name?: string | null;
-    color_hex?: string | null;
+    id: number | null;
     quantity: number;
-    image_url?: string | null;
-    image_local?: string | null;
-    unit_price?: number | null;
-    purchase_price?: number | null;
-    avg_purchase_price?: number | null;
-    qty_avg_price?: number | null;
-    avg_price?: number | null;
-    pnl_pct?: string | null;
-    pnl_prozent?: number | null;
-    display_value?: string | null;
-    total_value?: string;
-    wert_gesamt?: number | null;
-    condition?: string | null;
+    image_url: string | null;
+    image_local: string | null;
+    purchase_price: number | null;
+    avg_price: number | null;
+    condition: string | null;
     conditions: string[];
-    user_id?: number | null;
+    user_id: number | null;
     owners?: {
       id: number;
       username: string;
       [feld: string]: unknown;
     }[];
+    part_number: string;
+    bl_part_number: string | null;
+    part_name: string | null;
+    color_id: number;
+    color_name: string | null;
+    color_hex: string | null;
+    unit_price: number | null;
+    ausstehend?: boolean;
+    from_cache?: boolean;
+    max_price?: number | null;
+    min_price?: number | null;
+    qty_avg_price: number | null;
+    pnl_pct?: string | null;
+    pnl_prozent: number | null;
+    display_value: string | null;
+    total_value: string;
+    wert_gesamt: number | null;
     acquisitions: Array<{
       id: number;
       condition: string;
       quantity: number;
-      purchase_price?: number | null;
-      avg_price?: number | null;
-      total_avg?: string | null;
-      wert_gesamt?: number | null;
+      purchase_price: number | null;
+      avg_price: number | null;
+      total_avg: string | null;
+      wert_gesamt: number | null;
       pnl_pct?: string | null;
-      pnl_prozent?: number | null;
-      created_at?: string | null;
-      owner_user_id?: number | null;
+      pnl_prozent: number | null;
+      created_at: string | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
       price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
-    storage?: string | null;
     [feld: string]: unknown;
   }>;
   total_value: string;
   wert_gesamt: number | null;
   preise_ausstehend: number;
   kaufpreise_fremde_waehrung: number;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type Passkey = {
@@ -1842,7 +1658,6 @@ export type PendingAlertsResponse = {
   success: boolean;
   alerts: Preisalarm[];
   now: string | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type PnlResponse = {
@@ -1853,7 +1668,6 @@ export type PnlResponse = {
   currency: string;
   totals: PnlTotals;
   sets: PnlSetZeile[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type PnlSetZeile = {
@@ -1921,50 +1735,19 @@ export type POST_api_v1_auth_email_bestaetigen_vorschau = {
   [feld: string]: unknown;
 };
 export type POST_api_v1_minifigs_import_csv = {
-  results?: Array<{
-    set_number?: string;
-    zeile?: number;
-    success?: boolean;
-    action?: string;
-    isWarning?: boolean;
-    error?: string | null;
-    code?: string;
-    menge?: number;
-    katalog_offen?: boolean;
-    part_number?: string;
-    fig_number?: string;
-    fig_name?: string | null;
-    condition?: string;
-    vars?: Record<string, unknown>;
-    waehrung_angepasst?: boolean;
-    waehrung_datei?: string;
-    waehrung_konto?: string;
-    [feld: string]: unknown;
-  }>;
-  waehrung_hinweis?: string | null;
   success: boolean;
+  total: number;
+  added: number;
+  updated: number;
+  errors: number;
+  results: ImportZeile[];
   skipped?: number;
   skipped_hint?: string;
-  total?: number;
-  added?: number;
-  imported?: number;
-  updated?: number;
-  errors?: number;
-  error?: string | null;
-  gestartet?: boolean;
-  vorhanden?: number;
-  vorhanden_nummern?: string[];
+  waehrung_hinweis?: string | null;
   [feld: string]: unknown;
 };
 export type POST_api_v1_sets_import_csv_cancel = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
   [feld: string]: unknown;
 };
 export type Preisalarm = {
@@ -1986,14 +1769,12 @@ export type Preisalarm = {
 export type PreisalarmeResponse = {
   success: boolean;
   alerts: Preisalarm[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type PreisalarmResponse = {
   success: boolean;
   alert?: Preisalarm | null;
   removed?: number;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type PreisJobStand = {
@@ -2079,37 +1860,7 @@ export type Profil = {
   [feld: string]: unknown;
 };
 export type ProfilGespeichert = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb?: number | number[];
-  removed?: number | null;
-  linked_to?: {
-    id: number;
-    username: string;
-    [feld: string]: unknown;
-  } | null;
   success: boolean;
-  error?: string | null;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number | null;
-  minifigs?: number | null;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degradiert?: string[];
   emailChanged?: boolean;
   emailSent?: boolean;
   [feld: string]: unknown;
@@ -2130,7 +1881,6 @@ export type ProtokollResponse = {
   minutes: number;
   count: number;
   logs: ProtokollZeile[];
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type ProtokollZeile = {
@@ -2143,40 +1893,6 @@ export type ProtokollZeile = {
 export type PUT_api_v1_auth_users_id_password = {
   success: true;
   wirksam_ab?: string;
-  [feld: string]: unknown;
-};
-export type PUT_api_v1_sets_setNumber_acquisitions_acqId = {
-  new_quantity?: number | null;
-  from_user_id?: number | null;
-  to_user_id?: number | null;
-  merged?: boolean;
-  unchanged?: boolean;
-  acquisitions?: number | null;
-  instructions?: number | null;
-  papierkorb?: number | number[];
-  removed?: number | null;
-  linked_to?: {
-    id: number;
-    username: string;
-    [feld: string]: unknown;
-  } | null;
-  success: boolean;
-  error?: string | null;
-  set?: {
-    set_number: string;
-    condition: string;
-    acq_count: number;
-    used_count: number;
-    conditions: string[];
-    max_purchase_price: number | null;
-    avg_purchase_price: number | null;
-    [feld: string]: unknown;
-  } | null;
-  parts?: number | null;
-  minifigs?: number | null;
-  source_emptied?: boolean;
-  quantity?: number | null;
-  degradiert?: string[];
   [feld: string]: unknown;
 };
 export type QrAbholung = {
@@ -2272,12 +1988,43 @@ export type SchrittFreigabe = {
   gueltig_bis: string;
   [feld: string]: unknown;
 };
+export type SetCsvImportGestartet = {
+  success: boolean;
+  total: number;
+  gestartet: boolean;
+  vorhanden: number;
+  vorhanden_nummern: string[];
+  skipped?: number;
+  skipped_hint?: string;
+  [feld: string]: unknown;
+};
 export type SetExistsResponse = {
   success: boolean;
   exists: boolean;
   set_number: string;
   owner_user_id?: number | null;
   is_self?: boolean;
+  [feld: string]: unknown;
+};
+export type SetFigurenResponse = {
+  success: boolean;
+  source: string;
+  figs: Array<{
+    fig_number: string;
+    fig_name: string;
+    quantity: number;
+    total_quantity: number;
+    image_url: string | null;
+    source: string;
+    conditions: string[];
+    owners: {
+      id: number;
+      username: string;
+      [feld: string]: unknown;
+    }[];
+    [feld: string]: unknown;
+  }>;
+  error?: string;
   [feld: string]: unknown;
 };
 export type SetInfoResponse = {
@@ -2345,12 +2092,12 @@ export type SetPriceResponse = {
   max_price: number | null;
   qty_avg_price: number | null;
   no_price: boolean;
+  error?: string;
   [feld: string]: unknown;
 };
 export type SetResponse = {
   success: boolean;
   set: SetItem | null;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type SetsResponse = {
@@ -2359,13 +2106,33 @@ export type SetsResponse = {
   sets: SetItem[];
   total: number;
   themes?: string[];
-  error?: string | null;
+  [feld: string]: unknown;
+};
+export type SetTeileResponse = {
+  source: string | null;
+  success: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  parts: Array<{
+    part_number: string;
+    bl_part_number: string | null;
+    part_name: string | null;
+    color_id: number;
+    color_name: string | null;
+    color_hex: string | null;
+    image_url: string | null;
+    total_quantity: number;
+    is_spare: boolean;
+    bl_color_id: number | null;
+    [feld: string]: unknown;
+  }>;
+  error?: string;
   [feld: string]: unknown;
 };
 export type SettingsResponse = {
   success: boolean;
   settings: UserSettings;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type Sicherung = {
@@ -2403,6 +2170,11 @@ export type StatsResponse = {
   stats: DashboardStats | null;
   [feld: string]: unknown;
 };
+export type StueckGeaendert = {
+  success: boolean;
+  quantity?: number;
+  [feld: string]: unknown;
+};
 export type TeileGeladen = {
   success: true;
   count: number;
@@ -2414,7 +2186,6 @@ export type TeilFarbeResponse = {
   zusammengelegt: boolean;
   verschoben: number;
   vereint: number;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type TlsStand = {
@@ -2513,7 +2284,6 @@ export type ValuationResponse = {
   kaufpreise_fremde_waehrung: number;
   sets: ValuationSet[];
   totals: Totals;
-  error?: string | null;
   [feld: string]: unknown;
 };
 export type ValuationSet = {
@@ -2548,14 +2318,13 @@ export type ValuationSet = {
     id: number;
     condition: string;
     quantity: number;
-    purchase_price?: number | null;
-    avg_price?: number | null;
-    total_avg?: string | null;
-    wert_gesamt?: number | null;
+    purchase_price: number | null;
+    avg_price: number | null;
+    total_avg: string | null;
+    wert_gesamt: number | null;
     pnl_pct?: string | null;
-    pnl_prozent?: number | null;
-    created_at?: string | null;
-    owner_user_id?: number | null;
+    pnl_prozent: number | null;
+    created_at: string | null;
     kaufpreis_original?: number;
     kaufpreis_waehrung?: string;
     price_estimated?: boolean;
@@ -2571,74 +2340,32 @@ export type ValuationSet = {
   [feld: string]: unknown;
 };
 export type VerwaltungDesign = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
   theme: string;
   [feld: string]: unknown;
 };
 export type VerwaltungGestartet = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
   started: boolean;
   [feld: string]: unknown;
 };
 export type VerwaltungMeldung = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
-  message?: string;
+  message: string;
   [feld: string]: unknown;
 };
 export type VerwaltungSet = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
   set_number: string;
   [feld: string]: unknown;
 };
 export type VerwaltungTtl = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
   ttl: string | number;
   [feld: string]: unknown;
 };
 export type VerwaltungZustand = {
-  dauer_minuten?: number | null;
-  pending?: number | null;
-  queued?: number | null;
-  skipped?: number | null;
-  verworfen?: number | null;
   success: boolean;
-  error?: string | null;
-  enqueued?: number;
   condition: string | null;
   [feld: string]: unknown;
 };
@@ -2740,7 +2467,7 @@ export type Route =
   | { m: 'GET'; p: '/v1/admin/cache-stats'; a: CacheStatsResponse }
   | { m: 'GET'; p: '/v1/admin/cache-ttl'; a: CacheTtlResponse }
   | { m: 'POST'; p: '/v1/admin/cache-ttl'; a: VerwaltungTtl }
-  | { m: 'POST'; p: '/v1/admin/catalog-images'; a: POST_api_v1_sets_import_csv_cancel }
+  | { m: 'POST'; p: '/v1/admin/catalog-images'; a: KatalogBilderEingereiht }
   | { m: 'POST'; p: '/v1/admin/default-condition'; a: VerwaltungZustand }
   | { m: 'POST'; p: '/v1/admin/forget-image-misses'; a: BildMerkerVergessen }
   | { m: 'GET'; p: `/v1/admin/image-diag/${string}`; a: BildDiagnose }
@@ -2752,20 +2479,20 @@ export type Route =
   | { m: 'POST'; p: '/v1/admin/price-probe'; a: Diagnose }
   | { m: 'GET'; p: '/v1/admin/protokoll'; a: ProtokollEintraege }
   | { m: 'POST'; p: '/v1/admin/redownload-missing-images'; a: VerwaltungGestartet }
-  | { m: 'POST'; p: '/v1/admin/reimport-instructions'; a: VerwaltungMeldung }
+  | { m: 'POST'; p: '/v1/admin/reimport-instructions'; a: AnleitungenEingereiht }
   | { m: 'POST'; p: '/v1/admin/trigger-csv-sync'; a: VerwaltungMeldung }
   | { m: 'POST'; p: '/v1/admin/trigger-price-job'; a: VerwaltungGestartet }
   | { m: 'GET'; p: '/v1/alerts'; a: PreisalarmeResponse }
   | { m: 'POST'; p: '/v1/alerts/import/csv'; a: POST_api_v1_minifigs_import_csv }
   | { m: 'GET'; p: '/v1/alerts/pending'; a: PendingAlertsResponse }
   | { m: 'POST'; p: '/v1/auth/bestaetigung-erneut'; a: ForgotPasswordResponse }
-  | { m: 'POST'; p: '/v1/auth/change-password'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'POST'; p: '/v1/auth/change-password'; a: GenericResponse }
   | { m: 'POST'; p: '/v1/auth/email-bestaetigen'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'POST'; p: '/v1/auth/email-bestaetigen/vorschau'; a: POST_api_v1_auth_email_bestaetigen_vorschau }
   | { m: 'POST'; p: '/v1/auth/forgot-password'; a: ForgotPasswordResponse }
   | { m: 'DELETE'; p: '/v1/auth/konto'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'POST'; p: '/v1/auth/login'; a: LoginResponse }
-  | { m: 'POST'; p: '/v1/auth/logout'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'POST'; p: '/v1/auth/logout'; a: GenericResponse }
   | { m: 'GET'; p: '/v1/auth/me'; a: MeResponse }
   | { m: 'POST'; p: '/v1/auth/passkey/anmelden'; a: PasskeyAnmeldung }
   | { m: 'POST'; p: '/v1/auth/passkey/anmelden/optionen'; a: PasskeyOptionen }
@@ -2796,7 +2523,7 @@ export type Route =
   | { m: 'PUT'; p: `/v1/auth/users/${string}/password`; a: PUT_api_v1_auth_users_id_password }
   | { m: 'DELETE'; p: `/v1/auth/users/${string}/zweiter-faktor`; a: PUT_api_v1_auth_users_id_password }
   | { m: 'GET'; p: '/v1/auth/zweiter-faktor'; a: ZweiterFaktorStand }
-  | { m: 'POST'; p: '/v1/auth/zweiter-faktor/abschalten'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'POST'; p: '/v1/auth/zweiter-faktor/abschalten'; a: GenericResponse }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/bestaetigen'; a: ZweiterFaktorCodes }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/codes'; a: ZweiterFaktorCodes }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/einrichten'; a: ZweiterFaktorEinrichtung }
@@ -2821,10 +2548,10 @@ export type Route =
   | { m: 'GET'; p: '/v1/health/ready'; a: Lebenszeichen }
   | { m: 'GET'; p: '/v1/minifigs'; a: GET_api_v1_minifigs }
   | { m: 'POST'; p: '/v1/minifigs'; a: AddMinifigResponse }
-  | { m: 'PUT'; p: `/v1/minifigs/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'PUT'; p: `/v1/minifigs/${string}`; a: StueckGeaendert }
   | { m: 'DELETE'; p: `/v1/minifigs/${string}`; a: DELETE_api_v1_minifigs_figNumber }
   | { m: 'GET'; p: `/v1/minifigs/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v1/minifigs/${string}/acquisitions/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'PUT'; p: `/v1/minifigs/${string}/acquisitions/${string}`; a: Erfassungsantwort }
   | { m: 'DELETE'; p: `/v1/minifigs/${string}/acquisitions/${string}`; a: DeleteWithQuantityResponse }
   | { m: 'GET'; p: `/v1/minifigs/${string}/parts`; a: FigurTeile }
   | { m: 'GET'; p: `/v1/minifigs/${string}/price-history`; a: PriceHistoryResponse }
@@ -2837,16 +2564,12 @@ export type Route =
   | { m: 'DELETE'; p: '/v1/papierkorb'; a: PapierkorbGeleert }
   | { m: 'DELETE'; p: `/v1/papierkorb/${string}`; a: DELETE_api_v1_papierkorb_id }
   | { m: 'POST'; p: `/v1/papierkorb/${string}/wiederherstellen`; a: Wiederhergestellt }
-  | { m: 'GET'; p: '/v1/parts'; a: GET_api_v1_sets_setNumber_parts_list }
+  | { m: 'GET'; p: '/v1/parts'; a: GET_api_v1_parts }
   | { m: 'POST'; p: '/v1/parts'; a: AddPartResponse }
-  | { m: 'PUT'; p: `/v1/parts/${string}/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'PUT'; p: `/v1/parts/${string}/${string}`; a: StueckGeaendert }
   | { m: 'DELETE'; p: `/v1/parts/${string}/${string}`; a: DELETE_api_v1_minifigs_figNumber }
   | { m: 'GET'; p: `/v1/parts/${string}/${string}/acquisitions`; a: AcquisitionsResponse }
-  | {
-      m: 'PUT';
-      p: `/v1/parts/${string}/${string}/acquisitions/${string}`;
-      a: PUT_api_v1_sets_setNumber_acquisitions_acqId;
-    }
+  | { m: 'PUT'; p: `/v1/parts/${string}/${string}/acquisitions/${string}`; a: Erfassungsantwort }
   | { m: 'DELETE'; p: `/v1/parts/${string}/${string}/acquisitions/${string}`; a: DeleteWithQuantityResponse }
   | { m: 'PUT'; p: `/v1/parts/${string}/${string}/color`; a: TeilFarbeResponse }
   | { m: 'GET'; p: `/v1/parts/${string}/${string}/price-history`; a: PriceHistoryResponse }
@@ -2866,17 +2589,17 @@ export type Route =
   | { m: 'PUT'; p: `/v1/sets/${string}`; a: MengeGeaendert }
   | { m: 'DELETE'; p: `/v1/sets/${string}`; a: DELETE_api_v1_minifigs_figNumber }
   | { m: 'GET'; p: `/v1/sets/${string}/acquisitions`; a: AcquisitionsResponse }
-  | { m: 'PUT'; p: `/v1/sets/${string}/acquisitions/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
-  | { m: 'DELETE'; p: `/v1/sets/${string}/acquisitions/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'PUT'; p: `/v1/sets/${string}/acquisitions/${string}`; a: Erfassungsantwort }
+  | { m: 'DELETE'; p: `/v1/sets/${string}/acquisitions/${string}`; a: Erfassungsantwort }
   | { m: 'GET'; p: `/v1/sets/${string}/alert`; a: PreisalarmeResponse }
   | { m: 'PUT'; p: `/v1/sets/${string}/alert`; a: PreisalarmResponse }
   | { m: 'DELETE'; p: `/v1/sets/${string}/alert`; a: PreisalarmResponse }
   | { m: 'POST'; p: `/v1/sets/${string}/instructions`; a: AnleitungenGeladen }
-  | { m: 'DELETE'; p: `/v1/sets/${string}/instructions/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'DELETE'; p: `/v1/sets/${string}/instructions/${string}`; a: GenericResponse }
   | { m: 'POST'; p: `/v1/sets/${string}/instructions/upload`; a: AnleitungHochgeladen }
-  | { m: 'GET'; p: `/v1/sets/${string}/minifigs-list`; a: GET_api_v1_minifigs }
+  | { m: 'GET'; p: `/v1/sets/${string}/minifigs-list`; a: SetFigurenResponse }
   | { m: 'POST'; p: `/v1/sets/${string}/parts`; a: TeileGeladen }
-  | { m: 'GET'; p: `/v1/sets/${string}/parts-list`; a: GET_api_v1_sets_setNumber_parts_list }
+  | { m: 'GET'; p: `/v1/sets/${string}/parts-list`; a: SetTeileResponse }
   | { m: 'GET'; p: `/v1/sets/${string}/price`; a: SetPriceResponse }
   | { m: 'GET'; p: `/v1/sets/${string}/price-history`; a: PriceHistoryResponse }
   | { m: 'PUT'; p: `/v1/sets/${string}/storage`; a: LagerortResponse }
@@ -2884,7 +2607,7 @@ export type Route =
   | { m: 'GET'; p: `/v1/sets/barcode/${string}`; a: BarcodeResponse }
   | { m: 'GET'; p: `/v1/sets/exists/${string}`; a: SetExistsResponse }
   | { m: 'GET'; p: '/v1/sets/household-members'; a: HouseholdMembersResponse }
-  | { m: 'POST'; p: '/v1/sets/import/csv'; a: POST_api_v1_minifigs_import_csv }
+  | { m: 'POST'; p: '/v1/sets/import/csv'; a: SetCsvImportGestartet }
   | { m: 'POST'; p: '/v1/sets/import/csv/cancel'; a: POST_api_v1_sets_import_csv_cancel }
   | { m: 'GET'; p: '/v1/sets/import/csv/status'; a: CsvImportStatus }
   | { m: 'GET'; p: `/v1/sets/info/${string}`; a: SetInfoResponse }
@@ -2899,11 +2622,11 @@ export type Route =
   | { m: 'POST'; p: '/v1/settings/einrichtung/fertig'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'GET'; p: '/v1/settings/export'; a: Sicherung }
   | { m: 'GET'; p: '/v1/settings/household'; a: HouseholdStatusResponse }
-  | { m: 'POST'; p: '/v1/settings/household/former/dismiss'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'POST'; p: '/v1/settings/household/former/dismiss'; a: HaushaltGeloest }
   | { m: 'POST'; p: '/v1/settings/household/invite'; a: HouseholdInviteResponse }
-  | { m: 'POST'; p: '/v1/settings/household/redeem'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'POST'; p: '/v1/settings/household/redeem'; a: HaushaltBeigetreten }
   | { m: 'POST'; p: '/v1/settings/household/redeem/pruefen'; a: HouseholdInviteCheckResponse }
-  | { m: 'POST'; p: '/v1/settings/household/unlink'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'POST'; p: '/v1/settings/household/unlink'; a: HaushaltGeloest }
   | { m: 'POST'; p: '/v1/settings/import'; a: SicherungEingespielt }
   | { m: 'POST'; p: '/v1/settings/quelle-testen'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'GET'; p: '/v1/settings/raw'; a: RoheEinstellungen }
@@ -2927,7 +2650,7 @@ export type Route =
   | { m: 'GET'; p: '/v1/vouchers'; a: GutscheinListe }
   | { m: 'POST'; p: '/v1/vouchers'; a: GutscheinAntwort }
   | { m: 'PUT'; p: `/v1/vouchers/${string}`; a: GutscheinAntwort }
-  | { m: 'DELETE'; p: `/v1/vouchers/${string}`; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
+  | { m: 'DELETE'; p: `/v1/vouchers/${string}`; a: GenericResponse }
   | { m: 'POST'; p: `/v1/vouchers/${string}/guthaben`; a: GuthabenAntwort }
   | { m: 'POST'; p: `/v1/vouchers/${string}/klartext`; a: GutscheinKlartext }
   | { m: 'POST'; p: `/v1/vouchers/${string}/pdf-freigabe`; a: PdfFreigabe }

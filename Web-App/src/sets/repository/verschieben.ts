@@ -44,7 +44,7 @@ export type SetErfassung = {
 };
 
 export function erfassungenZumVerschieben(tx: DbSchnittstelle, uid: number, sn: string): Promise<SetErfassung[]> {
-  return tx.all(
+  return tx.all<SetErfassung>(
     `SELECT id, quantity, purchase_price, COALESCE(condition,'N') AS condition, created_at, price_estimated, currency
        FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
       ORDER BY created_at ASC, id ASC`,

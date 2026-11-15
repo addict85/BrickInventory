@@ -88,7 +88,8 @@ async function bricksetKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kach
 }
 
 /** „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel des Standes). */
-const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit < JOB_FRISCH_MS;
+const frisch = (k: VerwaltungKontext, zeit: unknown) =>
+  typeof zeit === 'number' && k.uhr.jetzt() - zeit < JOB_FRISCH_MS;
 
 /** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
  * während der Hintergrund-Job nachlädt. */
@@ -108,7 +109,7 @@ async function neuLadenStand(k: VerwaltungKontext, ab: Abstriche) {
     ab,
     'imgredl_status',
   );
-  const laeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
+  const laeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(k, reDl.at));
   const sub = !laeuft
     ? null
     : reDl?.phase === 'scanning'
@@ -133,7 +134,7 @@ async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> 
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
   const letzterLauf = await liesStand<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? k.uhr.jetzt() - letzterLauf.zeit : null;
-  const jobLaeuft = frisch(letzterLauf?.zeit);
+  const jobLaeuft = frisch(k, letzterLauf?.zeit);
   const katalogSub =
     katalogOffen > 0
       ? `${katalogOffen} Katalog-Bilder in Warteschlange` +

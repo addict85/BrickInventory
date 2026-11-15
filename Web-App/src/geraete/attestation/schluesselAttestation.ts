@@ -111,7 +111,7 @@ export interface Erwartung {
   /** Seriennummern aus Googles Widerrufsliste (seriennummer()); Pflicht, damit kein Aufrufer sie vergisst. */
   widerrufen: ReadonlySet<string>;
   patchMindestens?: number | null;
-  jetzt?: Date;
+  jetzt: Date;
 }
 
 /** So schreibt Googles Liste sie: Hex klein, ohne führende Nullen. */
@@ -138,7 +138,7 @@ export type Pruefung =
 const spki = (c: X509Certificate) => c.publicKey.export({ format: 'der', type: 'spki' }) as Buffer;
 
 function pruefeGlieder(z: X509Certificate[], roh: Buffer[], e: Erwartung): string | null {
-  const jetzt = e.jetzt ?? new Date();
+  const { jetzt } = e;
   for (let i = 0; i < z.length; i++) {
     const c = z[i] as X509Certificate;
     // Aussteller nur mit CA-Bit (ca prüft auch keyCertSign) und ohne KeyDescription: Sonst

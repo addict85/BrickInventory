@@ -30,7 +30,7 @@ const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
-test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
+test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
   const app = await starteApp(t, { name: `r11_${process.pid}`, bestand: musterSammlung, alleDesigns: true });
   if (app.grund) {
     t.skip(app.grund);

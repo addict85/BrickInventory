@@ -38,7 +38,7 @@ async function englisch(e) {
   assert.equal(await b.auswerten(text('[data-i18n="parts.stat.colors"]')), 'Colours');
 }
 
-test('UX-Prüfung 21 auf Englisch', { timeout: 120_000 }, async t => {
+test('Englische Oberfläche: Umbruch und Begriffe', { timeout: 120_000 }, async t => {
   const e = await starteApp(t, { name: `r21_en_${process.pid}`, sprache: 'en', bestand: musterHaushalt });
   if (e.grund) {
     t.skip(e.grund);

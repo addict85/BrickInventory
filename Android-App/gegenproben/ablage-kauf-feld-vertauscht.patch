@@ -12,6 +12,6 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
      private fun kauf(a: BewertungsKaufAnsicht) = BewertungsKaufZeile(id = a.id, condition = a.condition, quantity = a.quantity,
 -        kaufpreis = a.purchasePrice?.alsDouble(), preisSchnitt = a.avgPrice?.alsDouble(), totalAvg = a.totalAvg,
 +        kaufpreis = a.avgPrice?.alsDouble(), preisSchnitt = a.purchasePrice?.alsDouble(), totalAvg = a.totalAvg,
-         wertGesamt = a.wertGesamt?.alsDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt),
-         besitzerId = a.ownerUserId)
+         wertGesamt = a.wertGesamt?.alsDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt))
  
+     private fun kauf(z: BewertungsKaufZeile) = BewertungsKaufAnsicht(id = z.id, condition = z.condition, quantity = z.quantity,

@@ -38,7 +38,7 @@ class AblageFassungTest {
 
     private val konto = KontoName(id = 3, username = "lea")
     private val kauf = ValuationAcquisition(id = 4, condition = Zustand.GEBRAUCHT, quantity = 2, purchasePrice = 1.5, avgPrice = 2.5,
-        totalAvg = "5,00", wertGesamt = 5.0, pnlPct = "+3%", pnlProzent = 3.0, createdAt = "2026-01-01T08:00:00Z", ownerUserId = 3,
+        totalAvg = "5,00", wertGesamt = 5.0, pnlPct = "+3%", pnlProzent = 3.0, createdAt = "2026-01-01T08:00:00Z",
         kaufpreisOriginal = 1.4, kaufpreisWaehrung = "CHF", priceEstimated = true)
     private val figur = Minifig(id = 1, inSets = "10001-1", ownerIds = listOf(3), setNumber = "10001-1", storage = "Kiste", unitPrice = 2.0,
         figNumber = "sw0001", condition = Zustand.NEU, conditions = listOf(Zustand.NEU), owners = listOf(konto), avgPurchasePrice = 3.0,

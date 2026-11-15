@@ -30,7 +30,7 @@ export function erzeugeKatalog(
   a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'cdnDrossel'>,
   einblick?: Einblick<KatalogKontext>,
 ) {
-  const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
+  const cdnDrossel = new ConcurrentRateLimiter(2, 1000, a.uhr);
   const d = baueBereich(
     { ...a, cdnDrossel, faecher: new Faecher() },
     (db: Db) => zugang(db, a.lesevertrag),

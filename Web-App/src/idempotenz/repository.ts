@@ -17,7 +17,7 @@ export async function belege(
   anfrage: string,
   verwaistNachS: number,
 ): Promise<boolean> {
-  return !!(await db.get(
+  return !!(await db.get<{ ok: number }>(
     `INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, $2, $3)
      ON CONFLICT (user_id, schluessel) DO UPDATE SET anfrage = EXCLUDED.anfrage, angelegt = NOW()
        WHERE idempotenz.status IS NULL AND NOT idempotenz.wirkung

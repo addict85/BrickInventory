@@ -1,5 +1,5 @@
 import { getSetValue } from './setValue';
-import { refreshPriceForSet } from './preisLauf';
+import { preisFuerSetHolen } from './preisLauf';
 import {
   DEFAULT_PRICE_CONDITION,
   fetchPartPrice,
@@ -15,7 +15,7 @@ import { KEINE_FARBE, zustand } from '../infra/validate';
 import type { FinanzenKontext } from './kontext';
 
 // Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().
-export async function getCurrentMarketPrice(
+export async function aktuellerMarktpreis(
   k: FinanzenKontext,
   setNumber: string,
   userId: number,
@@ -26,7 +26,7 @@ export async function getCurrentMarketPrice(
   const effectiveCond = condition || (await k.einstellungen.nutzerStandardZustand(userId));
   // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
   // der Preislauf den Zustand ablesen könnte.
-  await refreshPriceForSet(k, setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
+  await preisFuerSetHolen(k, setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
   // Ein ausdrücklich angefragter Zustand gilt genau so: Beim Anlegen gibt es
   // noch keine Erfassung, aus der getSetValue() ihn ableiten könnte.
@@ -45,7 +45,7 @@ export async function getCurrentMarketPrice(
 // nicht je Art auseinanderläuft.
 
 /** 'U' sobald eine Erfassung gebraucht ist; ohne Erfassung der Standard. */
-export async function resolvePartCondition(k: FinanzenKontext, userId: number, partNumber: string, colorId: number) {
+export async function teilZustand(k: FinanzenKontext, userId: number, partNumber: string, colorId: number) {
   try {
     const row = await k.marktpreise.teilErfassungsZustand(userId, partNumber, colorId);
     if (row && parseInt(row.cnt, 10) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
@@ -178,7 +178,7 @@ export async function marktpreisMitHerkunft(
 ) {
   const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
   const ttlHours = (await k.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
-  const effCond = condition || (await resolvePartCondition(k, userId, partNumber, colorId));
+  const effCond = condition || (await teilZustand(k, userId, partNumber, colorId));
   const priceData = await preisOderKeiner(
     fetchPartPrice(k, partNumber, colorId, effCond, currency, ttlHours, null, userId),
   );
@@ -192,7 +192,7 @@ export async function marktpreisMitHerkunft(
   };
 }
 
-export async function getCurrentPartMarketPrice(
+export async function aktuellerTeilMarktpreis(
   k: FinanzenKontext,
   partNumber: string,
   colorId: number,
@@ -332,7 +332,7 @@ export async function figMarktpreisMitHerkunft(
   };
 }
 
-export async function getCurrentFigMarketPrice(
+export async function aktuellerFigurMarktpreis(
   k: FinanzenKontext,
   figNumber: string,
   userId: number,

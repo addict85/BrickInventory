@@ -1,5 +1,6 @@
 // Der Detail-Dialog eines Sets: Anzeige, Menge, Anleitungen, Bildzoom. Er steht über Galerie und
 // Kaufpreis-Dialog; wer ihn von unten öffnen muss, nimmt springe('setDetail', …) aus ziele.js.
+import { melde } from './ereignisse.js';
 import { stelleZielBereit } from './ziele.js';
 import { registerActions, echt } from './registry.js';
 import { kontoWaehrung, angemeldetesKonto, offenesSet, setzeOffenesSet } from './zustand.js';
@@ -20,12 +21,11 @@ import {
   setzeMengenfeld,
 } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
-import { delSet, loadGallery, loadStats, reimportParts } from './gallery.js';
+import { delSet, reimportParts } from './sammlung.js';
 import { detailZeile, kontoAnzeige, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
-import { loadFinance } from './finance.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { openAcqModal, renderAcqModalBody } from './acquisition-modals.js';
+import { openAcqModal, renderAcqModalBody } from './kauf-dialoge.js';
 import { kurzfassung, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
 
 // Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile), nicht das ganze Set: Mehrere
@@ -378,7 +378,7 @@ export function openImageLightbox(src, name = '') {
 
 // `removeAttribute` und NICHT `src=''`: Ein leeres src ist keine leere
 // Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild, scheitert daran, und der
-// Fehlerlauscher in actions.js meldete bei jedem Schliessen des Zooms `[img] konnte nicht geladen werden:
+// Fehlerlauscher in aktionen.js meldete bei jedem Schliessen des Zooms `[img] konnte nicht geladen werden:
 // https://<host>/`. Ohne Attribut laedt der Browser gar nichts.
 export function closeImageLightbox() {
   G('img-lightbox').classList.remove('open');
@@ -448,8 +448,8 @@ async function aendereMenge(body, schritt, feld, set = offenesSet) {
   if (d.entfallen?.length) meldeEntfallen(sn, d, body.owner_user_id);
   const ad = await frischeDetailAuf(sn, feld);
   if (schritt > 0 && ad) meldeNeueExemplare(sn, ad.acquisitions, schritt);
-  loadGallery();
-  if (aktiverReiter() === 'finance') loadFinance();
+  melde('sammlungLaden');
+  if (aktiverReiter() === 'finance') melde('finanzenLaden');
 }
 
 /** „Kauf vom 13.09.2026 (250,00 €) entfernt“ mit Rückgängig; der Kauf liegt im Papierkorb.
@@ -547,7 +547,7 @@ async function redownloadInstr(sn) {
     if (offenesSet) {
       openModal(sn);
     }
-    loadStats();
+    melde('kennzahlenLaden');
   } else toast(d.error, 'error');
 }
 

@@ -4,12 +4,14 @@ import { eingabe } from '../infra/validate';
 import {
   CsvImportErgebnis,
   DEGRADIERT,
-  GenericResponse,
-  PartValuationItem,
+  StueckGeaendert,
+  ManuellesTeil,
   PartsResponse,
   VerwendendeSetsResponse,
   InDenPapierkorb,
 } from './gemeinsam';
+
+export { ManuellesTeil, StueckGeaendert };
 
 export const AddPartResponse = z.looseObject({
   success: z.boolean(),
@@ -17,7 +19,6 @@ export const AddPartResponse = z.looseObject({
   part_number: z.string(),
   part_name: z.string().nullable().optional(),
   price_from_condition: z.string().nullable().optional(),
-  error: z.string().nullable().optional(),
 });
 
 export const BestandEintrag = z.looseObject({
@@ -28,7 +29,6 @@ export const BestandEintrag = z.looseObject({
 export const BestandResponse = z.looseObject({
   success: z.boolean(),
   bestand: z.record(z.string(), BestandEintrag),
-  error: z.string().nullable().optional(),
 });
 
 export const BrickColor = z.looseObject({
@@ -40,15 +40,13 @@ export const BrickColor = z.looseObject({
 export const BrickColorsResponse = z.looseObject({
   success: z.boolean(),
   colors: z.array(BrickColor),
-  error: z.string().nullable().optional(),
 });
 
 export const ManualPartsResponse = z.looseObject({
   success: z.boolean(),
   ...SEITEN_ANGABE,
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
-  parts: z.array(PartValuationItem.extend({ acquisitions: PartValuationItem.shape.acquisitions.optional() })),
-  error: z.string().nullable().optional(),
+  parts: z.array(ManuellesTeil),
   degradiert: DEGRADIERT,
 });
 
@@ -94,7 +92,6 @@ export const TeilFarbeResponse = z.looseObject({
   zusammengelegt: z.boolean(),
   verschoben: z.number().int(),
   vereint: z.number().int(),
-  error: z.string().nullable().optional(),
 });
 
 /** BrickLink-Farbe → Rebrickable-Farbe; `source` sagt, woher die Tabelle stammt. */
@@ -193,7 +190,7 @@ export const routen = {
       unit_price: eingabe.geld('Stückpreis'),
       condition: ZUSTAND.nullable().optional(),
     }),
-    antwort: GenericResponse,
+    antwort: StueckGeaendert,
   },
   'DELETE /api/v1/parts/:partNumber/:colorId': {
     eingabe: OHNE_RUMPF,

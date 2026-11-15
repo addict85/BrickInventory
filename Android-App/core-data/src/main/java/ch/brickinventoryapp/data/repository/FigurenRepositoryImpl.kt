@@ -60,7 +60,7 @@ class FigurenRepositoryImpl @Inject constructor(
     override suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<String?> =
         ablage.nachgezogen({ r -> Nachzug.FigurLagerort(figNumber, r.storage).takeIf { r.success } }) {
             sicherAufrufen { api.setFigStorage(figNumber, LagerortRequest(storage = ort)) }
-        }.zugesagt({ it.success }, { it.error }) { it.storage }
+        }.zugesagt({ it.success }) { it.storage }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
                            unitPrice: Geld?, condition: Zustand?,
@@ -72,7 +72,7 @@ class FigurenRepositoryImpl @Inject constructor(
             ablage.schreibe(Bearbeitung.FigurErfassen(erfassung),
                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
                 sicherAufrufen { api.addMinifig(anfrage, schluessel) }
-            }.zugesagt({ it.success }, { it.error }) { Erfasst(it.action == "added", it.figNumber, it.priceFromCondition) }
+            }.zugesagt({ it.success }) { Erfasst(it.action == "added", it.figNumber, it.priceFromCondition) }
         }
 
     /**
@@ -101,5 +101,5 @@ class FigurenRepositoryImpl @Inject constructor(
 
     override suspend fun getSetsMitFigur(figNumber: String,
                                 konten: Kontoauswahl?): Ergebnis<VerwendungAnsicht> =
-        sicherAufrufen { api.getSetsMitFigur(figNumber, konten?.anfrage) }.zugesagt({ it.success }, { it.error }) { it.alsAnsicht() }
+        sicherAufrufen { api.getSetsMitFigur(figNumber, konten?.anfrage) }.zugesagt({ it.success }) { it.alsAnsicht() }
 }

@@ -5,7 +5,7 @@ export {
   cacheVerwendbar,
   preisAusCache,
   leerePreisCache,
-  fetchPrice,
+  holePreis,
   parallelLimit,
   resolveBlColorId,
   resolveBlPartNumber,
@@ -15,14 +15,14 @@ export {
   ladeFigurenpreiseVor,
   farbkarte,
   ladeBlNummernVor,
-  resolveSetCondition,
+  setZustand,
 } from './rechnung/preise';
 
 export {
-  computeSetsValuation,
-  computeMinifigsValuation,
-  computePartsValuation,
+  bewerteSets,
+  bewerteFiguren,
+  bewerteTeile,
 } from './rechnung/bewertung';
 
-export { computePnl } from './rechnung/gewinnVerlust';
+export { gewinnUndVerlust } from './rechnung/gewinnVerlust';
 export { effectiveCondition } from './rechnung/zustand';

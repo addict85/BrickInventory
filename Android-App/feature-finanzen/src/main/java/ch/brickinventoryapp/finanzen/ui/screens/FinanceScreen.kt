@@ -252,7 +252,7 @@ internal fun ManualFinanceRow(
     /**
      * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt. Wie in
      * der Set-Zeile (FinanceSections.kt) und in beiden Tabellen der Webapp
-     * (public/js/finance.js, pmRow, `detail.purchase_price`), damit die Zeilen
+     * (public/js/finanzen.js, pmRow, `detail.purchase_price`), damit die Zeilen
      * gleich viel sagen.
      */
     purchaseStr: String? = null,

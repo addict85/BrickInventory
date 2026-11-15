@@ -5,7 +5,7 @@
  *
  * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
  *   A  die Prüfung `complete` in observeLazyImages UND im MutationObserver von
- *      actions.js entfernt → „geladene Bilder …“ rot. Je eine allein bleibt
+ *      aktionen.js entfernt → „geladene Bilder …“ rot. Je eine allein bleibt
  *      grün: Beide Wege markieren vor dem nächsten Bild, einer genügt.
  *   B  enrichGalleryWithPrices ruft renderGallery() statt updateGalleryPrices()
  *      → „Preise kommen in die bestehende Kachel …“ rot (neues <img>)

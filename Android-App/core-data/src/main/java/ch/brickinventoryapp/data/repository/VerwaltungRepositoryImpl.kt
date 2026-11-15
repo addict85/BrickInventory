@@ -50,13 +50,13 @@ class VerwaltungRepositoryImpl @Inject constructor(
                 CsvArt.MERKLISTE -> api.importMerklisteCsv(teil)
                 CsvArt.PREISALARME -> api.importAlarmeCsv(teil)
             }
-        }.zugesagt({ it.success }, { it.error }) { it.alsAnsicht() }
+        }.zugesagt({ it.success }) { it.alsAnsicht() }
     }
 
     // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
     // — siehe VerwaltungApi.
     override suspend fun getProtokoll(minuten: Int): Ergebnis<List<ProtokollZeileAnsicht>> =
-        sicherAufrufen { api.getProtokoll(minuten) }.zugesagt({ it.success }, { it.error }) { r -> r.logs.map { it.alsAnsicht() } }
+        sicherAufrufen { api.getProtokoll(minuten) }.zugesagt({ it.success }) { r -> r.logs.map { it.alsAnsicht() } }
 
     /**
      * Zeitplan eines Jobs setzen — taeglich (HH:MM) oder als Abstand (Minuten).
@@ -140,6 +140,6 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<Unit> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }.verwaltet { }
 }
 
-/** Eine Verwalter-Antwort trägt `success` und `error`: eine Absage ist ein Fehler, kein Erfolg. */
+/** Eine Verwalter-Antwort trägt `success`: eine Absage ist ein Fehler, kein Erfolg. */
 private inline fun <R> Ergebnis<GenericAdminResponse>.verwaltet(f: (GenericAdminResponse) -> R): Ergebnis<R> =
-    zugesagt({ it.success }, { it.error }, f)
+    zugesagt({ it.success }, f = f)

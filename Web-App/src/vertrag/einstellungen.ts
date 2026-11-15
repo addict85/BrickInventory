@@ -40,7 +40,6 @@ export const AppThemeResponse = z.looseObject({
   theme: z.string(),
   vorgabe: z.string().nullable(),
   eigenes: z.string().nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const DefaultConditionResponse = z.looseObject({
@@ -61,7 +60,6 @@ export const UserSettings = z.looseObject({
 export const SettingsResponse = z.looseObject({
   success: z.boolean(),
   settings: UserSettings,
-  error: z.string().nullable().optional(),
 });
 
 export const StartupStatus = z.looseObject({

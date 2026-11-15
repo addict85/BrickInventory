@@ -92,7 +92,7 @@ internal class SetAnlegenSseClient @Inject constructor(
 
     /**
      * Ein Ereignis des Stroms; null für Unbekanntes. Dieselben Schrittnamen wie in der
-     * Webapp (public/js/gallery.js): ein Protokoll zwischen zwei Programmen.
+     * Webapp (public/js/sammlung.js): ein Protokoll zwischen zwei Programmen.
      */
     private fun schritt(obj: JsonObject): SetAnlegenSchritt? = when (obj["step"]?.jsonPrimitive?.content) {
         "meta" -> SetAnlegenSchritt.Stammdaten(obj["set"]?.jsonPrimitive?.content)
@@ -119,7 +119,7 @@ internal class SetAnlegenSseClient @Inject constructor(
 
     private fun fertig(text: String): SetAnlegenSchritt = try {
         val r = json.decodeFromString(AddSetResponse.serializer(), text)
-        if (r.success) SetAnlegenSchritt.Fertig(r.alsErfasst()) else SetAnlegenSchritt.Fehler(r.error.orEmpty())
+        if (r.success) SetAnlegenSchritt.Fertig(r.alsErfasst()) else SetAnlegenSchritt.Fehler(fehlertextAus(text))
     } catch (_: IllegalArgumentException) {
         SetAnlegenSchritt.Fehler("")
     }

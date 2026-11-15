@@ -1,3 +1,4 @@
+import { melde } from './ereignisse.js';
 import { loadHousehold } from './haushalt.js';
 import { loadUsers } from './nutzerverwaltung.js';
 import { stelleZielBereit } from './ziele.js';
@@ -8,8 +9,7 @@ import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
 import { antwortFehler, feldFehler, passwortRegelText } from './formular.js';
 import { _updateLangSelect, applyTheme, initDefaultCondition, zeigeBenutzernamen } from './konto.js';
 import { meldeAmFeld, toast } from './meldungen.js';
-import { loadGallery, loadStats } from './gallery.js';
-import { loadParts } from './parts.js';
+import { loadParts } from './teile.js';
 import { loadMinifigs } from './minifigs.js';
 import { meldeAbschnitt } from './router.js';
 import { verstaendlicherGrund } from './bausteine.js';
@@ -28,7 +28,6 @@ import {
   mitPasswortBestaetigen,
   speichereEinstellungen,
 } from './rueckfrage.js';
-import { loadFinance } from './finance.js';
 import { LAND_ZUR_WAEHRUNG } from './gutscheine.js';
 // Einstellungen: Profil, Design, Zugangsdaten der Quellen, Mail, Zwischenspeicher, QR-Anmeldung und
 // Konfigurations-Import/-Export. Haushalt, Verwaltung, Alarme und Lagerorte haben eigene Dateien.
@@ -342,8 +341,8 @@ async function speichereWaehrung() {
   setzeKontoWaehrung(wert);
   if (einstellungsStand) einstellungsStand.currency = wert;
   await loadHousehold().catch(() => {});
-  loadStats();
-  if (document.getElementById('tab-gallery')?.classList.contains('active')) loadGallery();
+  melde('kennzahlenLaden');
+  if (document.getElementById('tab-gallery')?.classList.contains('active')) melde('sammlungLaden');
   meldeAmFeld(G('s-cur'));
   toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
 }
@@ -547,7 +546,7 @@ G('btn-clr').onclick = async () => {
   await api('POST', '/v1/admin/cache-clear');
   toast(tRaw('settings.cache_cleared'), 'info');
   loadCacheStats();
-  loadFinance();
+  melde('finanzenLaden');
 };
 /**
  * Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt.
@@ -591,10 +590,10 @@ G('btn-dall').onclick = async () => {
     return;
   }
   toast(tRaw('settings.delete_all.done', { n: d.sets + d.teile + d.figuren }), 'success');
-  loadGallery();
+  melde('sammlungLaden');
   loadParts();
   loadMinifigs();
-  loadStats();
+  melde('kennzahlenLaden');
 };
 G('btn-konto-loeschen').onclick = async () => {
   // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
