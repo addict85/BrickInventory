@@ -90,7 +90,7 @@ export async function getManualMinifigs(
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
-  const mitZustand = await k.bestand.applyManualCondition(uids, mapped, 'fig');
+  const mitZustand = await k.bestand.setzeManuellenZustand(uids, mapped, 'fig');
 
   // Der Marktpreis NUR aus dem Cache, in einer Abfrage für die ganze Liste:
   // Ein Live-Abruf je Eintrag liesse die Liste auf BrickLink warten.

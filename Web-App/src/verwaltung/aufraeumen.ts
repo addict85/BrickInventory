@@ -40,7 +40,7 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
 function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['Preisverlauf', k.finanzen.purgeAltePreise],
+      ['Preisverlauf', k.finanzen.loescheAltePreise],
       ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
       ['Bild-Cache', () => k.bilder.raeumeBildCacheAuf(k.bilder.bildGrenzen().cacheMaxBytes, k.uhr.jetzt())],
       ['Verwaltungsprotokoll', () => k.konto.raeumeProtokollAuf()],

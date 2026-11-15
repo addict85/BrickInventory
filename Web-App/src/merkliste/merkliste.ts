@@ -27,7 +27,7 @@ export async function preiseBeiderZustaende(k: MerklisteKontext, uid: number, se
   for (const c of ['N', 'U']) {
     const pd = await ab.oder(
       `marktpreis_${c}`,
-      k.finanzen.fetchPrice(setNumber, c, guideType, currency, ttlHours),
+      k.finanzen.holePreis(setNumber, c, guideType, currency, ttlHours),
       null,
     );
     // Ein Ersatzpreis des anderen Zustands stünde sonst als „Marktpreis (Neuware)“ da, die Liste sagt „keiner“.

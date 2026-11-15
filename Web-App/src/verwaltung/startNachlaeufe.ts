@@ -26,7 +26,7 @@ function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> 
     katalog: () => k.katalog.gleicheFehlendeAb(),
     anleitungen: () => k.katalog.anleitungenNachtragen(),
     set_bilder: () => k.katalog.setBilderNachladen(),
-    kaufpreise: () => k.bestand.run(),
+    kaufpreise: () => k.bestand.kaufpreiseNachtragen(),
   };
 }
 

@@ -32,7 +32,7 @@ async function zieheNach(
 
   if (art === 'zweit') await schritt('bl-nummern', () => sk.katalog.blNummernNachladen(lauf));
   if (art === 'neu') {
-    await schritt('preis', () => sk.finanzen.refreshPriceForSet(setNumber, userId));
+    await schritt('preis', () => sk.finanzen.preisFuerSetHolen(setNumber, userId));
     await schritt('anleitung', () => sk.katalog.ladeSetAnleitungen(setNumber));
   } else {
     await schritt('anleitung-einreihen', () => sk.auftraege.anleitungEinreihen(setNumber));

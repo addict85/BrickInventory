@@ -90,13 +90,13 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
     const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
     // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
     const finanzen = require('./helpers/sources').testBereich('finanzen');
-    const zustandEcht = finanzen.resolveSetCondition;
-    finanzen.resolveSetCondition = async (...a) => {
+    const zustandEcht = finanzen.setZustand;
+    finanzen.setZustand = async (...a) => {
       if (preisKaputt) throw new Error('Zustand nicht lesbar');
       return zustandEcht(...a);
     };
     t.after(() => {
-      finanzen.resolveSetCondition = zustandEcht;
+      finanzen.setZustand = zustandEcht;
     });
     preisKaputt = true;
     let r;

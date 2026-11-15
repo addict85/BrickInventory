@@ -20,7 +20,7 @@ async function backfillAcquisitions(k: BestandKontext) {
   let done = 0;
   for (const row of rows) {
     try {
-      const price = await k.finanzen.getCurrentMarketPrice(row.set_number, row.user_id, row.condition || null);
+      const price = await k.finanzen.aktuellerMarktpreis(row.set_number, row.user_id, row.condition || null);
       if (price) {
         if (await setzeGeschaetztenPreis(k, 'set', row.id, price)) done++;
       }
@@ -41,7 +41,7 @@ async function backfillTeileErfassungen(k: BestandKontext) {
   let done = 0;
   for (const row of rows) {
     try {
-      const price = await k.finanzen.getCurrentPartMarketPrice(
+      const price = await k.finanzen.aktuellerTeilMarktpreis(
         row.part_number,
         row.color_id,
         row.user_id,
@@ -66,7 +66,7 @@ async function backfillFigurenErfassungen(k: BestandKontext) {
   for (const row of rows) {
     try {
       // Die eigene BrickLink-Nummer des Kontos vor der gemeinsamen.
-      const price = await k.finanzen.getCurrentFigMarketPrice(
+      const price = await k.finanzen.aktuellerFigurMarktpreis(
         row.fig_number,
         row.user_id,
         await k.katalog.blAbrufNummer('fig', row.fig_number, row.user_id),

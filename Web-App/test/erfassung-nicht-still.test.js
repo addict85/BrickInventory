@@ -30,7 +30,9 @@ test('kein stiller catch an einer Erfassung', () => {
   let aufrufe = 0;
   for (const datei of dateien) {
     const src = fs.readFileSync(datei, 'utf8');
-    for (let i = src.indexOf('recordAcquisitionForDay('); i !== -1; i = src.indexOf('recordAcquisitionForDay(', i)) {
+    // Innen heisst die Buchung recordAcquisitionForDay, im Dienstsatz bucheTageserfassung.
+    for (const m of src.matchAll(/\b(?:recordAcquisitionForDay|bucheTageserfassung)\(/g)) {
+      const i = m.index ?? 0;
       if (!/\bfunction\s+recordAcquisitionForDay/.test(src.slice(Math.max(0, i - 40), i + 24))) {
         aufrufe++;
         // Das Fenster nach dem Aufruf: bis zum Ende der Anweisung.
@@ -40,7 +42,6 @@ test('kein stiller catch an einer Erfassung', () => {
           verstoesse.push(`${path.relative(ROOT, datei)}:${zeile}`);
         }
       }
-      i += 24;
     }
   }
 

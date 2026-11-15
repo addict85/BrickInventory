@@ -145,7 +145,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
     require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts')),
   );
   assert.ok(
-    mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
+    mv.includes("bucheTageserfassung('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern',
   );
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/, 'Kein direktes Umhängen der Erfassungen');
@@ -383,7 +383,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Inhalt — es wandern nur Menge und Erfassung.
   const mv = kompakt(read('src/sets/setMove.ts'));
   assert.match(mv, /export async function manuelleErfassungUmhaengen/);
-  assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
+  assert.match(mv, /bucheTageserfassung\(kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
   // Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
   // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an

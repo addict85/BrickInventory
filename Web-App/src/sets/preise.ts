@@ -18,14 +18,7 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
   const guideType = String(await sk.einstellungen.nutzerWert(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await sk.einstellungen.nutzerWert(uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
-    sk.finanzen.fetchPrice(
-      sn,
-      await sk.finanzen.resolveSetCondition(blickfeld, sn),
-      guideType,
-      currency,
-      ttlHours,
-      null,
-    ),
+    sk.finanzen.holePreis(sn, await sk.finanzen.setZustand(blickfeld, sn), guideType, currency, ttlHours, null),
   );
   if (!preis.ok)
     return {

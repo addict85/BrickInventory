@@ -40,7 +40,7 @@ test('Dienstschlüssel sind deutsch und werden weniger, nie mehr', () => {
   assert.ok(Object.keys(d).length > 15, `nur ${Object.keys(d).length} Bereiche gebaut`);
   assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
 
-  const SCHRANKE_ENGLISCH = 21;
+  const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(s => englischerName(s.split('.')[1] ?? ''));
   assert.ok(
     englisch.length <= SCHRANKE_ENGLISCH,

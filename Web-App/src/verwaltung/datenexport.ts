@@ -36,8 +36,8 @@ export async function datenZip(
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiv };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     k.sets.setsAlsCsv(uid),
-    k.bestand.buildPartsCsv(uid),
-    k.bestand.buildFigsCsv(uid),
+    k.bestand.teileAlsCsv(uid),
+    k.bestand.figurenAlsCsv(uid),
     k.merkliste.merklisteAlsCsv(uid),
     k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
   ]);

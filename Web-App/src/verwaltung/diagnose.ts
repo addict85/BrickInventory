@@ -179,7 +179,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
   // Genau der Aufruf, den Finanzen macht.
   try {
-    out.finanzen_preis = await k.finanzen.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
+    out.finanzen_preis = await k.finanzen.holePreis(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
   } catch (e) {
     out.finanzen_preis = { error: fehlertext(e) };
   }

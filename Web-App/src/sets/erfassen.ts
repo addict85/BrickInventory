@@ -24,7 +24,7 @@ export interface Erfassung {
 export async function erfassungBuchen(sk: SetsKontext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
-  await sk.bestand.recordAcquisitionForDay('set', e.konto, [e.setNumber], {
+  await sk.bestand.bucheTageserfassung('set', e.konto, [e.setNumber], {
     quantity: e.menge,
     price: pp,
     condition: cond,
@@ -225,7 +225,7 @@ export async function setErgaenzen(
     name = k.name ?? name;
   }
   for (const z of await repo.erfassungenOhnePreisDesSets(sk.db, konto, sn)) {
-    const preis = await sk.finanzen.getCurrentMarketPrice(sn, konto, z.condition || null);
+    const preis = await sk.finanzen.aktuellerMarktpreis(sn, konto, z.condition || null);
     if (preis) await sk.bestand.setzeGeschaetztenPreis('set', z.id, preis);
   }
   return { name };

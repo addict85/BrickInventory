@@ -274,7 +274,7 @@ export async function getManualParts(
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
   const rows = await k.teileListe.manuelleTeile(uids, { search, storage }, seite);
-  const mitZustand = await k.bestand.applyManualCondition(uids, rows, 'part');
+  const mitZustand = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
   // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
   const preise = await ab.oder(

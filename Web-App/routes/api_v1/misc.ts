@@ -7,7 +7,7 @@ export function baueMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/stats', requireToken, async req => {
-    return { stats: await d.bestand.getStats(sichtVon(req)) };
+    return { stats: await d.bestand.kennzahlen(sichtVon(req)) };
   });
 
   const UEBERSICHT = {

@@ -80,7 +80,9 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".
   const ohneZustand = [
-    ...src.matchAll(/getCurrentPartMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g),
+    ...src.matchAll(
+      /(?:getCurrentPartMarketPrice|aktuellerTeilMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g,
+    ),
   ]
     .filter(m => !m[1].includes('function')) // die Definition selbst nicht
     .filter(m => m[1].split(',').length < 4);
@@ -93,7 +95,11 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
       'als gebraucht erfasstes Teil bekommt den Neupreis.',
   );
   // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts.
-  const alleAufrufe = [...src.matchAll(/getCurrentPartMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g)];
+  const alleAufrufe = [
+    ...src.matchAll(
+      /(?:getCurrentPartMarketPrice|aktuellerTeilMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
+    ),
+  ];
   assert.ok(
     alleAufrufe.length >= 4,
     `Nur ${alleAufrufe.length} Vorkommen von getCurrentPartMarketPrice( — Muster veraltet?`,
@@ -105,7 +111,9 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // Geschrieben wird seit hardened-93 über recordAcquisitionForDay(), das die
   // Zeile des Tages im selben Zustand aufstockt statt eine zweite anzulegen.
   const writes = [
-    ...fn.matchAll(/recordAcquisitionForDay\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g),
+    ...fn.matchAll(
+      /(?:recordAcquisitionForDay|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
+    ),
   ];
   assert.equal(
     writes.length,
@@ -222,7 +230,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
   const erfassungen = [
     ...ohneKommentar.matchAll(
-      /recordAcquisitionForDay\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
+      /(?:recordAcquisitionForDay|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
     ),
   ];
   assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
@@ -236,7 +244,9 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   const fn = src.slice(src.indexOf('async function addManualFig'), src.indexOf('async function addManualFig') + 6000);
 
   const writes = [
-    ...fn.matchAll(/recordAcquisitionForDay\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g),
+    ...fn.matchAll(
+      /(?:recordAcquisitionForDay|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
+    ),
   ];
   assert.equal(
     writes.length,
@@ -275,7 +285,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
   assert.match(
     job,
-    /getCurrentMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
+    /(?:getCurrentMarketPrice|aktuellerMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
   );
   // Keine Spiegelung in die sets-Zeile
@@ -392,7 +402,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
   assert.match(
     priceRoute,
-    /sk\.finanzen\.fetchPrice\(\s*sn,\s*await sk\.finanzen\.resolveSetCondition\(blickfeld, sn\),/,
+    /sk\.finanzen\.holePreis\(\s*sn,\s*await sk\.finanzen\.setZustand\(blickfeld, sn\),/,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
   );
 
@@ -452,7 +462,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finanzen\.resolveSetCondition\(blickfeld, sn\)/g) || []).length;
+  const uses = (apiV1.match(/sk\.finanzen\.setZustand\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
