@@ -27,3 +27,13 @@ index 0c9232a..d5ac501 100644
      }
  
      /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+@@ -93,5 +93,5 @@ class Ausgangsmelder
+         // Ändern sich nie über den Ausgang, nur online.
+         Bestandsart.GUTSCHEINE, Bestandsart.PREISALARME, Bestandsart.LAGERORTE,
+-        Bestandsart.KENNZAHLEN, Bestandsart.KATALOG_META -> null
++        Bestandsart.KENNZAHLEN, Bestandsart.KATALOG_META, Bestandsart.PROBE -> null
+     }
+

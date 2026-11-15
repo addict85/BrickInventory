@@ -443,9 +443,12 @@ private fun UpdateCard(
         }
 
         Spacer(Modifier.height(Abstaende.mittel))
+        // 48 dp hoch wie „Abmelden“: Material zeichnet 40 dp, und der Knoten zum Tippen und
+        // Vorlesen wäre nur so hoch wie die Zeichnung.
+        val knopfHoehe = Modifier.heightIn(min = 48.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.pruefung.laeuft && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.pruefung.laeuft && updateZustand.fortschritt == null)) {
+            OutlinedButton(onClick = onPruefen, modifier = knopfHoehe, enabled = !updateZustand.pruefung.laeuft && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.pruefung.laeuft && updateZustand.fortschritt == null)) {
                 if (updateZustand.pruefung.laeuft) {
                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(Abstaende.klein))
@@ -455,12 +458,12 @@ private fun UpdateCard(
             // Herunterladen nur, wenn es etwas zu holen gibt; Installieren
             // nur, wenn es schon auf der Platte liegt.
             if (neuere != null && !updateZustand.bereitZurInstallation) {
-                Button(onClick = onLaden, enabled = updateZustand.fortschritt == null) {
+                Button(onClick = onLaden, modifier = knopfHoehe, enabled = updateZustand.fortschritt == null) {
                     Text(stringResource(R.string.update_download))
                 }
             }
             if (updateZustand.bereitZurInstallation) {
-                Button(onClick = onInstallieren) {
+                Button(onClick = onInstallieren, modifier = knopfHoehe) {
                     Text(stringResource(R.string.update_install))
                 }
             }
