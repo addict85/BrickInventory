@@ -48,10 +48,10 @@ export async function freigegeben(
     // Ohne Familie (kein created_at) gibt es keinen Schlüssel: zu, nicht offen.
     const p = f ? await konto.pruefeFreigabe(f, aktion) : 'kein_schluessel';
     if (p === 'frei') return true;
-    sendeFehler(req, res, 403, p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
+    sendeFehler(req, res, 'verboten', p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
   } catch (e) {
     meldeFehler('schrittschutz', e);
-    sendeFehler(req, res, 503, 'server_ausgelastet');
+    sendeFehler(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
   }
   return false;
 }

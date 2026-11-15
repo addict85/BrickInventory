@@ -116,8 +116,8 @@ export async function nutzerIdDerAnfrage(konto: KontoDienste, req: Request): Pro
 
 /** 429 statt 401: Bei 401 darf die App den Zugang verwerfen, und der gilt vielleicht. */
 export function sendeTokenAbsage(req: Request, res: Response): void {
-  if (req.tokenAbsage === 'zu_viele_anfragen') sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: 1 });
-  else sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
+  if (req.tokenAbsage === 'zu_viele_anfragen') sendeFehler(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: 1 });
+  else sendeFehler(req, res, 'nicht_angemeldet', req.tokenAbsage ?? 'nicht_angemeldet');
 }
 
 /** @param opts.timeoutMs Antwortet nach dieser Zeit mit 503: Der Fortschritts-
@@ -127,7 +127,7 @@ export function loginOrTokenGuard(konto: KontoDienste, opts: { timeoutMs?: numbe
     if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
-          if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
+          if (!res.headersSent) sendeFehler(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
         }, opts.timeoutMs)
       : null;
     let uid: number | null = null;
@@ -168,7 +168,7 @@ export function istVerwalter(req: Request): boolean {
 export function ipThrottle(konto: KontoDienste, bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const st = await konto.zaehleAnfrage(bucket, adresse(req), windowMs);
-    if (st.count > max) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
+    if (st.count > max) return sendeFehler(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: st.waitMin });
     next();
   };
 }
@@ -188,7 +188,7 @@ export function zugangVon(req: Request): string {
 function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void {
   const status = STATUS_DER_ART[absage.art];
   if (!absage.passkey) {
-    sendeFehler(req, res, status, absage.code, absage.vars);
+    sendeFehler(req, res, absage.art, absage.code, absage.vars);
     return;
   }
   res.status(status).json({

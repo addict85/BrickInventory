@@ -15,7 +15,7 @@ import {
   type FehlerCode,
 } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
-import { statusVon } from './fehlerArt';
+import { STATUS_DER_ART, statusVon } from './fehlerArt';
 
 export interface FehlerZiel {
   headersSent: boolean;
@@ -29,15 +29,15 @@ export interface FehlerQuelle {
 }
 
 /** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
- * vergleichen. */
+ * vergleichen. Den Status wählt die Art (STATUS_DER_ART), nicht der Aufrufer. */
 export function sendeFehler(
   req: { headers?: Record<string, unknown> } | undefined,
   res: { status(c: number): { json(b: unknown): unknown } },
-  status: number,
+  art: FehlerArt,
   code: FehlerCode,
   vars?: Record<string, string | number>,
 ): void {
-  res.status(status).json({
+  res.status(STATUS_DER_ART[art]).json({
     success: false,
     error: fehlerText(code, antwortSprache(req), vars),
     code,
@@ -146,7 +146,7 @@ export function fehlerAntwort(e: unknown, req: Request, res: Response, _next: Ne
 /** Hinter allen Routen unter /api: Ein Tippfehler im Pfad bekommt dieselbe
  * Fehlerform wie jede andere Antwort, nicht die index.html. */
 export function unbekannterApiPfad(req: Request, res: Response): void {
-  sendeFehler(req, res, 404, 'nicht_gefunden');
+  sendeFehler(req, res, 'nicht_gefunden', 'nicht_gefunden');
 }
 
 /** @param req nur für die Sprache der Meldung; ohne ihn Deutsch. */
@@ -163,7 +163,7 @@ export function streamFileToResponse(
       // Nicht auf Express-Methoden verlassen: Der Helfer läuft auch an einer nackten
       // http-Antwort.
       if ('status' in res && typeof res.status === 'function')
-        sendeFehler(req, res as Response, 404, 'datei_nicht_verfuegbar');
+        sendeFehler(req, res as Response, 'nicht_gefunden', 'datei_nicht_verfuegbar');
       else {
         res.statusCode = 404;
         res.end();

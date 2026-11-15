@@ -651,7 +651,9 @@ export type FehlerArt =
   | 'intern'
   | 'fremddienst'
   | 'nicht_verfuegbar'
-  | 'zeitueberschreitung';
+  | 'zeitueberschreitung'
+  | 'falscher_host'
+  | 'zu_alt';
 
 /** Art und Code reisen mit, der Satz entsteht erst in der Antwort in der
  * Sprache des Anfragenden. */

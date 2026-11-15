@@ -32,7 +32,7 @@ export function nurEigeneHerkunft(req: Request, res: Response, next: NextFunctio
   // Mit Cookie entscheidet die Sitzung; ein Bearer-Kopf daneben schaltet nichts ab.
   const mitSitzung = traegtSitzungsKeks(String(req.headers.cookie || ''));
   if (!mitSitzung && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
-  const fremd = () => sendeFehler(req, res, 403, 'fremde_herkunft');
+  const fremd = () => sendeFehler(req, res, 'verboten', 'fremde_herkunft');
 
   const herkunft = String(req.headers['sec-fetch-site'] || '');
   if (herkunft) return herkunft === 'same-origin' || herkunft === 'none' ? next() : fremd();
@@ -58,5 +58,5 @@ export function nurEigenerHost(req: Request, res: Response, next: NextFunction) 
   const name = (h: string) => h.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
   const kopf = name(String(req.headers.host || ''));
   if (LOOPBACK.has(kopf) || IP_ADRESSE.test(kopf) || kopf === name(hostVon(adresse) ?? '')) return next();
-  sendeFehler(req, res, 421, 'fremder_host', { adresse });
+  sendeFehler(req, res, 'falscher_host', 'fremder_host', { adresse });
 }

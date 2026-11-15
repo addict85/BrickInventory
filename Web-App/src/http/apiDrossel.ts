@@ -114,5 +114,5 @@ export function apiDrossel(req: Request, res: Response, next: NextFunction): voi
     return;
   }
   res.setHeader('Retry-After', String(r.restSek));
-  sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSek / 60)) });
+  sendeFehler(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSek / 60)) });
 }

@@ -33,7 +33,7 @@ const KENNUNGEN = new Set(['id', 'acqId', 'instrId']);
 function eingabePruefen(route: Route, req: Request, res: Response, next: NextFunction): void {
   for (const [name, wert] of Object.entries(req.query ?? {}))
     if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS) {
-      sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
+      sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name.slice(0, 40) });
       return;
     }
   const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
@@ -43,15 +43,15 @@ function eingabePruefen(route: Route, req: Request, res: Response, next: NextFun
     if (!Object.hasOwn(req.params ?? {}, name)) continue;
     const r = schema.safeParse(req.params[name]);
     if (!r.success) {
-      if (KENNUNGEN.has(name)) sendeFehler(req, res, 400, 'id_ungueltig');
-      else sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name });
+      if (KENNUNGEN.has(name)) sendeFehler(req, res, 'ungueltig', 'id_ungueltig');
+      else sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name });
       return;
     }
     geprueft.pfad[name] = r.data;
   }
   const fremd = Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PFAD, name));
   if (fremd) {
-    sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: fremd.slice(0, 40) });
+    sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: fremd.slice(0, 40) });
     return;
   }
   if (route.abfrage) {
@@ -85,12 +85,12 @@ function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void 
     return;
   }
   if (erste?.code === 'unrecognized_keys') {
-    sendeFehler(req, res, 400, 'feld_unbekannt', {
+    sendeFehler(req, res, 'ungueltig', 'feld_unbekannt', {
       feld: [...(erste.path ?? []), erste.keys[0] ?? ''].join('.').slice(0, 40),
     });
     return;
   }
-  sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
+  sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
 /** Nur in Tests (VERTRAG_PRUEFEN=1): Eine 2xx-Antwort ausserhalb ihres Schemas wird zur 500. Im
@@ -219,7 +219,7 @@ export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: bo
   const hoechstens = o.grosseIds ? Number.MAX_SAFE_INTEGER : GROESSTE_ID;
   for (const name of ['id', 'acqId', 'instrId']) {
     router.param(name, (req, res, next, wert) =>
-      idWert(wert, hoechstens) === null ? sendeFehler(req, res, 400, 'id_ungueltig') : next(),
+      idWert(wert, hoechstens) === null ? sendeFehler(req, res, 'ungueltig', 'id_ungueltig') : next(),
     );
   }
   const anmelden = (methode: string, pfad: string, schritte: unknown[]) =>
