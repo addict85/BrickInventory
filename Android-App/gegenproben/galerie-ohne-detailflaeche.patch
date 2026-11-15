@@ -1,7 +1,7 @@
 Gegenprobe: neben einem offenen Set nur das Detail, ohne Galerie
 Modul: app
-Test: ch.brickinventoryapp.app.UxPruefungZweiTest
-Rot: M6 auf dem Tablet stehen Galerie und Set-Detail
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: auf dem Tablet stehen Galerie und Set-Detail gleichzeitig nebeneinander
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieUndDetail.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieUndDetail.kt
 index f3db60a..78baf13 100644

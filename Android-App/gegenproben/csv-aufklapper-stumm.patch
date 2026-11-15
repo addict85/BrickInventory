@@ -1,7 +1,7 @@
 Gegenprobe: Zustand und Aufklappen am CSV-Balken entfernt
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
-Rot: M11 CSV-Balken nennt Zustand, Aufklappen und Fortschritt
+Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Rot: CSV-Balken nennt Zustand, Aufklappen und Fortschritt
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt

@@ -187,7 +187,7 @@ class StringResourceParityTest {
             "filter_button", "filter_title",
             // Zähler „5/24“ unter dem Fingerabdruckfeld: nur Zahlen.
             "zert_eingabe_zaehler",
-            // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (UxPruefungZweiTest M7).
+            // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (FormulareUndRaenderTest).
             "settings_language_en", "settings_language_de",
         )
 

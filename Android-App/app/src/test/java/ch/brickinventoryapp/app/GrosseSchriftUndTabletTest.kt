@@ -65,7 +65,7 @@ import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
- * Regeln aus der achten UI-Prüfung, als Verhalten ausgeführt: Navigationsziele stehen
+ * Grosse Schrift und Tablet, als Verhalten ausgeführt: Navigationsziele stehen
  * bei 200 % in einer Zeile, der Such-Platzhalter der Galerie ist auf dem Telefon nie
  * abgeschnitten.
  *
@@ -83,7 +83,7 @@ import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
-class FeinschliffRegelnTest {
+class GrosseSchriftUndTabletTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -166,7 +166,7 @@ class FeinschliffRegelnTest {
         assertTrue("Reiterleiste in verschiedenen Grössen: $groessen", groessen.size == 1)
     }
 
-    /** M4 (Barrierefreiheit): Bei 200 % stehen die Beschriftungen mindestens anderthalbmal so gross da wie bei 100 %. */
+    /** Bei 200 % stehen die Beschriftungen mindestens anderthalbmal so gross da wie bei 100 %. */
     @Test
     fun `Reiterbeschriftung waechst bei 200 Prozent mindestens aufs Anderthalbfache`() {
         val ziele = fuenfZiele

@@ -1,7 +1,7 @@
 Gegenprobe: Notfallcodes der Pflichtmaske wieder ohne vorgelesenAls (als Wort gelesen)
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
-Rot: N5 Notfallcodes werden Zeichen fuer Zeichen vorgelesen
+Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Rot: Notfallcodes werden Zeichen fuer Zeichen vorgelesen
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt

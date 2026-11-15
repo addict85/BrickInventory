@@ -1,6 +1,6 @@
 Gegenprobe: Detailkopf mit Schliessen rechts vom Titel
 Modul: app
-Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
 Rot: Tablet zeigt Teil und Liste nebeneinander
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt

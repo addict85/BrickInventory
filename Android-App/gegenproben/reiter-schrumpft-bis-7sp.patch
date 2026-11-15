@@ -1,6 +1,6 @@
 Gegenprobe: Reiterbeschriftung schrumpft wieder bis fest 7 sp
 Modul: app
-Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
 Rot: Reiterleiste schrumpft nie unter die normale Schriftgroesse
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

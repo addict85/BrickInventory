@@ -82,22 +82,22 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Befunde der Ablaufprüfung 17, ausgeführt: Löschen mit Rückgängig, Fehler- und
- * Leerzustände des Katalogs, Erfassen nach dem Scan, Merkliste im Katalog, Haushalt.
+ * Abläufe über einen Bildschirm hinaus: Löschen mit Rückgängig, Fehler- und Leerzustände
+ * des Katalogs, Erfassen nach dem Scan, Merkliste im Katalog, Haushalt.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   merkposten-loeschen-sofort         Löschen wieder sofort am Server → rot „H1 …“
- *   katalog-fehler-eigen               eigener Fehlerzustand mit Trefferzahl → rot „M2 …“
- *   katalog-leer-ohne-zuruecksetzen    leerer Katalog ohne Knopf → rot „M3 …“
- *   scanner-ohne-anzahl                Anzahl nicht weitergereicht → rot „M4 …“
- *   katalog-ohne-merkliste             Detail kennt den Merkposten nicht → rot „M6 …“
- *   haushalt-ohne-teilen               Einladung nur zum Kopieren → rot „M8 …“
- *   teile-fehler-mit-plus              „+“ auch im Fehlerzustand → rot „N1 …“
+ *   merkposten-loeschen-sofort         Löschen wieder sofort am Server → rot „ein Merkposten laesst sich …“
+ *   katalog-fehler-eigen               eigener Fehlerzustand mit Trefferzahl → rot „der Katalog zeigt im …“
+ *   katalog-leer-ohne-zuruecksetzen    leerer Katalog ohne Knopf → rot „ein leerer Katalog mit …“
+ *   scanner-ohne-anzahl                Anzahl nicht weitergereicht → rot „die Erfassung nach dem …“
+ *   katalog-ohne-merkliste             Detail kennt den Merkposten nicht → rot „das Katalog-Detail zeigt den …“
+ *   haushalt-ohne-teilen               Einladung nur zum Kopieren → rot „die Einladung laesst sich …“
+ *   teile-fehler-mit-plus              „+“ auch im Fehlerzustand → rot „im Fehlerzustand steht kein …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
-class AblaufBefundeTest {
+class BereichsablaeufeTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -135,7 +135,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `H1 ein Merkposten laesst sich nach dem Loeschen zurueckholen, samt Alarm`() {
+    fun `ein Merkposten laesst sich nach dem Loeschen zurueckholen, samt Alarm`() {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
         zeige {
@@ -182,7 +182,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `M2 der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl`() {
+    fun `der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl`() {
         zeige {
             CatalogScreen(CatalogUiState(abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Serverfehler (500)"))),
                 serverUrl = "", katalog = KeineKatalogAktionen, imageLoader = bilder, onSetClick = {})
@@ -193,7 +193,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `M3 ein leerer Katalog mit Filter bietet Zuruecksetzen, danach stehen Kacheln da`() {
+    fun `ein leerer Katalog mit Filter bietet Zuruecksetzen, danach stehen Kacheln da`() {
         val sets = listOf(KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, numParts = 4514))
         var zustand by mutableStateOf(CatalogUiState(themeId = 721))
         val aktionen = object : KatalogAktionen by KeineKatalogAktionen {
@@ -208,7 +208,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `M4 die Erfassung nach dem Scan hat eine Anzahl und behaelt Eingaben ueber eine Drehung`() {
+    fun `die Erfassung nach dem Scan hat eine Anzahl und behaelt Eingaben ueber eine Drehung`() {
         var menge = 0
         var preis: Double? = null
         val aktionen = object : ErfassungAktionen {
@@ -236,7 +236,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
+    fun `das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
         var geoeffnet: Pair<String, Zustand>? = null
         val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
             alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = 349.0))
@@ -254,7 +254,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `M8 die Einladung laesst sich teilen und kopieren, mit Gueltigkeit und Sperrgrund`() {
+    fun `die Einladung laesst sich teilen und kopieren, mit Gueltigkeit und Sperrgrund`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
@@ -271,7 +271,7 @@ class AblaufBefundeTest {
     }
 
     @Test
-    fun `N1 im Fehlerzustand steht kein Erfassen-Knopf, wie in Galerie und Merkliste`() {
+    fun `im Fehlerzustand steht kein Erfassen-Knopf, wie in Galerie und Merkliste`() {
         welt.pfade.codes["/api/v1/parts"] = 500
         val vm = welt.teile().also { it.loadParts() }
         warte("Fehler") { vm.teileState.value.let { it.teileAbruf is Laden.Fehler } }

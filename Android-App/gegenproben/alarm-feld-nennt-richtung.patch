@@ -1,7 +1,7 @@
 Gegenprobe: das Schwellenfeld eines Alarms heisst wieder wie die Richtung
 Modul: app
-Test: ch.brickinventoryapp.app.UxPruefungZweiTest
-Rot: N2
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: Preisalarme nennen die Richtung einmal und enden am Rand der Karte
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
 index 324df06..db6e97f 100644

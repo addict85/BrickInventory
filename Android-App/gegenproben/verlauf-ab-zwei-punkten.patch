@@ -1,6 +1,6 @@
 Gegenprobe: Preisverlauf zeichnet schon zwei Punkte als Linie
 Modul: app
-Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
 Rot: Preisverlauf
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt

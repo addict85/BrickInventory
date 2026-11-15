@@ -1,7 +1,7 @@
 Gegenprobe: Titel der Rückfrage ohne heading
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
-Rot: N2 die Rueckfrage nennt ihren Titel als Ueberschrift
+Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Rot: die Rueckfrage nennt ihren Titel als Ueberschrift und Fenstername
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 index 148a98a..df2bc8a 100644

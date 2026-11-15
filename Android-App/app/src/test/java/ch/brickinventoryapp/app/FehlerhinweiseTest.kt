@@ -33,16 +33,16 @@ import org.robolectric.annotation.Config
 import java.util.Locale
 
 /**
- * Befunde der UX-Prüfung, ausgeführt: Wo die App bisher ewig lud oder einen toten
- * Knopf zeigte, steht jetzt ein Grund und ein Weg weiter.
+ * Wo die App ewig laden oder einen toten Knopf zeigen könnte, steht ein Grund und ein
+ * Weg weiter: Katalog-Detail im Fehler, Kamera dauerhaft verweigert.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   katalog-detail-ewig-laden      Detail ohne Fehlerzweig, nur der Kringel → rot „H1 …“
- *   kamera-hinweis-ohne-weg        Hinweis zeigt trotz Sperre nur „Erlauben“ → rot „M1 …“
+ *   katalog-detail-ewig-laden      Detail ohne Fehlerzweig, nur der Kringel → rot „scheitert das Katalog-Detail, steht …“
+ *   kamera-hinweis-ohne-weg        Hinweis zeigt trotz Sperre nur „Erlauben“ → rot „ist die Kamera dauerhaft …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
-class UxPruefungTest {
+class FehlerhinweiseTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -65,7 +65,7 @@ class UxPruefungTest {
     }
 
     @Test
-    fun `H1 scheitert das Katalog-Detail, steht der Grund mit Erneut versuchen statt des Kringels`() {
+    fun `scheitert das Katalog-Detail, steht der Grund mit Erneut versuchen statt des Kringels`() {
         val geladen = mutableListOf<String>()
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
@@ -83,7 +83,7 @@ class UxPruefungTest {
     }
 
     @Test
-    fun `M1 ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen`() {
+    fun `ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen`() {
         var getippt = 0
         zeige {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
