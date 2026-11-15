@@ -47,7 +47,7 @@ test('das Löschen fragt genau einmal', () => {
   // Und die Rückfrage muss abbrechen können, ohne dass gelöscht wird.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
   // loadGallery() lädt die Kennzahlen mit; die Teile und Minifiguren des Sets sind mit weg.
-  assert.match(fn, /loadGallery\(\);\s*loadParts\(\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
+  assert.match(fn, /loadGallery\(\);\s*melde\('teileLaden'\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
 });
 
 test('die Mengen-Multiplikation steht an allen Stellen', () => {
