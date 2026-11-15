@@ -133,7 +133,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
   });
 
   await t.test('mit zweitem Faktor braucht es auch den Code', async () => {
-    const zf = _req('src/konto/zweiterFaktor.js');
+    const zf = _req('src/faktoren/zweiterFaktor.js');
     const geheim = await zf.beginneEinrichtung(kind);
     const codes = await zf.bestaetigeEinrichtung(kind, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
     const { code } = await einladungAnlegen(haupt2);

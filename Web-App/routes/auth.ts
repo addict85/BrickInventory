@@ -29,10 +29,10 @@ import {
   nameGueltig,
   geraeteNameInhaltGueltig,
   meldeAnmeldung,
+  emailWirdGeaendert,
   type Angemeldet,
   type TokenWunsch,
 } from '../src/konto';
-import { emailWirdGeaendert } from '../src/profil';
 import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Derselbe Weg nach Passwort und Passkey. Token ODER Sitzung: Die Sitzung trüge die Rechte am Scope des Tokens
@@ -88,7 +88,7 @@ async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: Geprueft
       username: u.username,
       is_admin: u.is_admin === true,
       mustChangePassword: u.muss_passwort_aendern === true,
-      zweiterFaktorPflicht: u.is_admin === true && !(await d.konto.faktor.istAktiv(u.user_id)),
+      zweiterFaktorPflicht: await d.konto.faktorPflichtOffen(u.user_id, u.is_admin === true),
     },
     token_expires: u.expires_at,
     token_last_used: u.last_used,
@@ -119,7 +119,7 @@ async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: numb
   } as const;
 }
 
-export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profil'>) {
+export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'faktoren' | 'profil'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
@@ -241,7 +241,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     // zurücksetzen; erst danach verrät die Vergabeprüfung, ob es Name oder Adresse gibt.
     if (!password_current) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, user.id, String(password_current)))) return;
-    const r = await d.profil.profilAendern(user, { username, email, first_name, last_name });
+    const r = await d.konto.profilAendern(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
     return {};
   });
@@ -282,7 +282,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     ipThrottle(d.konto, 'passkey-optionen', 60, 60 * 60 * 1000),
     async req => {
       const zweck = req.eingabe.zweck === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
-      const optionen = await d.konto.anmeldeOptionen(zweck);
+      const optionen = await d.faktoren.anmeldeOptionen(zweck);
       if (!optionen) fachfehler('nicht_verfuegbar', 'passkey_ohne_domain');
       return { optionen };
     },
@@ -294,7 +294,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     ipThrottle(d.konto, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
       if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-      const uid = await d.konto.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
+      const uid = await d.faktoren.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
       if (!uid) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
       const user = await d.konto.kontoVollVon(uid);
       if (!user) fachfehler('nicht_angemeldet', 'passkey_ungueltig');

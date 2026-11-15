@@ -5,7 +5,6 @@ import * as K from './konten';
 import { tokenAnlegen, laufzeitTage, UNBEGRENZT } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenAngaben, tokenLabel, tokenScope } from './tokenWunsch';
 import { hinweisNebenher } from './kontoHinweis';
-import * as zf from './zweiterFaktor';
 import * as QR from './qrKopplung';
 import { basisUrl, hinweisOhneBasisUrl, ueberTls, unbegrenztNurMitTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
@@ -58,7 +57,7 @@ export async function anmeldeAntwort(
       username: user.username,
       is_admin: user.is_admin,
       mustChangePassword: user.must_change_password,
-      zweiterFaktorPflicht: verwalter && !(await zf.istAktiv(k, uid)),
+      zweiterFaktorPflicht: await K.faktorPflichtOffen(k, uid, verwalter),
     },
   };
 }

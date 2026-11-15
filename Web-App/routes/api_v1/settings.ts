@@ -7,6 +7,7 @@ import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
+import { eigenerZugang } from '../../src/konto';
 
 export function baueSettingsRouter(
   d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'profil' | 'verwaltung'>,
@@ -44,7 +45,7 @@ export function baueSettingsRouter(
         scope: t.scope,
         ip_bereich: t.ip_bereich,
         rotiert_am: t.rotiert_am,
-        aktuell: d.konto.eigenerZugang(eigener, t.token),
+        aktuell: eigenerZugang(eigener, t.token),
       })),
     };
   });
@@ -55,7 +56,7 @@ export function baueSettingsRouter(
   router.endpunkt('DELETE /api/v1/settings/tokens/:tokenId', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     const eigener = bearerToken(req);
-    const eigenesGeraet = d.konto.eigenerZugang(eigener, req.pfad.tokenId);
+    const eigenesGeraet = eigenerZugang(eigener, req.pfad.tokenId);
     if (!eigenesGeraet && !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
     return { deleted: await d.konto.sitzungen.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) };
   });

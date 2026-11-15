@@ -4,7 +4,6 @@
 import { kontoAnzeigeName, setzeAktiv, setzeFremdesPasswort, setzeVerwalterRolle, zugaengeBeenden } from './konten';
 import { mitZugangsende, zugangsTransaktion } from './zugangsende';
 import { doppeltAls, fachfehler } from '../infra/fehlerTexte';
-import { schalteAb } from './zweiterFaktor';
 import { verwalterAktionMerken } from './verwalterProtokoll';
 import { hinweisNebenher, verwalterHinweisNebenher } from './kontoHinweis';
 import { hashePasswort } from './passwortHash';
@@ -41,7 +40,7 @@ export async function registrierungFreischalten(k: KontoKontext, durch: number, 
 /** Wer den Faktor verlor, war vielleicht nicht der, der ihn entfernen liess: Sitzungen und Tokens enden mit. */
 export function zweitenFaktorEntfernen(k: KontoKontext, durch: number, ziel: number): Promise<void> {
   return mitZugangsende(k, ziel, async t => {
-    await schalteAb(t, ziel);
+    await t.faktoren.schalteAb(ziel);
     await zugaengeBeenden(t, ziel);
     await verwalterAktionMerken(t, durch, ziel, 'zweiter_faktor_entfernt');
   });
@@ -107,7 +106,7 @@ export async function fuehreFaelligeUebernahmenAus(k: KontoKontext): Promise<num
       const { gilt } = await t.uebernahmen.nimmFaellige();
       for (const u of gilt) {
         if (u.passwort_hash) await t.konten.setzePasswortHash(u.ziel_id, u.passwort_hash);
-        else await t.zweiterFaktor.entferne(u.ziel_id);
+        else await t.faktoren.schalteAb(u.ziel_id);
         await zugaengeBeenden(t, u.ziel_id);
         await verwalterAktionMerken(
           t,

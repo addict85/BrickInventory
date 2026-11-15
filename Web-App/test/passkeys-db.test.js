@@ -54,7 +54,7 @@ umgebung({ APP_BASE_URL: 'https://lego.test' });
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -439,7 +439,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
   });
 
   await t.test('Anmeldeoptionen legen nichts ab, ein voller Topf sperrt nur seinen Zweck', async tt => {
-    const { OFFENE_CHALLENGES_HOECHSTENS: N } = _req('src/konto/passkeys.js');
+    const { OFFENE_CHALLENGES_HOECHSTENS: N } = _req('src/faktoren/passkeys.js');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
     await db.run('DELETE FROM webauthn_challenges');
     tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));

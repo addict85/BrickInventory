@@ -76,7 +76,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
   });
 
   await t.test('TOTP-Geheimnis', async () => {
-    const zf = _req('src/konto/zweiterFaktor.js');
+    const zf = _req('src/faktoren/zweiterFaktor.js');
     const geheimnis = await zf.beginneEinrichtung(uid);
     const roh = (await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid])).geheimnis;
     assert.ok(roh.startsWith('v2:') && !roh.includes(geheimnis), roh);

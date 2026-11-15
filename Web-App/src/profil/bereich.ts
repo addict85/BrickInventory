@@ -3,7 +3,6 @@ import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as einrichtungStand from './einrichtungStand';
 import * as indexHtml from './indexHtml';
-import * as profilAendern from './profilAendern';
 import { zugang, type ProfilAbhaengigkeiten, type ProfilKontext } from './kontext';
 
 export type { ProfilAbhaengigkeiten, ProfilKontext } from './kontext';
@@ -14,7 +13,6 @@ export function erzeugeProfil(a: Omit<ProfilAbhaengigkeiten, 'faecher'>, einblic
     { ...a, faecher: new Faecher() },
     zugang,
     (k: ProfilKontext) => ({
-      profilAendern: mit(k)(profilAendern.profilAendern),
       einrichtungStand: mit(k)(einrichtungStand.einrichtungStand),
       startseiteHtml: mit(k)(indexHtml.startseiteHtml),
       setzeGlobalesDesign: mit(k)(indexHtml.setzeGlobalesDesign),

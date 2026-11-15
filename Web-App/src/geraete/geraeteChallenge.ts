@@ -66,6 +66,12 @@ export async function neueNonce(k: GeraeteKontext, f: Familie, ausQr = false): P
   return ok ? nonce : null;
 }
 
+/** Nach der QR-Abholung: Die Nonce gilt nur der Familie des neuen Tokens; ohne Familie keine. */
+export async function nonceFuerQrToken(k: GeraeteKontext, tokenHash: string): Promise<string | null> {
+  const f = await k.geraeteSchluessel.familieDesTokens(tokenHash);
+  return f ? neueNonce(k, f, true) : null;
+}
+
 /** Je PEM einmal gelesen; der Schlüssel '' steht für die Google-Wurzeln. */
 function wurzeln(pem: string): X509Certificate[] {
   const wurzelCache = prozessweit('attestationWurzeln', () => new Map<string, X509Certificate[]>());

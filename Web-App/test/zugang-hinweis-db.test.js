@@ -139,7 +139,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
       zwei,
     ]);
-    assert.equal(await S.testDienste().konto.verwalter.fuehreFaelligeUebernahmenAus(), 1);
+    assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
   };
 
   await t.test('entfernter zweiter Faktor', async () => {
@@ -190,7 +190,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
   });
 
   await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
-    const zf = _req('src/konto/zweiterFaktor.js');
+    const zf = _req('src/faktoren/zweiterFaktor.js');
     const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
     const code = versatz => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
     await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });

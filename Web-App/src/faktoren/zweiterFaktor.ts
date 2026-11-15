@@ -4,8 +4,8 @@ import { verschluessele, entschluessele, kontext, suchwert, suchwertAlt } from '
 import crypto from 'node:crypto';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/zweiterFaktor';
-import type { KontoKontext } from './kontext';
-import { zugangsTransaktion } from './zugangsende';
+import type { FaktorenKontext } from './kontext';
+import { imSystemrahmen } from '../infra/bereich';
 
 const SCHRITT_S = 30;
 /** Ein Schritt vor und zurück: Uhren von Telefon und Server gehen nie gleich. */
@@ -85,7 +85,7 @@ export function otpauthAdresse(geheimnis: string, konto: string, basis: string |
 }
 
 /** Der Link für das Konto, mit der Basis-URL dieses Satzes Dienste. */
-export function otpauthFuer(k: KontoKontext, geheimnis: string, konto: string): string {
+export function otpauthFuer(k: FaktorenKontext, geheimnis: string, konto: string): string {
   return otpauthAdresse(geheimnis, konto, k.konfig.appBaseUrl);
 }
 
@@ -117,22 +117,22 @@ async function codesErsetzen(tx: DbSchnittstelle, uid: number): Promise<string[]
   return codes;
 }
 
-export function istAktiv(k: KontoKontext, uid: number): Promise<boolean> {
+export function istAktiv(k: FaktorenKontext, uid: number): Promise<boolean> {
   return k.zweiterFaktor.aktiv(uid);
 }
 
-export async function stand(k: KontoKontext, uid: number): Promise<{ aktiv: boolean; codes_uebrig: number }> {
+export async function stand(k: FaktorenKontext, uid: number): Promise<{ aktiv: boolean; codes_uebrig: number }> {
   const r = await k.zweiterFaktor.faktorStand(uid);
   return { aktiv: r.aktiv, codes_uebrig: r.uebrig };
 }
 
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
-export async function beginneEinrichtung(k: KontoKontext, uid: number): Promise<string | null> {
+export async function beginneEinrichtung(k: FaktorenKontext, uid: number): Promise<string | null> {
   const geheimnis = base32(crypto.randomBytes(20));
   return (await k.zweiterFaktor.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid)))) ? geheimnis : null;
 }
 
-export async function bestaetigeEinrichtung(k: KontoKontext, uid: number, code: string): Promise<string[] | null> {
+export async function bestaetigeEinrichtung(k: FaktorenKontext, uid: number, code: string): Promise<string[] | null> {
   return k.transaktion(async t => {
     const z = await repo.unbestaetigtesGeheimnisSperren(t.db, uid);
     if (!z) return null;
@@ -150,7 +150,7 @@ export async function bestaetigeEinrichtung(k: KontoKontext, uid: number, code: 
 /** Einmalcode und Wiederherstellungscode gelten genau einmal.
  * @param mitEinmalcode false (Tagesschranke): Ein sechsstelliger Code wird nicht geprüft, Raten verrät nichts. */
 export async function pruefeCode(
-  k: KontoKontext,
+  k: FaktorenKontext,
   uid: number,
   code: string | number | null | undefined,
   mitEinmalcode = true,
@@ -174,10 +174,15 @@ export async function pruefeCode(
   return (await k.zweiterFaktor.verbraucheCode(uid, alterHash(eingabe))) ? 'wiederherstellung' : null;
 }
 
-export function schalteAb(k: KontoKontext, uid: number): Promise<void> {
-  return zugangsTransaktion(k, t => t.zweiterFaktor.entferne(uid));
+export function schalteAb(k: FaktorenKontext, uid: number): Promise<void> {
+  return imSystemrahmen(k.db, 'zugangsdaten', () => k.transaktion(t => t.zweiterFaktor.entferne(uid)));
 }
 
-export async function erneuereCodes(k: KontoKontext, uid: number): Promise<string[]> {
+export async function erneuereCodes(k: FaktorenKontext, uid: number): Promise<string[]> {
   return k.transaktion(t => codesErsetzen(t.db, uid));
+}
+
+/** Für die Kontenliste der Verwaltung: Die Konten liegen beim Konto, ihr Faktor hier. */
+export function aktiveUnter(k: FaktorenKontext, ids: number[]): Promise<Set<number>> {
+  return k.zweiterFaktor.mitAktivemFaktor(ids);
 }

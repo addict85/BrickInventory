@@ -15,7 +15,7 @@ import { basisUrl } from '../infra/basisUrl';
 import { fehlertext } from '../infra/fehler';
 import { fachfehler } from '../infra/fehlerTexte';
 import { suchwert } from '../infra/geheimnis';
-import type { KontoKontext } from './kontext';
+import type { FaktorenKontext } from './kontext';
 import { androidHerkuenfte } from './androidApp';
 
 function abgewiesen(e: unknown): null {
@@ -77,7 +77,7 @@ function signierteFrist(challenge: string, zweck: PasskeyZweck, jetzt: number): 
 }
 
 async function merkeChallenge(
-  k: KontoKontext,
+  k: FaktorenKontext,
   challenge: string,
   zweck: PasskeyZweck,
   uid: number | null,
@@ -96,7 +96,7 @@ async function merkeChallenge(
 
 /** Genau einmal: Eine wiederholte Antwort findet ihre Zeile nicht mehr. */
 async function loeseChallengeEin(
-  k: KontoKontext,
+  k: FaktorenKontext,
   clientDataJSON: unknown,
   zweck: PasskeyZweck,
   uid: number | null,
@@ -115,7 +115,7 @@ async function loeseChallengeEin(
 const nutzerKennung = (uid: number) =>
   new Uint8Array(crypto.createHash('sha256').update(`bim:${uid}`).digest().subarray(0, 16));
 
-export async function registrierungsOptionen(k: KontoKontext, uid: number, name: string) {
+export async function registrierungsOptionen(k: FaktorenKontext, uid: number, name: string) {
   const rp = vertrauenspartei();
   if (!rp) return null;
   const vorhanden = await k.passkeys.kennungenDesKontos(uid);
@@ -134,7 +134,7 @@ export async function registrierungsOptionen(k: KontoKontext, uid: number, name:
 }
 
 export async function registrierungPruefen(
-  k: KontoKontext,
+  k: FaktorenKontext,
   uid: number,
   roh: unknown,
   name: string,
@@ -163,7 +163,7 @@ export async function registrierungPruefen(
   );
 }
 
-export async function anmeldeOptionen(k: KontoKontext, zweck: 'anmelden' | 'zweiter_faktor') {
+export async function anmeldeOptionen(k: FaktorenKontext, zweck: 'anmelden' | 'zweiter_faktor') {
   const rp = vertrauenspartei();
   if (!rp) return null;
   // Leere allowCredentials: Der Browser bietet die auffindbaren Passkeys an,
@@ -179,7 +179,7 @@ export async function anmeldeOptionen(k: KontoKontext, zweck: 'anmelden' | 'zwei
  * der Passkey allein ein einziger Faktor.
  * @param uid beim zweiten Faktor das Konto, dessen Passwort schon stimmte. */
 export async function anmeldungPruefen(
-  kx: KontoKontext,
+  kx: FaktorenKontext,
   roh: unknown,
   zweck: 'anmelden' | 'zweiter_faktor',
   uid: number | null = null,
@@ -217,6 +217,8 @@ export async function anmeldungPruefen(
   return (await kx.passkeys.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count)) ? k.user_id : null;
 }
 
-export const passkeysDesKontos = (k: KontoKontext, uid: number) => k.passkeys.desKontos(uid);
-export const hatPasskeys = (k: KontoKontext, uid: number) => k.passkeys.hatWelche(uid);
-export const loeschePasskey = (k: KontoKontext, uid: number, id: number) => k.passkeys.loeschePasskeyZeile(uid, id);
+export const passkeysDesKontos = (k: FaktorenKontext, uid: number) => k.passkeys.desKontos(uid);
+export const hatPasskeys = (k: FaktorenKontext, uid: number) => k.passkeys.hatWelche(uid);
+export const loeschePasskey = (k: FaktorenKontext, uid: number, id: number) => k.passkeys.loeschePasskeyZeile(uid, id);
+/** Beim Zurücksetzen oder auf Wunsch beim Passwortwechsel: Ein Eindringling behielte sonst seinen Passkey. */
+export const passkeysWiderrufen = (k: FaktorenKontext, uid: number) => k.passkeys.loescheAlleDesKontos(uid);

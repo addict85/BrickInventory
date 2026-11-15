@@ -7,6 +7,7 @@ import * as verwaltung from './repository/verwaltung';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KontoDienste } from '../konto';
+import type { FaktorenDienste } from '../faktoren';
 import type { IdempotenzDienste } from '../idempotenz';
 import type { KatalogDienste } from '../katalog';
 import type { FremdquellenDienste } from '../fremdquellen';
@@ -23,6 +24,7 @@ export interface VerwaltungAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   konto: KontoDienste;
+  faktoren: FaktorenDienste;
   idempotenz: IdempotenzDienste;
   katalog: KatalogDienste;
   fremdquellen: FremdquellenDienste;

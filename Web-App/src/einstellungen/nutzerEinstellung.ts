@@ -38,11 +38,8 @@ async function setzeHaushaltswaehrung(k: EinstellungenKontext, userId: number, w
       if (alt !== waehrung) {
         if (unterkonto) fachfehler('verboten', 'waehrung_nur_hauptkonto');
         // Jeder Wechsel stösst einen vollen Preislauf an.
-        const takt = await t.drossel.zaehleHoch(`waehrung|konto:${userId}`, 60);
-        if ((parseInt(takt.count, 10) || 0) > 5)
-          fachfehler('zu_viele', 'zu_viele_anfragen', {
-            minuten: Math.max(1, Math.ceil(parseFloat(takt.wait_min) || 1)),
-          });
+        const takt = await t.drossel.zaehleImFenster(`waehrung|konto:${userId}`, 60);
+        if (takt.count > 5) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
       }
       if (unterkonto) return alt;
       const haushalt = await repo.eigenerHaushalt(t.db, t.lesevertrag, userId);

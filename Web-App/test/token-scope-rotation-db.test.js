@@ -75,7 +75,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
   // Wiederherstellungscode, reichen die zehn nicht, kommen neue.
   const vorrat = await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
   const code = async () => {
-    if (!vorrat.length) vorrat.push(...(await _req('src/konto/zweiterFaktor.js').erneuereCodes(uid)));
+    if (!vorrat.length) vorrat.push(...(await _req('src/faktoren/zweiterFaktor.js').erneuereCodes(uid)));
     return vorrat.shift();
   };
 

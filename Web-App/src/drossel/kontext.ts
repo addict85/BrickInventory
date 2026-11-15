@@ -1,10 +1,13 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
+import type { Uhr } from '../infra/uhr';
 import * as repository from './repository';
 
 export interface DrosselAbhaengigkeiten {
   db: Db;
+  /** Die Zeit des Rückfalls im Speicher. */
+  uhr: Uhr;
 }
 
 export const zugang = (db: Db) => ({
@@ -16,11 +19,11 @@ export const zugang = (db: Db) => ({
     gibLaufplatzFrei: mit(db)(repository.gibLaufplatzFrei),
     loescheZaehler: mit(db)(repository.loescheZaehler),
     loescheZaehlerMitPraefix: mit(db)(repository.loescheZaehlerMitPraefix),
-    raeumeAuf: mit(db)(repository.raeumeAuf),
+    loescheAlteZaehler: mit(db)(repository.loescheAlteZaehler),
     zaehleHoch: mit(db)(repository.zaehleHoch),
     stundenStand: mit(db)(repository.stundenStand),
     zaehleStunde: mit(db)(repository.zaehleStunde),
-    einmalJeTag: mit(db)(repository.einmalJeTag),
+    zaehleEinmalJeTag: mit(db)(repository.zaehleEinmalJeTag),
   },
 });
 export type DrosselKontext = Kontext<DrosselAbhaengigkeiten, ReturnType<typeof zugang>>;

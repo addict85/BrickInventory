@@ -24,9 +24,7 @@ async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<v
 function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['abgelaufene Tokens', k.konto.tokensAufraeumen],
-      ['Anmeldezähler', k.konto.raeumeAnmeldezaehlerAuf],
-      ['Verwalterübernahmen', k.konto.verwalter.fuehreFaelligeUebernahmenAus],
+      ...k.konto.aufraeumSchritte('stuendlich'),
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
       ['PDF-Aufträge', k.katalog.pdf.raeumeAuf],
       ['alte Aufträge', k.auftraege.raeumeErledigteAuf],
@@ -41,9 +39,8 @@ function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<
   return fuehreAus(
     [
       ['Preisverlauf', k.finanzen.loescheAltePreise],
-      ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
+      ...k.konto.aufraeumSchritte('taeglich'),
       ['Bild-Cache', () => k.bilder.raeumeBildCacheAuf(k.bilder.bildGrenzen().cacheMaxBytes, k.uhr.jetzt())],
-      ['Verwaltungsprotokoll', () => k.konto.raeumeProtokollAuf()],
       ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(k.db)],
     ],
     lauf,

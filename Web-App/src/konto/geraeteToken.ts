@@ -88,6 +88,11 @@ export interface TokenPruefung {
 
 /** `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der
  * Pflichtfrist durch — nur für den Tausch selbst. */
+/** Für den Strom: lebt der Zugang noch? Gefragt wird mit dem Klartext, der Hash bleibt im Konto. */
+export async function tokenGilt(k: KontoKontext, klartext: string): Promise<boolean> {
+  return !!(await k.zugaenge.gueltigerToken(tokenAbdruck(klartext)));
+}
+
 export async function pruefeToken(
   k: KontoKontext,
   token: string | null | undefined,

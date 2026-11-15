@@ -294,7 +294,7 @@ const C = {
   'GET /api/v1/settings/einrichtung': 'nur-v1',
   'POST /api/v1/settings/einrichtung/fertig': 'nur-v1',
   'POST /api/v1/settings/quelle-testen': 'nur-v1',
-  // Zweiter Faktor (src/konto/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
+  // Zweiter Faktor (src/faktoren/zweiterFaktor.ts): nur unter v1, kein Alt-Pfad.
   'GET /api/v1/auth/zweiter-faktor': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/einrichten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': 'nur-v1',

@@ -14,13 +14,11 @@ import { STATUS_DER_ART } from '../../http/fehlerArt';
 import { versuche } from '../../infra/ergebnis';
 import type { KontoDienste } from '../bereich';
 
-/** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
- * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
- * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
+/** Bis zur Einrichtung des Faktors geht nur diese (anmeldungAmEingang); die Regel steht in faktorPflichtOffen. */
 export async function zweiterFaktorPflicht(konto: KontoDienste, req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && verwalter && !(await konto.faktor.istAktiv(uid));
+  return uid !== null && (await konto.faktorPflichtOffen(uid, verwalter));
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von

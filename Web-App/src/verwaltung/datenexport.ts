@@ -101,7 +101,12 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
       imported++;
     }
     if (geaendert.length)
-      await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
+      await kx.konto.verwalter.verwalterAktionMerken(
+        uid,
+        uid,
+        'einstellungen_geaendert',
+        `Import: ${geaendert.join(', ')}`,
+      );
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
   for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {

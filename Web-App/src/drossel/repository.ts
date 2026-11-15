@@ -88,7 +88,7 @@ export async function loescheZaehlerMitPraefix(db: DbSchnittstelle, praefix: str
   await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [praefix]);
 }
 
-export async function raeumeAuf(db: DbSchnittstelle, bekanntMin: number): Promise<number> {
+export async function loescheAlteZaehler(db: DbSchnittstelle, bekanntMin: number): Promise<number> {
   return (
     (
       await db.run(
@@ -141,7 +141,7 @@ export async function zaehleStunde(tx: DbSchnittstelle, key: string): Promise<vo
 }
 
 /** Zählen und Stand liefern in einem Schritt: eine Zeile, wenn der Tag frei war. */
-export function einmalJeTag(db: DbSchnittstelle, key: string) {
+export function zaehleEinmalJeTag(db: DbSchnittstelle, key: string) {
   return db.get<{ key: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()

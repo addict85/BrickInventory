@@ -19,6 +19,7 @@ import { erzeugeKatalog } from '../src/katalog';
 import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { erzeugeKonto } from '../src/konto';
+import { erzeugeFaktoren } from '../src/faktoren';
 import { erzeugeProfil } from '../src/profil';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
@@ -113,14 +114,15 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
 function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
-  const drossel = erzeugeDrossel({ db }, zeige('drossel'));
+  const drossel = erzeugeDrossel({ db, uhr }, zeige('drossel'));
   const einstellungen = erzeugeEinstellungen({ db, uhr, drossel, lesevertrag: LESEVERTRAG }, zeige('einstellungen'));
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
   const geraete = erzeugeGeraete({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
+  const faktoren = erzeugeFaktoren({ db, uhr, konfig, einstellungen }, zeige('faktoren'));
   const konto = erzeugeKonto(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete, faktoren },
     zeige('konto'),
   );
   const profil = erzeugeProfil({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profil'));
@@ -146,6 +148,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     auftraege,
     haushalt,
     geraete,
+    faktoren,
     konto,
     profil,
     idempotenz,
@@ -158,7 +161,19 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
 function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   const zeige = einblickIn(bauteile.kontexte);
   const grund = baueGrund(db, bauteile, zeige);
-  const { drossel, einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog } = grund;
+  const {
+    drossel,
+    einstellungen,
+    mail,
+    auftraege,
+    haushalt,
+    faktoren,
+    konto,
+    idempotenz,
+    fremdquellen,
+    bilder,
+    katalog,
+  } = grund;
   const { konfig, uhr } = bauteile;
   const finanzen = erzeugeFinanzen(
     { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, fremdquellen, mail, lesevertrag: LESEVERTRAG },
@@ -195,6 +210,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
       uhr,
       einstellungen,
       auftraege,
+      faktoren,
       konto,
       idempotenz,
       katalog,

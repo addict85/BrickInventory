@@ -42,7 +42,7 @@ const gr = {
   ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
 };
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const settings = _req('src/einstellungen/settings.js');
 const idem = _req('src/idempotenz/dienst.js');
 
