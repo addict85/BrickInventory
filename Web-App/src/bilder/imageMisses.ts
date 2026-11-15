@@ -19,7 +19,7 @@ const stand = (k: BilderKontext) =>
     takte: [] as NodeJS.Timeout[],
   }));
 
-export async function initImageMisses(k: BilderKontext): Promise<void> {
+export async function bildFehlstellenEinrichten(k: BilderKontext): Promise<void> {
   const _takte = stand(k).takte;
   if (_takte.length) return;
   // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.

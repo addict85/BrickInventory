@@ -46,9 +46,9 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
 
     // Derselbe Fall von Hand, ueber dieselbe Route wie die Webapp.
-    const { addManualPart } = _req('src/teile/manuelleTeile.js');
+    const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
     await alsKonto(uid, () =>
-      addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 }),
+      manuellesTeilAnlegen(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 }),
     );
 
     // Gelesen aus der ERFASSUNG
@@ -79,7 +79,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
       { unit_price: imp.unit_price, condition: imp.condition, quantity: imp.quantity },
       { unit_price: hand.unit_price, condition: hand.condition, quantity: hand.quantity },
       'CSV-Import und Erfassen von Hand hinterlassen verschiedene Erfassungen für ' +
-        'denselben Fall. Beide rechnen über resolveManualPartPurchase — weichen ' +
+        'denselben Fall. Beide rechnen über manuellerTeilekauf — weichen ' +
         'sie ab, rechnet einer der beiden wieder selbst.',
     );
   } finally {

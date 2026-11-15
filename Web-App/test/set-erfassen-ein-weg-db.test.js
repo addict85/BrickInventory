@@ -33,7 +33,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
       netz.push(sn);
       return null;
     },
-    getSetInfo: async sn => {
+    setAngaben: async sn => {
       netz.push(sn);
       return null;
     },

@@ -3,12 +3,12 @@
  * Eingabe, die keine Setnummer sein kann, wird nicht angelegt.
  *
  * Fehlerbild: „Titanic" hiess nach erneutem Erfassen „Set 10294-1". Die
- * BrickLink-Typprüfung legt eine catalog_cache-Zeile an; getSetInfo() muss den
+ * BrickLink-Typprüfung legt eine catalog_cache-Zeile an; setAngaben() muss den
  * Namen trotzdem aus dem Katalog (rb_sets) nennen.
  *
  * Gegenproben (A am 11.11.2026, B und C am 28.10.2026 gemessen):
  *   A  in katalogSetZu() `rs.name` durch `NULL::text AS name` ersetzt → rot:
- *      „getSetInfo nennt den Katalognamen, keinen Platzhalter“
+ *      „setAngaben nennt den Katalognamen, keinen Platzhalter“
  *   B  beim Anlegen (damals addSetIntern) wieder `name = EXCLUDED.name` → rot: „erneutes
  *      Erfassen ohne Quellen lässt den Katalognamen stehen"
  *   C  die Prüfung moeglicheSetNummer() beim Anlegen entfernt → rot:
@@ -46,9 +46,9 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
   );
 
   try {
-    await t.test('getSetInfo nennt den Katalognamen, keinen Platzhalter', async () => {
+    await t.test('setAngaben nennt den Katalognamen, keinen Platzhalter', async () => {
       // Der Abrufstand in catalog_cache trägt seit 0108 keinen Namen mehr, der den Katalog verdecken könnte.
-      const info = await _req('src/katalog/rebrickableKatalog.js').getSetInfo(SN);
+      const info = await _req('src/katalog/rebrickableKatalog.js').setAngaben(SN);
       assert.equal(info?.name, 'Titanic');
     });
 

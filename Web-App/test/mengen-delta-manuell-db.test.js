@@ -48,8 +48,8 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { updateManualPart } = _req('src/teile/manuelleTeile.js');
-  const { updateManualFig } = _req('src/figuren/manuelleFiguren.js');
+  const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAendern } = _req('src/figuren/manuelleFiguren.js');
   const teil = async () =>
     Number(
       (
@@ -71,13 +71,13 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
     await Promise.all([
-      updateManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
-      updateManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
+      manuellesTeilAendern(uid, TEIL, 5, { quantity_delta: 1 }),
+      manuellesTeilAendern(uid, TEIL, 5, { quantity_delta: 1 }),
     ]);
     assert.equal(await teil(), 4);
     await Promise.all([
-      updateManualFig(uid, FIGUR, { quantity_delta: 1 }),
-      updateManualFig(uid, FIGUR, { quantity_delta: 1 }),
+      manuelleFigurAendern(uid, FIGUR, { quantity_delta: 1 }),
+      manuelleFigurAendern(uid, FIGUR, { quantity_delta: 1 }),
     ]);
     assert.equal(await figur(), 3);
   });
@@ -103,7 +103,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
   });
 
   await t.test('ein Schritt unter 1 bleibt bei 1 — gelöscht wird nur über Löschen', async () => {
-    assert.deepEqual(await updateManualPart(uid, TEIL, 5, { quantity_delta: -10 }), { quantity: 1 });
+    assert.deepEqual(await manuellesTeilAendern(uid, TEIL, 5, { quantity_delta: -10 }), { quantity: 1 });
     assert.equal(await teil(), 1);
   });
 });

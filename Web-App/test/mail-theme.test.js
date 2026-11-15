@@ -22,7 +22,7 @@ const SRC =
   fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
-  assert.match(SRC, /async function getMailTheme\(k: MailKontext\)/, 'Loader fehlt');
+  assert.match(SRC, /async function mailDesign\(k: MailKontext\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
   // global_settings über src/einstellungen/settings.ts laufen, prüft der Test den Weg
   // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
@@ -53,7 +53,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // Beide Versandfunktionen müssen es laden
   for (const fn of ['sendVerificationMail', 'sendPasswordResetMail']) {
     const body = SRC.slice(SRC.indexOf(`async function ${fn}(`), SRC.indexOf(`async function ${fn}(`) + 1500);
-    assert.match(body, /const theme = await getMailTheme\(k\);/, `${fn} lädt das Design nicht`);
+    assert.match(body, /const theme = await mailDesign\(k\);/, `${fn} lädt das Design nicht`);
   }
 });
 

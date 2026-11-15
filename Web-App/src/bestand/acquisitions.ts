@@ -28,7 +28,7 @@ const num = (v: unknown): number | null => {
 
 /** @param keyValues Schlüsselwerte in der Reihenfolge von SHAPES[kind].keys
  * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde */
-export async function recordAcquisitionForDay(
+export async function kaufAmTagErfassen(
   k: BestandKontext,
   kind: AcquisitionKind,
   userId: number,
@@ -56,7 +56,7 @@ export async function recordAcquisitionForDay(
 /** Damit eine Bearbeitung nicht am eindeutigen Tagesindex scheitert.
  * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
  * @returns die kollidierende id, oder null */
-export async function findSameDayAcquisition(
+export async function kaufAmSelbenTag(
   k: BestandKontext,
   kind: AcquisitionKind,
   userId: number,
@@ -154,7 +154,7 @@ export async function setzeGeschaetztenPreis(
       const z = await repo.erfassungSperren(t.db, kind, id);
       if (!z || z[preisSpalte(kind)] != null) return false;
       const keys = schluesselSpalten(kind).map(s => z[s]);
-      const ziel = await findSameDayAcquisition(t, kind, z.user_id, keys, z.tag, id, z.condition, {
+      const ziel = await kaufAmSelbenTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
         preis,
         geschaetzt: true,
         waehrung: z.currency,

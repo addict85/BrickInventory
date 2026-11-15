@@ -3,7 +3,7 @@ import fsp from 'node:fs/promises';
 import fs from 'node:fs';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import PDFDocument from 'pdfkit';
-import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
+import { IMAGES_DIR, webPfadAufloesen } from '../../infra/appPaths';
 import { meldeFehler } from '../../infra/fehler';
 import type { Nutzlast } from '../../auftraege';
 
@@ -25,7 +25,7 @@ function pdfBildPfad(p: PdfTeil): string | null {
       return null;
     }
   }
-  const roh = resolveWebPath(src);
+  const roh = webPfadAufloesen(src);
   if (!roh) return null;
   const voll = path.resolve(roh);
   return voll.startsWith(path.resolve(IMAGES_DIR) + path.sep) ? voll : null;

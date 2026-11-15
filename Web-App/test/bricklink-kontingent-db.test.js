@@ -4,7 +4,7 @@
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  die Zählung in bricklinkRequest() entfernt → rot: beide Fälle
- *   B  in fetchPrice wieder checkAndIncrementRateLimit statt kontingentFrei
+ *   B  in fetchPrice wieder kontingentPruefenUndZaehlen statt kontingentFrei
  *      → rot: beide Fälle (der Vorabcheck zählt mit)
  *   C  in bricklinkRequest den Abbruch bei erschöpftem Kontingent entfernt
  *      → rot: „ein erschöpftes Kontingent hält auch den Rückfall an“

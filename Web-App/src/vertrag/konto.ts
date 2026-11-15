@@ -60,7 +60,7 @@ export const LoginResponse = z.looseObject({
   zweiter_faktor: z.boolean().optional(),
   never_expires: z.boolean(),
   token_info: TokenAngaben.nullable().optional(),
-  keks_fehlt: z.boolean().optional(),
+  keks_fehlt: z.boolean(),
 });
 
 export const MeResponse = z.looseObject({
@@ -217,8 +217,9 @@ export const QrMeldung = z.looseObject({
   code: z.string(),
   expires_in: ganz,
 });
-/** Erst nur `wartet`, mit `vorschau` nur `username`, sonst eine Anmeldung samt Nonce für die Attestation. */
-export const QrAbholung = LoginResponse.extend({
+/** Erst nur `wartet`, mit `vorschau` nur `username`, sonst eine Anmeldung samt Nonce für die Attestation.
+ * Ohne keks_fehlt: Die Abholung gibt immer ein Token, nie eine Sitzung. */
+export const QrAbholung = LoginResponse.omit({ keks_fehlt: true }).extend({
   wartet: z.boolean(),
   never_expires: z.boolean().optional(),
   username: z.string().optional(),

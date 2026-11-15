@@ -2,7 +2,7 @@
 import { vorDem, fehlertext, oeffentlicherFehler } from '../infra/fehler';
 import { buildJobStatus, csvImportBus } from '../auftraege';
 import { normalisiereSetNummer } from '../infra/setNummer';
-import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
+import { csvEinlesen, entschaerfungRueckgaengig, csvDatum, zeilenListe } from '../infra/csvExport';
 import { fachfehler, type Sprache } from '../infra/fehlerTexte';
 import { randomUUID } from 'node:crypto';
 import * as repo from './repository/setDetail';
@@ -75,7 +75,7 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
       purchasePrice: preis !== null && !Number.isNaN(preis) ? preis : null,
       condition: ['N', 'U'].includes(zustand) ? zustand : null,
       // 05.03.2026 ist der 5. März, nicht der 3. Mai.
-      acquiredAt: parseCsvDate(row.acquired_at || row.erfassungsdatum || row.datum),
+      acquiredAt: csvDatum(row.acquired_at || row.erfassungsdatum || row.datum),
     });
   }
   return { rows, uebersprungen: gelesen.uebersprungen };

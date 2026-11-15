@@ -37,7 +37,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
   }
 
   // Ungebunden geladen: In der Transaktion bekommt der Dienst ihren Kontext `t`.
-  const { recordAcquisitionForDay } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
+  const { kaufAmTagErfassen } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
   const bestand = testKontext('bestand');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
@@ -55,7 +55,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     await Promise.all(
       Array.from({ length: 10 }, () =>
         bestand.transaktion(
-          tt => recordAcquisitionForDay(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
+          tt => kaufAmTagErfassen(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
           { sperren: [{ konto: uid, schluessel: '70001-1' }] },
         ),
       ),
@@ -298,7 +298,7 @@ test('die Teileliste liefert, was sie meldet', () => {
   assert.match(
     antwort,
     /\.\.\.result/,
-    'Die Antwort übernimmt das Ergebnis von getParts nicht mehr — dann fehlt page_size ganz',
+    'Die Antwort übernimmt das Ergebnis von teileAbfrage nicht mehr — dann fehlt page_size ganz',
   );
   assert.doesNotMatch(
     antwort,

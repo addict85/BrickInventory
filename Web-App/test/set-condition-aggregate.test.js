@@ -75,7 +75,10 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
     fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(ROOT, 'src/teile/manuelleTeile.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function addManualPart'), src.indexOf('async function updateManualPart'));
+  const fn = src.slice(
+    src.indexOf('async function manuellesTeilAnlegen'),
+    src.indexOf('async function manuellesTeilAendern'),
+  );
 
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".
@@ -108,11 +111,11 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // Erfassung. Der zweite endete früher mit `return { action: 'updated' }`,
   // ohne eine anzulegen; ein abweichendes Erfassungsdatum ging dabei verloren.
   //
-  // Geschrieben wird seit hardened-93 über recordAcquisitionForDay(), das die
+  // Geschrieben wird seit hardened-93 über kaufAmTagErfassen(), das die
   // Zeile des Tages im selben Zustand aufstockt statt eine zweite anzulegen.
   const writes = [
     ...fn.matchAll(
-      /(?:recordAcquisitionForDay|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
     ),
   ];
   assert.equal(
@@ -151,7 +154,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // wird hier der Abruf selbst, nicht die Huelle.
   const fn = src.slice(
     src.indexOf('async function figMarktpreisMitHerkunft'),
-    src.indexOf('async function resolveManualFigPurchase'),
+    src.indexOf('async function manuellerFigurenkauf'),
   );
   assert.ok(fn.length > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
 
@@ -230,7 +233,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
   const erfassungen = [
     ...ohneKommentar.matchAll(
-      /(?:recordAcquisitionForDay|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
     ),
   ];
   assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
@@ -241,11 +244,14 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
   const src = fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function addManualFig'), src.indexOf('async function addManualFig') + 6000);
+  const fn = src.slice(
+    src.indexOf('async function manuelleFigurAnlegen'),
+    src.indexOf('async function manuelleFigurAnlegen') + 6000,
+  );
 
   const writes = [
     ...fn.matchAll(
-      /(?:recordAcquisitionForDay|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
     ),
   ];
   assert.equal(
@@ -257,7 +263,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Die Zweiterfassung muss den Preis über dieselbe Funktion ermitteln
   assert.match(
     fn,
-    /const re = await resolveManualFigPurchase\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
+    /const re = await manuellerFigurenkauf\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
     'Die Zweiterfassung darf die Preislogik nicht neu ausformulieren',
   );
 });
@@ -510,7 +516,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   // Gemeldet: manuell erfasste Teile (und dasselbe Muster traf auch auf
   // Minifiguren zu) bekamen nie eine Vorschau. Ursache: Der stündliche
   // Hintergrund-Job lud das Bild herunter und aktualisierte image_local,
-  // rief aber nie generateThumb() auf — anders als bei Sets (dieselbe …
+  // rief aber nie vorschauErzeugenAus() auf — anders als bei Sets (dieselbe …
   const src = require('./helpers/sources').serverAll();
 
   const partsLoop = src.slice(
@@ -518,14 +524,14 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
     src.indexOf('for (const f of figsToFetch) {'),
   );
   // UMFORMULIERT in: Geprüft wurde der WORTLAUT der Zeile
-  //     const { generateThumb } = require('./src/bilder/thumbs');
+  //     const { vorschauErzeugenAus } = require('./src/bilder/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
-  assert.match(src, /generateThumb/, 'generateThumb ist in server.ts nicht mehr verfügbar');
+  assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
-    /(?:generateThumb|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
-    'Die Teile-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
+    /(?:vorschauErzeugenAus|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    'Die Teile-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 
   const figsLoop = src.slice(
@@ -534,8 +540,8 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   );
   assert.match(
     figsLoop,
-    /(?:generateThumb|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
-    'Die Minifiguren-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
+    /(?:vorschauErzeugenAus|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    'Die Minifiguren-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 });
 

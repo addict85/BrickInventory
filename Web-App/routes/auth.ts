@@ -36,7 +36,7 @@ import { emailWirdGeaendert } from '../src/profil';
 import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Derselbe Weg nach Passwort und Passkey. Token ODER Sitzung: Die Sitzung trüge die Rechte am Scope des Tokens
- * vorbei. keks_fehlt auch als false: Dann rät die Oberfläche bei einem 401 nicht auf „ohne HTTPS“. */
+ * vorbei. keks_fehlt immer, auch als false: Dann rät die Oberfläche bei einem 401 nicht auf „ohne HTTPS“. */
 async function angemeldetAntworten(
   d: Pick<Dienste, 'konto'>,
   req: Request,
@@ -59,7 +59,7 @@ async function angemeldetAntworten(
   res.json({
     success: true,
     ...(await d.konto.anmeldeAntwort(user, wunsch, mitToken, req.ip)),
-    ...(mitToken ? {} : { keks_fehlt: keksBleibtAus(req) }),
+    keks_fehlt: !mitToken && keksBleibtAus(req),
   });
 }
 

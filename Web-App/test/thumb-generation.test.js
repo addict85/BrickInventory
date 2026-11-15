@@ -2,7 +2,7 @@
  * Vorschaubilder entstehen WIRKLICH — und fehlende heilen sich selbst.
  *
  * Gegenprobe (durchgeführt): temporären Namen zurück auf `.tmp` gedreht →
- * der erste Teilschritt wird rot (keine Datei, generateThumb liefert null).
+ * der erste Teilschritt wird rot (keine Datei, vorschauErzeugenAus liefert null).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
+test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () => {
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
@@ -28,12 +28,12 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
   await bild.write(original);
 
   try {
-    const { generateThumb } = _req('src/bilder/thumbs.js');
-    const web = await generateThumb(`/images/sets/${name}.jpg`);
+    const { vorschauErzeugenAus } = _req('src/bilder/thumbs.js');
+    const web = await vorschauErzeugenAus(`/images/sets/${name}.jpg`);
 
     assert.ok(
       web,
-      'generateThumb lieferte null — der Fehler wird im catch verschluckt, ' +
+      'vorschauErzeugenAus lieferte null — der Fehler wird im catch verschluckt, ' +
         'typischerweise weil der temporäre Dateiname keine Bildendung trägt',
     );
     assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
@@ -85,7 +85,7 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   );
   const block = src.slice(start, start + 4000);
   assert.ok(
-    /generateThumb/.test(block),
+    /vorschauErzeugenAus/.test(block),
     'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +
       'der Bilder-Nachlauf deckt sets nicht ab',
   );

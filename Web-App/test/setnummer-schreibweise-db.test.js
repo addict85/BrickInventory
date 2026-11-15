@@ -18,14 +18,14 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 
-// BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
+// BrickLink vorgeben, BEVOR die Preiswege preisfuehrerAbfrage herausziehen. Der
 // echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
 // oft ueberhaupt gefragt wird.
 const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
-  getPriceGuide: async (_k, sn, cond) => {
+  preisfuehrerAbfrage: async (_k, sn, cond) => {
     abrufe.push(`${sn}|${cond}`);
     throw new Error(`${sn} — kein BrickLink-Preis verfuegbar`);
   },

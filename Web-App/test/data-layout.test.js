@@ -130,7 +130,7 @@ test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
   assert.doesNotMatch(
     paths,
     /LEGACY_PART_IMAGES|LEGACY_SHARED_INSTR/,
-    'resolveWebPath darf keine Alt-Präfixe mehr kennen',
+    'webPfadAufloesen darf keine Alt-Präfixe mehr kennen',
   );
 });
 

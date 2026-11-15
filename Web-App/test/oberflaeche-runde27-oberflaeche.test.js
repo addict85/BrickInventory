@@ -83,7 +83,11 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
   await t.test('älterer Server ohne Angabe, http://localhost: trotzdem der Cookie-Hinweis', async () => {
     const { w, d } = await anmelden({
       sicher: true,
-      login: { success: true, user: { id: 1, username: 'anna', is_admin: false } },
+      login: {
+        $vertragswidrig: 'älterer Server ohne keks_fehlt',
+        success: true,
+        user: { id: 1, username: 'anna', is_admin: false },
+      },
       danach: OHNE_SITZUNG,
     });
     try {

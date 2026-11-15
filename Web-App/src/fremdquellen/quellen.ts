@@ -23,7 +23,7 @@ export type { Abruf, Kurs } from '../../clients/ezb';
 export type { RbSetTeil } from '../../clients/rebrickable';
 export type { KlientenZugang } from '../../clients/zugang';
 
-/** Die Klienten eines Zugangs, flach wie früher die Exporte; `getSetInfo` ist der von
+/** Die Klienten eines Zugangs, flach wie früher die Exporte; `setAngaben` ist der von
  * Brickset, `brickset` die ganze Gruppe für die Anleitungen (getInstructions). */
 export function baueQuellen(z: KlientenZugang) {
   const rb = erzeugeRebrickable(z);
@@ -35,7 +35,7 @@ export function baueQuellen(z: KlientenZugang) {
     ausRetryWarteschlange: bs.ausRetryWarteschlange,
     getSetByBarcode: bs.getSetByBarcode,
     getSetByEan: bs.getSetByEan,
-    getSetInfo: bs.getSetInfo,
+    setAngaben: bs.setAngaben,
     pruefeBricksetZugang: bs.pruefeBricksetZugang,
     brickset: bs,
     produktTitel: (ean13: string) => produktTitel(rb.httpsGetRobust, ean13),

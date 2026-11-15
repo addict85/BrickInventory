@@ -60,7 +60,7 @@ const _existsCache = new Zwischenspeicher<string, boolean>(20000);
 
 /** Liefert bei Treffer den Vorschau-bevorzugten Pfad, sonst null.
  * @param publicRelPath z. B. "/images/sets/10283-1.jpg" */
-export function resolveIfExists(publicRelPath: string) {
+export function bildFallsVorhanden(publicRelPath: string) {
   const hit = _existsCache.hole(publicRelPath);
   if (hit !== undefined) return hit ? resolveImageLocal(publicRelPath) : null;
 

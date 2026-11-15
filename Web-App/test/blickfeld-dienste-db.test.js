@@ -5,7 +5,7 @@
  * nicht nachbauen.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in blickfeldAus() `parseScopeMode(v.konten)` durch 'all' ersetzt → rot:
+ *   A  in blickfeldAus() `blickfeldArt(v.konten)` durch 'all' ersetzt → rot:
  *      „eine Sicht wählt die Konten im Dienst“
  *   B  in loescheSetFuer() die Kontenwahl übergangen (`gewaehlt = schreibbar`)
  *      → rot: „Löschen folgt der Kontenwahl, im Schreibbereich“

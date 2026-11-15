@@ -5,7 +5,7 @@
  *
  * Erzwungen wird der Fehler mit einem Trigger auf der älteren Erfassung.
  *
- * Gegenprobe (am 27.10. gemessen): in updateManualPart die Schleife wieder
+ * Gegenprobe (am 27.10. gemessen): in manuellesTeilAendern die Schleife wieder
  * ohne db.transaction (db.run statt tx.run) → rot: „nichts halb gekürzt"
  * (die neuere Erfassung war gelöscht).
  *
@@ -20,7 +20,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { updateManualPart } = _req('src/teile/manuelleTeile.js');
+const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
 
 const NAME = `kuerzen_${process.pid}`,
   TEIL = '3001kz';
@@ -68,13 +68,13 @@ test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async t => {
   await t.test('nichts halb gekürzt', async () => {
     assert.deepEqual(await erfassungen(), [3, 2], 'Vorbedingung');
     // 5 → 1: die neuere (2) weg, die ältere um 2 kürzen — dort greift der Trigger.
-    await assert.rejects(updateManualPart(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
+    await assert.rejects(manuellesTeilAendern(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
     assert.deepEqual(await erfassungen(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
   });
 
   await t.test('ohne Fehler wird gekürzt', async () => {
     await db.run(`DROP TRIGGER ${fn} ON part_acquisitions`);
-    await updateManualPart(uid, TEIL, 5, { quantity: 1 });
+    await manuellesTeilAendern(uid, TEIL, 5, { quantity: 1 });
     assert.deepEqual(await erfassungen(), [1]);
   });
 });

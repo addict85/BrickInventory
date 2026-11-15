@@ -2,8 +2,8 @@
  * sonst nie neu, weil eine vorhandene Vorschau als fertig gilt. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateThumb } from './thumbs';
-import { readDimensions } from './imageGuard';
+import { vorschauErzeugenAus } from './thumbs';
+import { bildmasse } from './imageGuard';
 import { APP_ROOT } from '../infra/appPaths';
 import { versuche } from '../infra/ergebnis';
 import { ohneFehlendeDatei } from '../infra/fehler';
@@ -18,7 +18,7 @@ async function masse(datei: string): Promise<{ width: number; height: number } |
   try {
     const buf = Buffer.alloc(65536);
     const { bytesRead } = await fd.read(buf, 0, buf.length, 0);
-    return readDimensions(buf.subarray(0, bytesRead));
+    return bildmasse(buf.subarray(0, bytesRead));
   } finally {
     await fd.close();
   }
@@ -49,7 +49,7 @@ export async function zugeschnitteneVorschauenEinpassen(
     if (++geprueft % 10 === 0) await pause();
     if (!(await zugeschnitten(datei, vorschau))) continue;
     await fs.promises.rm(vorschau, { force: true });
-    if ((await versuche('vorschau:einpassen', generateThumb(web))).ok) ersetzt++;
+    if ((await versuche('vorschau:einpassen', vorschauErzeugenAus(web))).ok) ersetzt++;
   }
   const namen = await fs.promises
     .readdir(proxyOrdner)

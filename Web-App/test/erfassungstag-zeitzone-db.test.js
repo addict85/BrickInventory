@@ -38,14 +38,14 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
     keineDb(t, e);
     return;
   }
-  const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
+  const { kaufAmTagErfassen } = _req('src/bestand/acquisitions.js');
   const NAME = `tagzone-${process.pid}`;
   const SN = `TZ${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
   const kauf = am =>
-    recordAcquisitionForDay('set', uid, [SN], {
+    kaufAmTagErfassen('set', uid, [SN], {
       quantity: 1,
       price: 10,
       condition: 'N',

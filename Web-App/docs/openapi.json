@@ -19969,7 +19969,8 @@
         },
         "required": [
           "success",
-          "never_expires"
+          "never_expires",
+          "keks_fehlt"
         ],
         "additionalProperties": {}
       },
@@ -22620,7 +22621,8 @@
         "required": [
           "success",
           "user",
-          "never_expires"
+          "never_expires",
+          "keks_fehlt"
         ],
         "additionalProperties": {}
       },
@@ -24707,9 +24709,6 @@
                 "type": "null"
               }
             ]
-          },
-          "keks_fehlt": {
-            "type": "boolean"
           },
           "wartet": {
             "type": "boolean"

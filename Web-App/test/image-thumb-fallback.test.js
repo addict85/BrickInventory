@@ -10,7 +10,7 @@
  *   A  `if (await originalStattVorschau(res, segmente)) return;` entfernt →
  *      rot: „fehlt die Vorschau …“ (302 zum CDN statt des Originals)
  *   B  den Aufruf hinter die CDN-Heilung gestellt → rot: ebenda
- *   C  in originalStattVorschau das setImmediate(generateThumb …) entfernt →
+ *   C  in originalStattVorschau das setImmediate(vorschauErzeugenAus …) entfernt →
  *      rot: ebenda (keine Vorschau entsteht)
  */
 const test = require('node:test');

@@ -64,7 +64,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     [A],
   );
 
-  const { buildPartsCsv, buildFigsCsv } = _req('src/bestand/bestandExport.js');
+  const { teileCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
   const { setsAlsCsv } = require('./helpers/sources').bereichsSeite('sets');
   const { importiereTeileCsv } = _req('src/teile/manuelleTeile.js');
   const { importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
@@ -79,7 +79,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     );
 
   await t.test('Teile kommen unverändert an', async () => {
-    const r = await importiereTeileCsv(B, await buildPartsCsv(A));
+    const r = await importiereTeileCsv(B, await teileCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
       await erfassungen('part_acquisitions', 'part_number', true, B),
@@ -88,7 +88,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   });
 
   await t.test('Figuren kommen unverändert an', async () => {
-    const r = await importiereFigurenCsv(B, await buildFigsCsv(A));
+    const r = await importiereFigurenCsv(B, await figurenCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
       await erfassungen('minifig_acquisitions', 'fig_number', false, B),

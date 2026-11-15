@@ -16,9 +16,9 @@ const EXPECTED = 25000;
 
 test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   assert.equal(REBRICKABLE_DEFAULT_DAILY, EXPECTED);
-  // getLimitForApi() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
+  // grenzeDerQuelle() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
-  // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
+  // beide über kontingentPruefenUndZaehlen laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften …
   const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8');
   assert.match(
@@ -35,7 +35,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(
     rl,
-    /checkAndIncrementRateLimit\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
+    /kontingentPruefenUndZaehlen\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
     'Derselbe Mechanismus wie bei BrickLink und Brickset — kein dritter Weg',
   );
   assert.doesNotMatch(rl, /new DailyLimiter\(/, 'Keine prozesslokale Instanz mehr für ein Tagesbudget');
@@ -70,10 +70,10 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/, 'setMax() erreicht nur den eigenen Prozess');
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
-  // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
+  // grenzeDerQuelle ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
   const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  const fn = fc.slice(fc.indexOf('async function getLimitForApi'), fc.indexOf('const grenzeJeKonto'));
+  const fn = fc.slice(fc.indexOf('async function grenzeDerQuelle'), fc.indexOf('const grenzeJeKonto'));
   assert.match(
     fn,
     /await k\.einstellungen\.globalerWert\(`api_limit_\$\{apiName\}`(?:, '')?\)/,

@@ -109,13 +109,13 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
                   ('fig-000123','Chewbacca','https://cdn.example/chewie.jpg'),
                   ('fig-000456','Luke',NULL)`);
 
-  const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
+  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
   const legeTeil = async (nr, farbe) => {
     abrufe = [];
-    await addManualPart(UID, { part_number: nr, color_id: farbe, quantity: 1 });
+    await manuellesTeilAnlegen(UID, { part_number: nr, color_id: farbe, quantity: 1 });
     return abrufe.filter(a => a.startsWith('lookupPart'));
   };
 
@@ -156,7 +156,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // farbrichtige Erwartung, und lookupPart holt dort selbst nur das
     // allgemeine Bild. Dann ist der Abruf wirklich ueberfluessig.
     abrufe = [];
-    await addManualPart(UID, { part_number: '3003', quantity: 1 });
+    await manuellesTeilAnlegen(UID, { part_number: '3003', quantity: 1 });
     assert.deepEqual(abrufe, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
   });
 
@@ -174,7 +174,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // „VON REBRICKABLE" — er darf hier nirgends stehen.
     await db.run("DELETE FROM parts WHERE user_id=$1 AND part_number='3001'", [UID]);
     abrufe = [];
-    const r = await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
+    const r = await manuellesTeilAnlegen(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(
       r.part_name,
       'Brick 2 x 4',
@@ -185,14 +185,14 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
 
   await t.test('Figur mit Name und Bild — kein Abruf', async () => {
     abrufe = [];
-    const r = await addManualFig(UID, { fig_number: 'fig-000123', quantity: 1 });
+    const r = await manuelleFigurAnlegen(UID, { fig_number: 'fig-000123', quantity: 1 });
     assert.deepEqual(abrufe, [], 'minifigs_catalog fuehrt Name und Bild');
     assert.equal(r.fig_name, 'Chewbacca');
   });
 
   await t.test('Figur ohne Bild — es wird gefragt', async () => {
     abrufe = [];
-    await addManualFig(UID, { fig_number: 'fig-000456', quantity: 1 });
+    await manuelleFigurAnlegen(UID, { fig_number: 'fig-000456', quantity: 1 });
     assert.deepEqual(abrufe, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');
   });
 });

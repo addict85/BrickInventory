@@ -79,7 +79,7 @@ async function getPriceGuideRaw(
 }
 
 // Erst Verkäufe, sonst Angebote: Selten gehandelte Artikel hätten sonst nie einen Preis.
-export async function getPriceGuide(
+export async function preisfuehrerAbfrage(
   k: KatalogKontext,
   setNumber: string,
   condition = 'N',
@@ -101,11 +101,11 @@ export async function getPriceGuide(
 }
 
 // Ohne Nummer der ganze Speicher.
-export async function clearSubsetsCache(k: KatalogKontext, sn: string | null = null) {
+export async function teilmengenCacheLeeren(k: KatalogKontext, sn: string | null = null) {
   await k.katalogCache.leereSubsetsCache(sn ? mitVersion(sn) : null);
 }
 
-export async function clearCatalogCache(k: KatalogKontext, sn: string | null = null) {
+export async function katalogCacheLeeren(k: KatalogKontext, sn: string | null = null) {
   await k.katalogCache.leereKatalogCache(sn ? mitVersion(sn) : null);
 }
 

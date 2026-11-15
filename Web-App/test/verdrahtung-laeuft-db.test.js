@@ -141,7 +141,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   });
 
   await t.test('4. ein Datum, an dem schon ein Kauf steht, wird abgelehnt', async () => {
-    // findSameDayAcquisition() sitzt im ÄNDERN-Weg: Wer das Datum einer
+    // kaufAmSelbenTag() sitzt im ÄNDERN-Weg: Wer das Datum einer
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
     // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück. …
