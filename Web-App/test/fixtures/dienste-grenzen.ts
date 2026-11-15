@@ -37,7 +37,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.katalog.db,
     // @ts-expect-error
-    d.katalog.nacharbeit,
+    d.katalog.quellen,
     // @ts-expect-error
     d.katalog.bildwerk,
     // @ts-expect-error

@@ -4,7 +4,8 @@
  * Gegenprobe (durchgeführt): den Anstoss in nutzerEinstellungSetzen() entfernt →
  * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem
  * geplanten Auftrag wiederholt: preisJobAnstossen in startup/verdrahtung.ts leer
- * → rot: „EUR → CHF muss den Preis-Job anstossen“.
+ * → rot: „EUR → CHF muss den Preis-Job anstossen“. Am 15.11.2026 (Ereignis statt
+ * Nacharbeit): beiWaehrungswechsel() in erzeugeAuftraege gestrichen → rot, derselbe Fall.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */

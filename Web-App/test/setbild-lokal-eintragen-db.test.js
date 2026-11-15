@@ -17,6 +17,9 @@
  *   E  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „… und die
  *      Katalogsuche nennt danach die lokale Adresse“
  *
+ * Gegenprobe (15.11.2026, Ereignis statt Nacharbeit):
+ *   F  in erzeugeKatalog beiSetBildGeladen() gestrichen → rot: alle drei Fälle
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');

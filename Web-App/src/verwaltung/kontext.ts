@@ -9,6 +9,8 @@ import type { AuftraegeDienste } from '../auftraege';
 import type { KontoDienste } from '../konto';
 import type { IdempotenzDienste } from '../idempotenz';
 import type { KatalogDienste } from '../katalog';
+import type { FremdquellenDienste } from '../fremdquellen';
+import type { BilderDienste } from '../bilder';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { SetsDienste } from '../sets';
@@ -23,6 +25,8 @@ export interface VerwaltungAbhaengigkeiten {
   konto: KontoDienste;
   idempotenz: IdempotenzDienste;
   katalog: KatalogDienste;
+  fremdquellen: FremdquellenDienste;
+  bilder: BilderDienste;
   finanzen: FinanzenDienste;
   bestand: BestandDienste;
   sets: SetsDienste;

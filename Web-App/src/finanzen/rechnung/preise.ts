@@ -172,7 +172,7 @@ async function holePreisMitRueckfall(
   const bekanntLeer = cacheVerwendbar(z, ttl, k.uhr.jetzt());
   let pd: CacheZeile | null = null;
   if (!bekanntLeer) {
-    if (!(await k.katalog.kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
+    if (!(await k.fremdquellen.kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
     pd = await rufeAb(q, zustand);
     if (hatPreis(pd)) return ausZeile(pd!, { from_cache: false, condition_used: zustand });
   }
@@ -180,7 +180,7 @@ async function holePreisMitRueckfall(
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
   if (bekanntLeer && cacheVerwendbar(zf, ttl, k.uhr.jetzt()))
     return { ...OHNE_PREIS, from_cache: true, no_price: true };
-  const frei = (await k.katalog.kontingentFrei('bricklink')).allowed;
+  const frei = (await k.fremdquellen.kontingentFrei('bricklink')).allowed;
   const pd2 = frei ? await rufeAb(q, anderer) : null;
   if (hatPreis(pd2)) return ausZeile(pd2!, { from_cache: false, condition_used: anderer, is_fallback: true });
   if (bekanntLeer || pd || pd2) return { ...OHNE_PREIS, from_cache: !pd && !pd2, no_price: true };
@@ -421,11 +421,11 @@ async function fragePreisfuehrer(
   extra: Record<string, string> = {},
 ) {
   const qp = { guide_type: 'sold', new_or_used: zustand, currency_code: currency, vat: 'N', ...extra };
-  const g = await k.katalog.quellen.bricklinkRequest('GET', pfad, qp);
+  const g = await k.fremdquellen.quellen.bricklinkRequest('GET', pfad, qp);
   if (hatPreis(g)) return g;
   const alt = await versuche(
     'preise:alt',
-    k.katalog.quellen.bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }),
+    k.fremdquellen.quellen.bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }),
   );
   return alt.ok && hatPreis(alt.wert) ? alt.wert : g;
 }

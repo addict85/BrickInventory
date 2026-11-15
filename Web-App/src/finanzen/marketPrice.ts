@@ -1,4 +1,5 @@
 import { getSetValue } from './setValue';
+import { refreshPriceForSet } from './preisLauf';
 import {
   DEFAULT_PRICE_CONDITION,
   fetchPartPrice,
@@ -25,9 +26,7 @@ export async function getCurrentMarketPrice(
   const effectiveCond = condition || (await k.einstellungen.nutzerStandardZustand(userId));
   // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
   // der Preislauf den Zustand ablesen könnte.
-  await k.nacharbeit
-    .preisFuerSetHolen(setNumber, userId, condition)
-    .catch(logAndContinue('marktpreis:preisFuerSetHolen'));
+  await refreshPriceForSet(k, setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
   // Ein ausdrücklich angefragter Zustand gilt genau so: Beim Anlegen gibt es
   // noch keine Erfassung, aus der getSetValue() ihn ableiten könnte.

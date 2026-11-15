@@ -1,7 +1,7 @@
-/** Die eine Stelle, an der verdrahtet wird: Bereiche, Nacharbeit und die Klienten
+/** Die eine Stelle, an der verdrahtet wird: Bereiche und die Klienten
  * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
-import { erzeugeAuftraege, type Nacharbeit } from '../src/auftraege';
+import { erzeugeAuftraege } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
@@ -17,10 +17,8 @@ import { erzeugeVerwaltung } from '../src/verwaltung';
 import { erzeugeKatalog } from '../src/katalog';
 import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
-import { mitVersion } from '../src/infra/setNummer';
 import { erzeugeKonto } from '../src/konto';
 import { erzeugeProfil } from '../src/profil';
-import { meldeFehler } from '../src/infra/fehler';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
 import { erzeugeDrossel } from '../src/drossel';
@@ -31,41 +29,8 @@ import type { Dienste } from '../src/dienste';
 
 export type { Dienste } from '../src/dienste';
 
-/** Die Nacharbeit ruft höhere Bereiche, die beim Bau der unteren noch nicht stehen:
- * Sie greift erst beim Aufruf auf die fertigen Dienste zu (späte Bindung). */
-export function baueNacharbeit(d: () => Dienste): Nacharbeit & { ueber(db: Db): Nacharbeit } {
-  return {
-    // In einer Transaktion läuft die Nacharbeit über deren Verbindung, wie jeder Dienst in `t`.
-    ueber: db => baueNacharbeit(() => ueberDb(d(), db)),
-    preisJobAnstossen: () => {
-      d()
-        .auftraege.ziehePlanVor('preise')
-        .catch((e: unknown) => meldeFehler('einstellungen:preis-job-anstossen', e));
-    },
-    preisFuerSetHolen: (sn, uid, zustand) => d().finanzen.refreshPriceForSet(sn, uid, zustand),
-    bildVormerken: (url, sn) => d().bilder.merkeGebraucht(url, sn),
-    setTeileAnreichern: sn => d().katalog.enrichSetParts(sn),
-    figurenAnreichern: sn => d().katalog.enrichSetMinifigs(sn),
-    setBildLokalEintragen: (sn, quelle) => d().katalog.setBildLokalEintragen(sn, quelle),
-    setBilderLaden: sn =>
-      d().auftraege.stelleAuftragEin(
-        'bilder',
-        { set_number: sn, nur_bilder: true },
-        { schluessel: `bilder:${mitVersion(sn)}:nur`, maxVersuche: 3 },
-      ),
-  };
-}
-
-/** Jeder Bereich über einer anderen Verbindung (src/infra/bereich.ts, Bereich.ueber). */
-function ueberDb(d: Dienste, db: Db): Dienste {
-  return Object.fromEntries(
-    Object.entries(d).map(([name, b]) => [name, (b as { ueber(db: Db): unknown }).ueber(db)]),
-  ) as unknown as Dienste;
-}
-
-/** Was ein Test statt des Echten gibt: eigene Nacharbeit, eigenes Bildwerk, eigene Fremdquellen. */
+/** Was ein Test statt des Echten gibt: eigenes Bildwerk, eigene Fremdquellen. */
 export interface Bauteile {
-  nacharbeit?: Nacharbeit;
   bildwerk?: Bildwerk;
   /** Ersetzte Klienten (src/fremdquellen/quellen.ts), gelesen beim Aufruf. */
   quellen?: Partial<Quellen>;
@@ -79,19 +44,10 @@ export interface Bauteile {
 type Gesetzt = Bauteile & { konfig: Readonly<Konfig>; uhr: Uhr };
 
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
- * der tieferen, die er braucht, als Teil seines Kontexts. */
+ * der tieferen, die er braucht, als Teil seines Kontexts. Wer einen höheren braucht,
+ * horcht auf ein Ereignis des tieferen (etwa beiSetBildGeladen); späte Bindung gibt es nicht. */
 export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
-  const fertig: { d: Dienste | null } = { d: null };
-  const d = (): Dienste => {
-    if (!fertig.d) throw new Error('Nacharbeit vor dem Ende von baueDienste gerufen');
-    return fertig.d;
-  };
-  fertig.d = baueBereiche(db, bauteile.nacharbeit ?? baueNacharbeit(d), {
-    ...bauteile,
-    konfig: bauteile.konfig ?? konfig(),
-    uhr: bauteile.uhr ?? systemUhr,
-  });
-  return fertig.d;
+  return baueBereiche(db, { ...bauteile, konfig: bauteile.konfig ?? konfig(), uhr: bauteile.uhr ?? systemUhr });
 }
 
 type Zeige = ReturnType<typeof einblickIn>;
@@ -107,15 +63,15 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 }
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
-function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
+function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
   const drossel = erzeugeDrossel({ db }, zeige('drossel'));
-  const einstellungen = erzeugeEinstellungen({ db, uhr, drossel, nacharbeit }, zeige('einstellungen'));
+  const einstellungen = erzeugeEinstellungen({ db, uhr, drossel }, zeige('einstellungen'));
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen }, zeige('haushalt'));
   const geraete = erzeugeGeraete({ db, konfig, auftraege }, zeige('geraete'));
   const konto = erzeugeKonto(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail, drossel, geraete },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete },
     zeige('konto'),
   );
   const profil = erzeugeProfil({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profil'));
@@ -124,12 +80,9 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig, 
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
     zeige('fremdquellen'),
   );
-  const bilder = erzeugeBilder(
-    { db, uhr, konfig, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk },
-    zeige('bilder'),
-  );
+  const bilder = erzeugeBilder({ db, uhr, konfig, auftraege, haushalt, fremdquellen, bildwerk }, zeige('bilder'));
   const katalog = erzeugeKatalog(
-    { db, uhr, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder, drossel },
+    { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, drossel },
     zeige('katalog'),
   );
   return {
@@ -148,27 +101,30 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig, 
   };
 }
 
-function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienste {
+function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   const zeige = einblickIn(bauteile.kontexte);
-  const grund = baueGrund(db, nacharbeit, bauteile, zeige);
-  const { drossel, einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog } = grund;
+  const grund = baueGrund(db, bauteile, zeige);
+  const { drossel, einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog } = grund;
   const { konfig, uhr } = bauteile;
   const finanzen = erzeugeFinanzen(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, fremdquellen, mail },
     zeige('finanzen'),
   );
   const bestand = erzeugeBestand({ db, uhr, einstellungen, haushalt, konto, katalog, finanzen }, zeige('bestand'));
   const sets = erzeugeSets(
-    { db, uhr, konfig, nacharbeit, katalog, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
+    { db, uhr, konfig, katalog, fremdquellen, bilder, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
-  const teile = erzeugeTeile({ db, uhr, einstellungen, haushalt, katalog, finanzen, bestand }, zeige('teile'));
+  const teile = erzeugeTeile(
+    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, finanzen, bestand },
+    zeige('teile'),
+  );
   const figuren = erzeugeFiguren(
-    { db, uhr, einstellungen, haushalt, katalog, finanzen, bestand, nacharbeit },
+    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, auftraege, finanzen, bestand },
     zeige('figuren'),
   );
   const merkliste = erzeugeMerkliste(
-    { db, uhr, einstellungen, haushalt, katalog, finanzen, sets, nacharbeit },
+    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, bilder, finanzen, sets },
     zeige('merkliste'),
   );
   const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, drossel }, zeige('gutscheine'));
@@ -185,6 +141,8 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienst
       konto,
       idempotenz,
       katalog,
+      fremdquellen,
+      bilder,
       finanzen,
       bestand,
       sets,

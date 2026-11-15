@@ -8,7 +8,8 @@ import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
 import type { SetsDienste } from '../sets';
-import type { Nacharbeit } from '../auftraege';
+import type { FremdquellenDienste } from '../fremdquellen';
+import type { BilderDienste } from '../bilder';
 import type { Uhr } from '../infra/uhr';
 
 export interface MerklisteAbhaengigkeiten {
@@ -18,7 +19,8 @@ export interface MerklisteAbhaengigkeiten {
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
-  nacharbeit: Nacharbeit;
+  fremdquellen: FremdquellenDienste;
+  bilder: BilderDienste;
   sets: SetsDienste;
 }
 

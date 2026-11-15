@@ -1,4 +1,5 @@
 import { logAndContinue } from '../infra/fehler';
+import { mitVersion } from '../infra/setNummer';
 import type { KatalogZeile } from './zeilen';
 import type { FigurenKontext } from './kontext';
 export type { FigurTeil, KatalogZeile } from './zeilen';
@@ -21,8 +22,8 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const elternSet = await kx.figurTeile.setMitFigur(figNumber);
     const anreichern = elternSet
-      ? kx.nacharbeit.figurenAnreichern(elternSet.set_number)
-      : kx.nacharbeit.setTeileAnreichern(figNumber);
+      ? kx.katalog.enrichSetMinifigs(elternSet.set_number)
+      : kx.katalog.enrichSetParts(figNumber);
     await anreichern.catch(logAndContinue('figuren:anreichern'));
     kat = await katalogTeile(kx, figNumber);
   }
@@ -36,7 +37,13 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
     };
   });
   setImmediate(() => {
-    kx.nacharbeit.setBilderLaden(figNumber).catch(logAndContinue('figuren:downloadSetImages'));
+    kx.auftraege
+      .stelleAuftragEin(
+        'bilder',
+        { set_number: figNumber, nur_bilder: true },
+        { schluessel: `bilder:${mitVersion(figNumber)}:nur`, maxVersuche: 3 },
+      )
+      .catch(logAndContinue('figuren:downloadSetImages'));
   });
   return { parts, source: kat.length ? 'enriched' : 'csv_cache' };
 }

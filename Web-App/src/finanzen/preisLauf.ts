@@ -57,7 +57,7 @@ async function fetchAndCachePrice(
   const vorhanden = await preisAusCache(k, setNumber, condition, currency, ttl);
   if (cacheVerwendbar(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
-  const rl = await k.katalog.kontingentFrei('bricklink');
+  const rl = await k.fremdquellen.kontingentFrei('bricklink');
   if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
@@ -75,7 +75,7 @@ async function fetchAndCachePrice(
   const p = await speicherePreis(k, setNumber, condition, currency, g);
 
   if (!hatPreis({ avg_price: p.avg, qty_avg_price: p.qavg })) {
-    const rl2 = await k.katalog.kontingentFrei('bricklink');
+    const rl2 = await k.fremdquellen.kontingentFrei('bricklink');
     if (rl2.allowed) {
       try {
         const g2 = await k.katalog.getPriceGuide(setNumber, fallback, guideType, currency);

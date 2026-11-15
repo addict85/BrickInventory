@@ -1,6 +1,8 @@
 import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
-import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { AuftraegeDienste } from '../auftraege';
+import type { FremdquellenDienste } from '../fremdquellen';
+import type { BilderDienste } from '../bilder';
 import type { BestandDienste } from '../bestand';
 import type { FinanzenDienste } from '../finanzen';
 import type { HaushaltDienste } from '../haushalt';
@@ -16,7 +18,8 @@ export interface SetsAbhaengigkeiten {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  nacharbeit: Nacharbeit;
+  fremdquellen: FremdquellenDienste;
+  bilder: BilderDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
   haushalt: HaushaltDienste;

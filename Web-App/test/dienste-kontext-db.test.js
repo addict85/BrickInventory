@@ -36,7 +36,6 @@ function zaehlend(z) {
 test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async t => {
   if (!(await zugangOderSkip(t, _req))) return;
   const { baueDienste } = _req('startup/verdrahtung.js');
-  const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
   // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
   const eigen = quellen.testDaten();
   const { alsAnfrage } = _req('src/infra/kontoKontext.js');
@@ -52,7 +51,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   await haeltTeil(eigen, uid, '3001', { menge: 4 });
 
   const { zaehler, zugang } = zaehlend(db);
-  const d = baueDienste(zugang, { nacharbeit: OHNE_NACHARBEIT });
+  const d = baueDienste(zugang);
   const stats = await alsAnfrage({ session: { userId: uid } }, () => d.teile.getPartsStats(uid));
   assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
   assert.ok(zaehler.n > 0, 'getPartsStats fragt über den übergebenen Zugang');
@@ -61,9 +60,8 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
 test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht', async t => {
   if (!(await zugangOderSkip(t, _req))) return;
   const { baueDienste } = _req('startup/verdrahtung.js');
-  const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
   const kontexte = {};
-  baueDienste(testZugang(), { nacharbeit: OHNE_NACHARBEIT, kontexte });
+  baueDienste(testZugang(), { kontexte });
   const e = kontexte.einstellungen;
   // Globale Werte schreibt nur die Systemrolle (0117): die Transaktion in ihrem Rahmen.
   const { imSystemkontext } = _req('src/infra/kontoKontext.js');

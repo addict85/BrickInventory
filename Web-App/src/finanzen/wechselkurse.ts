@@ -30,7 +30,7 @@ export async function speichereKurse(kx: FinanzenKontext, kurse: Kurs[]): Promis
 
 export async function kurseNachladen(
   k: FinanzenKontext,
-  abruf: Abruf = k.katalog.quellen.ezbAbruf,
+  abruf: Abruf = k.fremdquellen.quellen.ezbAbruf,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
   const leer = !(await k.wechselkurse.gibtEsKurse());
@@ -66,7 +66,7 @@ export async function planeKursabruf(
 /** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
 export async function kursauftrag(
   k: FinanzenKontext,
-  abruf: Abruf = k.katalog.quellen.ezbAbruf,
+  abruf: Abruf = k.fremdquellen.quellen.ezbAbruf,
   lauf?: AuftragsLauf,
 ): Promise<void> {
   await planeKursabruf(k, k.uhr.datum(), true);

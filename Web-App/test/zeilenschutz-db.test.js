@@ -85,7 +85,6 @@ const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, 
 const bauMit = z => {
   const kontexte = {};
   const d = _req('startup/verdrahtung.js').baueDienste(z, {
-    nacharbeit: _req('src/auftraege/nacharbeit.js').OHNE_NACHARBEIT,
     kontexte,
   });
   return { d, kontexte };

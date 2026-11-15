@@ -256,7 +256,7 @@ async function setBildFehlt(d: BildDienste, setNummer: string, quelle: string): 
   if (!(await setBildVollstaendig(setNummer))) return true;
   // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
   // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
-  void d.bilder.setBildLokalEintragen(setNummer, quelle).catch(e => zaehleProxyFehler('img-proxy:setBildLokal', e));
+  void d.bilder.meldeSetBildGeladen(setNummer, quelle).catch(e => zaehleProxyFehler('img-proxy:setBildLokal', e));
   return false;
 }
 
@@ -316,7 +316,7 @@ export async function bildDurchreichen(d: BildDienste, req: Request, res: Respon
   const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
     const sn = setAusUrl();
-    if (sn) d.bilder.bildVormerken(String(url), sn);
+    if (sn) d.bilder.merkeGebraucht(String(url), sn);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,

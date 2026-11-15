@@ -109,7 +109,6 @@ let _dienstFabrik = null;
 let _gebaut = null;
 /** Ersetzungen (ersetzeDienste), auch vor dem ersten Bau gemerkt. */
 const _ersatz = [];
-const _nacharbeit = {};
 
 /** Die Dienste dieser Testdatei: baueDienste(testZugang()) wie im Server, einmal je Datei. */
 /** @returns {any} */
@@ -150,10 +149,18 @@ function bereichsSeite(bereich) {
   });
 }
 
-/** Die Nacharbeit dieser Testdatei: Ein Test ersetzt eine Methode darin. */
-/** @returns {any} */
-function testNacharbeit() {
-  return _nacharbeit;
+/** Schreibt mit, was die Bilder vormerken (merkeGebraucht, src/bilder/bildbedarf.ts): am Puffer
+ *  selbst, damit jeder Weg dorthin zählt. `ende()` hört wieder auf. */
+/** @param {any} [kontext] @returns {{ notizen: [string, string][], ende: () => void }} */
+function bildNotizen(kontext = testKontext('bilder')) {
+  const puffer = kontext.faecher.fach('bildbedarf:puffer', () => new Map());
+  /** @type {[string, string][]} */
+  const notizen = [];
+  puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
+    notizen.push([url, sn]);
+    return Map.prototype.set.call(puffer, url, sn);
+  };
+  return { notizen, ende: () => delete puffer.set };
 }
 
 /** Wie früher xBereich(): Dienste eines Bereichs, Lesezugriff fällt auf seinen Kontext
@@ -211,26 +218,6 @@ function buildAndRequire() {
   process.env.NODE_ENV ??= 'test';
   baueDist();
   const V = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js'));
-  // Ein Objekt für alle Bereiche: Ein Test ersetzt eine Methode darin (testNacharbeit()).
-  // Es reicht an die echte Nacharbeit dieser Dienste weiter, gebaut beim ersten Gebrauch.
-  let echt = null;
-  const nacharbeit = () => (echt ??= V().baueNacharbeit(testDienste));
-  for (const k of [
-    'preisJobAnstossen',
-    'preisFuerSetHolen',
-    'bildVormerken',
-    'setTeileAnreichern',
-    'figurenAnreichern',
-    'setBilderLaden',
-    'setBildLokalEintragen',
-  ])
-    _nacharbeit[k] = (...a) => nacharbeit()[k](...a);
-  // In einer Transaktion (Kontext `t`) die Nacharbeit über deren Zugang; ersetzte Methoden bleiben.
-  const eigen = { ..._nacharbeit };
-  _nacharbeit.ueber = db => {
-    const t = nacharbeit().ueber(db);
-    return Object.fromEntries(Object.keys(eigen).map(k => [k, _nacharbeit[k] === eigen[k] ? t[k] : _nacharbeit[k]]));
-  };
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const erststart = () => testDienste().konto.legeStartVerwalterAn();
@@ -247,7 +234,6 @@ function buildAndRequire() {
     for (const n of Object.keys(K.konfig()))
       Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
     const d = V().baueDienste(testDb(), {
-      nacharbeit: _nacharbeit,
       bildwerk: _bildwerk,
       quellen: _quellen,
       kontexte,
@@ -972,7 +958,7 @@ module.exports = {
   testKontext,
   testBereich,
   ersetzeDienste,
-  testNacharbeit,
+  bildNotizen,
   bereichsSeite,
   routerAus,
   baueDist,

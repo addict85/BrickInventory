@@ -327,7 +327,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   const preis = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   assert.match(
     preis,
-    /preisFuerSetHolen\(setNumber, userId, condition\)/,
+    /refreshPriceForSet\(k, setNumber, userId, condition\)/,
     'getCurrentMarketPrice muss den angefragten Zustand als Hinweis übergeben',
   );
 });

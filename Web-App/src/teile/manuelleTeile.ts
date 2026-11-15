@@ -139,7 +139,7 @@ async function teilBeschreibung(
     // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
     const abruf = await versuche(
       'teile:lookupPart',
-      k.katalog.quellen.lookupPart(part_number, hasColor ? color_id : null),
+      k.fremdquellen.quellen.lookupPart(part_number, hasColor ? color_id : null),
     );
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: Was der Katalog schon wusste, bleibt stehen.
@@ -267,7 +267,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
       if (!partName) {
         const abruf = await versuche(
           'teile:import-lookupPart',
-          k.katalog.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
+          k.fremdquellen.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
         );
         const info = abruf.ok ? abruf.wert : null;
         if (info) {

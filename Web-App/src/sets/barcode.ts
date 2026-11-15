@@ -28,9 +28,9 @@ async function barcodeErgebnis(
   name: string | null,
   source: string,
 ): Promise<BarcodeTreffer> {
-  const rbData = await sk.katalog.quellen.rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`, RbSet);
+  const rbData = await sk.fremdquellen.quellen.rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`, RbSet);
   const mfData = rbData
-    ? await sk.katalog.quellen.rebrickableJson(
+    ? await sk.fremdquellen.quellen.rebrickableJson(
         `/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`,
         rbSeite(RbSetFigur),
       )
@@ -104,12 +104,15 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
 
   if (/^\d{12,13}$/.test(barcode)) {
     const ean13 = barcode.length === 12 ? '0' + barcode : barcode;
-    const rb = await sk.katalog.quellen.rebrickableJson(
+    const rb = await sk.fremdquellen.quellen.rebrickableJson(
       `/lego/sets/?search=${encodeURIComponent(ean13)}&page_size=5`,
       rbSeite(RbSet),
     );
     for (const set of rb?.results || []) {
-      const detail = await sk.katalog.quellen.rebrickableJson(`/lego/sets/${encodeURIComponent(set.set_num)}/`, RbSet);
+      const detail = await sk.fremdquellen.quellen.rebrickableJson(
+        `/lego/sets/${encodeURIComponent(set.set_num)}/`,
+        RbSet,
+      );
       const extIds = Object.values(detail?.external_ids || {})
         .flat()
         .map(String);
@@ -119,7 +122,7 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
     const plausibel = rb?.results.find(s => (s.year ?? 0) > 2010 && (s.num_parts ?? 0) > 0);
     if (plausibel) return barcodeErgebnis(sk, plausibel.set_num, plausibel.name ?? null, 'rebrickable-search');
 
-    const bsEan = await sk.katalog.quellen.getSetByEan(ean13);
+    const bsEan = await sk.fremdquellen.quellen.getSetByEan(ean13);
     if (bsEan) {
       const r = await barcodeErgebnis(sk, bsEan.set_number, bsEan.name, 'brickset-ean');
       return { ...r, year: r.year || bsEan.year, theme: r.theme || bsEan.theme, pieces: r.pieces || bsEan.pieces };
@@ -127,7 +130,7 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
 
     // Der Titel ist Händlertext: Erst die Kandidaten, die der Katalog kennt; sonst bleibt der erste als
     // markierte Vermutung stehen.
-    const titel = await sk.katalog.quellen.produktTitel(ean13);
+    const titel = await sk.fremdquellen.quellen.produktTitel(ean13);
     if (titel) {
       const kandidaten = setnummerKandidaten(titel);
       for (const k of kandidaten) {
@@ -139,9 +142,9 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
   }
 
   if (/^\d{5,8}$/.test(barcode)) {
-    const bs = await sk.katalog.quellen.getSetByBarcode(barcode);
+    const bs = await sk.fremdquellen.quellen.getSetByBarcode(barcode);
     if (bs) return barcodeErgebnis(sk, bs.set_number, bs.name, 'brickset-item');
-    const rb = await sk.katalog.quellen.rebrickableJson(`/lego/sets/${barcode}-1/`, RbSet);
+    const rb = await sk.fremdquellen.quellen.rebrickableJson(`/lego/sets/${barcode}-1/`, RbSet);
     if (rb?.set_num) return barcodeErgebnis(sk, rb.set_num, rb.name ?? null, 'rebrickable-direct');
   }
   return null;

@@ -195,7 +195,7 @@ export async function merkpostenVon(
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel
     // wie beim Ablegen (src/bilder/setImages.ts).
     const lokal = resolveIfExists(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) k.nacharbeit.bildVormerken(String(r.image_url), String(r.set_number));
+    if (!lokal && r.image_url) k.bilder.merkeGebraucht(String(r.image_url), String(r.set_number));
     return {
       ...r,
       year: r.year == null ? null : Number(r.year),

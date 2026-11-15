@@ -18,7 +18,7 @@ import * as partsImport from './partsImport';
 import * as rbInventar from './rbInventar';
 import * as rebrickableKatalog from './rebrickableKatalog';
 import * as teileAnreicherungDienst from './teileAnreicherung';
-import { ConcurrentRateLimiter, type FremdquellenDienste } from '../fremdquellen';
+import { ConcurrentRateLimiter } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
 import * as setStamm from './setStamm';
@@ -32,17 +32,10 @@ export function erzeugeKatalog(
   einblick?: Einblick<KatalogKontext>,
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
-  return baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
+  const d = baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
+  a.bilder.beiSetBildGeladen((sn, quelle) => d.setBildLokalEintragen(sn, quelle));
+  return d;
 }
-
-type P<
-  N extends
-    | 'checkAndIncrementRateLimit'
-    | 'getRateLimitStatus'
-    | 'kontingentFrei'
-    | 'setzeKontingentZurueck'
-    | 'getLimitForApi',
-> = Parameters<FremdquellenDienste[N]>;
 
 function bildDienste(k: KatalogKontext) {
   return {
@@ -58,24 +51,9 @@ function bildDienste(k: KatalogKontext) {
 }
 
 function katalogDienste(k: KatalogKontext) {
-  const fq = () => k.fremdquellen;
-  // Ein Spread des fertigen Satzes läse die Getter (quellen, bilder) beim Bau; darum hier hinein.
   return {
     ...bildDienste(k),
     anleitungLaden: mit(k)(anleitungLaden.anleitungLaden),
-    // Beim Aufruf nachgeschlagen: Der Bau des Katalogs liest die Fremdquellen nicht.
-    checkAndIncrementRateLimit: (...x: P<'checkAndIncrementRateLimit'>) => fq().checkAndIncrementRateLimit(...x),
-    getRateLimitStatus: (...x: P<'getRateLimitStatus'>) => fq().getRateLimitStatus(...x),
-    kontingentFrei: (...x: P<'kontingentFrei'>) => fq().kontingentFrei(...x),
-    setzeKontingentZurueck: (...x: P<'setzeKontingentZurueck'>) => fq().setzeKontingentZurueck(...x),
-    getLimitForApi: (...x: P<'getLimitForApi'>) => fq().getLimitForApi(...x),
-    rebrickableDailyStatus: () => fq().rebrickableDailyStatus(),
-    get quellen() {
-      return fq().quellen;
-    },
-    get bilder() {
-      return k.bilder;
-    },
     merkeBlNummer: mit(k)(blZuordnungDienst.merkeBlNummer),
     merkeEigeneBlNummer: mit(k)(blZuordnungDienst.merkeEigeneBlNummer),
     blNummerVon: mit(k)(blZuordnungDienst.blNummerVon),

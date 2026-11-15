@@ -7,7 +7,9 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'konto' | 'katalog' | 'verwaltung'>) {
+export function baueAdminRouter(
+  d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'konto' | 'fremdquellen' | 'verwaltung'>,
+) {
   const { requireApiAdmin } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1', { grosseIds: true });
 
@@ -84,9 +86,9 @@ export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' |
 
   router.endpunkt('GET /api/v1/admin/api-limits', requireApiAdmin, async _req => {
     const [rb, bl, bs] = await Promise.all([
-      d.katalog.getLimitForApi('rebrickable'),
-      d.katalog.getLimitForApi('bricklink'),
-      d.katalog.getLimitForApi('brickset'),
+      d.fremdquellen.getLimitForApi('rebrickable'),
+      d.fremdquellen.getLimitForApi('bricklink'),
+      d.fremdquellen.getLimitForApi('brickset'),
     ]);
     return { limits: { rebrickable: rb, bricklink: bl, brickset: bs } };
   });

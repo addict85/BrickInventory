@@ -179,7 +179,10 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
-    const bs = wertOder(await versuche('set-anlegen:brickset-info', sk.katalog.quellen.brickset.getSetInfo(sn)), null);
+    const bs = wertOder(
+      await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.getSetInfo(sn)),
+      null,
+    );
     if (bs) {
       name ??= bs.name;
       year ??= bs.year;
@@ -191,12 +194,9 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche(
-    'set-anlegen:bild-laden',
-    Promise.race([sk.katalog.bilder.setBildLaden(imageUrl, sn), frist]),
-  );
+  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.bilder.setBildLaden(imageUrl, sn), frist]));
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bilder.vorschauErzeugen(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.bilder.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await sk.katalog.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };

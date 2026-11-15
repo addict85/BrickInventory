@@ -16,13 +16,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { baueDienste } = _req('startup/verdrahtung.js');
-const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
 
-/** Ein Satz Dienste, dessen Nacharbeit mitschreibt, was vorgemerkt wurde. */
+/** Ein Satz Dienste, der mitschreibt, was vorgemerkt wurde. */
 function satz() {
-  const vorgemerkt = [];
-  const nacharbeit = { ...OHNE_NACHARBEIT, bildVormerken: (url, sn) => vorgemerkt.push(`${sn} ${url}`) };
-  return { d: baueDienste(S.testZugang(), { nacharbeit }), vorgemerkt };
+  const kontexte = {};
+  const d = baueDienste(S.testZugang(), { kontexte });
+  return { d, vorgemerkt: S.bildNotizen(kontexte.bilder).notizen };
 }
 
 test('eine Fehlanzeige gilt nur ihrem Satz Dienste', () => {
@@ -40,6 +39,6 @@ test('jeder Satz merkt sich selbst, was er vorgemerkt hat', () => {
   a.d.bilder.bildEinmalVormerken(url, '99902-1');
   a.d.bilder.bildEinmalVormerken(url, '99902-1');
   b.d.bilder.bildEinmalVormerken(url, '99902-1');
-  assert.deepEqual(a.vorgemerkt, [`99902-1 ${url}`], 'innerhalb der Frist nur einmal');
-  assert.deepEqual(b.vorgemerkt, [`99902-1 ${url}`], 'der zweite Satz kennt die Vormerkung des ersten nicht');
+  assert.deepEqual(a.vorgemerkt, [[url, '99902-1']], 'innerhalb der Frist nur einmal');
+  assert.deepEqual(b.vorgemerkt, [[url, '99902-1']], 'der zweite Satz kennt die Vormerkung des ersten nicht');
 });

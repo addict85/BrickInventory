@@ -137,7 +137,7 @@ async function figurBeschreibung(
   // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
   if (!fig_name || !(image_url || lokal?.hatBild)) {
     // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
-    const abruf = await versuche('figuren:getMinifigInfo', k.katalog.quellen.getMinifigInfo(num));
+    const abruf = await versuche('figuren:getMinifigInfo', k.fremdquellen.quellen.getMinifigInfo(num));
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: Was der Katalog schon wusste, bleibt stehen.
     if (gefunden) fig_name = fig_name || gefunden.fig_name;
@@ -227,7 +227,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       let imageUrl: string | null = null;
       if (!figName) {
         // Ohne Rebrickable wird die Figur ohne Namen erfasst; der Bildnachlauf holt ihn nicht nach.
-        const abruf = await versuche('figuren:import-info', k.katalog.quellen.getMinifigInfo(figNumber));
+        const abruf = await versuche('figuren:import-info', k.fremdquellen.quellen.getMinifigInfo(figNumber));
         const info = abruf.ok ? abruf.wert : null;
         if (info) {
           figName = info.fig_name;

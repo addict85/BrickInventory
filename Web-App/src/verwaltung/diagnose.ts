@@ -49,7 +49,7 @@ export async function bildProbe(k: VerwaltungKontext, url: string) {
 
 /** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
 const offenOhneUmleitung = (k: VerwaltungKontext, url: string, kopfzeilen: Record<string, string>) =>
-  k.katalog.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
+  k.fremdquellen.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
 
 function liesStrom(a: AbrufStrom, genug = Infinity) {
   return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {

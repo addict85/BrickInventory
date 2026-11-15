@@ -571,7 +571,7 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
  */
 const FALL_FUEHRT_AUS =
-  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich|Nacharbeit)\(|\b(?:bereichsSeite|ersetzeDienste)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
+  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich)\(|\bbildNotizen\(|\b(?:bereichsSeite|ersetzeDienste)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 /** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
 const SOURCES_FUEHRT_AUS = new Set([
@@ -583,7 +583,7 @@ const SOURCES_FUEHRT_AUS = new Set([
   'testDienste',
   'testKontext',
   'testBereich',
-  'testNacharbeit',
+  'bildNotizen',
   'bereichsSeite',
   'ersetzeDienste',
 ]);
@@ -752,7 +752,7 @@ const NUTZT_FASSADE =
   /(?<!\}\s*=\s*)(?:_req\w*|buildAndRequire\(\))\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
 /** Ersatzwege, die nur sinken dürfen. Wer Module beim Laden umbiegt, prüft einen Aufbau, den es
  * im Betrieb nicht gibt, und greift still ins Leere, sobald sich ein Importpfad ändert; ersetzt
- * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
+ * wird an der Verdrahtung (testBildwerk(), testQuellen(), ersetzeDienste()). routerServer steckt
  * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
 const ERSATZWEGE = {
   'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 11 },

@@ -158,7 +158,7 @@ test('kein Zustand auf global', () => {
 });
 
 test('src/ und clients/ importieren nichts aus jobs/', () => {
-  // Was src/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
+  // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/auftraege);
   // die Ausführung setzt startup/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
@@ -260,7 +260,7 @@ test('keine Route führt SQL aus oder importiert aus db/', () => {
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
-  // Jobs steuert eine Route über src/auftraege/nacharbeit.ts und die Auftragstabelle,
+  // Jobs steuert eine Route über die Dienste von src/auftraege und die Auftragstabelle,
   // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in

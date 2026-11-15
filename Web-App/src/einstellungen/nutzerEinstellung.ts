@@ -5,6 +5,12 @@ import { nutzerWertGueltig, schreibeNutzerEinstellung } from './settings';
 import * as repo from './repository/waehrung';
 import type { EinstellungenKontext } from './kontext';
 
+const waehrungsHorcher = (k: EinstellungenKontext) => k.faecher.fach('waehrungswechsel', () => new Set<() => void>());
+/** Die Aufträge liegen höher und horchen selbst (erzeugeAuftraege): Einstellungen kennen sie nicht. */
+export function beiWaehrungswechsel(k: EinstellungenKontext, fn: () => void): void {
+  waehrungsHorcher(k).add(fn);
+}
+
 /** Die eine Schreibstelle: Ein Währungswechsel muss den Preis-Job anstossen,
  * weil der Preis-Cache je Währung verschlüsselt ist. */
 export async function nutzerEinstellungSetzen(k: EinstellungenKontext, userId: number, key: string, value: unknown) {
@@ -50,7 +56,7 @@ async function setzeHaushaltswaehrung(k: EinstellungenKontext, userId: number, w
     console.log(
       `[settings] Währung für Benutzer ${userId} und seinen Haushalt geändert (${vorher ?? '—'} → ${waehrung}) — Preis-Job wird angestossen`,
     );
-    setImmediate(() => k.nacharbeit.preisJobAnstossen());
+    for (const fn of waehrungsHorcher(k)) setImmediate(fn);
   }
 }
 

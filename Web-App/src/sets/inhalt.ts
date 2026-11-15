@@ -21,7 +21,7 @@ export async function setInfo(sk: SetsKontext, setNumber: string): Promise<SetSt
 export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: string) {
   const n = mitVersion(setNumber);
   const stamm = await setInfo(sk, n);
-  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.katalog.bilder.setNummerImBlickfeld(uid, n));
+  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.bilder.setNummerImBlickfeld(uid, n));
   if (!stamm || fremderPlatzhalter) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
   return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };
@@ -153,9 +153,9 @@ export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
     figs = await repo.inventarFigurenDesSets(sk.db, invId);
   }
   if (!figs.length) {
-    const mit = await versuche('sets:getSetMinifigs', sk.katalog.quellen.getSetMinifigs(n));
+    const mit = await versuche('sets:getSetMinifigs', sk.fremdquellen.quellen.getSetMinifigs(n));
     const rb =
-      mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', sk.katalog.quellen.getSetMinifigs(bare));
+      mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', sk.fremdquellen.quellen.getSetMinifigs(bare));
     if (!rb.ok) return { figs: [], source: QUELLE_GESTOERT, error: rb.fehler.grund };
     figs = rb.wert || [];
   }
@@ -175,7 +175,7 @@ async function figurenMerken(
     let bild = f.image_url || null;
     if (!bild)
       bild =
-        wertOder(await versuche('sets:minifigur-info', k.katalog.quellen.getMinifigInfo(f.fig_number)), null)
+        wertOder(await versuche('sets:minifigur-info', k.fremdquellen.quellen.getMinifigInfo(f.fig_number)), null)
           ?.image_url || null;
     await k.katalog.merkeFigur(f.fig_number, f.fig_name, bild);
     await k.katalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
@@ -193,5 +193,5 @@ export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: 
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
 export function teilelisteMitNacharbeit(sk: SetsKontext, setNum: string) {
-  return teilelisteDesSets(sk, setNum, sn => sk.nacharbeit.setTeileAnreichern(sn));
+  return teilelisteDesSets(sk, setNum, sn => sk.katalog.enrichSetParts(sn));
 }

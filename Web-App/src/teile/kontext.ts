@@ -9,6 +9,7 @@ import * as teilFarbe from './repository/teilFarbe';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
+import type { FremdquellenDienste } from '../fremdquellen';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { Uhr } from '../infra/uhr';
@@ -21,6 +22,7 @@ export interface TeileAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
+  fremdquellen: FremdquellenDienste;
   finanzen: FinanzenDienste;
   bestand: BestandDienste;
 }

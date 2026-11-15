@@ -4,7 +4,7 @@ import type { Konfig } from '../infra/konfig';
 import { mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Db } from '../../db/database';
-import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { AuftraegeDienste } from '../auftraege';
 import type { FremdquellenDienste } from '../fremdquellen';
 import type { HaushaltDienste } from '../haushalt';
 import * as bildBlickfeld from './repository/bildBlickfeld';
@@ -31,7 +31,6 @@ export interface BilderAbhaengigkeiten {
   fremdquellen: FremdquellenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
-  nacharbeit: Nacharbeit;
 }
 
 export const zugang = (db: Db) => ({

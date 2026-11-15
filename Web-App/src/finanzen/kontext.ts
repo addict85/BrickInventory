@@ -18,7 +18,8 @@ import * as wechselkurse from './repository/wechselkurse';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
-import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { AuftraegeDienste } from '../auftraege';
+import type { FremdquellenDienste } from '../fremdquellen';
 import type { Uhr } from '../infra/uhr';
 
 export interface FinanzenAbhaengigkeiten {
@@ -29,7 +30,7 @@ export interface FinanzenAbhaengigkeiten {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
-  nacharbeit: Nacharbeit;
+  fremdquellen: FremdquellenDienste;
   faecher: Faecher;
   mail: MailDienste;
 }
