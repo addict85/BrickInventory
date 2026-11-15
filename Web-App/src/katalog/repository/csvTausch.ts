@@ -7,8 +7,7 @@ import { logAndContinue } from '../../infra/fehler';
 /** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */
 
-/** Die Tabellen der Rebrickable-CSV-Dateien: Nur sie tauscht dieses Repository, ein anderer Name
- * wirft, statt still eine fremde Tabelle zu leeren. */
+/** Nur diese Tabellen tauscht das Repository; ein anderer Name wirft, statt eine fremde zu leeren. */
 export const CSV_TABELLEN = [
   'rb_colors',
   'rb_part_categories',

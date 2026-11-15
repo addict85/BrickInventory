@@ -1,5 +1,3 @@
-/** Ein manueller Kauf wechselt das Konto: Teile, Figuren und ihre Käufe gehören dem Bestand, darum
- * steht das Umhängen hier und nicht beim Set-Verschieben. */
 import { fachfehler } from '../infra/fehlerTexte';
 import { kaufAmTagErfassen } from './acquisitions';
 import { legeZeileAn } from './inhalt';

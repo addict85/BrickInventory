@@ -1,5 +1,4 @@
-/** Sets, Käufe und Erfassungen gehören dem Bestand (docs/architektur.md); die Bereiche darüber
- * schreiben sie über diese Dienste, in ihrer Transaktion über t.bestand. */
+/** Sets und Käufe gehören dem Bestand (docs/architektur.md); die Bereiche darüber schreiben hierüber. */
 import type { ErfassungsArt } from '../../db/bestandsmenge';
 import { mit } from '../infra/bereich';
 import * as erfassungen from './repository/erfassungen';

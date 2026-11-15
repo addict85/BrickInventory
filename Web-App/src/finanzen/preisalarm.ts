@@ -32,7 +32,6 @@ function alsAlarm<Z extends repo.AlarmZeile>(z: Z): Omit<Z, 'richtung' | 'zuletz
   return { ...z, richtung: z.richtung as Richtung, zuletzt_am: z.zuletzt_am?.toISOString() ?? null };
 }
 
-/** Der Vertrag prüft die Form, die CSV-Datei nur Text: Die Regeln gelten für beide. */
 export interface AlarmEingabe {
   richtung: string;
   schwelle: number | string | null | undefined;

@@ -1,5 +1,4 @@
-/** Das Format von Gutscheinnummer, PIN und Währung: einmal für den Vertrag (Eingaben) und für die
- * Werte, die der Server selbst aus einem PDF liest. Darum hier und nicht in einem der beiden. */
+/** Das Format von Nummer, PIN und Währung für den Vertrag und für Werte aus einem PDF zugleich. */
 import { fachfehler } from './fehlerTexte';
 
 /** Ziffern; Leerzeichen und Bindestriche fallen weg, so drucken Händler die Nummer. */

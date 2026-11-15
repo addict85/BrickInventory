@@ -7,8 +7,7 @@ import type { BestandKontext } from './kontext';
 
 type Zeile = { id: number; storage_id: number | null };
 
-/** Erst Käufe addieren, dann umziehen (sonst Tagesindex). Gibt es die Zielzeile, geht die Quelle darin
- * auf; ihren Lagerort übernimmt das Ziel nur ohne eigenen („Kiste 3“ soll bleiben). */
+/** Käufe vor der Zeile (sonst Tagesindex); ein Ziel behält seinen Lagerort („Kiste 3“ soll bleiben). */
 export async function teilzeileUmfaerben(
   k: BestandKontext,
   uid: number,

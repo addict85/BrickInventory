@@ -56,9 +56,8 @@ async function vorab(k: SammlungKontext, art: ErfassungsArt, uid: number, id: nu
   return k.bestand.erfassung.imSchreibfeld(art, id, await k.haushalt.schreibbereich(uid), keys);
 }
 
-/** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
- * keins von beiden und geht weiter: In der Transaktion ist danach jeder Befehl
- * verloren (25P02), ein Ersatz hätte die Ursache verdeckt. */
+/** 0 „leer“ und null „keine Zeile“ räumen auf; ein Lesefehler geht weiter, ein Ersatz verdeckte in
+ * der Transaktion die Ursache (danach ist jeder Befehl verloren, 25P02). */
 function mengeDesBestands(
   t: SammlungKontext,
   art: ErfassungsArt,

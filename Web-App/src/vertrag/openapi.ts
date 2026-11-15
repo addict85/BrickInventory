@@ -30,7 +30,6 @@ export function benannteSchemas(): Map<string, z.ZodType> {
   return aus;
 }
 
-/** Jedes Schema einer Antwort oder eines Ereignisses wird eine Komponente; unbenannte nach ihrer Route. */
 function komponenten() {
   const register = z.registry<{ id: string }>();
   const benannt = new Map<z.ZodType, string>();

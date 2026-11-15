@@ -1,5 +1,4 @@
-/** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
- * beim Lesen, hier wird keine Menge geschrieben. */
+/** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus beim Lesen. */
 import { fachfehler } from '../infra/fehlerTexte';
 import { mitVersion } from '../infra/setNummer';
 import * as repo from './repository/verschieben';

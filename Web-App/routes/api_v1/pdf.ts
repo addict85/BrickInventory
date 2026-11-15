@@ -11,7 +11,6 @@ import type { Request, Response } from 'express';
 import { inHuelle, vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-/** Jedes Ereignis wie die Antwort der Abfrage (PdfStand): Strom und Rückfall lesen dieselbe Form. */
 function stromStand(job: {
   status: string;
   error?: string | null;
