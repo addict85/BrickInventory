@@ -1,0 +1,19 @@
+Gegenprobe: Beobachtet meldet jeden Sammler statt nur den ersten
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.LadenBeimBeobachtenTest
+Rot: Beobachtet zaehlt die Beobachter
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
+index 2c2fb0b..3dff0df 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
+@@ -165,7 +165,8 @@ class Beobachtet<T>(private val quelle: StateFlow<T>, private val beimBeobachten
+     override val value: T get() = quelle.value
+     override val replayCache: List<T> get() = quelle.replayCache
+     override suspend fun collect(collector: FlowCollector<T>): Nothing {
+-        if (zaehler.getAndUpdate { it + 1 } == 0) beimBeobachten()
++        zaehler.update { it + 1 }
++        beimBeobachten()
+         try {
+             quelle.collect(collector)
+         } finally {
