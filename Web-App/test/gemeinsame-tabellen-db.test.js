@@ -272,9 +272,10 @@ const LESE = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g;
  * Konstante (ZAEHLT) oder eine asynchrone Abfrage gelesen wird. */
 async function lesebausteine(_req) {
   const je = {};
-  for (const n of fs.readdirSync(path.join(ROOT, 'db'))) {
+  const ordner = path.join(ROOT, 'db');
+  for (const n of fs.readdirSync(ordner)) {
     if (!n.endsWith('.ts') || ['database.ts', 'migrate.ts', 'schemaStart.ts'].includes(n)) continue;
-    if (!/\b(?:FROM|JOIN)\b/.test(fs.readFileSync(path.join(ROOT, 'db', n), 'utf8'))) continue;
+    if (!/\b(?:FROM|JOIN)\b/.test(fs.readFileSync(path.join(ordner, n), 'utf8'))) continue;
     const modul = n.replace(/\.ts$/, '');
     je[modul] = {};
     for (const [name, wert] of Object.entries(_req(`db/${modul}.js`))) {
@@ -325,16 +326,20 @@ async function lesebausteine(_req) {
 function leserUeberDb(bausteine) {
   const paare = new Set();
   const dateien = [];
-  (function lauf(d) {
+  const lauf = d => {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) lauf(p);
       else if (n.endsWith('.ts')) dateien.push(p);
     }
-  })(path.join(ROOT, 'src'));
-  for (const ordner of ['jobs', 'routes', 'startup'])
-    for (const n of fs.readdirSync(path.join(ROOT, ordner), { recursive: true }))
-      if (String(n).endsWith('.ts')) dateien.push(path.join(ROOT, ordner, String(n)));
+  };
+  for (const d of [
+    path.join(ROOT, 'src'),
+    path.join(ROOT, 'jobs'),
+    path.join(ROOT, 'routes'),
+    path.join(ROOT, 'startup'),
+  ])
+    lauf(d);
   for (const p of dateien) {
     const datei = path.relative(ROOT, p).split(path.sep).join('/');
     const b = datei === 'src/dienste.ts' ? datei : bereichVon(datei);
