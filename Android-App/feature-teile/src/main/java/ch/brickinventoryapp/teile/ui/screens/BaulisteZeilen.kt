@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.teile.ui.PlPart
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.ui.semantics.contentDescription
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.layout.*
@@ -46,6 +47,7 @@ internal fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> U
     if (pdfError != null) {
         val titel = stringResource(R.string.partslist_pdf_error_title)
         androidx.compose.material3.AlertDialog(
+            containerColor = fensterFlaeche(),
             onDismissRequest = onFehlerGesehen,
             modifier = Modifier.semantics { paneTitle = titel },
             confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.common_ok)) } },

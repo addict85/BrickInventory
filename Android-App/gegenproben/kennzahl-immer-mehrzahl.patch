@@ -6,12 +6,12 @@ Rot: bei 1 steht auf Deutsch die Einzahl
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
 --- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
 +++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
-@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
+@@ -25,7 +25,7 @@
  @Composable
  fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
      val zahl = fmtInt(anzahl)
 -    val text = pluralStringResource(plural, anzahl, zahl)
 +    val text = pluralStringResource(plural, 2, zahl)
-     // Die Aufschlüsselung klein in derselben Zeile: Als zweite Zeile darunter war die
-     // Kennzahl breiter als ihr Wert und liess eine Lücke vor der nächsten.
-     val klein = MaterialTheme.typography.labelSmall.fontSize
+     // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie
+     // mitten in der Klammer („40 /einzeln“).
+     val trenner = if (grosseSchrift()) "\n(" else "\u2002("

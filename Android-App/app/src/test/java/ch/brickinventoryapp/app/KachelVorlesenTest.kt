@@ -41,6 +41,7 @@ import androidx.compose.ui.text.TextLayoutResult
  *   teilekachel-bild-mit-namen    Bild der Teilekachel wieder mit dem Namen beschrieben → rot „Teilekachel …“
  *   menge-als-zeichen             vorgelesenAls() tut nichts → rot in den vier Vorlese-Tests („×“ bzw. „✓“)
  *   teilename-klein               Teilename wieder labelSmall (11 sp) → rot „Name Farbe und zweite Zeile …“
+ *   katalog-teile-ohne-wort       Teilezahl wieder nur als Zahl → rot „Katalogkachel zeigt die Teilezahl …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -101,6 +102,25 @@ class KachelVorlesenTest {
         val gelesen = vorgelesen { CatalogSetCard(set, imageLoader = bilder, serverUrl = "", onClick = {}) }
         pruefe("Katalogkachel", gelesen, "Lion Knights' Castle",
             listOf("Jahr 2022", "${fmtInt(4514)} Teile", "In der Sammlung, 2 Exemplare", "Set 10305-1"))
+    }
+
+    /** Sichtbar, nicht nur vorgelesen: „500“ neben dem Steinsymbol las sich wie ein Preis. */
+    @Test
+    fun `Katalogkachel zeigt die Teilezahl mit Wort`() {
+        val einer = KatalogSetAnsicht(setNumber = "3001-1", name = "Ein Stein", year = 2022, numParts = 1)
+        val viele = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, numParts = 4514)
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                Column {
+                    CatalogSetCard(einer, imageLoader = bilder, serverUrl = "", onClick = {})
+                    CatalogSetCard(viele, imageLoader = bilder, serverUrl = "", onClick = {})
+                }
+            }
+        }
+        compose.waitForIdle()
+        listOf("1 Teil", "${fmtInt(4514)} Teile").forEach { text ->
+            compose.onNode(androidx.compose.ui.test.hasText(text), useUnmergedTree = true).fetchSemanticsNode("„$text“ steht nicht sichtbar da")
+        }
     }
 
     /** Schriftgrösse in sp, wie der Text tatsächlich gesetzt wurde. */

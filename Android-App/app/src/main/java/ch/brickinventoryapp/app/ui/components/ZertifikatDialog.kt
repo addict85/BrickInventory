@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -68,6 +69,7 @@ private fun ZertifikatFrageDialog(
     val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig
     val fenster = stringResource(titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = onAbbrechen,
         properties = schliessbar(eingabe),
         modifier = Modifier.semantics { paneTitle = fenster },
@@ -142,6 +144,7 @@ private fun FingerabdruckAnzeige(frage: ZertifikatUngeklaert, abschreiben: Boole
 private fun CodeAbweichungDialog(frage: ZertifikatUngeklaert, onSchliessen: () -> Unit) {
     val titel = stringResource(R.string.zert_titel_code_abweichung)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = onSchliessen,
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, modifier = Modifier.semantics { heading() }) },

@@ -42,6 +42,9 @@ import ch.brickinventoryapp.testing.Quellen
  *   padding-feste-zahl         DetailRow2 wieder `padding(vertical = 5.dp)` → rot „feste Zahlen in padding …“
  *   abstand-zwischen-feste-zahl  Lagerorte wieder `Spacer(Modifier.width(8.dp))` → rot, derselbe Test
  *   dialog-ohne-fenstername    UpdateDialog ohne paneTitle → rot „kein AlertDialog ohne Fenstername …“
+ *   dialog-graue-flaeche       UpdateDialog ohne fensterFlaeche() → rot „jeder AlertDialog liegt auf der Fensterflaeche“
+ *   gutschein-eigene-knopfreihe  Gutschein-Formular wieder mit eigener Reihe Speichern | Abbrechen
+ *                              → rot „Abbrechen und Hauptknopf stehen nur in der Knopfzeile …“
  *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
  *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
  *                              → rot „Bildschirme stossen das Laden nicht …“
@@ -89,8 +92,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 212
-        val NUR_QUELLTEXT = 35
+        val FUNKTIONEN = 211
+        val NUR_QUELLTEXT = 34
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
         val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }
@@ -548,6 +551,59 @@ class QuelltextRatscheTest {
         }
         assertTrue("Nur $gesehen AlertDialogs gefunden — greift die Suche noch?", gesehen >= 8)
         assertEquals("AlertDialogs ohne Fenstername oder Überschrift", emptyList<String>(), ohne)
+    }
+
+    @Test
+    fun `jeder AlertDialog liegt auf der Fensterflaeche`() {
+        // Materials surfaceContainerHigh stand im Hellen grau auf dem abgedunkelten Grund;
+        // fensterFlaeche() nimmt dort surface (Kontrast belegt GesperrtKontrastTest).
+        val aufruf = Regex("""\bAlertDialog\(""")
+        var gesehen = 0
+        val ohne = hauptcode().flatMap { (f, text) ->
+            aufruf.findAll(text).mapNotNull { m ->
+                gesehen++
+                val zeile = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if ("containerColor = fensterFlaeche()" in argumente(text, m.range.last)) null else "${f.name}:$zeile"
+            }.toList()
+        }
+        assertTrue("Nur $gesehen AlertDialogs gefunden — greift die Suche noch?", gesehen >= 8)
+        assertEquals("AlertDialogs ohne fensterFlaeche()", emptyList<String>(), ohne)
+    }
+
+    /** Aufruf samt nachgestelltem Block: `Row(…) { … }` oder `Row { … }`; [auf] zeigt auf `(` bzw. `{`. */
+    private fun aufrufMitBlock(text: String, auf: Int): String {
+        val args = if (text[auf] == '(') argumente(text, auf) else ""
+        var i = auf + args.length
+        while (i < text.length && text[i].isWhitespace()) i++
+        if (i >= text.length || text[i] != '{') return args
+        var tiefe = 0
+        var j = i
+        while (j < text.length) {
+            if (text[j] == '{') tiefe++ else if (text[j] == '}' && --tiefe == 0) break
+            j++
+        }
+        return args + text.substring(i, minOf(j + 1, text.length))
+    }
+
+    @Test
+    fun `Abbrechen und Hauptknopf stehen nur in der Knopfzeile beisammen`() {
+        // Im Gutschein-Formular stand Speichern links und Abbrechen rechts, überall sonst
+        // umgekehrt. AlertDialog ordnet selbst; jede andere Knopfreihe nimmt Knopfzeile. Ein
+        // Schliessen-Kreuz neben „OK“ beim Bearbeiten in der Zeile ist kein Abbrechen-Knopf.
+        val reihe = Regex("""\b(?:Row|FlowRow)\s*[({]""")
+        val haupt = Regex("""(?<![\w.])(?:Button|FilledTonalButton)\(""")
+        var gesehen = 0
+        val eigene = hauptcode().filter { (f, _) -> f.name != "Dialoge.kt" }.flatMap { (f, text) ->
+            reihe.findAll(text).mapNotNull { m ->
+                gesehen++
+                val inhalt = aufrufMitBlock(text, m.range.last)
+                val zeile = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if ("Text(stringResource(R.string.common_cancel))" in inhalt && haupt.containsMatchIn(inhalt)) "${f.name}:$zeile" else null
+            }.toList()
+        }
+        assertTrue("Nur $gesehen Zeilen gefunden — greift die Suche noch?", gesehen >= 100)
+        assertEquals("Eigene Knopfreihe mit Abbrechen und Hauptknopf; Knopfzeile nehmen",
+            emptyList<String>(), eigene)
     }
 
     @Test

@@ -22,6 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import ch.brickinventoryapp.ui.components.Knopfzeile
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -118,6 +121,9 @@ internal fun ZweiterFaktorCard(
     var zfCode     by remember { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
     var gesichert  by rememberSaveable(zfZustand.codes) { mutableStateOf(false) }
+    // Bestätigen bleibt antippbar; ohne Code markiert es das Feld und setzt den Cursor hinein.
+    var codeFehlt  by rememberSaveable { mutableStateOf(false) }
+    val codeFokus = remember { FocusRequester() }
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val kontext = LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
@@ -145,9 +151,11 @@ internal fun ZweiterFaktorCard(
         }
         val codeFeld: @Composable (String) -> Unit = { beschriftung ->
             OutlinedTextField(
-                value = zfCode, onValueChange = { zfCode = it.take(24) },
+                value = zfCode, onValueChange = { zfCode = it.take(24); codeFehlt = false },
                 label = { Text(beschriftung) },
-                modifier = Modifier.fillMaxWidth(),
+                isError = codeFehlt,
+                supportingText = if (codeFehlt) { { Text(stringResource(R.string.login_code_fehlt), Modifier.ansagen()) } } else null,
+                modifier = Modifier.fillMaxWidth().focusRequester(codeFokus),
                 singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
         }
@@ -191,10 +199,14 @@ internal fun ZweiterFaktorCard(
                     }
                 }
                 codeFeld(stringResource(R.string.zf_confirm_code))
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.abruf.laedt) { Text(stringResource(R.string.zf_confirm)) }
-                    OutlinedButton(onClick = onZurueck, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.common_cancel)) }
-                }
+                Knopfzeile(
+                    bestaetigen = stringResource(R.string.zf_confirm),
+                    onBestaetigen = {
+                        if (zfCode.isBlank()) { codeFehlt = true; codeFokus.requestFocus() } else onBestaetigen(zfCode)
+                    },
+                    onAbbrechen = onZurueck,
+                    laeuft = zfZustand.abruf.laedt,
+                )
             }
             // 3. Aktiv: neue Codes oder abschalten.
             zfZustand.aktiv == true -> {

@@ -185,6 +185,23 @@ Datei: `data/SitzungsBereinigung.kt` · Test: `ResourceAndCacheTest`
 **Polling am Lifecycle.** Jede getaktete Schleife in `repeatOnLifecycle(STARTED)`.
 Datei: `verwaltung/ui/screens/MonitoringScreen.kt` · Test: `SessionAndLifecycleTest`
 
+## Bedienung
+
+**Abbrechen links, Hauptknopf rechts.** AlertDialog ordnet selbst; jede andere Reihe mit
+Abbrechen und Hauptknopf ist eine `Knopfzeile`. Jeder AlertDialog liegt auf
+`fensterFlaeche()`. Datei: `ui/components/Dialoge.kt` · Test: `QuelltextRatscheTest`
+
+**Absenden ist nie gesperrt, weil etwas fehlt.** Der Hauptknopf bleibt antippbar, markiert
+die falschen Felder und setzt den Cursor ins erste; gesperrt nur während des Sendens, dann
+mit `gesperrtFarben()` (4,5:1). Dateien: `ui/components/PasswortWechsel.kt`, `ui/theme/Gesperrt.kt` ·
+Tests: `PasswortWechselTest`, `GesperrtKontrastTest`, `GeruestUndFormularTest`
+
+**Einfachwahl ist kein Chip.** Zwei bis vier Möglichkeiten: `SegmentWahl` (bei grosser Schrift
+untereinander); mehr: `AuswahlFeld`. Chips nur für Filter. Test: `OberflaechenRegelnTest`
+
+**Tippziel und Name.** Jedes antippbare Element der Hauptbildschirme hat 48 dp und einen Namen.
+Test: `TippzielUndNameTest`
+
 ## Darstellung von Zahlen
 
 **Preisverlauf.** Eine `0` vor `firstRealIndex` heisst „kein Wert“; die x-Position kommt

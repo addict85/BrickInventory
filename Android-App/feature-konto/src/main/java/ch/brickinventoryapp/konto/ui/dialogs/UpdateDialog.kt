@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.konto.ui.dialogs
 
 import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt) — siehe die Begruendung dort.
 import ch.brickinventoryapp.konto.ui.UpdateUiState
@@ -45,6 +46,7 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
 
     val titel = stringResource(R.string.update_dialog_title)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         modifier = Modifier.semantics { paneTitle = titel },
         // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
         onDismissRequest = { if (!laedt) schliessen() },
