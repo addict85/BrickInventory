@@ -317,7 +317,7 @@ class FeinschliffRegelnTest {
                     PartsRoute(vm = vm, imageLoader = bilder)
                 }
             }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
             val kachel = androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
                 androidx.compose.ui.test.hasClickAction()
             compose.onNode(kachel).performClick()

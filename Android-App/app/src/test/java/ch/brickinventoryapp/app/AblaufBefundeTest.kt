@@ -274,7 +274,7 @@ class AblaufBefundeTest {
     fun `N1 im Fehlerzustand steht kein Erfassen-Knopf, wie in Galerie und Merkliste`() {
         welt.pfade.codes["/api/v1/parts"] = 500
         val vm = welt.teile().also { it.loadParts() }
-        warte("Fehler") { vm.partsState.value.let { it.teileAbruf is Laden.Fehler } }
+        warte("Fehler") { vm.teileState.value.let { it.teileAbruf is Laden.Fehler } }
         zeige { PartsRoute(vm = vm, imageLoader = bilder) }
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.parts_add)).assertCountEquals(0)
     }

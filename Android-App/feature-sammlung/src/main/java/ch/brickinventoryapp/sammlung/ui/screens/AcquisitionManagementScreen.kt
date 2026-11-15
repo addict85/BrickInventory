@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import androidx.compose.runtime.remember
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
@@ -64,7 +65,7 @@ fun AcquisitionManagementRoute(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
     AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState), vm, type, id, colorId, title, onBack)
 }
 
@@ -105,13 +106,6 @@ internal fun AcquisitionManagementScreen(
     // LocalResources ist die konfigurationsbewusste Form.
     val res = androidx.compose.ui.platform.LocalResources.current
     val isLoading    = manDetailState.kaeufeAbruf.laedt
-
-    LaunchedEffect(type, id, colorId) {
-        when (type) {
-            Postenart.SET  -> aktionen.loadAcquisitions(id)
-            else   -> aktionen.loadManualAcquisitions(type, id, colorId)
-        }
-    }
 
     Scaffold(
         topBar = {

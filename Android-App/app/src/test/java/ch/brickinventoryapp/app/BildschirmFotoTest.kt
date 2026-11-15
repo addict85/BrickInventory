@@ -154,15 +154,15 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun teile() {
         val vm = welt.teile().also { it.loadParts() }
-        foto("teile", { vm.partsState.value.parts.isNotEmpty() }, { vm.partsState.value }) {
+        foto("teile", { vm.teileState.value.parts.isNotEmpty() }, { vm.teileState.value }) {
             PartsRoute(vm = vm, imageLoader = bilder)
         }
     }
 
     @Test
     fun figuren() {
-        val vm = welt.teile().also { it.loadMinifigs() }
-        foto("figuren", { vm.partsState.value.minifigs.isNotEmpty() }, { vm.partsState.value }) {
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        foto("figuren", { vm.figurenState.value.minifigs.isNotEmpty() }, { vm.figurenState.value }) {
             MinifigsRoute(vm = vm, imageLoader = bilder)
         }
     }

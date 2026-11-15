@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.sitzung.abgeleitet
@@ -103,12 +105,13 @@ class GalerieViewModel @Inject constructor(
      * Die Galerie ohne das vorgemerkte Set: Die Ablage führt es bis zum Löschen beim
      * Server, und „Rückgängig“ zeigt es so ohne Neuladen wieder.
      */
-    val galleryState: StateFlow<GalleryUiState> = galerie.state
+    private val galerieBeobachtet = Beobachtet(galerie.state
         .abgeleitet(_vorgemerkt) { st, v ->
             // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.
             if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
                 stats = st.stats?.let { k -> v.set?.let { ohneSet(k, it) } ?: k })
-        }
+        })
+    val galleryState: StateFlow<GalleryUiState> = galerieBeobachtet
 
     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
     /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
@@ -120,14 +123,14 @@ class GalerieViewModel @Inject constructor(
             thema = gemerkt[THEMA] ?: "",
             sortierung = Setsortierung.aus(gemerkt[SORTIERUNG]),
         )
+        ladeJeServer(sitzung, galerieBeobachtet) { ladeWennLeer() }
     }
 
     fun loadSets() = galerie.laden()
 
     /**
-     * Beim Zeigen: laden, wenn die Galerie leer ist und ein Server eingetragen ist.
-     * Hier statt im Graphen, damit die Regel geprüft werden kann; ein Fehlschlag beim
-     * Start wird so beim nächsten Betreten wiederholt.
+     * Beim Zeigen (ladeJeServer): laden, wenn die Galerie leer ist und ein Server
+     * eingetragen ist; ein Fehlschlag beim Start wird so beim nächsten Betreten wiederholt.
      */
     fun ladeWennLeer() {
         val g = galerie.state.value

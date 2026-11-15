@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.fehlerMeldung
@@ -118,14 +119,15 @@ class FehlerZustandTest {
 
     @Test
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
-        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht, SavedStateHandle()))
         vm.loadParts()
-        assertTrue("Teilefehler", vm.partsState.value.teileAbruf is Laden.Fehler)
-        vm.loadMinifigs()
-        assertTrue("Figurenfehler", vm.partsState.value.figurenAbruf is Laden.Fehler)
-        assertTrue(vm.partsState.value.teileAbruf.fehlerMeldung != null)
-        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.teileAbruf.fehlerArt)
-        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.figurenAbruf.fehlerArt)
+        assertTrue("Teilefehler", vm.teileState.value.teileAbruf is Laden.Fehler)
+        val fig = t.merke(FigurenViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+        fig.loadMinifigs()
+        assertTrue("Figurenfehler", fig.figurenState.value.figurenAbruf is Laden.Fehler)
+        assertTrue(vm.teileState.value.teileAbruf.fehlerMeldung != null)
+        assertEquals(Fehlerklasse.SERVER, vm.teileState.value.teileAbruf.fehlerArt)
+        assertEquals(Fehlerklasse.SERVER, fig.figurenState.value.figurenAbruf.fehlerArt)
     }
 
     @Test

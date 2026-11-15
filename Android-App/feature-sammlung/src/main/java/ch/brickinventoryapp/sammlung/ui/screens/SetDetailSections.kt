@@ -137,10 +137,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
             // ── Lagerort ──
             //
             // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
-            // Besitzer des Sets, nicht dem Betrachter (siehe loadLagerortVorrat()).
-            LaunchedEffect(setNumber, set.owners) {
-                aktionen.loadLagerortVorrat(set.owners.map { it.id })
-            }
+            // Besitzer des Sets; das SetDetailViewModel holt sie mit dem Detail.
             // Bei grosser Schrift steht das Feld unter der Bezeichnung in voller Breite:
             // 180 dp neben „Lagerort“ reichten bei 200 % nicht einmal für den Platzhalter.
             val lagerBezeichnung: @Composable () -> Unit = {

@@ -63,6 +63,8 @@ import ch.brickinventoryapp.model.ui.laedt
  *    Fehler wieder auf null): dieselbe Prüfung rot an „übersteht das Neuladen“.
  *  - Patch gegenproben/konto-laedt-nicht-beim-beobachten.patch (ladeBeimBeobachten für
  *    Geräte und zweiten Faktor gestrichen): „Geräte und zweiter Faktor laden, sobald …“ rot.
+ *  - Patch gegenproben/kontoseite-laedt-nicht.patch (ladeBeimBeobachten der Kontoseite
+ *    gestrichen): „Profil und Design laden mit der Kontoseite …“ rot.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -116,6 +118,19 @@ class KontoViewModelTest {
         geraeteSeite.cancel()
         faktorSeite.cancel()
         assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `Profil und Design laden mit der Kontoseite, nicht mit der Startpasswort-Maske`() {
+        val maske = CoroutineScope(takt).launch { vm.kontoState.collect {} }
+        uhr.runCurrent()
+        assertEquals("die Maske lädt nichts", 0, server.requestCount)
+        server.enqueue(antwort("""{"success":false,"error":"aus"}""", 500))
+        server.enqueue(antwort("""{"success":false,"error":"aus"}""", 500))
+        val seite = CoroutineScope(takt).launch { vm.kontoSeitenState.collect {} }
+        bis("Profil und Design geholt") { server.requestCount == 2 }
+        maske.cancel()
+        seite.cancel()
     }
 
     private fun geraete(aktuellDabei: Boolean) = """{"success":true,"tokens":[

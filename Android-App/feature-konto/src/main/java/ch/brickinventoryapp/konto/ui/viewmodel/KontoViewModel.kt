@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import kotlinx.coroutines.flow.StateFlow
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.ohneFehler
 import ch.brickinventoryapp.model.ui.laeuft
@@ -54,12 +56,19 @@ class KontoViewModel @Inject constructor(
     private val _kontoState = MutableStateFlow(KontoUiState())
     val kontoState = _kontoState.asStateFlow()
     private val _geraeteState = MutableStateFlow(GeraeteUiState())
-    val geraeteState = _geraeteState.asStateFlow()
+    internal val geraeteState = _geraeteState.asStateFlow()
     private val _zweiterFaktorState = MutableStateFlow(ZweiterFaktorUiState())
     val zweiterFaktorState = _zweiterFaktorState.asStateFlow()
 
-    // Profil und Design nicht so: Den Kontozustand beobachtet auch die Startpasswort-Maske.
+    /**
+     * Der Kontozustand, wie ihn die Kontoseite liest: Nur wer sie öffnet, lädt Profil und
+     * Design. Die Startpasswort-Maske liest [kontoState] und lädt nichts.
+     */
+    private val kontoSeite = Beobachtet(kontoState)
+    val kontoSeitenState: StateFlow<KontoUiState> = kontoSeite
+
     init {
+        ladeBeimBeobachten(kontoSeite) { ladeProfil(); ladeDesign() }
         ladeBeimBeobachten(_geraeteState) { ladeGeraete() }
         ladeBeimBeobachten(_zweiterFaktorState) { ladeZweitenFaktor() }
     }

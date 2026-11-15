@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.data.repository.AlarmRepository
@@ -116,6 +118,11 @@ class MerklisteViewModel @Inject constructor(
         .abgeleitet(_vorgemerkt) { st, v ->
             if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
         }
+
+    init {
+        // Wer die Liste zeigt, bekommt sie frisch; die Quelle danach folgt der Ablage selbst.
+        ladeBeimBeobachten(_merklisteState) { ladeMerkliste() }
+    }
 
     private val _merkpostenDetailState = MutableStateFlow(MerkpostenDetailUiState())
     val merkpostenDetailState: StateFlow<MerkpostenDetailUiState> = _merkpostenDetailState.asStateFlow()
@@ -253,6 +260,9 @@ class MerklisteViewModel @Inject constructor(
     }
 
     /** Katalogdaten, Preise und Verlauf eines Merkpostens — je für sich, was fehlt, bleibt leer. */
+    override fun merkpostenDetailVon(setNumber: String): StateFlow<MerkpostenDetailUiState> =
+        Beobachtet(merkpostenDetailState) { ladeMerkpostenDetail(setNumber) }
+
     override fun ladeMerkpostenDetail(setNumber: String) {
         viewModelScope.launch {
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, abruf = Laden.Laedt)

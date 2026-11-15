@@ -625,7 +625,7 @@ class QuelltextRatscheTest {
     fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
         // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
-        val LADEND = 12
+        val LADEND = 0
         val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
         val funde = produktivDateien().flatMap { f ->

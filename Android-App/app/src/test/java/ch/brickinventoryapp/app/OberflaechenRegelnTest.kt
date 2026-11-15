@@ -412,8 +412,8 @@ class OberflaechenRegelnTest {
             zeige(schrift = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
-            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
+            val namen = vm.teileState.value.parts.mapNotNull { it.partName }
             assertTrue(namen.size >= 3)
             val ganz = ganzSichtbar(namen)
             assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
@@ -582,8 +582,8 @@ class OberflaechenRegelnTest {
             zeige(schrift = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
-            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
+            val namen = vm.teileState.value.parts.mapNotNull { it.partName }
             assertTrue(namen.size >= 3)
             val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
@@ -620,7 +620,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.teile().also { it.loadParts() }
             zeige { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
             compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
                 assertTrue("Trans-Klar steht da", it.isNotEmpty())
             }

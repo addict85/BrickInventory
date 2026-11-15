@@ -1,15 +1,18 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.teile.ui.FigurenUiState
+import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
+import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.HinweisText
-import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
 import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -27,7 +30,7 @@ import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.zustand.ui.Filterzahl
@@ -52,26 +55,34 @@ import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
 import ch.brickinventoryapp.model.ui.Listenansicht
 
+/** Was der Figuren-Reiter zeigt; die Route sammelt es aus den Flüssen. */
+internal data class FigurenZustand(
+    val state: TeileSitzungUiState,
+    val blick: BlickfeldUiState,
+    val figuren: FigurenUiState,
+    val lagerState: LagerUiState,
+)
+
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
 @Composable
 fun MinifigsRoute(
-    vm: TeileViewModel,
+    vm: FigurenViewModel,
     imageLoader: ImageLoader,
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val figuren by vm.figurenState.collectAsStateWithLifecycle()
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
-    MinifigsScreen(TeileZustand(state, blick, partsState, lagerState), vm, imageLoader, onOpenDetail, gridState)
+    MinifigsScreen(FigurenZustand(state, blick, figuren, lagerState), vm, imageLoader, onOpenDetail, gridState)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun MinifigsScreen(
-    zustand: TeileZustand,
-    aktionen: TeileAktionen,
+    zustand: FigurenZustand,
+    aktionen: FigurenAktionen,
     imageLoader: ImageLoader,
     /** Öffnet die Detailansicht — nur der Graph kennt den NavController. */
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
@@ -80,7 +91,7 @@ internal fun MinifigsScreen(
 ) {
     val state = zustand.state
     val blick = zustand.blick
-    val partsState = zustand.partsState
+    val partsState = zustand.figuren
 
     val figs = partsState.minifigs
     val minifigStats = partsState.minifigStats
@@ -201,7 +212,7 @@ internal fun MinifigsScreen(
                         span = { _, _ -> if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
-                        val oeffne = { aktionen.oeffneSetItem(Postenart.FIG, fig.figNumber) }
+                        val oeffne = { aktionen.oeffneSetItem(fig.figNumber) }
                         Bewegt {
                             if (ansicht == Listenansicht.TABELLE) MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
                             else MinifigCard(fig, serverUrl, imageLoader, oeffne,

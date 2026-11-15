@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.zustand.ui.gescheitert
 import kotlinx.coroutines.flow.first
@@ -66,10 +69,18 @@ class EinstellungenViewModel @Inject constructor(
     private val leser: DateiLeser,
 ) : ViewModel(), Filterwahl by filter, EinstellungenAktionen {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    private val sitzungBeobachtet = Beobachtet(sitzung.state)
+    val state: StateFlow<AppUiState> = sitzungBeobachtet
+
+    /** Die Lagerorte-Seite liest ihn; wer sie öffnet, bekommt die eigenen Orte frisch. */
+    private val lagerBeobachtet = Beobachtet(filter.lagerState)
+    override val lagerState: StateFlow<LagerUiState> = lagerBeobachtet
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
+        // Beim Öffnen der Einstellungen, nicht als Dauerabo: Der Zustand ändert sich ausserhalb kaum.
+        ladeJeServer(sitzung, sitzungBeobachtet) { viewModelScope.launch { sitzung.ladeEinstellungen(konto) } }
+        ladeBeimBeobachten(lagerBeobachtet) { ladeEigeneLagerorte() }
     }
 
     private val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())

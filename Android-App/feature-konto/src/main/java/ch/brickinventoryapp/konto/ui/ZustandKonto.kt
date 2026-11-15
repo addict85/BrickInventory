@@ -55,7 +55,7 @@ data class ZweiterFaktorUiState(
  * nur in den Einstellungen gebraucht, mit eigenen Zwischenständen, die sonst jeden
  * Reiter neu zeichnen liessen.
  */
-data class GeraeteUiState(
+internal data class GeraeteUiState(
     /** Der Abruf der Liste; ein Fehler steht statt der Liste. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     val geraete: List<GeraetAnsicht> = emptyList(),
@@ -68,7 +68,7 @@ data class GeraeteUiState(
  * erbeuteter Zugang soll den Inhaber nicht aussperren. [tokenId] null heisst
  * „alle anderen“.
  */
-data class GeraeteRueckfrage(
+internal data class GeraeteRueckfrage(
     val tokenId: String?,
     val codeNoetig: Boolean = false,
     val vorgang: Vorgang = Vorgang.Fertig,

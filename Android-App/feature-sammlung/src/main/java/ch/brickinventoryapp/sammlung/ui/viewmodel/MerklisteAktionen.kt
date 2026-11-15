@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import kotlinx.coroutines.flow.StateFlow
+import ch.brickinventoryapp.sammlung.ui.MerkpostenDetailUiState
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -22,5 +24,8 @@ internal interface MerklisteAktionen {
         lagerort: String? = null,
     )
     fun ladeMerkpostenDetail(setNumber: String)
+
+    /** Das Detail eines Merkpostens, wie seine Seite es liest: Wer es zeigt, lädt es. */
+    fun merkpostenDetailVon(setNumber: String): StateFlow<MerkpostenDetailUiState>
     fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand)
 }
