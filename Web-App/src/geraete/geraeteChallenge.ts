@@ -95,7 +95,11 @@ export async function hinterlegeSchluessel(
   kette: readonly string[],
 ): Promise<Registrierung> {
   const k = kx.konfig;
-  const widerrufen = geltendeListe(await kx.auftraege.liesZustand(WIDERRUF_ZUSTAND), k.attestationWiderrufTage);
+  const widerrufen = geltendeListe(
+    await kx.auftraege.liesZustand(WIDERRUF_ZUSTAND),
+    k.attestationWiderrufTage,
+    kx.uhr.datum(),
+  );
   if (!widerrufen) attestationAbgewiesen(f, 'widerrufsliste_fehlt');
   const p = pruefeKette(kette, {
     wurzeln: wurzeln(k.attestationWurzeln ?? ''),
@@ -103,6 +107,7 @@ export async function hinterlegeSchluessel(
     digests: k.androidZertifikate,
     widerrufen,
     patchMindestens: k.attestationPatchMindestens,
+    jetzt: kx.uhr.datum(),
   });
   if (!p.ok) attestationAbgewiesen(f, p.grund);
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');

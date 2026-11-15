@@ -10,7 +10,7 @@ export async function inventarNachKandidaten(db: DbSchnittstelle, kandidaten: st
 }
 
 export async function geladeneFarben(db: DbSchnittstelle): Promise<{ id: number; name: string; hex: string | null }[]> {
-  return db.all(
+  return db.all<{ id: number; name: string; hex: string | null }>(
     `SELECT id, name, NULLIF(rgb, '') AS hex FROM rb_colors
       WHERE id >= 0 AND name IS NOT NULL ORDER BY id`,
   );

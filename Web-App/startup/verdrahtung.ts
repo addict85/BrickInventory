@@ -90,7 +90,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
-  const geraete = erzeugeGeraete({ db, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
+  const geraete = erzeugeGeraete({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
   const konto = erzeugeKonto(
     { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete },
     zeige('konto'),

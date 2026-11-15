@@ -446,7 +446,9 @@ test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
   // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
   // Zeitstempel ohne Kontext.
   // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/dienst.ts → rot.
-  const SCHRANKE = 34;
+  // (15.11.2026) Drosseln, Attestation, Portfolio nehmen k.uhr; `Date.now()` zurück in
+  // rateLimiter.ts (_schedule) → rot (21 von 20).
+  const SCHRANKE = 20;
   const UHR = /\bDate\.now\(\)|\bnew Date\(\)/g;
   assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(UHR)?.length, 2, 'Selbstbeweis');
   const fach = (/** @type {string} */ f) =>
@@ -487,7 +489,8 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument.
   // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/zeilen.ts ans Schema.
-  const SCHRANKE = 23;
+  // (15.11.2026) in auftraege.ts schreibeFortschritt wieder `db.get(` ohne Typ → rot (4 von 3).
+  const SCHRANKE = 3;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);

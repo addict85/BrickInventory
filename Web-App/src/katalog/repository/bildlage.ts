@@ -18,7 +18,7 @@ export async function manuelleTeileOhneBild(
   db: DbSchnittstelle,
   l: KatalogLesevertrag,
 ): Promise<{ part_number: string; color_id: number; image_url: string }[]> {
-  return db.all(
+  return db.all<{ part_number: string; color_id: number; image_url: string }>(
     `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
        FROM part_color_catalog pcc
        JOIN ${l.teilBestand()} p ON p.part_number = pcc.part_number
@@ -32,7 +32,7 @@ export async function figurenOhneBild(
   db: DbSchnittstelle,
   l: KatalogLesevertrag,
 ): Promise<{ fig_number: string; image_url: string }[]> {
-  return db.all(
+  return db.all<{ fig_number: string; image_url: string }>(
     `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
       WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
         AND EXISTS (SELECT 1 FROM ${l.figurBestand()} m WHERE m.fig_number = mc.fig_number)
@@ -48,7 +48,7 @@ export async function setBilderOhneDatei(
   l: KatalogLesevertrag,
   grenze = 500,
 ): Promise<{ set_number: string; image_url: string }[]> {
-  return db.all(
+  return db.all<{ set_number: string; image_url: string }>(
     `SELECT c.set_number, c.image_url FROM set_catalog c
       WHERE c.image_local IS NULL AND c.image_url IS NOT NULL
         AND ${l.setZaehlt('c.set_number')}

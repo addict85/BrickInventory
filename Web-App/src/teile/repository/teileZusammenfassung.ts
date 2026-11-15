@@ -66,7 +66,7 @@ export async function sperreKonto(tx: DbSchnittstelle, userId: number): Promise<
 
 /** Dieselbe Sperre, aber wartend: Ein laufender Neuaufbau wird abgewartet. */
 export async function warteAufKonto(tx: DbSchnittstelle, userId: number): Promise<void> {
-  await tx.get('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, userId]);
+  await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, userId]);
 }
 
 export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {

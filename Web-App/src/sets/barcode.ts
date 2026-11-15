@@ -132,7 +132,7 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
     // markierte Vermutung stehen.
     const titel = await sk.fremdquellen.quellen.produktTitel(ean13);
     if (titel) {
-      const kandidaten = setnummerKandidaten(titel);
+      const kandidaten = setnummerKandidaten(titel, sk.uhr.datum().getFullYear());
       for (const k of kandidaten) {
         const bekannt = await imKatalog(sk, k, normalisiereSetNummer(k));
         if (bekannt) return barcodeErgebnis(sk, bekannt.set_number, titel, 'upcitemdb');

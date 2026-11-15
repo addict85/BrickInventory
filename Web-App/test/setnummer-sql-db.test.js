@@ -28,7 +28,7 @@ const KORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shar
 const RAND = ['10179-1', '10179-12', '10179-', '10179-1b', 'a-b', 'comcon001', 'sw0001a', '6', '-1', '--2', ''];
 
 function eingaben() {
-  const kandidaten = KORPUS.faelle.flatMap(f => setnummerKandidaten(f.text));
+  const kandidaten = KORPUS.faelle.flatMap(f => setnummerKandidaten(f.text, 2026));
   return [...new Set([...kandidaten, ...kandidaten.map(k => `${k}-2`), ...RAND])];
 }
 

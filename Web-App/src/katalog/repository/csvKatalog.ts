@@ -48,7 +48,7 @@ export async function inventarFiguren(
   db: DbSchnittstelle,
   inventarId: number,
 ): Promise<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }[]> {
-  return db.all(
+  return db.all<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }>(
     `SELECT ip.part_num AS fig_number, ip.quantity,
             s.name AS fig_name, s.set_img_url AS image_url
      FROM rb_inventory_parts ip

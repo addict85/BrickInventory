@@ -42,7 +42,7 @@ export function reiheKatalogBilderEin(
   urls: string[],
   sets: string[],
 ): Promise<{ n: number } | undefined> {
-  return db.get(
+  return db.get<{ n: number }>(
     `WITH neu AS (
            INSERT INTO image_wanted (url, set_number)
              SELECT * FROM unnest($1::text[], $2::text[])

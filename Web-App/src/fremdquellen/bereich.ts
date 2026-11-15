@@ -23,7 +23,7 @@ function mitErsatz(echt: Quellen, ersatz: Partial<Quellen> | undefined): Quellen
 export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: Einblick<FremdquellenKontext>) {
   const k: FremdquellenKontext = baueKontext(a, zugang);
   einblick?.(k);
-  const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt);
+  const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt, k.uhr);
   const kontingent = {
     kontingentStand: mit(k)(apiKontingentDienst.kontingentUebersicht),
     kontingentFrei: mit(k)(apiKontingentDienst.kontingentFrei),

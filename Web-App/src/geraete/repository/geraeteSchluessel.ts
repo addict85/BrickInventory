@@ -53,7 +53,7 @@ export async function legeSchluesselAn(
     `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT ${l.familieLebt('g.user_id', 'g.familie')}`,
     [f.uid],
   );
-  return !!(await db.get(
+  return !!(await db.get<{ user_id: number }>(
     `INSERT INTO geraete_schluessel (user_id, familie, oeffentlich, attestiert)
      SELECT $1, $2::timestamptz, $3, true WHERE ${l.familieLebt('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4)
      ON CONFLICT (user_id, familie) DO UPDATE SET oeffentlich = EXCLUDED.oeffentlich, attestiert = true,

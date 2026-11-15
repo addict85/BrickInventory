@@ -16,8 +16,7 @@ function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
 }
 
 /** Ein künstlicher Startwert, damit die App eine Linie hat; `messpunkte` sagt der Weboberfläche, dass das kein Verlauf ist. */
-function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: number): KurvenPunkt[] {
-  const now = new Date();
+function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: number, now: Date): KurvenPunkt[] {
   const pad = (n: number) => String(n).padStart(2, '0');
   const startDate = new Date(now);
   if (period === 'week') startDate.setDate(now.getDate() - 7);
@@ -91,13 +90,18 @@ export async function getPortfolioHistory(
   if (verdichtet) rawPoints = aufMonate(rawPoints);
   const downsampled = monatsAufloesung || verdichtet;
 
-  if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal);
+  if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal, k.uhr.datum());
 
   if (!rawPoints.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }
 
-  const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled);
+  const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(
+    rawPoints,
+    currency,
+    downsampled,
+    k.uhr.datum(),
+  );
 
   return {
     currency,

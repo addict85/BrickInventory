@@ -74,7 +74,7 @@ export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[
 }
 
 export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: string; set_img_url: string }[]> {
-  return db.all(
+  return db.all<{ set_num: string; set_img_url: string }>(
     `SELECT rb.set_num, rb.set_img_url FROM rb_sets rb
         WHERE rb.set_img_url IS NOT NULL AND rb.set_img_url <> ''
           AND NOT EXISTS (SELECT 1 FROM image_misses m
@@ -83,7 +83,7 @@ export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: s
 }
 
 export function offeneBildauftraege(db: DbSchnittstelle): Promise<{ n: number } | undefined> {
-  return db.get(`SELECT COUNT(*)::int AS n FROM image_wanted`);
+  return db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM image_wanted`);
 }
 
 export function katalogBilderOffen(db: DbSchnittstelle): Promise<number> {
@@ -91,7 +91,7 @@ export function katalogBilderOffen(db: DbSchnittstelle): Promise<number> {
 }
 
 export function setsOhneAnleitung(db: DbSchnittstelle): Promise<{ set_number: string }[]> {
-  return db.all(`
+  return db.all<{ set_number: string }>(`
       SELECT DISTINCT s.set_number
       FROM sets s
       WHERE NOT EXISTS (
@@ -105,7 +105,7 @@ export function protokollSeit(
   db: DbSchnittstelle,
   minuten: number,
 ): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
-  return db.all(
+  return db.all<{ id: number; level: string; message: string; logged_at: Date }>(
     // bigint käme als Text; der Vertrag (und das Protokollfenster) nennt eine Zahl.
     `SELECT id::float8 AS id, level, message, logged_at
        FROM app_logs
