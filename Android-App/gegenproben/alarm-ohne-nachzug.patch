@@ -12,9 +12,9 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
                                         condition: Zustand): Ergebnis<Unit> =
 -        ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it.alsAnsicht()) } }) {
 -            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
--        }.zugesagt({ it.success }, { it.error }) { }
+-        }.zugesagt({ it.success }) { }
 +        sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
-+            .zugesagt({ it.success }, { it.error }) { }
++            .zugesagt({ it.success }) { }
  
      override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<Unit> =
          ablage.nachgezogen({ r -> Nachzug.AlarmEntfernt(setNumber, condition).takeIf { r.success } }) {

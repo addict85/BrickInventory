@@ -37,7 +37,7 @@ class ScopeFilterSpeicher @Inject constructor() {
         werte.value = emptyMap()
     }
 
-    // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/scope.js) ═══
+    // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/kontofilter.js) ═══
 
     private fun lagerKey(view: ScopeFilter.View) = "lager_${view.key}"
 

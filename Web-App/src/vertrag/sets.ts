@@ -4,11 +4,14 @@ import { KontoName, type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, ZUSTAND, TEXT, 
 import {
   BrickLinkRef,
   CsvImportErgebnis,
+  DEGRADIERT,
   GenericResponse,
-  MinifigsResponse,
-  PartsResponse,
+  SetFigurenResponse,
+  SetTeileResponse,
   InDenPapierkorb,
 } from './gemeinsam';
+
+export { GenericResponse, SetFigurenResponse, SetTeileResponse };
 
 export const AddSetResponse = z.looseObject({
   success: z.boolean(),
@@ -20,22 +23,20 @@ export const AddSetResponse = z.looseObject({
   ergaenzung: z.enum(['ausstehend', 'erledigt']).optional(),
   owner_user_id: z.number().int().optional(),
   is_self: z.boolean().optional(),
-  error: z.string().nullable().optional(),
 });
 
 export const BarcodeResponse = z.looseObject({
   success: z.boolean(),
   set_number: z.string(),
-  name: z.string().nullable().optional(),
-  year: z.number().int().nullable().optional(),
-  pieces: z.number().int().nullable().optional(),
-  theme: z.string().nullable().optional(),
-  minifigs: z.number().int().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
-  source: z.string().nullable().optional(),
+  name: z.string().nullable(),
+  year: z.number().int().nullable(),
+  pieces: z.number().int().nullable(),
+  theme: z.string().nullable(),
+  minifigs: z.number().int().nullable(),
+  image_url: z.string().nullable(),
+  image_local: z.string().nullable(),
+  source: z.string().nullable(),
   unsicher: z.boolean(),
-  error: z.string().nullable().optional(),
 });
 
 export const Instruction = z.looseObject({
@@ -62,7 +63,6 @@ export const MoveSetResponse = z.looseObject({
   source_emptied: z.boolean(),
   from_user_id: z.number().int(),
   to_user_id: z.number().int(),
-  error: z.string().nullable().optional(),
 });
 
 export const Preisalarm = z.looseObject({
@@ -85,20 +85,17 @@ export const PendingAlertsResponse = z.looseObject({
   success: z.boolean(),
   alerts: z.array(Preisalarm),
   now: zeit.nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const PreisalarmResponse = z.looseObject({
   success: z.boolean(),
   alert: Preisalarm.nullable().optional(),
   removed: z.number().int().optional(),
-  error: z.string().nullable().optional(),
 });
 
 export const PreisalarmeResponse = z.looseObject({
   success: z.boolean(),
   alerts: z.array(Preisalarm),
-  error: z.string().nullable().optional(),
 });
 
 export const SetItem = z.looseObject({
@@ -158,7 +155,6 @@ export const SetInfoResponse = z.looseObject({
 export const SetResponse = z.looseObject({
   success: z.boolean(),
   set: SetItem.nullable(),
-  error: z.string().nullable().optional(),
 });
 
 export const SetsResponse = z.looseObject({
@@ -168,7 +164,6 @@ export const SetsResponse = z.looseObject({
   total: z.number().int(),
   /** Nur auf der ersten Seite eines geblätterten Abrufs. */
   themes: z.array(z.string()).optional(),
-  error: z.string().nullable().optional(),
 });
 
 /** 202: Geladen wird im Job-Prozess (Auftrag `anleitung`); die Liste ist der Stand vor dem Laden. */
@@ -217,6 +212,18 @@ export const PdfStand = z.looseObject({
   missingImages: z.unknown(),
 });
 
+/** Der Set-Import läuft im Hintergrund; sofort steht fest, wie viele Zeilen und welche Sets schon da sind. */
+export const SetCsvImportGestartet = z.looseObject({
+  success: z.boolean(),
+  total: ganz,
+  /** false bei `pruefen`: nur gezählt, nichts gestartet. */
+  gestartet: z.boolean(),
+  vorhanden: ganz,
+  vorhanden_nummern: z.array(z.string()),
+  skipped: ganz.optional(),
+  skipped_hint: z.string().optional(),
+});
+
 export const TeileGeladen = z.looseObject({ success: z.literal(true), count: ganz });
 
 export const AnleitungHochgeladen = GenericResponse.extend({
@@ -225,6 +232,10 @@ export const AnleitungHochgeladen = GenericResponse.extend({
 
 /** Was eine Verringerung wegnahm; die Oberfläche nennt den Kauf und bietet Rückgängig über `papierkorb`. */
 export const MengeGeaendert = GenericResponse.extend({
+  /** null: geschrieben, aber nicht nachgelesen (siehe degradiert). */
+  quantity: ganz.nullable(),
+  papierkorb: z.number().int().optional(),
+  degradiert: DEGRADIERT,
   entfallen: z
     .array(
       z.looseObject({
@@ -282,8 +293,8 @@ export const routen = {
   },
   'GET /api/v1/alerts': { klein: true, antwort: PreisalarmeResponse },
   'GET /api/v1/sets/:setNumber/alert': { klein: true, antwort: PreisalarmeResponse },
-  'GET /api/v1/sets/:setNumber/parts-list': { klein: true, antwort: PartsResponse },
-  'GET /api/v1/sets/:setNumber/minifigs-list': { klein: true, antwort: MinifigsResponse },
+  'GET /api/v1/sets/:setNumber/parts-list': { klein: true, antwort: SetTeileResponse },
+  'GET /api/v1/sets/:setNumber/minifigs-list': { klein: true, antwort: SetFigurenResponse },
   'GET /api/v1/sets/exists/:setNumber': { antwort: SetExistsResponse },
   'GET /api/v1/sets/barcode/:barcode': { antwort: BarcodeResponse },
   'POST /api/v1/sets/:setNumber/instructions/upload': {
@@ -331,7 +342,7 @@ export const routen = {
   },
   'POST /api/v1/sets/import/csv': {
     formular: true,
-    antwort: CsvImportErgebnis,
+    antwort: SetCsvImportGestartet,
     abfrage: abfrage({ pruefen: Q.schalter }),
   },
   'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportErgebnis },

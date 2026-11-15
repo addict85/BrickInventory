@@ -21,8 +21,8 @@ val Acquisition.effectivePrice: Double? get() = purchasePrice ?: unitPrice
 /** Mengengewichtet vom Server, damit Kachel und Detail dieselbe Zahl zeigen. */
 val SetItem.anzeigeKaufpreis: Double? get() = avgPurchasePrice
 
-/** Die Set-Adresse zählt Neues als `imported`, die übrigen als `added`. */
-val CsvImportErgebnis.neuAngelegt: Int get() = if (added > 0) added else imported
+/** Neu angelegte Zeilen eines CSV-Imports. */
+val CsvImportErgebnis.neuAngelegt: Int get() = added
 
 /**
  * Der Server liest den Preis unter dem Namen seiner Spalte: `purchase_price` bei Sets,

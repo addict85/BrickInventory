@@ -161,7 +161,7 @@ class KontoRepositoryImpl @Inject constructor(
         sicherAufrufen {
             api.updateProfil(ProfilAenderung(username = aenderung.benutzer, email = aenderung.email, firstName = aenderung.vorname,
                 lastName = aenderung.nachname, passwordCurrent = aenderung.passwortAktuell, code = aenderung.code))
-        }.zugesagt({ it.success }, { it.error }) { ProfilGespeichert(neueAdresse = it.emailChanged == true, mailGesendet = it.emailSent == true) }
+        }.zugesagt({ it.success }) { ProfilGespeichert(neueAdresse = it.emailChanged == true, mailGesendet = it.emailSent == true) }
 
     override suspend fun changePassword(aktuell: String, neu: String, code: String?): Ergebnis<Unit> =
         sicherAufrufen { api.changePassword(PasswortAenderung(current = aktuell, newPassword = neu, code = code)) }.erledigt()
@@ -220,12 +220,12 @@ class KontoRepositoryImpl @Inject constructor(
 
     /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe KontoApi.getAppTheme. */
     override suspend fun getAppTheme(): Ergebnis<Designstand> =
-        sicherAufrufen { api.getAppTheme() }.zugesagt({ it.success }, { it.error }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
+        sicherAufrufen { api.getAppTheme() }.zugesagt({ it.success }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
 
     /** Eigenes Design setzen; null stellt auf die Vorgabe des Verwalters zurück ("" auf der Leitung). */
     override suspend fun setzeEigenesDesign(theme: Design?): Ergebnis<Designstand> =
         sicherAufrufen { api.setzeEigenesDesign(mapOf("theme" to (theme?.kennung ?: ""))) }
-            .zugesagt({ it.success }, { it.error }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
+            .zugesagt({ it.success }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
 
     override suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<Unit> =
         sicherAufrufen { api.updateSettings(mapOf("currency" to currency.code, "price_condition" to condition.kennung)) }.erledigt()
@@ -234,7 +234,7 @@ class KontoRepositoryImpl @Inject constructor(
 
     // User-level: saves per-user default (empty string = revert to global)
     override suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<Unit> =
-        sicherAufrufen { api.setUserDefaultCondition(mapOf("condition" to condition?.kennung.orEmpty())) }.zugesagt({ it.success }, { it.error }) { }
+        sicherAufrufen { api.setUserDefaultCondition(mapOf("condition" to condition?.kennung.orEmpty())) }.zugesagt({ it.success }) { }
 }
 
 /** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim

@@ -13,5 +13,5 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
 -        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
 +        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, quantity).takeIf { r.success } }) {
              sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
-         }.zugesagt({ it.success }, { it.error }) { it.quantity }
+         }.zugesagt({ it.success }) { it.quantity }
  

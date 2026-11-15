@@ -49,7 +49,6 @@ export interface MerkAuswahl {
   sortierung: unknown;
 }
 
-/** Eine Zeile der Merkliste, wie node-pg sie liefert (Spalten aus db/zeilen.ts). */
 export type MerkZeile = {
   set_number: string;
   condition: string;

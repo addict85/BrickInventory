@@ -7,11 +7,11 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 @@ -143,7 +143,7 @@
-         }.zugesagt({ it.success }, { it.error }) { }
+         }.zugesagt({ it.success }) { }
  
      override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<Unit> =
 -        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it.alsAnsicht()) } }) {
 +        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { null } }) {
              sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name = name)) }
-         }.zugesagt({ it.success }, { it.error }) { }
+         }.zugesagt({ it.success }) { }
  

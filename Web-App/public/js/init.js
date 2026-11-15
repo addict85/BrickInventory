@@ -158,7 +158,7 @@ async function plGenerate() {
           // doppelt, der Bestand einfach.
           const key = `${p.part_number}|${p.color_id || 0}`;
           if (combined[key]) {
-            combined[key].quantity += parseInt(String(p.total_quantity || p.quantity || 1), 10);
+            combined[key].quantity += parseInt(String(p.total_quantity || 1), 10);
           } else {
             combined[key] = {
               part_number: p.part_number,
@@ -168,8 +168,8 @@ async function plGenerate() {
               color_hex: p.color_hex || null,
               color_id: p.color_id || 0,
               bl_color_id: p.bl_color_id ?? rbToBlColor[p.color_id] ?? null,
-              quantity: parseInt(String(p.total_quantity || p.quantity || 1), 10),
-              image_local: p.image_local || null,
+              quantity: parseInt(String(p.total_quantity || 1), 10),
+              image_local: null,
               image_url: p.image_url || null,
             };
           }

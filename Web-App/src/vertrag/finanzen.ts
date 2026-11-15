@@ -45,7 +45,6 @@ export const FigsValuationResponse = z.looseObject({
   wert_gesamt: z.number().nullable(),
   preise_ausstehend: z.number().int(),
   kaufpreise_fremde_waehrung: z.number().int(),
-  error: z.string().nullable().optional(),
 });
 
 export const PartsValuationResponse = z.looseObject({
@@ -58,7 +57,6 @@ export const PartsValuationResponse = z.looseObject({
   wert_gesamt: z.number().nullable(),
   preise_ausstehend: z.number().int(),
   kaufpreise_fremde_waehrung: z.number().int(),
-  error: z.string().nullable().optional(),
 });
 
 export const PnlTotals = z.looseObject({
@@ -114,7 +112,6 @@ export const PnlResponse = z.looseObject({
   currency: z.string(),
   totals: PnlTotals,
   sets: z.array(PnlSetZeile),
-  error: z.string().nullable().optional(),
 });
 
 export const PriceByCondition = z.looseObject({
@@ -185,6 +182,8 @@ export const SetPriceResponse = z.looseObject({
   max_price: z.number().nullable(),
   qty_avg_price: z.number().nullable(),
   no_price: z.boolean(),
+  /** Warum kein Preis kam (setPreis); dann ist no_price gesetzt. */
+  error: z.string().optional(),
 });
 
 export const StatsResponse = z.looseObject({
@@ -249,7 +248,6 @@ export const ValuationResponse = z.looseObject({
   kaufpreise_fremde_waehrung: z.number().int(),
   sets: z.array(ValuationSet),
   totals: Totals,
-  error: z.string().nullable().optional(),
 });
 
 export const routen = {

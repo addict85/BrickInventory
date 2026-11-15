@@ -38,7 +38,7 @@ const ANMELDUNG = {
     },
   },
   '/v1/sets': { success: true, sets: [], count: 0, total: 0, themes: [] },
-  '/v1/parts': { success: true, parts: [], total: 0, page: 1, page_size: 50 },
+  '/v1/parts': { success: true, parts: [], total: 0, page: 1, page_size: 50, source: 'db' },
   '/v1/parts/stats': { success: true, stats: { unique_parts: 0, unique_colors: 0, total_parts: 0 } },
   '/v1/parts/colors': { success: true, colors: [] },
   '/v1/parts/categories': { success: true, categories: [] },

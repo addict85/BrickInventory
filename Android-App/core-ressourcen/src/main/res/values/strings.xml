@@ -813,7 +813,7 @@
     <string name="instr_upload_done">Instruction added</string>
     <string name="instr_delete">Remove instruction</string>
     <!-- Re-fetch: the same two actions the web app has in the set detail
-         (gallery.js: redownloadInstr, reimportParts). -->
+         (sammlung.js: redownloadInstr, reimportParts). -->
 
     <!-- ══════════════ Server log ══════════════ -->
     <string name="admin_log_title">Server log</string>

@@ -36,7 +36,7 @@ import { confirmDelete } from './rueckfrage.js';
 import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import { loadFinance } from './finanzen.js';
-/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_sets_setNumber_parts_list['parts'][number]} TeilZeile */
+/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_parts['parts'][number]} TeilZeile */
 
 // ── PARTS ─────────────────────────────────────────────
 /** @type {import('../../frontend-typen/vertrag').PartsFilterColor[]} */

@@ -15,4 +15,4 @@ index ddea58b..d45d326 100644
 +        werte.update { m -> m.filterKeys { it.startsWith("lager_") } }
      }
  
-     // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/scope.js) ═══
+     // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/kontofilter.js) ═══

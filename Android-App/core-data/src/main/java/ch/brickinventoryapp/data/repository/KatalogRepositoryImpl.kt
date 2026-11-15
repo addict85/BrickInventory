@@ -30,7 +30,7 @@ class KatalogRepositoryImpl @Inject constructor(
         wiederholung.wiederhole {
             ablage.abgeglichenEinzeln(Faecher.KATALOG_META) {
                 sicherAufrufen { api.getCatalogMeta() }
-                    .zugesagt({ it.success }, { it.error }) { m -> KatalogMetaAnsicht(m.themes.map { it.alsAnsicht() }, m.yearMin, m.yearMax) }
+                    .zugesagt({ it.success }) { m -> KatalogMetaAnsicht(m.themes.map { it.alsAnsicht() }, m.yearMin, m.yearMax) }
             }
         }
 
@@ -38,7 +38,7 @@ class KatalogRepositoryImpl @Inject constructor(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,
         sort: Katalogsortierung, page: Int, limit: Int
     ): Ergebnis<KatalogSeiteAnsicht> = knapp.wiederhole { sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort.kennung, page, limit) } }
-        .zugesagt({ it.success }, { it.error }) { r -> KatalogSeiteAnsicht(r.sets.map { it.alsAnsicht() }, r.total) }
+        .zugesagt({ it.success }) { r -> KatalogSeiteAnsicht(r.sets.map { it.alsAnsicht() }, r.total) }
 
     override suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<KatalogDetailAnsicht?> =
         knapp.wiederhole { sicherAufrufen { api.getCatalogSetDetail(setNumber) } }

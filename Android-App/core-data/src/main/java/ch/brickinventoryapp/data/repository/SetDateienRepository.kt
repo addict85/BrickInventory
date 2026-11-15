@@ -69,7 +69,7 @@ class SetDateienRepositoryImpl @Inject constructor(private val api: SetsApi) : S
         sicherAufrufen { api.getCsvImportStatus() }.abgebildet { it.alsAnsicht() }
 
     override suspend fun cancelCsvImport(): Ergebnis<Unit> =
-        sicherAufrufen { api.cancelCsvImport() }.zugesagt({ it.success }, { it.error }) { }
+        sicherAufrufen { api.cancelCsvImport() }.zugesagt({ it.success }) { }
 
     /**
      * Der Typ wird nicht geraten: Der Server leitet die Dateiendung aus ihm ab und

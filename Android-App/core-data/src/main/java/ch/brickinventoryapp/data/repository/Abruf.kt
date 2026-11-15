@@ -215,11 +215,15 @@ internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, satz: (T
         is Ergebnis.Error -> this
     }
 
+/** Für Antworten ohne `error` im Vertrag: Ein Fehler kommt dort als HTTP-Fehler, die Absage bleibt ohne Satz. */
+internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, f: (T) -> R): Ergebnis<R> =
+    zugesagt(erfolg, { null }, f)
+
 /** Für Aktionen, deren Antwort niemand liest. */
 internal fun Ergebnis<*>.ohneInhalt(): Ergebnis<Unit> = abgebildet { }
 
 /** Die übliche Antwort einer Änderung: zugesagt oder abgesagt, sonst nichts zu lesen. */
-internal fun Ergebnis<GenericResponse>.erledigt(): Ergebnis<Unit> = zugesagt({ it.success }, { it.error }) { }
+internal fun Ergebnis<GenericResponse>.erledigt(): Ergebnis<Unit> = zugesagt({ it.success }) { }
 
 /** Die Zeilen eines Flusses aus der Ablage abbilden; Stand und verworfene Zeilen bleiben. */
 internal fun <T, R> Flow<Lokal<T>>.abgebildet(f: (T) -> R): Flow<Lokal<R>> =

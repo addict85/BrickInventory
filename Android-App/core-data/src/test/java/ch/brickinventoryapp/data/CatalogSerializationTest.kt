@@ -111,7 +111,6 @@ class CatalogSerializationTest {
         )
         assertEquals(false, r.success)
         assertNull(r.set)
-        assertEquals("Set nicht im Katalog gefunden", r.error)
     }
 }
 

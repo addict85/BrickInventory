@@ -18,6 +18,8 @@
  *   F  (15.11.2026) SetItem.added_at wieder `.optional()` → rot: „Antwortfelder sind
  *      Pflicht …“ (720 freiwillige, erlaubt 719); SetItem.acq_count wieder `.nullable()`
  *      → rot (701 nullbare, erlaubt 700)
+ *   G  (15.11.2026, je Datei) BarcodeResponse.name wieder `.nullable().optional()` → rot:
+ *      „sets: 40 frei, erlaubt 39“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -94,7 +96,17 @@ test('jede lange Liste nimmt Seiten', () => {
   assert.deepEqual(limit, [], 'Seitengrösse heisst page_size; limit nur noch veraltet');
 });
 
-/** Felder der Antwortschemas (alles, was eine 200 erreicht): wie viele, wie viele freiwillig, wie viele nullbar. */
+/** Die Vertragsdatei eines Schemas: wo sein Objekt exportiert ist, sonst der Bereich der Route, die es benennt. */
+function dateiJeSchema() {
+  const datei = new Map();
+  for (const f of ['grund', 'gemeinsam', ...Object.keys(BEREICHE)])
+    for (const [n, w] of Object.entries(_req(`src/vertrag/${f}.js`))) if (!datei.has(n) && w?._zod) datei.set(n, f);
+  for (const [b, m] of Object.entries(BEREICHE))
+    for (const k of Object.keys(m.routen)) datei.set(k.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, ''), b);
+  return datei;
+}
+
+/** Felder der Antwortschemas (alles, was eine 200 erreicht), je Vertragsdatei: wie viele, freiwillig, nullbar. */
 function antwortFelder(o) {
   const S = o.components.schemas;
   const erreicht = new Set();
@@ -112,29 +124,63 @@ function antwortFelder(o) {
   for (const ops of Object.values(o.paths)) for (const op of Object.values(ops)) folge(op.responses?.['200']);
   const nullbar = s =>
     !!s && (s.type === 'null' || (Array.isArray(s.type) && s.type.includes('null')) || (s.anyOf ?? []).some(nullbar));
-  const z = { felder: 0, frei: 0, nullbar: 0 };
-  const zaehle = s => {
-    if (!s || typeof s !== 'object' || s.$ref) return;
-    const pflicht = new Set(s.required ?? []);
-    for (const [k, v] of Object.entries(s.properties ?? {})) {
-      z.felder++;
-      if (!pflicht.has(k)) z.frei++;
-      if (nullbar(v)) z.nullbar++;
-    }
-    for (const [k, v] of Object.entries(s)) if (typeof v === 'object') zaehle(k === 'properties' ? null : v);
-    for (const v of Object.values(s.properties ?? {})) zaehle(v);
-  };
-  for (const n of erreicht) zaehle(S[n]);
-  return z;
+  const datei = dateiJeSchema();
+  const je = {};
+  for (const n of erreicht) {
+    const d = datei.get(n) ?? '?';
+    je[d] ??= { felder: 0, frei: 0, nullbar: 0 };
+    const z = je[d];
+    const zaehle = s => {
+      if (!s || typeof s !== 'object' || s.$ref) return;
+      const pflicht = new Set(s.required ?? []);
+      for (const [k, v] of Object.entries(s.properties ?? {})) {
+        z.felder++;
+        if (!pflicht.has(k)) z.frei++;
+        if (nullbar(v)) z.nullbar++;
+      }
+      for (const [k, v] of Object.entries(s)) if (typeof v === 'object') zaehle(k === 'properties' ? null : v);
+      for (const v of Object.values(s.properties ?? {})) zaehle(v);
+    };
+    zaehle(S[n]);
+  }
+  return je;
 }
 
 test('Antwortfelder sind Pflicht, wo der Server sie immer liefert: freiwillige und nullbare werden weniger', () => {
   // Ein freiwilliges oder nullbares Feld wird in OpenAPI, den Typen der Oberfläche und in Kotlin nullbar.
-  const SCHRANKE = { frei: 719, nullbar: 700 };
-  const z = antwortFelder(openapi());
-  assert.ok(z.felder > 1500, `nur ${z.felder} Antwortfelder — greift die Suche noch?`);
-  assert.ok(z.frei <= SCHRANKE.frei, `${z.frei} freiwillige Antwortfelder, erlaubt sind ${SCHRANKE.frei}`);
-  assert.ok(z.nullbar <= SCHRANKE.nullbar, `${z.nullbar} nullbare Antwortfelder, erlaubt sind ${SCHRANKE.nullbar}`);
-  if (z.frei < SCHRANKE.frei || z.nullbar < SCHRANKE.nullbar)
-    console.log(`  ℹ Antwortfelder frei ${z.frei}, nullbar ${z.nullbar} — Schranke nachziehen`);
+  // Je Vertragsdatei, damit sichtbar ist, wo der Vertrag noch weich ist; gesamt 1728 → 1449 Felder,
+  // freiwillig 719 → 321 (41,6 % → 22,2 %), nullbar 700 → 484.
+  const SCHRANKE = {
+    bestand: { frei: 10, nullbar: 12 },
+    einstellungen: { frei: 14, nullbar: 11 },
+    figuren: { frei: 21, nullbar: 27 },
+    finanzen: { frei: 54, nullbar: 125 },
+    gemeinsam: { frei: 35, nullbar: 50 },
+    geraet: { frei: 0, nullbar: 0 },
+    gutscheine: { frei: 10, nullbar: 17 },
+    haushalt: { frei: 1, nullbar: 4 },
+    katalog: { frei: 2, nullbar: 21 },
+    konto: { frei: 52, nullbar: 55 },
+    merkliste: { frei: 32, nullbar: 33 },
+    sets: { frei: 39, nullbar: 58 },
+    teile: { frei: 9, nullbar: 20 },
+    verwaltung: { frei: 42, nullbar: 51 },
+  };
+  const je = antwortFelder(openapi());
+  const summe = Object.values(je).reduce((a, z) => a + z.felder, 0);
+  assert.ok(summe > 1400, `nur ${summe} Antwortfelder — greift die Suche noch?`);
+  assert.deepEqual(Object.keys(je).sort(), Object.keys(SCHRANKE).sort(), 'jede Vertragsdatei hat ihre Schranke');
+  const zuViel = [],
+    weniger = [];
+  for (const [datei, z] of Object.entries(je)) {
+    const s = SCHRANKE[datei];
+    for (const art of /** @type {const} */ (['frei', 'nullbar'])) {
+      if (z[art] > s[art]) zuViel.push(`${datei}: ${z[art]} ${art}, erlaubt ${s[art]}`);
+      if (z[art] < s[art]) weniger.push(`${datei} ${art} ${z[art]}`);
+    }
+  }
+  assert.deepEqual(zuViel, []);
+  const frei = Object.values(je).reduce((a, z) => a + z.frei, 0);
+  assert.ok(frei / summe < 0.23, `${frei} von ${summe} Antwortfeldern freiwillig`);
+  if (weniger.length) console.log(`  ℹ Antwortfelder ${weniger.join(', ')} — Schranke nachziehen`);
 });

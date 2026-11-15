@@ -23,7 +23,7 @@ import org.junit.Test
  * man deshalb IMMER NOCH im neuesten Jahrgang — linear gerechnet käme dort der
  * älteste heraus.
  *
- * Dieselbe Rechnung steht in der Webapp (js/catalog.js → _jahrAnPosition).
+ * Dieselbe Rechnung steht in der Webapp (js/katalog.js → _jahrAnPosition).
  * Dass beide sie haben und keine von beiden linear schätzt, prüft
  * Web-App/test/catalog-frontend.test.js über beide Quellbäume.
  */

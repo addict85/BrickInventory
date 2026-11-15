@@ -28,7 +28,7 @@ class AlarmRepositoryImpl @Inject constructor(
 
     override suspend fun getPendingAlerts(since: String?): Ergebnis<AlarmabrufAnsicht> =
         sicherAufrufen { api.getPendingAlerts(since) }
-            .zugesagt({ it.success }, { it.error }) { r -> AlarmabrufAnsicht(r.alerts.map { it.alsAnsicht() }, r.now) }
+            .zugesagt({ it.success }) { r -> AlarmabrufAnsicht(r.alerts.map { it.alsAnsicht() }, r.now) }
 
     override fun beobachteAlarme(setNumber: String?): Flow<Lokal<PreisalarmAnsicht>> =
         ablage.beobachte(Faecher.PREISALARME).map { l -> l.copy(liste = l.liste.filter { setNumber == null || it.setNumber == setNumber }) }
@@ -43,10 +43,10 @@ class AlarmRepositoryImpl @Inject constructor(
                                        condition: Zustand): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it.alsAnsicht()) } }) {
             sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
-        }.zugesagt({ it.success }, { it.error }) { }
+        }.zugesagt({ it.success }) { }
 
     override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> Nachzug.AlarmEntfernt(setNumber, condition).takeIf { r.success } }) {
             sicherAufrufen { api.deletePreisalarm(setNumber, condition.kennung) }
-        }.zugesagt({ it.success }, { it.error }) { }
+        }.zugesagt({ it.success }) { }
 }
