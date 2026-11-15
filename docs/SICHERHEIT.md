@@ -39,6 +39,34 @@ Codeausführung im Prozess. Dagegen helfen nur Lieferkette, Container-Härtung
 (ohne root, schreibgeschützt) und die getrennte Migrationsrolle, die keinem
 Prozess der App gehört. Das Verwaltungsprotokoll ist auch für die Systemrolle
 nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
+
+*Warum der Web-Prozess die Systemrolle behält (Prüfung vom 15.11.2026, M2).*
+Ohne Systemrolle im Web-Prozess wäre gegen Codeausführung dort kaum etwas
+gewonnen; der Umbau wurde deshalb nicht gemacht:
+- Der Zeilenschutz folgt `app.konto`, und das setzt die Laufzeitrolle selbst
+  (`set_config`). Wer im Prozess Code ausführt, setzt jedes Konto der Reihe
+  nach und liest dessen Sammlung, Finanzen und Gutscheine auch ohne
+  `BYPASSRLS`.
+- Die Kontexte, die auch der Web-Prozess baut, nutzen den Systemrahmen an rund 160 Stellen
+  (`imSystem`/`imSystemkontext`, vor allem `src/konto`, `src/verwaltung`,
+  `src/auftraege`, `src/geraete`), nicht an einer Handvoll. Fast alle gehen
+  ihrer Art nach über Kontogrenzen: Anmeldung über Namen, Token-Hash oder
+  Passkey, bevor das Konto feststeht; Passwort, Adresse, Verwalterrecht und
+  Sitzungsversion schreiben; Verwaltung aller Konten. Eine SECURITY
+  DEFINER-Funktion je Stelle nähme dieselben Angaben (Ziel-Konto, neuer Hash)
+  an und gäbe sie jedem, der im Prozess Code ausführt, ebenso.
+- Das Passwort prüft der Prozess (argon2id in Node), er muss die Hashes also
+  lesen.
+
+Was bleibt: Codeausführung im Web-Prozess heisst Zugriff auf alle Konten.
+Ein echter Gewinn verlangte, dass die Datenbank das Konto selbst
+nachweist — `app.konto` nur über eine Funktion, die einen Sitzungs- oder
+Token-Hash gegen die Tabelle prüft, Verwaltungsrechte daraus abgeleitet,
+Anmeldung als Funktion, die nur das Konto zum passenden Nachweis liefert.
+Das ist ein Umbau der Datenbankschicht und der Anmeldung, kein
+Rechteschnitt; selbst dann handelte der Prozess für jede gerade aktive
+Sitzung.
+
 5. **Lieferkette** — npm-Pakete, Actions, Container-Images, fremde
    Antworten von Rebrickable, Brickset, LEGO.
 
