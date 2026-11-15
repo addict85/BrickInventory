@@ -50,13 +50,18 @@ abonniere('sitzungBeendet', path => {
   if (!ME) return; // war nie angemeldet — nichts zu beenden
   _abgelaufenesKonto = ME.id;
   set_ME(null);
-  // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Der Browser hat das Secure-Cookie
-  // verworfen. „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
-  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && window.isSecureContext === false;
+  // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Das Secure-Cookie fehlt.
+  // „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
+  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && ohneHttps();
   showLogin({ abgelaufen: true, hinweis: ohneKeks ? tRaw('auth.cookie_fehlt') : undefined });
 });
 /** Zeitpunkt der letzten Anmeldung per Formular (für den Fall oben). */
 let _angemeldetUm = 0;
+/** http://localhost gilt dem Browser als sicherer Kontext, trägt aber kein Secure-Cookie vom Server. */
+const ohneHttps = () => window.isSecureContext === false || location.protocol === 'http:';
+// Vorab, nicht erst nach dem Fehlschlag: Wer über http kommt, soll wissen, warum die Anmeldung scheitern kann.
+const _ohneHttpsHinweis = G('login-ohne-https');
+if (_ohneHttpsHinweis) _ohneHttpsHinweis.hidden = !ohneHttps();
 
 // ── AUTH & PANELS ─────────────────────────────────────
 /** @type {string | null} */
@@ -629,6 +634,11 @@ async function doLogin() {
   }
   G('lc-zeile').style.display = 'none';
   G('lc').value = '';
+  if (d.success && d.keks_fehlt) {
+    // Der Server hat das Cookie gar nicht gesetzt: Die App zu öffnen hiesse, gleich wieder „abgelaufen“.
+    showLogin({ abgelaufen: true, hinweis: tRaw('auth.cookie_fehlt') });
+    return;
+  }
   if (d.success) {
     if (_abgelaufenesKonto !== null && _abgelaufenesKonto !== d.user?.id) {
       location.reload();

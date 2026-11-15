@@ -287,10 +287,12 @@ function finanzenFehlen(d, hatteTabelle) {
   return true;
 }
 
-/** Ohne Liste filtern Chips und Suche nichts; bedienbar sähen sie aus, als gäbe es etwas zu filtern.
+/** Ohne Liste filtern Chips und Suche nichts; bedienbar sähen sie aus, als gäbe es etwas zu filtern. Gesperrt
+ * allein wirkten sie noch wie Bedienelemente, also blendet die Klasse sie samt Zeitraumwahl aus.
  * @param {boolean} frei */
 function filterBedienbar(frei) {
   for (const el of alle('#fin-filter button, #fin-suche')) /** @type {HTMLButtonElement} */ (el).disabled = !frei;
+  G('tab-finance')?.classList.toggle('finanzen-fehler', !frei);
 }
 
 export async function loadFinance() {

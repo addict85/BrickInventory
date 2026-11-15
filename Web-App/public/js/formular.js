@@ -71,6 +71,15 @@ function linienNachbarn(kind) {
   });
 }
 
+/** @param {Element} zelle */
+function obenBuendigeZelle(zelle) {
+  const raster = zelle.parentElement;
+  if (!raster || !/grid$/.test(getComputedStyle(raster).display)) return false;
+  const s = getComputedStyle(zelle);
+  const lage = s.alignSelf === 'auto' || s.alignSelf === 'normal' ? getComputedStyle(raster).alignItems : s.alignSelf;
+  return ['normal', 'stretch', 'start', 'flex-start', 'self-start'].includes(lage);
+}
+
 /**
  * Stellt die Meldung unter die Formularzeile, nicht in sie: In einer Flex-Zeile schob sie sonst den Knopf
  * daneben zur Seite oder hob die Nachbarn aus der Flucht. Steht das Feld allein auf seiner Linie, bleibt
@@ -82,6 +91,13 @@ function fehlerPlatzieren(feld, meldung) {
   let anker = feld.closest('.preis-mit-waehrung, .geheim-feld') ?? feld;
   let gruppe = anker.parentElement?.closest('.fg') ?? null;
   if (gruppe && !gruppe.contains(anker)) gruppe = null;
+  // Im Raster ist die Feldgruppe selbst die Zelle: Die Meldung bleibt in ihrer Spalte unter dem Feld. Hinter der
+  // Zeile stand sie sonst links unter beiden Spalten, auch für das rechte Feld. Nur bei oben bündigen Zellen;
+  // unten bündig höbe sie das Feld aus der Flucht seiner Nachbarn.
+  if (gruppe?.parentElement && obenBuendigeZelle(gruppe)) {
+    if (anker.nextElementSibling !== meldung) anker.insertAdjacentElement('afterend', meldung);
+    return;
+  }
   /** @type {Element} */
   let kind = gruppe ?? anker;
   while (kind.parentElement && nebeneinander(kind.parentElement)) {
