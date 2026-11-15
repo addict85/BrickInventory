@@ -59,8 +59,8 @@ import ch.brickinventoryapp.model.ui.laedt
  *    fragt das Profil den Server nicht“ rot.
  *  - Patch gegenproben/profil-mail-nicht-gesendet-still.patch (`emailSent` nicht
  *    ausgewertet): „eine neue E-Mail ohne gesendete Mail …“ rot. Patch
- *    gegenproben/profil-neu-laden-loescht-fehler.patch (holeProfil() setzt den
- *    Fehler wieder auf null): dieselbe Prüfung rot an „übersteht das Neuladen“.
+ *    gegenproben/profil-neu-laden-loescht-fehler.patch (holeProfil() nimmt den
+ *    Fehler mit ohneFehler() weg): dieselbe Prüfung rot an „übersteht das Neuladen“.
  *  - Patch gegenproben/konto-laedt-nicht-beim-beobachten.patch (ladeBeimBeobachten für
  *    Geräte und zweiten Faktor gestrichen): „Geräte und zweiter Faktor laden, sobald …“ rot.
  *  - Patch gegenproben/kontoseite-laedt-nicht.patch (ladeBeimBeobachten der Kontoseite
