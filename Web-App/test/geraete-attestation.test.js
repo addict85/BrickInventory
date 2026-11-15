@@ -205,7 +205,8 @@ test('eine zu alte, fehlende oder beschädigte gespeicherte Liste gilt nicht', (
 });
 
 /** Wurzel → Zwischenstufe → Mittelglied → Blatt; das Blatt trägt eine erfundene
- * KeyDescription (StrongBox), das Mittelglied ist wahlweise selbst ein attestierter Schlüssel. */
+ * KeyDescription (StrongBox), das Mittelglied ist wahlweise selbst ein attestierter Schlüssel.
+ * @param {{ attestiert?: boolean, ca?: boolean, keyUsage?: Buffer }} [o] keyUsage: Inhalt des BIT STRING */
 function ketteMitMittelglied({ attestiert = false, ca = false, keyUsage } = {}) {
   const neu = () => generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const [zw, mittel, blatt] = [neu(), neu(), neu()];
