@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { setBestand } from '../../../db/bestandSicht';
 import { marktpreisSql } from '../../../db/geldSql';
 import type { Spalten, Tabellen } from '../../../db/zeilen';
 
@@ -20,7 +21,7 @@ export async function uebertrageAlarm(db: DbSchnittstelle, zuId: number, vonId: 
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [vonId, sn, c]);
 }
 
-const BESITZT = 'EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt';
+const BESITZT = `EXISTS (SELECT 1 FROM ${setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
 
 export function schreibeAlarm(
   db: DbSchnittstelle,
@@ -67,7 +68,7 @@ export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
        -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
        -- besitzt und der Detaildialog), set_catalog liefert das Bild.
-       LEFT JOIN sets s ON s.user_id = ANY($2) AND s.set_number = a.set_number
+       LEFT JOIN ${setBestand('= ANY($2)')} s ON s.set_number = a.set_number
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,

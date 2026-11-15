@@ -1,5 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
+import { figurErfassungen, teilErfassungen } from '../../../db/bestandSicht';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
@@ -16,18 +17,16 @@ export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', u
       ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
-                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')})::numeric
-                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')}), 0) AS avg_purchase_price
-           FROM part_acquisitions ${kontowaehrungJoin('part_acquisitions')}
-          WHERE part_acquisitions.user_id = ANY($1)
+                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')})::numeric
+                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')}), 0) AS avg_purchase_price
+           FROM ${teilErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
           GROUP BY part_number, color_id`
       : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
-                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')})::numeric
-                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')}), 0) AS avg_purchase_price
-           FROM minifig_acquisitions ${kontowaehrungJoin('minifig_acquisitions')}
-          WHERE minifig_acquisitions.user_id = ANY($1)
+                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')})::numeric
+                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')}), 0) AS avg_purchase_price
+           FROM ${figurErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
           GROUP BY fig_number`,
     [uids],
   );
@@ -117,12 +116,7 @@ export async function setsMitBestandteil(
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
        ${teilmengeJoin('x', ART[tabelle])}
-       -- Zwei JOINs, ausgeschrieben: sets sagt, WELCHES Konto das Set haelt
-       -- (deshalb ueber user_id UND set_number), set_catalog sagt, wie es
-       -- heisst und wie es aussieht (nur ueber set_number — der Name haengt
-       -- nicht am Konto). Keine Gegenstriche: Der Kommentar steht in einem
-       -- Template-Literal, und ein Gegenstrich beendet es.
-       LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       -- Name und Bild haengen nur an der Setnummer, nicht am Konto.
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
        ${setStammJoin('x.set_number')}
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und

@@ -27,13 +27,17 @@
  *
  * Die Besitzer stehen in docs/architektur.md („Tabellen und Besitzer“), je Tabelle genau einer.
  * Fremde Bereiche lesen über Lesebausteine in db/ oder den Dienst des Besitzers; die direkten
- * Lesestellen zählt eine Ratsche. Gegenproben (14.11.2026 gemessen):
+ * Lesestellen zählt eine Ratsche, aufwärts gilt null. Gegenproben (H 15.11., I/J 14.11.2026 gemessen):
  *   H  `SELECT 1 FROM price_cache` in src/sets/repository/sets.ts → rot: „fremde Bereiche lesen
- *      weniger Tabellen direkt“ (99 von 98)
+ *      nie aufwärts …“ (27 abwärts von 26)
  *   I  `DELETE FROM user_settings` in src/konto/repository/konten.ts → rot: „jede Tabelle hat
  *      einen Besitzer, nur er schreibt hinein“
  *   J  die Zeile von src/drossel in docs/architektur.md gestrichen → rot: dieselbe Prüfung
  *      (rate_limit_attempts ohne Besitzer)
+ *   K  setWert.ts liest wieder `FROM set_acquisitions` statt setErfassungen() → rot: dieselbe
+ *      Prüfung, aufwärts ['src/finanzen → set_acquisitions'] (15.11.2026)
+ *   L  'src/sets → parts_version_user' aus TRIGGER_FREMDZIELE gestrichen → rot: „Trigger schreiben
+ *      nur in Tabellen ihres Besitzers …“ (15.11.2026)
  *
  * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
  * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
@@ -197,9 +201,39 @@ const FREMDSCHREIBER = [
   'db/schemaStart.ts → global_settings',
 ];
 
+/** Trigger, die in die Tabelle eines anderen Bereichs schreiben: „Besitzer der Triggertabelle →
+ * Ziel“ und warum das nicht über den Dienst des Ziels geht. Eine Ratsche wie FREMDSCHREIBER. */
+const TRIGGER_FREMDZIELE = {
+  'src/bestand → parts_version_user':
+    'Der Teilezähler muss jede Änderung an Teilen und Lagerorten sehen, auch aus Schreibwegen ohne src/teile',
+  'src/sets → parts_version_user': 'dasselbe für Sets und Käufe: Sie bringen Teile mit',
+  'src/katalog → parts_katalog_offen':
+    'Katalogänderungen merken nur die Nummer vor; src/teile zieht die Zusammenfassung nach und leert die Liste',
+};
+
 /** Lesen fremde Bereiche eine Tabelle direkt (FROM, JOIN, USING), statt über einen Lesebaustein
- * in db/ oder den Dienst des Besitzers? Paare „Bereich → Tabelle“; db/ selbst ist der Lesebaustein. */
-const FREMDE_LESER_HOECHSTENS = 98;
+ * in db/ oder den Dienst des Besitzers? Paare „Bereich → Tabelle“; db/ selbst ist der Lesebaustein.
+ * Aufwärts (Besitzer auf höherer Stufe) ist verboten; Katalogtabellen sind gemeinsame Stammdaten
+ * und werden getrennt gezählt; der Rest liest abwärts und darf nur weniger werden. */
+const KATALOG_LESER_HOECHSTENS = 50;
+const ABWAERTS_LESER_HOECHSTENS = 26;
+
+/** Je Bereich seine Stufe aus docs/architektur.md („Rangfolge der Bereiche“). */
+function stufenAusDoku() {
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const abschnitt = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## Schema'));
+  return new Map(
+    [...abschnitt.matchAll(/^\| (\d+) \| (.+) \|$/gm)].flatMap(m =>
+      [...m[2].matchAll(/`([^`]+)`/g)].map(x => [x[1], Number(m[1])]),
+    ),
+  );
+}
+
+/** „aufwärts“, „katalog“ oder „abwärts“ für den Leser `b` einer Tabelle des Besitzers `eigner`. */
+function leseRichtung(stufen, b, eigner) {
+  if (eigner === 'src/katalog') return 'katalog';
+  return stufen.get(eigner) > stufen.get(b) ? 'aufwärts' : 'abwärts';
+}
 
 function fremdeLeser(besitzer) {
   const paare = new Set();
@@ -330,19 +364,58 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
   });
 
-  await t.test('fremde Bereiche lesen weniger Tabellen direkt, nie mehr', () => {
+  await t.test('Trigger schreiben nur in Tabellen ihres Besitzers oder in begründete Ziele', async () => {
+    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    const trigger = await db.all(`SELECT DISTINCT c.relname AS tabelle, p.proname AS funktion, p.prosrc AS quelle
+      FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+      JOIN pg_proc p ON p.oid = t.tgfoid WHERE NOT t.tgisinternal`);
+    const ziele = new Set(),
+      fremd = new Set();
+    for (const { tabelle, quelle } of trigger)
+      for (const m of quelle.matchAll(/\b(?:INSERT INTO|DELETE FROM|UPDATE)\s+([a-z_][a-z0-9_]*)/g)) {
+        ziele.add(m[1]);
+        if (besitzer.get(m[1]) !== besitzer.get(tabelle)) fremd.add(`${besitzer.get(tabelle)} → ${m[1]}`);
+      }
+    assert.ok(ziele.has('parts_version_user'), `Selbstbeweis: Trigger-Ziele ${[...ziele]} — greift die Suche noch?`);
+    assert.deepEqual(
+      [...fremd].sort(),
+      Object.keys(TRIGGER_FREMDZIELE).sort(),
+      'Ein Trigger schreibt in die Tabelle eines anderen Bereichs: dem Besitzer zuordnen oder in TRIGGER_FREMDZIELE begründen.',
+    );
+  });
+
+  await t.test('fremde Bereiche lesen nie aufwärts, sonst weniger Tabellen direkt', () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architektur.md — greift die Suche noch?`);
-    const paare = fremdeLeser(besitzer);
-    assert.ok(paare.includes('src/verwaltung → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
-    assert.ok(
-      paare.length <= FREMDE_LESER_HOECHSTENS,
-      `${paare.length} direkte Lesestellen fremder Bereiche, erlaubt sind ${FREMDE_LESER_HOECHSTENS}. ` +
-        'Über einen Lesebaustein in db/ oder den Dienst des Besitzers lesen.\n' +
-        paare.join('\n'),
+    const stufen = stufenAusDoku();
+    assert.ok(stufen.size > 20, `nur ${stufen.size} Stufen in docs/architektur.md — greift die Suche noch?`);
+    const je = { aufwärts: [], katalog: [], abwärts: [] };
+    for (const paar of fremdeLeser(besitzer)) {
+      const [b, tabelle] = paar.split(' → ');
+      assert.ok(stufen.has(b), `${b} hat keine Stufe`);
+      je[leseRichtung(stufen, b, besitzer.get(tabelle))].push(paar);
+    }
+    // Selbstbeweis der Einteilung, an echten Stufen.
+    assert.equal(leseRichtung(stufen, 'src/finanzen', besitzer.get('sets')), 'aufwärts');
+    assert.ok(je.abwärts.includes('src/verwaltung → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
+    assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
+    assert.deepEqual(
+      je.aufwärts,
+      [],
+      'Ein tieferer Bereich liest die Tabelle eines höheren: über eine Sicht in db/ (bestandSicht.ts, kontoSicht.ts) lesen.',
     );
-    if (paare.length < FREMDE_LESER_HOECHSTENS)
-      console.log(`  ℹ fremde Leser: ${paare.length} (Schranke ${FREMDE_LESER_HOECHSTENS}) — Schranke nachziehen`);
+    for (const [art, schranke] of [
+      ['katalog', KATALOG_LESER_HOECHSTENS],
+      ['abwärts', ABWAERTS_LESER_HOECHSTENS],
+    ]) {
+      assert.ok(
+        je[art].length <= schranke,
+        `${je[art].length} direkte Lesestellen (${art}), erlaubt sind ${schranke}.\n${je[art].join('\n')}`,
+      );
+      if (je[art].length < schranke)
+        console.log(`  ℹ fremde Leser (${art}): ${je[art].length} (Schranke ${schranke}) — Schranke nachziehen`);
+    }
   });
 
   await t.test('Eingaben eines Kontos landen in keiner gemeinsamen Tabelle', async () => {

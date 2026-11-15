@@ -1,11 +1,12 @@
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
+import { anleitungen, setBestand } from '../../../db/bestandSicht';
 import type { DbSchnittstelle } from '../../../db/database';
 
 export function setZahlen(db: DbSchnittstelle, uids: number[]) {
   return db.get<{ total_sets: string; total_quantity: string }>(
     `SELECT COUNT(DISTINCT s.set_number) AS total_sets,
                    COALESCE(SUM(${mengeAus()}), 0) AS total_quantity
-              FROM sets s
+              FROM ${setBestand('= ANY($1)')} s
               ${mengeJoin('s', 'sm', '= ANY($1)')}
              WHERE s.user_id = ANY($1)`,
     [uids],
@@ -17,8 +18,8 @@ export function anleitungsZahlen(db: DbSchnittstelle, uids: number[], eigene: nu
     `
       SELECT
         (SELECT COUNT(*) FROM shared_instructions si
-           JOIN sets s ON s.set_number = si.set_number AND s.user_id = ANY($1)) +
-        (SELECT COUNT(*) FROM instructions WHERE user_id = ANY($2)) AS total_instructions`,
+           JOIN ${setBestand('= ANY($1)')} s ON s.set_number = si.set_number) +
+        (SELECT COUNT(*) FROM ${anleitungen('= ANY($2)')} i) AS total_instructions`,
     [uids, eigene],
   );
 }

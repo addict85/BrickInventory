@@ -1,5 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
+import { figurErfassungen, teilErfassungen } from '../../../db/bestandSicht';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 // Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
@@ -18,7 +19,7 @@ const PARTS_CSV_SQL = `
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM parts p
-    LEFT JOIN part_acquisitions a
+    LEFT JOIN ${teilErfassungen('= $1')} a
            ON a.user_id = p.user_id
           AND a.part_number = p.part_number
           AND a.color_id = p.color_id
@@ -49,7 +50,7 @@ const FIGS_CSV_SQL = `
     FROM minifigs f
     LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
     LEFT JOIN bl_zuordnung_eigen ze ON ze.user_id = f.user_id AND ze.art = 'fig' AND ze.rb_id = f.fig_number
-    LEFT JOIN minifig_acquisitions a
+    LEFT JOIN ${figurErfassungen('= $1')} a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
     ${figurSichtJoin('f.user_id', 'f.fig_number')}
    WHERE f.user_id = $1 AND f.source = 'manual'

@@ -214,7 +214,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Set-Teilelisten, die niemand hat — die braucht kein lokales Bild.
   assert.match(
     SERVER,
-    /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
+    /EXISTS \(SELECT 1 FROM \$\{figurBestand\(\)\} m WHERE m\.fig_number = mc\.fig_number\)/,
     'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt',
   );
 

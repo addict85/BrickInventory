@@ -1,4 +1,5 @@
 import type { DbSchnittstelle, Treffer } from '../../db/database';
+import { KONTEN } from '../../db/kontoSicht';
 
 const zahl = (v: number | string) => parseInt(String(v), 10);
 
@@ -41,14 +42,14 @@ export async function kontoNamen(
   ordnung: 'id' | 'username' = 'id',
 ): Promise<KontoName[]> {
   const rows = await db.all<{ id: number | string; username: string }>(
-    `SELECT id, username FROM users WHERE id = ANY($1) ORDER BY ${ordnung === 'id' ? 'id' : 'username'}`,
+    `SELECT id, username FROM ${KONTEN} k WHERE id = ANY($1) ORDER BY ${ordnung === 'id' ? 'id' : 'username'}`,
     [ids],
   );
   return rows.map(r => ({ id: zahl(r.id), username: r.username }));
 }
 
 export async function kontoName(db: DbSchnittstelle, id: number): Promise<string | null> {
-  const r = await db.get<{ username: string }>('SELECT username FROM users WHERE id = $1', [id]);
+  const r = await db.get<{ username: string }>(`SELECT username FROM ${KONTEN} k WHERE id = $1`, [id]);
   return r?.username ?? null;
 }
 
@@ -145,8 +146,8 @@ export async function getrennteKetten(db: DbSchnittstelle, main: number): Promis
   const rows = await db.all<{ id: number | string; username: string; via: string | null }>(
     `SELECT f.sub_user_id AS id, u.username, v.username AS via
        FROM household_former_links f
-       JOIN users u ON u.id = f.sub_user_id
-       LEFT JOIN users v ON v.id = f.via_user_id
+       JOIN ${KONTEN} u ON u.id = f.sub_user_id
+       LEFT JOIN ${KONTEN} v ON v.id = f.via_user_id
       WHERE f.main_user_id = $1 ORDER BY u.username`,
     [main],
   );
@@ -168,7 +169,9 @@ export async function besitzerDerErfassung(
 }
 
 export function benutzerNamen(db: DbSchnittstelle, uids: number[]) {
-  return db.all<{ id: number | string; username: string }>('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
+  return db.all<{ id: number | string; username: string }>(`SELECT id, username FROM ${KONTEN} k WHERE id = ANY($1)`, [
+    uids,
+  ]);
 }
 
 /** NOTIFY wie db/pgNotify.ts notify(), über den Zugang des Aufrufers: In einer

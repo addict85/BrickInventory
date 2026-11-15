@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { pflegeTabelle } from '../../../db/tabellePflegen';
+import { setZaehlt } from '../../../db/bestandSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { logAndContinue } from '../../infra/fehler';
 
@@ -83,9 +84,7 @@ export function tausche(c: PoolClient, tabelle: string, schatten: string, spalte
 export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: string[]): Promise<void> {
   const neu = spalten.filter(s => s !== 'set_num');
   const verschwunden = `NOT EXISTS (SELECT 1 FROM ${schatten} n WHERE n.set_num = rb_sets.set_num)`;
-  const bezug = `(EXISTS (SELECT 1 FROM sets s WHERE s.set_number = rb_sets.set_num)
-               OR EXISTS (SELECT 1 FROM wanted w WHERE w.set_number = rb_sets.set_num)
-               OR EXISTS (SELECT 1 FROM price_alerts a WHERE a.set_number = rb_sets.set_num))`;
+  const bezug = setZaehlt('rb_sets.set_num');
   await imSchritt(c, async () => {
     await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, herkunft) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
                    ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, herkunft='csv'

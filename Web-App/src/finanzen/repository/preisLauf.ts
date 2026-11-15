@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { merkliste, setBestand, setErfassungen } from '../../../db/bestandSicht';
 import { marktpreisSql } from '../../../db/geldSql';
 
 export interface PreisPlatz {
@@ -7,11 +8,11 @@ export interface PreisPlatz {
 }
 
 export async function bestandsPlaetze(db: DbSchnittstelle): Promise<PreisPlatz[]> {
-  return db.all<PreisPlatz>('SELECT DISTINCT user_id, set_number FROM sets');
+  return db.all<PreisPlatz>(`SELECT DISTINCT user_id, set_number FROM ${setBestand()} s`);
 }
 
 export async function merklistenPlaetze(db: DbSchnittstelle): Promise<PreisPlatz[]> {
-  return db.all<PreisPlatz>('SELECT DISTINCT user_id, set_number FROM wanted');
+  return db.all<PreisPlatz>(`SELECT DISTINCT user_id, set_number FROM ${merkliste()} w`);
 }
 
 type ZustandsZeile = { set_number: string; c: string | null };
@@ -23,7 +24,7 @@ export async function erfassteZustaende(
 ): Promise<ZustandsZeile[]> {
   return db.all<ZustandsZeile>(
     `SELECT set_number, COALESCE(condition,'N') AS c
-       FROM set_acquisitions WHERE user_id=$1 AND set_number = ANY($2)
+       FROM ${setErfassungen('= $1')} e WHERE set_number = ANY($2)
       GROUP BY set_number, COALESCE(condition,'N')`,
     [userId, setNumbers],
   );
@@ -36,7 +37,7 @@ export async function gewuenschteZustaende(
 ): Promise<ZustandsZeile[]> {
   return db.all<ZustandsZeile>(
     `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
-       FROM wanted WHERE user_id=$1 AND set_number = ANY($2)`,
+       FROM ${merkliste('= $1')} w WHERE set_number = ANY($2)`,
     [userId, setNumbers],
   );
 }
