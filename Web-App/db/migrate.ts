@@ -187,30 +187,11 @@ export async function offeneMigrationen(client: ClientBase): Promise<string[]> {
   return dateien.filter(f => !fertig.has(f));
 }
 
-/** Ein gelöschtes Konto auch aus den Kopien: Spalten `user_id`, `*_user_id`, jede
- * Spalte, die in public auf users zeigt, und `users.id`. In der Transaktion des
- * Löschens, damit keine Kopie das Konto überlebt. */
+/** Ein gelöschtes Konto auch aus den Kopien, in der Transaktion des Löschens, damit keine Kopie
+ * das Konto überlebt. Über die Funktion der Eigentümerin (Migration 0119): Die Web-Systemrolle
+ * darf die Kopien selbst nicht lesen. */
 export async function entferneKontoAusSicherungen(c: Abfrager, uid: number): Promise<number> {
-  const rows = await c.all<{ schema: string; tabelle: string; spalte: string }>(`
-    WITH fk AS (
-      SELECT r.relname, a.attname FROM pg_constraint k
-        JOIN pg_class r ON r.oid = k.conrelid
-        JOIN pg_namespace n ON n.oid = r.relnamespace AND n.nspname = 'public'
-        JOIN pg_attribute a ON a.attrelid = r.oid AND a.attnum = ANY (k.conkey)
-       WHERE k.contype = 'f' AND k.confrelid = 'public.users'::regclass)
-    SELECT n.nspname AS schema, c.relname AS tabelle, a.attname AS spalte
-      FROM pg_namespace n
-      JOIN pg_class c ON c.relnamespace = n.oid AND c.relkind = 'r'
-      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-     WHERE n.nspname ~ '^vor_migration_[0-9]+$'
-       AND (a.attname ~ '(^|_)user_id$' OR (c.relname = 'users' AND a.attname = 'id')
-            OR (c.relname, a.attname) IN (SELECT relname, attname FROM fk))
-       AND format_type(a.atttypid, a.atttypmod) IN ('integer', 'bigint')`);
-  let n = 0;
-  const id = (x: string) => `"${x.replace(/"/g, '""')}"`;
-  for (const z of rows)
-    n += (await c.run(`DELETE FROM ${id(z.schema)}.${id(z.tabelle)} WHERE ${id(z.spalte)} = $1`, [uid])).changes;
-  return n;
+  return (await c.all<{ n: number }>('SELECT konto_aus_sicherungen_loeschen($1) AS n', [uid]))[0]?.n ?? 0;
 }
 
 /** Vor offenen Migrationen die Nutzerdaten (users, Tabellen mit user_id oder

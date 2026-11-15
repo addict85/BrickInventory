@@ -122,7 +122,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     zeige('sets'),
   );
   const teile = erzeugeTeile(
-    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, finanzen, bestand },
+    { db, uhr, einstellungen, auftraege, haushalt, katalog, fremdquellen, finanzen, bestand },
     zeige('teile'),
   );
   const figuren = erzeugeFiguren(

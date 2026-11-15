@@ -6,6 +6,7 @@ import * as manuelleTeile from './repository/manuelleTeile';
 import * as teileListe from './repository/teileListe';
 import * as teileZusammenfassung from './repository/teileZusammenfassung';
 import * as teilFarbe from './repository/teilFarbe';
+import type { AuftraegeDienste } from '../auftraege';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
@@ -20,6 +21,7 @@ export interface TeileAbhaengigkeiten {
   /** Zustand je Zugang (Neuaufbau der Teilezusammenfassung); erzeugeTeile legt sie an. */
   faecher: Faecher;
   einstellungen: EinstellungenDienste;
+  auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
   fremdquellen: FremdquellenDienste;

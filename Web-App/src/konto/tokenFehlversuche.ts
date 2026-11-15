@@ -3,7 +3,8 @@
  * Grenze teilen; geschrieben wird nur beim Fehlversuch, die Sperre selbst merkt sich
  * jeder Prozess, damit ein gültiger Token keine zusätzliche Abfrage kostet.
  * Ersetzte Token einer Familie zählen nicht mit (Wiederverwendungserkennung). */
-import { drosselAdresse, zaehleAnfrage } from './loginLimiter';
+import { drosselAdresse } from '../infra/drosselAdresse';
+import { zaehleAnfrage } from './loginLimiter';
 import { meldeFehler } from '../infra/fehler';
 import type { KontoKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';

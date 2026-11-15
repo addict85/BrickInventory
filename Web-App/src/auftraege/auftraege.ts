@@ -18,6 +18,7 @@ export const AUFTRAGS_ARTEN = [
   'preise_nachladen',
   'konto_dateien',
   'widerrufsliste',
+  'katalog_nachzug',
 ] as const;
 export type AuftragsArt = (typeof AUFTRAGS_ARTEN)[number];
 
@@ -33,6 +34,7 @@ export const KONTOUEBERGREIFEND: Readonly<Partial<Record<AuftragsArt, string>>> 
   bilder_neu_laden: 'fehlende Bilder aller Bestände',
   aufraeumen: 'Reste aller Konten',
   aufraeumen_taeglich: 'Reste aller Konten',
+  katalog_nachzug: 'Teilezusammenfassung aller Konten',
 };
 
 export type AuftragsStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';

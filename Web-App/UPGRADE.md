@@ -2269,4 +2269,45 @@ wird). Hinweise:
   weiter. **Zu tun**, falls die App unter einem Namen erreichbar sein soll:
   `APP_BASE_URL` in `.env` setzen (compose setzt sie aus `BRICK_HOST` ohnehin).
 - **Systemrolle:** Der Web-Prozess behält die Zugangsdaten der Systemrolle; warum,
-  steht in `docs/SICHERHEIT.md` („Was der Zeilenschutz nicht leistet“).
+  steht in `docs/SICHERHEIT.md` („Was der Zeilenschutz nicht leistet“). Seit Runde 27
+  (Abschnitt 65) hat er eine eigene, engere Systemrolle.
+
+<a id="systemrolle-web"></a>
+
+## 65. Runde 27 – Eigene Systemrolle für den Web-Prozess (Migration 0119)
+
+- **Was sich ändert:** Der Dienst `app` verbindet sich für Anmeldung und Verwaltung
+  nicht mehr als `brickinventory_system`, sondern als **`brickinventory_system_web`**.
+  Auch sie hebt den Zeilenschutz auf, erreicht aber nur Zugangs- und
+  Verwaltungstabellen, Kontoeinstellungen (`user_settings`), die Auftragstabelle und
+  Tabellen ohne Kontobezug (Katalog, Preis- und Bildspeicher). Gutscheine, Sammlung,
+  Kaufpreise, Papierkorb, Teilezusammenfassungen und die Kopien vor Migrationen
+  erreicht nur noch der Dienst `jobs`. Die Liste steht in Migration 0119 und in
+  `docs/SICHERHEIT.md`.
+- **Umschlüsselung nur noch in `jobs`:** Die Umstellung des Altbestands auf v2 und der
+  Schlüsselwechsel mit `DATA_KEY_ALT_FILE` laufen nur noch im Dienst `jobs`. Fehlt die
+  Marke der Umstellung (etwa nach dem Zurückspielen einer alten Sicherung), wartet
+  `app` beim Start, bis `jobs` sie gesetzt hat (Meldung „warte, bis der Dienst jobs …“).
+- **Teilezusammenfassung:** Ändert sich eine BrickLink-Zuordnung, zieht jetzt ein
+  Auftrag `katalog_nachzug` die Zusammenfassungen aller Konten nach (bisher die Anfrage
+  selbst). Bis er gelaufen ist (Sekunden), zeigt die Teileliste noch die alte Nummer.
+- **Preisprobe der Verwaltung** liest nur noch den eigenen Bestand des Verwalters, wie
+  die Oberfläche ihn schon bisher abfragte.
+- **Docker – zu tun:** nur der übliche Update-Weg. `sh scripts/image-pruefen.sh` legt
+  `./geheimnisse/db_system_web_password` an, wenn sie fehlt; `docker compose up -d`
+  lässt `db-rolle` die Rolle anlegen und `migration` ihr die Rechte geben. Wer selbst
+  baut (`up -d --build`), ruft vorher einmal `sh scripts/geheimnisse-einrichten.sh`.
+  Ohne die Datei bricht `docker compose up` mit „… db_system_web_password“ ab. Wer in
+  einer eigenen `compose.override.yaml` für `app` `PGSYSTEM_USER` setzt, stellt dort
+  auf `brickinventory_system_web` und `/run/secrets/db_system_web_password` um.
+- **Ohne Docker, Web und Jobs getrennt:** vor dem Update `postgres/app-rolle.sh` mit
+  `DB_SYSTEM_WEB_PASSWORD` ausführen (die Migration findet die Rolle nur, wenn es sie
+  schon gibt), danach im Web-Prozess `PGSYSTEM_USER=brickinventory_system_web` und ihr
+  Passwort. Wurde die Rolle erst nach 0119 angelegt: die Migration als Migrationsrolle
+  erneut einspielen (`psql -f db/migrations/0119-systemrolle-web.sql`), sie ist
+  wiederholbar. **Mit `ROLLE=beides`:** nichts zu tun; wer will, setzt zusätzlich
+  `PGSYSTEM_WEB_USER`/`PGSYSTEM_WEB_PASSWORD`, dann laufen die Anfragen über die
+  Web-Systemrolle.
+- **Zeilenschutz und eingeschleustes SQL:** `docs/SICHERHEIT.md` versprach, die
+  Zeilenregeln fingen eine eingeschleuste Abfrage über die Laufzeitrolle ab. Das stimmt
+  nicht, `app.konto` kann jede Rolle umsetzen; der Text ist berichtigt.
