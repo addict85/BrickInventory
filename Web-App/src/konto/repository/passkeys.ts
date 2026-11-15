@@ -16,8 +16,28 @@ export async function speichereChallenge(
     (
       await db.run(
         `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
-    SELECT $1, $2, $3, $4 WHERE (SELECT COUNT(*) FROM webauthn_challenges) < $5`,
+    SELECT $1, $2, $3, $4 WHERE (SELECT COUNT(*) FROM webauthn_challenges WHERE zweck = $3) < $5`,
         [hash, uid, zweck, bis, hoechstens],
+      )
+    ).changes > 0
+  );
+}
+
+/** Für signierte Challenges: Eingetragen wird erst nach gültiger Signatur, darum ohne Obergrenze.
+ * @returns false, wenn die Challenge schon verbraucht ist */
+export async function vermerkeVerbraucht(
+  db: DbSchnittstelle,
+  hash: string,
+  zweck: string,
+  bis: Date,
+): Promise<boolean> {
+  await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
+  return (
+    (
+      await db.run(
+        `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at) VALUES ($1, NULL, $2, $3)
+         ON CONFLICT (challenge) DO NOTHING`,
+        [hash, zweck, bis],
       )
     ).changes > 0
   );

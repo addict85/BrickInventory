@@ -28,6 +28,14 @@
  *   K  passkeys_widerrufen überhört → rot: „ein Passwortwechsel widerruft Passkeys nur auf Wunsch“
  *   L  (11.11.2026) in speichereChallenge() die Zählbedingung gestrichen → rot:
  *      „über der Obergrenze offener Challenges …“ (200 statt 503)
+ * Gegenproben (15.11.2026 gemessen, je einzeln; Anmeldeoptionen jetzt signiert statt abgelegt):
+ *   M  in signierteFrist() den Vergleich der Signatur gestrichen → rot: „eine erfundene …“
+ *   N  in signierteFrist() den Zweck nicht geprüft → rot: „eine erfundene …“ (zweiter Faktor 200)
+ *   O  in anmeldungPruefen() vermerkeVerbraucht() übergangen → rot: „eine Antwort gilt nur einmal …“
+ *   P  in speichereChallenge() ohne `WHERE zweck = $3` → rot: „Anmeldeoptionen legen nichts ab …“
+ *      (Registrieren 503 bei vollen Anmeldetöpfen)
+ *   Q  anmeldeOptionen() zusätzlich mit merkeChallenge() → rot u. a. „Anmeldeoptionen legen
+ *      nichts ab …“ (Zeilen angelegt) und jede Anmeldung (der Vermerk trifft die abgelegte Zeile)
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
@@ -412,22 +420,55 @@ test('Passkeys', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('über der Obergrenze offener Challenges gibt es 503', async tt => {
-    const { OFFENE_CHALLENGES_HOECHSTENS } = _req('src/konto/passkeys.js');
+  await t.test('eine erfundene, veränderte oder umgewidmete Challenge wird abgewiesen', async () => {
+    // Annas Passkeys hat das Zurücksetzen eben widerrufen.
+    const carl = authenticator();
+    await registriere('pk_bert', carl);
+    const echt = await optionen();
+    const b = Buffer.from(echt, 'base64url');
+    b[30] ^= 1;
+    const falsch = [
+      ['erfunden', b64u(crypto.randomBytes(55))],
+      ['verändert', b64u(b)],
+      ['zweiter Faktor', await optionen('zweiter_faktor')],
+    ];
+    const status = [];
+    for (const [, c] of falsch) status.push((await ruf('/passkey/anmelden', { antwort: carl.anmelden(c) })).status);
+    assert.deepEqual(status, [401, 401, 401], falsch.map(([n]) => n).join(', '));
+    assert.equal((await ruf('/passkey/anmelden', { antwort: carl.anmelden(echt) })).status, 200, 'die echte gilt');
+  });
+
+  await t.test('Anmeldeoptionen legen nichts ab, ein voller Topf sperrt nur seinen Zweck', async tt => {
+    const { OFFENE_CHALLENGES_HOECHSTENS: N } = _req('src/konto/passkeys.js');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
     await db.run('DELETE FROM webauthn_challenges');
     tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));
-    await db.run(
-      `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
-      SELECT 'voll' || g, NULL, 'anmelden', NOW() + INTERVAL '5 minutes' FROM generate_series(1, $1::int - 1) g`,
-      [OFFENE_CHALLENGES_HOECHSTENS],
-    );
-    assert.equal((await ruf('/passkey/anmelden/optionen', {})).status, 200, 'die letzte freie Stelle');
-    const r = await ruf('/passkey/anmelden/optionen', {});
+    const fuelle = zweck =>
+      db.run(
+        `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
+        SELECT 'voll' || $2 || g, NULL, $2, NOW() + INTERVAL '5 minutes' FROM generate_series(1, $1::int) g`,
+        [N, zweck],
+      );
+    const anzahl = async () => (await db.get('SELECT count(*)::int AS n FROM webauthn_challenges')).n;
+    await fuelle('anmelden');
+    await fuelle('zweiter_faktor');
+    for (const zweck of ['anmelden', 'zweiter_faktor'])
+      assert.equal((await ruf('/passkey/anmelden/optionen', { zweck })).status, 200, zweck);
+    assert.equal(await anzahl(), 2 * N, 'die Anmeldeoptionen haben eine Zeile angelegt');
+    const c = await sitzung('pk_bert');
+    const reg = () => ruf('/passkey/registrieren/optionen', { password: PASS }, c);
+    assert.equal((await reg()).status, 200, 'volle Anmeldetöpfe sperren das Registrieren');
+    await fuelle('registrieren');
+    const r = await reg();
     assert.deepEqual([r.status, r.body?.code], [503, 'server_ausgelastet']);
+    assert.equal(
+      (await ruf('/passkey/anmelden/optionen', {})).status,
+      200,
+      'ein voller Registriertopf sperrt das Anmelden',
+    );
     await db.run(
       `UPDATE webauthn_challenges SET expires_at = NOW() - INTERVAL '1 minute' WHERE challenge LIKE 'voll%'`,
     );
-    assert.equal((await ruf('/passkey/anmelden/optionen', {})).status, 200, 'abgelaufene räumt der nächste Aufruf ab');
+    assert.equal((await reg()).status, 200, 'abgelaufene räumt der nächste Aufruf ab');
   });
 });
