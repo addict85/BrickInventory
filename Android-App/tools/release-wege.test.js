@@ -351,9 +351,9 @@ test('die Fassungs-Release trägt alle Anhänge, wird Latest und folgt auf die v
   assert.equal(neu.lies('draussen/android-v2/BrickInventory.apk'), 'neues-apk');
   assert.equal(neu.lies('LATEST').trim(), 'android-v2', 'die neue Fassung wird Latest');
   assert.doesNotMatch(neu.lies('gh.log'), /release (upload|edit|delete)|create apk-neuste/);
-  assert.match(
-    neu.lies('zusammenfassung.md'),
-    /https:\/\/github\.com\/o\/r\/releases\/latest\/download\/BrickInventory\.apk/,
+  assert.ok(
+    neu.lies('zusammenfassung.md').includes('https://github.com/o/r/releases/latest/download/BrickInventory.apk'),
+    'die Zusammenfassung nennt den Latest-Link',
   );
 
   const zurueck = releaseOrt(t);
