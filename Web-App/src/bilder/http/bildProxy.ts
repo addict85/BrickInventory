@@ -319,12 +319,7 @@ export async function bildDurchreichen(d: BildDienste, req: Request, res: Respon
   const setNummer = setNummerAusBildAdresse(String(url || ''));
   // images/sets gilt für alle Konten und hat keinen Deckel: Ablegen und vormerken nur für ein Set
   // im Blickfeld des Kontos, sonst füllte ein Konto die Platte mit erfundenen Nummern.
-  const ablegen =
-    !!setNummer &&
-    (await d.bilder.setNummerImBlickfeld(proxyUserId, setNummer).catch(e => {
-      meldeFehler('img-proxy:blickfeld', e);
-      return false;
-    }));
+  const ablegen = !!setNummer && (await d.bilder.setNummerImBlickfeld(proxyUserId, setNummer));
   const notiere = () => {
     if (ablegen && setNummer) d.bilder.merkeGebraucht(String(url), setNummer);
   };

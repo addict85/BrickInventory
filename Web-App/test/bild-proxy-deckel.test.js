@@ -55,6 +55,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
 const { portVon } = require('./helpers/server');
+// Ohne Datenbank: Kein Set liegt im Blickfeld, abgelegt wird nichts.
+require('./helpers/sources').ersetzeDienste('bilder', { setNummerImBlickfeld: async () => false });
 const bildDurchreichen = (...a) =>
   _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
 const { raeumeBildCacheAuf } = _req('src/bilder/imgCacheServe.js');
