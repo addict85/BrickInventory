@@ -41,10 +41,10 @@ fun CsvImportErgebnis.alsAnsicht() = CsvErgebnisAnsicht(total, neuAngelegt, upda
 
 fun CsvImportStatus.alsAnsicht() = CsvImportStandAnsicht(
     status = status,
-    total = total ?: 0,
-    done = done ?: 0,
+    total = total,
+    done = done,
     current = current,
-    ok = ok ?: 0,
-    warn = warn ?: 0,
-    err = err ?: 0,
+    ok = ok,
+    warn = warn,
+    err = err,
 )
