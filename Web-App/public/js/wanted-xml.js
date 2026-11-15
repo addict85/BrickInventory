@@ -9,8 +9,8 @@ import { bildTag, platzhalterInhalt, fullUrl, imgUrl } from './bilder.js';
 import { ico, G, XML_ICON_SVG, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
 import { loadManualFigsTable } from './minifigs.js';
-import { loadGallery } from './gallery.js';
-import { loadManualParts } from './parts.js';
+import { loadGallery } from './sammlung.js';
+import { loadManualParts } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
 
 /**

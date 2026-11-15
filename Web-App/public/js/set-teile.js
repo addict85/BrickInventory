@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
-import { scopeQuery } from './scope.js';
+import { scopeQuery } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
 import { springe } from './ziele.js';
 import { registerActions } from './registry.js';
@@ -72,7 +72,7 @@ export async function openSetItemDetail(type, id, colorId) {
   G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + colorName(item.color_name) : '');
 
   // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung. data-orig speist den Zoom
-  // (openImageLightboxFromEl in actions.js) — ohne dieses Attribut gäbe es kein Vergrössern, und genau das
+  // (openImageLightboxFromEl in aktionen.js) — ohne dieses Attribut gäbe es kein Vergrössern, und genau das
   // war Teil des Wunsches.
   const roh = item?.image_local || item?.image_url || '';
   const voll = roh ? imgUrl(fullUrl(roh), false) : '';

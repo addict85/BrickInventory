@@ -214,7 +214,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
       /data-click="openModal"/,
       'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.',
     );
-    // Der Verteiler in actions.js nimmt das NÄCHSTGELEGENE Element mit
+    // Der Verteiler in aktionen.js nimmt das NÄCHSTGELEGENE Element mit
     // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
     // den Dialog über dem Feld, in das man gerade tippen wollte.
     assert.match(js, /data-click="stopEvent"/, 'Das Zahlenfeld hält den Klick nicht auf — Tippen öffnete den Dialog.');

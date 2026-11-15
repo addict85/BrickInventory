@@ -1,6 +1,6 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
-import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
+import { setZustand, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
 import { marktpreisAus } from '../katalog';
@@ -50,7 +50,7 @@ export async function preisverlaufSet(
   currency: string,
 ) {
   const uids = asIds(await k.haushalt.blickfeldAus(uidWahl));
-  const condition = await resolveSetCondition(k, uids, setNumber);
+  const condition = await setZustand(k, uids, setNumber);
 
   const [historyNew, historyUsed] = await Promise.all([
     seriesFor(k, setNumber, currency, 'N'),
@@ -259,7 +259,7 @@ async function preisNummernFuerFigur(k: FinanzenKontext, uid: number | number[],
 }
 
 /** @returns Anzahl entfernter Zeilen */
-export async function purgeAltePreise(k: FinanzenKontext): Promise<number> {
+export async function loescheAltePreise(k: FinanzenKontext): Promise<number> {
   const tage = k.konfig.preisverlaufTage;
   if (tage <= 0) return 0;
   const r = await k.preisverlauf.loescheAltenVerlauf(String(tage));

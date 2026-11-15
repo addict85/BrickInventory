@@ -8,7 +8,7 @@ import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
 import { csvImportStatus, preisHerkunftHinweis } from './minifigs.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
-import { loadManualParts } from './parts.js';
+import { loadManualParts } from './teile.js';
 
 // Ein Teil von Hand erfassen: Formular oben im Teile-Reiter, Farbauswahl und CSV-Import.
 /** @typedef {import('../../frontend-typen/vertrag').BrickColor} Steinfarbe */

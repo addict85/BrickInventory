@@ -6,7 +6,7 @@
  * noch der gesperrte Knopf den Inhalt.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  computeSetsValuation sammelt die Käufe wieder nur nach Setnummer →
+ *   A  bewerteSets sammelt die Käufe wieder nur nach Setnummer →
  *      rot: „Finanzen: ein Kauf je Zeile, mit Konto“ (4 Zeilen Tree House)
  *   B  setsMitErfassungen ohne GROUP BY → rot: „Finanzen: Summen ohne
  *      Doppelzählung“ (Kaufpreise 2149.97 statt 1739.98)

@@ -297,7 +297,7 @@ async function conditionsNeededFor(
   return (await zustaendeJeSet(k, userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
 }
 
-async function refreshPriceForSet(
+async function preisFuerSetHolen(
   k: FinanzenKontext,
   setNumber: string,
   userId: number,
@@ -343,4 +343,4 @@ async function merkeStand(k: FinanzenKontext, neu: Record<string, unknown>): Pro
     .catch(logAndContinue('preis-job:stand'));
 }
 
-export { runPriceRefresh, refreshPriceForSet, fetchAndCachePrice, zustaendeJeSet, conditionsNeededFor };
+export { runPriceRefresh, preisFuerSetHolen, fetchAndCachePrice, zustaendeJeSet, conditionsNeededFor };

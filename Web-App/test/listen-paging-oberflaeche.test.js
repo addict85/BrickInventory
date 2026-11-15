@@ -5,14 +5,14 @@
  * Oberfläche zeichnet nur, was er liefert.
  *
  * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  parts.js appendParts ohne den Zweig `g.color === _partsLastColor`
+ *   A  teile.js appendParts ohne den Zweig `g.color === _partsLastColor`
  *      → „Teileliste: eine Farbgruppe läuft über die Seitengrenze“ rot (zwei Überschriften)
- *   B  gallery.js gsort-Listener entfernt → „Galerie: Suche, Sortierung …“ rot
- *   C  parts.js `with_sets` immer gesetzt → „Teileliste: in_sets nur in der Tabelle“ rot
- *   D  gallery.js renderGallery mit `list.filter(s => s.name.includes(q))`
+ *   B  sammlung.js gsort-Listener entfernt → „Galerie: Suche, Sortierung …“ rot
+ *   C  teile.js `with_sets` immer gesetzt → „Teileliste: in_sets nur in der Tabelle“ rot
+ *   D  sammlung.js renderGallery mit `list.filter(s => s.name.includes(q))`
  *      → „Galerie: zeigt, was der Server liefert“ rot
  *   E  minifigs.js p.set('source', 'set') entfernt → „Minifiguren: Quelle …“ rot
- *   F  parts.js setColorFilter ohne loadPartsData() → „Teileliste: Farbfilter …“ rot
+ *   F  teile.js setColorFilter ohne loadPartsData() → „Teileliste: Farbfilter …“ rot
  *   G  minifigs.js loadMinifigsMore ohne appendFigs(batch) → „Minifiguren: Folgeseite …“ rot
  */
 const test = require('node:test');

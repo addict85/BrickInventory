@@ -3,7 +3,7 @@
  * durch die Hauptansichten gerendert, im echten Chrome.
  *
  * Gegenproben (gemessen):
- *   A  im Kachelnamen der Sammlung (gallery.js) den Namen in ungeprueft()
+ *   A  im Kachelnamen der Sammlung (sammlung.js) den Namen in ungeprueft()
  *      gesetzt (vor dem Umbau: esc() entfernt) → rot: „Sammlung“ mit img[onerror]
  *   B  im Lagerortfeld (lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
  *      „Lagerorte“

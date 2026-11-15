@@ -174,7 +174,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
 
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
   out.currency = await k.einstellungen.nutzerWert(uid, 'currency', 'EUR');
-  // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
+  // „BrickLink kennt das Set nicht": Steht sie, liefert holePreis still 0.
   const katalog = await k.katalog.katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
   // Genau der Aufruf, den Finanzen macht.

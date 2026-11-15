@@ -5,7 +5,7 @@
  *   a) (13.11.2026) in ausZeile() (src/finanzen/rechnung/preise.ts) avg_price wieder roh
  *      statt marktpreisAus() → Teilschritt 2 rot: avg_price 0 neben qty_avg_price 12.34,
  *      die Clients zeigten „0.00“.
- *   b) In fetchPrice den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
+ *   b) In holePreis den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
  *      gestellt → Teilschritt 1 bleibt grün (die Regel ist dieselbe), aber
  *      Teilschritt 3 wird rot: Die Regel steht dann wieder zweimal da.
  *
@@ -54,12 +54,12 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
        VALUES ($1,'N','EUR',10,0,20,12.34,5,NOW())`,
       [SN],
     );
-    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
-    const pd = await fetchPrice(SN, 'N', 'sold', 'EUR', '24');
+    const { holePreis } = _req('src/finanzen/financeCalc.js');
+    const pd = await holePreis(SN, 'N', 'sold', 'EUR', '24');
     assert.equal(pd.avg_price, 12.34, 'avg_price trägt den Marktpreis, hier den Mengenschnitt');
     assert.ok(
       pd.no_price === true || Number(pd.avg_price) > 0,
-      'fetchPrice gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' + JSON.stringify(pd),
+      'holePreis gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' + JSON.stringify(pd),
     );
     assert.ok(
       !(Number(pd.avg_price) === 0 && Number(pd.qty_avg_price) > 0),
@@ -83,11 +83,11 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
         [S2, alter],
       );
       let erg;
-      // Faellt der Eintrag durch, versucht fetchPrice einen Live-Abruf. Ohne
+      // Faellt der Eintrag durch, versucht holePreis einen Live-Abruf. Ohne
       // BrickLink-Zugang wirft der — und genau das ist hier der Beleg, dass
       // NICHT aus dem Cache geantwortet wurde.
       try {
-        erg = await fetchPrice(S2, 'N', 'sold', 'EUR', '24');
+        erg = await holePreis(S2, 'N', 'sold', 'EUR', '24');
       } catch (e) {
         erg = { versuchteAbruf: true, message: e.message };
       }

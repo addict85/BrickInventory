@@ -57,7 +57,7 @@ test('der Dockerfile baut jobs/ statt es roh zu kopieren', () => {
 
 test('benannte Exporte statt module.exports', () => {
   // In .ts erzeugt module.exports keine benannten Exporte — Aufrufer wie
-  // src/sets/nachErfassung.ts importieren aber per Namen (`import { refreshPriceForSet }`).
+  // src/sets/nachErfassung.ts importieren aber per Namen (`import { preisFuerSetHolen }`).
   // csvImportWorker ist der Einstiegspunkt eines eigenen Prozesses
   // (process.on('message')) und exportiert bewusst nichts.
   const ENTRYPOINTS = new Set(['csvImportWorker.ts']);

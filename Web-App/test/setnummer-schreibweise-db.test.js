@@ -58,7 +58,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     );
 
     const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
-    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    const { holePreis } = _req('src/finanzen/financeCalc.js');
 
     // Gegenprobe: in src/infra/setNummer.ts das mitVersion() aus katalogEintrag()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
@@ -74,7 +74,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
       assert.equal(abrufe.length, 0, `„${nummer}": ${abrufe.length} BrickLink-Abruf(e) umsonst`);
 
       abrufe = [];
-      const p = await fetchPrice(nummer, 'N', 'sold', 'EUR', 24);
+      const p = await holePreis(nummer, 'N', 'sold', 'EUR', 24);
       assert.equal(p.no_price, true, `„${nummer}": Der Anfrageweg meldet keinen preislosen Eintrag`);
       assert.equal(abrufe.length, 0, `„${nummer}": ${abrufe.length} BrickLink-Abruf(e) umsonst`);
     }

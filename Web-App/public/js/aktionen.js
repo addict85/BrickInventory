@@ -6,13 +6,13 @@ import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './monitor.js';
 import { openPdfViewer } from './pdfviewer.js';
-import { delSet } from './gallery.js';
+import { delSet } from './sammlung.js';
 import { alleFiguren, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './minifigs.js';
 import { merkpostenLoeschen } from './merkliste.js';
 import { autosaveSet, closeImageLightbox, openImageLightbox } from './set-detail.js';
 import { setzeMengenfeld } from './detailfelder.js';
 import { hideProgress } from './fortschritt.js';
-import { deleteManualPart } from './parts.js';
+import { deleteManualPart } from './teile.js';
 
 // Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne script-src
 // 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese Verteidigungslinie.

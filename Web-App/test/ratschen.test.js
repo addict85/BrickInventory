@@ -551,6 +551,26 @@ function reineQuelltextTests() {
     });
 }
 
+test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
+  // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“); übrig sind Begriffe der
+  // Technik (api, dom, router …). Gezählt wird ein englisches Wort im Dateinamen.
+  // Gegenprobe (15.11.2026): public/js/sammlung.js zurück auf gallery.js → rot (22 statt 21).
+  const ENGLISCH =
+    /^(?:.*-)?(?:gallery|catalog|parts|finance|settings|actions|scope|scrollbar|acquisition|modals?|admin|init|main|mobile|monitor|registry|router|boot|viewer|logviewer|pdfviewer|detail|import|wanted|sets|api|dom|format|passkeys|minifigs|theme)(?:-.*)?\.js$/;
+  const SCHRANKE = 21;
+  assert.ok(ENGLISCH.test('set-detail.js') && ENGLISCH.test('gallery.js') && !ENGLISCH.test('sammlung.js'));
+  const englisch = fs
+    .readdirSync(path.join(WEB, 'public', 'js'))
+    .filter(n => istAppModul(n) || ['main.js', 'logviewer.js', 'pdfjs-boot.js'].includes(n))
+    .filter(n => ENGLISCH.test(n));
+  assert.ok(
+    englisch.length <= SCHRANKE,
+    `${englisch.length} englische Dateinamen in public/js: ${englisch.join(', ')}`,
+  );
+  if (englisch.length < SCHRANKE)
+    console.log(`  ℹ englische Dateinamen: ${englisch.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () => {
   // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
   // Gegenprobe (15.11.2026): sicherheit-server-grenzen-db.test.js zurück auf
@@ -1098,13 +1118,13 @@ function funktionsLaengen(dateien = oberflaeche()) {
 
 test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
   // Im Biome-Format. Gegenprobe: loadFinance
-  // wieder in einem Stück (vor dem Aufteilen) → rot mit „finance.js loadFinance“.
+  // wieder in einem Stück (vor dem Aufteilen) → rot mit „finanzen.js loadFinance“.
   const SCHRANKE_80 = 20;
   const BEKANNT_100 = [
-    'public/js/acquisition-modals.js acqSave',
+    'public/js/kauf-dialoge.js acqSave',
     'public/js/diagramme.js priceChartSVG',
     'public/js/diagramme.js portfolioChartSVG',
-    'public/js/gallery.js doAddSet',
+    'public/js/sammlung.js doAddSet',
     'public/js/init.js plGenerate',
     'public/js/init.js plExportPdf',
     'public/js/minifigs.js renderFigs',
@@ -1145,7 +1165,7 @@ function oberflaechenCode() {
 
 test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
   // Nur die beiden Helfer in dom.js schreiben Markup; das Protokollfenster (monitor.js) baut ein eigenes
-  // Dokument per document.write. Gegenprobe: in gallery.js `grid.innerHTML = ''` → rot mit Fundort.
+  // Dokument per document.write. Gegenprobe: in sammlung.js `grid.innerHTML = ''` → rot mit Fundort.
   const ERLAUBT = ['dom.js', 'dom.js', 'monitor.js'];
   const roh = oberflaechenCode().filter(x =>
     /\.(innerHTML|outerHTML)\s*\+?=(?!=)|insertAdjacentHTML\(|document\.write\(/.test(x.z),
@@ -1214,7 +1234,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
-  // Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
+  // Gegenprobe (09.11.2026): an finanzen.js Leerzeilen gehängt → rot.
   const SCHRANKE_GROESSTE = 772,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({

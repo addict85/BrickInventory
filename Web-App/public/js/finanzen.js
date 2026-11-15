@@ -16,7 +16,7 @@ import { api } from './api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './format.js';
-import { scopeQuery } from './scope.js';
+import { scopeQuery } from './kontofilter.js';
 import { guvJeSet, setzeFinKopfWert } from './zustand.js';
 import { kurveDa, loadPortfolioChart, setzeEinstand } from './wertkurve.js';
 import { basisAus, zeigeKennzahlen } from './finanz-kennzahlen.js';

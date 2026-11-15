@@ -8,8 +8,8 @@ import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
 import { antwortFehler, feldFehler, passwortRegelText } from './formular.js';
 import { _updateLangSelect, applyTheme, initDefaultCondition, zeigeBenutzernamen } from './konto.js';
 import { meldeAmFeld, toast } from './meldungen.js';
-import { loadGallery, loadStats } from './gallery.js';
-import { loadParts } from './parts.js';
+import { loadGallery, loadStats } from './sammlung.js';
+import { loadParts } from './teile.js';
 import { loadMinifigs } from './minifigs.js';
 import { meldeAbschnitt } from './router.js';
 import { verstaendlicherGrund } from './bausteine.js';
@@ -28,7 +28,7 @@ import {
   mitPasswortBestaetigen,
   speichereEinstellungen,
 } from './rueckfrage.js';
-import { loadFinance } from './finance.js';
+import { loadFinance } from './finanzen.js';
 import { LAND_ZUR_WAEHRUNG } from './gutscheine.js';
 // Einstellungen: Profil, Design, Zugangsdaten der Quellen, Mail, Zwischenspeicher, QR-Anmeldung und
 // Konfigurations-Import/-Export. Haushalt, Verwaltung, Alarme und Lagerorte haben eigene Dateien.

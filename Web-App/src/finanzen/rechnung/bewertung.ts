@@ -171,7 +171,7 @@ function bewertungsSummen(
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeSetsValuation(kx: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
   const uids = await kx.haushalt.blickfeldAus(idsWahl);
@@ -301,7 +301,7 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
@@ -384,7 +384,7 @@ export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: num
   };
 }
 
-export async function computePartsValuation(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function bewerteTeile(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),

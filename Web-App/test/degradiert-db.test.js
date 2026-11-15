@@ -37,7 +37,7 @@ Module.prototype.require = function (name, ...rest) {
   if (/(?:finanzen[/\\]|^\.\/)financeCalc(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) =>
-        k === 'resolveSetCondition'
+        k === 'setZustand'
           ? async (...a) => {
               if (preisKaputt) throw new Error('Zustand nicht lesbar');
               return t[k](...a);

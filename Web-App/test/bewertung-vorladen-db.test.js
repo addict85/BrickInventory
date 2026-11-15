@@ -6,9 +6,9 @@
  * zählen die Zeilen, die der Scan auf set_acquisitions laut EXPLAIN liefert.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in computePartsValuation den Vorrat nicht weitergereicht → rot:
+ *   A  in bewerteTeile den Vorrat nicht weitergereicht → rot:
  *      „zwölf Teile, eine Abfrage auf den Teile-Cache“
- *   B  dasselbe in computeMinifigsValuation → rot: „sechs Figuren, …“
+ *   B  dasselbe in bewerteFiguren → rot: „sechs Figuren, …“
  *   C  in mengeJoin den Kontofilter ignoriert → rot: „die Setmenge liest nur
  *      die Erfassungen der gefragten Konten“
  *   D  inKontowaehrung liefert immer TRUE → rot: „der Durchschnittskaufpreis
@@ -87,10 +87,10 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
       [nr + 'bl'],
     );
   }
-  const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
+  const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
-    const m = await abfragen(/FROM part_price_cache/, () => computePartsValuation(uid, [uid]));
+    const m = await abfragen(/FROM part_price_cache/, () => bewerteTeile(uid, [uid]));
     assert.equal(m.ergebnis.parts.length, 12);
     assert.ok(
       m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
@@ -100,7 +100,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   });
 
   await t.test('sechs Figuren, eine Abfrage auf den Figuren-Cache', async () => {
-    const m = await abfragen(/FROM minifig_price_cache/, () => computeMinifigsValuation(uid, [uid]));
+    const m = await abfragen(/FROM minifig_price_cache/, () => bewerteFiguren(uid, [uid]));
     assert.equal(m.ergebnis.figs.length, 6);
     assert.ok(
       m.ergebnis.figs.every(f => Number(f.avg_price) === 4),

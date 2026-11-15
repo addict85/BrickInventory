@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { antwortFehler, feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
-import { loadGallery } from './gallery.js';
+import { loadGallery } from './sammlung.js';
 import { html } from './escapen.js';
 import { confirmDelete } from './rueckfrage.js';
 import { ladeLagerortVorgabe } from './konten-orte.js';

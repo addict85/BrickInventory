@@ -140,7 +140,7 @@ test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   const treffer = [];
   for (const datei of dateien) {
     const code = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const fn of ['getCurrentFigMarketPrice', 'getCurrentPartMarketPrice']) {
+    for (const fn of ['aktuellerFigurMarktpreis', 'aktuellerTeilMarktpreis']) {
       const re = new RegExp(String.raw`(?<!function )${fn}\(((?:[^()]|\([^()]*\))*)\)`, 'g');
       for (const m of code.matchAll(re)) {
         const args = m[1]

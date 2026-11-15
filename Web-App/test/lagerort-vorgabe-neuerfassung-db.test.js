@@ -145,7 +145,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
       await ortVonTeil('3003'),
       null,
       'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-        'wurde (selectedStorage in gallery.js). Sie wieder einzusetzen waere ' +
+        'wurde (selectedStorage in sammlung.js). Sie wieder einzusetzen waere ' +
         'ein Ort, den niemand wegbekommt',
     );
   });

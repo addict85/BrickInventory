@@ -2,23 +2,23 @@
  * Aufbau des Frontends: kein Importkreis, kein API-Aufruf an der Hülle vorbei.
  *
  * Gegenproben (am 05.11.2026 gemessen):
- *   A  in api.js `import { loadGallery } from './gallery.js'` samt
+ *   A  in api.js `import { loadGallery } from './sammlung.js'` samt
  *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt api.js
- *   B  in konten-orte.js `import('./settings.js')` ergänzt → rot: die
+ *   B  in konten-orte.js `import('./einstellungen.js')` ergänzt → rot: die
  *      dynamische Kante schliesst einen Kreis und zählt mit
- *   C  in settings.js den Alarm-Import wieder per
+ *   C  in einstellungen.js den Alarm-Import wieder per
  *      `fetch('/api/v1/alerts/import/csv', …)` → rot: „kein fetch an der
  *      Hülle vorbei“ mit Datei und Zeile
  *   D  in monitor.js wieder `export let _monitorTimer` → rot: „geteilter
  *      Zustand nur in zustand.js“
- *   E  in bausteine.js `import { loadGallery } from './gallery.js'` → rot:
+ *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → rot:
  *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
- *   G  (08.11.2026) in minifigs.js wieder `import('./parts.js').ManuellesTeil` als JSDoc-Typ
- *      (parts.js importiert minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
+ *   G  (08.11.2026) in minifigs.js wieder `import('./teile.js').ManuellesTeil` als JSDoc-Typ
+ *      (teile.js importiert minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
  *   F  im Kapitel „Oberfläche“ von docs/architektur.md `zustand.js` in
  *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot
- *   H  (11.11.2026) in registry.js (KERN) `import './gallery.js'` ergänzt → rot: „Kern und
- *      Bausteine … importieren keine Ansicht“ nennt js/registry.js → js/gallery.js
+ *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` ergänzt → rot: „Kern und
+ *      Bausteine … importieren keine Ansicht“ nennt js/registry.js → js/sammlung.js
  */
 const { istAppModul, KERN, BAUSTEINE } = require('../scripts/build-frontend');
 const test = require('node:test');

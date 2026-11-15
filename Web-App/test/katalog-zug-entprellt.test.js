@@ -35,7 +35,7 @@ async function zugMessen(entprellt) {
     '\n' +
     ohneModulhuelle(fs.readFileSync(path.join(JS, 'lader.js'), 'utf8')) +
     '\n' +
-    ohneModulhuelle(fs.readFileSync(path.join(JS, 'catalog.js'), 'utf8'));
+    ohneModulhuelle(fs.readFileSync(path.join(JS, 'katalog.js'), 'utf8'));
   if (!entprellt) {
     const vorher = code;
     code = code.replace(/_catLadeTimer = setTimeout\(tun, \d+\)/, 'tun()');

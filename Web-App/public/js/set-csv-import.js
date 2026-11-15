@@ -16,7 +16,7 @@ import {
   setzeCsvPollAktiv,
 } from './fortschritt.js';
 import { confirmDelete } from './rueckfrage.js';
-import { loadGallery } from './gallery.js';
+import { loadGallery } from './sammlung.js';
 
 // Set-CSV-Import aus der Galerie: Vorab-Prüfung, Strom des Auftrags und Abfrage, wenn der Strom abreisst.
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)

@@ -30,8 +30,8 @@ import {
 import { fmtDatum, fmtN } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
-import { addLagerParam, addScopeParam, scopeQuery } from './scope.js';
-import { loadFinance } from './finance.js';
+import { addLagerParam, addScopeParam, scopeQuery } from './kontofilter.js';
+import { loadFinance } from './finanzen.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import { kontoWaehrung } from './zustand.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
@@ -357,7 +357,7 @@ let _setFigurenLeer = null; // null: noch nicht geladen
 let _manuelleFigurenLeer = null;
 
 /**
- * Wie bei den Teilen (teileLeerAbgleichen in parts.js): ein Leerzustand für den Reiter, und nur wenn beide
+ * Wie bei den Teilen (teileLeerAbgleichen in teile.js): ein Leerzustand für den Reiter, und nur wenn beide
  * Listen leer sind.
  */
 function figurenLeerAbgleichen() {
@@ -584,7 +584,7 @@ export function manuellQuery(view, sucheId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
   // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum gleichen Versprechen. Es gibt ihn nur
-  // fuer Galerie und Teile (LAGER_VIEWS in scope.js); fuer 'minifigs' haengt addLagerParam nichts an, und
+  // fuer Galerie und Teile (LAGER_VIEWS in kontofilter.js); fuer 'minifigs' haengt addLagerParam nichts an, und
   // deshalb kennt getManualMinifigs ihn auch nicht.
   addLagerParam(p, view);
   const q = G(sucheId)?.value?.trim();

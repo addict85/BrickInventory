@@ -318,7 +318,7 @@ function kenntDisabled(k) {
 }
 
 // <summary> und das Löschkreuz der Kacheln (<span>) kennen kein disabled: Klick und Tastatur lösten sie sonst
-// trotzdem aus. Abgefangen wird vor der Ereignis-Delegation in actions.js.
+// trotzdem aus. Abgefangen wird vor der Ereignis-Delegation in aktionen.js.
 if (typeof document !== 'undefined')
   document.addEventListener(
     'click',

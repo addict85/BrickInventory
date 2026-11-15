@@ -8,8 +8,8 @@ import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild,
 import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './dom.js';
 import { betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
-import { setScrollLabel } from './scrollbar.js';
-import { loadGallery, loadStats } from './gallery.js';
+import { setScrollLabel } from './rollbalken.js';
+import { loadGallery, loadStats } from './sammlung.js';
 import { setzeLetztenImport, angemeldetesKonto, einstellungsStand } from './zustand.js';
 import { esc, html, verbinde } from './escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';

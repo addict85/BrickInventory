@@ -352,7 +352,7 @@ Bestand der Abweichungen (Stand 11.11.2026):
 Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 `haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
 `preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen vor allem in
-Finanzen, Katalog, Teile und Mail (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`)
+Finanzen, Katalog, Teile und Mail (`holePreis`, `setZustand`, `aktuellerMarktpreis`)
 sowie `getSetting`/`getGlobalSetting`/`setGlobalSetting` der Einstellungen;
 `test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
 Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`

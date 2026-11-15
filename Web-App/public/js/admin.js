@@ -246,7 +246,7 @@ export async function loadBricksetQueue() {
 }
 
 /**
- * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/actions.js) den Knopf zuerst
+ * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/aktionen.js) den Knopf zuerst
  * ab. Verdreht ging der Knopf als Setnummer in die Adresse, und der Server fand nie einen Eintrag.
  */
 /** @param {HTMLButtonElement} btn @param {string} setNumber */

@@ -36,9 +36,9 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
 
-  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
-  const kurve = async (period = 'week') => getPortfolioHistory(uid, [uid], period, db, getSetting);
+  const kurve = async (period = 'week') => portfolioVerlauf(uid, [uid], period, db, getSetting);
 
   /** Set anlegen und ihm ab `abTag` Tagen vor heute einen Preisverlauf geben. */
   const setMit = async (i, abTag, preisAmAnfang, preisHeute) => {

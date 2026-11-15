@@ -25,11 +25,7 @@ type Stunden = string | number;
 
 /** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
  * auseinandergelaufen waren. */
-export async function resolveSetCondition(
-  k: FinanzenKontext,
-  uid: number | number[],
-  setNumber: string,
-): Promise<'N' | 'U'> {
+export async function setZustand(k: FinanzenKontext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
   // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto.
   const row = await k.preisCache.setZustandsZaehler(asIds(uid), setNumber);
   return effectiveCondition(row);
@@ -199,7 +195,7 @@ export async function preisOderKeiner(abruf: Promise<PreisDaten>): Promise<Preis
 
 const stunden = (ttlHours: Stunden) => Math.max(1, parseInt(String(ttlHours), 10));
 
-export async function fetchPrice(
+export async function holePreis(
   k: FinanzenKontext,
   setNumber: string,
   condition: string,

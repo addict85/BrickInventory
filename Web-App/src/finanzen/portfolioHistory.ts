@@ -31,7 +31,7 @@ function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: 
 
 /** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt. */
-export async function getPortfolioHistory(
+export async function portfolioVerlauf(
   k: FinanzenKontext,
   viewerId: number,
   idsWahl: Sicht | number[],

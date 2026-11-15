@@ -12,7 +12,7 @@
  *   C  in set-teile.js `if (type === 'part')` → `if (true)` → rot: „Webapp: das
  *      Teil …“ (Feld bei der Figur)
  *   D  maxlength="60" → "80" in lagerortBlock → rot: „die Längengrenze …“
- *   E  in scope.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
+ *   E  in kontofilter.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

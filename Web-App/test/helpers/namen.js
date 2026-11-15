@@ -1,6 +1,6 @@
 /**
  * Ist ein Funktionsname englisch? Gezählt wird das erste Wort (das Verb), weil
- * es den Namen trägt: `fetchPrice`, `getSetInfo`, `isDecodable`. „set“ allein
+ * es den Namen trägt: `holePreis`, `getSetInfo`, `isDecodable`. „set“ allein
  * zählt nicht, es ist im Bereich das (LEGO-)Set (`setErfassen`); englisch ist
  * es erst mit einem englischen Wort danach (`setUserSetting`).
  */

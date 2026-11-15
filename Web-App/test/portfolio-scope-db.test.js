@@ -1,7 +1,7 @@
 /**
  * Die Portfoliokurve gehört zum GEWÄHLTEN Konto, nicht zum Betrachter.
  *
- * Gegenprobe (durchgeführt): in getPortfolioHistory statt `ids` wieder
+ * Gegenprobe (durchgeführt): in portfolioVerlauf statt `ids` wieder
  * `viewerId` als Blickfeld benutzt → beide Kurven werden gleich.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -72,11 +72,11 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
     }
   }
 
-  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
   const { getSetting } = _req('src/einstellungen/settings.js');
   const kurve = async uids => {
     // Betrachter ist IMMER das Hauptkonto — genau darum geht es.
-    const r = await getPortfolioHistory(hauptId, uids, 'week', db, getSetting);
+    const r = await portfolioVerlauf(hauptId, uids, 'week', db, getSetting);
     return (r?.points || []).map(p => p.value);
   };
 

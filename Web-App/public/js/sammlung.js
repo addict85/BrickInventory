@@ -37,8 +37,8 @@ import { fmtDatum, fmtBig, fmtGeld, fmtN, istGeschenk } from './format.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
-import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './scope.js';
-import { loadParts, loadManualParts } from './parts.js';
+import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './kontofilter.js';
+import { loadParts, loadManualParts } from './teile.js';
 import { loadMinifigs } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import {
@@ -452,7 +452,7 @@ async function setsSortieren(feld) {
 // Add set via SSE stream
 G('btn-add').onclick = doAddSet;
 G('add-num').addEventListener('input', unbekanntZuruecksetzen);
-// Enter aus jedem Feld schickt ab: Das Formular nennt btn-add in data-submit (actions.js).
+// Enter aus jedem Feld schickt ab: Das Formular nennt btn-add in data-submit (aktionen.js).
 G('add-num').form?.addEventListener('reset', unbekanntZuruecksetzen);
 /**
  * Eine Nummer, die der Katalog nicht kennt, wird erst nach Rückfrage angelegt: Sonst entsteht aus einem

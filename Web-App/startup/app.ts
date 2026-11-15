@@ -162,7 +162,7 @@ const sicherheitsKoepfe =
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        // Ohne 'unsafe-inline': Alle Handler laufen über js/actions.js.
+        // Ohne 'unsafe-inline': Alle Handler laufen über js/aktionen.js.
         "script-src 'self'",
         // Stile setzt js/stile.js per CSSOM; inline nur das Startgerüst, per Hash.
         `style-src 'self'${stilHashDerStartseite(produktion) ? ' ' + stilHashDerStartseite(produktion) : ''}`,

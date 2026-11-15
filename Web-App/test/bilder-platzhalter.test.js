@@ -6,7 +6,7 @@
  * Browser es tut (erst Wiederholung, dann Originalgrösse, dann Platzhalter).
  *
  * Gegenproben (am 28.10. gemessen):
- *   A  in actions.js statt bildPlatzhalter() wieder removeAttribute('src')
+ *   A  in aktionen.js statt bildPlatzhalter() wieder removeAttribute('src')
  *      → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
  *   B  in bildTag() (bilder.js) das alt weggelassen → rot: „alt an jedem Bild"
  *   C  (03.11.) platzhalterInhalt('set') wieder das Sinnbild statt

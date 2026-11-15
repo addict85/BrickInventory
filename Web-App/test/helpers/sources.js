@@ -482,7 +482,7 @@ function adminQuelle() {
     'diagramme.js',
     'fadenkreuz.js',
     'rueckfrage.js',
-    'acquisition-modals.js',
+    'kauf-dialoge.js',
     'manuell-detail.js',
     'erfassung-zustand.js',
     'kaufpreis-anzeige.js',
@@ -591,8 +591,8 @@ function coreQuelle() {
     'konto.js',
     'fortschritt.js',
     'monitor.js',
-    'scope.js',
-    'scrollbar.js',
+    'kontofilter.js',
+    'rollbalken.js',
     'sitzung.js',
   ]
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
@@ -932,7 +932,7 @@ function anmeldeQuelle() {
 
 /** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
 const ANSICHTEN = {
-  einstellungen: ['settings.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
+  einstellungen: ['einstellungen.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
 };
 
 /** Alle Dateien einer Ansicht (Schlüssel aus ANSICHTEN) als EIN Text. */

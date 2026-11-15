@@ -6,7 +6,7 @@ import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
 import { angemeldetesKonto, letzterImport } from './zustand.js';
 import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
-import { initCatalog, katalogZuruecksetzen } from './catalog.js';
+import { initCatalog, katalogZuruecksetzen } from './katalog.js';
 import { pollJobStatus, stoppeJobAbfrage } from './admin.js';
 import { ladeAlarmUebersicht } from './alarme.js';
 import { ladeLagerortVerwaltung } from './lagerorte.js';
@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadRateLimitStats,
   loadSettings,
-} from './settings.js';
+} from './einstellungen.js';
 import { ladeTls, loadTokens } from './zugaenge.js';
 import { loadHousehold } from './haushalt.js';
 import { ladeGutscheine } from './gutscheine.js';
@@ -25,14 +25,14 @@ import { ladeMerkliste, merklisteZuruecksetzen } from './merkliste.js';
 import { ladePapierkorb } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';
-import { loadFinance } from './finance.js';
-import { loadGallery, renderGallery } from './gallery.js';
-import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './parts.js';
+import { loadFinance } from './finanzen.js';
+import { loadGallery, renderGallery } from './sammlung.js';
+import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
 import { meldeAnsicht, meldeFilter } from './router.js';
-import { setLagerModus, setScopeMode } from './scope.js';
+import { setLagerModus, setScopeMode } from './kontofilter.js';
 import { sammlungUntertitel } from './konten-orte.js';
-import { setScrollLabel } from './scrollbar.js';
+import { setScrollLabel } from './rollbalken.js';
 import { tRaw } from '../i18n.js';
 import { abonniere } from './ereignisse.js';
 import { esc } from './escapen.js';
