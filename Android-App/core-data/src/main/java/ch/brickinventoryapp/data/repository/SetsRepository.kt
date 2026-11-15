@@ -1,10 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.vertrag.AddSetResponse
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.LagerortResponse
-import ch.brickinventoryapp.vertrag.MoveSetResponse
-import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -20,11 +17,11 @@ interface SetsRepository {
                        condition: Zustand? = null, ownerUserId: Int? = null,
                        storage: String? = null): Ergebnis<AddSetResponse>
 
-    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<GenericResponse>
+    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<Int?>
 
-    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse>
+    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<Int?>
 
-    suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse>
+    suspend fun deleteSet(setNumber: String): Ergebnis<Unit>
 
     /**
      * Die Galerie aus der Ablage nach Suche, Thema und Lagerort, sortiert wie am
@@ -32,14 +29,14 @@ interface SetsRepository {
      * gewählte Konten ist ein eigenes Lesemodell (Kontosicht).
      */
     fun beobachteSets(suche: String? = null, thema: String? = null, lagerort: String? = null,
-                      sort: Setsortierung? = null): Flow<Lokal<SetItem>>
+                      sort: Setsortierung? = null): Flow<Lokal<SetAnsicht>>
 
     /** Alle Seiten der ungefilterten Galerie in die Ablage; gezeigt wird die Ablage. */
     suspend fun aktualisiereSets(): Ergebnis<Unit>
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
-                        acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>
+                        acquisitionIds: List<Int>? = null): Ergebnis<Unit>
 
     /** Lagerort eines Sets setzen. Leerer Text löscht ihn. */
-    suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse>
+    suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit>
 }

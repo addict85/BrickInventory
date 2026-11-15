@@ -11,7 +11,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
-import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -92,7 +91,7 @@ class SetDetailViewModel @Inject constructor(
      * Detail geladen ist. Aus derselben Quelle statt aus dem ViewModel der Galerie.
      */
     val vorschau: StateFlow<SetAnsicht?> = sets.beobachteSets()
-        .map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
+        .map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(VORSCHAU_HALTEN_MS), null)
 
     // Je Abschnitt ein Abruf: Ein neuer bricht den laufenden ab, damit keine späte
@@ -196,11 +195,11 @@ class SetDetailViewModel @Inject constructor(
     override fun aendereMengeUm(setNumber: String, schritt: Int) =
         mengeAendern(setNumber) { sets.aendereMengeUm(setNumber, schritt) }
 
-    private fun mengeAendern(setNumber: String, aufruf: suspend () -> Ergebnis<GenericResponse>) {
+    private fun mengeAendern(setNumber: String, aufruf: suspend () -> Ergebnis<Int?>) {
         viewModelScope.launch {
             when (val r = aufruf()) {
                 is Ergebnis.Success -> {
-                    r.data.quantity?.let { echt ->
+                    r.data?.let { echt ->
                         _setDetailState.update { st ->
                             if (st.setDetail?.setNumber == setNumber)
                                 st.copy(setDetail = st.setDetail.copy(quantity = echt)) else st
@@ -218,9 +217,7 @@ class SetDetailViewModel @Inject constructor(
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
-                is Ergebnis.Success -> {
-                    if (!r.data.success) meldungen.zeige(r.data.error ?: "")
-                }
+                is Ergebnis.Success -> Unit
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }

@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.sammlung.ui.Galerie
@@ -47,14 +45,14 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieTest {
 
-    private fun set(nr: Int, menge: Int = 1, thema: String? = null) = SetItem(setNumber = "$nr-1", quantity = menge, theme = thema)
+    private fun set(nr: Int, menge: Int = 1, thema: String? = null) = SetAnsicht(setNumber = "$nr-1", quantity = menge, theme = thema)
 
     private fun kurz(l: List<SetAnsicht>) = l.map { "${it.setNumber}x${it.quantity}" }
 
     /** Die Quelle je Thema; [aktualisiert] schreibt mit, für welches Thema gefüllt wurde. */
     private class Quelle(
-        start: Lokal<SetItem> = Lokal(
-            listOf(SetItem(setNumber = "1-1"), SetItem(setNumber = "2-1", theme = "Star Wars")),
+        start: Lokal<SetAnsicht> = Lokal(
+            listOf(SetAnsicht(setNumber = "1-1"), SetAnsicht(setNumber = "2-1", theme = "Star Wars")),
             1L,
         ),
     ) {
@@ -175,7 +173,7 @@ class GalerieTest {
 
     @Test
     fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
-        val st = GalleryUiState(sets = listOf(set(1).alsAnsicht()), galleryFehler = Meldung.Text("Netz"))
+        val st = GalleryUiState(sets = listOf(set(1)), galleryFehler = Meldung.Text("Netz"))
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
     }
 }

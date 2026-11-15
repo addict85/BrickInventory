@@ -7,11 +7,11 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 @@ -75,7 +75,7 @@
-         }
+         }.zugesagt({ it.success }, { it.error }) { }
  
-     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
+     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit> =
 -        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
 +        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage) }) {
              sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(storage = ort)) }
-         }
+         }.zugesagt({ it.success }, { it.error }) { }
  }

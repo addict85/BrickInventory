@@ -1,11 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +32,7 @@ internal class Galerie(
      * Ablage, über gewählte Konten die Kontosicht. Was offline geändert wird, steht
      * so sofort da.
      */
-    private val quelle: (GalleryUiState) -> Flow<Lokal<SetItem>>,
+    private val quelle: (GalleryUiState) -> Flow<Lokal<SetAnsicht>>,
     /** Füllt die Quelle des Zustands; die Antwort selbst zeigt niemand. */
     private val aktualisiere: suspend (GalleryUiState) -> Ergebnis<Unit>,
     private val holeKennzahlen: suspend () -> Ergebnis<KennzahlenAnsicht?>,
@@ -64,7 +63,7 @@ internal class Galerie(
             liste.collect { l ->
                 if (l.stand == null) return@collect
                 _state.update {
-                    it.copy(sets = l.liste.map { s -> s.alsAnsicht() }, galleryTotal = l.liste.size,
+                    it.copy(sets = l.liste, galleryTotal = l.liste.size,
                         galleryThemes = if (it.galleryQuery.isBlank() && it.galleryTheme.isBlank()) themenAus(l.liste) else it.galleryThemes)
                 }
             }
@@ -129,7 +128,7 @@ internal class Galerie(
 }
 
 /** Die Themen der abgelegten Sets für den Filter; der Server schickt sie sonst mit Seite 1. */
-private fun themenAus(sets: List<SetItem>): List<String> =
+private fun themenAus(sets: List<SetAnsicht>): List<String> =
     sets.mapNotNull { it.theme?.takeIf(String::isNotBlank) }.distinct().sorted()
 
 /** Was die Galerie zeigt, wenn noch keine Kachel da ist — oder eben die Liste. */
