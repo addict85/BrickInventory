@@ -113,8 +113,8 @@ class WidgetArbeiter @AssistedInject constructor(
             SammlungsWidget().updateAll(ctx)
             return true
         }
-        val pnl = (finanzen.getPnl() as? Ergebnis.Success)?.data
-        val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Success)?.data
+        val pnl = (finanzen.getPnl() as? Ergebnis.Erfolg)?.data
+        val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Erfolg)?.data
         widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
         SammlungsWidget().updateAll(ctx)
         return true

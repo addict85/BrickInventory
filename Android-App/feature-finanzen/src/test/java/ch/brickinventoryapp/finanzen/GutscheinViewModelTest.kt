@@ -5,8 +5,8 @@ import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.testing.testGutscheineRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

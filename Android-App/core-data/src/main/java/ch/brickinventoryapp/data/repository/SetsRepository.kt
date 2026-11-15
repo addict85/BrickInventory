@@ -18,7 +18,7 @@ interface SetsRepository {
                        condition: Zustand? = null, ownerUserId: Int? = null,
                        storage: String? = null): Ergebnis<SetErfasst>
 
-    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<Int?>
+    suspend fun setzeMenge(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<Int?>
 
     suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<Int?>
 

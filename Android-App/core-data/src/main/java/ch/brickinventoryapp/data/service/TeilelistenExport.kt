@@ -9,7 +9,7 @@ import java.io.File
 /** Warum ein PDF-Export scheiterte; den Satz bildet die Oberfläche. */
 sealed interface PdfFehlschlag {
     /** Ein Abruf scheiterte; die Anzeige formuliert ihn wie jeden anderen Abruf. */
-    data class Abruf(val fehler: Ergebnis.Error) : PdfFehlschlag
+    data class Abruf(val fehler: Ergebnis.Fehler) : PdfFehlschlag
 
     /** Der Server meldet den Auftrag als gescheitert, mit seinem Satz, wenn er einen schickte. */
     data class Auftrag(val satz: String?) : PdfFehlschlag

@@ -15,7 +15,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 /**
  * Die Verwaltung des Servers (nur Verwalter), in Ansichten: Das Wire-Format bleibt
  * hinter der Umsetzung (VerwaltungRepositoryImpl). Aktionen ohne verwertbare Antwort
- * liefern Unit; ein `success: false` des Servers kommt als [Ergebnis.Error.Absage].
+ * liefern Unit; ein `success: false` des Servers kommt als [Ergebnis.Fehler.Absage].
  */
 interface VerwaltungRepository {
     suspend fun importiereCsv(art: CsvImportArt, dateiname: String, inhalt: ByteArray): Ergebnis<CsvErgebnisAnsicht>

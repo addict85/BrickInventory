@@ -8,10 +8,10 @@ index 694bfff..3eb0dd9 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
 @@ -84,7 +84,6 @@ internal class Listenfolge<S>(
-     fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Error) -> S) {
+     fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Fehler) -> S) {
          when {
-             r is Ergebnis.Success -> zustand.update { fertig(it, null) }
--            r is Ergebnis.Error && r.transient && stand != null -> zustand.update { fertig(it, stand) }
-             r is Ergebnis.Error -> {
+             r is Ergebnis.Erfolg -> zustand.update { fertig(it, null) }
+-            r is Ergebnis.Fehler && r.transient && stand != null -> zustand.update { fertig(it, stand) }
+             r is Ergebnis.Fehler -> {
                  zustand.update { fehler(it, r) }
                  meldeFehler(r)

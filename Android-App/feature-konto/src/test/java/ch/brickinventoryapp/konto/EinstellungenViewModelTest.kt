@@ -10,8 +10,8 @@ import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import kotlinx.coroutines.Dispatchers

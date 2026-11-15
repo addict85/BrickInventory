@@ -69,11 +69,11 @@ class GalerieTest {
      */
     private fun TestScope.vordergrund() = CoroutineScope(coroutineContext + Job(backgroundScope.coroutineContext[Job]))
 
-    private fun TestScope.galerie(q: Quelle, ergebnis: () -> Ergebnis<Unit> = { Ergebnis.Success(Unit) }) = Galerie(
+    private fun TestScope.galerie(q: Quelle, ergebnis: () -> Ergebnis<Unit> = { Ergebnis.Erfolg(Unit) }) = Galerie(
         scope = vordergrund(),
         quelle = { st -> q.ablage.map { l -> l.copy(liste = l.liste.filter { st.galleryTheme.isBlank() || it.theme == st.galleryTheme }) } },
         aktualisiere = { st -> q.aktualisiert += st.galleryTheme; delay(10); ergebnis() },
-        holeKennzahlen = { Ergebnis.Success(null) },
+        holeKennzahlen = { Ergebnis.Erfolg(null) },
         meldeFehler = {},
         vergissScroll = {},
     )
@@ -96,7 +96,7 @@ class GalerieTest {
         val alt = MutableStateFlow(Lokal(listOf(set(1)), 1L))
         val neu = MutableStateFlow(Lokal(listOf(set(2, thema = "Star Wars")), 1L))
         val g = Galerie(scope = vordergrund(), quelle = { st -> if (st.galleryTheme.isBlank()) alt else neu },
-            aktualisiere = { Ergebnis.Success(Unit) }, holeKennzahlen = { Ergebnis.Success(null) },
+            aktualisiere = { Ergebnis.Erfolg(Unit) }, holeKennzahlen = { Ergebnis.Erfolg(null) },
             meldeFehler = {}, vergissScroll = {})
         g.laden(); advanceUntilIdle()
         g.setzeThema("Star Wars"); advanceUntilIdle()
@@ -129,7 +129,7 @@ class GalerieTest {
 
     @Test
     fun `ein Ladefehler wird zur Fehleranzeige mit Grund`() = runTest {
-        val g = galerie(Quelle(Lokal(emptyList(), null))) { Ergebnis.Error.Server(504, "Zeitüberschreitung") }
+        val g = galerie(Quelle(Lokal(emptyList(), null))) { Ergebnis.Fehler.Server(504, "Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
         assertEquals(Meldung.Text("Zeitüberschreitung"), st.abruf.fehlerMeldung)
@@ -139,7 +139,7 @@ class GalerieTest {
     @Test
     fun `ein erfolgreicher neuer Versuch raeumt den Fehler weg`() = runTest {
         var kaputt = true
-        val g = galerie(Quelle()) { if (kaputt) Ergebnis.Error.Server(503, "Netz") else Ergebnis.Success(Unit) }
+        val g = galerie(Quelle()) { if (kaputt) Ergebnis.Fehler.Server(503, "Netz") else Ergebnis.Erfolg(Unit) }
         g.laden(); advanceUntilIdle()
         kaputt = false
         g.laden(); advanceUntilIdle()
@@ -149,7 +149,7 @@ class GalerieTest {
 
     @Test
     fun `ohne Netz bleibt die Quelle stehen, mit ihrem Stand`() = runTest {
-        val g = galerie(Quelle(Lokal(listOf(set(7)), 5L))) { Ergebnis.Error.Netz() }
+        val g = galerie(Quelle(Lokal(listOf(set(7)), 5L))) { Ergebnis.Fehler.Netz() }
         g.laden(); advanceUntilIdle()
         assertEquals(listOf("7-1x1"), kurz(g.state.value.sets))
         assertNull("ohne Netz bleibt die Ablage stehen", g.state.value.abruf.fehlerMeldung)

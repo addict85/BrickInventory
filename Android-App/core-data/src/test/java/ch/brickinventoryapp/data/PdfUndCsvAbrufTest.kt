@@ -41,9 +41,9 @@ class PdfUndCsvAbrufTest {
     private fun abriss() = MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)
     private fun abgewiesen() = TestApi.antwort("""{"success":false,"error":"Token abgelaufen"}""", code = 401)
 
-    private fun <T> fehler(r: Ergebnis<T>): Ergebnis.Error {
-        assertTrue("erwartet ein Fehler, war $r", r is Ergebnis.Error)
-        return r as Ergebnis.Error
+    private fun <T> fehler(r: Ergebnis<T>): Ergebnis.Fehler {
+        assertTrue("erwartet ein Fehler, war $r", r is Ergebnis.Fehler)
+        return r as Ergebnis.Fehler
     }
 
     @Test
@@ -62,7 +62,7 @@ class PdfUndCsvAbrufTest {
         val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in alle) {
             val f = fehler(r)
-            assertTrue("$f ist keine Abweisung", f is Ergebnis.Error.Abgewiesen)
+            assertTrue("$f ist keine Abweisung", f is Ergebnis.Fehler.Abgewiesen)
             assertEquals("Token abgelaufen", f.message)
         }
     }
@@ -73,12 +73,12 @@ class PdfUndCsvAbrufTest {
         server.enqueue(TestApi.antwort("""{"success":true,"status":"running","etaSeconds":12,"missingImages":3}"""))
         server.enqueue(TestApi.antwort("""{"success":true,"jobId":""}"""))
 
-        assertEquals(Ergebnis.Success("j7"), sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())))
-        val stand = (sets.getPdfJobStatus("j7") as Ergebnis.Success).data
+        assertEquals(Ergebnis.Erfolg("j7"), sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())))
+        val stand = (sets.getPdfJobStatus("j7") as Ergebnis.Erfolg).data
         assertEquals(Laufstatus.LAEUFT, stand.status)
         assertEquals(12.0, stand.restSekunden)
         assertNull(stand.fehler)
-        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())) is Ergebnis.Error.LeereAntwort)
+        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())) is Ergebnis.Fehler.LeereAntwort)
 
         val pfade = List(3) { server.takeRequest().path }
         assertEquals(listOf("/api/v1/sets/partslist-pdf", "/api/v1/sets/partslist-pdf/status/j7", "/api/v1/sets/partslist-pdf"), pfade)

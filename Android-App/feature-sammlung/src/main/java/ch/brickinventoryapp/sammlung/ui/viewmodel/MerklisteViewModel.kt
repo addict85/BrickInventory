@@ -153,8 +153,8 @@ class MerklisteViewModel @Inject constructor(
             // Der Abruf füllt nur die Quelle; gezeigt wird sie (merklisteState).
             val r = konto?.let { kontosicht.merkliste.aktualisiere(it) } ?: merkliste.aktualisiereMerkliste()
             when (r) {
-                is Ergebnis.Success -> _merklisteState.update { it.copy(abruf = Laden.Daten(Unit, r.stand)) }
-                is Ergebnis.Error -> {
+                is Ergebnis.Erfolg -> _merklisteState.update { it.copy(abruf = Laden.Daten(Unit, r.stand)) }
+                is Ergebnis.Fehler -> {
                     _merklisteState.update { it.copy(abruf = Laden.Fehler(fehlerklasse(r), fehlerMeldung(r))) }
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
                 }
@@ -196,11 +196,11 @@ class MerklisteViewModel @Inject constructor(
         if (vonId == zuId) return
         viewModelScope.launch {
             when (val r = merkliste.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     meldungen.zeige(meldungen.text(
                         if (r.data) R.string.wanted_already else R.string.vm_saved))
                 }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -232,8 +232,8 @@ class MerklisteViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = merkliste.loescheMerkposten(v.setNumber, v.zustand, v.besitzer)) {
                 // „genommen“ stand schon in der Snackbar mit „Rückgängig“; die Ablage hat ihn nicht mehr.
-                is Ergebnis.Success -> Unit
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Erfolg -> Unit
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -249,12 +249,12 @@ class MerklisteViewModel @Inject constructor(
             when (val r = merkliste.uebernimmMerkposten(setNumber, zustand, anzahl, preis,
                                                    erfasstAls, besitzer,
                                                    lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     meldungen.zeige(meldungen.text(
                         if (r.data) R.string.wanted_taken_existing
                         else R.string.wanted_taken))
                 }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -268,11 +268,11 @@ class MerklisteViewModel @Inject constructor(
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, abruf = Laden.Laedt)
             if (merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
-            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)?.data
+            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Erfolg)?.data
             _merkpostenDetailState.update { it.copy(katalog = katalog) }
-            val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Success)?.data
+            val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Erfolg)?.data
             _merkpostenDetailState.update { it.copy(preise = preise) }
-            val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)?.data
+            val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Erfolg)?.data
             _merkpostenDetailState.update { it.copy(historie = historie, abruf = Laden.Daten(Unit)) }
         }
     }
@@ -314,6 +314,6 @@ class MerklisteViewModel @Inject constructor(
 internal suspend fun merkpostenAnlegen(
     merkliste: MerklisteRepository, texte: Texte, setNumber: String, zustand: Zustand, besitzer: Int?,
 ): String? = when (val r = merkliste.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-    is Ergebnis.Success -> texte.text(if (r.data) R.string.wanted_added else R.string.wanted_already)
-    is Ergebnis.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
+    is Ergebnis.Erfolg -> texte.text(if (r.data) R.string.wanted_added else R.string.wanted_already)
+    is Ergebnis.Fehler -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
 }

@@ -142,22 +142,22 @@ class AusgangAbgleichTest {
 
     @Test
     fun `eine abgelaufene Sitzung verwirft nichts`() {
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error.Abgewiesen()))
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error.Server(429)))
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error.Server(503)))
-        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Error.Netz()))
-        assertEquals(Sendeergebnis.Abgelehnt("nein", 400), einordnen(Ergebnis.Error.Server(400, "nein")))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Fehler.Abgewiesen()))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Fehler.Server(429)))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Fehler.Server(503)))
+        assertEquals(Sendeergebnis.Spaeter, einordnen(Ergebnis.Fehler.Netz()))
+        assertEquals(Sendeergebnis.Abgelehnt("nein", 400), einordnen(Ergebnis.Fehler.Server(400, "nein")))
         assertEquals("2xx ohne Rumpf ist angekommen",
-            Sendeergebnis.Angenommen, einordnen(Ergebnis.Error.LeereAntwort()))
+            Sendeergebnis.Angenommen, einordnen(Ergebnis.Fehler.LeereAntwort()))
     }
 
     @Test
     fun `beim Löschen ist „gibt es nicht mehr“ angekommen, anderes nicht`() {
-        assertEquals(Sendeergebnis.Angenommen, einordnenLoeschen(Ergebnis.Error.Server(404, "weg")))
-        assertEquals(Sendeergebnis.Abgelehnt("nein", 403), einordnenLoeschen(Ergebnis.Error.Server(403, "nein")))
-        assertEquals(Sendeergebnis.Spaeter, einordnenLoeschen(Ergebnis.Error.Netz()))
+        assertEquals(Sendeergebnis.Angenommen, einordnenLoeschen(Ergebnis.Fehler.Server(404, "weg")))
+        assertEquals(Sendeergebnis.Abgelehnt("nein", 403), einordnenLoeschen(Ergebnis.Fehler.Server(403, "nein")))
+        assertEquals(Sendeergebnis.Spaeter, einordnenLoeschen(Ergebnis.Fehler.Netz()))
         assertEquals("ausserhalb des Löschens bleibt 404 eine Ablehnung",
-            Sendeergebnis.Abgelehnt("weg", 404), einordnen(Ergebnis.Error.Server(404, "weg")))
+            Sendeergebnis.Abgelehnt("weg", 404), einordnen(Ergebnis.Fehler.Server(404, "weg")))
     }
 
     @Test

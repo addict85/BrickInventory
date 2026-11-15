@@ -13,7 +13,7 @@ sealed class Ergebnis<out T> {
      * wie ein frischer. [gepuffert]: Die Änderung liegt im Ausgang und geht raus,
      * sobald der Server erreichbar ist; [data] ist dann ein Ersatz, keine Serverantwort.
      */
-    data class Success<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Ergebnis<T>() {
+    data class Erfolg<T>(val data: T, val stand: Long? = null, val gepuffert: Boolean = false) : Ergebnis<T>() {
         val veraltet: Boolean get() = stand != null
     }
     /**
@@ -22,7 +22,7 @@ sealed class Ergebnis<out T> {
      * Build. Den Satz bildet die Anzeige (AppTexte.meldung()), die Datenschicht hat
      * keinen Context und kann nicht übersetzen.
      */
-    sealed class Error : Ergebnis<Nothing>() {
+    sealed class Fehler : Ergebnis<Nothing>() {
         /** Der Satz des Servers zum Durchreichen, leer ohne einen; er kennt seine Fälle genauer. */
         open val message: String get() = ""
 
@@ -39,42 +39,42 @@ sealed class Ergebnis<out T> {
         }
 
         /** Host nicht auflösbar, Verbindung abgelehnt oder unterwegs abgerissen. */
-        data class Netz(override val technisch: String? = null) : Error()
+        data class Netz(override val technisch: String? = null) : Fehler()
 
-        data object Zeitueberschreitung : Error()
+        data object Zeitueberschreitung : Fehler()
 
         /** Abriss mitten im Ereignisstrom: Ob der Server schon schrieb, ist offen — darum nicht vorübergehend. */
-        data object Abgebrochen : Error()
+        data object Abgebrochen : Fehler()
 
         /** HTTP 2xx ohne Rumpf. */
-        data class LeereAntwort(override val technisch: String? = null) : Error()
+        data class LeereAntwort(override val technisch: String? = null) : Fehler()
 
         /** HTTP 401: Der Token gilt nicht (mehr). Kein Netzproblem, das ein Wiederholen behebt. */
-        data class Abgewiesen(override val message: String = "", override val code: Fehlercode? = null) : Error()
+        data class Abgewiesen(override val message: String = "", override val code: Fehlercode? = null) : Fehler()
 
         /** Jeder andere HTTP-Fehlerstatus, mit Satz und Code des Servers, wenn er welche schickte. */
         data class Server(
             val status: Int,
             override val message: String = "",
             override val code: Fehlercode? = null,
-        ) : Error()
+        ) : Fehler()
 
         /**
          * HTTP 2xx mit `success: false`: Der Server hat geantwortet und abgelehnt. Als Fehler,
          * damit kein Aufrufer ein Erfolgsfeld prüfen muss, das es nur im Wire-Format gibt.
          */
-        data class Absage(override val message: String = "", override val code: Fehlercode? = null) : Error()
+        data class Absage(override val message: String = "", override val code: Fehlercode? = null) : Fehler()
 
         /** Die Server-Adresse ist http; die App sendet nur über https (util/KlartextAbgelehnt). */
-        data object Klartext : Error()
+        data object Klartext : Fehler()
 
         /** Jede andere Ausnahme, ohne nähere Einordnung. */
-        data class Unbekannt(override val technisch: String? = null) : Error()
+        data class Unbekannt(override val technisch: String? = null) : Fehler()
     }
 }
 
 /** Die Daten eines Erfolgs umformen; Stand und Puffer bleiben, ein Fehler bleibt derselbe. */
 internal inline fun <T, R> Ergebnis<T>.abgebildet(f: (T) -> R): Ergebnis<R> = when (this) {
-    is Ergebnis.Success -> Ergebnis.Success(f(data), stand, gepuffert)
-    is Ergebnis.Error -> this
+    is Ergebnis.Erfolg -> Ergebnis.Erfolg(f(data), stand, gepuffert)
+    is Ergebnis.Fehler -> this
 }

@@ -269,7 +269,7 @@ internal class KontextTexte(
         if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
     override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
         ctx.resources.getQuantityString(id, anzahl, *args)
-    override fun meldung(fehler: Ergebnis.Error): String {
+    override fun meldung(fehler: Ergebnis.Fehler): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler)
         return fehlerTextArgument(fehler)?.let { text(id, it) } ?: text(id)

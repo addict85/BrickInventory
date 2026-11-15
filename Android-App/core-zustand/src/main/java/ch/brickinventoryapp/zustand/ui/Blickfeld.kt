@@ -105,7 +105,7 @@ class BlickfeldDienst @Inject constructor(
      * ohne dass ein sichtbarer Filter es erklärt.
      */
     override suspend fun ladeMitglieder() {
-        val r = haushalt.getHouseholdMembers() as? Ergebnis.Success ?: return
+        val r = haushalt.getHouseholdMembers() as? Ergebnis.Erfolg ?: return
         val mitglieder = r.data
         val erlaubt = kontoOptionen(mitglieder, "", "").map { it.first }
         _konten.update { st ->
@@ -121,14 +121,14 @@ class BlickfeldDienst @Inject constructor(
     /** Die belegten Orte im Blickfeld der Galerie — sie speisen den Lagerfilter. */
     override suspend fun ladeLagerorte() {
         val r = teile.getLagerorte(kontoFuer(ScopeFilter.View.GALLERY))
-        val orte = (r as? Ergebnis.Success)?.data ?: return
+        val orte = (r as? Ergebnis.Erfolg)?.data ?: return
         _lager.update { it.copy(orte = orte) }
     }
 
     /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
     override suspend fun ladeVorrat(besitzer: List<Int>) {
         val r = teile.getLagerortVorrat(besitzer)
-        val orte = (r as? Ergebnis.Success)?.data ?: return
+        val orte = (r as? Ergebnis.Erfolg)?.data ?: return
         _lager.update { it.copy(vorrat = orte) }
     }
 

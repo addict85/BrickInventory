@@ -37,7 +37,7 @@ import ch.brickinventoryapp.testing.text
  *      einem Auftrag tun darf, steht schon fest“
  *   B  in MonitoringViewModel.nachAuftrag das Neuladen entfernt → rot „Abbrechen
  *      meldet Erfolg und lädt neu“ (nur eine GET-Anfrage)
- *   C  bei Ergebnis.Error den Erfolgssatz statt fehlerMeldung → rot „ein 409
+ *   C  bei Ergebnis.Fehler den Erfolgssatz statt fehlerMeldung → rot „ein 409
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
  * Gegenprobe: melde()

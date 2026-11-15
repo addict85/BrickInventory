@@ -190,7 +190,7 @@ class SitzungsDienst @Inject constructor(
     private suspend fun ladeDesign() {
         if (prefs.serverUrlJetzt().isBlank()) return
         val r = konto.getAppTheme()
-        if (r is Ergebnis.Success) r.data.wirksam?.let(sitzung::setzeDesign)
+        if (r is Ergebnis.Erfolg) r.data.wirksam?.let(sitzung::setzeDesign)
     }
 
     /** Ohne Zeitlimit: Der erste Start des Servers kann viele Minuten dauern. */
@@ -198,7 +198,7 @@ class SitzungsDienst @Inject constructor(
         if (prefs.serverUrlJetzt().isBlank()) return
         while (true) {
             val r = verwaltung.getStartupStatus()
-            if (r !is Ergebnis.Success || r.data.bereit) {
+            if (r !is Ergebnis.Erfolg || r.data.bereit) {
                 sitzung.serverstartGeaendert(null)
                 return
             }

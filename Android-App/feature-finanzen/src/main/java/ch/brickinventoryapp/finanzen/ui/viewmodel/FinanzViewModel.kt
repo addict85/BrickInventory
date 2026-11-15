@@ -87,22 +87,22 @@ class FinanzViewModel @Inject constructor(
             _financeState.update { it.copy(bewertung = Laden.Laedt) }
             val konto = filter.kontoFuer(ScopeFilter.View.FINANCE)
             when (val r = finanzen.getValuation(konto)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     _financeState.update { it.copy(valuation = r.data, bewertung = Laden.Daten(Unit)) }
                     // Die Währung des Kontos kommt mit der Bewertung; das
                     // AppViewModel merkt sie sich für den nächsten Start.
                     sitzung.waehrungUebernommen(r.data.currency)
                 }
-                is Ergebnis.Error -> {
+                is Ergebnis.Fehler -> {
                     _financeState.update { it.copy(bewertung = ladefehler(r)) }
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 }
             }
-            (finanzen.getPartsValuation(konto) as? Ergebnis.Success)
+            (finanzen.getPartsValuation(konto) as? Ergebnis.Erfolg)
                 ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
-            (finanzen.getMinifigsValuation(konto) as? Ergebnis.Success)
+            (finanzen.getMinifigsValuation(konto) as? Ergebnis.Erfolg)
                 ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
-            (finanzen.getPnl(konto) as? Ergebnis.Success)
+            (finanzen.getPnl(konto) as? Ergebnis.Erfolg)
                 ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
         }
     }
@@ -117,14 +117,14 @@ class FinanzViewModel @Inject constructor(
                 historyPoints = emptyList(), historyYAxis = emptyList(), historyTage = emptyList(),
                 historyPeriodChangePct = null) }
             when (val r = finanzen.getPortfolioHistory(period, filter.kontoFuer(ScopeFilter.View.FINANCE))) {
-                is Ergebnis.Success -> _financeState.update { it.copy(
+                is Ergebnis.Erfolg -> _financeState.update { it.copy(
                     verlauf                = Laden.Daten(Unit),
                     historyPeriodChangePct = r.data.veraenderungProzent,
                     historyPoints          = r.data.punkte,
                     historyYAxis           = r.data.yAchse,
                     historyTage            = r.data.tage,
                     historyWaehrung        = r.data.waehrung) }
-                is Ergebnis.Error -> _financeState.update { it.copy(verlauf = ladefehler(r)) }
+                is Ergebnis.Fehler -> _financeState.update { it.copy(verlauf = ladefehler(r)) }
             }
         }
     }
