@@ -8,7 +8,7 @@ den Commits, nicht hier.
 
 | Wert | Wo |
 |---|---|
-| Konten, Passwort-Hashes (bcrypt), Sitzungen, API-Tokens (gehasht), Passkeys (öffentliche Schlüssel) | PostgreSQL |
+| Konten, Passwort-Hashes (argon2id, alte noch bcrypt), Sitzungen, API-Tokens (gehasht), Passkeys (öffentliche Schlüssel) | PostgreSQL |
 | Interne CA (Wurzel und Schlüssel), TLS-Zertifikate | `caddy/data/` (nur root) |
 | Sammlung, Kaufpreise, Finanzen je Konto und Haushalt | PostgreSQL |
 | Geheimnisse: Gutschein-PIN, TOTP, API-Schlüssel, SMTP-Passwort | PostgreSQL, AES-256-GCM |
@@ -39,6 +39,34 @@ Codeausführung im Prozess. Dagegen helfen nur Lieferkette, Container-Härtung
 (ohne root, schreibgeschützt) und die getrennte Migrationsrolle, die keinem
 Prozess der App gehört. Das Verwaltungsprotokoll ist auch für die Systemrolle
 nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
+
+*Warum der Web-Prozess die Systemrolle behält (Prüfung vom 15.11.2026, M2).*
+Ohne Systemrolle im Web-Prozess wäre gegen Codeausführung dort kaum etwas
+gewonnen; der Umbau wurde deshalb nicht gemacht:
+- Der Zeilenschutz folgt `app.konto`, und das setzt die Laufzeitrolle selbst
+  (`set_config`). Wer im Prozess Code ausführt, setzt jedes Konto der Reihe
+  nach und liest dessen Sammlung, Finanzen und Gutscheine auch ohne
+  `BYPASSRLS`.
+- Die Kontexte, die auch der Web-Prozess baut, nutzen den Systemrahmen an rund 160 Stellen
+  (`imSystem`/`imSystemkontext`, vor allem `src/konto`, `src/verwaltung`,
+  `src/auftraege`, `src/geraete`), nicht an einer Handvoll. Fast alle gehen
+  ihrer Art nach über Kontogrenzen: Anmeldung über Namen, Token-Hash oder
+  Passkey, bevor das Konto feststeht; Passwort, Adresse, Verwalterrecht und
+  Sitzungsversion schreiben; Verwaltung aller Konten. Eine SECURITY
+  DEFINER-Funktion je Stelle nähme dieselben Angaben (Ziel-Konto, neuer Hash)
+  an und gäbe sie jedem, der im Prozess Code ausführt, ebenso.
+- Das Passwort prüft der Prozess (argon2id in Node), er muss die Hashes also
+  lesen.
+
+Was bleibt: Codeausführung im Web-Prozess heisst Zugriff auf alle Konten.
+Ein echter Gewinn verlangte, dass die Datenbank das Konto selbst
+nachweist — `app.konto` nur über eine Funktion, die einen Sitzungs- oder
+Token-Hash gegen die Tabelle prüft, Verwaltungsrechte daraus abgeleitet,
+Anmeldung als Funktion, die nur das Konto zum passenden Nachweis liefert.
+Das ist ein Umbau der Datenbankschicht und der Anmeldung, kein
+Rechteschnitt; selbst dann handelte der Prozess für jede gerade aktive
+Sitzung.
+
 5. **Lieferkette** — npm-Pakete, Actions, Container-Images, fremde
    Antworten von Rebrickable, Brickset, LEGO.
 
@@ -58,12 +86,15 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   `ca-eigene-wurzel`.
 - Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
   Caddy Rümpfe bis 16 KB an und gehen ohne Verbindungsgrenze an die App: Die
-  Zahl gleichzeitiger Passwortprüfungen begrenzt die bcrypt-Schranke des
-  Servers (Vorrang bekannter Anmeldungen, sonst 503), die Raten je Adresse
-  und Konto zählt der Server — `caddy-anmeldebremse`, `bcrypt-schranke-db`.
-- bcrypt rechnet in höchstens 4 Worker-Threads (weniger bei kleinerem
-  cgroup-Kontingent, mehr mit `BCRYPT_ARBEITER`); untätige enden nach 60 s —
-  `bcrypt-pool`.
+  Zahl gleichzeitiger Passwortprüfungen begrenzt die Schranke des Servers
+  (`src/konto/bcryptSchranke.ts`, Vorrang bekannter Anmeldungen, sonst 503),
+  die Raten je Adresse und Konto zählt der Server — `caddy-anmeldebremse`,
+  `bcrypt-schranke-db`.
+- Passwörter als argon2id (19 MiB, 2 Durchläufe, OWASP-Vorgabe:
+  `src/konto/passwortHash.ts`); ein alter bcrypt-Hash gilt, bis die nächste
+  Anmeldung ihn ersetzt — `passwort-argon2-db`. bcrypt rechnet dafür in
+  höchstens 4 Worker-Threads (weniger bei kleinerem cgroup-Kontingent, mehr
+  mit `BCRYPT_ARBEITER`); untätige enden nach 60 s — `bcrypt-pool`.
 - Langsame Clients erreichen die App nicht: Caddy liest den Rumpf der
   Anmeldewege ganz (`request_buffers 32KB`, grösser als `max_size`), bevor er
   ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
@@ -98,7 +129,12 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   Adresse — `konto-deaktivieren-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
-- Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
+- Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
+  mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
+  Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
+  sperrt den Inhaber so nicht an seinen Geräten aus. „Passwort vergessen“ leert
+  alle Zähler: `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
+- Sitzung: `httpOnly`, `sameSite=strict`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
   `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
@@ -142,7 +178,8 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   E-Mail, 2FA abschalten, Haushalt beitreten, SMTP). Der Wächter
   `bestaetigung-vertrag-db` ruft jede markierte Route ohne und mit falschem
   Code, verlangt die Marke für jede Passwort-Eingabe des Vertrags und lässt
-  `bcrypt.compare` nur in Anmeldung und Bestätigung zu; eine Route ohne Marke,
+  `bcrypt.compare` nur im Pool und `@node-rs/argon2` nur in
+  `src/konto/passwortHash.ts` zu (Vergleich nur über `passwortPasst`); eine Route ohne Marke,
   die bestätigt, antwortet in Tests mit 500. Den Notausgang des Verwalters
   (`DELETE /auth/users/:id/zweiter-faktor`) gibt es nur für fremde Konten.
   Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt
@@ -181,10 +218,11 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
   ohne Cookie ausgenommen: `src/http/herkunft.ts` — `herkunft`.
-- Mit `APP_BASE_URL` antwortet die App nur unter deren Namen (sonst 421
-  `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb. Frei bleiben
-  Loopback, Bearer-Token, `/ca.crt` und die Gesundheitspfade:
-  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-runde11-db`.
+- Die App antwortet nur unter dem Namen aus `APP_BASE_URL` (sonst 421
+  `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb; ohne
+  `APP_BASE_URL` (nur mit `APP_BASE_URL_FEHLT_OK=1`) unter keinem Namen. Frei
+  bleiben Loopback, IP-Adressen, `/ca.crt` und die Gesundheitspfade:
+  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-runde11-db`, `herkunft`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
   `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
   — `sicherheit-runde11-db`.
@@ -448,6 +486,11 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   und `caddy-rechte` laufen ohne Netz. `app`, `jobs` und `caddy` brauchen das
   Internet; den Weg ins Heimnetz sperrt optional eine `DOCKER-USER`-Regel auf
   ihr festes Subnetz (UPGRADE.md, Abschnitt 52) — `compose-haertung`.
+- Genau ein Web-Prozess je Datenbank: Budget je Konto, Kontoschranke,
+  Gutschein-Abfragen, PDF-Tickets und Passwort-Schranke zählen im Speicher
+  dieses Prozesses; mehrere Web-Prozesse teilten jede Grenze. Er hält deshalb
+  eine Datenbanksperre, ein zweiter beendet sich (UPGRADE.md §56) —
+  `web-einzelinstanz-db`.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
   `test` lockern sie — `betrieb-ohne-node-env-db`.
@@ -613,6 +656,11 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **„Unbegrenzt“** endet nur durch Widerruf oder fehlenden Tausch: Ein
   gestohlenes Gerät, das weiter tauscht, bleibt angemeldet, bis es in der
   Geräteliste entfernt wird.
+- **Tagesgrenze von unbekannten Adressen**: 50 Fehlversuche eines Fremden
+  sperren die Passwortanmeldung ohne zweiten Faktor für einen Tag an jeder
+  Adresse, an der sich der Inhaber noch nicht angemeldet hat (neues Gerät,
+  neues Netz). Bekannte Adressen, Passkey und „Passwort vergessen“ bleiben
+  offen; die Mail an den Inhaber meldet die Grenze.
 - **Passkeys ohne zweiten Faktor**: Ein Konto ohne TOTP kann sich mit Passkey
   ODER Passwort anmelden; der Passkey verschärft die Passwortanmeldung nicht.
   Passkeys brauchen einen Namen in `APP_BASE_URL` (keine IP-Adresse).

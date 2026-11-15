@@ -190,6 +190,11 @@ function kette(o) {
 }
 
 module.exports = {
+  zertifikat,
+  seq,
+  oid,
+  oktette,
+  tlv,
   WURZEL,
   PAKET,
   DIGEST,
