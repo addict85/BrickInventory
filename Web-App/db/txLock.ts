@@ -14,11 +14,9 @@ async function sperreBisZumEnde(tx: DbSchnittstelle, klasse: number, schluessel:
   await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [klasse, schluessel]);
 }
 
-/** Eine Bestandssperre: Konto (immer der Besitzer) und Schlüssel (bestandsSchluessel). */
-export interface Bestandssperre {
-  konto: number;
-  schluessel: string | number;
-}
+import type { Bestandssperre } from '../src/infra/zugang';
+
+export type { Bestandssperre };
 
 /** Aufsteigend nach Konto, damit zwei Gegenrichtungen (etwas wandert zwischen Konten) nicht verklemmen. */
 async function sperreBestaende(tx: DbSchnittstelle, sperren: readonly Bestandssperre[]): Promise<void> {

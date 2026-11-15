@@ -24,7 +24,8 @@ import {
   type TxStand,
 } from './transaktion';
 import { initSchema, initSchemaOnce, DARF_SCHEMA_AENDERN, type Erststart } from './schemaStart';
-import { sperreBestaende, type Bestandssperre } from './txLock';
+import { sperreBestaende } from './txLock';
+import type { Bestandssperre, TxOptionen, Zugang } from '../src/infra/zugang';
 
 export { queryWithRetry, istLesend } from './wiederholung';
 export {
@@ -98,20 +99,12 @@ export type Zeile<T extends object = object> = T & Record<string, unknown>;
 export type { DbSchnittstelle };
 export type { Treffer } from './typen';
 
-export interface TxOptionen {
-  /** Bei Deadlock (40P01) oder Serialisierungsfehler (40001) die ganze Transaktion
-   * bis zu zweimal neu beginnen. Nur für Rümpfe ohne Wirkung nach aussen (Netz,
-   * Dateien, Mails): Sie laufen dann mehrfach. In einer äusseren Transaktion
-   * ohne Wirkung; dort entscheidet deren Option. */
-  wiederholeBeiKonflikt?: boolean;
-  /** Bestandssperren, vor dem Rumpf genommen (sperreBestaende, txLock.ts); sie halten bis
-   * zum Ende der äussersten Transaktion. */
-  sperren?: readonly Bestandssperre[];
-}
+// In einer äusseren Transaktion ist wiederholeBeiKonflikt ohne Wirkung; dort entscheidet deren Option.
+export type { TxOptionen };
 const TX_KONFLIKT = new Set(['40P01', '40001']);
 const TX_NEUVERSUCHE = 2;
 
-export interface Db extends DbSchnittstelle {
+export interface Db extends DbSchnittstelle, Zugang<Db> {
   readonly pool: Pool;
   /** Der Pool der Systemrolle, ohne eigene Rolle derselbe wie `pool`. */
   readonly systemPool: Pool;
