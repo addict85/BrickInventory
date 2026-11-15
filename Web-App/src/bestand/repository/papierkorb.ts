@@ -116,8 +116,7 @@ export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) 
   }>('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
-/** Nur Spalten, die es noch gibt und die nicht berechnet sind; eine seither gelöschte Spalte fällt
- * so still weg. Die Tabellen kommen aus TABELLEN, nicht aus dem gespeicherten Eintrag. */
+/** Tabellen aus TABELLEN, nur Spalten, die es noch gibt und nicht berechnet sind (eine gelöschte fällt weg). */
 export async function schreibeZurueck(
   tx: DbSchnittstelle,
   art: PapierArt,
