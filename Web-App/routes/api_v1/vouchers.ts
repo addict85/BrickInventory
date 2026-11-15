@@ -60,7 +60,7 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
   });
 
   router.endpunkt('POST /api/v1/vouchers', requireToken, async req => {
-    return { voucher: fuerAussen(await d.gutscheine.gutscheinErfassen(req.apiUser.user_id, req.eingabe || {})) };
+    return { voucher: fuerAussen(await d.gutscheine.gutscheinErfassen(req.apiUser.user_id, req.eingabe)) };
   });
 
   router.endpunkt(

@@ -137,9 +137,20 @@ export async function setsMitBestandteil(
 }
 
 /** Mit dem Set gehen seine Teile und Figuren. */
+/** Das Set mit Inhalt und Käufen; manuelle Teile und Figuren tragen keine Setnummer und bleiben. */
 export async function entferneSetInhalt(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+  await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+  await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+}
+
+export async function legeSetAn(tx: DbSchnittstelle, uid: number, sn: string, addedAt?: string): Promise<void> {
+  await tx.run(
+    `INSERT INTO sets (user_id, set_number, added_at) VALUES ($1, $2, COALESCE($3::timestamptz, NOW()))
+     ON CONFLICT (user_id, set_number) DO NOTHING`,
+    [uid, sn, addedAt ?? null],
+  );
 }
 
 /** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
@@ -153,10 +164,12 @@ export async function kopiereSetInhalt(
   const sql = {
     parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
             SELECT $1, set_number, part_number, color_id, source FROM parts
-             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'
+               AND NOT EXISTS (SELECT 1 FROM parts WHERE user_id = $1 AND set_number = $3)`,
     minifigs: `INSERT INTO minifigs (user_id, set_number, fig_number, source)
                SELECT $1, set_number, fig_number, source FROM minifigs
-                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'
+                  AND NOT EXISTS (SELECT 1 FROM minifigs WHERE user_id = $1 AND set_number = $3)`,
   }[tabelle];
   return (await tx.run(sql, [nach, von, sn])).changes ?? 0;
 }
@@ -169,11 +182,15 @@ export async function legeManuellAn(
   schluessel: (string | number)[],
 ): Promise<void> {
   if (art === 'part')
-    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [
+    await tx.run(
+      `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual') ON CONFLICT DO NOTHING`,
+      [uid, ...schluessel],
+    );
+  else
+    await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual') ON CONFLICT DO NOTHING`, [
       uid,
       ...schluessel,
     ]);
-  else await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
 }
 
 export function loescheTeilZeile(
@@ -191,28 +208,6 @@ export function loescheTeilZeile(
 
 export function loescheFigurZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {
   return dbh.run("DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [ownerId, figNumber]);
-}
-
-/** Ohne Menge: Sie entsteht aus der ersten Erfassung. */
-export async function legeTeilManuellAn(
-  db: DbSchnittstelle,
-  uid: number,
-  partNumber: string,
-  colorId: number,
-): Promise<void> {
-  await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-                VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, partNumber, colorId],
-  );
-}
-
-export async function legeFigurManuellAn(db: DbSchnittstelle, uid: number, figNumber: string): Promise<void> {
-  await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, source)
-                VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, figNumber],
-  );
 }
 
 export function setzeTeilLagerort(tx: DbSchnittstelle, storageId: number, id: number) {

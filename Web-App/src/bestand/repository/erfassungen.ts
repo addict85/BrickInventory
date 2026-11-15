@@ -1,22 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import {
-  erfassungsTagSql,
-  ERFASSUNGS_TABELLEN as SHAPES,
-  type ErfassungsArt,
-  type ErfassungsZeile,
-} from '../../../db/bestandsmenge';
-
-export async function kontoDerErfassung(db: DbSchnittstelle, art: ErfassungsArt, id: number): Promise<number | null> {
-  const r = await db.get<{ user_id: number }>(`SELECT user_id FROM ${SHAPES[art].table} WHERE id = $1`, [id]);
-  return r ? Number(r.user_id) : null;
-}
-
-export async function zustandDerErfassung(db: DbSchnittstelle, art: ErfassungsArt, id: number): Promise<string | null> {
-  return (
-    (await db.get<{ condition: string }>(`SELECT condition FROM ${SHAPES[art].table} WHERE id=$1`, [id]))?.condition ??
-    null
-  );
-}
+import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
 
 export type ErfassungImFeld = {
   id: number;
@@ -104,13 +87,4 @@ export async function loescheErfassung(
   besitzer: number,
 ): Promise<void> {
   await tx.run(`DELETE FROM ${SHAPES[art].table} WHERE id=$1 AND user_id=$2`, [id, besitzer]);
-}
-
-export function setErfassungenImBlickfeld(db: DbSchnittstelle, blickfeld: number[], setNumber: string) {
-  return db.all<ErfassungsZeile>(
-    `SELECT id, quantity, purchase_price, COALESCE(condition, 'N') AS condition, price_estimated, currency,
-            created_at, user_id AS owner_user_id FROM set_acquisitions
-      WHERE user_id = ANY($1) AND set_number=$2 ORDER BY created_at ASC, id ASC`,
-    [blickfeld, setNumber],
-  );
 }

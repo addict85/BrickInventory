@@ -15,6 +15,10 @@ async function anzahl(db: DbSchnittstelle, sql: string): Promise<number> {
   return (await db.get<{ c: number }>(sql))?.c ?? 0;
 }
 
+export function preiseImCache(db: DbSchnittstelle): Promise<number> {
+  return anzahl(db, 'SELECT COUNT(*)::int AS c FROM price_cache');
+}
+
 export function veraltetePreise(db: DbSchnittstelle): Promise<number> {
   return anzahl(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }

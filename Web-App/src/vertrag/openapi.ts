@@ -30,22 +30,32 @@ export function benannteSchemas(): Map<string, z.ZodType> {
   return aus;
 }
 
-export function openapi(): Record<string, unknown> {
+function komponenten() {
   const register = z.registry<{ id: string }>();
   const benannt = new Map<z.ZodType, string>();
-  for (const [name, schema] of benannteSchemas()) {
-    register.add(schema, { id: name });
-    benannt.set(schema, name);
-  }
-  for (const modul of Object.values(BEREICHE)) {
+  const nimm = (schema: z.ZodType | undefined, id: string) => {
+    if (!schema || benannt.has(schema)) return;
+    register.add(schema, { id });
+    benannt.set(schema, id);
+  };
+  for (const [name, schema] of benannteSchemas()) nimm(schema, name);
+  for (const modul of Object.values(BEREICHE))
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
-      if (r.antwort && !benannt.has(r.antwort)) {
-        const id = schluessel.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, '');
-        register.add(r.antwort, { id });
-        benannt.set(r.antwort, id);
-      }
+      const id = schluessel.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, '');
+      nimm(r.antwort, id);
+      nimm(r.ereignis, `${id}_ereignis`);
     }
-  }
+  return { register, benannt };
+}
+
+function erfolg(r: Route, benannt: Map<z.ZodType, string>) {
+  const ref = (s: z.ZodType) => ({ schema: { $ref: URI(benannt.get(s) ?? '') } });
+  if (r.antwort) return { description: 'Erfolg', content: { 'application/json': ref(r.antwort) } };
+  return { description: 'Erfolg', content: { [MIME[r.art ?? 'datei']]: r.ereignis ? ref(r.ereignis) : {} } };
+}
+
+export function openapi(): Record<string, unknown> {
+  const { register, benannt } = komponenten();
   const { schemas } = z.toJSONSchema(register, { uri: URI, unrepresentable: 'any' });
   for (const s of Object.values(schemas)) {
     delete s.$schema;
@@ -76,12 +86,7 @@ export function openapi(): Record<string, unknown> {
             ...((schema as { deprecated?: boolean }).deprecated ? { deprecated: true } : {}),
           });
       }
-      const ok = r.antwort
-        ? {
-            description: 'Erfolg',
-            content: { 'application/json': { schema: { $ref: URI(benannt.get(r.antwort) ?? '') } } },
-          }
-        : { description: 'Erfolg', content: { [MIME[r.art ?? 'datei']]: {} } };
+      const ok = erfolg(r, benannt);
       const op: Record<string, unknown> = {
         tags: [bereich],
         ...(parameters.length ? { parameters } : {}),

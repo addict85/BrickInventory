@@ -20,43 +20,58 @@ import { verbindeGutscheine } from './gutscheinPdfSchreiben';
 import { stelleTicketAus } from './pdfTicket';
 import { HOECHSTENS_SEITEN, liesImHintergrund } from './pdfLesen';
 import type { GutscheineKontext } from './kontext';
+import { PIN_MASKE, gutscheinNummer, gutscheinPin, gutscheinWaehrung, nummerMaske } from '../infra/gutscheinWerte';
 
 export type { GutscheinZeile } from './repository/gutscheine';
 
-/** Nach aussen nur das Ende: Ein erbeutetes App-Token soll nicht alle Codes samt PIN
- * abgreifen. Den Klartext gibt gutscheinKlartext(), bestätigt und protokolliert. */
-export const PIN_MASKE = '•••';
+export { PIN_MASKE } from '../infra/gutscheinWerte';
+
 export const maskiert = (z: { number: string; pin: string | null }) => ({
-  number: '…' + z.number.slice(-4),
+  number: nummerMaske(z.number),
   pin: z.pin ? PIN_MASKE : null,
 });
 
-type Roh = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
 type Geprueft = { number: string; pin: string | null; amount: number; currency: string | null };
-
-/** Eine Prüfung für Anlegen, Anlegen aus dem PDF und Ändern. */
-export function pruefeWerte(
-  roh: Roh,
-  opt: { nullBetragErlaubt?: boolean } = {},
-): ({ ok: true } & Geprueft) | { ok: false; code: FehlerCode } {
-  const number = String(roh.number ?? '').replace(/[\s-]/g, '');
-  if (!/^\d{4,25}$/.test(number)) return { ok: false, code: 'nummer_ungueltig' };
-  const pinRoh = String(roh.pin ?? '').trim();
-  if (pinRoh && !/^\d{3,10}$/.test(pinRoh)) return { ok: false, code: 'pin_ungueltig' };
-  const amount = Number(roh.amount);
-  // Auch die Null fällt durch: Number('') ist 0, ein vergessenes Feld legte sonst einen Gutschein über nichts an.
-  if (!Number.isFinite(amount) || amount > 1_000_000) return { ok: false, code: 'betrag_ungueltig' };
-  if (opt.nullBetragErlaubt ? amount < 0 : amount <= 0) return { ok: false, code: 'betrag_ungueltig' };
-  // Ohne Angabe setzt die Datenbank die Währung des Kontos (Migration 0073).
-  const currency = roh.currency == null || roh.currency === '' ? null : String(roh.currency).toUpperCase();
-  if (currency !== null && !/^[A-Z]{3}$/.test(currency)) return { ok: false, code: 'waehrung_ungueltig' };
-  return { ok: true, number, pin: pinRoh || null, amount, currency };
+/** Was der Vertrag geprüft hat (src/vertrag/gutscheine.ts): Format von Nummer, PIN und Währung. */
+export interface NeuerGutschein {
+  number: string;
+  pin?: string | null | undefined;
+  amount: number | null | undefined;
+  currency?: string | null | undefined;
 }
 
-function geprueft(roh: Roh, opt?: { nullBetragErlaubt?: boolean }): Geprueft {
-  const w = pruefeWerte(roh, opt);
-  if (!w.ok) fachfehler('ungueltig', w.code);
-  return w;
+/** Der Betrag ist eine Fachregel, kein Format: Eine Null legte sonst einen Gutschein über nichts an. */
+function betrag(roh: number | null | undefined, nullErlaubt = false): number {
+  const amount = roh ?? Number.NaN;
+  if (!Number.isFinite(amount) || amount > 1_000_000 || (nullErlaubt ? amount < 0 : amount <= 0))
+    fachfehler('ungueltig', 'betrag_ungueltig');
+  return amount;
+}
+
+const geprueft = (w: NeuerGutschein, nullErlaubt = false): Geprueft => ({
+  number: w.number,
+  pin: w.pin ?? null,
+  amount: betrag(w.amount, nullErlaubt),
+  currency: w.currency ?? null,
+});
+
+type Roh = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
+
+/** Nur für Werte, die der Server selbst aus einem PDF liest: Eingaben prüft der Vertrag. */
+export function pruefeWerte(roh: Roh): ({ ok: true } & Geprueft) | { ok: false; code: FehlerCode } {
+  try {
+    return {
+      ok: true,
+      number: gutscheinNummer(roh.number == null ? '' : String(roh.number)),
+      pin: gutscheinPin(roh.pin == null ? null : String(roh.pin)),
+      // Number('') ist 0 und fällt am Betrag durch.
+      amount: betrag(Number(roh.amount)),
+      currency: gutscheinWaehrung(roh.currency == null ? null : String(roh.currency)),
+    };
+  } catch (e) {
+    if (e instanceof Fachfehler) return { ok: false, code: e.code };
+    throw e;
+  }
 }
 
 const repo = (k: GutscheineKontext) => k.gutscheine;
@@ -70,8 +85,8 @@ async function vorhanden(k: GutscheineKontext, uid: number, id: number): Promise
 }
 
 /** Keine Zeile heisst „war schon da" — als Erfolg sähe der Nutzer nichts passieren. */
-export async function gutscheinErfassen(k: GutscheineKontext, uid: number, roh: Roh): Promise<GutscheinZeile> {
-  return (await repo(k).gutscheinAnlegen(uid, geprueft(roh))) ?? fachfehler('konflikt', 'gutschein_existiert');
+export async function gutscheinErfassen(k: GutscheineKontext, uid: number, e: NeuerGutschein): Promise<GutscheinZeile> {
+  return (await repo(k).gutscheinAnlegen(uid, geprueft(e))) ?? fachfehler('konflikt', 'gutschein_existiert');
 }
 
 /** Der Stapelfall eines Sammel-PDFs: Was es schon gibt, wird ersetzt. */
@@ -101,10 +116,9 @@ export async function stapelAnlegen(k: GutscheineKontext, uid: number, gefunden:
 export async function gutscheinMitPdfAnlegen(
   k: GutscheineKontext,
   uid: number,
-  roh: Roh,
+  w: Geprueft,
   pdf: Buffer,
 ): Promise<GutscheinZeile> {
-  const w = geprueft(roh);
   const geschrieben: string[] = [];
   try {
     return await k.transaktion(async t => {
@@ -195,12 +209,12 @@ export function gutscheinBearbeiten(
       const maske = maskiert(alt);
       const w = geprueft(
         {
-          number: e.number === maske.number ? alt.number : (e.number ?? alt.number),
-          pin: e.pin === PIN_MASKE ? alt.pin : (e.pin ?? alt.pin),
-          amount: e.amount ?? alt.amount,
-          currency: e.currency ?? alt.currency,
+          number: e.number === undefined || e.number === maske.number ? alt.number : e.number,
+          pin: e.pin === PIN_MASKE ? alt.pin : e.pin === '' ? null : (e.pin ?? alt.pin),
+          amount: e.amount ?? Number(alt.amount),
+          currency: e.currency === '' ? null : (e.currency ?? alt.currency),
         },
-        { nullBetragErlaubt: e.amount === undefined },
+        e.amount === undefined,
       );
       return (await repo(t).gutscheinAendern(uid, id, w)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
     })

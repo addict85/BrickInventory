@@ -1,5 +1,6 @@
-/** Was der Bestand aus höheren Sets, Käufen und Anleitungen liest; Spalten wie in db/bestandSicht.ts
- * und db/bestandsmenge.ts. Ohne Import, damit Repositories ihn lesen dürfen (Konten wie db/konten.ts). */
+/** Was der Bestand über Lesebausteine liest; Spalten wie in db/bestandSicht.ts und db/bestandsmenge.ts.
+ * Nur die Anleitungen liegen höher (src/sets), Sets und Käufe gehören ihm. Ohne Import, damit
+ * Repositories ihn lesen dürfen (Konten wie db/konten.ts). */
 type Konten = `= $${number}` | `= ANY($${number})`;
 
 export interface BestandLesevertrag {

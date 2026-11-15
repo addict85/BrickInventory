@@ -1,4 +1,5 @@
 import * as repo from './repository/gemeinsam';
+import * as kaeufe from './repository/kaeufe';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, type Sicht } from '../haushalt';
 import type { BestandKontext } from './kontext';
@@ -154,10 +155,20 @@ export async function verwendendeSets(
 }
 
 /** Eine Stelle für Löschroute und Aufräumen der Erfassungen; in einer Transaktion über `t`. */
-export async function loescheManuellesTeil(k: BestandKontext, ownerId: number, partNumber: string, colorId: number) {
-  return repo.loescheTeilZeile(k.db, ownerId, partNumber, colorId);
-}
-
-export async function loescheManuelleFigur(k: BestandKontext, ownerId: number, figNumber: string) {
-  return repo.loescheFigurZeile(k.db, ownerId, figNumber);
+/** Die Zeile und, gab es sie, ihre Käufe: Die Finanzsummen zählten das Teil sonst weiter. */
+export async function loescheManuell(
+  k: BestandKontext,
+  art: 'part' | 'fig',
+  ownerId: number,
+  schluessel: (string | number)[],
+) {
+  const [nummer = '', farbe = 0] = schluessel;
+  const r =
+    art === 'part'
+      ? await repo.loescheTeilZeile(k.db, ownerId, String(nummer), Number(farbe))
+      : await repo.loescheFigurZeile(k.db, ownerId, String(nummer));
+  if (!r.changes) return r;
+  if (art === 'part') await kaeufe.loescheTeilErfassungen(k.db, ownerId, String(nummer), Number(farbe) || 0);
+  else await kaeufe.loescheFigurErfassungen(k.db, ownerId, String(nummer));
+  return r;
 }

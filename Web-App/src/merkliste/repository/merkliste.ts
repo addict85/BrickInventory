@@ -1,3 +1,4 @@
+import { setBestand } from '../../../db/bestandSicht';
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { marktpreisSql } from '../../../db/geldSql';
 import { LIKE_ESCAPE, enthaeltMuster } from '../../../db/likeSuche';
@@ -77,8 +78,8 @@ export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: 
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
             ${marktpreisSql('pc')} AS marktpreis,
-            EXISTS (SELECT 1 FROM sets s
-                     WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
+            EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
+                     WHERE s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
        -- Das Bild steht nur in set_catalog (0108).

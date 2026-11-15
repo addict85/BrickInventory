@@ -2941,3 +2941,8 @@ export type Route =
   | { m: 'POST'; p: `/v1/wanted/${string}/${string}/uebernehmen`; a: MerkpostenUebernahmeResponse }
   | { m: 'GET'; p: `/v1/wanted/${string}/preise`; a: MerkpostenPreiseResponse }
   | { m: 'POST'; p: '/v1/wanted/import/csv'; a: POST_api_v1_minifigs_import_csv };
+
+/** Je Ereignisstrom (GET): Pfad und ein Ereignis, wie strom() in js/api.js es liefert. */
+export type Strom =
+  | { p: '/v1/sets/import/csv/stream'; e: CsvImportStatus }
+  | { p: `/v1/sets/partslist-pdf/stream/${string}`; e: PdfStand };

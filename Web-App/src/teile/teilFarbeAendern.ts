@@ -72,21 +72,14 @@ export async function aendereTeilFarbe(
 
     const ziel = await repo.manuelleTeilzeileSperren(t.db, uid, partNumber, neu);
 
-    // Erst addieren, dann umziehen: Sonst liefe das UPDATE in
-    // `idx_part_acq_erfassungstag` — nur wenn beide Farben am gleichen Tag erfasst
-    // wurden, ein Fehler, der von der Uhr abhängt.
-    const vereint = await repo.stockeGleicheErfassungenAuf(t.db, uid, partNumber, alt, neu);
-    // Die addierten Quellzeilen müssen weg, sonst stünde die Stückzahl doppelt da.
-    await repo.loescheAufgestockteErfassungen(t.db, uid, partNumber, alt, neu);
-    const verschoben = await repo.faerbeErfassungenUm(t.db, uid, partNumber, alt, neu);
-
-    await t.bestand.manuell.teilzeileUmfaerben(quelle, ziel ?? null, neu);
-
-    return {
-      zusammengelegt: !!ziel,
-      verschoben: verschoben.changes ?? 0,
-      vereint: vereint.changes ?? 0,
-    };
+    const { vereint, verschoben } = await t.bestand.manuell.teilzeileUmfaerben(
+      uid,
+      partNumber,
+      { ...quelle, farbe: alt },
+      ziel ?? null,
+      neu,
+    );
+    return { zusammengelegt: !!ziel, verschoben, vereint };
   });
 
   // Auch bei alt === neu: Eine Ausnahme wäre ein zweiter Weg, der nur manchmal

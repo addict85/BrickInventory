@@ -1,7 +1,7 @@
 import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html } from './escapen.js';
-import { fehlerMeldung, api, apiRoh } from './api.js';
+import { fehlerMeldung, api, apiRoh, strom } from './api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
 import { feldFehler, istSetnummer } from './formular.js';
@@ -419,28 +419,22 @@ async function plExportPdf() {
         };
 
         const trySSE = () => {
-          if (typeof EventSource === 'undefined') {
-            pollPdfStatus(jobId, btn, finish, startEta);
-            return;
-          }
-          const es = new EventSource(`/api/v1/sets/partslist-pdf/stream/${jobId}`, { withCredentials: true });
-          es.onmessage = e => {
-            try {
-              const { status, error, etaSeconds } = JSON.parse(e.data);
+          const s = strom(`/v1/sets/partslist-pdf/stream/${jobId}`, {
+            ereignis: ({ status, error, etaSeconds }) => {
               if (status === 'running' && etaSeconds != null) startEta(etaSeconds);
               if (status === 'done') {
-                es.close();
+                s?.schliesse();
                 finish(null);
               } else if (status === 'error') {
-                es.close();
-                finish(error || t('pdf.server_error'));
+                s?.schliesse();
+                finish(error || tRaw('pdf.server_error'));
               }
-            } catch (_) {}
-          };
-          es.onerror = () => {
-            es.close();
-            if (!settled) pollPdfStatus(jobId, btn, finish, startEta);
-          };
+            },
+            fehler: () => {
+              if (!settled) pollPdfStatus(jobId, btn, finish, startEta);
+            },
+          });
+          if (!s) pollPdfStatus(jobId, btn, finish, startEta);
         };
         trySSE();
       })
