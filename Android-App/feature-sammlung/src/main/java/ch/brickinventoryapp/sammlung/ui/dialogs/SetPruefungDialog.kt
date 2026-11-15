@@ -4,6 +4,7 @@ package ch.brickinventoryapp.sammlung.ui.dialogs
 // steckt in foundation.layout, und das `by` vor collectAsStateWithLifecycle
 // braucht runtime.getValue — beides kommt über die Sternchen mit.
 import ch.brickinventoryapp.sammlung.ui.ErfassungUiState
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -38,6 +39,7 @@ internal fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungA
 
     val titel = stringResource(R.string.pruef_titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         modifier = Modifier.semantics { paneTitle = titel },
         // Nicht per Tipp daneben schliessbar: Das Anhalten IST der Zweck. Wer
         // wirklich weiter will, nimmt den Knopf — dann ist es eine Entscheidung

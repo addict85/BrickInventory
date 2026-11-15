@@ -30,9 +30,9 @@ const { haeltTeil, haeltFigur, haeltSet } = require('./helpers/bestand');
 
 const gesehen = [];
 let zaehlen = false;
-// Gezählt in den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+// Gezählt in den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
 const zugang = require('./helpers/sources').testZugang();
-const pools = [...new Set([zugang.pool, zugang.systemPool])];
+const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
 const altQuery = pools.map(p => p.query);
 for (const [i, p] of pools.entries())
   p.query = (text, ...rest) => {

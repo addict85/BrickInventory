@@ -388,11 +388,13 @@ class TokenAblage @Inject constructor(
      */
     override suspend fun uebernehmeAltesToken(): Boolean {
         var entfernt = false
+        var umgeschluesselt = false
         dataStore.edit { prefs ->
             entfernt = !prefs[AUTH_TOKEN].isNullOrEmpty()
             prefs.remove(AUTH_TOKEN)
-            umschluesseln(prefs)
+            umgeschluesselt = umschluesseln(prefs)
         }
+        if (umgeschluesselt) fangeAusserAbbruch { tresor.vergissAltbestand() }
         return entfernt
     }
 
@@ -403,7 +405,9 @@ class TokenAblage @Inject constructor(
      */
     override suspend fun stufeTokenHoch() {
         if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
-        dataStore.edit { umschluesseln(it) }
+        var umgeschluesselt = false
+        dataStore.edit { umgeschluesselt = umschluesseln(it) }
+        if (umgeschluesselt) fangeAusserAbbruch { tresor.vergissAltbestand() }
     }
 
     /**
@@ -425,13 +429,16 @@ class TokenAblage @Inject constructor(
     /**
      * Ein Geheimtext unter dem schwächeren Schlüssel früherer Fassungen kommt unter den, der
      * nur entsperrt arbeitet. Im selben edit wie das Lesen: Ein Tausch dazwischen würde sonst
-     * vom alten Token überschrieben.
+     * vom alten Token überschrieben. Den alten Schlüssel löscht der Aufrufer erst nach dem
+     * Schreiben: Scheitert das edit, bliebe sonst ein Geheimtext ohne Schlüssel.
      */
-    private fun umschluesseln(prefs: MutablePreferences) {
-        val geheim = prefs[AUTH_TOKEN_ENC]?.takeIf(tresor::veraltet) ?: return
-        val klar = (tresor.oeffne(geheim) as? Tresorbefund.Lesbar)?.klartext ?: return
-        val neu = fangeAusserAbbruch { tresor.verschluessle(klar) }.getOrNull() ?: return
-        if (!tresor.veraltet(neu)) prefs[AUTH_TOKEN_ENC] = neu
+    private fun umschluesseln(prefs: MutablePreferences): Boolean {
+        val geheim = prefs[AUTH_TOKEN_ENC]?.takeIf(tresor::veraltet) ?: return false
+        val klar = (tresor.oeffne(geheim) as? Tresorbefund.Lesbar)?.klartext ?: return false
+        val neu = fangeAusserAbbruch { tresor.verschluessle(klar) }.getOrNull() ?: return false
+        if (tresor.veraltet(neu)) return false
+        prefs[AUTH_TOKEN_ENC] = neu
+        return true
     }
     suspend fun saveUsername(name: String) {
         val geheim = verschluessle(NAME, name)

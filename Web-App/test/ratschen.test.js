@@ -1247,9 +1247,9 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
 function englischeExportnamen() {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
   // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
-  // Gegenprobe (14.11.2026): in src/sets/dienst.ts `setAendern` wieder `updateSet` → rot (104 von 103).
+  // Gegenprobe (15.11.2026): in src/bestand/acquisitions.ts `kaufAmTagErfassen` wieder `recordAcquisitionForDay` → rot (50 von 49).
   const { englischerName } = require('./helpers/namen');
-  const SCHRANKE = 103;
+  const SCHRANKE = 49;
   assert.deepEqual(
     ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
       englischerName,

@@ -40,7 +40,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
   await leereWarteschlange(db);
 
   const IQ = _req('src/bilder/bildbedarfLauf.js');
-  await IQ.initImageQueue();
+  await IQ.bildbedarfEinrichten();
   const PRAEFIX = `TQ${process.pid}`;
   const weg = async () => db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%']).catch(() => {});
   await weg();
@@ -261,7 +261,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   const schema = vorbereitung.indexOf('await db.initSchemaOnce()');
   assert.ok(
     schema > 0 && vorbereitung.indexOf('await d.bilder.starteFehlanzeige()') > schema,
-    'initImageMisses() läuft vor den Migrationen — dann fehlt die Tabelle noch',
+    'bildFehlstellenEinrichten() läuft vor den Migrationen — dann fehlt die Tabelle noch',
   );
 });
 
@@ -269,21 +269,21 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // Marcos Befund
   const q = fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarf.ts'), 'utf8');
   const init = q.slice(
-    q.indexOf('export async function initImageQueue'),
+    q.indexOf('export async function bildbedarfEinrichten'),
     q.indexOf('export async function loescheVerfallene'),
   );
   assert.match(
     init,
     /setInterval\([\s\S]{0,80}schreibePuffer/,
-    'Das Wegschreiben steht nicht in initImageQueue() — dann läuft es nur dort, ' +
+    'Das Wegschreiben steht nicht in bildbedarfEinrichten() — dann läuft es nur dort, ' +
       'wo start() aufgerufen wird, also nur im Primärprozess',
   );
 
-  // Und initImageQueue() muss tatsächlich überall laufen.
+  // Und bildbedarfEinrichten() muss tatsächlich überall laufen.
   const dbInit = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   // UMFORMULIERT in — aus demselben Grund wie zwoelf Zeilen
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
-  // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also
+  // Sie verlangte die Schreibweise `jobs/imageQueue').bildbedarfEinrichten()`, also
   // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde …
   assert.match(
     dbInit,

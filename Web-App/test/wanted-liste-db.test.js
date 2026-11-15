@@ -252,7 +252,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   // BL-Farbe 5 ist abbildbar, 85 nicht — genau Marcos Lage.
   const xml = `<INVENTORY>${item('P', '3001', 5, 10)}${item('P', '3001', 85, 7)}</INVENTORY>`;
 
-  /** Ein Anleger, der nur mitschreibt. `action` wie addManualPart. */
+  /** Ein Anleger, der nur mitschreibt. `action` wie manuellesTeilAnlegen. */
   function zaehler(zweiterLauf = false) {
     const gesehen = [];
     return {

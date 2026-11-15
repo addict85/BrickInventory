@@ -68,12 +68,12 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
     const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 
     // ── Weg 1: die Live-Abfrage (noch keine Zusammenfassung) ───────────────
-    const live = await H.getParts(U, abfrage);
+    const live = await H.teileAbfrage(U, abfrage);
     assert.equal(live.source, 'db', 'ohne Zusammenfassung muss die Live-Abfrage antworten');
 
     // ── Weg 2: die Zusammenfassung ─────────────────────────────────────────
     await PS.rebuildNow(U);
-    const zsf = await H.getParts(U, abfrage);
+    const zsf = await H.teileAbfrage(U, abfrage);
     assert.equal(zsf.source, 'summary', 'nach dem Aufbau muss die Zusammenfassung antworten');
 
     // ── Die Regel: gleiche Felder, gleiche Typen ───────────────────────────

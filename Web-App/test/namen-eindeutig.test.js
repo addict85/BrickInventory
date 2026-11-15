@@ -20,7 +20,7 @@ const ERLAUBT = new Map([
   ],
   ['log', 'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
   [
-    'getSetInfo',
+    'setAngaben',
     'clients/brickset und src/katalog/rebrickableKatalog — dieselbe Frage an ZWEI ' +
       'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.',
   ],

@@ -27,8 +27,18 @@ import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.model.ui.model.PIN_MASKE_ANZEIGE
 import ch.brickinventoryapp.model.ui.model.istMaskierteNummer
 import ch.brickinventoryapp.ui.theme.Formen
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import ch.brickinventoryapp.ui.components.AuswahlFeld
+import ch.brickinventoryapp.ui.components.Knopfzeile
 
-/** Das Formular zum Anlegen und Ändern als Blatt von unten. */
+/**
+ * Das Formular zum Anlegen und Ändern als Blatt von unten, gleich ganz offen: Halb offen
+ * lagen die Knöpfe unter dem Rand. Die Felder rollen, die Knöpfe stehen fest am Fuss
+ * über der Tastatur.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun GutscheinFormularBlatt(
@@ -39,22 +49,27 @@ internal fun GutscheinFormularBlatt(
     onSpeichern: () -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onSchliessen) {
+    // Speichern bleibt antippbar und markiert dann, was fehlt, wie beim Set-Dialog.
+    var geprueft by rememberSaveable { mutableStateOf(false) }
+    val fehler = if (geprueft) gutscheinFehler(zustand.nummer, zustand.betrag, pdfGewaehlt) else emptyList()
+    val nummerFehlt = GutscheinFeld.NUMMER in fehler
+    val betragFehlt = GutscheinFeld.BETRAG in fehler
+    val nummerFokus = remember { FocusRequester() }
+    val betragFokus = remember { FocusRequester() }
+    ModalBottomSheet(onDismissRequest = onSchliessen, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+      Column(Modifier.fillMaxWidth().imePadding()) {
       Column(
-        Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-            .padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross),
+        Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState())
+            .padding(horizontal = Abstaende.gross),
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
       ) {
         Text(
             stringResource(if (zustand.bearbeitet != null) R.string.vouchers_edit else R.string.vouchers_add),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() },
         )
 
-        // Filter UND Tastatur gehoeren zusammen — die Tastaturwahl ist eine
-        // Bitte an die Tastatur-App, keine Zusicherung: Eine angestoepselte
-        // Tastatur und die Zwischenablage liefern trotzdem Buchstaben. Die
-        // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
         val nummerMaske = istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
             shape = Formen.feld,
@@ -63,10 +78,15 @@ internal fun GutscheinFormularBlatt(
                 onFeld(NumericInput.quantity(eingabeUeberMaske(zustand.nummer, it, nummerMaske)), null, null, null)
             },
             label = { Text(stringResource(R.string.vouchers_number)) },
-            supportingText = if (nummerMaske) { { Text(stringResource(R.string.vouchers_mask_hint)) } } else null,
+            isError = nummerFehlt,
+            supportingText = when {
+                nummerFehlt -> { { Text(stringResource(R.string.vouchers_number_fehlt), Modifier.ansagen()) } }
+                nummerMaske -> { { Text(stringResource(R.string.vouchers_mask_hint)) } }
+                else -> null
+            },
             singleLine = true,
             keyboardOptions = NumericInput.ganzzahlTastatur(),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -87,9 +107,10 @@ internal fun GutscheinFormularBlatt(
                 label = { Text(stringResource(R.string.vouchers_amount)) },
                 // Dieselbe Prüfung wie bei den Preisfeldern der Galerie; ob der Betrag Pflicht
                 // ist und wie hoch er sein darf, entscheidet allein der Server.
-                isError = NumericInput.preisUngueltig(zustand.betrag),
+                isError = betragFehlt || NumericInput.preisUngueltig(zustand.betrag),
                 supportingText = {
                     if (NumericInput.preisUngueltig(zustand.betrag)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+                    else if (betragFehlt) Text(stringResource(R.string.vouchers_amount_invalid), Modifier.ansagen())
                 },
                 singleLine = true,
                 // price/preisTastatur und nicht ganzzahl: Ein Gutschein kann
@@ -97,11 +118,12 @@ internal fun GutscheinFormularBlatt(
                 // — „12.3.4" waere sonst tippbar und floege erst beim
                 // Umwandeln auf, dann als stiller Nullbetrag.
                 keyboardOptions = NumericInput.preisTastatur(),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(betragFokus),
             )
         }
 
-        WaehrungsWahl(zustand.waehrung) { onFeld(null, null, null, it) }
+        AuswahlFeld(stringResource(R.string.settings_currency), WAEHRUNGEN.map { it to it }, zustand.waehrung,
+            { onFeld(null, null, null, it) }, Modifier.fillMaxWidth())
 
         // ── Der PDF-Weg ──
         //
@@ -128,40 +150,43 @@ internal fun GutscheinFormularBlatt(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onSpeichern, enabled = !zustand.speichern.laeuft) { Text(stringResource(R.string.settings_save)) }
-            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_cancel)) }
-            if (zustand.speichern.laeuft) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            }
-        }
+      }
+        HorizontalDivider(Modifier.padding(top = Abstaende.klein))
+        Knopfzeile(
+            bestaetigen = stringResource(R.string.settings_save),
+            onBestaetigen = {
+                geprueft = true
+                when (gutscheinFehler(zustand.nummer, zustand.betrag, pdfGewaehlt).firstOrNull()) {
+                    GutscheinFeld.NUMMER -> nummerFokus.fokusWennDa()
+                    GutscheinFeld.BETRAG -> betragFokus.fokusWennDa()
+                    null -> onSpeichern()
+                }
+            },
+            onAbbrechen = onSchliessen,
+            laeuft = zustand.speichern.laeuft,
+            modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
+        )
       }
     }
 }
 
+/** Ein Feld des Gutscheinformulars, das vor dem Speichern fehlt oder unlesbar ist. */
+internal enum class GutscheinFeld { NUMMER, BETRAG }
+
+/**
+ * Was vor dem Speichern fehlt, in der Reihenfolge der Felder. Mit PDF liest der Server,
+ * was leer ist; ein unlesbarer Betrag bleibt auch dann ein Fehler.
+ */
+internal fun gutscheinFehler(nummer: String, betrag: String, mitPdf: Boolean): List<GutscheinFeld> = buildList {
+    if (!mitPdf && nummer.isBlank()) add(GutscheinFeld.NUMMER)
+    val unlesbar = betrag.replace(',', '.').trim().toDoubleOrNull() == null
+    if (if (mitPdf) betrag.isNotBlank() && unlesbar else unlesbar) add(GutscheinFeld.BETRAG)
+}
+
+/** Ist das Blatt schon zu, wirft requestFocus; dann gibt es nichts mehr zu fokussieren. */
+private fun FocusRequester.fokusWennDa() {
+    try { requestFocus() } catch (_: IllegalStateException) { /* Blatt schon zu */ }
+}
+
 /** Dieselben Waehrungen wie in der Webapp (public/index.html). */
 private val WAEHRUNGEN = listOf("CHF", "EUR", "USD", "GBP", "SEK", "NOK", "AUD", "CAD", "DKK")
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WaehrungsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
-    var offen by rememberSaveable { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = offen, onExpandedChange = { offen = it }) {
-        OutlinedTextField(
-            shape = Formen.feld,
-            value = gewaehlt,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.settings_currency)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = offen, onDismissRequest = { offen = false }) {
-            for (w in WAEHRUNGEN) {
-                DropdownMenuItem(text = { Text(w) }, onClick = { onWahl(w); offen = false })
-            }
-        }
-    }
-}

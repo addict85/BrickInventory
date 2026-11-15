@@ -102,9 +102,9 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { updateManualPart } = _req('src/teile/manuelleTeile.js');
-  const { updateManualFig } = _req('src/figuren/manuelleFiguren.js');
-  const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
+  const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAendern } = _req('src/figuren/manuelleFiguren.js');
+  const { kaufAmTagErfassen } = _req('src/bestand/acquisitions.js');
   const { testServer } = require('./helpers/server');
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const teilZeilen = (pn, cid = 5) =>
@@ -119,8 +119,8 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
       uid,
     ]);
     await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, 'ma-fig-leer', 'manual')`, [uid]);
-    await updateManualPart(uid, 'ma-leer', 5, { quantity: 3 });
-    await updateManualFig(uid, 'ma-fig-leer', { quantity: 2 });
+    await manuellesTeilAendern(uid, 'ma-leer', 5, { quantity: 3 });
+    await manuelleFigurAendern(uid, 'ma-fig-leer', { quantity: 2 });
     assert.deepEqual(
       (await teilZeilen('ma-leer')).map(r => r.quantity),
       [3],
@@ -145,19 +145,19 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
       [uid],
     );
     const [alt] = await teilZeilen('ma-lifo');
-    await updateManualPart(uid, 'ma-lifo', 5, { quantity: 2 });
+    await manuellesTeilAendern(uid, 'ma-lifo', 5, { quantity: 2 });
     assert.deepEqual(
       await teilZeilen('ma-lifo'),
       [{ id: alt.id, quantity: 2 }],
       'Beim Verringern muss die heutige Erfassung zuerst weichen, nicht die älteste',
     );
-    await updateManualPart(uid, 'ma-lifo', 5, { quantity: 1 });
+    await manuellesTeilAendern(uid, 'ma-lifo', 5, { quantity: 1 });
     assert.deepEqual(await teilZeilen('ma-lifo'), [{ id: alt.id, quantity: 1 }]);
   });
 
   await t.test('die Tagesregel gilt für alle drei Arten mit ihrem eigenen Schlüssel', async () => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, 'ma-1') ON CONFLICT DO NOTHING`, [uid]);
-    const erfasse = (art, keys) => recordAcquisitionForDay(art, uid, keys, { quantity: 1, price: 4, condition: 'N' });
+    const erfasse = (art, keys) => kaufAmTagErfassen(art, uid, keys, { quantity: 1, price: 4, condition: 'N' });
     for (const [art, keys] of [
       ['set', ['ma-1']],
       ['part', ['ma-tag', 5]],
@@ -317,7 +317,7 @@ test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', asy
 });
 
 test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
-  // Verbot: Erfassungen entstehen nur über recordAcquisitionForDay — sonst
+  // Verbot: Erfassungen entstehen nur über kaufAmTagErfassen — sonst
   // gälte die Tagesregel (erfassung-je-zustand-db.test.js) nicht für jeden Weg.
   for (const f of [
     'src/teile/manuelleTeile.ts',
@@ -331,7 +331,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     assert.doesNotMatch(
       src,
       /INSERT INTO (part|minifig|set)_acquisitions/,
-      `${f}: Erfassungen gehören über recordAcquisitionForDay geschrieben`,
+      `${f}: Erfassungen gehören über kaufAmTagErfassen geschrieben`,
     );
   }
   for (const f of [
@@ -381,7 +381,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   assert.doesNotMatch(
     fn,
     /UPDATE set_acquisitions SET quantity = quantity \+ \$1/,
-    'Kein direktes Aufstocken mehr — das entscheidet recordAcquisitionForDay',
+    'Kein direktes Aufstocken mehr — das entscheidet kaufAmTagErfassen',
   );
   assert.match(
     fn,

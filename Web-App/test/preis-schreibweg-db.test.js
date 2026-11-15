@@ -33,14 +33,14 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 
-// BrickLink vorgeben, BEVOR financeCalc/priceJob getPriceGuide herausziehen.
-// esbuild exportiert ueber Getter, ein `bl.getPriceGuide = …` liefe ins
+// BrickLink vorgeben, BEVOR financeCalc/priceJob preisfuehrerAbfrage herausziehen.
+// esbuild exportiert ueber Getter, ein `bl.preisfuehrerAbfrage = …` liefe ins
 // Leere — deshalb wird der Eintrag im require-Zwischenspeicher ersetzt.
 const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
-  getPriceGuide: async (_k, _sn, cond) => {
+  preisfuehrerAbfrage: async (_k, _sn, cond) => {
     abrufe.push(cond);
     // 'N' ohne Preis, 'U' mit — genau die Lage, in der der Rueckfall greift.
     return cond === 'U'

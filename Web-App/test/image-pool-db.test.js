@@ -19,8 +19,8 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t
 
   const IM = _req('src/bilder/imageMisses.js');
   const IQ = _req('src/bilder/bildbedarfLauf.js');
-  await IM.initImageMisses();
-  await IQ.initImageQueue();
+  await IM.bildFehlstellenEinrichten();
+  await IQ.bildbedarfEinrichten();
   const PRAEFIX = `PL${process.pid}`;
   const weg = async () => {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%']).catch(() => {});

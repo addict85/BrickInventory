@@ -2,7 +2,7 @@
  * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { LESEVERTRAG } from '../src/dienste';
-import { erzeugeImportZugang, erzeugeKatalogImporte, parseCsvLine } from '../src/katalog';
+import { erzeugeImportZugang, erzeugeKatalogImporte, csvZeile } from '../src/katalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
 function send(msg: Record<string, unknown>) {
@@ -44,4 +44,4 @@ process.on('message', async (msg: { task?: string } | null) => {
 });
 
 // Für test/csv-import-db.test.js; der Betrieb geht ausschliesslich über fork().
-export { TASKS, parseCsvLine };
+export { TASKS, csvZeile };

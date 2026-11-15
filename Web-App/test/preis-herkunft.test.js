@@ -71,15 +71,15 @@ async function aufbau(t) {
 
 test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen und sagen es', async t => {
   if (!(await aufbau(t))) return;
-  const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
-  const teil = await addManualPart(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
-  const fig = await addManualFig(U, { fig_number: FIG, condition: 'N' });
+  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
+  const teil = await manuellesTeilAnlegen(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
+  const fig = await manuelleFigurAnlegen(U, { fig_number: FIG, condition: 'N' });
   assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
-  const { resolveManualPartPurchase } = _req('src/teile/manuelleTeile.js');
-  const r = await resolveManualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
+  const { manuellerTeilekauf } = _req('src/teile/manuelleTeile.js');
+  const r = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
   assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand], [0.9, 'U'], 'der übernommene Preis fehlt');
-  const gleich = await resolveManualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
+  const gleich = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
   assert.deepEqual(
     [gleich.effectivePurchasePrice, gleich.preisAusZustand],
     [0.9, null],
@@ -89,8 +89,8 @@ test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen un
 
 test('eine eingetippte Zahl hat keine Herkunft', async t => {
   if (!(await aufbau(t))) return;
-  const { resolveManualPartPurchase } = _req('src/teile/manuelleTeile.js');
-  const r = await resolveManualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
+  const { manuellerTeilekauf } = _req('src/teile/manuelleTeile.js');
+  const r = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
   assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand, r.geschaetzt], [2.5, null, false]);
 });
 

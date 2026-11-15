@@ -23,12 +23,13 @@ interface Rahmen {
   /** Gelesen erst beim Fragen: Die Anmeldung setzt das Konto später auf demselben Objekt. */
   quelle: KontoQuelle | null;
   system: string | null;
+  web: boolean;
   /** Die offene Transaktion dieses Aufrufpfads: nur für Wachen, nie ein Weg zu ihr. */
   transaktion: PfadTransaktion | null;
   begleiter: unknown;
   rid: string | null;
 }
-const LEER: Rahmen = { quelle: null, system: null, transaktion: null, begleiter: null, rid: null };
+const LEER: Rahmen = { quelle: null, system: null, web: false, transaktion: null, begleiter: null, rid: null };
 const rahmen = new AsyncLocalStorage<Rahmen>();
 const jetzt = (): Rahmen => rahmen.getStore() ?? LEER;
 const mitRahmen = <T>(teil: Partial<Rahmen>, f: () => T): T => rahmen.run({ ...jetzt(), ...teil }, f);
@@ -48,13 +49,19 @@ export function imSystemkontext<T>(grund: string, f: () => T): T {
   return mitRahmen({ system: grund }, f);
 }
 
-/** Eine HTTP-Anfrage erbt keinen Systemrahmen, auch wenn Web und Jobs in einem Prozess laufen. */
+/** Im Namen eines Kontos (Auftrag): ohne geerbten Systemrahmen und nicht als HTTP-Anfrage. */
 export function alsAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
-  return mitRahmen({ system: null, quelle }, f);
+  return mitRahmen({ system: null, web: false, quelle }, f);
 }
 
-export function zeilenKontext(): { system: boolean; konto: number | null } {
-  return { system: !!jetzt().system, konto: aktuellesKonto()?.id ?? null };
+/** Eine HTTP-Anfrage erbt keinen Systemrahmen; ihren eigenen trägt die Web-Systemrolle (db/database.ts). */
+export function alsWebAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
+  return mitRahmen({ system: null, web: true, quelle }, f);
+}
+
+export function zeilenKontext(): { system: boolean; web: boolean; konto: number | null } {
+  const r = jetzt();
+  return { system: !!r.system, web: r.web, konto: aktuellesKonto()?.id ?? null };
 }
 
 /** Ein Dienst für ein anderes Konto als das des Zeilenschutzes sähe still weniger; fremde über alsAnfrage. */

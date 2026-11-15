@@ -159,7 +159,7 @@ export const Q = {
   text: (max = 200) => z.string().max(max),
   /** '1' oder 'true' ist ja — so schicken es Oberfläche und App. */
   schalter: z.enum(['0', '1', 'true', 'false']).transform(v => v === '1' || v === 'true'),
-  /** Welche Konten des Haushalts eine Liste zeigt (src/haushalt: parseScopeMode). */
+  /** Welche Konten des Haushalts eine Liste zeigt (src/haushalt: blickfeldArt). */
   konten: z.union([z.enum(['all', 'own', 'subs', '']), z.string().regex(/^\d{1,10}$/)]),
   /** Ein Konto als Besitzer oder Ziel; leer heisst „das eigene“. */
   konto: z.string().regex(/^\d{0,10}$/),

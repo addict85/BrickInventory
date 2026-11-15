@@ -24,6 +24,7 @@ const db = testDaten();
 const ipThrottle = (...a) =>
   _req('src/konto/http/anmeldung.js').ipThrottle(require('./helpers/sources').testDienste().konto, ...a);
 const L = _req('src/konto/loginLimiter.js');
+const { drosselAdresse } = _req('src/infra/drosselAdresse.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test.after(() => db.pool.end().catch(() => {}));
@@ -79,11 +80,11 @@ test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async t =
 });
 
 test('Schlüssel je Adresse: /64, IPv4 in IPv6, anderes bleibt', () => {
-  assert.equal(L.drosselAdresse('2001:0db8:0000:0042:1:2:3:4'), '2001:db8:0:42::/64');
-  assert.equal(L.drosselAdresse('2001:db8::1'), '2001:db8:0:0::/64');
-  assert.equal(L.drosselAdresse('::1'), '0:0:0:0::/64');
-  assert.equal(L.drosselAdresse('::ffff:192.0.2.7'), '192.0.2.7', 'IPv4 in IPv6 zählt wie IPv4');
-  assert.equal(L.drosselAdresse('192.0.2.7'), '192.0.2.7');
-  assert.equal(L.drosselAdresse('konto:7'), 'konto:7');
-  assert.equal(L.drosselAdresse('?'), '?');
+  assert.equal(drosselAdresse('2001:0db8:0000:0042:1:2:3:4'), '2001:db8:0:42::/64');
+  assert.equal(drosselAdresse('2001:db8::1'), '2001:db8:0:0::/64');
+  assert.equal(drosselAdresse('::1'), '0:0:0:0::/64');
+  assert.equal(drosselAdresse('::ffff:192.0.2.7'), '192.0.2.7', 'IPv4 in IPv6 zählt wie IPv4');
+  assert.equal(drosselAdresse('192.0.2.7'), '192.0.2.7');
+  assert.equal(drosselAdresse('konto:7'), 'konto:7');
+  assert.equal(drosselAdresse('?'), '?');
 });

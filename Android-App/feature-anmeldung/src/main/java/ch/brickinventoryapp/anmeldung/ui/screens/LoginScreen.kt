@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.anmeldung.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.foundation.verticalScroll
 import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
@@ -192,6 +193,7 @@ fun LoginScreen(
 internal fun QrKontoFrage(konto: QrKonto, onQrKonto: (uebernehmen: Boolean) -> Unit) {
     val titel = stringResource(R.string.login_qr_konto_titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = { onQrKonto(false) },
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, Modifier.semantics { heading() }) },

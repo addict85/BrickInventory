@@ -13,7 +13,7 @@ import {
   schreibePuffer,
   notiereBildbedarf,
   loescheVerfallene,
-  initImageQueue,
+  bildbedarfEinrichten,
   stoppeBildbedarf,
   anfragenJeMinute,
   nimmBildwuensche,
@@ -63,7 +63,7 @@ async function pauseVorArbeit(k: BilderKontext): Promise<void> {
 async function vorschauErzeugen(k: BilderKontext, relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend(k, 'thumb:' + schluessel)) return false;
   // Auch ein Fehler wird gemerkt: Die Datei käme sonst bei jedem Durchgang wieder.
-  const r = await versuche('bild-job:generateThumb', () => k.bildwerk.vorschauErzeugen(relPfad));
+  const r = await versuche('bild-job:vorschauErzeugenAus', () => k.bildwerk.vorschauErzeugen(relPfad));
   const ok = r.ok && !!r.wert;
   if (!ok) merkeFehlend(k, 'thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
   return ok;
@@ -316,7 +316,15 @@ export async function bildbedarfAbarbeiten(kx: BilderKontext, k: AuftragsKontext
   }
 }
 
-export { merkeGebraucht, initImageQueue, stoppeBildbedarf, anfragenJeMinute, STAPEL, TAKT_MS, DURCHGANG_MAX_NOTIZEN };
+export {
+  merkeGebraucht,
+  bildbedarfEinrichten,
+  stoppeBildbedarf,
+  anfragenJeMinute,
+  STAPEL,
+  TAKT_MS,
+  DURCHGANG_MAX_NOTIZEN,
+};
 
 export {
   arbeiteStapel as _arbeiteStapel,

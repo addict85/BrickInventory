@@ -102,7 +102,7 @@ type AnleitungsQuelle = {
 
 /** @param eigenerTakt Der Aufrufer hält selbst Abstand zwischen zwei Sets;
  *   dann entfallen die Pausen am Ende. */
-export async function downloadSetInstructions(k: KatalogKontext, setNumber: string, eigenerTakt = false) {
+export async function setAnleitungenLaden(k: KatalogKontext, setNumber: string, eigenerTakt = false) {
   const n = mitVersion(setNumber);
 
   // Merken, ob ein fremder Server befragt wurde: Der Takt soll nicht an Sets

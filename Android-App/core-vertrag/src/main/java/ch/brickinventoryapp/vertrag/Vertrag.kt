@@ -1241,6 +1241,7 @@ data class LoginResponse(
     @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
     @SerialName("never_expires") val neverExpires: Boolean = false,
     @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("keks_fehlt") val keksFehlt: Boolean = false,
 )
 
 @Serializable

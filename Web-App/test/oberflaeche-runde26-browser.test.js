@@ -63,7 +63,8 @@ test('N5 Sprungleiste im Konto', { timeout: 240_000 }, async t => {
         await app.bis(`document.getElementById('tab-profil').classList.contains('active')`, 'Konto offen');
         await app.ruhig();
         const m = await app.b.auswerten(MASS);
-        assert.equal(m.lage, 'static', 'Leiste klebt fest wie die Hauptnavigation');
+        // Seit Runde 27 klebt sie unter dem Kopf (sticky); fest wie die Hauptnavigation (fixed) bleibt falsch.
+        assert.equal(m.lage, 'sticky', 'Leiste klebt fest wie die Hauptnavigation');
         assert.ok(m.unterTitel, 'Leiste steht nicht unter dem Titel');
         assert.equal(m.zeilen, 1, 'Leiste bricht um');
         assert.ok(m.linkHoehe >= 40, `Links zu klein: ${m.linkHoehe} px`);

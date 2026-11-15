@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.rememberScrollState
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -24,6 +25,7 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 fun NutzerCaDialog(onJa: () -> Unit, onAbbrechen: () -> Unit) {
     val titel = stringResource(R.string.nutzer_ca_frage_titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = onAbbrechen,
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, modifier = Modifier.semantics { heading() }) },

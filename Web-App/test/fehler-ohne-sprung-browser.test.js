@@ -14,6 +14,9 @@
  *   C  Zweig für Raster und umbrechende Zeilen entfernt → rot: Preisalarm 1280
  *      (76 px), Set erfassen 1280 (126 px), Merkliste 390 (108 px Abstand
  *      zwischen Feld und Meldung)
+ *   D  (15.11.2026) Meldung in der Rasterzelle ohne Prüfung der Nachbarn
+ *      (feldzelle() nur mit oben bündig) → rot: Lagerorte 1280 und 390
+ *      („Hinzufügen“ 27 bzw. 47 px tiefer)
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

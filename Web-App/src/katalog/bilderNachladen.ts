@@ -210,7 +210,7 @@ async function bildNachladen(k: KatalogKontext, m: FehlendesBild): Promise<boole
       k.cdnDrossel.release();
     }
   }
-  if (ok) await k.bilder.vorschauErzeugen(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
+  if (ok) await k.bilder.vorschauErzeugen(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   return ok;
 }
 

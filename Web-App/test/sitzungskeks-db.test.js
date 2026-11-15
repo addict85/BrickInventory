@@ -13,6 +13,9 @@
  *   D  in POST /logout clearCookie() entfernt → rot: beide („Abmelden: null")
  *   E  traegtSitzungsKeks() wieder auf `connect.sid` → rot: beide („die
  *      Herkunftsprüfung erkennt das Cookie")
+ *   F  (15.11.2026) angemeldetAntworten() ohne keks_fehlt → rot: beide
+ *      („über http: keks_fehlt" bzw. „COOKIE_SECURE=0 …"); keksBleibtAus()
+ *      ohne `!req.secure` → rot: „mit TLS …" („über https kein Hinweis")
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -86,7 +89,8 @@ async function durchlauf(server, kopf) {
     headers: { 'content-type': 'application/json', ...kopf },
     body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
   });
-  assert.equal(login.status, 200, `${await login.text()}\n${server.log()}`);
+  const roh = await login.text();
+  assert.equal(login.status, 200, `${roh}\n${server.log()}`);
   const setzen = login.headers.get('set-cookie');
   const cookie = setzen.split(';')[0];
   const ich = async () => (await fetch(`${server.basis}/api/v1/auth/me`, { headers: { cookie, ...kopf } })).json();
@@ -103,6 +107,7 @@ async function durchlauf(server, kopf) {
   });
   await ab.arrayBuffer();
   return {
+    antwort: JSON.parse(roh),
     setzen,
     cookie,
     angemeldet,
@@ -139,6 +144,17 @@ test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, as
     assert.match(d.loeschen ?? '', /^__Host-bim\.sid=;.*Path=\/.*Expires=Thu, 01 Jan 1970/, `Abmelden: ${d.loeschen}`);
     assert.match(d.loeschen, /; Secure(;|$)/, 'ohne Secure verwirft der Browser den Löschbefehl');
     assert.equal(d.danach.loggedIn, false);
+    assert.equal(d.antwort.keks_fehlt, false, 'über https kein Hinweis');
+    // Dieselbe Anmeldung über http: express-session setzt das Secure-Cookie nicht, die Antwort sagt es.
+    const ohne = await fetch(`${server.basis}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+    });
+    const a = await ohne.json();
+    assert.equal(ohne.status, 200, JSON.stringify(a));
+    assert.equal(ohne.headers.get('set-cookie'), null, 'Cookie über http gesetzt');
+    assert.equal(a.keks_fehlt, true, 'über http: keks_fehlt');
   });
 
   await t.test('ohne TLS: bim.sid ohne Präfix und ohne Secure', async st => {
@@ -150,5 +166,6 @@ test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, as
     assert.equal(d.fremd, 403, 'die Herkunftsprüfung erkennt das Cookie');
     assert.match(d.loeschen ?? '', /^bim\.sid=;/, `Abmelden: ${d.loeschen}`);
     assert.equal(d.danach.loggedIn, false);
+    assert.equal(d.antwort.keks_fehlt, false, 'COOKIE_SECURE=0: das Cookie ging über http hinaus');
   });
 });

@@ -6,10 +6,10 @@ Rot: kein AlertDialog ohne Fenstername
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt
-@@ -45,7 +45,6 @@
- 
+@@ -47,7 +47,6 @@
      val titel = stringResource(R.string.update_dialog_title)
      AlertDialog(
+         containerColor = fensterFlaeche(),
 -        modifier = Modifier.semantics { paneTitle = titel },
          // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
          onDismissRequest = { if (!laedt) schliessen() },

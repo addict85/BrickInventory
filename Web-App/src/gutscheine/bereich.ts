@@ -20,7 +20,7 @@ export function erzeugeGutscheine(
       gutscheinBearbeiten: mit(k)(dienst.gutscheinBearbeiten),
       gutscheinKlartext: mit(k)(dienst.gutscheinKlartext),
       pdfFreigeben: mit(k)(dienst.pdfFreigeben),
-      gibExportFrei: mit(k)(dienst.exportFreigeben),
+      gibExportFrei: mit(k)(dienst.ausfuhrFreigeben),
       guthabenAbfragen: mit(k)(dienst.guthabenAbfragen),
       gutscheinListe: mit(k)(dienst.gutscheinListe),
       gutscheinErfassen: mit(k)(dienst.gutscheinErfassen),

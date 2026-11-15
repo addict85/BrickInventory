@@ -42,7 +42,7 @@ export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
  * Haushalt gehört, weiss erst blickfeldIds(). */
-export function parseScopeMode(v: unknown): ScopeMode {
+export function blickfeldArt(v: unknown): ScopeMode {
   if (v === 'own' || v === 'subs') return v;
   const n = parseInt(String(v), 10);
   return Number.isFinite(n) && n > 0 ? n : 'all';

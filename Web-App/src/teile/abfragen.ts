@@ -16,7 +16,7 @@ import type { TeileKontext } from './kontext';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
-export async function getPartsColors(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function teileFarbenAbfrage(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
@@ -59,7 +59,7 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
       };
   }
 
-  // Rückfall über getAllSetParts(), nur mit Rebrickable-Schlüssel.
+  // Rückfall über alleTeileDesSets(), nur mit Rebrickable-Schlüssel.
   const rbKey = await k.einstellungen.globalerWert('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
@@ -135,7 +135,11 @@ export async function tryPartsSummary(k: TeileKontext, userId: Blickfeld, o: Rec
   }
 }
 
-export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
+export async function teileAbfrage(
+  k: TeileKontext,
+  userIdWahl: Sicht | Blickfeld,
+  query: Record<string, unknown> = {},
+) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const filter = teileFilter(query);
@@ -188,13 +192,13 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
 
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
  * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
-export async function getPartsCategories(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function teileKategorienAbfrage(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   return k.teileListe.kategorien(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
 }
 
-export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function teileKennzahlenLesen(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
@@ -213,7 +217,7 @@ export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfe
   );
 }
 
-export async function getBlColorMap(k: TeileKontext) {
+export async function blFarbkarteAbfrage(k: TeileKontext) {
   // farbkarte() merkt die Karte zehn Minuten.
   const karte = await k.finanzen.farbkarte();
   if (karte.size > 0) {
@@ -257,7 +261,7 @@ export async function getBlColorMap(k: TeileKontext) {
 /** @param viewerId Wessen EINSTELLUNGEN gelten (Währung) — getrennt von
  *   `userId`, das sagt, wessen DATEN gelesen werden.
  * @param search  Suchtext der Filterleiste; er wirkt auf beide Listen. */
-export async function getManualParts(
+export async function manuelleTeileListe(
   k: TeileKontext,
   userIdWahl: Sicht | Blickfeld,
   viewerId: number,
@@ -289,7 +293,7 @@ export async function getManualParts(
 // Füllt die Spalte „Habe“ aus dem Bestand.
 export const BESTAND_MAX_TEILE = 5000;
 
-export async function getOwnedQuantities(
+export async function besesseneMengenAbfrage(
   k: TeileKontext,
   blickfeldWahl: Sicht | BlickfeldEingabe,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
