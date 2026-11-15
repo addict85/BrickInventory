@@ -104,7 +104,7 @@ async function durchsichtigeVorschau(_t, a, nr) {
   }
 }
 
-test('UX-Prüfung 25, Nachtrag im Browser', { concurrency: 1, timeout: 600_000 }, async t => {
+test('Menge beim Schliessen, PNG-Vorschau', { concurrency: 1, timeout: 600_000 }, async t => {
   const nr = `r25b-${process.pid}-1`;
   const req = require('./helpers/sources').buildAndRequire();
   const ordner = path.join(ROOT, 'data', 'images', 'sets');

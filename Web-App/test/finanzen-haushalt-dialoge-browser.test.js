@@ -33,7 +33,7 @@ const { musterHaushalt } = require('./helpers/bestand');
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t => {
+test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async t => {
   const NAME = `r12_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r12x_${process.pid}`;

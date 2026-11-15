@@ -36,7 +36,7 @@ const geladen =
   teil => `performance.getEntriesByType('resource').map(e => e.name).filter(n => n.includes(${JSON.stringify(teil)}))
   .map(n => new URL(n).pathname)`;
 
-test('UX-Prüfung 12.11.: Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, async t => {
+test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, async t => {
   const a = await starteApp(t, {
     name: `uxr_${process.pid}`,
     bestand: musterSammlung,

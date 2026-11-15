@@ -412,7 +412,7 @@ async function sitzungUngeklaert(_t, a) {
   }
 }
 
-test('UX-Prüfung 21 im Browser', { concurrency: 1, timeout: 400_000 }, async t => {
+test('Sitzung, Monitor, Fehlerfang, Merkliste', { concurrency: 1, timeout: 400_000 }, async t => {
   const a = await starteApp(t, { name: `r21_pruefer_${process.pid}`, bestand: musterHaushalt });
   if (a.grund) {
     t.skip(a.grund);

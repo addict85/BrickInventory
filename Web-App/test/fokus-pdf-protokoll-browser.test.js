@@ -236,7 +236,7 @@ async function fokusring(_t, a) {
   assert.deepEqual(funde, []);
 }
 
-test('UI-Prüfung 17 im Browser', { concurrency: 1, timeout: 300_000 }, async t => {
+test('Fokus, PDF-Betrachter, Protokollfenster', { concurrency: 1, timeout: 300_000 }, async t => {
   const a = await starteApp(t, { name: `r17_${process.pid}`, bestand: musterHaushalt, alleDesigns: true });
   if (a.grund) {
     t.skip(a.grund);

@@ -83,7 +83,10 @@ function roh(port, text) {
   return ergebnis;
 }
 
-test('zehnte Sicherheitsprüfung am echten Server', { concurrency: 1, timeout: 240_000 }, async t => {
+test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
+  concurrency: 1,
+  timeout: 240_000,
+}, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const PASS = 'Runde-Elf-Passwort-7x',
     NAME = `r11_${process.pid}`;

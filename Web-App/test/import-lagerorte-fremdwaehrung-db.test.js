@@ -27,7 +27,7 @@ const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
-test('UI-Prüfung 16: Server', { concurrency: 1, timeout: 120_000 }, async t => {
+test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const NAME = `r16s_${process.pid}`,
     KIND = `${NAME}_kind`;

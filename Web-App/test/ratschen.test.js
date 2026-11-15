@@ -551,6 +551,18 @@ function reineQuelltextTests() {
     });
 }
 
+test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () => {
+  // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
+  // Gegenprobe (15.11.2026): sicherheit-server-grenzen-db.test.js zurück auf
+  // sicherheit-runde11-db.test.js → rot mit diesem Namen.
+  const RUNDE = /runde\d|runde-|kleinbefunde|-befunde-/;
+  assert.ok(RUNDE.test('oberflaeche-runde25b-browser.test.js') && !RUNDE.test('admin-hash-runden-db.test.js'));
+  assert.deepEqual(
+    fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && RUNDE.test(n)),
+    [],
+  );
+});
+
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   const SCHRANKE = 34;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;

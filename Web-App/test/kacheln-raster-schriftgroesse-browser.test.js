@@ -284,7 +284,7 @@ async function telefon(_t, a) {
   }
 }
 
-test('UX-Prüfung 22 im Browser', { concurrency: 1, timeout: 400_000 }, async t => {
+test('Kachelnamen, Raster, 200 % Schrift, Telefon', { concurrency: 1, timeout: 400_000 }, async t => {
   const name = `r22_${process.pid}`;
   const a = await starteApp(t, {
     name,

@@ -274,7 +274,7 @@ async function passwortwechsel(_t, a) {
   assert.match(p.beschreibung, /^Empfohlen: Ein Passkey, den jemand Fremdes angelegt hat/);
 }
 
-test('UX-Prüfung 20 im Browser', { concurrency: 1, timeout: 300_000 }, async t => {
+test('Feldfehler, Beträge, Finanzen am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
   const a = await starteApp(t, { name: `r20_pruefer_${process.pid}`, bestand: musterHaushalt });
   if (a.grund) {
     t.skip(a.grund);

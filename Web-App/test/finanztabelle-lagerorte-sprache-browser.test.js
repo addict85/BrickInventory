@@ -36,7 +36,7 @@ const { musterHaushalt, haeltSet, katalogSet } = require('./helpers/bestand');
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1, timeout: 300_000 }, async t => {
+test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeout: 300_000 }, async t => {
   const NAME = `r16_${process.pid}`,
     KIND = `${NAME}_kind`;
   const app = await starteApp(t, {

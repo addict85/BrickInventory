@@ -40,7 +40,7 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
 const CODE = /^[2-9A-HJKMNP-Z]{4}(-[2-9A-HJKMNP-Z]{4}){3}$/;
 
-test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async t => {
+test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }, async t => {
   const NAME = `r13_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r13x_${process.pid}`;
