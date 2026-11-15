@@ -51,6 +51,12 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
+import ch.brickinventoryapp.ui.theme.hauptKnopfFarben
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 
 /**
  * Die Rückfrage vor einer Aktion ohne Weg zurück: Symbol, Titel, ein Satz, die
@@ -72,6 +78,7 @@ fun Rueckfrage(
         onDismissRequest = onAbbrechen,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fensterRand().semantics { paneTitle = titel },
+        containerColor = fensterFlaeche(),
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
@@ -120,6 +127,7 @@ fun ErfassenDialog(
         onDismissRequest = schliessen,
         properties = erfassenSchliessbar(geaendert),
         modifier = Modifier.fensterRand().semantics { paneTitle = titel },
+        containerColor = fensterFlaeche(),
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
         // Knöpfe bleiben dabei stehen, nur die Felder rollen.
@@ -128,10 +136,37 @@ fun ErfassenDialog(
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) { inhalt() }
         },
         confirmButton = {
-            Button(onClick = onBestaetigen, enabled = bestaetigenAn) { Text(bestaetigen) }
+            Button(onClick = onBestaetigen, enabled = bestaetigenAn, colors = hauptKnopfFarben()) { Text(bestaetigen) }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/**
+ * Die Knöpfe am Fuss eines Formulars ausserhalb eines AlertDialogs (Blatt, Karte):
+ * Abbrechen links, die Haupthandlung rechts, wie AlertDialog sie ordnet. Bei grosser
+ * Schrift rückt der Hauptknopf rechts in die nächste Zeile statt aus dem Bild.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun Knopfzeile(
+    bestaetigen: String,
+    onBestaetigen: () -> Unit,
+    onAbbrechen: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Während des Speicherns: Kringel davor, der Hauptknopf nimmt keinen zweiten Tipp an. */
+    laeuft: Boolean = false,
+) {
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (laeuft) CircularProgressIndicator(Modifier.size(mitSchrift(18.dp)), strokeWidth = 2.dp)
+        TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
+        Button(onClick = onBestaetigen, enabled = !laeuft, colors = hauptKnopfFarben()) { Text(bestaetigen) }
+    }
 }
 
 /**
@@ -196,7 +231,7 @@ private fun VollbildErfassen(
                     verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
                 ) { inhalt() }
                 HorizontalDivider()
-                Button(onClick = onBestaetigen, enabled = bestaetigenAn,
+                Button(onClick = onBestaetigen, enabled = bestaetigenAn, colors = hauptKnopfFarben(),
                     modifier = Modifier.fillMaxWidth().padding(Abstaende.gross)) { Text(bestaetigen) }
             }
         }

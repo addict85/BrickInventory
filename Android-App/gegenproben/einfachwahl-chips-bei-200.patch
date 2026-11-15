@@ -1,0 +1,17 @@
+Gegenprobe: Einfachwahl bei 200 Prozent wieder als Chips nebeneinander
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: Einfachwahl steht bei 200 Prozent als Segmente
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
+@@ -71,7 +71,7 @@
+     enabled: Boolean = true,
+ ) {
+     if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
+-        SegmentSpalte(optionen, gewaehlt, onWahl, modifier, enabled)
++        Row(modifier.selectableGroup()) { optionen.forEach { (w, t) -> WahlChip(t, w == gewaehlt, { onWahl(w) }) } }
+         return
+     }
+     SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {

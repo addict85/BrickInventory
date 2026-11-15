@@ -745,7 +745,6 @@
     <string name="konto_password_button">Passwort ändern</string>
     <string name="startpasswort_titel">Startpasswort ersetzen</string>
     <string name="startpasswort_text">Dieses Konto meldet sich noch mit dem Startpasswort an, mit dem es angelegt wurde. Wähle zuerst ein eigenes Passwort. Danach meldest du dich mit dem neuen an.</string>
-    <string name="startpasswort_wiederholen">Wiederholen</string>
     <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
     <string name="design_text_classic">Hell und sachlich, blaue Akzente.</string>
@@ -923,6 +922,9 @@
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
     <string name="vouchers_deleted">Gutschein gelöscht</string>
+    <string name="vouchers_number_fehlt">Gutscheinnummer eingeben.</string>
+    <string name="konto_email_fehlt">E-Mail-Adresse eingeben</string>
+    <string name="konto_nichts_geaendert">Nichts geändert – es gibt nichts zu speichern.</string>
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
@@ -1133,7 +1135,6 @@
     <string name="zf_share">Teilen</string>
     <string name="zf_codes_speichern">Als Datei speichern</string>
     <string name="zf_share_title">Wiederherstellungscodes</string>
-    <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>
     <string name="parts_nummer_fehlt">Zuerst eine Teilenummer eingeben.</string>
     <string name="minifigs_nummer_fehlt">Zuerst eine Minifigur-Nummer eingeben.</string>

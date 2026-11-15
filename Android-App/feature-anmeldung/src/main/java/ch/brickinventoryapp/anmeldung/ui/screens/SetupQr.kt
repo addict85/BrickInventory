@@ -8,6 +8,7 @@ package ch.brickinventoryapp.anmeldung.ui.screens
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -83,6 +84,7 @@ internal fun QrVorschlagDialog(
     var zielBestaetigt by remember(vorschlag) { mutableStateOf(false) }
     val titel = stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = onAbbrechen,
         modifier = Modifier.semantics { paneTitle = titel },
         // Wie ZertifikatDialog: Daneben tippen verwirft nichts Abgetipptes, Zurück nur ein leeres Feld.

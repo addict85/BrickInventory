@@ -29,7 +29,7 @@ import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.WahlChips
+import ch.brickinventoryapp.ui.components.AuswahlFeld
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
 
@@ -158,11 +158,10 @@ private fun DarstellungKarte(gewaehlt: Design, onWahl: (Design) -> Unit) {
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
             Abschnittstitel(stringResource(R.string.monitoring_darstellung_vorgabe))
-            Text(stringResource(R.string.monitoring_theme),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
-            WahlChips(
+            // Eine Wahl aus sechs: ein Feld mit Menü wie in den Einstellungen.
+            AuswahlFeld(
+                beschriftung = stringResource(R.string.monitoring_theme),
+                modifier = Modifier.fillMaxWidth(),
                 optionen = Design.entries.map { it to stringResource(it.titel()) },
                 gewaehlt = gewaehlt,
                 onWahl = onWahl,

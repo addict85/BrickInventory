@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,7 +22,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.AnnotatedString
@@ -85,7 +85,7 @@ import ch.brickinventoryapp.testing.testTeileRepository
  *   lagerort-stern-als-knopf     Stern wieder IconButton ohne Ort → rot „Der Vorgabe-Stern …“
  *   haushalt-entfernen-ohne-name „Entfernen“ ohne Kontonamen → rot „Entfernen nennt …“
  *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
- *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
+ *   konto-ohne-wiederholung      Passwort ändern schickt ohne Prüfung ab → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
  *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
  *   bauliste-leert-sofort        „Zurücksetzen“ leert ohne Rückfrage → rot „Bauliste nimmt Sets …“
@@ -297,7 +297,7 @@ class UnterseitenTest {
     }
 
     @Test
-    fun `Konto wechselt das Passwort erst mit passender Wiederholung`() {
+    fun `Konto wechselt das Passwort erst mit passender Wiederholung und markiert sie sonst`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
@@ -310,15 +310,20 @@ class UnterseitenTest {
         warte("Profil") { konto.kontoState.value.profil != null }
         fun feld(label: Int) = compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(label)))[0]
         val wechseln = compose.onNode(hasText(ctx.getString(R.string.konto_password_button)) and hasClickAction())
+        val gewechselt = { welt.pfade.anfragen.count { "password" in it } }
         feld(R.string.konto_password_current).performTextInput("altes-passwort-1")
         feld(R.string.konto_password_new).performTextInput("neues-passwort-12")
-        feld(R.string.startpasswort_wiederholen).performTextInput("anderes-passwort-1")
+        feld(R.string.register_password_repeat).performTextInput("anderes-passwort-1")
         compose.waitForIdle()
-        wechseln.assertIsNotEnabled()
-        feld(R.string.startpasswort_wiederholen).performTextClearance()
-        feld(R.string.startpasswort_wiederholen).performTextInput("neues-passwort-12")
+        // Antippbar; abgeschickt wird nichts, der Cursor steht in der Wiederholung.
+        wechseln.performScrollTo().assertIsEnabled().performClick()
         compose.waitForIdle()
-        wechseln.assertIsEnabled()
+        assertEquals("Mit falscher Wiederholung abgeschickt", 0, gewechselt())
+        feld(R.string.register_password_repeat).assertIsFocused()
+        feld(R.string.register_password_repeat).performTextClearance()
+        feld(R.string.register_password_repeat).performTextInput("neues-passwort-12")
+        wechseln.performScrollTo().performClick()
+        warte("Passwortwechsel") { gewechselt() == 1 }
     }
 
     /** Eine neue Adresse gilt erst nach dem Link: Das Feld zeigt die geltende, darunter die beantragte. */

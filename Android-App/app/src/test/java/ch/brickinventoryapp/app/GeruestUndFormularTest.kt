@@ -38,6 +38,8 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -83,6 +85,9 @@ import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
+import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
@@ -135,8 +140,10 @@ import ch.brickinventoryapp.sammlung.ui.SammlungZiel
  *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
  *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
  *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
- *   startpasswort-ohne-grund    gesperrter Knopf ohne Grund → rot „Startpasswort-Maske sagt …“
+ *   startpasswort-ohne-pruefung Knopf schickt ohne Prüfung ab → rot „Startpasswort-Maske markiert …“
  *   offline-ohne-handlung       Banner ohne „Erneut versuchen“ → rot „Offline-Hinweis bietet an …“
+ *   aufschluesselung-bricht     Aufschlüsselung wieder mit Leerzeichen in derselben Zeile → rot
+ *                               „Teile-Aufschluesselung bricht bei 200 Prozent …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -404,18 +411,25 @@ class GeruestUndFormularTest {
         }
     }
 
-    /** Ein gesperrter Hauptknopf sagt, was fehlt, bis alles da ist. */
+    /** Der Hauptknopf bleibt antippbar; leer markiert er das erste Feld und setzt den Cursor hinein. */
     @Test
-    fun `Startpasswort-Maske sagt, was zum Aendern fehlt`() {
-        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
-        val grund = ctx.getString(R.string.passwort_aendern_fehlt)
-        compose.onNodeWithText(grund).fetchSemanticsNode()
+    fun `Startpasswort-Maske markiert beim Absenden, was fehlt, und fokussiert das erste Feld`() {
+        var ersetzt = 0
+        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> ersetzt++ }, {}) }
+        val knopf = compose.onNode(hasText(ctx.getString(R.string.konto_password_button)) and hasClickAction())
+        knopf.assertIsEnabled().performClick()
+        compose.waitForIdle()
+        assertEquals("Leer wird nichts abgeschickt", 0, ersetzt)
+        compose.onNodeWithText(ctx.getString(R.string.login_password_fehlt)).fetchSemanticsNode()
+        compose.onAllNodes(hasSetTextAction())[0].assertIsFocused()
         val felder = compose.onAllNodes(hasSetTextAction())
         felder[0].performTextInput("altes-passwort-1")
         felder[1].performTextInput("neues-passwort-12")
         felder[2].performTextInput("neues-passwort-12")
+        knopf.performClick()
         compose.waitForIdle()
-        compose.onAllNodesWithText(grund).assertCountEquals(0)
+        assertEquals("Vollständig geht es ab", 1, ersetzt)
+        compose.onAllNodesWithText(ctx.getString(R.string.login_password_fehlt)).assertCountEquals(0)
     }
 
     @Test
@@ -452,6 +466,29 @@ class GeruestUndFormularTest {
             val text = ctx.resources.getQuantityString(id, n, fmtInt(n))
             val b = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("„$text“ ragt über den Rand ($b, Rand $rand)", b.right <= rand + 1f && b.width > 0f)
+        }
+    }
+
+    /** „82 Teile (42 aus Sets · 40 einzeln)“: Bei 200 % steht die Klammer auf eigener Zeile und bricht nie zwischen Zahl und Wort. */
+    @Test
+    fun `Teile-Aufschluesselung bricht bei 200 Prozent nicht zwischen Zahl und Wort`() {
+        zeige(schrift = 2f) {
+            Box(Modifier.width(360.dp)) {
+                KennzahlenReihe { GalleryStatChip(82, R.plurals.gallery_stat_parts, teileAufschluesselung(42, 40)) }
+            }
+        }
+        val haupt = ctx.resources.getQuantityString(R.plurals.gallery_stat_parts, 82, "82")
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNode(hasText(haupt, substring = true), useUnmergedTree = true).fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        val l = layouts.single()
+        val text = l.layoutInput.text.text
+        fun zeile(stelle: Int) = l.getLineForOffset(stelle)
+        val klammer = text.indexOf('(')
+        assertTrue("Klammer beginnt eine Zeile: „$text“", klammer >= 0 && l.getLineStart(zeile(klammer)) == klammer)
+        Regex("""\d+[\s\u00A0]\p{L}+""").findAll(text.substring(klammer)).forEach { m ->
+            val von = klammer + m.range.first
+            assertEquals("„${m.value}“ bricht um in „$text“", zeile(von), zeile(klammer + m.range.last))
         }
     }
 

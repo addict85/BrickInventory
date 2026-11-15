@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.gesperrtFarben
 
 /**
  * Schrift des umrandeten Nebenknopfs in der Hauptfarbe. Die Material-Vorgabe setzt sie
@@ -21,20 +22,19 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * selbst gesperrt aus.
  */
 @Composable
-fun nebenKnopfFarben(): ButtonColors =
-    ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+fun nebenKnopfFarben(): ButtonColors = ButtonDefaults.outlinedButtonColors(
+    contentColor = MaterialTheme.colorScheme.primary,
+    disabledContentColor = gesperrtFarben(MaterialTheme.colorScheme).schrift,
+)
 
 /**
  * Rand des Nebenknopfs in outline (≥ 3:1 gegen jede Fläche) statt outlineVariant, das
- * kaum vom Grund abstach; gesperrt bleibt er blass wie die Schrift.
+ * kaum vom Grund abstach; gesperrt heller, aber mit 3:1 noch als Knopf erkennbar.
  */
 @Composable
 fun nebenKnopfRand(aktiv: Boolean = true): BorderStroke =
     BorderStroke(1.dp, if (aktiv) MaterialTheme.colorScheme.outline
-                       else MaterialTheme.colorScheme.onSurface.copy(alpha = GESPERRT_RAND))
-
-/** Deckkraft eines gesperrten Rands, wie Material sie für gesperrte Flächen nimmt. */
-private const val GESPERRT_RAND = 0.12f
+                       else gesperrtFarben(MaterialTheme.colorScheme).rand)
 
 /**
  * Gestapelte Knöpfe gleich breit, so breit wie der breiteste: „Set merken“ stand
