@@ -16,7 +16,6 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { pruefeParameter } = require('./helpers/sources');
-const kompakt = require('./helpers/sources').kompakt;
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
@@ -348,93 +347,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   );
 });
 
-test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen Standard', () => {
-  // Gemeldet: Kaufpreis und Marktpreis stimmen überein (0.0% Entwicklung),
-  // der Graph zeigt trotzdem einen Abfall am selben Tag. Ursache:
-  // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
-  // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
-  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  const i = src.indexOf("router.endpunkt('GET /api/v1/sets/:setNumber/price-history'");
-  assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
-  const fn = src.slice(i, i + 1200);
-
-  assert.doesNotMatch(
-    fn,
-    /const condition = DEFAULT_PRICE_CONDITION;/,
-    'Der globale Standard darf nicht mehr direkt als Zustand des Sets gelten',
-  );
-  assert.match(
-    fn,
-    /sets\.setPreisVerlauf\(req\.apiUser\.user_id, sichtVon\(req\), sn\)/,
-    'Die Route muss den gemeinsamen Helfer benutzen — mit Blickfeld',
-  );
-  assert.doesNotMatch(
-    fn,
-    /FROM price_history/,
-    'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route',
-  );
-
-  assert.match(
-    kompakt(fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8')),
-    /sk\.finanzen\.preisverlaufSet\(sicht, sn, await waehrungVon\(sk, uid\)\)/,
-    'Der Dienst nutzt den gemeinsamen Helfer',
-  );
-  const helper = kompakt(fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8'));
-  assert.match(
-    helper,
-    /const condition = await setZustand\(k, uids, setNumber\);/,
-    'Der Helfer muss den Zustand über setZustand() auflösen',
-  );
-});
-
-test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen Standard', () => {
-  // Gemeldet per Screenshot: Android zeigte Marktpreis 110.48 CHF (Gebraucht)
-  // für ein als „Neu" geführtes Set mit Kaufpreis 162.42 CHF — „-32.0%
-  // Entwicklung", obwohl sich der Preis nie bewegt hatte. Ursache identisch zur
-  // Webapp-Route: `holePreis(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
-  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
-  const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const priceRoute = dienst.slice(
-    dienst.indexOf('export async function setPreis'),
-    dienst.indexOf('export async function waehrungVon'),
-  );
-  assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
-  assert.doesNotMatch(
-    priceRoute,
-    /holePreis\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?sn, DEFAULT_PRICE_CONDITION/,
-    'Der globale Standard darf nicht mehr direkt an holePreis gehen',
-  );
-  // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
-  assert.match(
-    priceRoute,
-    /sk\.finanzen\.holePreis\(\s*sn,\s*await sk\.finanzen\.setZustand\(blickfeld, sn\),/,
-    'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
-  );
-
-  const historyRoute = src.slice(
-    src.indexOf("router.endpunkt('GET /api/v1/sets/:setNumber/price-history'"),
-    src.indexOf("router.endpunkt('GET /api/v1/sets/:setNumber'", src.indexOf('price-history')),
-  );
-  assert.doesNotMatch(
-    historyRoute,
-    /const condition = DEFAULT_PRICE_CONDITION;/,
-    'Auch der Verlauf darf nicht mehr den globalen Standard nehmen',
-  );
-  // Seit der Zusammenführung teilt sich diese Route src/finanzen/priceHistory.ts mit
-  // der Webapp — die rund fünfzig Zeilen, die dort standen, waren eine Kopie.
-  assert.match(
-    historyRoute,
-    /sets\.setPreisVerlauf\(req\.apiUser\.user_id, sichtVon\(req\), sn\)/,
-    'Der Verlauf muss den gemeinsamen Helfer benutzen',
-  );
-  assert.doesNotMatch(
-    historyRoute,
-    /FROM price_history/,
-    'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route',
-  );
-});
-
+// Preis- und Verlaufsroute im Zustand des Sets prüft test/preis-zustand-des-sets-db.test.js am Server.
 test('genau EINE Zustandsauflösung für Einzelsets — setZustand', () => {
   // Fünfter Fundort desselben Fehlers in dieser Sitzung: bewerteSets,
   // aktuellerMarktpreis, gewinnUndVerlust, die Webapp-Verlaufsroute und jetzt die

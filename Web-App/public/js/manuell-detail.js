@@ -1,3 +1,4 @@
+import { melde } from './ereignisse.js';
 import { detailZeile } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
@@ -8,7 +9,6 @@ import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './dom.js';
 import { betragFuerFeld } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
-import { loadFinance } from './finanzen.js';
 import { deleteManualFig, loadManualFigsTable, manuelleFiguren, updateManualFig } from './minifigs.js';
 import { angemeldetesKonto } from './zustand.js';
 import { lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
@@ -304,7 +304,7 @@ async function speichereTeilFarbe() {
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
-  if (aktiverReiter() === 'finance') loadFinance();
+  if (aktiverReiter() === 'finance') melde('finanzenLaden');
   await openManDetail('part', nummer, neu);
 }
 

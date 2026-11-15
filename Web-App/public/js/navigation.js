@@ -25,8 +25,6 @@ import { ladeMerkliste, merklisteZuruecksetzen } from './merkliste.js';
 import { ladePapierkorb } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';
-import { loadFinance } from './finanzen.js';
-import { loadGallery, renderGallery } from './sammlung.js';
 import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
 import { meldeAnsicht, meldeFilter } from './router.js';
@@ -34,7 +32,7 @@ import { setLagerModus, setScopeMode } from './kontofilter.js';
 import { sammlungUntertitel } from './konten-orte.js';
 import { setScrollLabel } from './rollbalken.js';
 import { tRaw } from '../i18n.js';
-import { abonniere } from './ereignisse.js';
+import { abonniere, melde } from './ereignisse.js';
 import { esc } from './escapen.js';
 
 // Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit oben derselbe Icon wie im Nav-Tab
@@ -164,7 +162,7 @@ export function bindTabs() {
       // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
       if (tab !== 'catalog') setScrollLabel(null);
       // loadGallery() lädt die Kennzahlen selbst; ein zweiter Aufruf kostete doppelt am Budget (apiDrossel.ts).
-      if (tab === 'gallery') loadGallery();
+      if (tab === 'gallery') melde('sammlungLaden');
       if (tab === 'catalog') {
         initCatalog();
       }
@@ -187,7 +185,7 @@ export function bindTabs() {
         if (Date.now() - letzterImport < 30000) setTimeout(loadMinifigs, 5000);
       }
       if (tab === 'finance') {
-        loadFinance();
+        melde('finanzenLaden');
       } // loadFinance already fetches parts+minifigs valuation in parallel
       if (tab === 'partslist') {
         /* session-only, no server load needed */
@@ -480,7 +478,7 @@ function filterZuruecksetzen(ansicht) {
     G('gtheme').value = '';
     setLagerModus('gallery', '');
     if (G('storage-gallery')) G('storage-gallery').value = '';
-    loadGallery();
+    melde('sammlungLaden');
   } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
   else if (ansicht === 'catalog') katalogZuruecksetzen();
   else if (ansicht === 'parts') teileFilterZuruecksetzen();
@@ -500,7 +498,7 @@ export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
   setLagerModus(view, el.value);
-  if (view === 'gallery') loadGallery();
+  if (view === 'gallery') melde('sammlungLaden');
   if (view === 'parts') {
     loadParts();
     loadManualParts();
@@ -519,7 +517,7 @@ export function onScopeChange(view) {
   if (!el) return;
   setScopeMode(view, el.value);
   sammlungUntertitel(view);
-  if (view === 'gallery') loadGallery();
+  if (view === 'gallery') melde('sammlungLaden');
   // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
   // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
   // Endpunkt.
@@ -535,7 +533,7 @@ export function onScopeChange(view) {
     loadMinifigs();
     loadManualFigsTable();
   }
-  if (view === 'finance') loadFinance();
+  if (view === 'finance') melde('finanzenLaden');
   // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders als die Galerie, wo loadStats()
   // mitmuss.
   if (view === 'merkliste') ladeMerkliste();
@@ -551,7 +549,7 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadManualParts();
   }
   if (aktiv === 'minifigs') loadMinifigs();
-  if (aktiv === 'finance') loadFinance();
+  if (aktiv === 'finance') melde('finanzenLaden');
   if (aktiv === 'settings') {
     loadSettings();
     loadProfile();
@@ -560,7 +558,7 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadMonitor();
     loadCacheStats();
   }
-  if (aktiv === 'gallery') renderGallery();
+  if (aktiv === 'gallery') melde('sammlungZeichnen');
 });
 
 /**

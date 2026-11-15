@@ -1,4 +1,5 @@
 // Finanzen: Bewertung, G&V und Wertentwicklung des Bestands.
+import { abonniere } from './ereignisse.js';
 import {
   ladeAnzeige,
   listeLadefehler,
@@ -688,3 +689,5 @@ registerActions({
   finSortiere,
   finFilter,
 });
+
+abonniere('finanzenLaden', () => loadFinance());

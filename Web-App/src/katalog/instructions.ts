@@ -76,7 +76,7 @@ export async function scrapeInstructionsFromFallback(k: KatalogKontext, setNumbe
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
       const desc = `Anleitung ${n} (BrickInstructions)`;
-      await k.anleitungen.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
+      await k.anleitungen.merkeAnleitung(n, pageUrl, desc, null);
       setImmediate(() => {
         void collectAndBuildPDF(k, baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(
           logAndContinue('anleitung:collectAndBuildPDF'),
@@ -165,9 +165,7 @@ async function bdpRueckfall(k: KatalogKontext, n: string, eigenerTakt: boolean):
     const ok = await k.fremdquellen.quellen.downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
     if (ok) {
       console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
-      await k.anleitungen
-        .merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath)
-        .catch(logAndContinue('anleitung:ok'));
+      await k.anleitungen.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath);
       if (!eigenerTakt) await warte(5000);
       return true;
     }
@@ -211,12 +209,8 @@ async function speichereAnleitungen(k: KatalogKontext, n: string, instrList: Anl
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try {
-        await k.anleitungen.merkeAnleitung(n, instr.url, instr.description ?? null, null);
-        saved++;
-      } catch (e) {
-        meldeFehler('anleitungen:pdf-eintragen', e);
-      }
+      await k.anleitungen.merkeAnleitung(n, instr.url, instr.description ?? null, null);
+      saved++;
       const { brickinstructions_base: basis, brickinstructions_hdrs: kopf, brickinstructions_first: erstes } = instr;
       setImmediate(() => {
         void collectAndBuildPDF(k, basis, kopf, erstes, pdfDest, relPath, n).catch(
@@ -229,12 +223,8 @@ async function speichereAnleitungen(k: KatalogKontext, n: string, instrList: Anl
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
     const ok = await k.fremdquellen.quellen.downloadFile(instr.url, dest, undefined, PDF_ANFANG);
-    try {
-      await k.anleitungen.merkeAnleitung(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
-      saved++;
-    } catch (e) {
-      meldeFehler('anleitungen:datei-eintragen', e);
-    }
+    await k.anleitungen.merkeAnleitung(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
+    saved++;
     if (i < instrList.length - 1) await warte(200);
   }
 

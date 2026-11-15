@@ -100,9 +100,11 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
   // Gegenproben: in src/katalog/farben.ts wieder `.catch(meldeUndLiefere('x', []))` → rot (8, Schranke 7);
   // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (86 von 85),
   // mit Gesamtschranke 200 → rot „ausserhalb src/katalog“ (40 von 39).
-  const SCHRANKEN = { logAndContinue: 85, meldeUndLiefere: 7 };
+  // (15.11.2026) Katalog-Schreibwege werfen (Auftrag wiederholt); in teileAnreicherung.ts wieder
+  // `.catch(logAndContinue('x'))` an merkeTeil → rot (68 von 67).
+  const SCHRANKEN = { logAndContinue: 67, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
-  const AUSSERHALB_KATALOG = { logAndContinue: 39 };
+  const AUSSERHALB_KATALOG = { logAndContinue: 37 };
   const imKatalog = (/** @type {string} */ f) => /[\\/]src[\\/]katalog[\\/]/.test(f);
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const muster = [new RegExp(`\\b${name}\\(`, 'g')];
@@ -136,8 +138,10 @@ function nurGemeldeteFaenge() {
   // Gegenproben (14.11.2026): in src/sets/dienst.ts den Zustandswechsel wieder in
   // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
   // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
+  // (15.11.2026) Kaufpreis-Nachtrag sammelt und wirft, Anleitungen eintragen wirft; in
+  // instructions.ts das Eintragen wieder in try/catch mit meldeFehler → rot (57 von 56).
   const { faenge, nurGemeldet } = require('./helpers/faenge');
-  const SCHRANKE = 61;
+  const SCHRANKE = 56;
   const probe = (/** @type {string} */ q) => faenge(q).filter(nurGemeldet).length;
   assert.equal(
     probe('try { a(); } catch (e) { meldeFehler("x", e); }') +
@@ -181,7 +185,7 @@ function stilleFaengeDerOberflaeche() {
   // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
-  const SCHRANKE = 91;
+  const SCHRANKE = 90;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
@@ -551,6 +555,27 @@ function reineQuelltextTests() {
     });
 }
 
+test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
+  // Ansichten melden einander über ereignisse.js; was mehrere teilen, ist Baustein (BAUSTEINE).
+  // Gegenprobe (15.11.2026): `import { loadGallery } from './sammlung.js';` zurück in lagerorte.js
+  // → rot (51 statt 50).
+  const { KERN, BAUSTEINE } = require('../scripts/build-frontend');
+  const SCHRANKE = 50;
+  const JS = path.join(WEB, 'public', 'js');
+  const schicht = new Set([...KERN, ...BAUSTEINE]);
+  const ansichten = fs.readdirSync(JS).filter(n => istAppModul(n) && !schicht.has(n));
+  assert.ok(ansichten.length > 30, `nur ${ansichten.length} Ansichten — greift die Suche noch?`);
+  const kanten = ansichten.flatMap(n =>
+    [...fs.readFileSync(path.join(JS, n), 'utf8').matchAll(/^\s*import\s[^;]*?from\s+'\.\/([\w-]+\.js)'/gms)]
+      .map(m => m[1])
+      .filter(z => ansichten.includes(z))
+      .map(z => `${n} → ${z}`),
+  );
+  assert.ok(kanten.length <= SCHRANKE, `${kanten.length} Importkanten zwischen Ansichten, erlaubt ${SCHRANKE}`);
+  if (kanten.length < SCHRANKE)
+    console.log(`  ℹ Kanten zwischen Ansichten: ${kanten.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“); übrig sind Begriffe der
   // Technik (api, dom, router …). Gezählt wird ein englisches Wort im Dateinamen.
@@ -768,7 +793,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const SCHRANKE = 383;
+  const SCHRANKE = 382;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -1124,7 +1149,6 @@ test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, n
     'public/js/kauf-dialoge.js acqSave',
     'public/js/diagramme.js priceChartSVG',
     'public/js/diagramme.js portfolioChartSVG',
-    'public/js/sammlung.js doAddSet',
     'public/js/init.js plGenerate',
     'public/js/init.js plExportPdf',
     'public/js/minifigs.js renderFigs',
@@ -1235,7 +1259,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
   // Gegenprobe (09.11.2026): an finanzen.js Leerzeilen gehängt → rot.
-  const SCHRANKE_GROESSTE = 772,
+  const SCHRANKE_GROESSTE = 761,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),
@@ -1284,7 +1308,7 @@ function englischeExportnamen() {
   // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
   // Gegenprobe (15.11.2026): in src/bestand/acquisitions.ts `kaufAmTagErfassen` wieder `recordAcquisitionForDay` → rot (50 von 49).
   const { englischerName } = require('./helpers/namen');
-  const SCHRANKE = 49;
+  const SCHRANKE = 36;
   assert.deepEqual(
     ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
       englischerName,

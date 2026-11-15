@@ -85,9 +85,8 @@ function taktAussetzen({ api, apiTakt, gestoertBis, uhr = systemUhr }: Takt, wai
   apiTakt.schiebeTakt(api, waitMs).catch(e => meldeFehler('drossel:takt-aussetzen', e));
 }
 
-// Ein Aufruf je Sekunde für ALLE Prozesse zusammen; die Drosseln ordnen nur
-// innerhalb des Prozesses, den Abstand hält der gemeinsame Takt.
-/** Der gemeinsame Takt läuft über die Tabelle api_takt; der Zugang dazu kommt vom Bauenden. */
+/** Ein Aufruf je Sekunde für alle Prozesse zusammen: Die Drosseln ordnen nur im Prozess, den Abstand
+ * hält der gemeinsame Takt (Tabelle api_takt). */
 export interface Takt {
   api: string;
   abstandMs: number;

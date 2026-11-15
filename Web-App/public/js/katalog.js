@@ -1,4 +1,5 @@
 // Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
+import { melde } from './ereignisse.js';
 import { detailZeile, kachelName, ladeAnzeige, listeLadefehler } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { generationen } from './lader.js';
@@ -9,7 +10,6 @@ import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setz
 import { betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { setScrollLabel } from './rollbalken.js';
-import { loadGallery, loadStats } from './sammlung.js';
 import { setzeLetztenImport, angemeldetesKonto, einstellungsStand } from './zustand.js';
 import { esc, html, verbinde } from './escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
@@ -527,8 +527,7 @@ async function addCatalogSetToGallery() {
             );
             setzeLetztenImport(Date.now());
             _patchCatalogOwned(num, qty); // owned-Badge in-place (kein Reload: Scroll-Position bleibt)
-            loadGallery();
-            loadStats(); // Galerie-Daten im Hintergrund auffrischen
+            melde('sammlungLaden');
           }, 800);
         } else if (ev.step === 'error') {
           streamFertig();

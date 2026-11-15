@@ -1,6 +1,6 @@
 // Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
-import { abonniere } from './ereignisse.js';
+import { abonniere, melde } from './ereignisse.js';
 import {
   ladeAnzeige,
   skelettKacheln,
@@ -35,7 +35,6 @@ import { galerieSets, kontoWaehrung } from './zustand.js';
 import { confirmDelete } from './rueckfrage.js';
 import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { loadFinance } from './finanzen.js';
 /** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_parts['parts'][number]} TeilZeile */
 
 // ── PARTS ─────────────────────────────────────────────
@@ -666,7 +665,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
   if (d.success) {
     toast(tRaw('settings.saved'), 'success');
     loadManualParts();
-    if (aktiverReiter() === 'finance') loadFinance();
+    if (aktiverReiter() === 'finance') melde('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -705,6 +704,7 @@ abonniere('bestandGeaendert', () => {
   loadParts();
   loadManualParts();
 });
+abonniere('teileLaden', () => loadParts());
 
 // ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
 registerActions({

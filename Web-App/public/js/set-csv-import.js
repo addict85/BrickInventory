@@ -1,3 +1,4 @@
+import { melde } from './ereignisse.js';
 import { registerActions } from './registry.js';
 import { LANG, t, tRaw } from '../i18n.js';
 import { fehlerMeldung, api, apiDaten } from './api.js';
@@ -16,7 +17,6 @@ import {
   setzeCsvPollAktiv,
 } from './fortschritt.js';
 import { confirmDelete } from './rueckfrage.js';
-import { loadGallery } from './sammlung.js';
 
 // Set-CSV-Import aus der Galerie: Vorab-Prüfung, Strom des Auftrags und Abfrage, wenn der Strom abreisst.
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
@@ -198,7 +198,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${zaehler}`;
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
-      loadGallery();
+      melde('sammlungLaden');
       toast(tRaw('csv.import_meldung', { ergebnis: zaehler }), s.err ? 'error' : s.warn ? 'info' : 'success');
       if (fi) fi.value = '';
     }

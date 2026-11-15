@@ -1,6 +1,7 @@
 // Der Reiter Minifiguren: Figuren aus Sets und manuell erfasste Figuren, dazu die gemeinsamen Hilfen für
 // manuelle Tabellen und CSV-Status.
-import { abonniere } from './ereignisse.js';
+import { generationen } from './lader.js';
+import { abonniere, melde } from './ereignisse.js';
 import { echt, registerActions } from './registry.js';
 import {
   listeLadefehler,
@@ -31,7 +32,6 @@ import { fmtDatum, fmtN } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './kontofilter.js';
-import { loadFinance } from './finanzen.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import { kontoWaehrung } from './zustand.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
@@ -52,8 +52,8 @@ export function alleFiguren() {
 // Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an den Server: Clientseitig über
 // allFigsCache zu filtern würde mit seitenweisem Laden nur die geladene Seite durchsuchen.
 const FIG_PAGE_SIZE = 60;
-let _figGen = 0,
-  _figPage = 1,
+const figurenLaden = generationen();
+let _figPage = 1,
   _figDone = false,
   _figLoadingMore = false,
   _figTotal = 0;
@@ -75,10 +75,10 @@ function figParams(page) {
 async function loadMinifigsMore() {
   if (_figLoadingMore || _figDone) return;
   _figLoadingMore = true;
-  const gen = _figGen;
+  const gen = figurenLaden.jetzt();
   try {
     const d = await api('GET', `/v1/minifigs?${figParams(_figPage + 1)}`);
-    if (gen !== _figGen) return;
+    if (!figurenLaden.gilt(gen)) return;
     const batch = d.figs || [];
     if (!batch.length) {
       _figDone = true;
@@ -91,7 +91,7 @@ async function loadMinifigsMore() {
   } catch (_) {
     /* stumm — der Sentinel versucht es beim nächsten Scrollen */
   } finally {
-    if (gen === _figGen) _figLoadingMore = false;
+    if (figurenLaden.gilt(gen)) _figLoadingMore = false;
   }
 }
 
@@ -123,16 +123,15 @@ function bindFigsSentinel() {
 }
 
 export async function loadMinifigs() {
-  _figGen++;
+  figurenLaden.neu();
   _figPage = 1;
   _figDone = false;
   _figLoadingMore = false;
-  const gen = _figGen;
   // Ein alter Fehlerzustand weicht dem Gerüst, solange neu geladen wird (wie in der Merkliste).
   const liste = G('figs-list');
   if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skelettKacheln(8, tRaw('common.loading')));
-  const d = await api('GET', `/v1/minifigs?${figParams(1)}`);
-  if (gen !== _figGen) return;
+  const d = await figurenLaden.aktuell(api('GET', `/v1/minifigs?${figParams(1)}`));
+  if (d === undefined) return;
   if (listeLadefehler(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
   _figTotal = d.total ?? allFigsCache.length;
@@ -456,7 +455,7 @@ export async function updateManualFig(figNumber, body, owner) {
     toast(tRaw('settings.saved'), 'success');
     loadManualFigsTable();
     loadMinifigs();
-    if (aktiverReiter() === 'finance') loadFinance();
+    if (aktiverReiter() === 'finance') melde('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
