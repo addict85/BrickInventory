@@ -11,12 +11,12 @@ export function erzeugeDrossel(a: DrosselAbhaengigkeiten, einblick?: Einblick<Dr
     a,
     zugang,
     (k: DrosselKontext) => ({
-      stand: mit(k)(zaehler.stand),
-      zaehle: mit(k)(zaehler.zaehle),
+      zaehlerStand: mit(k)(zaehler.zaehlerStand),
+      zaehleVersuch: mit(k)(zaehler.zaehleVersuch),
       reserviere: mit(k)(zaehler.reserviere),
-      gibFrei: mit(k)(zaehler.gibFrei),
-      vergiss: mit(k)(zaehler.vergiss),
-      zaehleAnfrage: mit(k)(zaehler.zaehleAnfrage),
+      gibPlatzFrei: mit(k)(zaehler.gibPlatzFrei),
+      vergissZaehler: mit(k)(zaehler.vergissZaehler),
+      zaehleImFenster: mit(k)(zaehler.zaehleImFenster),
       raeumeAuf: mit(k)(zaehler.raeumeAuf),
       einmalJeTag: mit(k)(zaehler.einmalJeTag),
       // Die Guthabenschranke prüft und zählt in ihrer eigenen Transaktion (src/gutscheine).

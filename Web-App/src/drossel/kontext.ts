@@ -19,11 +19,11 @@ export const zugang = (db: Db) => ({
     gibLaufplatzFrei: mit(db)(repository.gibLaufplatzFrei),
     loescheZaehler: mit(db)(repository.loescheZaehler),
     loescheZaehlerMitPraefix: mit(db)(repository.loescheZaehlerMitPraefix),
-    raeumeAuf: mit(db)(repository.raeumeAuf),
+    loescheAlteZaehler: mit(db)(repository.loescheAlteZaehler),
     zaehleHoch: mit(db)(repository.zaehleHoch),
     stundenStand: mit(db)(repository.stundenStand),
     zaehleStunde: mit(db)(repository.zaehleStunde),
-    einmalJeTag: mit(db)(repository.einmalJeTag),
+    zaehleEinmalJeTag: mit(db)(repository.zaehleEinmalJeTag),
   },
 });
 export type DrosselKontext = Kontext<DrosselAbhaengigkeiten, ReturnType<typeof zugang>>;

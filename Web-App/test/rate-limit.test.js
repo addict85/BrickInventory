@@ -136,7 +136,7 @@ test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
 
 test('bei DB-Ausfall greift die Rückfallebene', () => {
   const src = fs.readFileSync(path.join(ROOT, 'src/drossel/zaehler.ts'), 'utf8');
-  for (const fn of ['stand', 'zaehle', 'vergiss']) {
+  for (const fn of ['zaehlerStand', 'zaehleVersuch', 'vergissZaehler']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
     // Der Rückfall meldet sich (imSpeicher); der Name der Fehlervariable zählt nicht.
     assert.match(

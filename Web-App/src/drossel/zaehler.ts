@@ -34,7 +34,7 @@ function stutze(fensterMs: number): void {
 const restMin = (firstAt: number, fensterMin: number, jetzt: number) =>
   Math.max(1, Math.ceil((firstAt + fensterMin * 60000 - jetzt) / 60000));
 
-export async function stand(k: DrosselKontext, key: string, fensterMin: number): Promise<Zaehlerstand | null> {
+export async function zaehlerStand(k: DrosselKontext, key: string, fensterMin: number): Promise<Zaehlerstand | null> {
   try {
     const row = await k.zaehler.lies(key, fensterMin);
     if (!row) return null;
@@ -57,7 +57,7 @@ export async function stand(k: DrosselKontext, key: string, fensterMin: number):
 }
 
 /** Ein Fehlversuch: zählt und gibt den belegten Laufplatz frei. @returns der neue Stand */
-export async function zaehle(k: DrosselKontext, key: string, fensterMin: number): Promise<number> {
+export async function zaehleVersuch(k: DrosselKontext, key: string, fensterMin: number): Promise<number> {
   try {
     return await k.zaehler.erhoehe(key, fensterMin);
   } catch (fehler) {
@@ -121,7 +121,7 @@ export async function reserviere(
   }
 }
 
-export async function gibFrei(k: DrosselKontext, key: string): Promise<void> {
+export async function gibPlatzFrei(k: DrosselKontext, key: string): Promise<void> {
   try {
     await k.zaehler.gibLaufplatzFrei(key);
   } catch (fehler) {
@@ -132,7 +132,11 @@ export async function gibFrei(k: DrosselKontext, key: string): Promise<void> {
 }
 
 /** Mit `auchDarunter` auch jeden Zähler `key|…`: Die Tagesgrenze zählt je Adresse eigene Zeilen. */
-export async function vergiss(k: DrosselKontext, key: string, o: { auchDarunter?: boolean } = {}): Promise<void> {
+export async function vergissZaehler(
+  k: DrosselKontext,
+  key: string,
+  o: { auchDarunter?: boolean } = {},
+): Promise<void> {
   try {
     await k.zaehler.loescheZaehler(key);
     if (o.auchDarunter) await k.zaehler.loescheZaehlerMitPraefix(`${key}|`);
@@ -145,7 +149,7 @@ export async function vergiss(k: DrosselKontext, key: string, o: { auchDarunter?
 }
 
 /** In einem Schritt, sonst kamen gleichzeitige Anfragen durch. Abgewiesene zählen, verlängern aber nicht. */
-export async function zaehleAnfrage(
+export async function zaehleImFenster(
   k: DrosselKontext,
   key: string,
   fensterMin: number,
@@ -171,10 +175,10 @@ export async function zaehleAnfrage(
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch.
  * `bekanntMin`: so lange bleiben die Zeilen bekannter Adressen. */
 export function raeumeAuf(k: DrosselKontext, bekanntMin: number): Promise<number> {
-  return k.zaehler.raeumeAuf(bekanntMin);
+  return k.zaehler.loescheAlteZaehler(bekanntMin);
 }
 
 /** Zählen und Stand in einer Anweisung, damit zwei Anfragen nicht beide durchkommen. @returns ob der Tag frei war */
 export async function einmalJeTag(k: DrosselKontext, key: string): Promise<boolean> {
-  return !!(await k.zaehler.einmalJeTag(key));
+  return !!(await k.zaehler.zaehleEinmalJeTag(key));
 }

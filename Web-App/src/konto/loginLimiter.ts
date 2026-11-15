@@ -58,7 +58,7 @@ export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: st
   const kennung = await kontoKennung(k, username);
   // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
   // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
-  const bekannt = !!(await k.drossel.stand(_bekanntKey(ip, kennung), BEKANNT_MIN));
+  const bekannt = !!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN));
   const gesamt = await k.drossel.reserviere(
     _adressKey(ip),
     WINDOW_MIN,
@@ -73,7 +73,7 @@ export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: st
     s => s.count + s.laufend < MAX_ATTEMPTS,
   );
   if (!adresse.ok) {
-    await k.drossel.gibFrei(_adressKey(ip));
+    await k.drossel.gibPlatzFrei(_adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
   }
   if (bekannt) return null;
@@ -84,8 +84,8 @@ export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: st
     return rest <= 0 && (s.count < MAX_ATTEMPTS || s.laufend === 0);
   });
   if (!konto.ok) {
-    await k.drossel.gibFrei(_key(ip, kennung));
-    await k.drossel.gibFrei(_adressKey(ip));
+    await k.drossel.gibPlatzFrei(_key(ip, kennung));
+    await k.drossel.gibPlatzFrei(_adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
   }
   return null;
@@ -93,9 +93,9 @@ export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: st
 
 export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(k, username);
-  await k.drossel.gibFrei(_key(ip, kennung));
-  await k.drossel.gibFrei(_nameKey(kennung));
-  await k.drossel.gibFrei(_adressKey(ip));
+  await k.drossel.gibPlatzFrei(_key(ip, kennung));
+  await k.drossel.gibPlatzFrei(_nameKey(kennung));
+  await k.drossel.gibPlatzFrei(_adressKey(ip));
 }
 
 /** @returns die Fehlversuche des Kontos im Fenster und ob die Tagesgrenze gerade erreicht ist */
@@ -105,10 +105,10 @@ export async function anmeldungGescheitert(
   username: string,
 ): Promise<{ n: number; tagesgrenze: boolean }> {
   const kennung = await kontoKennung(k, username);
-  await k.drossel.zaehle(_key(ip, kennung), WINDOW_MIN);
-  const n = await k.drossel.zaehle(_nameKey(kennung), WINDOW_MIN);
-  await k.drossel.zaehle(_adressKey(ip), WINDOW_MIN);
-  const tag = await k.drossel.zaehle(await _tagKey(k, ip, kennung), KONTO_FENSTER_MIN);
+  await k.drossel.zaehleVersuch(_key(ip, kennung), WINDOW_MIN);
+  const n = await k.drossel.zaehleVersuch(_nameKey(kennung), WINDOW_MIN);
+  await k.drossel.zaehleVersuch(_adressKey(ip), WINDOW_MIN);
+  const tag = await k.drossel.zaehleVersuch(await _tagKey(k, ip, kennung), KONTO_FENSTER_MIN);
   return { n, tagesgrenze: tag === MAX_JE_KONTO_TAG };
 }
 
@@ -118,15 +118,15 @@ export async function anmeldungGescheitert(
  * sperrte ein Fremder mit 50 Versuchen den Inhaber auch an seinen eigenen Geräten aus. */
 export const MAX_JE_KONTO_TAG = 50;
 async function _tagKey(k: KontoKontext, ip: string, kennung: string): Promise<string> {
-  const bekannt = !!(await k.drossel.stand(_bekanntKey(ip, kennung), BEKANNT_MIN));
+  const bekannt = !!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN));
   return bekannt ? `login-tag|${kennung}|${adressAbdruck(ip)}` : `login-tag|${kennung}`;
 }
 export async function tagesgrenzeErreicht(k: KontoKontext, ip: string, username: string): Promise<boolean> {
   const key = await _tagKey(k, ip, await kontoKennung(k, username));
-  return ((await k.drossel.stand(key, KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
+  return ((await k.drossel.zaehlerStand(key, KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
 }
 export async function loescheTagesgrenze(k: KontoKontext, uid: number): Promise<void> {
-  await k.drossel.vergiss(`login-tag|konto:${uid}`, { auchDarunter: true });
+  await k.drossel.vergissZaehler(`login-tag|konto:${uid}`, { auchDarunter: true });
 }
 
 export type Anmeldeereignis =
@@ -166,12 +166,12 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
 
 export async function anmeldungGelungen(k: KontoKontext, ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(k, username);
-  await k.drossel.vergiss(_key(ip, kennung));
-  await k.drossel.vergiss(_nameKey(kennung));
+  await k.drossel.vergissZaehler(_key(ip, kennung));
+  await k.drossel.vergissZaehler(_nameKey(kennung));
   // Nur freigeben: Ein Erfolg setzt den Zähler der Adresse nach Fehlversuchen gegen andere Konten nicht zurück.
-  await k.drossel.gibFrei(_adressKey(ip));
-  await k.drossel.zaehle(_bekanntKey(ip, kennung), BEKANNT_MIN);
-  await k.drossel.zaehle(_erfolgKey(ip, kennung), WINDOW_MIN);
+  await k.drossel.gibPlatzFrei(_adressKey(ip));
+  await k.drossel.zaehleVersuch(_bekanntKey(ip, kennung), BEKANNT_MIN);
+  await k.drossel.zaehleVersuch(_erfolgKey(ip, kennung), WINDOW_MIN);
 }
 
 /** Weiche Grenze: Wer sich öfter anmeldet, verliert nur den Vorrang. Eine harte träfe
@@ -181,8 +181,8 @@ export const ERFOLGE_MIT_VORRANG = 30;
 /** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
 export async function bekannteAnmeldung(k: KontoKontext, ip: string, username: string): Promise<boolean> {
   const kennung = await kontoKennung(k, username);
-  if (!(await k.drossel.stand(_bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
-  return ((await k.drossel.stand(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
+  if (!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
+  return ((await k.drossel.zaehlerStand(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
 }
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
@@ -197,7 +197,7 @@ export function zaehleAnfrage(
   ip: string,
   windowMs: number,
 ): Promise<{ count: number; waitMin: number }> {
-  return k.drossel.zaehleAnfrage(`${bucket}|${drosselAdresse(ip)}`, windowMs / 60000);
+  return k.drossel.zaehleImFenster(`${bucket}|${drosselAdresse(ip)}`, windowMs / 60000);
 }
 
 /** Je Konto und Zugang: Ein erbeuteter Zugang sperrt nicht die Notbremsen des Inhabers.
@@ -221,7 +221,7 @@ export async function bestaetigungGesperrt(
   uid: number,
   zugang: string,
 ): Promise<Sperre | null> {
-  const konto = await k.drossel.stand(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+  const konto = await k.drossel.zaehlerStand(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   const kontoVoll = !!konto && konto.count >= MAX_BESTAETIGUNG_JE_KONTO;
   const r = await k.drossel.reserviere(
     _bestaetigungKey(art, uid, zugang),
@@ -240,12 +240,12 @@ export async function bestaetigungFehlgeschlagen(
   uid: number,
   zugang: string,
 ): Promise<boolean> {
-  const jeZugang = await k.drossel.zaehle(_bestaetigungKey(art, uid, zugang), fenster(art));
-  const jeKonto = await k.drossel.zaehle(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+  const jeZugang = await k.drossel.zaehleVersuch(_bestaetigungKey(art, uid, zugang), fenster(art));
+  const jeKonto = await k.drossel.zaehleVersuch(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   return jeZugang === MAX_ATTEMPTS || jeKonto === MAX_BESTAETIGUNG_JE_KONTO;
 }
 export async function bestaetigungGelungen(k: KontoKontext, art: Bremse, uid: number, zugang: string): Promise<void> {
-  await k.drossel.vergiss(_bestaetigungKey(art, uid, zugang));
+  await k.drossel.vergissZaehler(_bestaetigungKey(art, uid, zugang));
 }
 
 /** Wer das Passwort kennt, riete den Code sonst langsam unter jeder Wartezeit durch;
@@ -254,10 +254,11 @@ export const MAX_FAKTOR_ANMELDUNG_JE_KONTO = 20;
 const _faktorAnmeldungKey = (uid: number) => `faktor-anmeldung-konto|${uid}`;
 export async function faktorCodeGesperrt(k: KontoKontext, uid: number): Promise<boolean> {
   return (
-    ((await k.drossel.stand(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_FAKTOR_ANMELDUNG_JE_KONTO
+    ((await k.drossel.zaehlerStand(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >=
+    MAX_FAKTOR_ANMELDUNG_JE_KONTO
   );
 }
 /** @returns true, wenn dieser Fehlversuch die Schranke gerade erreicht hat */
 export async function faktorCodeFalsch(k: KontoKontext, uid: number): Promise<boolean> {
-  return (await k.drossel.zaehle(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+  return (await k.drossel.zaehleVersuch(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
 }

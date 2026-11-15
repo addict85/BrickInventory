@@ -14,7 +14,7 @@ export async function aktiv(db: DbSchnittstelle, uid: number): Promise<boolean> 
 }
 
 /** Die Konten mit aktivem Faktor, für die Kontenliste der Verwaltung. */
-export async function aktiveUnter(db: DbSchnittstelle, ids: number[]): Promise<Set<number>> {
+export async function mitAktivemFaktor(db: DbSchnittstelle, ids: number[]): Promise<Set<number>> {
   const z = await db.all<{ user_id: number }>(
     'SELECT user_id FROM zweiter_faktor WHERE aktiv AND user_id = ANY($1::int[])',
     [ids],

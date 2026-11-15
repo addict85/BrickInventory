@@ -43,6 +43,6 @@ export function vergissSperrenImProzess(): void {
 export async function vergissFehlversuche(k: KontoKontext): Promise<void> {
   gesperrt().clear();
   await k.drossel
-    .vergiss(BUCKET, { auchDarunter: true })
+    .vergissZaehler(BUCKET, { auchDarunter: true })
     .catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
 }

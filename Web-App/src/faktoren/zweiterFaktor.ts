@@ -184,5 +184,5 @@ export async function erneuereCodes(k: FaktorenKontext, uid: number): Promise<st
 
 /** Für die Kontenliste der Verwaltung: Die Konten liegen beim Konto, ihr Faktor hier. */
 export function aktiveUnter(k: FaktorenKontext, ids: number[]): Promise<Set<number>> {
-  return k.zweiterFaktor.aktiveUnter(ids);
+  return k.zweiterFaktor.mitAktivemFaktor(ids);
 }

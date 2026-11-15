@@ -184,24 +184,22 @@ const ROH_ERLAUBT = {
 };
 
 /** Je Bereich die Funktionen seiner Repositories, wie der Bau sie lädt. */
-function repositoryFunktionen(b) {
-  const dir = path.join(ROOT, 'dist', 'src', b, 'repository');
+function repositoryFunktionen(b, q) {
   const raus = new Set();
-  if (!fs.existsSync(dir)) return raus;
-  for (const n of fs.readdirSync(dir).filter(x => x.endsWith('.js')))
-    for (const f of Object.values(_req(`src/${b}/repository/${n}`))) if (typeof f === 'function') raus.add(f);
+  for (const rel of q.keys())
+    if (rel.startsWith(`src/${b}/repository/`) || rel === `src/${b}/repository.ts`)
+      for (const f of Object.values(_req(rel.replace(/\.ts$/, '.js')))) if (typeof f === 'function') raus.add(f);
   return raus;
 }
 
 /** `name: mit(k.db, modul.f)` in der Fabrik, mit f aus einem Repository des Bereichs. */
-function gebundeneRepositories(b, blaetterDesBereichs) {
-  const datei = path.join(ROOT, 'src', b, 'bereich.ts');
-  if (!fs.existsSync(datei)) return [];
-  const q = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-  const repo = repositoryFunktionen(b);
+function gebundeneRepositories(b, blaetterDesBereichs, q) {
+  const fabrik = q.get(`src/${b}/bereich.ts`);
+  if (!fabrik) return [];
+  const repo = repositoryFunktionen(b, q);
   const raus = [];
-  for (const m of q.matchAll(/^\s*(\w+): mit\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
-    const imp = new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`).exec(q);
+  for (const m of fabrik.matchAll(/^\s*(\w+): mit\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
+    const imp = new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`).exec(fabrik);
     const f = imp && _req(`src/${b}/${imp[1]}.js`)[m[3]];
     if (f && repo.has(f)) raus.push(...blaetterDesBereichs.filter(s => s.endsWith(`.${m[1]}`)));
   }
@@ -212,6 +210,7 @@ test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
   /** @type {Record<string, any>} */
   const kontexte = {};
   const d = satz(kontexte);
+  const q = quellen();
   const roh = new Set();
   for (const [b, x] of Object.entries(d)) {
     const blaetterDesBereichs = blaetter(x, b);
@@ -228,7 +227,7 @@ test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
         .reduce((o, n) => o?.[n], x);
       if (typeof f === 'function' && imKontext.has(f)) roh.add(s);
     }
-    for (const s of gebundeneRepositories(b, blaetterDesBereichs)) roh.add(s);
+    for (const s of gebundeneRepositories(b, blaetterDesBereichs, q)) roh.add(s);
   }
   assert.ok(roh.has('auftraege.liesZustand') && roh.has('katalog.katalogStand'), 'Selbstbeweis: beide Formen gefunden');
   assert.deepEqual(

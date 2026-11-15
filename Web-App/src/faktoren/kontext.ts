@@ -48,7 +48,7 @@ export const zugang = (db: Db) => ({
   zweiterFaktor: {
     ersetzeCodes: mit(db)(zweiterFaktor.ersetzeCodes),
     aktiv: imSystem(db, VOR_ANMELDUNG, zweiterFaktor.aktiv),
-    aktiveUnter: imSystem(db, 'Verwaltung: liest den zweiten Faktor aller Konten', zweiterFaktor.aktiveUnter),
+    mitAktivemFaktor: imSystem(db, 'Verwaltung: liest den zweiten Faktor aller Konten', zweiterFaktor.mitAktivemFaktor),
     faktorStand: mit(db)(zweiterFaktor.faktorStand),
     legeGeheimnisAn: mit(db)(zweiterFaktor.legeGeheimnisAn),
     unbestaetigtesGeheimnisSperren: mit(db)(zweiterFaktor.unbestaetigtesGeheimnisSperren),
