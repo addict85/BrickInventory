@@ -1299,6 +1299,47 @@ AS $function$
               ELSE round(betrag / kurs_je_eur(von, t) * kurs_je_eur(nach, t), 4) END
 $function$;
 
+CREATE OR REPLACE FUNCTION konten_mit_set(sn text)
+ RETURNS integer
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$ SELECT count(DISTINCT user_id)::integer FROM sets WHERE set_number = sn $function$;
+
+CREATE OR REPLACE FUNCTION konto_aus_sicherungen_loeschen(uid integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$
+DECLARE
+  z record;
+  n integer := 0;
+  k integer;
+BEGIN
+  FOR z IN
+    WITH fk AS (
+      SELECT r.relname, a.attname FROM pg_constraint c
+        JOIN pg_class r ON r.oid = c.conrelid
+        JOIN pg_namespace ns ON ns.oid = r.relnamespace AND ns.nspname = 'public'
+        JOIN pg_attribute a ON a.attrelid = r.oid AND a.attnum = ANY (c.conkey)
+       WHERE c.contype = 'f' AND c.confrelid = 'users'::regclass)
+    SELECT ns.nspname AS schema, c.relname AS tabelle, a.attname AS spalte
+      FROM pg_namespace ns
+      JOIN pg_class c ON c.relnamespace = ns.oid AND c.relkind = 'r'
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+     WHERE ns.nspname ~ '^vor_migration_[0-9]+$'
+       AND (a.attname ~ '(^|_)user_id$' OR (c.relname = 'users' AND a.attname = 'id')
+            OR (c.relname, a.attname) IN (SELECT relname, attname FROM fk))
+       AND format_type(a.atttypid, a.atttypmod) IN ('integer', 'bigint')
+  LOOP
+    EXECUTE format('DELETE FROM %I.%I WHERE %I = $1', z.schema, z.tabelle, z.spalte) USING uid;
+    GET DIAGNOSTICS k = ROW_COUNT;
+    n := n + k;
+  END LOOP;
+  RETURN n;
+END $function$;
+
 CREATE OR REPLACE FUNCTION konto_waehrung(uid integer)
  RETURNS text
  LANGUAGE sql

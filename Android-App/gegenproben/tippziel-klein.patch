@@ -1,0 +1,17 @@
+Gegenprobe: Schalterzeile „Vorschau verbergen“ nur 40 dp hoch
+Modul: app
+Test: ch.brickinventoryapp.app.TippzielUndNameTest
+Rot: einstellungen
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/SettingsScreen.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/SettingsScreen.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/SettingsScreen.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/SettingsScreen.kt
+@@ -206,7 +206,7 @@
+             // Je Gerät, Vorgabe aus: Wer die Übersicht anderen zeigt, will keine Vorschau.
+             val vorschauVerbergen = zustand.vorschauVerbergen
+             Row(
+-                Modifier.fillMaxWidth().heightIn(min = 48.dp)
++                Modifier.fillMaxWidth().height(40.dp)
+                     .toggleable(value = vorschauVerbergen, role = Role.Switch, onValueChange = { darstellung.setVorschauVerbergen(it) }),
+                 verticalAlignment = Alignment.CenterVertically,
+             ) {

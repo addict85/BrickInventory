@@ -59,9 +59,9 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   });
 
   // Gezählt wird die Token-Abfrage an der Verbindung, nicht ein Aufruf im Quelltext.
-  // In den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+  // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
   const zugang = require('./helpers/sources').testZugang();
-  const pools = [...new Set([zugang.pool, zugang.systemPool])];
+  const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
   const echt = pools.map(p => p.query);
   let abfragen = 0;
   for (const [i, p] of pools.entries())

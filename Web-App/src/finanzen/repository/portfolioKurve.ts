@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { setBestand, setErfassungen } from '../../../db/bestandSicht';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 
 export function tageswerteAusVerlauf(
@@ -137,17 +137,17 @@ export function letzteWerteVorBeginn(
   );
 }
 
-export function setsMitKaufsumme(db: DbSchnittstelle, uids: number[]) {
+export function setsMitKaufsumme(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
   return db.all<{ set_number: string; quantity: number; purchase_price: number | null }>(
     `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price
-     FROM ${setBestand('= ANY($1)')} s
+     FROM ${l.setBestand('= ANY($1)')} s
      LEFT JOIN (
        SELECT user_id, set_number,
               SUM(COALESCE(purchase_price, 0) * quantity) AS total_price,
               SUM(quantity) AS total_qty
-       FROM ${setErfassungen('= ANY($1)')} e GROUP BY user_id, set_number
+       FROM ${l.setErfassungen('= ANY($1)')} e GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
      WHERE s.user_id = ANY($1)
      GROUP BY s.set_number`,

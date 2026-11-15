@@ -69,6 +69,8 @@ richte_ein db_app_password DB_APP_PASSWORD 24
 richte_ein db_migration_password "" 24
 # Ebenso die Systemrolle (BYPASSRLS) für app und jobs (UPGRADE.md#systemrolle).
 richte_ein db_system_password "" 24
+# Und die Web-Systemrolle, die nur die Zugangstabellen erreicht, für app (UPGRADE.md#systemrolle-web).
+richte_ein db_system_web_password "" 24
 # Die Leserolle bekommt ihr Passwort bei jedem Lauf von db-rolle neu; leer
 # heisst: sie meldet sich gar nicht an. Der Dateiname stammt aus der Zeit von pgweb.
 if [ "${PGWEB:-nein}" = ja ]; then
@@ -91,6 +93,12 @@ done
 for anderes in db_password db_app_password db_migration_password; do
   if [ "$(cat "$ORDNER/db_system_password")" = "$(cat "$ORDNER/$anderes")" ]; then
     echo "[geheimnisse] FEHLER: db_system_password und $anderes sind gleich; db_system_password löschen und erneut aufrufen." >&2
+    exit 1
+  fi
+done
+for anderes in db_password db_app_password db_migration_password db_system_password; do
+  if [ "$(cat "$ORDNER/db_system_web_password")" = "$(cat "$ORDNER/$anderes")" ]; then
+    echo "[geheimnisse] FEHLER: db_system_web_password und $anderes sind gleich; db_system_web_password löschen und erneut aufrufen." >&2
     exit 1
   fi
 done

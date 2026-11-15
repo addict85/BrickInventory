@@ -8,8 +8,8 @@
  * ein Stummel; der Bau fragt die Datenbank nicht.
  *
  * Gegenproben (15.11.2026):
- *   A  in src/katalog/bereich.ts `setInfo` wieder `getSetInfo` → rot „englische
- *      Dienstschlüssel“ (katalog.getSetInfo)
+ *   A  in src/katalog/bereich.ts `setInfo` wieder `setAngaben` → rot „englische
+ *      Dienstschlüssel“ (katalog.setAngaben)
  *   B  in src/gutscheine/bereich.ts `stapelAnlegen` wieder in den Satz → rot „Zahl
  *      der Dienstschlüssel“
  *   C  in src/teile/bereich.ts `teileLesen` wieder `teileListe` (wie das Repository im

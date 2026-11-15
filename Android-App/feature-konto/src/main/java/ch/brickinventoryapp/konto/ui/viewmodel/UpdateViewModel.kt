@@ -114,8 +114,8 @@ class UpdateViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                // Aus einer zurückgesetzten oder abgelaufenen Beschreibung kein Angebot;
-                // die Einstellungen sagen dann, warum (anzubietendeFassung).
+                // Aus einer zurückgesetzten Beschreibung kein Angebot, aus einer abgelaufenen
+                // eines mit Hinweis; die Einstellungen sagen, warum (anzubietendeFassung).
                 val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,

@@ -30,12 +30,13 @@ enum class UpdateFrische {
 fun quelleVeraltet(frische: UpdateFrische?): Boolean = frische != null && frische != UpdateFrische.AKTUELL
 
 /**
- * Angeboten wird nur eine neuere Fassung aus einer aktuellen Beschreibung. Eine ältere,
- * echt signierte hielte den Nutzer sonst auf einer bekannt verwundbaren Zwischenfassung
- * fest; statt des Angebots steht dann der Hinweis aus [quelleVeraltet] da.
+ * Eine zurückgesetzte Beschreibung bietet nichts an, sie hielte auf einer verwundbaren
+ * Zwischenfassung fest. Eine abgelaufene schon: Sie ist echt signiert und neuer als alles
+ * Bekannte; ohne Angebot bliebe das Gerät nach sieben Tagen ohne Etikett auf der alten
+ * Fassung stehen. Den Hinweis, dass es Neueres geben könnte, gibt [quelleVeraltet].
  */
 fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend: Int): UpdateBeschreibung? =
-    b.takeIf { frische == UpdateFrische.AKTUELL && istNeuer(laufend, it.versionCode) }
+    b.takeIf { frische != UpdateFrische.ZURUECKGESETZT && istNeuer(laufend, it.versionCode) }
 
 /**
  * Eine echt signierte, aber alte Beschreibung hält Updates still zurück: Ihre

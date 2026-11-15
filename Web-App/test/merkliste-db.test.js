@@ -301,7 +301,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     const IQ = _req('src/bilder/bildbedarfLauf.js');
     const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
-    // ZWEI Setnummern, und das ist kein Zufall: resolveIfExists() merkt sich
+    // ZWEI Setnummern, und das ist kein Zufall: bildFallsVorhanden() merkt sich
     // ein „gibt es nicht" zehn Minuten lang (src/bilder/images.ts). Dieselbe Nummer
     // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
     const ohneDatei = `wlimg${process.pid}a-1`;

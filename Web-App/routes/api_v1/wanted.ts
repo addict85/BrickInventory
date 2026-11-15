@@ -128,7 +128,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
     return { ...r };
   });
 
-  /** Das Gegenstück zu buildMerklisteCsv(). */
+  /** Das Gegenstück zu merklisteCsv(). */
   router.endpunkt(
     'POST /api/v1/wanted/import/csv',
     requireToken,

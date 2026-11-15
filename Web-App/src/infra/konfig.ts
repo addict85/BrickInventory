@@ -13,6 +13,7 @@ export const DATEI_VARIABLEN = [
   'SESSION_SECRET',
   'PGPASSWORD',
   'PGSYSTEM_PASSWORD',
+  'PGSYSTEM_WEB_PASSWORD',
   'DATABASE_URL',
   'ADMIN_PASSWORD',
 ] as const;
@@ -155,6 +156,8 @@ export const VARIABLEN = [
   'PGDATABASE',
   'PGSYSTEM_USER',
   'PGSYSTEM_PASSWORD',
+  'PGSYSTEM_WEB_USER',
+  'PGSYSTEM_WEB_PASSWORD',
   'PGSSLMODE',
   'PG_POOL_MAX',
   'PG_POOL_MIN',
@@ -464,11 +467,11 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
 
 /** Die Systemrolle (BYPASSRLS) für Arbeit über Kontogrenzen, sonst null: Mit
  * einer einzigen Rolle, der die Tabellen gehören, greift der Zeilenschutz nicht. */
-export function systemVerbindung(env: NodeJS.ProcessEnv = process.env) {
+export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
   geheimnisseAusDateien(env);
-  const user = env.PGSYSTEM_USER?.trim();
+  const user = env[`${art}_USER`]?.trim();
   if (!user) return null;
-  const password = env.PGSYSTEM_PASSWORD ?? '';
+  const password = env[`${art}_PASSWORD`] ?? '';
   const basis = datenbankVerbindung(env);
   if (!('connectionString' in basis)) return { ...basis, user, password };
   const u = new URL(basis.connectionString);
@@ -476,6 +479,8 @@ export function systemVerbindung(env: NodeJS.ProcessEnv = process.env) {
   u.password = encodeURIComponent(password);
   return { connectionString: u.toString() };
 }
+
+export const systemWebVerbindung = (env: NodeJS.ProcessEnv = process.env) => systemVerbindung(env, 'PGSYSTEM_WEB');
 
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
 export const STANDARD_DB_PASSWORT = 'brickinventory_secret';

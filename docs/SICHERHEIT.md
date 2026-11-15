@@ -29,43 +29,63 @@ den Commits, nicht hier.
 4. **Böswilliger Upload** — PDF/Bild mit falschem Typ, Entpackbombe,
    Pfadteile im Namen.
 
-**Was der Zeilenschutz nicht leistet.** Web- und Jobs-Prozess halten beide die
-Zugangsdaten der Laufzeitrolle **und** der Systemrolle (`BYPASSRLS`): Wer Code
-in einem der Prozesse ausführt (eingeschleuste Abhängigkeit, RCE), liest und
-schreibt alles, was die Systemrolle darf, also jedes Konto. Zeilenschutz und
-Rollenrechte (0111–0118) fangen **Logikfehler** ab — ein vergessener Filter auf
-`user_id`, eine eingeschleuste Abfrage über die Laufzeitrolle —, nicht
-Codeausführung im Prozess. Dagegen helfen nur Lieferkette, Container-Härtung
-(ohne root, schreibgeschützt) und die getrennte Migrationsrolle, die keinem
-Prozess der App gehört. Das Verwaltungsprotokoll ist auch für die Systemrolle
-nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
+**Was der Zeilenschutz nicht leistet.** Die Zeilenregeln folgen `app.konto`, und
+das kann jede Rolle per `set_config()` umsetzen (Migration 0112). Sie fangen
+deshalb **vergessene Filter** ab — eine Abfrage ohne Bedingung auf `user_id` —,
+aber kein eingeschleustes SQL: Eine eingeschleuste Anweisung, die das Konto selbst
+umsetzt, liest danach das andere Konto; in einer Transaktion mit mehreren
+Anweisungen (`einmaligeTransaktion`, `db/database.ts`) gilt das Umsetzen auch für
+die folgenden. Eine Prüfung von `app.konto` vor dem COMMIT hälfe nicht: Gelesenes
+ist dann gelesen, und die Anweisung kann das Konto vorher zurücksetzen. Gegen
+eingeschleustes SQL schützen gebundene Parameter (kein SQL aus Zeichenketten der
+Eingabe) und die Rollenrechte: Die Laufzeitrolle liest weder Passwort-Hashes noch
+Sitzungen (0115) und schreibt weder Passwort noch Verwalterrecht (0117).
 
-*Warum der Web-Prozess die Systemrolle behält (Prüfung vom 15.11.2026, M2).*
-Ohne Systemrolle im Web-Prozess wäre gegen Codeausführung dort kaum etwas
-gewonnen; der Umbau wurde deshalb nicht gemacht:
-- Der Zeilenschutz folgt `app.konto`, und das setzt die Laufzeitrolle selbst
-  (`set_config`). Wer im Prozess Code ausführt, setzt jedes Konto der Reihe
-  nach und liest dessen Sammlung, Finanzen und Gutscheine auch ohne
-  `BYPASSRLS`.
-- Die Kontexte, die auch der Web-Prozess baut, nutzen den Systemrahmen an rund 160 Stellen
-  (`imSystem`/`imSystemkontext`, vor allem `src/konto`, `src/verwaltung`,
-  `src/auftraege`, `src/geraete`), nicht an einer Handvoll. Fast alle gehen
-  ihrer Art nach über Kontogrenzen: Anmeldung über Namen, Token-Hash oder
-  Passkey, bevor das Konto feststeht; Passwort, Adresse, Verwalterrecht und
-  Sitzungsversion schreiben; Verwaltung aller Konten. Eine SECURITY
-  DEFINER-Funktion je Stelle nähme dieselben Angaben (Ziel-Konto, neuer Hash)
-  an und gäbe sie jedem, der im Prozess Code ausführt, ebenso.
-- Das Passwort prüft der Prozess (argon2id in Node), er muss die Hashes also
-  lesen.
+**Zwei Systemrollen.** Den Zeilenschutz heben zwei Rollen auf (`BYPASSRLS`):
+`brickinventory_system` hält nur der Dienst `jobs` (Aufträge, Umschlüsselung,
+Aufräumen über alle Konten). Der Web-Prozess hat nur
+`brickinventory_system_web`; Migration 0119 gibt ihr
+- volle Zeilenrechte auf Zugang und Verwaltung (`users`, `user_sessions`,
+  `api_tokens*`, `passkeys`, `webauthn_challenges`, `zweiter_faktor*`,
+  `qr_login_tokens`, `geraete_*`, `schritt_*`, `rate_limit_attempts`,
+  `account_links`, `account_link_invites`, `household_former_links`,
+  `verwalter_uebernahmen`, `global_settings`), auf `user_settings` (Sprache einer
+  Mail vor der Anmeldung, Währung des ganzen Haushalts) und auf `auftraege`
+  (einstellen, vorziehen, abbrechen);
+- `verwaltungsprotokoll` nur lesen und anfügen;
+- volle Zeilenrechte auf Tabellen ohne Kontobezug (Katalog, Preis- und
+  Bildspeicher, Laufzustand), die auch die Laufzeitrolle hat;
+- aus dem Bestand nur Nummern ohne Konto (`sets.set_number`,
+  `parts.part_number`/`source`, `minifigs.fig_number`) für die Übersichten der
+  Verwaltung, dazu den Stand je Konto (`parts_version_user`), den Trigger beim
+  Löschen eines Kontos hochzählen;
+- zwei Funktionen der Eigentümerin: `konten_mit_set()` (nur die Zahl der Konten
+  mit einem Set) und `konto_aus_sicherungen_loeschen()` (ein gelöschtes Konto
+  auch aus den Kopien vor Migrationen).
 
-Was bleibt: Codeausführung im Web-Prozess heisst Zugriff auf alle Konten.
-Ein echter Gewinn verlangte, dass die Datenbank das Konto selbst
-nachweist — `app.konto` nur über eine Funktion, die einen Sitzungs- oder
+Gutscheine, Kaufpreise, Sammlung, Papierkorb, Merkliste, Preisalarme,
+Teilezusammenfassungen, Importe, Idempotenz und die Kopien vor Migrationen
+erreicht sie nicht. Fehlt in einem Systemrahmen einer Anfrage ein Filter, bleibt
+der Fehler auf diese Tabellen beschränkt. `test/systemrolle-web-db.test.js` hält
+die Liste fest; alle Tests über `testServer` laufen mit dieser Rolle.
+
+**Codeausführung im Prozess.** Wer im Web-Prozess Code ausführt (eingeschleuste
+Abhängigkeit, RCE), hat Laufzeit- und Web-Systemrolle. Über `app.konto` liest er
+mit der Laufzeitrolle trotzdem jedes Konto der Reihe nach, Gutscheine
+eingeschlossen; Passwörter, Verwalterrecht und Sitzungen ändert er über die
+Web-Systemrolle. Die engere Rolle begrenzt Logikfehler, keine Codeausführung.
+Wer Code im Dienst `jobs` ausführt, hat die volle Systemrolle. Dagegen helfen nur
+Lieferkette, Container-Härtung (ohne root, schreibgeschützt) und die getrennte
+Migrationsrolle, die keinem Prozess der App gehört. Das Verwaltungsprotokoll ist
+für beide Systemrollen nur anfügbar: Eine Spur lässt sich so nicht nachträglich
+tilgen.
+
+Ein echter Gewinn gegen Codeausführung verlangte, dass die Datenbank das Konto
+selbst nachweist — `app.konto` nur über eine Funktion, die einen Sitzungs- oder
 Token-Hash gegen die Tabelle prüft, Verwaltungsrechte daraus abgeleitet,
-Anmeldung als Funktion, die nur das Konto zum passenden Nachweis liefert.
-Das ist ein Umbau der Datenbankschicht und der Anmeldung, kein
-Rechteschnitt; selbst dann handelte der Prozess für jede gerade aktive
-Sitzung.
+Anmeldung als Funktion, die nur das Konto zum passenden Nachweis liefert. Das ist
+ein Umbau der Datenbankschicht und der Anmeldung, kein Rechteschnitt; selbst dann
+handelte der Prozess für jede gerade aktive Sitzung.
 
 5. **Lieferkette** — npm-Pakete, Actions, Container-Images, fremde
    Antworten von Rebrickable, Brickset, LEGO.
@@ -613,12 +633,26 @@ Vorschlag.
      offline mit `openssl dgst -sha256 -sign beschreibung.pem` — und lädt
      `version-signiert.json` (Format wie im Workflow: `daten` und
      `beschreibungssignatur` in Base64) an die Release.
+   - Vor dem Hochladen gegenprüfen und zusammensetzen:
+     `openssl dgst -sha256 -verify beschreibung.pub.pem -signature beschreibung.sig version-daten.json`,
+     dann `jq -n --arg d "$(base64 -w0 version-daten.json)" --arg s "$(base64 -w0 beschreibung.sig)" '{daten:$d, beschreibungssignatur:$s}' > version-signiert.json`
+     und `gh release upload <etikett> version-signiert.json`. Der öffentliche Teil
+     muss als `-----BEGIN PUBLIC KEY-----` (SPKI) in der App stehen; offline liefert
+     ihn `openssl pkey -in beschreibung.pem -pubout`.
+   - Die Frist bleibt sieben Tage: Auch das Auffrischen braucht dann jede Woche den
+     Token. Ohne Auffrischen bietet die App eine neuere Fassung weiter an, warnt aber,
+     dass es Neueres geben könnte.
 2. **Zweiter Prüfer.** Eine zweite Person (eigenes Konto mit Zwei-Faktor) unter
    *Settings → Environments → release* und *release-beschreibung* als
    *Required reviewer* eintragen und *Prevent self-review* einschalten; der
    Workflow meldet das dann nicht mehr als Warnung. Der zweite Prüfer gibt nur
    frei, wenn Etikett, Commit und Änderungen zu einer angekündigten Fassung passen.
    *Allow administrators to bypass* bleibt aus (der Workflow prüft es).
+   - Prüfen: `gh api repos/<besitzer>/<repo>/environments/release --jq '.protection_rules'`
+     zeigt `"prevent_self_review": true` und den zweiten Prüfer; dasselbe für
+     `release-beschreibung`. Die Warnung „Selbstfreigabe“ im Lauf *APK signieren* fehlt dann.
+   - Der zweite Prüfer bekommt Leserecht am Repository, kein Schreibrecht: Er muss
+     nur freigeben, nicht pushen; *Deployment branches* bleibt auf `main`.
 3. **Haltefenster vor „Latest“.** Die App liest nur die als „Latest“ markierte
    Release. Veröffentlicht der Workflow zunächst ohne diese Marke
    (`gh release create … --latest=false`) und setzt sie erst nach 48–72 Stunden
@@ -626,6 +660,14 @@ Vorschlag.
    Release zu bemerken (GitHub-Benachrichtigung „Releases“ für das Repository
    abonnieren) und sie zu löschen, bevor ein Gerät sie lädt. Nachteil: Ein
    dringender Fix braucht ebenso lang oder einen bewussten Handgriff.
+   - Workflow-Änderung: in `android-release.yml` bei `gh release create` `--latest`
+     durch `--latest=false` ersetzen.
+   - Im Fenster: `gh release download <etikett> -p 'BrickInventory-*.apk' -p version-signiert.json`,
+     `sha256sum` des APK mit `apkSha256` aus `daten` (Base64) und mit der Summe im Lauf
+     (*Übergabe an das Signieren*) vergleichen; Commit des Etiketts gegen `main` prüfen.
+   - Erst dann `gh release edit <etikett> --latest`. Die Frist der Beschreibung läuft
+     ab dem Signieren: Bei 72 Stunden Fenster bleiben vier Tage bis zum Auffrischen.
+     Bis zur Marke prüft das nächste Etikett seine Fassung gegen die alte „Latest“.
 
 Reihenfolge nach Wirkung: 1 nimmt GitHub den Schlüssel, 2 verlangt einen
 zweiten Menschen, 3 gibt Zeit zum Bemerken. Ein Schlüssel in HSM oder Cloud-KMS
@@ -718,4 +760,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
   das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
   gilt sieben Tage; danach meldet die App sie als veraltet, bis ein neues Etikett
-  sie auffrischt.
+  sie auffrischt. Eine abgelaufene, aber neuere Fassung bietet sie trotzdem an,
+  mit dem Hinweis, dass es Neueres geben könnte; eine ältere als die installierte
+  oder als die schon gesehene nie (Rückroll-Schutz über versionCode und
+  Ausstellungszeit).

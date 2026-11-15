@@ -236,8 +236,11 @@ mit `setUnlockedDeviceRequired` umhüllt (`EntsperrTresor`, Alias
 `brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
 liest weder Bestand noch Kaufpreise. Ein Schlüssel älterer Fassungen (Alias
 `brickinventory_ablage`, ohne Bedingung) wird beim ersten Zugriff mit entsperrtem Gerät
-umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`AblageEntsperrtTest`); kann
-der Keystore die Bedingung nicht, bleibt der alte als Ausweg. Gesperrt meldet eine
+umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`AblageEntsperrtTest`);
+danach wird der alte Alias gelöscht, beim Token ebenso `brickinventory_auth_token`.
+Einen fehlenden alten Schlüssel legt die App nie neu an, der Altbestand gilt dann als
+weg (`KeystoreAltbestandTest`). Die Keystore-Geheimtexte tragen eine AAD (`a1:`); ältere
+ohne bleiben lesbar und werden beim ersten Zugriff umgeschlüsselt. Gesperrt meldet eine
 Ablage „gesperrt“ (IOException) statt „unlesbar“, damit niemand ihre Dateien löscht.
 Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und das
 öffnet sich ebenfalls nur entsperrt; ein laufender Prozess hält beide im Speicher.
@@ -285,11 +288,13 @@ gilt als „kein Pin“ bzw. „Schalter aus“; der Nutzer bestätigt dann neu.
 gelöscht (`VertrauenVerschluesseltTest`). Wer Code mit der UID der App ausführt,
 kann den Keystore weiterhin benutzen wie die App.
 
-**Update-Angebot nur aus frischer Beschreibung (sec12 H2):** Ist die signierte
-Beschreibung abgelaufen oder älter als eine schon gesehene, bietet die App kein
-Update an; die Einstellungen sagen, warum. Sonst hielte eine wieder
-eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
-Zwischenfassung fest.
+**Update-Angebot nie aus einer zurückgesetzten Beschreibung (sec12 H2):** Ist die
+signierte Beschreibung älter als eine schon gesehene oder als die installierte
+Fassung, bietet die App kein Update an; die Einstellungen sagen, warum. Sonst hielte
+eine wieder eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
+Zwischenfassung fest. Eine nur abgelaufene, aber neuere Beschreibung bietet ihre
+Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFrischeTest`):
+Ohne neues Etikett binnen sieben Tagen bliebe das Gerät sonst auf der alten Fassung.
 
 ## Manipulationsschutz (MASVS-RESILIENCE)
 
@@ -728,8 +733,10 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   (7 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
   versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
   abgelaufene Beschreibung meldet sie in den Einstellungen („veraltet oder
-  manipuliert“) statt „aktuell“; ein Zurückhalten, etwa indem eine ältere Release
-  wieder „Latest“ wird, bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 7
+  manipuliert“ bzw. „eine neuere Fassung könnte existieren“) statt „aktuell“; ein
+  Zurückhalten, etwa indem eine ältere Release wieder „Latest“ wird, bleibt so nicht
+  mehr still. Angeboten wird aus einer abgelaufenen Beschreibung trotzdem, wenn sie
+  neuer ist als die installierte Fassung; die Messlatte verschiebt sie nicht. **Auffrischen:** Spätestens alle 7
   Tage ein neues Etikett `android-v…` setzen, notfalls auf denselben Commit von
   `main`. Gleicher versionCode und Commit gelten dabei als Wiederholung, die App
   bietet nichts an und sieht nur die neue Frist.

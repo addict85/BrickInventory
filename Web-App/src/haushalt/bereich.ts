@@ -1,4 +1,5 @@
 /** Jeder Dienst nimmt den Kontext; Regeln ohne Datenbank stehen in regeln.ts. */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as haushalt from './haushalt';
@@ -10,7 +11,7 @@ export type { HaushaltAbhaengigkeiten, HaushaltKontext } from './kontext';
 export function erzeugeHaushalt(a: Omit<HaushaltAbhaengigkeiten, 'faecher'>, einblick?: Einblick<HaushaltKontext>) {
   return baueBereich(
     { ...a, faecher: new Faecher() },
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: HaushaltKontext) => ({
       meldeHaushaltsaenderung: mit(k)(haushalt.meldeHaushaltsaenderung),
       haushaltVon: mit(k)(haushalt.haushaltVon),

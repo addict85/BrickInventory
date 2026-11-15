@@ -174,7 +174,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.setInfo(sn));
+  const rbErgebnis = await versuche('set-service:setAngaben', sk.katalog.setInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
     name = rb.name;
@@ -186,7 +186,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   }
   if (mitBrickset) {
     const bs = wertOder(
-      await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.getSetInfo(sn)),
+      await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.setAngaben(sn)),
       null,
     );
     if (bs) {

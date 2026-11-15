@@ -5,7 +5,7 @@
  *
  * Ausgangslage `# pass 6 / # fail 0` (fünf Fälle und ihre Hülle).
  *
- *   A  `AND COALESCE(condition, 'N') = $…` aus recordAcquisitionForDay
+ *   A  `AND COALESCE(condition, 'N') = $…` aus kaufAmTagErfassen
  *      entfernt (der Stand von Marcos Befund)
  *      → `pass 2 / fail 4`. Rot sind DREI Fälle: „zwei Zustände, zwei
  *        Zeilen" (`1 Zeile(n) statt 2`), „jede Zeile behält ihren eigenen
@@ -18,14 +18,14 @@
  *        zweite Zeile schon in der Datenbank, und alles, was auf ihr aufbaut,
  *        fällt mit. Das ist der Beleg, dass die Migration trägt und nicht
  *        nur der Code.
- *   C  den Zustand aus findSameDayAcquisition entfernt
+ *   C  den Zustand aus kaufAmSelbenTag entfernt
  *      → `pass 4 / fail 2`. Rot: „der Datums-Endpunkt sieht den Zustand an".
  *        Ohne ihn lehnt der Bearbeiten-Pfad ab, was der Anlege-Pfad gerade
  *        erlaubt — genau der Widerspruch, wegen dem diese Fassung einmal
  *        verworfen wurde.
  *
  * Gegenproben zu Migration 0047 (am 28.10. gemessen):
- *   D  recordAcquisitionForDay wieder als Lesen-Rechnen-Schreiben (Stand vor
+ *   D  kaufAmTagErfassen wieder als Lesen-Rechnen-Schreiben (Stand vor
  *      0047) → rot: „gleichzeitige Erfassungen gehen nicht verloren" (weniger
  *      als 12) und „gleicher Preis stockt auf …" (Mischpreis 3)
  *   E  price_estimated aus Index und Einfügen entfernt → rot: „ein
@@ -46,7 +46,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
-const { recordAcquisitionForDay, findSameDayAcquisition } = _req('src/bestand/acquisitions.js');
+const { kaufAmTagErfassen, kaufAmSelbenTag } = _req('src/bestand/acquisitions.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -87,13 +87,13 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     ).map(z => ({ menge: Number(z.quantity), preis: z.preis, zustand: z.zustand }));
 
   await t.test('zwei Zustände, zwei Zeilen', async () => {
-    await recordAcquisitionForDay('part', UID, ['3001', 4], {
+    await kaufAmTagErfassen('part', UID, ['3001', 4], {
       quantity: 3,
       price: 1.5,
       condition: 'N',
       createdAt: TAG,
     });
-    await recordAcquisitionForDay('part', UID, ['3001', 4], {
+    await kaufAmTagErfassen('part', UID, ['3001', 4], {
       quantity: 2,
       price: 0.5,
       condition: 'U',
@@ -122,19 +122,19 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
   await t.test('gleicher Preis stockt auf, ein anderer Preis bekommt eine eigene Zeile', async () => {
     // Seit Migration 0047: Kein Mischpreis mehr. Gleiche Käufe eines Tages
     // werden addiert (verlustfrei), verschiedene Preise bleiben getrennt.
-    await recordAcquisitionForDay('part', UID, ['3002', 4], {
+    await kaufAmTagErfassen('part', UID, ['3002', 4], {
       quantity: 2,
       price: 2.0,
       condition: 'N',
       createdAt: TAG,
     });
-    await recordAcquisitionForDay('part', UID, ['3002', 4], {
+    await kaufAmTagErfassen('part', UID, ['3002', 4], {
       quantity: 1,
       price: 2.0,
       condition: 'N',
       createdAt: TAG,
     });
-    await recordAcquisitionForDay('part', UID, ['3002', 4], {
+    await kaufAmTagErfassen('part', UID, ['3002', 4], {
       quantity: 2,
       price: 4.0,
       condition: 'N',
@@ -154,7 +154,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     // Web und App erfassen dasselbe Teil im selben Augenblick.
     await Promise.all(
       Array.from({ length: 12 }, () =>
-        recordAcquisitionForDay('part', UID, ['3004', 1], { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG }),
+        kaufAmTagErfassen('part', UID, ['3004', 1], { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG }),
       ),
     );
     const z = await zeilen('3004');
@@ -166,14 +166,14 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
   });
 
   await t.test('ein eingesetzter Marktpreis ist als geschätzt gekennzeichnet', async () => {
-    await recordAcquisitionForDay('part', UID, ['3005', 1], {
+    await kaufAmTagErfassen('part', UID, ['3005', 1], {
       quantity: 1,
       price: 0.3,
       condition: 'N',
       createdAt: TAG,
       geschaetzt: true,
     });
-    await recordAcquisitionForDay('part', UID, ['3005', 1], {
+    await kaufAmTagErfassen('part', UID, ['3005', 1], {
       quantity: 1,
       price: 0.3,
       condition: 'N',
@@ -200,9 +200,9 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
                   ON CONFLICT (user_id, key) DO UPDATE SET value = 'CHF'`,
       [UID],
     );
-    await recordAcquisitionForDay('part', UID, ['3006', 1], { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
+    await kaufAmTagErfassen('part', UID, ['3006', 1], { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
     await db.run(`UPDATE user_settings SET value = 'EUR' WHERE user_id = $1 AND key = 'currency'`, [UID]);
-    await recordAcquisitionForDay('part', UID, ['3006', 1], { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
+    await kaufAmTagErfassen('part', UID, ['3006', 1], { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
     const z = await db.all(
       `SELECT currency FROM part_acquisitions WHERE user_id = $1 AND part_number = '3006' ORDER BY currency`,
       [UID],
@@ -250,18 +250,18 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
     assert.ok(n, 'Vorbedingung: die N-Zeile von oben');
     assert.equal(
-      await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'N', { preis: 1.5 }),
+      await kaufAmSelbenTag('part', UID, ['3001', 4], TAG, n.id, 'N', { preis: 1.5 }),
       null,
       'Gegen den EIGENEN Zustand ist der Tag frei — die eigene Zeile zählt nicht',
     );
-    const clash = await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.5 });
+    const clash = await kaufAmSelbenTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.5 });
     assert.ok(
       clash,
       'Gegen den ANDEREN Zustand mit gleichem Preis liegt dort eine Zeile. Wer sie ' +
         'übersieht, lässt eine Dublette entstehen — und der Index weist sie ab',
     );
     assert.equal(
-      await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.9 }),
+      await kaufAmSelbenTag('part', UID, ['3001', 4], TAG, n.id, 'U', { preis: 0.9 }),
       null,
       'Mit anderem Preis ist es seit Migration 0047 eine eigene Zeile, keine Kollision',
     );

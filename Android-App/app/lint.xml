@@ -7,4 +7,9 @@
     <issue id="Typos">
         <ignore regexp="mean.*ß" />
     </issue>
+    <!-- emoji2 steht im Katalog nur als Untergrenze (androidxMindestens), damit kein unsigniertes
+         1.2.0 ohne Prüfsumme hereinkommt; eine neuere Fassung bräuchte neue Prüfsummen. -->
+    <issue id="GradleDependency">
+        <ignore regexp="androidx\.emoji2" />
+    </issue>
 </lint>

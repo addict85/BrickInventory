@@ -25,11 +25,11 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   einblick?.(k);
   const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt);
   const kontingent = {
-    zaehleKontingent: mit(k)(apiKontingentDienst.checkAndIncrementRateLimit),
-    kontingentStand: mit(k)(apiKontingentDienst.getRateLimitStatus),
+    zaehleKontingent: mit(k)(apiKontingentDienst.kontingentPruefenUndZaehlen),
+    kontingentStand: mit(k)(apiKontingentDienst.kontingentUebersicht),
     kontingentFrei: mit(k)(apiKontingentDienst.kontingentFrei),
     setzeKontingentZurueck: mit(k)(apiKontingentDienst.setzeKontingentZurueck),
-    kontingentGrenze: mit(k)(apiKontingentDienst.getLimitForApi),
+    kontingentGrenze: mit(k)(apiKontingentDienst.grenzeDerQuelle),
   };
   const klienten: KlientenZugang = {
     schluessel: async name => (await k.einstellungen.globalerWert(name)) || '',
@@ -47,7 +47,10 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     quellen: mitErsatz(baueQuellen(klienten), a.ersatz),
     klienten,
     drossel,
-    ...kontingent,
+    kontingentStand: kontingent.kontingentStand,
+    kontingentFrei: kontingent.kontingentFrei,
+    setzeKontingentZurueck: kontingent.setzeKontingentZurueck,
+    kontingentGrenze: kontingent.kontingentGrenze,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
   };
   // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt

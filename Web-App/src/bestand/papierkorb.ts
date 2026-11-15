@@ -4,6 +4,7 @@ import * as repo from './repository/papierkorb';
 import * as kauf from './repository/kaufErfassungen';
 import type { PapierArt } from './repository/papierkorb';
 import type { BestandKontext } from './kontext';
+import type { BestandLesevertrag } from './lesevertrag';
 import { fachfehler, nichtGefunden } from '../infra/fehlerTexte';
 
 export type Art = PapierArt;
@@ -56,8 +57,13 @@ export async function legeKaeufeInPapierkorb(
 /** Zurück in die Zeile, aus der die Menge kam; gibt es sie nicht mehr, in eine gleiche Zeile desselben Tages
  * (der eindeutige Index erlaubt keine zweite), sonst als neue Zeile. Ohne Bestandszeile ging das Set
  * inzwischen ganz weg: Dann zuerst dessen Eintrag wiederherstellen. */
-async function stelleKaeufeWiederHer(tx: DbSchnittstelle, e: { user_id: number; nummer: string }, kaeufe: Kauf[]) {
-  if (!(await repo.hatSetZeile(tx, e.user_id, e.nummer))) return false;
+async function stelleKaeufeWiederHer(
+  tx: DbSchnittstelle,
+  l: BestandLesevertrag,
+  e: { user_id: number; nummer: string },
+  kaeufe: Kauf[],
+) {
+  if (!(await repo.hatSetZeile(tx, l, e.user_id, e.nummer))) return false;
   for (const k of kaeufe) {
     const menge = Number(k.quantity) || 0;
     if (await kauf.stockeErfassungAuf(tx, 'set', Number(k.id), e.user_id, menge)) continue;
@@ -113,7 +119,7 @@ export async function stelleWiederHer(
       const art = e.art as Art;
       const kaeufe = art === 'set' && !e.zeilen?.sets?.length ? (e.zeilen?.set_acquisitions ?? []) : null;
       if (kaeufe) {
-        if (!(await stelleKaeufeWiederHer(t.db, e, kaeufe))) nichtGefunden();
+        if (!(await stelleKaeufeWiederHer(t.db, t.lesevertrag, e, kaeufe))) nichtGefunden();
         await repo.entferneEintrag(t.db, id);
         return { art, nummer: e.nummer, user_id: e.user_id };
       }

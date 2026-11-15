@@ -1,11 +1,11 @@
 /**
  * Der Takt der Anleitungs-Warteschlange gilt echten Abrufen, nicht Durchgängen: Für ein
- * Set mit Anleitung fragt downloadSetInstructions keinen fremden Server.
+ * Set mit Anleitung fragt setAnleitungenLaden keinen fremden Server.
  *
  * Gezählt werden die Abrufe selbst (jede Quelle der Dienste, jede http(s)-Anfrage),
  * keine Dauer: Die mass den Aufbau der Dienste und Verbindungen mit und riss unter Last.
  *
- * Gegenprobe (14.11.2026 gemessen): in downloadSetInstructions die Rückkehr bei
+ * Gegenprobe (14.11.2026 gemessen): in setAnleitungenLaden die Rückkehr bei
  * `existing > 0` gestrichen → rot („kein fremder Server“: scrapeInstructions und
  * brickset.getInstructions gezählt).
  */
@@ -64,7 +64,7 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
     [sn],
   );
 
-  const anzahl = await ins.downloadSetInstructions(sn, null);
+  const anzahl = await ins.setAnleitungenLaden(sn, null);
 
   assert.deepEqual(abrufe, [], 'kein fremder Server für ein versorgtes Set');
   assert.equal(ins.letzterAbrufWarExtern(), false, 'Der Takt darf nach diesem Durchgang nicht warten');

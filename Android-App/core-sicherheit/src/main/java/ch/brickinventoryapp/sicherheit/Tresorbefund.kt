@@ -21,8 +21,11 @@ interface TokenVerschluesselung {
     /** Den Schlüssel selbst löschen: Was er umhüllt hat, ist danach nirgends mehr lesbar. */
     fun vergiss() = Unit
 
-    /** Liegt [gespeichert] unter einem schwächeren Schlüssel, als ihn [verschluessle] jetzt nähme? */
+    /** Liegt [gespeichert] unter einem schwächeren Schlüssel oder Format, als [verschluessle] es jetzt nähme? */
     fun veraltet(gespeichert: String): Boolean = false
+
+    /** Nach dem Umschlüsseln: Der Schlüssel des Altbestands hat nichts mehr zu öffnen und geht. */
+    fun vergissAltbestand() = Unit
 }
 
 /** Ist das Gerät gerade gesperrt? Im Gerät der KeyguardManager, im Test ein Wert. */
@@ -49,7 +52,10 @@ class EntsperrTresor(
         if (gespeichert.startsWith(ENTSPERRT_PRAEFIX)) nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
         else altbestand.oeffne(gespeichert)
 
-    override fun veraltet(gespeichert: String): Boolean = !gespeichert.startsWith(ENTSPERRT_PRAEFIX)
+    override fun veraltet(gespeichert: String): Boolean =
+        !gespeichert.startsWith(ENTSPERRT_PRAEFIX) || nurEntsperrt.veraltet(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
+
+    override fun vergissAltbestand() = altbestand.vergiss()
 
     override fun vergiss() {
         nurEntsperrt.vergiss()

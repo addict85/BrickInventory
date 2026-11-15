@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.components
 
 import android.app.KeyguardManager
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import android.os.SystemClock
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -180,6 +181,7 @@ fun OhneSperreWarnung(ohneSperre: OhneSperre) {
     val w = ohneSperre.wartet ?: return
     val titel = stringResource(R.string.schritt_ohne_sperre_titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = ohneSperre::abbrechen,
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, Modifier.semantics { heading() }) },

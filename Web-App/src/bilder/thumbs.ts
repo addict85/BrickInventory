@@ -4,8 +4,8 @@ import { meldeFehler, fehlertext, ohneFehlendeDatei } from '../infra/fehler';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import { resolveWebPath } from '../infra/appPaths';
-import { isDecodable } from './imageGuard';
+import { webPfadAufloesen } from '../infra/appPaths';
+import { lesbaresBild } from './imageGuard';
 
 const THUMB_SIZE = 200;
 
@@ -77,11 +77,11 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
   await jimpVorschau(quelle, ziel, THUMB_SIZE);
 }
 
-export async function generateThumb(localPath: string) {
+export async function vorschauErzeugenAus(localPath: string) {
   if (!localPath) return null;
 
   // /images/… zeigt nach data/images/ (Volume), nicht nach public/.
-  const fsPath = resolveWebPath(localPath);
+  const fsPath = webPfadAufloesen(localPath);
   if (!fsPath) return null;
 
   if (!fs.existsSync(fsPath)) return null;
@@ -94,7 +94,7 @@ export async function generateThumb(localPath: string) {
 
   // Abmessungen vor dem Dekodieren prüfen: Eine kleine, riesig aufgelöste Datei
   // legte den Worker mit einem Gigabyte-Bitmap lahm.
-  if (!(await isDecodable(fsPath))) return null;
+  if (!(await lesbaresBild(fsPath))) return null;
 
   try {
     // ATOMAR schreiben: Ein Schreibvorgang auf den endgültigen Namen ist für

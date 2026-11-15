@@ -52,9 +52,9 @@ test('die API-Kontingente heissen nach der API, nicht nach einem Pfad', () => {
       'zaehleKontingent',
       'kontingentStand',
       'kontingentGrenze',
-      'checkAndIncrementRateLimit',
-      'getRateLimitStatus',
-      'getLimitForApi',
+      'kontingentPruefenUndZaehlen',
+      'kontingentUebersicht',
+      'grenzeDerQuelle',
     ]) {
       const re = new RegExp(`${fn}\\(\\s*'([^']+)'`, 'g');
       for (const m of src.matchAll(re)) {

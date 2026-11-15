@@ -494,7 +494,7 @@ async function zeigeAuftraege() {
   setzeHtml(
     el,
     html`
-    <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
+    <h2 class="mon-titel" id="mon-t-auftraege" tabindex="-1">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
     <p class="mon-hinweis">${tRaw('monitor.auftraege.hinweis')}</p>
     ${d.job_prozess.laeuft ? '' : html`<p class="mon-warnung">${ico('warnung')} ${tRaw('monitor.auftraege.kein_prozess')}</p>`}
     ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`)}

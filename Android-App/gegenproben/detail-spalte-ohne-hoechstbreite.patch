@@ -1,0 +1,19 @@
+Gegenprobe: Set-Detail einspaltig wieder ohne gemeinsame Höchstbreite
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: Set-Detail auf dem Tablet hochkant
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt
+@@ -225,8 +225,8 @@
+             } else {
+                 // Eine Spalte mit einer Höchstbreite für alle Karten: Auf dem Tablet hochkant stand
+                 // der Preisverlauf (SectionCard, Lesebreite) schmaler als die Kacheln darüber.
+-                val seitlich = ((maxWidth - DETAIL_SPALTE) / 2).coerceAtLeast(0.dp)
+-                CompositionLocalProvider(LocalSpaltenkarte provides true) {
++                val seitlich = 0.dp
++                CompositionLocalProvider(LocalSpaltenkarte provides false) {
+                     LazyColumn(Modifier.fillMaxSize(),
+                         contentPadding = PaddingValues(start = seitlich, end = seitlich, bottom = Abstaende.sehrGross)) {
+                         kopf(); preise(); angaben(); anleitungen()

@@ -19962,11 +19962,15 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           }
         },
         "required": [
           "success",
-          "never_expires"
+          "never_expires",
+          "keks_fehlt"
         ],
         "additionalProperties": {}
       },
@@ -22609,12 +22613,16 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           }
         },
         "required": [
           "success",
           "user",
-          "never_expires"
+          "never_expires",
+          "keks_fehlt"
         ],
         "additionalProperties": {}
       },

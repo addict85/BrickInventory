@@ -53,7 +53,7 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
         await k.fremdquellen.drossel.hintergrund.waitForSlot();
         await k.fremdquellen.quellen.downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
-          await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('katalog-sync:generateThumb'));
+          await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('katalog-sync:vorschauErzeugenAus'));
           imageLocal = rel;
         }
       }

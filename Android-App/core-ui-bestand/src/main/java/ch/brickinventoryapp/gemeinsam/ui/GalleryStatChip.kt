@@ -15,6 +15,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.util.fmtInt
+import ch.brickinventoryapp.ui.components.grosseSchrift
 
 /**
  * Eine Kennzahl als Text: Zahl fett, Bezeichnung daneben. Keine eigene Fläche — die
@@ -25,6 +26,9 @@ import ch.brickinventoryapp.ui.util.fmtInt
 fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
     val zahl = fmtInt(anzahl)
     val text = pluralStringResource(plural, anzahl, zahl)
+    // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie
+    // mitten in der Klammer („40 /einzeln“).
+    val trenner = if (grosseSchrift()) "\n(" else "\u2002("
     // Die Aufschlüsselung klein in derselben Zeile: Als zweite Zeile darunter war die
     // Kennzahl breiter als ihr Wert und liess eine Lücke vor der nächsten.
     val klein = MaterialTheme.typography.labelSmall.fontSize
@@ -36,13 +40,20 @@ fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) { append(zahl) }
                 append(text, stelle + zahl.length, text.length)
             }
-            if (detail != null) withStyle(SpanStyle(fontSize = klein)) { append("\u2002("); append(detail); append(')') }
+            if (detail != null) withStyle(SpanStyle(fontSize = klein)) {
+                append(trenner); append(detail.split(TEILER).joinToString(TEILER) { untrennbar(it) }); append(')')
+            }
         },
         Modifier.semantics(mergeDescendants = true) {},
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+/** Zahl und Wort bleiben zusammen („42 aus Sets“); umbrechen darf die Zeile nur zwischen den Teilen. */
+private fun untrennbar(text: String) = text.replace(' ', '\u00A0')
+
+private const val TEILER = " · "
 
 /**
  * Die Kennzahlen über Sets, Teilen, Figuren und im Detail — eine ruhige Fläche

@@ -61,9 +61,11 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
      * Ein Schlüssel unter dem schwächeren Tresor früherer Fassungen kommt beim ersten
      * lesbaren Zugriff unter den, der nur entsperrt arbeitet. Derselbe Schlüssel, nur anders
      * umhüllt: Die Ablagen bleiben lesbar. Scheitert es (gesperrt), beim nächsten Zugriff.
+     * Erst wenn die neue Hülle auf der Platte steht, geht der alte Alias.
      */
     private fun umhuelleNeu(hex: String) {
         fangeAusserAbbruch { schreibe(tresor.verschluessle(hex)) }
+            .onSuccess { fangeAusserAbbruch { tresor.vergissAltbestand() } }
             .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
     }
 

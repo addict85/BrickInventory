@@ -87,7 +87,7 @@ export async function loescheOrt(k: BestandKontext, userId: number, id: number):
   if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Alle drei Tabellen, über die ID: Sonst liesse sich ein Ort löschen, in dem
   // nur Figuren liegen oder der anders geschrieben zugeordnet ist.
-  const belegt = await orte.ortBelegung(k.db, userId, id);
+  const belegt = await orte.ortBelegung(k.db, k.lesevertrag, userId, id);
   if (parseInt(String(belegt?.n ?? 0), 10) > 0) fachfehler('konflikt', 'lagerort_in_benutzung');
   await orte.entferneOrt(k.db, id, userId);
 }
@@ -98,7 +98,7 @@ export async function lagerorte(k: BestandKontext, blickfeldWahl: Sicht | Blickf
   const uids = asIds(blickfeld);
   // Über den NAMEN gruppiert, absichtlich: „Keller" von Grossvater und Enkel
   // sind zwei Vorratszeilen, gehören in der Übersicht aber zusammen.
-  const rows = await orte.orteMitBestand(k.db, uids);
+  const rows = await orte.orteMitBestand(k.db, k.lesevertrag, uids);
   // SUM() kommt als Zeichenkette aus dem Treiber; deshalb parseInt darunter.
   type Zeile = { ort: string; sets: string | number; teile: string | number; figuren: string | number };
   return ((rows as Zeile[]) || []).map(r => ({

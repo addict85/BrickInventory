@@ -37,6 +37,11 @@
      Stellen steht und auseinanderlaeuft. */
   --lack:linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 22%,rgba(0,0,0,.05) 100%);
   --noppenraster:radial-gradient(circle at 10px 10px,rgba(22,26,33,.05) 4px,transparent 4.6px);
+  /* Der Verlauf der Karten dunkelt ihren Fuss ab: #5a6270 aus noppe stand dort unter Schrift bei 4,46:1. */
+  --mut:#4e5663;
+  /* Plaketten sind nur eine Zeile hoch: Jedes Licht oben hellt die Schrift selbst auf (Weiss auf dem Blau
+     von „Neuware“ hat ohne Verlauf nur 4,9:1, mit dem Licht der Knöpfe gemessen 2,96:1). Nur der Schatten. */
+  --plakette-glanz:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0) 42%,rgba(0,0,0,.08) 62%,rgba(0,0,0,.16) 100%);
 }
 /* Dunkel: der Lack als schwacher Lichtschein statt einer weissen Schicht. */
 [data-theme="hochglanz"][data-dunkel]{
@@ -120,10 +125,10 @@
 }
 
 /* ── Knoepfe und Plaketten: derselbe Lichtabfall wie die Deckel ──────────── */
-[data-theme="hochglanz"] .btn.bp,
-[data-theme="hochglanz"] .cond-new,
-[data-theme="hochglanz"] .cond-used{
+[data-theme="hochglanz"] .btn.bp{
   background-image:linear-gradient(180deg,
     rgba(255,255,255,.45) 0%,rgba(255,255,255,.10) 42%,
     rgba(0,0,0,.08) 62%,rgba(0,0,0,.16) 100%);
 }
+[data-theme="hochglanz"] .cond-new,
+[data-theme="hochglanz"] .cond-used{background-image:var(--plakette-glanz)}

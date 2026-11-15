@@ -51,8 +51,8 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
 
   const kennung = `abschluss-${process.pid}`;
   P.protokollInDieDatenbank(db.pool);
-  await B.initImageQueue();
-  await F.initImageMisses();
+  await B.bildbedarfEinrichten();
+  await F.bildFehlstellenEinrichten();
   assert.ok(offen.size >= 4, `Aufbau: ${offen.size} Takte, erwartet mindestens vier`);
 
   B.merkeGebraucht(`https://cdn.rebrickable.com/media/sets/${kennung}.jpg`, `${kennung}-1`);

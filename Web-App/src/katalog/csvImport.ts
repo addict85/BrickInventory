@@ -9,13 +9,14 @@ import { istJa } from '../infra/validate';
 import { logAndContinue } from '../infra/fehler';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvTausch';
+import type { KatalogLesevertrag } from './lesevertrag';
 
 export type Meldung = { type: 'progress'; total: number; pct: number; filename: string };
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
 // Verdoppeltes " bleibt ein Zeichen.
-export function parseCsvLine(line: string): string[] {
+export function csvZeile(line: string): string[] {
   const result: string[] = [];
   let cur = '',
     inQuotes = false;
@@ -60,7 +61,7 @@ async function streamInsert(
   });
   for await (const line of rl) {
     if (!line.trim()) continue;
-    const cols = parseCsvLine(line);
+    const cols = csvZeile(line);
     if (!headers) {
       headers = cols;
       continue;
@@ -135,7 +136,11 @@ export function erzeugeImportZugang(): Db {
   });
 }
 
-export function erzeugeKatalogImporte(db: Pick<Db, 'systemPool'>, melde: (m: Meldung) => void) {
+export function erzeugeKatalogImporte(
+  db: Pick<Db, 'systemPool'>,
+  melde: (m: Meldung) => void,
+  l: Pick<KatalogLesevertrag, 'setZaehlt'>,
+) {
   // Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen, also
   // als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
   const pool = db.systemPool;
@@ -173,7 +178,7 @@ export function erzeugeKatalogImporte(db: Pick<Db, 'systemPool'>, melde: (m: Mel
       tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
       konflikt: ['set_num'],
-      abgleich: (c, _tabelle, schatten, cols) => repo.gleicheSetsAb(c, schatten, cols),
+      abgleich: (c, _tabelle, schatten, cols) => repo.gleicheSetsAb(c, l, schatten, cols),
       mapRow: c => [
         sp(c, 0),
         sp(c, 1),

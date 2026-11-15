@@ -88,7 +88,7 @@ function checkStatus(status: number, body: string, label: string) {
   }
   // Jeden anderen Nicht-200-Status protokollieren.
   //
-  // VORHER wurde hier stillschweigend `false` geliefert; getSetInfo(kl) gab
+  // VORHER wurde hier stillschweigend `false` geliefert; setAngaben(kl) gab
   // daraufhin null zurück, ohne eine Zeile zu schreiben. Im Log stand dann nur
   // "Retry queue processing done (0/1 processed)" — ohne jeden Hinweis, WARUM
   // nichts verarbeitet wurde. Bei einem 502 von Cloudflare (Brickset kurz
@@ -157,7 +157,7 @@ async function removeFromQueue(kl: KlientenZugang, setNumber: string) {
   );
 }
 
-async function getSetInfo(kl: KlientenZugang, setNumber: string) {
+async function setAngaben(kl: KlientenZugang, setNumber: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
   const n = mitVersion(setNumber);
@@ -193,7 +193,7 @@ async function getSetInfo(kl: KlientenZugang, setNumber: string) {
       // erreichbar) → in der Retry-Queue BEHALTEN statt dauerhaft aufzugeben.
       await enqueueRetry(kl, n, fehlertext(e), true);
       console.log(
-        `  Brickset getSetInfo transient error for ${n}: ${fehlertext(e)} — für Retry heute eingereiht`
+        `  Brickset setAngaben transient error for ${n}: ${fehlertext(e)} — für Retry heute eingereiht`
           .replace(/\r?\n/g, ' ⏎ ')
           .replace(/\n|\r/g, ''),
       );
@@ -201,7 +201,7 @@ async function getSetInfo(kl: KlientenZugang, setNumber: string) {
     }
     await removeFromQueue(kl, n);
     console.log(
-      `  Brickset getSetInfo failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
+      `  Brickset setAngaben failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
     );
     return null;
   }
@@ -320,7 +320,7 @@ async function pruefeBricksetZugang(kl: KlientenZugang): Promise<void> {
 export function erzeugeBrickset(kl: KlientenZugang) {
   return {
     pruefeBricksetZugang: () => pruefeBricksetZugang(kl),
-    getSetInfo: (setNumber: string) => getSetInfo(kl, setNumber),
+    setAngaben: (setNumber: string) => setAngaben(kl, setNumber),
     getInstructions: (setNumber: string) => getInstructions(kl, setNumber),
     getSetByEan: (ean: string) => findSetByQuery(kl, ean, 'EAN'),
     getSetByBarcode: (barcode: string) => findSetByQuery(kl, barcode, 'barcode'),

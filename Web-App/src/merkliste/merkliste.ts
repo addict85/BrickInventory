@@ -8,8 +8,8 @@ import { geldEingabe } from '../infra/geld';
 import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { fuerSet } from '../katalog';
-import { resolveIfExists } from '../bilder';
-import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
+import { bildFallsVorhanden } from '../bilder';
+import { toCsv, csvZeilenAusAnfrage, csvDatum } from '../infra/csvExport';
 import { moeglicheSetNummer, mitVersion, normalisiereSetNummer } from '../infra/setNummer';
 import type { MerklisteKontext } from './kontext';
 
@@ -194,7 +194,7 @@ export async function merkpostenVon(
   return ((rows ?? []) as Zeile[]).map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel
     // wie beim Ablegen (src/bilder/setImages.ts).
-    const lokal = resolveIfExists(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
+    const lokal = bildFallsVorhanden(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
     if (!lokal && r.image_url) k.bilder.merkeGebraucht(String(r.image_url), String(r.set_number));
     return {
       ...r,
@@ -269,13 +269,13 @@ export async function uebernimm(
 }
 
 /** Nur Konto, Set, Zustand und Datum: Alles andere leitet die Ansicht ab. */
-export async function buildMerklisteCsv(k: MerklisteKontext, uid: number): Promise<string> {
+export async function merklisteCsv(k: MerklisteKontext, uid: number): Promise<string> {
   const rows = await k.merkliste.merklisteFuerExport(uid);
 
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }
 
-/** Das Gegenstück zu buildMerklisteCsv(); läuft als Auftrag (src/sammlung/importAuftraege.ts). */
+/** Das Gegenstück zu merklisteCsv(); läuft als Auftrag (src/sammlung/importAuftraege.ts). */
 export async function importiereMerklisteCsv(k: MerklisteKontext, owner: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
 
@@ -291,7 +291,7 @@ export async function importiereMerklisteCsv(k: MerklisteKontext, owner: number,
     if (!setNumber) continue;
 
     const condition = String(row.condition || row.zustand || row.Zustand || '').trim();
-    const am = parseCsvDate(row.created_at || row.aufgenommen_am || row['Auf der Liste seit']);
+    const am = csvDatum(row.created_at || row.aufgenommen_am || row['Auf der Liste seit']);
 
     try {
       const { war_neu } = await legeMerkpostenAn(k, owner, setNumber, condition, am);

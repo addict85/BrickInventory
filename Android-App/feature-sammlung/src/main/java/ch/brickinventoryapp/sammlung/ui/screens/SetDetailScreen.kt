@@ -33,6 +33,8 @@ import ch.brickinventoryapp.model.util.resolveFullUrl
 import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.LadeKreis
@@ -223,7 +225,15 @@ internal fun SetDetailScreen(
                     }
                 }
             } else {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = rand) { kopf(); preise(); angaben(); anleitungen() }
+                // Eine Spalte mit einer Höchstbreite für alle Karten: Auf dem Tablet hochkant stand
+                // der Preisverlauf (SectionCard, Lesebreite) schmaler als die Kacheln darüber.
+                val seitlich = ((maxWidth - DETAIL_SPALTE) / 2).coerceAtLeast(0.dp)
+                CompositionLocalProvider(LocalSpaltenkarte provides true) {
+                    LazyColumn(Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = seitlich, end = seitlich, bottom = Abstaende.sehrGross)) {
+                        kopf(); preise(); angaben(); anleitungen()
+                    }
+                }
             }
         }
 
@@ -254,3 +264,6 @@ internal fun SetDetailScreen(
         }
     }
 }
+
+/** Höchstbreite der einspaltigen Detailseite: die Lesebreite samt dem Rand der Karten. */
+private val DETAIL_SPALTE = Lesebreite.formular + Abstaende.gross * 2

@@ -89,6 +89,7 @@
     input[aria-invalid="true"]{border-color:var(--r500)}
     .login-hinweis{background:var(--b50);color:var(--b700);border:1px solid var(--b200);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem}
     .login-hinweis[hidden]{display:none}
+    .login-warnung{background:var(--a100);color:var(--a-schrift);border-color:var(--a500)}
     .lerr{background:var(--r100);color:var(--r700);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem;display:none}
 
     /* APP */
@@ -858,7 +859,8 @@
     .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
-    .besitzer-badge{background:var(--b100);color:var(--b700);max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+    /* clip statt hidden: Mit hidden zählt der untere Rand als Grundlinie, das Abzeichen sass neben „Neuware“ tiefer. */
+    .besitzer-badge{background:var(--b100);color:var(--b700);max-width:100%;min-width:0;overflow:clip;text-overflow:ellipsis}
     .admin-hinweis{font-size:var(--fs-1);color:var(--mut);font-weight:400}
     .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
@@ -1152,7 +1154,7 @@ input.suchfeld{width:220px}
    einer davon. !important, weil die Anmeldung #usermgmt inline einblendet. */
 /* Die Spalte wächst mit der Schrift (em), sonst kürzt sie bei 200 % lange Namen. */
 #global-settings-grid{grid-template-columns:minmax(max(170px,10.7em),max(210px,13.2em)) minmax(0,1fr);align-items:start}
-#global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:1rem}
+#global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:calc(var(--leiste-oben,0px) + 1rem)}
 #global-settings-grid > .einst-nav a{justify-content:flex-start}
 /* Die Abschnittsleiste ist auch ein <nav>: Die Leistenfarbe der Designs (Rot,
    Schwarzlack) gehört nur der Hauptnavigation. */
@@ -1162,7 +1164,9 @@ input.suchfeld{width:220px}
 #global-settings-grid > .ssec:not(.einst-aktiv){display:none !important}
 @media(max-width:700px){
   #global-settings-grid{grid-template-columns:minmax(0,1fr)}
-  #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
+  /* Wie die Sprungleiste im Konto: Ein langer Abschnitt rollte sie sonst aus dem Bild. */
+  #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;
+    top:var(--leiste-oben,0px);bottom:auto;left:auto;right:auto;z-index:20;background:var(--bg)}
   /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus mobile.js): ein runder Knopf mit Rand
      statt eines Schriftzeichens, das neben dem Text nicht auffiel. Ein Verlauf blendete weisse Knöpfe in
      weissen Grund. sticky hält den Pfeil beim Rollen am Rand der Leiste. */
@@ -1195,6 +1199,9 @@ input.suchfeld{width:220px}
 #wanted-xml-modal :is(input,select){min-height:24px}
 #wanted-xml-modal .btn{hyphens:auto}
 .zoombar{cursor:zoom-in}
+.zoom-knopf{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;border-radius:8px;cursor:zoom-in}
+.zoom-knopf:disabled{cursor:default}
+.zoom-knopf > .mimg{display:block;cursor:inherit}
 .zoombar[aria-hidden="true"]{cursor:default}
 .ohne-unterstrich{text-decoration:none}
 /* Mindesthöhe statt Höhe: Die Abschlusszeile darin lag sonst ausserhalb des Flusses, im Abstand für den
@@ -1603,6 +1610,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
 .import-mehr,.nur-telefon{display:none}
 #tab-finance.finanzen-leer :is(#portfolio-chart-section,#fin-sum,#fin-basis,#fin-filter,.fin-suche-zeile){display:none}
+#tab-finance.finanzen-fehler :is(.zeitraum-wahl,#fin-filter,.fin-suche-zeile){display:none}
 
 /* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
    kleiner Umrandungsknöpfe (I5). Am Telefon eine rollende Reihe von Reitern. */
@@ -1617,10 +1625,16 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
   #global-settings-grid > .einst-nav .einst-link[aria-current="page"]{border-bottom-color:var(--b600)}
 }
 
-/* Konto: dieselben Reiter als Sprungleiste über allen Abschnitten; am Telefon eine rollende Reihe. */
-.konto-nav{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--bdr);margin-bottom:1rem;grid-column:1/-1}
+/* Konto und Hintergrundarbeiten: dieselben Reiter als Sprungleiste über allen Abschnitten; am Telefon eine
+   rollende Reihe. Sie klebt unter Kopf und Leiste (--leiste-oben aus mobile.js), sonst war sie nach dem ersten
+   Sprung auf langen Seiten weg; der eigene Grund deckt den Inhalt darunter ab. */
+.konto-nav{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--bdr);margin-bottom:1rem;grid-column:1/-1;
+  position:sticky;top:var(--leiste-oben,0px);z-index:20;background:var(--bg)}
 .konto-nav .einst-link{border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
-#tab-profil [tabindex="-1"]{scroll-margin-top:72px}
+#tab-profil [tabindex="-1"],#tab-monitor .mon-titel{scroll-margin-top:72px}
+/* Das Feld mit dem Fokus darf nicht unter der klebenden Leiste verschwinden (WCAG 2.4.11). */
+html:has(#tab-profil.active,#tab-monitor.active){scroll-padding-top:calc(var(--leiste-oben,0px) + 3.5rem)}
+@media(max-width:700px){html:has(#tab-settings.active){scroll-padding-top:calc(var(--leiste-oben,0px) + 3.5rem)}}
 @media(max-width:700px){.konto-nav{flex-wrap:nowrap;overflow-x:auto}.konto-nav .einst-link{flex:none}}
 
 /* Einrichtung: ein Dienst je Schritt, die Knöpfe in einer festen Fussleiste (M8). */

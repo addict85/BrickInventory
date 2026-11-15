@@ -579,9 +579,10 @@
 /* ── Geringe Höhe: 200 % Zoom, Telefon quer ──────────────────────────────
    Kopf (52 px), Hinweisband und untere Leiste nahmen bei 640 × 450 fast die
    Hälfte der Höhe. Der Kopf weicht beim Rollen nach unten (Klasse aus
-   mobile.js), die untere Leiste wird schmaler und zeigt nur Symbole; der
-   Name bleibt für Vorleser erhalten. Breiter als 640 px steht die Leiste
-   oben unter dem Kopf und rückt mit ihm nach oben. */
+   mobile.js), die untere Leiste wird schmaler: Name neben dem Symbol, erst
+   unter 600 px nur Symbole (der Name bleibt für Vorleser erhalten) — Symbole
+   allein erklären „Bauliste“ und „Katalog“ nicht. Breiter als 640 px steht
+   die Leiste oben unter dem Kopf und rückt mit ihm nach oben. */
 @media (max-height: 500px) {
   header { transition: transform .2s ease; }
   .kopf-weg header { transform: translateY(-100%); }
@@ -591,9 +592,17 @@
   .kopf-weg nav { top: 0; }
 }
 @media (max-height: 500px) and (max-width: 640px) {
+  /* Ohne Kopf rückt die Sprungleiste ganz nach oben, statt eine Lücke über sich zu lassen. */
+  .kopf-weg :is(.konto-nav, #global-settings-grid > .einst-nav) { top: 0; }
   .ntab { padding: 10px 2px; gap: 0; }
-  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   main:not(#login-screen) { padding-bottom: 3.5rem; }
+}
+@media (max-height: 500px) and (max-width: 600px) {
+  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-height: 500px) and (min-width: 601px) and (max-width: 640px) {
+  .ntab { flex-direction: row; justify-content: center; gap: 4px; }
+  .ntab .tab-label { white-space: nowrap; }
 }
 @media (max-height: 500px) and (prefers-reduced-motion: reduce) {
   header, nav { transition: none; }
@@ -604,6 +613,7 @@
   .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: transform .2s ease; }
   .schrift-gross.kopf-weg header { transform: translateY(-100%); }
   .schrift-gross.kopf-weg nav:not(.einst-nav) { transform: translateY(100%); }
+  .schrift-gross.kopf-weg :is(.konto-nav, #global-settings-grid > .einst-nav) { top: 0; }
 }
 @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
   .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: none; }
@@ -713,7 +723,8 @@
 @media (max-width: 640px), (max-height: 600px) and (max-width: 899px) {
   #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
   #set-modal .m-kopfteil :is(#m-det, #m-det-links) > * { grid-column: 1 / -1; }
-  #set-modal .m-kopfteil .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
+  #set-modal .m-kopfteil .zoom-knopf { grid-column: 1; grid-row: 1; }
+  #set-modal .m-kopfteil .mimg { max-height: none; margin: 0; }
   #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
   #set-modal .wk-wert { font-size: var(--fs-4); }
 }
@@ -724,7 +735,7 @@
 @container setdialog (max-width: 19rem) {
   #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
   #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 1; grid-row: auto; }
-  #set-modal .m-kopfteil .mimg { width: 7.5rem; }
+  #set-modal .m-kopfteil .zoom-knopf { width: 7.5rem; }
 }
 
 /* Die Erklärung zu „0 Teile“ bleibt auch am Telefon stehen. */

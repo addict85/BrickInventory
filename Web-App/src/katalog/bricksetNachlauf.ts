@@ -1,4 +1,4 @@
-import { downloadSetInstructions, anzahlAnleitungen } from './instructions';
+import { setAnleitungenLaden, anzahlAnleitungen } from './instructions';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 import * as bildlage from './bildlage';
@@ -24,11 +24,11 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
   }
 
   pruefeAbbruch(lauf);
-  // Ist das Kontingent mittendrin weg, merkt getSetInfo das Set selbst erneut vor.
+  // Ist das Kontingent mittendrin weg, merkt setAngaben das Set selbst erneut vor.
   if (await bildlage.fuelleAusBrickset(k, sn)) console.log(`[brickset] Retry OK: ${sn}`);
   pruefeAbbruch(lauf);
   if ((await anzahlAnleitungen(k, sn)) === 0) {
-    await downloadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
+    await setAnleitungenLaden(k, sn).catch(logAndContinue('brickset-retry:setAnleitungenLaden'));
   }
   await k.auftraege.pausiereArt('brickset', new Date(k.uhr.jetzt() + 1000), 'Abstand zwischen zwei Abrufen');
 }

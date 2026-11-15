@@ -359,10 +359,13 @@ function lightboxBackdrop(ev) {
  *
  * Nimmt bevorzugt data-orig, nicht this.src: Die Kacheln zeigen seit der Thumbnail-Umstellung eine
  * verkleinerte Fassung, und im Zoom wäre die unscharf. data-orig trägt die volle Auflösung.
- * @this {HTMLImageElement}
+ * @this {HTMLElement}
  */
 function openImageLightboxFromEl() {
-  const src = this.dataset.orig && this.dataset.orig !== '/assets/set-placeholder.svg' ? this.dataset.orig : this.src;
+  // Gerufen vom Bild selbst oder vom Knopf um ein Dialogbild.
+  const bild = this instanceof HTMLImageElement ? this : this.querySelector('img');
+  if (!bild) return;
+  const src = bild.dataset.orig && bild.dataset.orig !== '/assets/set-placeholder.svg' ? bild.dataset.orig : bild.src;
   // Der Titel des Dialogs nennt, was das Bild zeigt (Set, Teil, Figur), samt Untertitel mit der Nummer.
   const dialog = this.closest('.ovl');
   const name = [

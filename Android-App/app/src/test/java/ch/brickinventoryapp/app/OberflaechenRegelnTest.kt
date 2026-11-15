@@ -129,6 +129,8 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
+ *   einfachwahl-chips-bei-200       Einfachwahl bei 200 % wieder als Chips → rot „Einfachwahl steht bei
+ *                                   200 Prozent als Segmente …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
  *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
@@ -138,6 +140,8 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
  *   teile-erfassen-schwebt          Erfassen auch bei 200 % schwebend → rot „Teile bei 200 Prozent …“
  *   teile-kachel-gross              Teilekachel auch bei 200 % mit Bild über die Breite → rot „Teile bei 200 Prozent zeigen …“
+ *   detail-spalte-ohne-hoechstbreite  Set-Detail einspaltig wieder ohne gemeinsame Höchstbreite
+ *                                   → rot „Set-Detail auf dem Tablet hochkant …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -337,6 +341,36 @@ class OberflaechenRegelnTest {
             compose.onNodeWithText("+" + fmtMoney(112.5, Waehrung("CHF")) + " · " + fmtProzent(16.1), useUnmergedTree = true)
                 .assertIsDisplayed()
             compose.onAllNodesWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)[0].assertIsDisplayed()
+        } finally {
+            welt.close()
+        }
+    }
+
+    /**
+     * Tablet hochkant, eine Spalte: Kacheln und Preisverlauf beginnen an derselben Kante.
+     * Vorher stand die Karte auf der Lesebreite mittig, die Kacheln über die ganze Breite.
+     */
+    @Test
+    fun `Set-Detail auf dem Tablet hochkant hat eine Breite fuer Kacheln und Preisverlauf`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w800dp-h1280dp-port-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.setDetail()
+            zeige {
+                SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
+            }
+            warte("Set-Detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.verlaufAbruf.laedt && !it.preisAbruf.laedt } }
+            val dichte = ctx.resources.displayMetrics.density
+            val titel = ctx.getString(R.string.detail_section_price_history)
+            // Innen liegen die Kachel 12 dp (mittel), der Titel 16 dp (gross) vom Rand ihrer Fläche.
+            val kachel = compose.onAllNodes(hasText(ctx.getString(R.string.detail_section_market)))[0]
+                .fetchSemanticsNode().boundsInRoot.left - 12 * dichte
+            compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(hasText(titel, ignoreCase = true))
+            val karte = compose.onNode(hasText(titel, ignoreCase = true), useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot.left - 16 * dichte
+            assertEquals("Preisverlauf beginnt wie die Kacheln (${karte / dichte} / ${kachel / dichte} dp)",
+                kachel / dichte, karte / dichte, 1f)
         } finally {
             welt.close()
         }
@@ -793,6 +827,34 @@ class OberflaechenRegelnTest {
             }
         }
         (zustaende + zeitraum).forEach { ganzEineZeile(it) }
+    }
+
+    /**
+     * Bei 200 % bleibt eine Einfachwahl eine Segmentgruppe: untereinander, jede Möglichkeit
+     * über die volle Breite und als Optionsfeld vorgelesen. Als Chips las sie sich wie ein Filter.
+     */
+    @Test
+    fun `Einfachwahl steht bei 200 Prozent als Segmente untereinander in voller Breite`() {
+        val zustaende = listOf(R.string.condition_new, R.string.condition_used).map { ctx.getString(it) }
+        zeige(schrift = 2f) {
+            Column(Modifier.width(360.dp).padding(horizontal = 16.dp).testTag("wahl")) {
+                SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
+            }
+        }
+        val dichte = ctx.resources.displayMetrics.density
+        val rahmen = compose.onNodeWithTag("wahl").fetchSemanticsNode().boundsInRoot
+        val segmente = zustaende.map { text ->
+            val knoten = compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode()
+            assertEquals("$text ist ein Optionsfeld", Role.RadioButton, knoten.config.getOrNull(SemanticsProperties.Role))
+            knoten.boundsInRoot
+        }
+        segmente.forEach { s ->
+            assertTrue("Segment über die volle Breite (${s.width / dichte} von ${rahmen.width / dichte} dp)",
+                kotlin.math.abs(s.width - rahmen.width) <= dichte)
+        }
+        val (oben, unten) = segmente
+        assertTrue("Segmente stehen untereinander und stossen aneinander ($oben / $unten)",
+            kotlin.math.abs(unten.top - oben.bottom) <= 2 * dichte)
     }
 
     /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */

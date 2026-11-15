@@ -7,13 +7,13 @@
  * Gegenprobe ist EINE Änderung, danach zurückgenommen (die Dateien wurden
  * gegen ihre Sicherung verglichen).
  *
- *   A  `search` in getManualParts ignoriert (`if (false && search)`)
+ *   A  `search` in manuelleTeileListe ignoriert (`if (false && search)`)
  *      → `pass 4 / fail 7`. Rot sind SECHS Fälle: Teilenummer, Name,
  *        BrickLink-Nummer, „ohne Treffer leer", „Suchtext und Lagerort
  *        zusammen" und „das Set-Teil bleibt draussen". Der erste meldet
  *        „die Suche nach 3001 liefert 3001,3002,3003 — erwartet nur 3001".
  *        Das ist Marcos Befund, in Zahlen.
- *   B  `search` in getManualMinifigs ignoriert
+ *   B  `search` in manuelleFigurenAbfrage ignoriert
  *      → `pass 9 / fail 2`. Rot ist der Figuren-Fall. Dass es nur einer ist,
  *        ist der Grund, warum diese Lücke so lange unbemerkt blieb: Niemand
  *        sucht im Reiter Minifiguren nach einer manuell erfassten Figur,
@@ -95,9 +95,9 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
 
   const teile = _req('src/teile/abfragen.js');
   const figuren = _req('src/figuren/abfragen.js');
-  const nummern = async opt => (await teile.getManualParts([UID], UID, opt)).map(p => String(p.part_number)).sort();
+  const nummern = async opt => (await teile.manuelleTeileListe([UID], UID, opt)).map(p => String(p.part_number)).sort();
   const figNummern = async opt =>
-    (await figuren.getManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
+    (await figuren.manuelleFigurenAbfrage([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
   await t.test('ohne Suchtext steht alles da', async () => {
     assert.deepEqual(
@@ -172,7 +172,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
   });
 
   await t.test('das Set-Teil bleibt draussen, auch als Suchtreffer', async () => {
-    const alle = await teile.getManualParts([UID], UID, { search: '3001' });
+    const alle = await teile.manuelleTeileListe([UID], UID, { search: '3001' });
     assert.deepEqual(
       alle.map(p => p.color_id),
       [4],
@@ -195,7 +195,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     // sie zusammen: Vorher kannte der Live-Weg der Set-Teile die
     // BrickLink-Nummer NICHT, die vorberechnete Zusammenfassung daneben schon
     // — dieselbe Suche fand je nach Weg etwas anderes.
-    const d = await teile.getParts([UID], { search: '9999' });
+    const d = await teile.teileAbfrage([UID], { search: '9999' });
     assert.deepEqual(
       d.parts.map(p => String(p.part_number)),
       ['9999'],

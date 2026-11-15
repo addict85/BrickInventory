@@ -46,7 +46,7 @@ async function getRbKey(kl: Rb): Promise<string | null> {
 /** Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
  * Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt. */
 async function tagesKontingentFrei(kl: Rb): Promise<boolean> {
-  const r = await versuche('takt:checkAndIncrementRateLimit', kl.zugang.zaehle('rebrickable'));
+  const r = await versuche('takt:kontingentPruefenUndZaehlen', kl.zugang.zaehle('rebrickable'));
   return r.ok ? r.wert.allowed : true;
 }
 

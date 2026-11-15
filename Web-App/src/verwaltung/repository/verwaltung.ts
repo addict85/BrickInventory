@@ -19,12 +19,12 @@ export function veraltetePreise(db: DbSchnittstelle): Promise<number> {
   return anzahl(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
-/** Nur die Zahl der Konten: Welches ein Set führt, geht auch den Verwalter nichts an. */
+/** Nur die Zahl der Konten (Funktion aus 0119): Welches ein Set führt, geht auch den Verwalter nichts an. */
 export async function bildZeilenDerKonten(db: DbSchnittstelle, sn: string): Promise<KontoBildzeile> {
   const z = await db.get<KontoBildzeile>(
-    `SELECT COUNT(DISTINCT s.user_id)::int AS anzahl_konten, MAX(c.image_local) AS image_local, MAX(c.image_url) AS image_url
-       FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
-      WHERE s.set_number = $1`,
+    `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
+            CASE WHEN n.anzahl > 0 THEN c.image_url END AS image_url
+       FROM (SELECT konten_mit_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
     [sn],
   );
   return z ?? { anzahl_konten: 0, image_local: null, image_url: null };

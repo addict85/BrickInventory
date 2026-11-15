@@ -3,8 +3,8 @@
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Der Lagerort-Aufruf in setErfassen() entfernt       → Schritt 1 rot.
- *   b) desgleichen in addManualPart()                      → Schritt 3 rot.
- *   c) desgleichen in addManualFig()                       → Schritt 4 rot.
+ *   b) desgleichen in manuellesTeilAnlegen()                      → Schritt 3 rot.
+ *   c) desgleichen in manuelleFigurAnlegen()                       → Schritt 4 rot.
  *   d) `storage` in uebernimm() nicht durchgereicht        → Schritt 5 rot.
  *   e) minifigs in lagerorte() nicht mitgezählt            → Schritt 6 rot.
  *   f) minifigs in loescheOrt() nicht mitgezählt           → Schritt 7 rot.
@@ -112,7 +112,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   });
 
   await t.test('3. Ein manuell erfasstes Teil bekommt seinen Lagerort', async () => {
-    await teile.addManualPart(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
+    await teile.manuellesTeilAnlegen(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -125,7 +125,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
 
   await t.test('4. Eine manuell erfasste Minifigur bekommt ihren Lagerort', async () => {
     // Bis Migration 0024 gab es die Spalte gar nicht.
-    await figuren.addManualFig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
+    await figuren.manuelleFigurAnlegen(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
       `SELECT l.name AS storage FROM minifigs t
          LEFT JOIN storage_locations l ON l.id = t.storage_id

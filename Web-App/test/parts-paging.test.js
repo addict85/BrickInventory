@@ -9,7 +9,7 @@
  *      (Zusammenfassung: Farbe Rot)
  *   B  in seitengroesse() `Math.min(obergrenze, …)` gestrichen → rot:
  *      „Teileliste an der Datenbank“ (page_size 100000 kommt durch)
- *   C  `total` aus der Rückgabe von getParts (Live) gestrichen → rot: dort
+ *   C  `total` aus der Rückgabe von teileAbfrage (Live) gestrichen → rot: dort
  *   D  in maybeLoadMoreParts die Prüfung auf den aktiven Reiter entfernt →
  *      rot: „nachgeladen wird nur im sichtbaren Teile-Tab“
  *   E  manQtyChange ohne parseInt(delta) → rot: „Argumente aus data-arg …“
@@ -109,7 +109,7 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(path.join(ROOT, 'src/bilder/imgCacheServe.ts'), 'utf8');
-  assert.doesNotMatch(proxy, /await makeProxyThumb/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
+  assert.doesNotMatch(proxy, /await proxyVorschauErzeugen/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(
     proxy,
     /queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\)/,
@@ -159,23 +159,23 @@ test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden 
   // Ohne exclude_manual antwortet immer die Live-Abfrage; mit, nach dem Aufbau, die Zusammenfassung.
   let abfrage = { page: 1 };
   const pruefe = async weg => {
-    const seite1 = await H.getParts(U, { ...abfrage, page_size: 2 });
-    const seite2 = await H.getParts(U, { ...abfrage, page: 2, page_size: 2 });
+    const seite1 = await H.teileAbfrage(U, { ...abfrage, page_size: 2 });
+    const seite2 = await H.teileAbfrage(U, { ...abfrage, page: 2, page_size: 2 });
     assert.equal(seite1.source, weg);
     // Ohne total weiss der Client nicht, wann Schluss ist.
     assert.deepEqual([seite1.total, seite1.parts.length, seite2.parts.length, seite1.page_size], [3, 2, 1, 2], weg);
-    const rot = await H.getParts(U, { ...abfrage, page_size: 50, color: 'Rot' });
+    const rot = await H.teileAbfrage(U, { ...abfrage, page_size: 50, color: 'Rot' });
     // Auch die Quelle: Ein Fehler im Filter fiele sonst unbemerkt auf die Live-Abfrage zurück.
     assert.deepEqual(
       [rot.source, ...rot.parts.map(p => p.part_number).sort()],
       [weg, 'pp1', 'pp3'],
       `${weg}: Farbe Rot`,
     );
-    assert.equal((await H.getParts(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: Obergrenze`);
+    assert.equal((await H.teileAbfrage(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: Obergrenze`);
   };
   await pruefe('db');
   // Der Set-Weg darf mehr auf einmal (eine ganze Teileliste), aber nicht beliebig viel.
-  assert.equal((await H.getParts(U, { set_number: SN, page_size: 100000 })).page_size, 5000);
+  assert.equal((await H.teileAbfrage(U, { set_number: SN, page_size: 100000 })).page_size, 5000);
   await PS.rebuildNow(U);
   abfrage = { exclude_manual: '1', page: 1 };
   await pruefe('summary');

@@ -162,21 +162,21 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
       await haeltTeil(db, uid, 'SNF1', { setNumber: `F${PID}`, menge: 2, colorId: 4 }); // blank geschrieben
-      const { getParts } = _req('src/teile/abfragen.js');
+      const { teileAbfrage } = _req('src/teile/abfragen.js');
       for (const filter of [`F${PID}`, `F${PID}-1`]) {
-        const r = await getParts([uid], { set_number: filter, page_size: 60 });
+        const r = await teileAbfrage([uid], { set_number: filter, page_size: 60 });
         assert.deepEqual(
           (r.parts || []).map(p => p.part_number),
           ['SNF1'],
           `Filter ${filter}`,
         );
       }
-      const { getMinifigs } = _req('src/figuren/abfragen.js');
+      const { figurenAbfrage } = _req('src/figuren/abfragen.js');
       await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,$2,'SNFIG','set')`, [
         uid,
         `F${PID}`,
       ]);
-      const f = await getMinifigs([uid], { set_number: `F${PID}` });
+      const f = await figurenAbfrage([uid], { set_number: `F${PID}` });
       assert.deepEqual(
         (f.figs || f.minifigs || []).map(m => m.fig_number),
         ['SNFIG'],

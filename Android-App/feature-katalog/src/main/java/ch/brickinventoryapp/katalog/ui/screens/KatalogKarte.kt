@@ -150,9 +150,9 @@ fun CatalogSetCard(
                                     tint = Color.Unspecified,
                                     modifier = Modifier.size(mitSchrift(13.dp))
                                 )
+                                // Die Zahl mit Wort: „500“ allein neben dem Steinsymbol las sich wie ein Preis.
                                 val teile = set.numParts ?: 0
-                                Text(fmtInt(teile), Modifier.vorgelesenAls(
-                                    pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
+                                Text(pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile)),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }

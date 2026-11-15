@@ -1,5 +1,5 @@
 /**
- * Vorschaubilder der eigenen Bilder (generateThumb) entstehen mit sharp:
+ * Vorschaubilder der eigenen Bilder (vorschauErzeugenAus) entstehen mit sharp:
  * höchstens 200 je Seite, Seitenverhältnis erhalten (UX-Prüfung 25, B1).
  * Durchsichtige Bilder bleiben PNG mit Alpha (sonst im Dunkelmodus eine weisse
  * Fläche), deckende werden JPEG auf Weiss. Ohne sharp rechnet Jimp dasselbe.
@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const { generateThumb } = _req('src/bilder/thumbs.js');
+const { vorschauErzeugenAus } = _req('src/bilder/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
 /** Ein grünes PNG 300 × 200 mit Alphakanal unter /images/sets/; `alpha` 0 = ganz durchsichtig, 1 = deckend. */
@@ -58,7 +58,7 @@ async function pruefeVorschau(datei, durchsichtig) {
 test('sharp: durchsichtig bleibt PNG mit Alpha, 200 × 133', async () => {
   const b = await lege(`zz-sharp-${process.pid}`, 0);
   try {
-    assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
+    assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
     await pruefeVorschau(b.vorschau, true);
   } finally {
     b.weg();
@@ -68,7 +68,7 @@ test('sharp: durchsichtig bleibt PNG mit Alpha, 200 × 133', async () => {
 test('sharp: deckend mit Alphakanal wird JPEG, 200 × 133', async () => {
   const b = await lege(`zz-deckend-${process.pid}`, 1);
   try {
-    assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
+    assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
     await pruefeVorschau(b.vorschau, false);
   } finally {
     b.weg();
@@ -90,7 +90,7 @@ test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
     };
     console.warn = (...a) => warnungen.push(a.join(' '));
     try {
-      assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
+      assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
     } finally {
       Module._load = laden;
       console.warn = warn;

@@ -74,12 +74,13 @@ fun AppSperreWahl(sperre: AppSperre) {
     val kontext = LocalContext.current
     val moeglich = remember(kontext) { kontext.getSystemService<KeyguardManager>()?.isDeviceSecure == true }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        Text(stringResource(R.string.app_sperre_titel), style = MaterialTheme.typography.bodyMedium)
         Text(stringResource(if (moeglich) R.string.app_sperre_hint else R.string.app_sperre_ohne_displaysperre),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val aus = stringResource(R.string.app_sperre_aus)
         val mitZahl = AppSperre.WAHL.associateWith { stringResource(R.string.app_sperre_minuten, it) }
-        WahlChips(
+        AuswahlFeld(
+            beschriftung = stringResource(R.string.app_sperre_titel),
+            modifier = Modifier.fillMaxWidth(),
             optionen = AppSperre.WAHL.map { it to if (it == 0) aus else mitZahl.getValue(it) },
             gewaehlt = minuten,
             onWahl = sperre::setzeMinuten,

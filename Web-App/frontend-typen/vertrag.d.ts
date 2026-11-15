@@ -1304,6 +1304,7 @@ export type LoginResponse = {
   zweiter_faktor?: boolean;
   never_expires: boolean;
   token_info?: TokenAngaben | null;
+  keks_fehlt: boolean;
   [feld: string]: unknown;
 };
 export type ManualFigsResponse = {
@@ -1787,6 +1788,7 @@ export type PasskeyAnmeldung = {
   zweiter_faktor?: boolean;
   never_expires: boolean;
   token_info?: TokenAngaben | null;
+  keks_fehlt: boolean;
   [feld: string]: unknown;
 };
 export type PasskeyListe = {

@@ -42,7 +42,8 @@ import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.model.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.mittigBis
-import ch.brickinventoryapp.ui.components.WahlChips
+import ch.brickinventoryapp.ui.components.AuswahlFeld
+import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.update.util.quelleVeraltet
 import ch.brickinventoryapp.ui.components.LocalAppFassung
@@ -154,16 +155,17 @@ fun SettingsScreen(
         //
         // ── 2. Anzeige & Preise ──
         SettingsCard(title = stringResource(R.string.settings_group_display),
-                     icon = Icons.Default.Euro) {
+                     icon = Icons.Default.Tune) {
             // Jede Wahl gilt sofort und meldet sich: früher wirkten Sprache und Darstellung
             // sofort, Währung und Zustände erst über einen Knopf darunter — zwei Regeln auf
             // einer Karte, und wer den Knopf übersah, verlor die Wahl.
-            Unterschrift(stringResource(R.string.settings_language))
-            WahlChips(
+            AuswahlFeld(
+                stringResource(R.string.settings_language),
                 listOf("system" to stringResource(R.string.settings_language_system),
                        "en" to stringResource(R.string.settings_language_en),
                        "de" to stringResource(R.string.settings_language_de)),
                 gewaehlt = language, onWahl = { darstellung.setLanguage(it) },
+                modifier = Modifier.fillMaxWidth(),
             )
 
             // Darstellung je Gerät: System folgt dem Telefon, Hell und Dunkel gelten immer.
@@ -172,7 +174,7 @@ fun SettingsScreen(
             val design = zustand.design
             val farbenDesSystems = zustand.systemfarben
             val waehlbar = helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
-            WahlChips(
+            SegmentWahl(
                 listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
                        Helligkeit.HELL to stringResource(R.string.settings_hell_hell),
                        Helligkeit.DUNKEL to stringResource(R.string.settings_hell_dunkel)),
@@ -237,17 +239,18 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
-            Unterschrift(stringResource(R.string.settings_currency))
-            WahlChips(
+            AuswahlFeld(
+                stringResource(R.string.settings_currency),
                 Waehrung.WAEHLBAR.map { it to it.code },
                 gewaehlt = currency, onWahl = { aktionen.saveSettings(it, priceCondition) },
+                modifier = Modifier.fillMaxWidth(),
             )
 
             Unterschrift(stringResource(R.string.settings_price_condition))
             Text(stringResource(R.string.settings_price_basis),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            WahlChips(
+            SegmentWahl(
                 listOf(Zustand.NEU to stringResource(R.string.settings_condition_new),
                        Zustand.GEBRAUCHT to stringResource(R.string.settings_condition_used)),
                 gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
@@ -264,8 +267,8 @@ fun SettingsScreen(
                     stringResource(R.string.settings_default_condition_effective, wirkt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            WahlChips(
-                listOf(null to stringResource(R.string.settings_default_condition_global),
+            SegmentWahl(
+                listOf<Pair<Zustand?, String>>(null to stringResource(R.string.settings_default_condition_global),
                        Zustand.NEU to stringResource(R.string.condition_new),
                        Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
                 gewaehlt = eigeneVorgabe, onWahl = { aktionen.saveUserDefaultCondition(it) },

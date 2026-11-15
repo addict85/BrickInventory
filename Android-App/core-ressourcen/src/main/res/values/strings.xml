@@ -759,7 +759,6 @@
     <string name="konto_password_button">Change password</string>
     <string name="startpasswort_titel">Replace the initial password</string>
     <string name="startpasswort_text">This account still uses the initial password it was created with. Choose your own password before you continue. Afterwards you sign in again with the new one.</string>
-    <string name="startpasswort_wiederholen">Repeat</string>
     <string name="startpasswort_verschieden">The two entries differ.</string>
     <string name="konto_design_hint">Applies to this account on every device.</string>
     <string name="design_text_classic">Light and plain, blue accents.</string>
@@ -860,7 +859,7 @@
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
     <string name="update_installer_fremd">The confirmation does not lead to the system installer. Nothing was opened.</string>
-    <string name="update_quelle_abgelaufen">The update description has expired: it was not re-signed in time. Either nothing has been released for a long while, or someone is holding updates back. That is why the app is not offering an update right now. Check the project\'s release page and this device\'s date and time.</string>
+    <string name="update_quelle_abgelaufen">The update description has expired; it was not re-signed in time. A newer version might exist: either nothing has been released for a long while, or someone is holding updates back. An offered update is still genuinely signed and newer than the installed version. Check the project\'s release page and this device\'s date and time.</string>
     <string name="update_quelle_zurueckgesetzt">The update description is older than one this app has already seen. The update source is outdated or has been tampered with, and newer versions may be withheld from you. That is why the app is not offering an update right now. Check the project\'s release page.</string>
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
@@ -937,6 +936,9 @@
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>
     <string name="vouchers_deleted">Voucher deleted</string>
+    <string name="vouchers_number_fehlt">Enter the voucher number.</string>
+    <string name="konto_email_fehlt">Enter an email address</string>
+    <string name="konto_nichts_geaendert">Nothing changed – there is nothing to save.</string>
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
@@ -1152,7 +1154,6 @@
     <string name="zf_share">Share</string>
     <string name="zf_codes_speichern">Save as file</string>
     <string name="zf_share_title">Recovery codes</string>
-    <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
     <string name="parts_nummer_fehlt">Enter a part number first.</string>
     <string name="minifigs_nummer_fehlt">Enter a minifigure number first.</string>
