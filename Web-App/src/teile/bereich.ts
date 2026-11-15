@@ -15,10 +15,10 @@ export function erzeugeTeile(a: Omit<TeileAbhaengigkeiten, 'faecher'>, einblick?
     zugang,
     (k: TeileKontext) => ({
       teileFarben: mit(k)(abfragen.getPartsColors),
-      teileListe: mit(k)(abfragen.getParts),
+      teileLesen: mit(k)(abfragen.getParts),
       teileKategorien: mit(k)(abfragen.getPartsCategories),
       teileKennzahlen: mit(k)(abfragen.getPartsStats),
-      manuelleTeile: mit(k)(abfragen.getManualParts),
+      manuelleTeileLesen: mit(k)(abfragen.getManualParts),
       besesseneMengen: mit(k)(abfragen.getOwnedQuantities),
       blFarbkarte: mit(k)(abfragen.getBlColorMap),
       legeManuellesTeilAn: mit(k)(manuelleTeileDienst.addManualPart),

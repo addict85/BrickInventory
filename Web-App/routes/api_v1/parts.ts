@@ -18,7 +18,7 @@ export function bauePartsRouter(
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/parts', requireToken, async req => {
-    const result = await d.teile.teileListe(sichtVon(req), req.abfrage);
+    const result = await d.teile.teileLesen(sichtVon(req), req.abfrage);
     // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
     return { page: req.abfrage.page ?? 1, ...result };
   });
@@ -117,7 +117,7 @@ export function bauePartsRouter(
 
   router.endpunkt('GET /api/v1/parts/manual', requireToken, async req => {
     const ab = new Abstriche();
-    const alle = await d.teile.manuelleTeile(
+    const alle = await d.teile.manuelleTeileLesen(
       sichtVon(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' },

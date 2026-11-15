@@ -12,6 +12,8 @@
  *      Dienstschlüssel“ (katalog.getSetInfo)
  *   B  in src/gutscheine/bereich.ts `stapelAnlegen` wieder in den Satz → rot „Zahl
  *      der Dienstschlüssel“
+ *   C  in src/teile/bereich.ts `teileLesen` wieder `teileListe` (wie das Repository im
+ *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (teile.teileListe)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,19 +21,21 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { englischerName } = require('./helpers/namen');
 
-/** Ein Satz Dienste über einem Zugang, der nichts beantwortet. */
-function satz() {
+/** Ein Satz Dienste über einem Zugang, der nichts beantwortet; `kontexte` nimmt die Kontexte auf. */
+function satz(kontexte = undefined) {
   const stummel = {
     inTransaktion: () => false,
     transaction: async () => {
       throw new Error('Der Bau fragt nicht');
     },
   };
-  return _req('startup/verdrahtung.js').baueDienste(stummel);
+  return _req('startup/verdrahtung.js').baueDienste(stummel, { kontexte });
 }
 
 test('Dienstschlüssel sind deutsch und werden weniger, nie mehr', () => {
-  const d = satz();
+  /** @type {Record<string, any>} */
+  const kontexte = {};
+  const d = satz(kontexte);
   const schluessel = Object.entries(d).flatMap(([b, x]) =>
     Object.keys(/** @type {object} */ (x))
       .filter(k => k !== 'ueber')
@@ -56,4 +60,11 @@ test('Dienstschlüssel sind deutsch und werden weniger, nie mehr', () => {
   );
   if (schluessel.length < SCHRANKE_ZAHL)
     console.log(`  ℹ Dienstschlüssel: ${schluessel.length} (Schranke ${SCHRANKE_ZAHL}) — nachziehen`);
+
+  // testBereich() und jeder Leser nähmen sonst den Dienst, wo das Repository gemeint ist.
+  const gleich = schluessel.filter(s => {
+    const [b = '', k = ''] = s.split('.');
+    return typeof kontexte[b]?.[k] === 'object' && kontexte[b][k] !== null;
+  });
+  assert.deepEqual(gleich, [], 'Dienst heisst wie ein Teil des Kontexts');
 });

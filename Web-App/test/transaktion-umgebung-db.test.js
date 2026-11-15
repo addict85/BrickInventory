@@ -59,7 +59,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
         transaktion(async tx => {
           await schreibe(tx, 'a', 'eins');
           await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
-          gesehen = await in_(tx).getGlobalSetting(`${S}a`);
+          gesehen = await in_(tx).globalerWert(`${S}a`);
           throw new Error('zurück');
         }),
         /zurück/,
@@ -74,7 +74,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
         tx.db.transaction(async inner => {
-          assert.equal(await in_(inner).getGlobalSetting(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
+          assert.equal(await in_(inner).globalerWert(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
           await schreibe(inner, 'c', 'innen');
           throw new Error('innen kaputt');
         }),

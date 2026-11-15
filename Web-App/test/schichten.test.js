@@ -627,10 +627,10 @@ function gebundeneDienste() {
 function routenNurUeberFabrik() {
   // Ein Import aus der index.ts liefe über die Fassade des Prozesses; die Route sähe
   // nicht, welche Dienste sie braucht. Ausgenommen: die Wächter vor allen Routern.
-  // Gegenprobe (13.11.2026): `import { teileListe } from '../../src/teile'` in
+  // Gegenprobe (13.11.2026): `import { teileLesen } from '../../src/teile'` in
   // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: teile.teileListe“.
   const dienste = gebundeneDienste();
-  assert.ok(dienste.get('teile')?.has('teileListe') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
+  assert.ok(dienste.get('teile')?.has('teileLesen') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
   const treffer = [];
   for (const d of tsUnter('routes')) {
     if (d === 'routes/api_v1/middleware.ts') continue;

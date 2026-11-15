@@ -44,7 +44,7 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       setFigurenEintragen: mit(k.db, setInhaltRepo.setFigurenEintragen),
       setTeileEintragen: mit(k.db, setInhaltRepo.setTeileEintragen),
       setzeManuellenZustand: mit(k)(gemeinsamDienst.applyManualCondition),
-      kennzahlen: mit(k)(kennzahlenDienst.getStats),
+      bestandsKennzahlen: mit(k)(kennzahlenDienst.getStats),
       passeManuelleMengeAn: mit(k)(manuelleMenge.passeManuelleMengeAn),
       legeInPapierkorb: mit(k)(papierkorbDienst.legeInPapierkorb),
       legeKaeufeInPapierkorb: mit(k)(papierkorbDienst.legeKaeufeInPapierkorb),

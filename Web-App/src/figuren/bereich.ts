@@ -13,9 +13,9 @@ export function erzeugeFiguren(a: FigurenAbhaengigkeiten, einblick?: Einblick<Fi
     a,
     zugang,
     (k: FigurenKontext) => ({
-      figurenListe: mit(k)(abfragen.getMinifigs),
+      figurenLesen: mit(k)(abfragen.getMinifigs),
       figurenKennzahlen: mit(k)(abfragen.getMinifigStats),
-      manuelleFiguren: mit(k)(abfragen.getManualMinifigs),
+      manuelleFigurenLesen: mit(k)(abfragen.getManualMinifigs),
       teileDerFigur: mit(k)(dienst.teileDerFigur),
       legeManuelleFigurAn: mit(k)(manuelleFigurenDienst.addManualFig),
       aendereManuelleFigur: mit(k)(manuelleFigurenDienst.updateManualFig),

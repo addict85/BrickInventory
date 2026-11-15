@@ -19,7 +19,7 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
     // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
-    const r = await d.figuren.figurenListe(sichtVon(req), req.abfrage);
+    const r = await d.figuren.figurenLesen(sichtVon(req), req.abfrage);
     return { figs: r.figs, total: r.total };
   });
 
@@ -58,7 +58,7 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs/manual', requireToken, async req => {
     const ab = new Abstriche();
-    const alle = await d.figuren.manuelleFiguren(
+    const alle = await d.figuren.manuelleFigurenLesen(
       sichtVon(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '' },
