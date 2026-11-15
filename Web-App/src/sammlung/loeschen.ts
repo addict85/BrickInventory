@@ -13,7 +13,7 @@ export async function loescheTeil(
     const r = await t.bestand.loescheManuellesTeil(besitzer, pn, cid);
     if (r.changes === 0) return null;
     // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
-    await t.teile.loescheTeilErfassungen(besitzer, pn, cid || 0);
+    await t.bestand.kaeufe.loescheTeilErfassungen(besitzer, pn, cid || 0);
     return id;
   });
 }
@@ -23,7 +23,7 @@ export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: str
     const id = await t.bestand.legeInPapierkorb('figur', besitzer, fn);
     const r = await t.bestand.loescheManuelleFigur(besitzer, fn);
     if (r.changes === 0) return null;
-    await t.figuren.loescheFigurErfassungen(besitzer, fn);
+    await t.bestand.kaeufe.loescheFigurErfassungen(besitzer, fn);
     return id;
   });
 }

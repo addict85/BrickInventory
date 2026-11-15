@@ -83,7 +83,7 @@ async function streamInsert(
 }
 
 interface Tausch {
-  tabelle: string;
+  tabelle: repo.CsvTabelle;
   filename: string;
   tmp: string;
   cols: string[];

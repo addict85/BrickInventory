@@ -87,10 +87,16 @@ export function loescheAltenVerlauf(db: DbSchnittstelle, tage: string) {
   );
 }
 
-/** `table` und `keySql` sind feste Ausdrücke der Aufrufer, keine Eingaben. */
+/** Die Tabellen wählt die Art hier, nicht der Aufrufer: So steht im Repository, was es liest. */
+const PREISTABELLEN = {
+  part: { verlauf: 'part_price_history', cache: 'part_price_cache' },
+  fig: { verlauf: 'minifig_price_history', cache: 'minifig_price_cache' },
+} as const;
+
+/** `keySql` ist ein fester Ausdruck der Aufrufer, keine Eingabe. */
 export function manualSeries(
   db: DbSchnittstelle,
-  table: string,
+  art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   currency: string,
@@ -99,7 +105,7 @@ export function manualSeries(
   return db.all<{ avg_price: number | null; qty_avg_price: number | null; recorded_at: string }>(
     `SELECT DISTINCT ON (to_char(recorded_at, 'YYYY-MM-DD'))
             avg_price, qty_avg_price, to_char(recorded_at, 'YYYY-MM-DD') AS recorded_at
-       FROM ${table}
+       FROM ${PREISTABELLEN[art].verlauf}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND condition = $${keyVals.length + 2}
       ORDER BY to_char(recorded_at, 'YYYY-MM-DD') ASC, recorded_at DESC`,
     [...keyVals, currency, cond],
@@ -108,13 +114,13 @@ export function manualSeries(
 
 export function cachePreiseNachSchluessel(
   db: DbSchnittstelle,
-  cacheTable: string,
+  art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   currency: string,
 ) {
   return db.all<{ condition: string; avg_price: number | null; qty_avg_price: number | null }>(
-    `SELECT condition, avg_price, qty_avg_price FROM ${cacheTable}
+    `SELECT condition, avg_price, qty_avg_price FROM ${PREISTABELLEN[art].cache}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND ${marktpreisSql()} IS NOT NULL
       ORDER BY fetched_at DESC`,
     [...keyVals, currency],

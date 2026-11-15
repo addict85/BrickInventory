@@ -19,12 +19,11 @@ export interface Verschiebung {
  * Transaktionsverbindung. */
 async function copyContents(t: SetsKontext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const tab of ['parts', 'minifigs', 'instructions'] as const)
-    if (!(await repo.hatInhalt(t.db, tab, toId, sn)))
-      n[tab] =
-        tab === 'instructions'
-          ? await repo.kopiereAnleitungen(t.db, sn, fromId, toId)
-          : await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
+  for (const tab of ['parts', 'minifigs'] as const)
+    if (!(await t.bestand.setZeilen.hatInhalt(tab, toId, sn)))
+      n[tab] = await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
+  if (!(await repo.hatAnleitungen(t.db, toId, sn)))
+    n.instructions = await repo.kopiereAnleitungen(t.db, sn, fromId, toId);
   return n;
 }
 
@@ -51,7 +50,7 @@ export async function setErfassungenUmhaengen(
   // Stammdaten beschreiben das Set, nicht das Exemplar: Liegt es beim Ziel
   // schon, genügt das Umhängen der Erfassungen.
   const dst = await repo.setZeile(t.db, toId, sn);
-  if (!dst) await repo.legeSetAn(t.db, toId, sn, src.added_at);
+  if (!dst) await t.bestand.setZeilen.legeAn(toId, sn, src.added_at);
 
   for (const a of wanted) {
     await t.bestand.bucheTageserfassung('set', toId, [sn], {
@@ -62,7 +61,7 @@ export async function setErfassungenUmhaengen(
       geschaetzt: a.price_estimated,
       currency: a.currency,
     });
-    await repo.loescheSetErfassung(t.db, a.id, [fromId]);
+    await t.bestand.setZeilen.loescheErfassung(a.id, [fromId]);
   }
 
   const counts = await copyContents(t, sn, fromId, toId);
@@ -71,45 +70,9 @@ export async function setErfassungenUmhaengen(
   if (remaining > 0) {
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
-  await repo.entferneSet(t.db, fromId, sn);
+  await repo.entferneAnleitungen(t.db, fromId, sn);
+  await t.bestand.setZeilen.entferneVerschobenes(fromId, sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
-}
-
-/** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
- * aus seinen Erfassungen. */
-export async function manuelleErfassungUmhaengen(
-  t: SetsKontext,
-  kind: 'part' | 'fig',
-  keyValues: (string | number)[],
-  acquisitionId: number,
-  fromId: number,
-  toId: number,
-): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
-  const acq = await repo.manuelleErfassung(t.db, kind, acquisitionId, fromId, keyValues);
-  if (!acq) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
-
-  const src = await repo.manuelleZeile(t.db, kind, fromId, keyValues);
-  if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
-
-  const movingQty = Math.max(1, parseInt(String(acq.quantity), 10) || 1);
-  const remaining = Math.max(0, (await repo.erfassteMenge(t.db, kind, fromId, keyValues)) - movingQty);
-
-  const dst = await repo.manuelleZeile(t.db, kind, toId, keyValues);
-  if (!dst) await t.bestand.manuell.legeZeileAn(kind, toId, keyValues);
-
-  await t.bestand.bucheTageserfassung(kind, toId, keyValues, {
-    quantity: movingQty,
-    price: acq.unit_price,
-    condition: acq.condition,
-    createdAt: acq.created_at,
-    geschaetzt: acq.price_estimated,
-    currency: acq.currency,
-  });
-  await repo.loescheManuelleErfassung(t.db, kind, acq.id, [fromId]);
-
-  if (remaining > 0) return { quantity: movingQty, merged: !!dst, source_emptied: false };
-  await repo.entferneManuell(t.db, kind, fromId, keyValues, src.id);
-  return { quantity: movingQty, merged: !!dst, source_emptied: true };
 }
 
 /** Konto als Kennung aus der Eingabe; schreibziel() prüft es. */

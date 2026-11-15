@@ -6,7 +6,7 @@ import { aufKonten, type Konten } from './konten';
 
 const nur = (konten?: Konten) => (konten ? ` WHERE ${aufKonten('user_id', konten)}` : '');
 
-/** Sets im Bestand (src/sets): id, user_id, set_number, storage_id, added_at. */
+/** Sets im Bestand (src/bestand): id, user_id, set_number, storage_id, added_at. */
 export const setBestand = (konten?: Konten) =>
   `(SELECT id, user_id, set_number, storage_id, added_at FROM sets${nur(konten)})`;
 
@@ -18,17 +18,20 @@ export const teilBestand = (konten?: Konten) =>
 export const figurBestand = (konten?: Konten) =>
   `(SELECT id, user_id, set_number, fig_number, source, storage_id FROM minifigs${nur(konten)})`;
 
+/** Lagerorte (src/bestand): id, user_id, name. */
+export const lagerorte = (konten?: Konten) => `(SELECT id, user_id, name FROM storage_locations${nur(konten)})`;
+
 const ERFASSUNG = 'id, user_id, quantity, condition, created_at, currency, price_estimated, tag';
 
-/** Käufe eines Sets (src/sets): die Erfassungsspalten, set_number, purchase_price. */
+/** Käufe eines Sets (src/bestand): die Erfassungsspalten, set_number, purchase_price. */
 export const setErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, set_number, purchase_price FROM set_acquisitions${nur(konten)})`;
 
-/** Käufe manueller Teile (src/teile): die Erfassungsspalten, part_number, color_id, unit_price. */
+/** Käufe manueller Teile (src/bestand): die Erfassungsspalten, part_number, color_id, unit_price. */
 export const teilErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, part_number, color_id, unit_price FROM part_acquisitions${nur(konten)})`;
 
-/** Käufe manueller Figuren (src/figuren): die Erfassungsspalten, fig_number, unit_price. */
+/** Käufe manueller Figuren (src/bestand): die Erfassungsspalten, fig_number, unit_price. */
 export const figurErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, fig_number, unit_price FROM minifig_acquisitions${nur(konten)})`;
 

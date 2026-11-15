@@ -1,6 +1,5 @@
 /** Eine Regel für drei Arten, damit Webapp und App nicht auseinanderlaufen. */
 import { geldEingabe } from '../infra/geld';
-import * as repo from './repository/erfassungen';
 import type { Sicht } from '../haushalt';
 import { Abstriche } from '../infra/ergebnis';
 import { bestandsSchluessel } from '../../db/txLock';
@@ -54,7 +53,7 @@ interface Zeile {
 
 /** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
 async function besitzerDerZeile(k: SammlungKontext, art: ErfassungsArt, id: number, fallback: number): Promise<number> {
-  return (await k.erfassungen.kontoDerErfassung(art, id)) ?? fallback;
+  return (await k.bestand.erfassung.konto(art, id)) ?? fallback;
 }
 
 /** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
@@ -79,7 +78,7 @@ async function zeileImSchreibfeld(
   keys: Schluessel,
 ): Promise<Zeile> {
   const a = arten(t)[art];
-  const z = await repo.erfassungImSchreibfeld(t.db, art, id, wids, keys);
+  const z = await t.bestand.erfassung.imSchreibfeld(art, id, wids, keys);
   if (!z) fachfehler('nicht_gefunden', a.notFound);
   return z;
 }
@@ -125,7 +124,7 @@ export async function erfassungAendern(
       t =>
         art === 'set'
           ? t.sets.setErfassungenUmhaengen(String(keys[0]), from, to, [id])
-          : t.sets.manuelleErfassungUmhaengen(art, keys, id, from, to),
+          : t.bestand.manuelleErfassungUmhaengen(art, keys, id, from, to),
       { sperren: [{ konto: from, schluessel: bestandsSchluessel(art, keys) }], wiederholeBeiKonflikt: true },
     );
     return { from_user_id: from, to_user_id: to, ...moved };
@@ -141,7 +140,7 @@ export async function erfassungAendern(
     let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       preisGeschaetzt = true;
-      const bisher = condition ? null : await k.erfassungen.zustandDerErfassung(art, id);
+      const bisher = condition ? null : await k.bestand.erfassung.zustand(art, id);
       p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
@@ -172,13 +171,13 @@ export async function erfassungAendern(
         if (clash) fachfehler('konflikt', 'datum_belegt');
       }
       if (quantity !== undefined && quantity !== null) {
-        await repo.setzeErfassungsMenge(t.db, art, id, bestandsMenge(quantity, 1), wids);
+        await t.bestand.erfassung.setzeMenge(art, id, bestandsMenge(quantity, 1), wids);
         const q = await mengeDesBestands(t, art, ownerId, keys);
         if (leer(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       }
-      if (rawPrice !== undefined) await repo.setzeErfassungsPreis(t.db, art, id, priceVal, zielGeschaetzt, wids);
-      if (hatZustand) await repo.setzeErfassungsZustand(t.db, art, id, zielZustand, wids);
-      if (neuesDatum) await repo.setzeErfassungsDatum(t.db, art, id, neuesDatum, wids);
+      if (rawPrice !== undefined) await t.bestand.erfassung.setzePreis(art, id, priceVal, zielGeschaetzt, wids);
+      if (hatZustand) await t.bestand.erfassung.setzeZustand(art, id, zielZustand, wids);
+      if (neuesDatum) await t.bestand.erfassung.setzeDatum(art, id, neuesDatum, wids);
     },
     { sperren: [{ konto: besitzer, schluessel: bestandsSchluessel(art, keys) }] },
   );
@@ -199,7 +198,7 @@ export async function erfassungLoeschen(
     async t => {
       const acq = await zeileImSchreibfeld(t, art, await t.haushalt.schreibbereich(uid), id, keys);
       const ownerId = Number(acq.user_id);
-      await repo.loescheErfassung(t.db, art, id, ownerId);
+      await t.bestand.erfassung.loesche(art, id, ownerId);
       const q = await mengeDesBestands(t, art, ownerId, keys);
       if (leer(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       return q;
@@ -210,5 +209,5 @@ export async function erfassungLoeschen(
 }
 
 export async function setErfassungen(k: SammlungKontext, sicht: Sicht | number[], setNumber: string) {
-  return k.erfassungen.setErfassungenImBlickfeld(await k.haushalt.blickfeldAus(sicht), setNumber);
+  return k.bestand.erfassung.setErfassungenImBlickfeld(await k.haushalt.blickfeldAus(sicht), setNumber);
 }

@@ -26,12 +26,16 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const erf = _req('src/sammlung/repository/erfassungen.js');
+const erf = _req('src/bestand/repository/erfassungen.js');
 const manuell = {
   ..._req('src/bestand/repository/manuelleMengen.js'),
   ...require('./helpers/sources').testBereich('bestand').manuelleMengen,
 };
-const versch = _req('src/sets/repository/verschieben.js');
+const versch = {
+  ..._req('src/bestand/repository/setZeilen.js'),
+  ..._req('src/bestand/repository/umhaengen.js'),
+  loescheManuelleErfassung: _req('src/bestand/repository/manuelleMengen.js').entferneErfassung,
+};
 
 test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);

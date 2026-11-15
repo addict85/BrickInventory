@@ -93,6 +93,7 @@ const preiszugang = (db: Db, l: FinanzenLesevertrag) => ({
   preisCache: {
     setZustandsZaehler: mitVertrag(db, l)(preisCache.setZustandsZaehler),
     loescheAlleSetPreise: mit(db)(preisCache.loescheAlleSetPreise),
+    zaehleSetPreise: mit(db)(preisCache.zaehleSetPreise),
     setPreisFrisch: mit(db)(preisCache.setPreisFrisch),
     setPreiseFrisch: mit(db)(preisCache.setPreiseFrisch),
     merkeSetPreis: mit(db)(preisCache.merkeSetPreis),

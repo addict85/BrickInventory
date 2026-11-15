@@ -29,32 +29,6 @@ export function figurZeileMitZustand(db: DbSchnittstelle, uid: number, figNumber
   );
 }
 
-const NEUESTE = `(SELECT a.id FROM minifig_acquisitions a
-                   WHERE a.user_id=$2 AND a.fig_number=$3
-                   ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
-
-export async function setzeFigurpreisNeueste(
-  db: DbSchnittstelle,
-  uid: number,
-  figNumber: string,
-  preis: number | null,
-): Promise<void> {
-  await db.run(`UPDATE minifig_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE}`, [
-    preis,
-    uid,
-    figNumber,
-  ]);
-}
-
-export async function setzeFigurzustandNeueste(
-  db: DbSchnittstelle,
-  uid: number,
-  figNumber: string,
-  zustand: string,
-): Promise<void> {
-  await db.run(`UPDATE minifig_acquisitions SET condition=$1 WHERE id = ${NEUESTE}`, [zustand, uid, figNumber]);
-}
-
 export function figurErfassungen(db: DbSchnittstelle, uids: number[], figNumber: string) {
   return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
@@ -65,8 +39,4 @@ export function figurErfassungen(db: DbSchnittstelle, uids: number[], figNumber:
      ORDER BY a.created_at ASC, a.id ASC`,
     [uids, figNumber],
   );
-}
-
-export function loescheFigurErfassungen(tx: DbSchnittstelle, besitzer: number, figNumber: string) {
-  return tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, figNumber]);
 }

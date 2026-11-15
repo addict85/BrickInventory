@@ -188,11 +188,11 @@ export async function manuelleFigurAendern(
       zustand => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, newBlNum, zustand),
     );
     // In die NEUESTE Erfassung, wie bei den Teilen.
-    await k.manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
+    await k.bestand.kaeufe.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V.zustand(body.condition);
-    await k.manuelleFiguren.setzeFigurzustandNeueste(uid, figNumber, cond);
+    await k.bestand.kaeufe.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
   return { ...raus, ...ab.angabe() };
 }

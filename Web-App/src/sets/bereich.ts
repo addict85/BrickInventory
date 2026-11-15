@@ -34,7 +34,6 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
       setZeilenLoeschen: mit(sk)(loeschen.setZeilenLoeschen),
       setVerschieben: mit(sk)(setMove.setVerschieben),
       setErfassungenUmhaengen: mit(sk)(setMove.setErfassungenUmhaengen),
-      manuelleErfassungUmhaengen: mit(sk)(setMove.manuelleErfassungUmhaengen),
       setInfo: mit(sk)(inhalt.setInfo),
       setInfoFuerKonto: mit(sk)(inhalt.setInfoFuerKonto),
       figurenlisteDesSets: mit(sk)(inhalt.figurenlisteDesSets),

@@ -213,11 +213,11 @@ export async function manuellesTeilAendern(
     );
     // In die NEUESTE Erfassung: Dort heisst NULL „kein Preis bekannt", die 0 der
     // Anzeige bildet die Leseabfrage.
-    await k.manuelleTeile.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
+    await k.bestand.kaeufe.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V0.zustand(body.condition);
-    await k.manuelleTeile.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
+    await k.bestand.kaeufe.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
   return { ...raus, ...ab.angabe() };
 }

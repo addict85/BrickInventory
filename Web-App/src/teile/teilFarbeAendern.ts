@@ -75,10 +75,10 @@ export async function aendereTeilFarbe(
     // Erst addieren, dann umziehen: Sonst liefe das UPDATE in
     // `idx_part_acq_erfassungstag` — nur wenn beide Farben am gleichen Tag erfasst
     // wurden, ein Fehler, der von der Uhr abhängt.
-    const vereint = await repo.stockeGleicheErfassungenAuf(t.db, uid, partNumber, alt, neu);
+    const vereint = await t.bestand.kaeufe.stockeGleicheAuf(uid, partNumber, alt, neu);
     // Die addierten Quellzeilen müssen weg, sonst stünde die Stückzahl doppelt da.
-    await repo.loescheAufgestockteErfassungen(t.db, uid, partNumber, alt, neu);
-    const verschoben = await repo.faerbeErfassungenUm(t.db, uid, partNumber, alt, neu);
+    await t.bestand.kaeufe.loescheAufgestockte(uid, partNumber, alt, neu);
+    const verschoben = await t.bestand.kaeufe.faerbeUm(uid, partNumber, alt, neu);
 
     await t.bestand.manuell.teilzeileUmfaerben(quelle, ziel ?? null, neu);
 

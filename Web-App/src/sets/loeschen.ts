@@ -4,7 +4,7 @@ import type { SetsKontext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile. In der Transaktion des Aufrufers (`t`).
 export async function setZeilenLoeschen(t: SetsKontext, uids: number[], setNumber: string) {
-  await repo.entferneSetZeilen(t.db, uids, setNumber);
+  await t.bestand.setZeilen.entferneZeilen(uids, setNumber);
   await t.bestand.setInhalt.entfernen(uids, setNumber);
 }
 

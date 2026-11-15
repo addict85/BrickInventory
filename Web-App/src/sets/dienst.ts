@@ -100,8 +100,8 @@ async function erfassungenAnMengeAngleichen(
     const take = Math.min(r.quantity, -delta);
     const zeile = await repo.setErfassungAlsJson(sk.db, r.id);
     if (zeile) entfallen.push({ ...zeile, quantity: take });
-    if (take >= r.quantity) await repo.loescheSetErfassungNachId(sk.db, r.id);
-    else await repo.kuerzeSetErfassung(sk.db, take, r.id);
+    if (take >= r.quantity) await sk.bestand.setZeilen.loescheErfassungNachId(r.id);
+    else await sk.bestand.setZeilen.kuerzeErfassung(take, r.id);
     delta += take;
   }
   return entfallen;
@@ -129,7 +129,7 @@ async function schreibeInLetzteErfassung(
   ownerId: number,
   sn: string,
 ) {
-  await repo.schreibeInNeuesteSetErfassung(sk.db, wert, ownerId, sn, feld);
+  await sk.bestand.setZeilen.schreibeInNeuesteErfassung(wert, ownerId, sn, feld);
 }
 
 export async function setAendern(
@@ -182,7 +182,7 @@ export async function setAendern(
         const { eigenVorher, eigenZiel } = await eigenesZiel(t);
         if (eigenZiel === eigenVorher) return;
         // Gehörte das Set bisher nur einem anderen Konto, liefe die Anpassung sonst ins Leere.
-        if (eigenVorher === 0 && eigenZiel > 0) await repo.uebernimmSetZeile(t.db, ziel, leseFeld, sn);
+        if (eigenVorher === 0 && eigenZiel > 0) await t.bestand.setZeilen.uebernimmZeile(ziel, leseFeld, sn);
         // Menge 0 geht durch den Papierkorb, damit ein Tippfehler sich zurückholen lässt.
         if (eigenZiel === 0) {
           entfallen = entfallenAntwort(await repo.setErfassungenAlsJson(t.db, ziel, sn));
