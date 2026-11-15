@@ -204,7 +204,7 @@ async function nurNochMitFaktor(
   konto: number | undefined,
   mitFaktor: boolean,
 ): Promise<boolean> {
-  if (!(await tagesgrenzeErreicht(k, name))) return false;
+  if (!(await tagesgrenzeErreicht(k, ip, name))) return false;
   if (mitFaktor && konto !== undefined && (await zf.istAktiv(k, konto))) return false;
   await gibAnmeldeplatzFrei(k, ip, name);
   meldeAnmeldeereignis('anmeldung_tagesgrenze', { ip, konto: konto ?? null });

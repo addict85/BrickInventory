@@ -134,7 +134,7 @@ async function starte(): Promise<void> {
   if (!k.appBaseUrl && k.betrieb && web)
     console.error(
       '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
-        'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.',
+        'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
   const geheimnis = web ? sitzungsGeheimnis() : ''; // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);

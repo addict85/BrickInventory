@@ -21,6 +21,8 @@
  *   G  (09.11.2026) DELETE /settings/tokens/:tokenId wieder mit
  *      `eingabe: OHNE_RUMPF` statt bestaetigt() → rot: „die Pflichtrouten
  *      tragen die Marke"
+ *   H  (15.11.2026) in routes/api_v1/papierkorb.ts `import { verify } from
+ *      '@node-rs/argon2'` → rot: „kein zweiter Weg zum Passwortvergleich"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -219,6 +221,11 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
       ['src/konto/bcryptPool.ts'],
       'nur der Rückfall des Pools; alle anderen über passwortPasst()',
     );
+    // argon2 verify() ginge ebenso an Anmeldung und Bestätigung vorbei.
+    const argon2 = dateien
+      .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
+      .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
+    assert.deepEqual(argon2, ['src/konto/passwortHash.ts'], 'argon2 nur über passwortPasst()/hashePasswort()');
   });
 
   await t.test('ohne Marke keine Bestätigung', async () => {
