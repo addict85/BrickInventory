@@ -5,7 +5,7 @@ import * as abfragen from './abfragen';
 import * as manuelleTeileDienst from './manuelleTeile';
 import * as manuelleTeileRepo from './repository/manuelleTeile';
 import * as teilFarbeAendern from './teilFarbeAendern';
-import { zieheKatalogNach } from './partsSummary';
+import { teileAuftragsarten } from './auftragsarten';
 import { zugang, type TeileAbhaengigkeiten, type TeileKontext } from './kontext';
 
 export type { TeileAbhaengigkeiten, TeileKontext } from './kontext';
@@ -29,7 +29,7 @@ export function erzeugeTeile(a: Omit<TeileAbhaengigkeiten, 'faecher'>, einblick?
       // Baustein fremder Löschungen; in deren Transaktion über t.teile gerufen.
       loescheTeilErfassungen: mit(k.db, manuelleTeileRepo.loescheTeilErfassungen),
       aendereTeilFarbe: mit(k)(teilFarbeAendern.aendereTeilFarbe),
-      zieheKatalogNach: mit(k)(zieheKatalogNach),
+      auftragsarten: () => teileAuftragsarten(k),
     }),
     einblick,
   );

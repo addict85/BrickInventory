@@ -136,6 +136,8 @@ const bildzugang = (db: Db, l: KatalogLesevertrag) => ({
     figurenbilder: mit(db)(bildlage.figurenbilder),
     fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
     setsOhneAnleitungsabruf: mitVertrag(db, l)(bildlage.setsOhneAnleitungsabruf),
+    fehlendeKatalogbilder: mit(db)(bildlage.fehlendeKatalogbilder),
+    setNamen: mit(db)(bildlage.setNamen),
   },
 });
 

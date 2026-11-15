@@ -2,9 +2,11 @@
  * Ein zweiter Speicher konnte dem ersten widersprechen. */
 
 import { logAndContinue } from '../infra/fehler';
-import type { LetzterStand } from './repository/auftraege';
-import type { AuftragsArt } from './auftraege';
-import type { AuftraegeKontext } from './kontext';
+import { BILDLADE_ZAEHLER } from '../katalog';
+import type { AuftragsArt } from '../auftraege';
+import type { VerwaltungKontext } from './kontext';
+
+type LetzterStand = Awaited<ReturnType<VerwaltungKontext['auftraege']['letzteJeArt']>>[number];
 
 export interface Kachel {
   label: string;
@@ -50,7 +52,7 @@ function alsKachel(k: { label: string; total: number }, z: LetzterStand | undefi
   };
 }
 
-export async function kacheln(kx: AuftraegeKontext): Promise<Record<string, Kachel>> {
+export async function kacheln(kx: VerwaltungKontext): Promise<Record<string, Kachel>> {
   const zeilen = await kx.auftraege.letzteJeArt(Object.values(KACHELN).map(k => k.art));
   const je = new Map(zeilen.map(z => [z.art, z]));
   const aus: Record<string, Kachel> = { ...OHNE_AUFTRAG };
@@ -61,23 +63,15 @@ export async function kacheln(kx: AuftraegeKontext): Promise<Record<string, Kach
   return aus;
 }
 
-export async function kachel(k: AuftraegeKontext, name: string): Promise<Kachel | null> {
+export async function kachel(k: VerwaltungKontext, name: string): Promise<Kachel | null> {
   return (await kacheln(k))[name] ?? null;
 }
 
-const IMGDL_PENDING_KEY = 'imgdl_pending_count';
-
-export async function imgDlAdd(k: AuftraegeKontext, delta: number) {
-  const d = Math.round(Number(delta) || 0);
-  if (!d) return;
-  await k.laufzustand.zaehleZustand(IMGDL_PENDING_KEY, d).catch(logAndContinue('job-monitor:imgDlAdd'));
-}
-
-export async function imgDlPending(k: AuftraegeKontext) {
-  const n = parseInt((await k.laufzustand.liesZustand(IMGDL_PENDING_KEY)) || '0', 10);
+export async function imgDlPending(k: VerwaltungKontext) {
+  const n = parseInt((await k.auftraege.liesZustand(BILDLADE_ZAEHLER)) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
-export async function imgDlReset(k: AuftraegeKontext) {
-  await k.laufzustand.setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
+export async function imgDlReset(k: VerwaltungKontext) {
+  await k.auftraege.setzeZustand(BILDLADE_ZAEHLER, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }

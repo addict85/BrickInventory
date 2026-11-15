@@ -35,7 +35,7 @@ async function zieheNach(
     await schritt('preis', () => sk.finanzen.preisFuerSetHolen(setNumber, userId));
     await schritt('anleitung', () => sk.katalog.ladeSetAnleitungen(setNumber));
   } else {
-    await schritt('anleitung-einreihen', () => sk.auftraege.anleitungEinreihen(setNumber));
+    await schritt('anleitung-einreihen', () => sk.katalog.anleitungEinreihen(setNumber));
   }
   pruefeAbbruch(lauf);
   await schritt('teile-anreichern', () => sk.katalog.reichereSetTeileAn(setNumber));

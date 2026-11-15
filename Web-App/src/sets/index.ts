@@ -12,3 +12,4 @@ export type { Verschiebung } from './setMove';
 export type { BarcodeTreffer } from './barcode';
 export type { ImportZeile } from './csvImport';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
+export { SetCsvNutzlast } from './csvImportLauf';

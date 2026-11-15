@@ -4,7 +4,7 @@ import { waechterFuer } from '../api_v1/middleware';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
-import { USERNAME_RE, LETZTER_VERWALTER } from '../../src/konto';
+import { USERNAME_RE } from '../../src/konto';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 
@@ -47,9 +47,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (targetId === nutzerId(req) && !soll) fachfehler('ungueltig', 'eigene_adminrolle');
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    const r = await d.konto.verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
-    if (!r) nichtGefunden('benutzer_nicht_gefunden');
-    if (r === LETZTER_VERWALTER) fachfehler('konflikt', 'verwalter_muss_bleiben');
+    const r = await d.konto.verwalter.verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
     if (r.geaendert && soll)
       d.konto.verwalterHinweisNebenher('verwalter_ernannt', {
         konto: await d.konto.kontoAnzeigeName(targetId),
@@ -67,9 +65,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (targetId === nutzerId(req)) fachfehler('ungueltig', 'eigenes_konto_deaktivieren');
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    const r = await d.konto.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
-    if (!r) nichtGefunden('benutzer_nicht_gefunden');
-    if (r === LETZTER_VERWALTER) fachfehler('konflikt', 'verwalter_muss_bleiben');
+    await d.konto.verwalter.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
     return { is_active: soll };
   });
 
@@ -78,8 +74,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     const targetId = req.pfad.id;
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    const r = await d.konto.registrierungFreischalten(angemeldeteNutzerId(req), targetId);
-    if (r !== 'ok') fachfehler('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
+    await d.konto.verwalter.registrierungFreischalten(angemeldeteNutzerId(req), targetId);
     return {};
   });
 
@@ -94,16 +89,14 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
     // eine offene Verwaltersitzung allein genügt dafür nicht.
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    const r = await d.konto.passwortDurchVerwalter(angemeldeteNutzerId(req), targetId, password ?? '');
+    const r = await d.konto.verwalter.passwortDurchVerwalter(angemeldeteNutzerId(req), targetId, password ?? '');
     if (!r) nichtGefunden('benutzer_nicht_gefunden');
     return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
   });
 
   router.endpunkt('DELETE /api/v1/auth/users/:id', requireAdmin, async (req, res) => {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    const r = await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
-    if (r === LETZTER_VERWALTER) fachfehler('konflikt', 'verwalter_muss_bleiben');
-    if (r !== 'entfernt') nichtGefunden('benutzer_nicht_gefunden_oder_eigenes');
+    await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
     return {};
   });
 
@@ -112,7 +105,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     const id = req.pfad.id;
     if (id === nutzerId(req)) fachfehler('ungueltig', 'eigener_zweiter_faktor');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    const r = await d.konto.faktorDurchVerwalter(angemeldeteNutzerId(req), id);
+    const r = await d.konto.verwalter.faktorDurchVerwalter(angemeldeteNutzerId(req), id);
     return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
   });
   return router;

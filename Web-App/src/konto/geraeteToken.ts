@@ -18,6 +18,7 @@ import {
 } from './tokenCache';
 import type { KontoKontext } from './kontext';
 import { meldeFehler } from '../infra/fehler';
+import { fachfehler } from '../infra/fehlerTexte';
 import { versuche } from '../infra/ergebnis';
 
 export type { TokenScope, TokenBenutzer };
@@ -259,11 +260,7 @@ export const TAUSCH_SPERRE_S = 30;
 
 /** Der alte gilt danach höchstens UEBERLAPPUNG_MS. Ein zweiter Tausch ersetzt den unbenutzten
  * Nachfolger nur aus demselben Netz (sonst Kopie: Familie endet) und erst nach TAUSCH_SPERRE_S. */
-export async function rotiereToken(
-  kx: KontoKontext,
-  alt: string,
-  ip?: string | null,
-): Promise<Tausch | null | 'laeuft'> {
+export async function rotiereToken(kx: KontoKontext, alt: string, ip?: string | null): Promise<Tausch | null> {
   const altHash = tokenAbdruck(alt);
   const neu = crypto.randomBytes(32).toString('hex');
   const neuHash = tokenAbdruck(neu);
@@ -301,6 +298,7 @@ export async function rotiereToken(
     console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
     hinweisNebenher(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
   }
+  if (ergebnis === 'laeuft') fachfehler('konflikt', 'tausch_laeuft');
   return ergebnis;
 }
 

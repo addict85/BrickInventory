@@ -2,13 +2,11 @@
 import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import * as anleitungLaden from './anleitungLaden';
 import * as bildlageDienst from './bildlage';
 import * as blZuordnungDienst from './blZuordnung';
 import * as bricklinkLink from './bricklinkLink';
 import * as bricklinkPreise from './bricklinkPreise';
 import * as bricksetNachlauf from './bricksetNachlauf';
-import * as csvAbgleich from './csvAbgleich';
 import * as dienst from './dienst';
 import * as farben from './farben';
 import * as instructions from './instructions';
@@ -20,10 +18,10 @@ import * as rbInventar from './rbInventar';
 import * as rebrickableKatalog from './rebrickableKatalog';
 import * as teileAnreicherungDienst from './teileAnreicherung';
 import { ConcurrentRateLimiter } from '../fremdquellen';
-import * as bildNachlauf from './bildNachlauf';
-import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as pdfAuftraege from './pdf/pdfAuftraege';
+import * as anleitungsAuftrag from './anleitungsAuftrag';
 import * as setStamm from './setStamm';
-import * as widerrufsliste from './widerrufsliste';
+import { katalogAuftragsarten } from './auftragsarten';
 import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
 export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
@@ -39,7 +37,6 @@ export function erzeugeKatalog(
     katalogDienste,
     einblick,
   );
-  a.bilder.beiSetBildGeladen((sn, quelle) => d.setBildLokalEintragen(sn, quelle));
   return d;
 }
 
@@ -56,7 +53,6 @@ function bildDienste(k: KatalogKontext) {
 function katalogDienste(k: KatalogKontext) {
   return {
     ...bildDienste(k),
-    anleitungLaden: mit(k)(anleitungLaden.anleitungLaden),
     merkeBlNummer: mit(k)(blZuordnungDienst.merkeBlNummer),
     merkeEigeneBlNummer: mit(k)(blZuordnungDienst.merkeEigeneBlNummer),
     blNummerVon: mit(k)(blZuordnungDienst.blNummerVon),
@@ -71,8 +67,8 @@ function katalogDienste(k: KatalogKontext) {
     leereKatalogCache: mit(k)(bricklinkPreise.katalogCacheLeeren),
     cacheStand: mit(k)(bricklinkPreise.getCacheStats),
     preisfuehrer: mit(k)(bricklinkPreise.preisfuehrerAbfrage),
-    bricksetNachlauf: mit(k)(bricksetNachlauf.bricksetNachlauf),
-    csvAbgleich: mit(k)(csvAbgleich.csvAbgleich),
+    bricksetListe: mit(k)(bricksetNachlauf.bricksetListe),
+    anleitungEinreihen: mit(k)(anleitungsAuftrag.anleitungEinreihen),
     katalogMeta: mit(k)(dienst.katalogMeta),
     jahrVerteilung: mit(k)(dienst.jahrVerteilung),
     katalogSeite: mit(k)(dienst.katalogSeite),
@@ -107,14 +103,18 @@ function katalogDienste(k: KatalogKontext) {
     reichereSetTeileAn: mit(k)(teileAnreicherungDienst.enrichSetParts),
     ladeSetBilder: mit(k)(teileAnreicherungDienst.downloadSetImages),
     reichereSetFigurenAn: mit(k)(teileAnreicherungDienst.enrichSetMinifigs),
-    redownloadMissingImages: mit(k)(teileAnreicherungDienst.redownloadMissingImages),
-    bildNachlauf: mit(k)(bildNachlauf.bildNachlauf),
-    erzeugePdf: mit(k)(pdfErzeugung.erzeugePdf),
-    pdfAufgegeben: pdfErzeugung.pdfAufgegeben,
+    /** PDF-Aufträge eines Kontos: anstossen, verfolgen, verwerfen; das Aufräumen über alle. */
+    pdf: {
+      starten: mit(k)(pdfAuftraege.pdfAuftragStarten),
+      lies: mit(k)(pdfAuftraege.liesAuftrag),
+      fertigeDatei: mit(k)(pdfAuftraege.fertigeDatei),
+      loesche: mit(k)(pdfAuftraege.loescheAuftrag),
+      raeumeAuf: mit(k)(pdfAuftraege.cleanOldPdfJobs),
+    },
     katalogStand: mit(k.db, setStamm.katalogStand),
     merkeKatalogPlatzhalter: mit(k.db, setStamm.merkeKatalogPlatzhalter),
     merkeSetKatalog: mit(k.db, setStamm.merkeSetKatalog),
-    ladeWiderrufsliste: mit(k)(widerrufsliste.ladeWiderrufsliste),
+    auftragsarten: (importProzess: string) => katalogAuftragsarten(k, importProzess),
   };
 }
 

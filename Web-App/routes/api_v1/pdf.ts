@@ -5,9 +5,8 @@ import { streamFileToResponse } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
-import _fsSync from 'node:fs';
-import { pdfSchluessel, pdfDateiPfad } from '../../src/auftraege';
-import { antwortSprache, fachfehler, nichtGefunden, Fachfehler } from '../../src/infra/fehlerTexte';
+import { pdfSchluessel } from '../../src/katalog';
+import { antwortSprache, fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 import type { Request, Response } from 'express';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -20,8 +19,8 @@ type PdfJobStatus = {
 };
 
 /** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
-function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'konto'>, id: string, userId: number) {
-  return d.auftraege.liesAuftrag(id, userId);
+function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, id: string, userId: number) {
+  return d.katalog.pdf.lies(id, userId);
 }
 /** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
 function laufendeBeugung(anzahl: number, sprache: string) {
@@ -39,7 +38,7 @@ const fertig = (s: string | undefined) => s === 'done' || s === 'error';
 /** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
  * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
  * falls ein Signal während einer Verbindungsstörung verloren ging. */
-function folgeAuftrag(d: Pick<Dienste, 'auftraege' | 'konto'>, strom: Strom, jobId: string, uid: number) {
+function folgeAuftrag(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, strom: Strom, jobId: string, uid: number) {
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
@@ -57,7 +56,7 @@ function folgeAuftrag(d: Pick<Dienste, 'auftraege' | 'konto'>, strom: Strom, job
  * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
  * Aufgeräumt wird nur nach vollständiger Auslieferung. */
 function liefereUndRaeumeAuf(
-  d: Pick<Dienste, 'auftraege' | 'konto'>,
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>,
   req: Request,
   res: Response,
   jobId: string,
@@ -68,12 +67,12 @@ function liefereUndRaeumeAuf(
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   const aufraeumen = () => {
     _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
-    d.auftraege.loescheAuftrag(jobId, uid).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
+    d.katalog.pdf.loesche(jobId, uid).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
   };
   streamFileToResponse(res, pdfPath, aufraeumen, req);
 }
 
-export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
+export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -82,7 +81,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
     const { sets = [], parts = [] } = req.eingabe;
     if (!parts.length) fachfehler('ungueltig', 'keine_teile');
 
-    const r = await d.auftraege.pdfAuftragStarten(uid, sets, parts);
+    const r = await d.katalog.pdf.starten(uid, sets, parts);
     if ('laufend' in r) {
       fachfehler('zu_viele', 'pdf_auftrag_laeuft', laufendeBeugung(r.laufend, antwortSprache(req)));
     }
@@ -124,12 +123,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
 
   router.endpunkt('GET /api/v1/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
     const jobId = req.pfad.jobId;
-    const job = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
-    if (!job) nichtGefunden('job_nicht_gefunden');
-    // `status` zeigt der Oberfläche, wie weit der Auftrag ist.
-    if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
-    const pdfPath = pdfDateiPfad(jobId);
-    if (!pdfPath || !_fsSync.existsSync(pdfPath)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
+    const pdfPath = await d.katalog.pdf.fertigeDatei(jobId, req.apiUser.user_id);
     liefereUndRaeumeAuf(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });
   return router;

@@ -1,7 +1,8 @@
 /** Die eine Stelle, an der verdrahtet wird: Bereiche und die Klienten
  * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
-import { erzeugeAuftraege } from '../src/auftraege';
+import path from 'node:path';
+import { erzeugeAuftraege, type Anmeldung } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
@@ -43,11 +44,31 @@ export interface Bauteile {
 }
 type Gesetzt = Bauteile & { konfig: Readonly<Konfig>; uhr: Uhr };
 
+// Der Katalog-Import läuft in einem eigenen Prozess; sein Einstieg liegt im Bau unter jobs/.
+const IMPORT_PROZESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
+
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. Wer einen höheren braucht,
  * horcht auf ein Ereignis des tieferen (etwa beiSetBildGeladen); späte Bindung gibt es nicht. */
 export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
-  return baueBereiche(db, { ...bauteile, konfig: bauteile.konfig ?? konfig(), uhr: bauteile.uhr ?? systemUhr });
+  const d = baueBereiche(db, { ...bauteile, konfig: bauteile.konfig ?? konfig(), uhr: bauteile.uhr ?? systemUhr });
+  meldeAuftragsartenAn(d);
+  return d;
+}
+
+/** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
+function meldeAuftragsartenAn(d: Dienste): void {
+  const arten: Anmeldung[] = [
+    ...d.bilder.auftragsarten(),
+    ...d.konto.auftragsarten(),
+    ...d.katalog.auftragsarten(IMPORT_PROZESS),
+    ...d.finanzen.auftragsarten(),
+    ...d.sets.auftragsarten(),
+    ...d.sammlung.auftragsarten(),
+    ...d.teile.auftragsarten(),
+    ...d.verwaltung.auftragsarten(),
+  ];
+  for (const a of arten) d.auftraege.meldeArtAn(a);
 }
 
 type Zeige = ReturnType<typeof einblickIn>;
@@ -88,6 +109,8 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, drossel, lesevertrag: LESEVERTRAG },
     zeige('katalog'),
   );
+  // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
+  bilder.beiSetBildGeladen((sn, quelle) => katalog.setBildLokalEintragen(sn, quelle));
   return {
     drossel,
     einstellungen,

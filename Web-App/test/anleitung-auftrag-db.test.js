@@ -121,9 +121,10 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
 
   await t.test('ein Set steht nur einmal offen', async () => {
     await db.run(`DELETE FROM auftraege WHERE art = 'anleitung'`);
-    const E = _req('src/auftraege/anleitungsAuftrag.js');
+    const E = _req('src/katalog/anleitungsAuftrag.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
-    assert.equal(await E.offeneAnleitungen(), 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
+    const z = await require('./helpers/sources').testDienste().auftraege.zaehleArt('anleitung');
+    assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

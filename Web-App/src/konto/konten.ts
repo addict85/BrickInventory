@@ -5,27 +5,14 @@ import * as repo from './repository/konten';
 import { leereTokenCache } from './tokenCache';
 import { mitZugangsende, alleSitzungenBeenden, zugangsTransaktion } from './zugangsende';
 import { tokenAbdruck, alleTokensWiderrufen } from './geraeteToken';
-import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 import { verwalterAktionMerken } from './verwalterProtokoll';
-import { alsDoppelt } from '../infra/fehlerTexte';
+import { alsDoppelt, fachfehler, nichtGefunden } from '../infra/fehlerTexte';
 import type { Geloest } from '../mail';
 import { hinweisNebenher } from './kontoHinweis';
 import { loescheTagesgrenze } from './loginLimiter';
 import type { KontoKontext } from './kontext';
-
-export { LETZTER_VERWALTER } from './repository/konten';
-
-/** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
-export async function andereSitzungenBeenden(
-  k: KontoKontext,
-  uid: number,
-  eigeneSid: string,
-): Promise<{ beendet: number; version: number }> {
-  const version = await erhoeheSitzungsVersion(k, uid);
-  return { beendet: await k.konten.loescheAndereSitzungen(uid, eigeneSid), version };
-}
 
 /** Nur melden, nichts ändern: Welche Adresse gemeint war, weiss nur der Inhaber. */
 export async function meldeUngueltigeAdressen(k: KontoKontext): Promise<number[]> {
@@ -215,14 +202,10 @@ export async function registriere(
 
 /** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen
  * fallen über die Sitzungsversion, auch eine wieder geschriebene Zeile. */
-export async function setzeAktiv(
-  k: KontoKontext,
-  uid: number,
-  soll: boolean,
-): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
+export async function setzeAktiv(k: KontoKontext, uid: number, soll: boolean): Promise<{ geaendert: boolean }> {
   const r = await zugangsTransaktion(k, t => t.konten.schreibeAktiv(uid, soll));
-  if (!r) return null;
-  if (r === repo.LETZTER_VERWALTER) return r;
+  if (!r) nichtGefunden('benutzer_nicht_gefunden');
+  if (r === repo.LETZTER_VERWALTER) fachfehler('konflikt', 'letzter_verwalter');
   if (!soll) await zugaengeBeenden(k, uid);
   return { geaendert: r.vorher !== soll };
 }
@@ -234,10 +217,10 @@ export async function setzeVerwalterRolle(
   k: KontoKontext,
   uid: number,
   soll: boolean,
-): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
+): Promise<{ geaendert: boolean }> {
   const vorher = await zugangsTransaktion(k, t => t.konten.setzeVerwalter(uid, soll));
-  if (!vorher) return null;
-  if (vorher === repo.LETZTER_VERWALTER) return vorher;
+  if (!vorher) nichtGefunden('benutzer_nicht_gefunden');
+  if (vorher === repo.LETZTER_VERWALTER) fachfehler('konflikt', 'letzter_verwalter');
   const geaendert = vorher.vorher !== soll;
   if (geaendert) {
     await alleSitzungenBeenden(k, uid);

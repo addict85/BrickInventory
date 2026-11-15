@@ -3,25 +3,19 @@ import {
   type AuftraegeDienste,
   type AuftragsArt,
   type AuftragsZeile,
+  type Bearbeiter,
   type Fortschritt,
   type AuftragsKontext,
   AuftragUnterbrochen,
   AuftragVerloren,
   AuftragVerschieben,
-  hatZeitplan,
-  pruefeNutzlast,
   NutzlastUngueltig,
   type Nutzlast,
 } from '../src/auftraege';
 import { fehlertext, logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { VORGABE } from '../src/infra/konfig';
 
-/** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
-export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
-  ausfuehren(nutzlast: Nutzlast<A>, k: AuftragsKontext, a: AuftragsZeile): Promise<void>;
-  aufgegeben?(nutzlast: Nutzlast<A>, fehler: string, a: AuftragsZeile): Promise<void>;
-  exklusiv?: boolean;
-}
+export type { Bearbeiter } from '../src/auftraege';
 
 export interface WorkerOptionen {
   parallel?: number;
@@ -77,9 +71,9 @@ async function zurueckInDieTabelle(d: AuftraegeDienste, a: AuftragsZeile): Promi
   await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
 }
 
-/** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
+/** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan; ohne Zeitplan nichts. */
 async function folgeplan(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
-  if (hatZeitplan(a.art)) await d.planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
+  await d.planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
 }
 
 function kontextFuer(
@@ -119,7 +113,7 @@ async function fuehreAuftragAus(
     // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
     if (!b || a.versuche > a.max_versuche)
       throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-    const geprueft = pruefeNutzlast(a.art, a.nutzlast);
+    const geprueft = d.pruefeNutzlast(a.art, a.nutzlast);
     nutzlast = geprueft;
     await d.imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
     if (await d.erledigt(a)) await folgeplan(d, a);

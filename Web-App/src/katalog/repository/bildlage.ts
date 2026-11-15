@@ -150,3 +150,21 @@ export async function setsOhneAnleitungsabruf(db: DbSchnittstelle, l: KatalogLes
   );
   return rows.map(r => r.set_number);
 }
+
+/** Teil- und Figurenbilder der Sets, die noch nicht lokal liegen. */
+export function fehlendeKatalogbilder(db: DbSchnittstelle, setNummern: string[]) {
+  return db.get<{ c: string | number }>(
+    `SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT part_number, color_id FROM set_parts_catalog
+                WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) p)
+            + (SELECT COUNT(*) FROM (SELECT DISTINCT fig_number FROM set_minifigs_catalog
+                WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) f) AS c`,
+    [setNummern],
+  );
+}
+
+/** Die Namen der Sets aus dem Rebrickable-Katalog. */
+export function setNamen(db: DbSchnittstelle, nummern: string[]) {
+  return db.all<{ set_num: string; name: string | null }>('SELECT set_num, name FROM rb_sets WHERE set_num = ANY($1)', [
+    nummern,
+  ]);
+}

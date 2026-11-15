@@ -10,6 +10,7 @@ import { pruefeKette } from './attestation/schluesselAttestation';
 import { geltendeListe, WIDERRUF_ZUSTAND } from './attestation/widerrufsliste';
 import type { GeraeteKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
+import { fachfehler } from '../infra/fehlerTexte';
 
 export type { Familie };
 
@@ -79,7 +80,13 @@ function wurzeln(pem: string): X509Certificate[] {
   return liste;
 }
 
-export type Registrierung = 'neu' | 'gleich' | 'anderer' | 'frist_vorbei' | 'ungueltig' | { abgewiesen: string };
+export type Registrierung = 'neu' | 'gleich';
+
+/** Der Grund gehört ins Protokoll: Die App kann ihn nicht beheben, der Betreiber (Fingerabdruck) schon. */
+function attestationAbgewiesen(f: Familie, grund: string): never {
+  console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${grund}`);
+  fachfehler('ungueltig', 'geraeteschluessel_attestation');
+}
 
 /** Die Kette muss die Prüfung bestehen und eine noch offene Nonce dieser Familie tragen. */
 export async function hinterlegeSchluessel(
@@ -89,7 +96,7 @@ export async function hinterlegeSchluessel(
 ): Promise<Registrierung> {
   const k = kx.konfig;
   const widerrufen = geltendeListe(await kx.auftraege.liesZustand(WIDERRUF_ZUSTAND), k.attestationWiderrufTage);
-  if (!widerrufen) return { abgewiesen: 'widerrufsliste_fehlt' };
+  if (!widerrufen) attestationAbgewiesen(f, 'widerrufsliste_fehlt');
   const p = pruefeKette(kette, {
     wurzeln: wurzeln(k.attestationWurzeln ?? ''),
     paket: k.androidPaket,
@@ -97,20 +104,27 @@ export async function hinterlegeSchluessel(
     widerrufen,
     patchMindestens: k.attestationPatchMindestens,
   });
-  if (!p.ok) return { abgewiesen: p.grund };
+  if (!p.ok) attestationAbgewiesen(f, p.grund);
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
-  if (!leseSchluessel(kanonisch)) return 'ungueltig';
+  if (!leseSchluessel(kanonisch)) fachfehler('ungueltig', 'geraeteschluessel_ungueltig');
   const da = await kx.geraeteSchluessel.eintragDer(f);
-  if (da?.attestiert) return da.oeffentlich === kanonisch ? 'gleich' : 'anderer';
-  if (!(await kx.geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url')))) return { abgewiesen: 'challenge' };
+  if (da?.attestiert) {
+    if (da.oeffentlich !== kanonisch) fachfehler('konflikt', 'geraeteschluessel_vorhanden');
+    return 'gleich';
+  }
+  if (!(await kx.geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url'))))
+    attestationAbgewiesen(f, 'challenge');
   if (await kx.geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
-  return (await kx.geraeteSchluessel.eintragDer(f))?.oeffentlich === kanonisch ? 'gleich' : 'frist_vorbei';
+  if ((await kx.geraeteSchluessel.eintragDer(f))?.oeffentlich !== kanonisch)
+    fachfehler('verboten', 'geraeteschluessel_frist');
+  return 'gleich';
 }
 
-export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date } | 'kein_schluessel';
+export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date };
 
 export async function neueChallenge(k: GeraeteKontext, f: Familie, aktion: Schrittaktion): Promise<Challenge> {
-  if (!(await k.geraeteSchluessel.schluesselDer(f, k.konfig.geraeteschluesselAltBis))) return 'kein_schluessel';
+  if (!(await k.geraeteSchluessel.schluesselDer(f, k.konfig.geraeteschluesselAltBis)))
+    fachfehler('verboten', 'geraeteschluessel_fehlt');
   const challenge = randomBytes(32).toString('base64url');
   const bis = await k.geraeteSchluessel.legeChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OFFEN);
   return { challenge, nachricht: nachricht(aktion, challenge), gueltig_bis: bis };

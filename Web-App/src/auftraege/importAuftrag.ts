@@ -3,11 +3,10 @@ import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../in
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen. */
 
-// Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
-import EventEmitter from 'node:events';
 import type { AuftraegeKontext } from './kontext';
-export const csvImportBus = new EventEmitter();
-csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
+import { signal } from '../infra/ereignis';
+/** Der Stand eines Kontos ist neu geschrieben, in diesem oder einem anderen Prozess; die Nutzlast nennt das Konto. */
+const IMPORT_STAND = signal('csv_import_progress');
 
 /** `isWarning` trennt „hat nicht geklappt" von „ist eine Anmerkung"; sonst
  * stünde jede Anmerkung als Fehler da. */
@@ -63,16 +62,9 @@ export function buildJobStatus(
   };
 }
 
+/** Die Ströme lesen den Stand selbst nach; geht das Signal verloren, holt ihn ihr Nachzieh-Takt. */
 export async function emitJobStatus(k: AuftraegeKontext, userId: number) {
-  try {
-    const job = await jobGet(k, userId);
-    // Ohne Request ist die Sprache des Empfängers unbekannt; `code` reist mit.
-    csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
-  } catch (_) {
-    /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */
-  }
-  // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den Stand in den Web-Prozess.
-  k.db.benachrichtigung.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
+  await IMPORT_STAND.melde(k.db.benachrichtigung, String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const VERWAIST_MIN = 10;
@@ -195,8 +187,7 @@ export async function istAbgebrochen(k: AuftraegeKontext, userId: number): Promi
   return stand?.status !== 'running';
 }
 
-/** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
+/** Weckt, wenn ein Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
 export function beiImportStand(k: AuftraegeKontext, f: (konto?: string) => void): () => void {
-  k.db.benachrichtigung.listen('csv_import_progress', f);
-  return () => k.db.benachrichtigung.unlisten('csv_import_progress', f);
+  return IMPORT_STAND.horche(k.db.benachrichtigung, f);
 }

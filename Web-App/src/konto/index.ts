@@ -5,7 +5,6 @@ export type { Konto as KontoZeile } from './repository/konten';
 export { UEBERLAPPUNG_MS, tokenAbdruck, rotationFaellig } from './geraeteToken';
 export { assertLoginAllowed } from './anmeldepruefung';
 export { USERNAME_RE, emailGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, nameGueltig } from './namensRegeln';
-export { LETZTER_VERWALTER } from './konten';
 export { meldeAnmeldung } from './loginLimiter';
 export { vertrauenspartei } from './passkeys';
 export { QR_TTL_MS } from './qrKopplung';

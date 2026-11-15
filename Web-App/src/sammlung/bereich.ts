@@ -3,6 +3,7 @@ import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as erfassungenDienst from './erfassungen';
 import * as loeschenDienst from './loeschen';
 import * as importAuftraege from './importAuftraege';
+import { sammlungAuftragsarten } from './auftragsarten';
 import { zugang, type SammlungAbhaengigkeiten, type SammlungKontext } from './kontext';
 
 export type { SammlungAbhaengigkeiten, SammlungKontext } from './kontext';
@@ -18,7 +19,8 @@ export function erzeugeSammlung(a: SammlungAbhaengigkeiten, einblick?: Einblick<
       loescheTeil: mit(k)(loeschenDienst.loescheTeil),
       loescheFigur: mit(k)(loeschenDienst.loescheFigur),
       loescheAllesEigene: mit(k)(loeschenDienst.loescheAllesEigene),
-      fuehreImportAus: mit(k)(importAuftraege.fuehreImportAus),
+      auftragsarten: () => sammlungAuftragsarten(k),
+      importiere: mit(k)(importAuftraege.importiere),
     }),
     einblick,
   );

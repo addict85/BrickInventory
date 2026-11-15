@@ -2,7 +2,7 @@
  * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
 import type { Writable } from 'node:stream';
 import { SECRET_KEYS, istMaskiert, globalerWertGueltig } from '../einstellungen';
-import { DAILY_JOBS } from '../auftraege';
+import { DAILY_JOBS } from './tageszeiten';
 import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';

@@ -1,5 +1,5 @@
-import type { z } from 'zod';
-import { type SetCsvNutzlast, type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
+import { z } from 'zod';
+import { type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
 import { setErfassen } from './erfassen';
 import { fehlertext } from '../infra/fehler';
 import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
@@ -8,6 +8,24 @@ import type { SetsKontext } from './kontext';
 /** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
  * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
  * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
+const CsvZeileSchema = z.object({
+  sn: z.string(),
+  qty: z.number().int(),
+  purchasePrice: z.number().nullable(),
+  condition: z.string().nullable(),
+  acquiredAt: z.string().nullable(),
+  // Zeile der Datei und, wenn sie schon beim Lesen scheiterte, warum: Das Ergebnis nennt sie dann an ihrem Platz.
+  zeile: z.number().int().optional(),
+  fehler: z
+    .object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() })
+    .optional(),
+});
+/** Teil der Art 'csv_import', die die Sammlung anmeldet (src/sammlung/auftragsarten.ts). */
+export const SetCsvNutzlast = z.object({
+  user_id: z.number().int().positive(),
+  lauf: z.string().min(1),
+  rows: z.array(CsvZeileSchema),
+});
 export type CsvNutzlast = z.output<typeof SetCsvNutzlast>;
 export type CsvZeile = CsvNutzlast['rows'][number];
 

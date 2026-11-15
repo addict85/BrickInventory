@@ -20,7 +20,7 @@ import {
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
-import { doppeltAls, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
+import { doppeltAls, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { hinweisNebenher } from './kontoHinweis';
 import { tokenAbdruck } from './geraeteToken';
 import { zugangsTransaktion } from './zugangsende';
@@ -43,16 +43,17 @@ export interface KontoZustand {
 export async function verifiziereEmailToken(
   k: KontoKontext,
   token: string | null | undefined,
-): Promise<{ ok: boolean; grund?: string; userId?: number }> {
-  if (token === undefined || token === null || String(token).trim() === '') {
-    return { ok: false, grund: 'fehlt' };
-  }
+): Promise<{ userId: number }> {
+  const leer = token === undefined || token === null || String(token).trim() === '';
   const hash = tokenAbdruck(String(token));
-  const id = await k.konten.kontoZuEmailToken(hash);
-  if (id === undefined) return { ok: false, grund: 'ungueltig' };
+  const id = leer ? undefined : await k.konten.kontoZuEmailToken(hash);
+  if (id === undefined) fachfehler('ungueltig', 'bestaetigungslink_ungueltig');
   const ok = await zugangsTransaktion(k, t => t.konten.uebernimmEmailNeu(id, hash)).catch(doppeltAls(false));
-  if (!ok) await k.konten.verwirfEmailNeu(id, hash);
-  return ok ? { ok: true, userId: id } : { ok: false, grund: 'vergeben', userId: id };
+  if (!ok) {
+    await k.konten.verwirfEmailNeu(id, hash);
+    fachfehler('ungueltig', 'email_vergeben');
+  }
+  return { userId: id };
 }
 
 /** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen. */

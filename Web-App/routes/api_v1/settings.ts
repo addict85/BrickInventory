@@ -30,7 +30,7 @@ export function baueSettingsRouter(
     const eigener = bearerToken(req);
     // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
     // Gerät ausgesperrt wird.
-    const tokens = await d.konto.zugaengeListe(req.apiUser.user_id);
+    const tokens = await d.konto.sitzungen.zugaengeListe(req.apiUser.user_id);
     return {
       tokens: tokens.map(t => ({
         token_prefix: t.token.substring(0, 8),
@@ -57,7 +57,7 @@ export function baueSettingsRouter(
     const eigener = bearerToken(req);
     const eigenesGeraet = d.konto.eigenerZugang(eigener, req.pfad.tokenId);
     if (!eigenesGeraet && !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    return { deleted: await d.konto.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) };
+    return { deleted: await d.konto.sitzungen.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) };
   });
 
   // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
@@ -65,12 +65,15 @@ export function baueSettingsRouter(
   router.endpunkt('POST /api/v1/settings/sessions/andere-beenden', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    const { beendet, version } = await d.konto.andereSitzungenBeenden(uid, req.sessionID);
+    const { sitzungen, zugaenge, version } = await d.konto.sitzungen.beendeAndere(uid, {
+      sitzung: req.sessionID,
+      token: bearerToken(req),
+      zugaenge: !!req.eingabe.zugaenge,
+    });
     // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
     if (perSitzung(req)) req.session.sitzungsVersion = version;
-    const zugaenge = req.eingabe.zugaenge ? await d.konto.andereZugaengeBeenden(uid, bearerToken(req)) : 0;
-    if (beendet || zugaenge) d.konto.hinweisNebenher(uid, 'zugaenge_beendet');
-    return { deleted: beendet, zugaenge };
+    if (sitzungen || zugaenge) d.konto.hinweisNebenher(uid, 'zugaenge_beendet');
+    return { deleted: sitzungen, zugaenge };
   });
 
   /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen

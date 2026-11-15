@@ -89,8 +89,7 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
     'POST /api/v1/auth/email-bestaetigen',
     ipThrottle(d.konto, 'email-bestaetigen', 30, 60 * 60 * 1000),
     async req => {
-      const e = await d.konto.verifiziereEmailToken(req.eingabe.token);
-      if (!e.ok) fachfehler('ungueltig', e.grund === 'vergeben' ? 'email_vergeben' : 'bestaetigungslink_ungueltig');
+      await d.konto.verifiziereEmailToken(req.eingabe.token);
       return {};
     },
   );

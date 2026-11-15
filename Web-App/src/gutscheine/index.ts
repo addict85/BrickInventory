@@ -1,6 +1,6 @@
 /** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
 export type { AusPdf, GutscheinAenderung, GutscheinZeile, GuthabenErgebnis } from './dienst';
-export { PIN_MASKE, maskiert, pruefeWerte } from './dienst';
+export { PIN_MASKE, alsGelesen, maskiert, pruefeWerte } from './dienst';
 export { VOUCHER_DIR, gutscheinDatei } from './gutscheinDateien';
 export { landErlaubt, landFuerWaehrung } from './gutscheinGuthaben';
 export { ABSTAND_SEK } from './gutscheinGuthabenSchranke';

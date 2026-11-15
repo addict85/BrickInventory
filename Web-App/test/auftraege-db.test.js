@@ -52,7 +52,9 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
   // … und eine Zeile in auftrags_arten (0109).
   for (const art of [ART, `${ART}-ex`]) {
-    _req('src/auftraege/nutzlasten.js').NUTZLASTEN[art] = require('zod').looseObject({});
+    require('./helpers/sources')
+      .testDienste()
+      .auftraege.meldeArtAn({ art: art, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [art]);
   }
   const leeren = () => db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
@@ -300,8 +302,8 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const NAME = `auftrag-pdf-${process.pid}`;
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-      const pdfA = _req('src/auftraege/pdfAuftraege.js');
-      const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId(Date.now());
+      const pdfA = _req('src/katalog/pdf/pdfAuftraege.js');
+      const jobId = _req('src/katalog/pdf/pdfAuftraege.js').neueJobId(Date.now());
       const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
         arten: ['pdf'],
         taktMs: 50,

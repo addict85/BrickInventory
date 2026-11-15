@@ -8,7 +8,7 @@ import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function baueAdminRouter(
-  d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'konto' | 'fremdquellen' | 'verwaltung'>,
+  d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'katalog' | 'konto' | 'fremdquellen' | 'verwaltung'>,
 ) {
   const { requireApiAdmin } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1', { grosseIds: true });
@@ -40,7 +40,7 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/protokoll', requireApiAdmin, async _req => {
-    return { eintraege: await d.konto.verwaltungsProtokoll() };
+    return { eintraege: await d.konto.verwalter.verwaltungsProtokoll() };
   });
 
   router.endpunkt('GET /api/v1/admin/cache-stats', requireApiAdmin, async _req => {
@@ -140,7 +140,7 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/brickset-queue', requireApiAdmin, async req => {
-    const rows = await d.auftraege.bricksetListe();
+    const rows = await d.katalog.bricksetListe();
     const { eintraege, ...seite } = seiteAus(rows, req.abfrage);
     return { count: rows.length, entries: eintraege, ...seite };
   });

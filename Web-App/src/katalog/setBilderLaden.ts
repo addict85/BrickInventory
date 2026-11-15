@@ -14,6 +14,13 @@ import fs from 'node:fs';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } from '../infra/appPaths';
 import type { KatalogKontext } from './kontext';
 
+/** Wie viele Bilder gerade noch zu laden sind; die Verwaltung zeigt es in der Kachel. */
+export const BILDLADE_ZAEHLER = 'imgdl_pending_count';
+async function bildladeZaehler(k: KatalogKontext, delta: number): Promise<void> {
+  const d = Math.round(Number(delta) || 0);
+  if (d) await k.auftraege.zaehleZustand(BILDLADE_ZAEHLER, d).catch(logAndContinue('teile-enrich:imgDlAdd'));
+}
+
 /** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
 async function downloadImage(
   k: KatalogKontext,
@@ -160,7 +167,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
-    await k.auftraege.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    await bildladeZaehler(k, _pendingAdded);
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -171,7 +178,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
       if (!force && k.uhr.jetzt() - _lastFlush < 1000) return;
       _flushed += delta;
       _lastFlush = k.uhr.jetzt();
-      await k.auftraege.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
+      await bildladeZaehler(k, -delta);
     };
     await Promise.all(
       needsImg.map(async p => {
@@ -186,7 +193,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
     // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await k.auftraege.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    if (_rest > 0) await bildladeZaehler(k, -_rest);
     if (lockClient) {
       if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
       lockClient.release();

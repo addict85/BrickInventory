@@ -256,7 +256,9 @@ async function setBildFehlt(d: BildDienste, setNummer: string, quelle: string): 
   if (!(await setBildVollstaendig(setNummer))) return true;
   // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
   // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
-  void d.bilder.meldeSetBildGeladen(setNummer, quelle).catch(e => zaehleProxyFehler('img-proxy:setBildLokal', e));
+  void d.bilder.meldeSetBildGeladen(setNummer, quelle).then(ok => {
+    if (!ok) zaehleProxyFehler('img-proxy:setBildLokal', new Error('Eintrag des Set-Bilds gescheitert'));
+  });
   return false;
 }
 

@@ -72,8 +72,6 @@ export function baueQrRouter(d: Pick<Dienste, 'konto'>) {
         req.eingabe.vorschau === true,
       );
       if (a.stand === 'wartet') return { wartet: true } as const;
-      if (a.stand === 'abgelehnt') fachfehler('verboten', 'qr_abgelehnt');
-      if (a.stand === 'ungueltig') fachfehler('nicht_angemeldet', 'token_ungueltig');
       const user = await d.konto.kontoKurzVon(a.uid);
       if (!user) fachfehler('nicht_angemeldet', 'token_ungueltig');
       if (a.stand === 'bereit') return { wartet: false, vorschau: true, username: user.username } as const;
@@ -98,18 +96,10 @@ export function baueQrRouter(d: Pick<Dienste, 'konto'>) {
     return { ...s };
   });
 
-  const BESTAETIGUNG_FEHLER = {
-    code_falsch: ['ungueltig', 'qr_code_falsch'],
-    abgelehnt: ['verboten', 'qr_abgelehnt'],
-    nicht_wartend: ['konflikt', 'qr_nicht_wartend'],
-    unbekannt: ['nicht_gefunden', 'nicht_gefunden'],
-  } as const;
-
   router.endpunkt('POST /api/v1/auth/qr-kopplung/:id/bestaetigen', requireLogin, async req => {
     if (!perSitzung(req)) fachfehler('verboten', 'nur_mit_sitzung');
     const uid = angemeldeteNutzerId(req);
-    const ergebnis = await d.konto.bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
-    if (ergebnis !== 'ok') fachfehler(BESTAETIGUNG_FEHLER[ergebnis][0], BESTAETIGUNG_FEHLER[ergebnis][1]);
+    await d.konto.bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
     const s = await d.konto.kopplungsStand(req.pfad.id, uid);
     d.konto.hinweisNebenher(uid, 'token_neu', s?.geraet ?? 'qr-login');
     return {};

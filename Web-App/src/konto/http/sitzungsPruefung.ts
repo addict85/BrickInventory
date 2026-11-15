@@ -8,7 +8,7 @@ export function sitzungsVersionPruefen(konto: KontoDienste) {
     const s = req.session;
     if (!s?.userId) return next();
     try {
-      if ((await konto.aktuelleSitzungsVersion(s.userId)) === (s.sitzungsVersion ?? 0)) return next();
+      if ((await konto.sitzungen.aktuelleVersion(s.userId)) === (s.sitzungsVersion ?? 0)) return next();
     } catch (e) {
       return next(e);
     }

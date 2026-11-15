@@ -10,7 +10,7 @@ import * as gewinnVerlustDienst from './rechnung/gewinnVerlust';
 import * as preise from './rechnung/preise';
 import * as preisLaufDienst from './preisLauf';
 import * as preisRegel from './preisRegel';
-import * as preiseNachladen from './preiseNachladen';
+import { finanzenAuftragsarten } from './auftragsarten';
 import * as wechselkurseDienst from './wechselkurse';
 import * as preisalarm from './preisalarm';
 import { zugang, type FinanzenAbhaengigkeiten, type FinanzenKontext } from './kontext';
@@ -18,6 +18,8 @@ import { zugang, type FinanzenAbhaengigkeiten, type FinanzenKontext } from './ko
 export type { FinanzenAbhaengigkeiten, FinanzenKontext } from './kontext';
 
 export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, einblick?: Einblick<FinanzenKontext>) {
+  // Der Preis-Cache gilt je Währung: Ein Wechsel verlangt einen vollen Preislauf.
+  a.einstellungen.beiWaehrungswechsel(() => a.auftraege.ziehePlanVor('preise'));
   return baueBereich(
     { ...a, faecher: new Faecher() },
     (db: Db) => zugang(db, a.lesevertrag),
@@ -31,7 +33,6 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
         ausgeloesteSeit: mit(k)(preisalarm.ausgeloesteSeit),
         preisalarmeAlsCsv: mit(k)(preisalarm.preisalarmeAlsCsv),
         loescheAlarm: mit(k)(preisalarm.loescheAlarm),
-        pruefeSet: mit(k)(preisalarm.pruefeSet),
         setzeAlarm: mit(k)(preisalarm.setzeAlarm),
       },
       aktuellerMarktpreis: mit(k)(marketPrice.getCurrentMarketPrice),
@@ -57,13 +58,11 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
       leerePreisCache: mit(k)(preise.leerePreisCache),
       holePreis: mit(k)(preise.fetchPrice),
       farbkarte: mit(k)(preise.farbkarte),
-      preislauf: mit(k)(preisLaufDienst.runPriceRefresh),
       preisFuerSetHolen: mit(k)(preisLaufDienst.refreshPriceForSet),
       kaufpreisAusEingabe: mit(k)(preisRegel.kaufpreisAusEingabe),
       manuellerKaufpreis: mit(k)(preisRegel.manuellerKaufpreis),
-      preiseNachladen: mit(k)(preiseNachladen.preiseNachladen),
       planeKursabruf: mit(k)(wechselkurseDienst.planeKursabruf),
-      kursauftrag: mit(k)(wechselkurseDienst.kursauftrag),
+      auftragsarten: () => finanzenAuftragsarten(k),
     }),
     einblick,
   );

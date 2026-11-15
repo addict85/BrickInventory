@@ -7,14 +7,16 @@ import type { EinstellungenDienste } from '../einstellungen';
 import * as auftraege from './repository/auftraege';
 import * as importStand from './repository/importStand';
 import * as laufzustand from './repository/laufzustand';
-import * as pdfAuftraege from './repository/pdfAuftraege';
 import type { Uhr } from '../infra/uhr';
+import type { Arten } from './arten';
 
 export interface AuftraegeAbhaengigkeiten {
   uhr: Uhr;
   db: Db;
   faecher: Faecher;
   einstellungen: EinstellungenDienste;
+  /** Die angemeldeten Arten; geteilt über alle Sätze dieses Zugangs. */
+  arten: Arten;
   lesevertrag: AuftraegeLesevertrag;
 }
 
@@ -27,7 +29,7 @@ export const zugang = (db: Db, l: AuftraegeLesevertrag) => ({
   auftraege: {
     fuegeAuftragEin: imSystem(db, WARTESCHLANGE, auftraege.fuegeAuftragEin),
     fuegeEigenenAuftragEin: mit(db)(auftraege.fuegeEigenenAuftragEin),
-    ergaenzePreisAuftrag: imSystem(db, WARTESCHLANGE, auftraege.ergaenzePreisAuftrag),
+    fuegeListeAn: imSystem(db, WARTESCHLANGE, auftraege.fuegeListeAn),
     belegeAuftrag: imSystem(db, WARTESCHLANGE, auftraege.belegeAuftrag),
     merkeExklusive: imSystem(db, WARTESCHLANGE, auftraege.merkeExklusive),
     lebenszeichen: imSystem(db, WARTESCHLANGE, auftraege.lebenszeichen),
@@ -50,17 +52,17 @@ export const zugang = (db: Db, l: AuftraegeLesevertrag) => ({
     setzeFaelligkeit: imSystem(db, WARTESCHLANGE, auftraege.setzeFaelligkeit),
     zieheTerminVor: imSystem(db, WARTESCHLANGE, auftraege.zieheTerminVor),
     laeuftArt: imSystem(db, WARTESCHLANGE, auftraege.laeuftArt),
-    hoechsterBricksetVersuch: imSystem(db, WARTESCHLANGE, auftraege.hoechsterBricksetVersuch),
-    merkeBricksetVor: imSystem(db, WARTESCHLANGE, auftraege.merkeBricksetVor),
+    hoechsterZaehler: imSystem(db, WARTESCHLANGE, auftraege.hoechsterZaehler),
+    schreibeWiedervorlage: imSystem(db, WARTESCHLANGE, auftraege.schreibeWiedervorlage),
     loescheOffenen: imSystem(db, WARTESCHLANGE, auftraege.loescheOffenen),
-    bricksetWiedervorlage: imSystem(db, WARTESCHLANGE, auftraege.bricksetWiedervorlage),
-    bricksetWartende: imSystem(db, WARTESCHLANGE, auftraege.bricksetWartende),
+    wartendeDerArt: imSystem(db, WARTESCHLANGE, auftraege.wartendeDerArt),
+    zahlenDerArt: imSystem(db, WARTESCHLANGE, auftraege.zahlenDerArt),
     auftragsListe: imSystem(db, VERWALTUNG, auftraege.auftragsListe),
     letzteJeArt: imSystem(db, VERWALTUNG, auftraege.letzteJeArt),
     zahlenJeArtUndStatus: imSystem(db, VERWALTUNG, auftraege.zahlenJeArtUndStatus),
     laufendePausen: imSystem(db, WARTESCHLANGE, auftraege.laufendePausen),
     auftragsStand: mit(db)(auftraege.auftragsStand),
-    zieheBricksetTermineVor: imSystem(db, WARTESCHLANGE, auftraege.zieheBricksetTermineVor),
+    zieheTermineVor: imSystem(db, WARTESCHLANGE, auftraege.zieheTermineVor),
     schreibeErgebnis: imSystem(db, WARTESCHLANGE, auftraege.schreibeErgebnis),
   },
   importStand: {
@@ -76,12 +78,11 @@ export const zugang = (db: Db, l: AuftraegeLesevertrag) => ({
     loescheZustand: mit(db)(laufzustand.loescheZustand),
     zaehleZustand: mit(db)(laufzustand.zaehleZustand),
   },
-  pdfAuftraege: {
-    pdfAuftragZeile: mit(db)(pdfAuftraege.pdfAuftragZeile),
-    zaehleLaufendePdf: mit(db)(pdfAuftraege.zaehleLaufendePdf),
-    loeschePdfAuftrag: mit(db)(pdfAuftraege.loeschePdfAuftrag),
-    loescheAltePdfAuftraege: imSystem(db, 'Aufräumen über alle Konten', pdfAuftraege.loescheAltePdfAuftraege),
-    fehlendeKatalogbilder: mit(db)(pdfAuftraege.fehlendeKatalogbilder),
+  eigene: {
+    eigeneZeile: mit(db)(auftraege.eigeneZeile),
+    zaehleLaufendeZeilen: mit(db)(auftraege.zaehleLaufendeZeilen),
+    loescheEigeneZeile: mit(db)(auftraege.loescheEigeneZeile),
+    loescheBeendeteZeilen: imSystem(db, 'Aufräumen über alle Konten', auftraege.loescheBeendeteZeilen),
   },
 });
 export type AuftraegeKontext = Kontext<AuftraegeAbhaengigkeiten, ReturnType<typeof zugang>>;

@@ -11,3 +11,6 @@ export { erzeugeKatalog } from './bereich';
 export type { KatalogDienste } from './bereich';
 export { erzeugeImportZugang, erzeugeKatalogImporte, csvZeile } from './csvImport';
 export type { Bildposten } from './bildlage';
+export { BilderNutzlast, KATALOG_ABGLEICH_UHRZEIT } from './auftragsarten';
+export { BILDLADE_ZAEHLER } from './setBilderLaden';
+export { gueltigeAuftragsKennung, pdfDateiPfad, pdfSchluessel } from './pdf/pdfAuftraege';
