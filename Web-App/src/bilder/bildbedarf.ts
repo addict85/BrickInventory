@@ -58,7 +58,7 @@ export async function notiereBildbedarf(k: BilderKontext, urls: string[], sets: 
   await k.bildbedarf.merkeBildwuensche(urls, sets);
 }
 
-/** Geschrieben über den Kontext dessen, der den Takt gestartet hat (initImageQueue). */
+/** Geschrieben über den Kontext dessen, der den Takt gestartet hat (bildbedarfEinrichten). */
 export async function schreibePuffer(k: BilderKontext): Promise<void> {
   const _puffer = puffer(k);
   if (!_puffer.size) return;
@@ -75,7 +75,7 @@ export async function schreibePuffer(k: BilderKontext): Promise<void> {
   await bildbedarfAnstossen(k);
 }
 
-export async function initImageQueue(k: BilderKontext): Promise<void> {
+export async function bildbedarfEinrichten(k: BilderKontext): Promise<void> {
   const _takte = takte(k);
   if (_takte.length) return;
   _takte.push(

@@ -185,6 +185,8 @@ window.I18N_EN = {
   'api.unreachable': 'No connection to the server — please try again later.',
   'auth.cookie_fehlt':
     'Signed in, but the browser did not store the session cookie. The app needs HTTPS – or COOKIE_SECURE=0 on the server (see README, “Ohne HTTPS”).',
+  'auth.ohne_https':
+    'This page is served without HTTPS: password and session travel unencrypted, and signing in only lasts with COOKIE_SECURE=0 on the server (see README, “Ohne HTTPS”).',
   'auth.session_expired': 'Session expired — please sign in again.',
   'api.server_error': 'The server responded with an error ({status}).',
   'api.unexpected': 'Unexpected error — see the browser console for details.',

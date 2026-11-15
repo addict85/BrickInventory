@@ -3,7 +3,7 @@ import { fehlertext, meldeFehler } from '../infra/fehler';
 import fs from 'node:fs';
 import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures, zaehleProxyFehler } from './imgProxyStats';
-import { isDecodable } from './imageGuard';
+import { lesbaresBild } from './imageGuard';
 import { jimpVorschau } from './thumbs';
 import { LOCKS } from '../infra/lockNamespaces';
 import * as sperre from './repository/sitzungsSperre';
@@ -47,7 +47,7 @@ export function drainThumbQueue(k: BilderKontext) {
   while (st.laufend < THUMB_MAX_PARALLEL && _thumbQueue.length) {
     const [src, dst] = _thumbQueue.shift()!;
     st.laufend++;
-    makeProxyThumb(k, src, dst)
+    proxyVorschauErzeugen(k, src, dst)
       .catch(e => zaehleProxyFehler('proxy-vorschau:erzeugen', e))
       .finally(() => {
         st.laufend--;
@@ -92,12 +92,12 @@ export async function mitVorschauSperre<T>(k: BilderKontext, arbeit: () => Promi
   }
 }
 
-export async function makeProxyThumb(k: BilderKontext, srcFile: string, thumbFile: string) {
+export async function proxyVorschauErzeugen(k: BilderKontext, srcFile: string, thumbFile: string) {
   const p = mitVorschauSperre(k, async () => {
     try {
       // Abmessungen zuerst (imageGuard.ts): Die 5-MB-Grenze misst die KOMPRIMIERTE
       // Grösse und fängt eine Dekompressionsbombe nicht ab.
-      if (!(await isDecodable(srcFile))) {
+      if (!(await lesbaresBild(srcFile))) {
         // Gar nicht erst versuchen — und das merken, siehe queueThumb().
         merkeFehlend(k, 'thumb:' + thumbFile);
         return false;

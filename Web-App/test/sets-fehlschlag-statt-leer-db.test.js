@@ -29,7 +29,7 @@ const stoerung = async () => {
   if (rebrickable === 'gestoert') throw new Error('Rebrickable antwortet nicht');
   return null;
 };
-ersetze('src/katalog/rebrickableKatalog.js', { getAllSetParts: stoerung });
+ersetze('src/katalog/rebrickableKatalog.js', { alleTeileDesSets: stoerung });
 testQuellen(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};

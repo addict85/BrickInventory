@@ -15,7 +15,7 @@ import type { FigurenKontext } from './kontext';
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
 
 // Preis und Zustand einmal für Einzelerfassung und CSV-Import; ohne Preis gilt der Marktpreis.
-export async function resolveManualFigPurchase(
+export async function manuellerFigurenkauf(
   k: FigurenKontext,
   uid: number,
   {
@@ -40,8 +40,8 @@ export async function resolveManualFigPurchase(
   };
 }
 
-/** Zwilling zu addManualPart — eine Umsetzung für Webapp und App. */
-export async function addManualFig(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
+/** Zwilling zu manuellesTeilAnlegen — eine Umsetzung für Webapp und App. */
+export async function manuelleFigurAnlegen(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos.
   const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(k, uid, body);
@@ -53,8 +53,8 @@ export async function addManualFig(k: FigurenKontext, uid: number, body: Record<
 
 async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen: Die Felder werden gerendert.
-  const num = V.requireItemNumber(body?.fig_number, 'fig_number');
-  const blNum = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
+  const num = V.nummerPflicht(body?.fig_number, 'fig_number');
+  const blNum = body?.bl_fig_number ? V.nummerPflicht(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
   const unit_price = geldEingabe(body?.unit_price, 'Stückpreis');
@@ -69,7 +69,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
   if (existing) {
     // Auch eine erneut erfasste Figur bekommt eine Erfassung (Kaufpreis, Datum);
     // die Menge ergibt sich daraus beim Lesen.
-    const re = await resolveManualFigPurchase(k, uid, {
+    const re = await manuellerFigurenkauf(k, uid, {
       figNumber: num,
       blFigNumber: blNum,
       unitPrice: unit_price,
@@ -89,7 +89,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
     return { action: 'updated', fig_number: num };
   }
 
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualFigPurchase(k, uid, {
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await manuellerFigurenkauf(k, uid, {
     figNumber: num,
     blFigNumber: blNum,
     unitPrice: unit_price,
@@ -145,9 +145,9 @@ async function figurBeschreibung(
   return { fig_name, gefunden };
 }
 
-/** Zwilling zu updateManualPart.
+/** Zwilling zu manuellesTeilAendern.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualFig(
+export async function manuelleFigurAendern(
   k: FigurenKontext,
   uid: number,
   figNumber: string,
@@ -198,7 +198,7 @@ export async function updateManualFig(
 }
 
 /** `uid` ist das Blickfeld (Liste). */
-export async function getFigAcquisitions(k: FigurenKontext, uidWahl: Sicht | number[], figNumber: string) {
+export async function figurenkaeufe(k: FigurenKontext, uidWahl: Sicht | number[], figNumber: string) {
   const uid = await k.haushalt.blickfeldAus(uidWahl);
   return k.manuelleFiguren.figurErfassungen(uid, figNumber);
 }
@@ -234,7 +234,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
           imageUrl = info.image_url;
         }
       }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualFigPurchase(k, uid, {
+      const { erfassungsPreis, effectiveCondition, geschaetzt } = await manuellerFigurenkauf(k, uid, {
         figNumber,
         blFigNumber,
         unitPrice,

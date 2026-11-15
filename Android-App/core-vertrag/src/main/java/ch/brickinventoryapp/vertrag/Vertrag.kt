@@ -29,7 +29,7 @@ data class Acquisition(
     @SerialName("unit_price") val unitPrice: Double? = null,
     @SerialName("condition") val condition: Zustand = Zustand.NEU,
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("owner_user_id") val ownerUserId: Int? = null,
+    @SerialName("owner_user_id") val ownerUserId: Int = 0,
     @SerialName("price_estimated") val priceEstimated: Boolean = false,
     @SerialName("currency") val currency: Waehrung? = null,
     @SerialName("preis_konto") val preisKonto: Double? = null,
@@ -70,8 +70,8 @@ data class AddMinifigRequest(
 @Serializable
 data class AddMinifigResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("action") val action: String? = null,
-    @SerialName("fig_number") val figNumber: String? = null,
+    @SerialName("action") val action: String = "",
+    @SerialName("fig_number") val figNumber: String = "",
     @SerialName("fig_name") val figName: String? = null,
     @SerialName("price_from_condition") val priceFromCondition: Zustand? = null,
     @SerialName("error") val error: String? = null,
@@ -97,8 +97,8 @@ data class AddPartRequest(
 @Serializable
 data class AddPartResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("action") val action: String? = null,
-    @SerialName("part_number") val partNumber: String? = null,
+    @SerialName("action") val action: String = "",
+    @SerialName("part_number") val partNumber: String = "",
     @SerialName("part_name") val partName: String? = null,
     @SerialName("price_from_condition") val priceFromCondition: Zustand? = null,
     @SerialName("error") val error: String? = null,
@@ -119,8 +119,8 @@ data class AddSetRequest(
 @Serializable
 data class AddSetResponse(
     @SerialName("success") val success: Boolean = true,
-    @SerialName("action") val action: String? = null,
-    @SerialName("set_number") val setNumber: String? = null,
+    @SerialName("action") val action: String = "",
+    @SerialName("set_number") val setNumber: String = "",
     @SerialName("name") val name: String? = null,
     @SerialName("katalog_offen") val katalogOffen: Boolean = false,
     @SerialName("ergaenzung") val ergaenzung: String? = null,
@@ -192,9 +192,9 @@ data class AppToken(
     @SerialName("aktuell") val aktuell: Boolean = false,
     @SerialName("token_prefix") val tokenPrefix: String? = null,
     @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
-    @SerialName("scope") val scope: String? = null,
+    @SerialName("scope") val scope: String = "",
     @SerialName("ip_bereich") val ipBereich: String? = null,
-    @SerialName("rotiert_am") val rotiertAm: String? = null,
+    @SerialName("rotiert_am") val rotiertAm: String = "",
 )
 
 @Serializable
@@ -589,13 +589,13 @@ data class CsvImportStatus(
     @SerialName("code") val code: String? = null,
     @SerialName("results") val results: List<CsvImportStatusResultsEintrag> = emptyList(),
     @SerialName("success") val success: Boolean = false,
-    @SerialName("status") val status: Laufstatus? = null,
-    @SerialName("total") val total: Int? = null,
-    @SerialName("done") val done: Int? = null,
+    @SerialName("status") val status: Laufstatus = Laufstatus.UNBEKANNT,
+    @SerialName("total") val total: Int = 0,
+    @SerialName("done") val done: Int = 0,
     @SerialName("current") val current: String? = null,
-    @SerialName("ok") val ok: Int? = null,
-    @SerialName("warn") val warn: Int? = null,
-    @SerialName("err") val err: Int? = null,
+    @SerialName("ok") val ok: Int = 0,
+    @SerialName("warn") val warn: Int = 0,
+    @SerialName("err") val err: Int = 0,
     @SerialName("error") val error: String? = null,
     @SerialName("beendet_am") val beendetAm: String = "",
 )
@@ -659,8 +659,8 @@ data class CurrentPrice(
 
 @Serializable
 data class DashboardStats(
-    @SerialName("currency") val currency: String? = null,
-    @SerialName("default_condition") val defaultCondition: String? = null,
+    @SerialName("currency") val currency: String = "",
+    @SerialName("default_condition") val defaultCondition: String = "",
     @SerialName("user_default_condition") val userDefaultCondition: String? = null,
     @SerialName("total_sets") val totalSets: Int,
     @SerialName("total_quantity") val totalQuantity: Int,
@@ -794,7 +794,7 @@ data class FigValuationItem(
 
 @Serializable
 data class FigsValuationResponse(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int? = null,
+    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
     @SerialName("success") val success: Boolean,
     @SerialName("total") val total: Int = 0,
     @SerialName("page") val page: Int = 0,
@@ -926,8 +926,8 @@ data class Gutschein(
     @SerialName("amount") val amount: Double = 0.0,
     @SerialName("currency") val currency: Waehrung = Waehrung.CHF,
     @SerialName("hat_pdf") val hatPdf: Boolean = false,
-    @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
     @SerialName("guthaben_geprueft_am") val guthabenGeprueftAm: String? = null,
 )
 
@@ -1004,7 +1004,7 @@ data class HouseholdInviteResponse(
 
 @Serializable
 data class HouseholdMember(
-    @SerialName("tiefe") val tiefe: Int? = null,
+    @SerialName("tiefe") val tiefe: Int = 0,
     @SerialName("id") val id: Int = 0,
     @SerialName("username") val username: String = "",
     @SerialName("is_self") val isSelf: Boolean = false,
@@ -1036,9 +1036,9 @@ data class HouseholdStatusResponse(
 data class Instruction(
     @SerialName("downloaded_at") val downloadedAt: String? = null,
     @SerialName("fetched_at") val fetchedAt: String? = null,
-    @SerialName("set_number") val setNumber: String? = null,
+    @SerialName("set_number") val setNumber: String = "",
     @SerialName("user_id") val userId: Int? = null,
-    @SerialName("id") val id: Int? = null,
+    @SerialName("id") val id: Int = 0,
     @SerialName("url") val url: String,
     @SerialName("description") val description: String? = null,
     @SerialName("local_path") val localPath: String? = null,
@@ -1241,6 +1241,7 @@ data class LoginResponse(
     @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
     @SerialName("never_expires") val neverExpires: Boolean = false,
     @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("keks_fehlt") val keksFehlt: Boolean = false,
 )
 
 @Serializable
@@ -1301,7 +1302,7 @@ data class Merkposten(
     @SerialName("theme_id") val themeId: Int? = null,
     @SerialName("set_number") val setNumber: String = "",
     @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
     @SerialName("user_id") val userId: Int = 0,
     @SerialName("name") val name: String? = null,
     @SerialName("year") val year: Int? = null,
@@ -1405,7 +1406,7 @@ data class Minifig(
 
 @Serializable
 data class MinifigStats(
-    @SerialName("unique_figs") val uniqueFigs: Int? = null,
+    @SerialName("unique_figs") val uniqueFigs: Int = 0,
     @SerialName("types") val types: Int = 0,
     @SerialName("total_quantity") val totalQuantity: Int = 0,
     @SerialName("manual") val manual: Int = 0,
@@ -1588,7 +1589,7 @@ data class PartsStatsResponse(
 
 @Serializable
 data class PartsValuationResponse(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int? = null,
+    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
     @SerialName("success") val success: Boolean,
     @SerialName("total") val total: Int = 0,
     @SerialName("page") val page: Int = 0,
@@ -1607,7 +1608,7 @@ data class Passkey(
     @SerialName("id") val id: Int = 0,
     @SerialName("name") val name: String? = null,
     @SerialName("transports") val transports: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("created_at") val createdAt: String = "",
     @SerialName("last_used") val lastUsed: String? = null,
 )
 
@@ -1755,7 +1756,7 @@ data class PnlResponse(
 @Serializable
 data class PnlSetZeile(
     @SerialName("added_at") val addedAt: String? = null,
-    @SerialName("condition") val condition: String? = null,
+    @SerialName("condition") val condition: String = "",
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("name") val name: String? = null,
@@ -1778,7 +1779,7 @@ data class PnlSetZeile(
 
 @Serializable
 data class PnlTotals(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int? = null,
+    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
     @SerialName("pnl_current") val pnlCurrent: JsonElement? = null,
     @SerialName("pnl_purchase") val pnlPurchase: JsonElement? = null,
     @SerialName("purchase") val purchase: String,
@@ -1786,10 +1787,10 @@ data class PnlTotals(
     @SerialName("pnl_pct") val pnlPct: String? = null,
     @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
-    @SerialName("sets_purchase") val setsPurchase: String? = null,
-    @SerialName("parts_purchase") val partsPurchase: String? = null,
-    @SerialName("figs_purchase") val figsPurchase: String? = null,
-    @SerialName("grand_total") val grandTotal: String? = null,
+    @SerialName("sets_purchase") val setsPurchase: String = "",
+    @SerialName("parts_purchase") val partsPurchase: String = "",
+    @SerialName("figs_purchase") val figsPurchase: String = "",
+    @SerialName("grand_total") val grandTotal: String = "",
     @SerialName("positionen") val positionen: Int? = null,
     @SerialName("positionen_bewertet") val positionenBewertet: Int? = null,
     @SerialName("positionen_ohne_marktpreis") val positionenOhneMarktpreis: Int? = null,
@@ -2161,9 +2162,9 @@ data class SchrittFreigabeAnfrage(
 @Serializable
 data class SetAggregate(
     @SerialName("set_number") val setNumber: String = "",
-    @SerialName("condition") val condition: Zustand? = null,
-    @SerialName("acq_count") val acqCount: Int? = null,
-    @SerialName("used_count") val usedCount: Int? = null,
+    @SerialName("condition") val condition: Zustand = Zustand.NEU,
+    @SerialName("acq_count") val acqCount: Int = 0,
+    @SerialName("used_count") val usedCount: Int = 0,
     @SerialName("conditions") val conditions: List<Zustand> = emptyList(),
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
@@ -2194,13 +2195,13 @@ data class SetInfoResponse(
 
 @Serializable
 data class SetItem(
-    @SerialName("acq_count") val acqCount: Int? = null,
+    @SerialName("acq_count") val acqCount: Int = 0,
     @SerialName("letzter_kauf") val letzterKauf: String? = null,
     @SerialName("owner_ids") val ownerIds: List<Int> = emptyList(),
-    @SerialName("id") val id: Int? = null,
+    @SerialName("id") val id: Int = 0,
     @SerialName("storage_id") val storageId: Int? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
-    @SerialName("user_id") val userId: Int? = null,
+    @SerialName("user_id") val userId: Int = 0,
     @SerialName("set_number") val setNumber: String,
     @SerialName("name") val name: String? = null,
     @SerialName("year") val year: Int? = null,
@@ -2218,7 +2219,7 @@ data class SetItem(
     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
     @SerialName("kaufpreis_geschaetzt") val kaufpreisGeschaetzt: Boolean? = null,
-    @SerialName("used_count") val usedCount: Int? = null,
+    @SerialName("used_count") val usedCount: Int = 0,
     @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
     @SerialName("bricklink") val bricklink: BrickLinkRef? = null,
     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
@@ -2454,8 +2455,8 @@ data class ValuationAcquisition(
 
 @Serializable
 data class ValuationResponse(
-    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int? = null,
-    @SerialName("guide_type") val guideType: String? = null,
+    @SerialName("kaufpreise_umgerechnet") val kaufpreiseUmgerechnet: Int = 0,
+    @SerialName("guide_type") val guideType: String = "",
     @SerialName("ttl_hours") val ttlHours: JsonElement? = null,
     @SerialName("success") val success: Boolean,
     @SerialName("total") val total: Int = 0,
@@ -2466,7 +2467,7 @@ data class ValuationResponse(
     @SerialName("preise_ausstehend") val preiseAusstehend: Int = 0,
     @SerialName("currency") val currency: Waehrung = Waehrung.EUR,
     @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("ttl_stunden") val ttlStunden: Int? = null,
+    @SerialName("ttl_stunden") val ttlStunden: Int = 0,
     @SerialName("kaufpreise_fremde_waehrung") val kaufpreiseFremdeWaehrung: Int = 0,
     @SerialName("sets") val sets: List<ValuationSet> = emptyList(),
     @SerialName("totals") val totals: Totals = Totals(),
@@ -2476,11 +2477,11 @@ data class ValuationResponse(
 @Serializable
 data class ValuationSet(
     @SerialName("bl_unbekannt") val blUnbekannt: Boolean = false,
-    @SerialName("condition") val condition: String? = null,
+    @SerialName("condition") val condition: String = "",
     @SerialName("conditions") val conditions: List<String> = emptyList(),
     @SerialName("error_code") val errorCode: String? = null,
     @SerialName("pnl_pct") val pnlPct: String? = null,
-    @SerialName("user_id") val userId: Int? = null,
+    @SerialName("user_id") val userId: Int = 0,
     @SerialName("set_number") val setNumber: String,
     @SerialName("added_at") val addedAt: String? = null,
     @SerialName("name") val name: String? = null,

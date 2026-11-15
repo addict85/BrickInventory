@@ -2,13 +2,13 @@
 
 import type { MailKontext } from './kontext';
 import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
-import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, getMailTheme } from './vorlage';
+import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailDesign } from './vorlage';
 import { sendMail, testSmtp } from './transport';
 import { fachfehler } from '../infra/fehlerTexte';
 const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalerWert(key, '');
 
 // Mitexportiert, damit Aufrufer und Tests bei einer Adresse bleiben.
-export { MAIL_THEMES, getMailTheme, emailTemplate } from './vorlage';
+export { MAIL_THEMES, mailDesign, emailTemplate } from './vorlage';
 export {
   meldeSmtpAltlast,
   linkFuerKonsole,
@@ -31,7 +31,7 @@ export async function sendVerificationMail(
   mehrere = false,
 ) {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const url = `${baseUrl}/verify#token=${token}`;
   const adresse = art === 'adresse';
   const L =
@@ -100,7 +100,7 @@ export async function sendEmailGeaendertMail(
   neueAdresse: string,
   lang = 'de',
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     lang === 'en'
       ? {
@@ -134,7 +134,7 @@ export async function sendRegistrierungsVersuchMail(
   lang = 'de',
   anlass: 'registrierung' | 'adresse' = 'registrierung',
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     anlass === 'adresse'
       ? lang === 'en'
@@ -183,7 +183,7 @@ export async function sendRegistrierungsVersuchMail(
  * angegebene Adresse erfährt, dass es ihn schon gibt. Ohne den Namen selbst:
  * Ihn wählt, wer registriert, und die Adresse ist unbestätigt. */
 export async function sendBenutzernameVergebenMail(k: MailKontext, to: string, lang = 'de', basis = '') {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     lang === 'en'
       ? {
@@ -230,7 +230,7 @@ export async function sendHaushaltVerknuepftMail(
   hauptkonto: string,
   lang = 'de',
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     lang === 'en'
       ? {
@@ -433,7 +433,7 @@ export async function sendKontoHinweisMail(
   art: KontoHinweis,
   o: HinweisAngaben & { lang?: string; haushalt?: string[] } = {},
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const en = o.lang === 'en';
   const was = hinweisSatz(art, o, en);
   const subject = en
@@ -461,7 +461,7 @@ export async function sendKontoHinweisMail(
 
 // Sprache des Kontos, wie alle Mails.
 export async function sendPasswordResetMail(k: MailKontext, to: string, token: string, baseUrl: string, lang = 'de') {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const url = `${baseUrl}/reset-password#token=${token}`;
   const de = lang !== 'en';
   const L = de
@@ -524,7 +524,7 @@ export interface AlarmMailDaten {
 
 /** Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
  * Tabelle statt flex wegen Outlook. */
-function alarmZahlen(theme: Awaited<ReturnType<typeof getMailTheme>>, de: boolean, preis: string, schwelle: string) {
+function alarmZahlen(theme: Awaited<ReturnType<typeof mailDesign>>, de: boolean, preis: string, schwelle: string) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
     <tr>
       <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
@@ -547,7 +547,7 @@ export async function baueAlarmMail(
   k: MailKontext,
   d: AlarmMailDaten,
 ): Promise<{ subject: string; text: string; html: string; link?: string }> {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const de = d.lang !== 'en';
   const geld = (n: number) => `${d.waehrung} ${n.toFixed(2)}`;
   const zustand = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';

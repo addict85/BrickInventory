@@ -120,6 +120,7 @@ const MIG = `${praefix}_mig`.toLowerCase();
 const LESEN = `${praefix}_lesen`.toLowerCase();
 const BOESE = `${praefix}_boese`.toLowerCase();
 const SYS = `${praefix}_sys`.toLowerCase();
+const SYSWEB = `${praefix}_sysweb`.toLowerCase();
 const SYS_PW = `sys-${process.pid}-geheim`;
 const LESEN_PW = `lesen-${process.pid}-geheim`;
 const PASSWORT = `app-${process.pid}-geheim`;
@@ -152,6 +153,7 @@ function rolleEinrichten(db, mehr = {}) {
       DB_LESEN_USER: LESEN,
       PGWEB_DB_PASSWORD: LESEN_PW,
       DB_SYSTEM_USER: SYS,
+      DB_SYSTEM_WEB_USER: SYSWEB,
       DB_SYSTEM_PASSWORD: SYS_PW,
       ...mehr,
     },
@@ -907,6 +909,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         DB_LESEN_USER: LESEN,
         PGWEB_DB_PASSWORD: LESEN_PW,
         DB_SYSTEM_USER: SYS,
+        DB_SYSTEM_WEB_USER: SYSWEB,
         DB_SYSTEM_PASSWORD: SYS_PW,
       },
     });
@@ -961,6 +964,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         DB_MIGRATION_USER: MIG,
         DB_LESEN_USER: LESEN,
         DB_SYSTEM_USER: SYS,
+        DB_SYSTEM_WEB_USER: SYSWEB,
         ...umgebung,
         ...mehr,
       };
@@ -1074,6 +1078,7 @@ esac
             DB_MIGRATION_USER: MIG,
             DB_LESEN_USER: LESEN,
             DB_SYSTEM_USER: SYS,
+            DB_SYSTEM_WEB_USER: SYSWEB,
             PGPASSWORD_FILE: path.join(g, 'db_password'),
           },
         });

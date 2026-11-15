@@ -7,7 +7,7 @@ import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { registerActions, resolveAction } from './registry.js';
 import { esc, html, ungeprueft } from './escapen.js';
-import { ME, CURRENCY } from './zustand.js';
+import { angemeldetesKonto, kontoWaehrung } from './zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
@@ -155,7 +155,7 @@ export function verstaendlicherGrund(d) {
     return { grund: tRaw('liste.gedrosselt', { minuten: Math.max(1, Math.ceil((Number(d.warteSek) || 60) / 60)) }) };
   if (!d || (d.status ?? 0) >= 500 || !d.error)
     return {
-      grund: tRaw(ME?.isAdmin ? 'liste.server_fehler_verwalter' : 'liste.server_fehler'),
+      grund: tRaw(angemeldetesKonto?.isAdmin ? 'liste.server_fehler_verwalter' : 'liste.server_fehler'),
       details: d?.error ? String(d.error) : undefined,
     };
   return { grund: String(d.error) };
@@ -223,7 +223,7 @@ export function pnlBadge(pct, kauf) {
  * @param {{ id: number, username: string }} o
  */
 export function kontoAnzeige(o) {
-  return ME && o.id === ME.id ? `${o.username} ${tRaw('household.ich')}` : o.username;
+  return angemeldetesKonto && o.id === angemeldetesKonto.id ? `${o.username} ${tRaw('household.ich')}` : o.username;
 }
 
 /**
@@ -233,7 +233,7 @@ export function kontoAnzeige(o) {
  */
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
-  if (item.owners.every(o => ME && o.id === ME.id)) return '';
+  if (item.owners.every(o => angemeldetesKonto && o.id === angemeldetesKonto.id)) return '';
   return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${kontoAnzeige(o)}">${kontoAnzeige(o)}</span>`)}`;
 }
 
@@ -269,7 +269,8 @@ export function oeffneErfassen(art) {
     }
   });
   const w = /** @type {HTMLSelectElement | null} */ (dialog?.querySelector('#add-currency') ?? null);
-  if (w && !(/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value)) w.value = CURRENCY;
+  if (w && !(/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value))
+    w.value = kontoWaehrung;
   dialog?.classList.add('open');
 }
 

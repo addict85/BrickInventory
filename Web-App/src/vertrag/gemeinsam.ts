@@ -128,13 +128,13 @@ export const GenericAdminResponse = z.looseObject({
 });
 
 export const SetAggregate = z.looseObject({
-  set_number: z.string().optional(),
-  condition: z.string().nullable().optional(),
-  acq_count: z.number().int().nullable().optional(),
-  used_count: z.number().int().nullable().optional(),
-  conditions: z.array(z.string()).optional(),
-  max_purchase_price: z.number().nullable().optional(),
-  avg_purchase_price: z.number().nullable().optional(),
+  set_number: z.string(),
+  condition: z.string(),
+  acq_count: z.number().int(),
+  used_count: z.number().int(),
+  conditions: z.array(z.string()),
+  max_purchase_price: z.number().nullable(),
+  avg_purchase_price: z.number().nullable(),
 });
 
 /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/ergebnis.ts). */

@@ -229,7 +229,7 @@ export async function pdfFreigeben(k: GutscheineKontext, uid: number, id: number
   return stelleTicketAus(k, uid, String(id));
 }
 
-export async function exportFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
+export async function ausfuhrFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
   const n = (await gutscheinListe(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
   await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);

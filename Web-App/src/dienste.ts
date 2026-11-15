@@ -21,6 +21,15 @@ import type { SammlungDienste } from './sammlung';
 import type { SetsDienste } from './sets';
 import type { TeileDienste } from './teile';
 import type { VerwaltungDienste } from './verwaltung';
+import * as bestandSicht from '../db/bestandSicht';
+import * as bestandsmenge from '../db/bestandsmenge';
+import * as haushaltSicht from '../db/haushaltSicht';
+import * as kontoSicht from '../db/kontoSicht';
+import * as zugangSicht from '../db/zugangSicht';
+
+/** Was tiefere Bereiche aus Tabellen höherer lesen: Jeder nennt in seinem Lesevertrag die Form,
+ * die er braucht, und bekommt das SQL von hier über dem Besitzer, nicht per Import (docs/architektur.md). */
+export const LESEVERTRAG = { ...bestandSicht, ...bestandsmenge, ...haushaltSicht, ...kontoSicht, ...zugangSicht };
 
 export interface Dienste {
   drossel: DrosselDienste;

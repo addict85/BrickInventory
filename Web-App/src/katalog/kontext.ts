@@ -1,5 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, mitVertrag, type Kontext } from '../infra/bereich';
+import type { KatalogLesevertrag } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { DrosselDienste } from '../drossel';
 import type { Db } from '../../db/database';
@@ -33,10 +34,11 @@ export interface KatalogAbhaengigkeiten {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   drossel: DrosselDienste;
+  lesevertrag: KatalogLesevertrag;
 }
 
 /** Anleitungen, BrickLink-Zuordnung und CSV-Katalog. */
-const anleitungszugang = (db: Db) => ({
+const anleitungszugang = (db: Db, l: KatalogLesevertrag) => ({
   anleitungen: {
     zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
     anleitungenDesSets: mit(db)(anleitungen.anleitungenDesSets),
@@ -59,7 +61,7 @@ const anleitungszugang = (db: Db) => ({
     inventarTeileOhneErsatz: mit(db)(csvKatalog.inventarTeileOhneErsatz),
     inventarFiguren: mit(db)(csvKatalog.inventarFiguren),
     setsOhneTeilekatalog: mit(db)(csvKatalog.setsOhneTeilekatalog),
-    manuelleFarbteile: mit(db)(csvKatalog.manuelleFarbteile),
+    manuelleFarbteile: mitVertrag(db, l)(csvKatalog.manuelleFarbteile),
     ersetzeTeilfarbenbild: mit(db)(csvKatalog.ersetzeTeilfarbenbild),
   },
   katalogCache: {
@@ -75,7 +77,7 @@ const anleitungszugang = (db: Db) => ({
 });
 
 /** Stamm, Suche, Zwischenspeicher und Inhalt der Sets. */
-const stammzugang = (db: Db) => ({
+const stammzugang = (db: Db, l: KatalogLesevertrag) => ({
   katalogStamm: {
     inventarNachKandidaten: mit(db)(katalogStamm.inventarNachKandidaten),
     geladeneFarben: mit(db)(katalogStamm.geladeneFarben),
@@ -89,8 +91,8 @@ const stammzugang = (db: Db) => ({
     setsJeJahr: mit(db)(katalogSuche.setsJeJahr),
     setsJeJahrGefiltert: mit(db)(katalogSuche.setsJeJahrGefiltert),
     katalogAnzahl: mit(db)(katalogSuche.katalogAnzahl),
-    katalogZeilen: mit(db)(katalogSuche.katalogZeilen),
-    katalogZeile: mit(db)(katalogSuche.katalogZeile),
+    katalogZeilen: mitVertrag(db, l)(katalogSuche.katalogZeilen),
+    katalogZeile: mitVertrag(db, l)(katalogSuche.katalogZeile),
     katalogLeer: mit(db)(katalogSuche.katalogLeer),
     figurenImInventar: mit(db)(katalogSuche.figurenImInventar),
   },
@@ -106,7 +108,7 @@ const stammzugang = (db: Db) => ({
   },
   setInhalt: {
     figurenDesSetkatalogs: mit(db)(setInhalt.figurenDesSetkatalogs),
-    teileOhneBlZuordnung: mit(db)(setInhalt.teileOhneBlZuordnung),
+    teileOhneBlZuordnung: mitVertrag(db, l)(setInhalt.teileOhneBlZuordnung),
   },
   teileAnreicherung: {
     teileDesInventars: mit(db)(teileAnreicherung.teileDesInventars),
@@ -122,22 +124,26 @@ const stammzugang = (db: Db) => ({
   },
 });
 
-const bildzugang = (db: Db) => ({
+const bildzugang = (db: Db, l: KatalogLesevertrag) => ({
   bildlage: {
     setsMitFehlendenKatalogbildern: mit(db)(bildlage.setsMitFehlendenKatalogbildern),
-    manuelleTeileOhneBild: mit(db)(bildlage.manuelleTeileOhneBild),
-    figurenOhneBild: mit(db)(bildlage.figurenOhneBild),
-    setBilderOhneDatei: mit(db)(bildlage.setBilderOhneDatei),
+    manuelleTeileOhneBild: mitVertrag(db, l)(bildlage.manuelleTeileOhneBild),
+    figurenOhneBild: mitVertrag(db, l)(bildlage.figurenOhneBild),
+    setBilderOhneDatei: mitVertrag(db, l)(bildlage.setBilderOhneDatei),
     merkeSetBildLokal: mit(db)(bildlage.merkeSetBildLokal),
     lokaleKatalogbilder: mit(db)(bildlage.lokaleKatalogbilder),
     teilbilder: mit(db)(bildlage.teilbilder),
     figurenbilder: mit(db)(bildlage.figurenbilder),
     fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
-    setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
+    setsOhneAnleitungsabruf: mitVertrag(db, l)(bildlage.setsOhneAnleitungsabruf),
     fehlendeKatalogbilder: mit(db)(bildlage.fehlendeKatalogbilder),
     setNamen: mit(db)(bildlage.setNamen),
   },
 });
 
-export const zugang = (db: Db) => ({ ...anleitungszugang(db), ...stammzugang(db), ...bildzugang(db) });
+export const zugang = (db: Db, l: KatalogLesevertrag) => ({
+  ...anleitungszugang(db, l),
+  ...stammzugang(db, l),
+  ...bildzugang(db, l),
+});
 export type KatalogKontext = Kontext<KatalogAbhaengigkeiten, ReturnType<typeof zugang>>;

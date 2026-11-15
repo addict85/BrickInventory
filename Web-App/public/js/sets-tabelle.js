@@ -6,7 +6,7 @@ import { G, ico, TRASH_ICON_SVG } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN, istGeschenk } from './format.js';
 import { geschaetztKauf, pnlBadge, zeilenKnopf } from './bausteine.js';
 import { echt } from './registry.js';
-import { CURRENCY } from './zustand.js';
+import { kontoWaehrung } from './zustand.js';
 /** @typedef {import('./zustand.js').Kachel} Kachel */
 
 /** Sortierbare Spalten der Tabelle: erster Klick in der üblichen Richtung, der zweite kehrt sie um. */
@@ -31,9 +31,9 @@ export function setsTabelle(list) {
 
 /** Betrag für die ganze Menge, darunter der Stückpreis: wie in den Finanzen. @param {number} stueck @param {number} menge */
 function mitStueck(stueck, menge) {
-  const gesamt = fmtGeld(stueck * menge, CURRENCY);
+  const gesamt = fmtGeld(stueck * menge, kontoWaehrung);
   return menge > 1
-    ? html`${gesamt}<span class="fin-je">${tRaw('finance.je', { preis: fmtGeld(stueck, CURRENCY) })}</span>`
+    ? html`${gesamt}<span class="fin-je">${tRaw('finance.je', { preis: fmtGeld(stueck, kontoWaehrung) })}</span>`
     : gesamt;
 }
 
@@ -53,7 +53,7 @@ export function wertZelle(s) {
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   const menge = s.quantity || 1;
-  return html`${fmtN(s._price * menge, CURRENCY)}${menge > 1 ? html`<span class="fin-je">${tRaw('finance.je', { preis: fmtN(s._price, CURRENCY) })}</span>` : ''}${pnl ? html`<span class="tab-pnl" title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>` : ''}`;
+  return html`${fmtN(s._price * menge, kontoWaehrung)}${menge > 1 ? html`<span class="fin-je">${tRaw('finance.je', { preis: fmtN(s._price, kontoWaehrung) })}</span>` : ''}${pnl ? html`<span class="tab-pnl" title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>` : ''}`;
 }
 
 /** @param {Kachel} s */

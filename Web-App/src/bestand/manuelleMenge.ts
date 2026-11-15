@@ -5,7 +5,7 @@ import { bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { Abstriche } from '../infra/ergebnis';
-import { recordAcquisitionForDay } from './acquisitions';
+import { kaufAmTagErfassen } from './acquisitions';
 import * as repo from './repository/manuelleMengen';
 import type { ManuelleArt } from './repository/manuelleMengen';
 import type { BestandKontext } from './kontext';
@@ -50,7 +50,7 @@ export async function passeManuelleMengeAn(
       const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);
       const soll = ziel(wunsch, bisher);
       if (soll > bisher) {
-        await recordAcquisitionForDay(t, art, uid, schluessel, {
+        await kaufAmTagErfassen(t, art, uid, schluessel, {
           quantity: soll - bisher,
           price: mp,
           condition: zustand,

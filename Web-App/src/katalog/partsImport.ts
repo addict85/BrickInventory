@@ -3,7 +3,7 @@ import type { AuftragsLauf } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, ersteBlNummer, parseThrottleWait } from '../fremdquellen';
-import { getAllSetParts } from './rebrickableKatalog';
+import { alleTeileDesSets } from './rebrickableKatalog';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
@@ -54,7 +54,7 @@ export async function setTeileLaden(
   setNumber: string,
 ): Promise<{ n: string; zeilen: SetTeilZeile[] } | null> {
   const n = mitVersion(setNumber);
-  const roh: RbSetTeil[] | null = await getAllSetParts(k, n);
+  const roh: RbSetTeil[] | null = await alleTeileDesSets(k, n);
   if (!roh?.length) return null;
   const zeilen = setTeilZeilen(roh);
   return zeilen.length ? { n, zeilen } : null;

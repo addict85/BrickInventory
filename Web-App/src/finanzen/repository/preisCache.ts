@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { setBestand, setErfassungen } from '../../../db/bestandSicht';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 import type { Tabellen } from '../../../db/zeilen';
 
@@ -23,11 +23,11 @@ export interface Preiszeile {
   fetched_at: Date | null;
 }
 
-export function setZustandsZaehler(db: DbSchnittstelle, uids: number[], setNumber: string) {
+export function setZustandsZaehler(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[], setNumber: string) {
   return db.get<{ acq_count: string; used_count: string }>(
     `SELECT COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
-       FROM ${setBestand('= ANY($1)')} s LEFT JOIN ${setErfassungen('= ANY($1)')} a
+       FROM ${l.setBestand('= ANY($1)')} s LEFT JOIN ${l.setErfassungen('= ANY($1)')} a
          ON a.user_id = s.user_id AND a.set_number = s.set_number
       WHERE s.user_id = ANY($1) AND s.set_number=$2`,
     [uids, setNumber],

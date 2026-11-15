@@ -1,11 +1,11 @@
 /** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
-import { isIPv4, isIPv6 } from 'node:net';
 import { einzelwert } from '../infra/validate';
 import { fehlertext, meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import type { KontoKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
+import { drosselAdresse } from '../infra/drosselAdresse';
 
 /** Typisiert: Ein vertippter Feldname ergäbe `undefined >= MAX_ATTEMPTS`, also keine Sperre. */
 interface Zaehlerstand {
@@ -40,24 +40,6 @@ function imSpeicher(wo: string, e: unknown): void {
   if (Date.now() - r.gemeldetAm < 60_000) return;
   r.gemeldetAm = Date.now();
   console.warn(`[anmeldung] Zähler im Prozessspeicher statt in der Datenbank (${wo}): ${fehlertext(e)}`);
-}
-
-/** IPv6 je /64: Je Adresse gezählt, umginge eine neue Adresse aus dem eigenen Netz jede
- * Bremse. IPv4 in IPv6 zählt als IPv4; alles andere (`konto:7`) bleibt, wie es ist. */
-export function drosselAdresse(ip: string): string {
-  const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
-  if (v4 && isIPv4(v4[1]!)) return v4[1]!;
-  if (!isIPv6(ip)) return ip;
-  const [links = '', rechts = ''] = ip.toLowerCase().split('::');
-  const l = links ? links.split(':') : [],
-    r = rechts ? rechts.split(':') : [];
-  const gruppen = ip.includes('::') ? [...l, ...Array(8 - l.length - r.length).fill('0'), ...r] : l;
-  return (
-    gruppen
-      .slice(0, 4)
-      .map(g => g.replace(/^0+(?=.)/, ''))
-      .join(':') + '::/64'
-  );
 }
 
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.

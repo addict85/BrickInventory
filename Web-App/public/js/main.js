@@ -8,6 +8,7 @@ import './escapen.js';
 import './ereignisse.js';
 import './ziele.js';
 import './zustand.js';
+import './lader.js';
 import '../i18n.js';
 
 // Bausteine

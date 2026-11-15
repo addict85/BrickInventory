@@ -15,6 +15,7 @@ import { registerActions, echt } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
+import { generationen } from './lader.js';
 import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './bilder.js';
 import {
   G,
@@ -30,7 +31,7 @@ import {
 import { fmtBig, fmtN } from './format.js';
 import { toast } from './meldungen.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './scope.js';
-import { allSets, CURRENCY } from './zustand.js';
+import { galerieSets, kontoWaehrung } from './zustand.js';
 import { confirmDelete } from './rueckfrage.js';
 import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
@@ -201,7 +202,7 @@ export function teileLeerAbgleichen(manuelleLeer) {
       : leerZustand({
           ico: 'teil',
           titel: tRaw('parts.empty'),
-          text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
+          text: tRaw(galerieSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
           knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' },
         }),
   );
@@ -226,7 +227,7 @@ const PARTS_PAGE_SIZE = 100;
 let _partsPage = 0; // zuletzt geladene Seite
 let _partsTotal = 0; // Gesamtzahl der Gruppen laut Server
 let _partsShown = 0; // bereits gerenderte Gruppen
-let _partsGen = 0; // Generationszähler gegen späte Antworten
+const teileLaden = generationen();
 let _partsLoading = false;
 let _partsDone = false;
 /** @type {string | null} */
@@ -260,7 +261,7 @@ function partsParams(page) {
 
 /** Vollständiger Neuaufbau — bei jedem Filter-, Such- oder Moduswechsel. */
 async function loadPartsData() {
-  _partsGen++;
+  teileLaden.neu();
   _partsPage = 0;
   _partsShown = 0;
   _partsTotal = 0;
@@ -281,12 +282,10 @@ async function loadPartsData() {
 async function loadPartsPage(isFirst) {
   if (_partsLoading || _partsDone) return;
   _partsLoading = true;
-  const gen = _partsGen;
   const page = _partsPage + 1;
 
-  const d = await api('GET', `/v1/parts?${partsParams(page)}`);
-  // Antwort einer inzwischen verworfenen Filterkombination — verwerfen.
-  if (gen !== _partsGen) {
+  const d = await teileLaden.aktuell(api('GET', `/v1/parts?${partsParams(page)}`));
+  if (d === undefined) {
     _partsLoading = false;
     return;
   }
@@ -596,7 +595,7 @@ export async function loadManualParts() {
   if (v.success) {
     if (G('mp-count')) G('mp-count').textContent = String(d.parts.length);
     if (G('mp-qty')) G('mp-qty').textContent = String(d.parts.reduce((s, p) => s + (p.quantity || 0), 0));
-    if (G('mp-val')) G('mp-val').textContent = fmtN(v.total_value, v.currency || CURRENCY);
+    if (G('mp-val')) G('mp-val').textContent = fmtN(v.total_value, v.currency || kontoWaehrung);
   }
 }
 
@@ -631,7 +630,7 @@ export function renderManualParts() {
       // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       // Stückpreis wie in den Finanzen mit „je“; neben „×{n}“ läse sich der blanke Betrag als Summe.
-      const priceStr = partPrice != null ? esc(tRaw('finance.je', { preis: fmtN(partPrice, CURRENCY) })) : '—';
+      const priceStr = partPrice != null ? esc(tRaw('finance.je', { preis: fmtN(partPrice, kontoWaehrung) })) : '—';
       const condBadge = condBadges(p);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">

@@ -1,4 +1,5 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). Wer eine eigene Sperrverbindung hält, ruft das Repository direkt damit auf. */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as bildlageDienst from './bildlage';
@@ -30,7 +31,12 @@ export function erzeugeKatalog(
   einblick?: Einblick<KatalogKontext>,
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
-  const d = baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
+  const d = baueBereich(
+    { ...a, cdnDrossel, faecher: new Faecher() },
+    (db: Db) => zugang(db, a.lesevertrag),
+    katalogDienste,
+    einblick,
+  );
   return d;
 }
 
@@ -53,14 +59,14 @@ function katalogDienste(k: KatalogKontext) {
     blAbrufNummer: mit(k)(blZuordnungDienst.blAbrufNummer),
     blAbrufNummern: mit(k)(blZuordnungDienst.blAbrufNummern),
     merkeBlFarbnummer: mit(k)(blZuordnungDienst.merkeBlFarbnummer),
-    blLinksAufloesen: mit(k)(bricklinkLink.resolveMany),
-    blLinkAufloesen: mit(k)(bricklinkLink.resolveOne),
+    blLinksAufloesen: mit(k)(bricklinkLink.vieleAufloesen),
+    blLinkAufloesen: mit(k)(bricklinkLink.einesAufloesen),
     setBekanntImKatalog: mit(k)(bricklinkPreise.setBekanntImKatalog),
     katalogEintrag: mit(k)(bricklinkPreise.katalogEintrag),
-    leereTeilmengenCache: mit(k)(bricklinkPreise.clearSubsetsCache),
-    leereKatalogCache: mit(k)(bricklinkPreise.clearCatalogCache),
+    leereTeilmengenCache: mit(k)(bricklinkPreise.teilmengenCacheLeeren),
+    leereKatalogCache: mit(k)(bricklinkPreise.katalogCacheLeeren),
     cacheStand: mit(k)(bricklinkPreise.getCacheStats),
-    preisfuehrer: mit(k)(bricklinkPreise.getPriceGuide),
+    preisfuehrer: mit(k)(bricklinkPreise.preisfuehrerAbfrage),
     bricksetListe: mit(k)(bricksetNachlauf.bricksetListe),
     anleitungEinreihen: mit(k)(anleitungsAuftrag.anleitungEinreihen),
     katalogMeta: mit(k)(dienst.katalogMeta),
@@ -73,7 +79,7 @@ function katalogDienste(k: KatalogKontext) {
     anleitungenZuSet: mit(k)(instructions.anleitungenZuSet),
     anleitungNeuLadenErlaubt: mit(k)(instructions.anleitungNeuLadenErlaubt),
     loescheAnleitungen: mit(k)(instructions.loescheAnleitungen),
-    ladeSetAnleitungen: mit(k)(instructions.downloadSetInstructions),
+    ladeSetAnleitungen: mit(k)(instructions.setAnleitungenLaden),
     gleicheFehlendeAb: mit(k)(katalogAbgleich.syncAllMissing),
     teilfarbenbilderNachtragen: mit(k)(katalogAbgleich.teilfarbenbilderNachtragen),
     merkeTeil: mit(k)(katalogPflege.merkeTeil),
@@ -91,9 +97,9 @@ function katalogDienste(k: KatalogKontext) {
     blNummernNachladen: mit(k)(partsImport.blNummernNachladen),
     inventarFuerKandidaten: mit(k)(rbInventar.inventarFuerKandidaten),
     neuestesInventar: mit(k)(rbInventar.neuestesInventar),
-    setInfo: mit(k)(rebrickableKatalog.getSetInfo),
-    alleSetTeile: mit(k)(rebrickableKatalog.getAllSetParts),
-    figurTeile: mit(k)(rebrickableKatalog.getMinifigParts),
+    setInfo: mit(k)(rebrickableKatalog.setAngaben),
+    alleSetTeile: mit(k)(rebrickableKatalog.alleTeileDesSets),
+    figurTeile: mit(k)(rebrickableKatalog.figurTeileAbfrage),
     reichereSetTeileAn: mit(k)(teileAnreicherungDienst.enrichSetParts),
     ladeSetBilder: mit(k)(teileAnreicherungDienst.downloadSetImages),
     reichereSetFigurenAn: mit(k)(teileAnreicherungDienst.enrichSetMinifigs),

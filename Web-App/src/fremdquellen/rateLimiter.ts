@@ -56,7 +56,7 @@ export class RateLimiter {
 }
 
 import { meldeFehler } from '../infra/fehler';
-import { checkAndIncrementRateLimit, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
+import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import { versuche } from '../infra/ergebnis';
 import type { FremdquellenKontext } from './kontext';
 
@@ -101,7 +101,7 @@ export function rebrickableDrosseln(apiTakt: Takt['apiTakt']) {
 
 // Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
 export async function consumeRebrickableDaily(k: FremdquellenKontext): Promise<boolean> {
-  const rl = await versuche('takt:checkAndIncrementRateLimit', checkAndIncrementRateLimit(k, 'rebrickable'));
+  const rl = await versuche('takt:kontingentPruefenUndZaehlen', kontingentPruefenUndZaehlen(k, 'rebrickable'));
   // Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
   // Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt.
   return rl.ok ? rl.wert.allowed : true;

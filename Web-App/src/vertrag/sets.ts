@@ -11,9 +11,9 @@ import {
 } from './gemeinsam';
 
 export const AddSetResponse = z.looseObject({
-  success: z.boolean().optional(),
-  action: z.string().nullable().optional(),
-  set_number: z.string().nullable().optional(),
+  success: z.boolean(),
+  action: z.string(),
+  set_number: z.string(),
   name: z.string().nullable().optional(),
   katalog_offen: z.boolean().optional(),
   /** ausstehend: angelegt, Katalog, Bild oder Marktpreis holt noch ein Auftrag. */
@@ -41,27 +41,27 @@ export const BarcodeResponse = z.looseObject({
 export const Instruction = z.looseObject({
   downloaded_at: zeit.nullable().optional(),
   fetched_at: zeit.nullable().optional(),
-  set_number: z.string().nullable().optional(),
+  set_number: z.string(),
   user_id: z.number().int().nullable().optional(),
-  id: z.number().int().nullable().optional(),
+  id: z.number().int(),
   url: z.string(),
-  description: z.string().nullable().optional(),
-  local_path: z.string().nullable().optional(),
+  description: z.string().nullable(),
+  local_path: z.string().nullable(),
   is_manual: z.boolean(),
 });
 
 export const MoveSetResponse = z.looseObject({
-  success: z.boolean().optional(),
-  set_number: z.string().optional(),
-  quantity: z.number().int().optional(),
-  acquisitions: z.number().int().optional(),
-  merged: z.boolean().optional(),
-  parts: z.number().int().optional(),
-  minifigs: z.number().int().optional(),
-  instructions: z.number().int().optional(),
-  source_emptied: z.boolean().optional(),
-  from_user_id: z.number().int().optional(),
-  to_user_id: z.number().int().optional(),
+  success: z.boolean(),
+  set_number: z.string(),
+  quantity: z.number().int(),
+  acquisitions: z.number().int(),
+  merged: z.boolean(),
+  parts: z.number().int(),
+  minifigs: z.number().int(),
+  instructions: z.number().int(),
+  source_emptied: z.boolean(),
+  from_user_id: z.number().int(),
+  to_user_id: z.number().int(),
   error: z.string().nullable().optional(),
 });
 
@@ -72,8 +72,8 @@ export const Preisalarm = z.looseObject({
   schwelle: z.number(),
   currency_code: z.string(),
   ausgeloest: z.boolean(),
-  zuletzt_am: zeit.nullable().optional(),
-  zuletzt_preis: z.number().nullable().optional(),
+  zuletzt_am: zeit.nullable(),
+  zuletzt_preis: z.number().nullable(),
   name: z.string().nullable().optional(),
   image_local: z.string().nullable().optional(),
   image_url: z.string().nullable().optional(),
@@ -84,12 +84,12 @@ export const Preisalarm = z.looseObject({
 export const PendingAlertsResponse = z.looseObject({
   success: z.boolean(),
   alerts: z.array(Preisalarm),
-  now: zeit.nullable().optional(),
+  now: zeit.nullable(),
   error: z.string().nullable().optional(),
 });
 
 export const PreisalarmResponse = z.looseObject({
-  success: z.boolean().optional(),
+  success: z.boolean(),
   alert: Preisalarm.nullable().optional(),
   removed: z.number().int().optional(),
   error: z.string().nullable().optional(),
@@ -102,32 +102,32 @@ export const PreisalarmeResponse = z.looseObject({
 });
 
 export const SetItem = z.looseObject({
-  acq_count: z.number().int().nullable().optional(),
+  acq_count: z.number().int(),
   letzter_kauf: zeit.nullable().optional(),
   owner_ids: z.array(z.number().int()).optional(),
-  id: z.number().int().nullable().optional(),
+  id: z.number().int().optional(),
   storage_id: z.number().int().nullable().optional(),
   updated_at: zeit.nullable().optional(),
-  user_id: z.number().int().nullable().optional(),
+  user_id: z.number().int().optional(),
   set_number: z.string(),
-  name: z.string().nullable().optional(),
-  year: z.number().int().nullable().optional(),
-  theme: z.string().nullable().optional(),
-  pieces: z.number().int().nullable().optional(),
-  minifigs: z.number().int().nullable().optional(),
+  name: z.string().nullable(),
+  year: z.number().int().nullable(),
+  theme: z.string().nullable(),
+  pieces: z.number().int().nullable(),
+  minifigs: z.number().int().nullable(),
   quantity: z.number().int(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
-  added_at: zeit.nullable().optional(),
-  condition: z.string().nullable().optional(),
-  storage: z.string().nullable().optional(),
+  image_url: z.string().nullable(),
+  image_local: z.string().nullable(),
+  added_at: zeit.nullable(),
+  condition: z.string().nullable(),
+  storage: z.string().nullable(),
   conditions: z.array(z.string()),
   /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
-  max_purchase_price: z.number().nullable().optional(),
-  avg_purchase_price: z.number().nullable().optional(),
+  max_purchase_price: z.number().nullable(),
+  avg_purchase_price: z.number().nullable(),
   kaufpreis_geschaetzt: z.boolean().nullable().optional(),
-  used_count: z.number().int().nullable().optional(),
+  used_count: z.number().int(),
   instructions: z.array(Instruction),
   bricklink: BrickLinkRef.nullable().optional(),
   preisvergleich_url: z.string().nullable().optional(),
@@ -151,13 +151,13 @@ export const SetInfoResponse = z.looseObject({
   year: z.number().int().nullable().optional(),
   success: z.boolean(),
   set_number: z.string(),
-  name: z.string().nullable().optional(),
-  im_katalog: z.boolean().optional(),
+  name: z.string().nullable(),
+  im_katalog: z.boolean(),
 });
 
 export const SetResponse = z.looseObject({
   success: z.boolean(),
-  set: SetItem.nullable().optional(),
+  set: SetItem.nullable(),
   error: z.string().nullable().optional(),
 });
 
@@ -176,7 +176,7 @@ export const AnleitungenGeladen = z.looseObject({
   success: z.literal(true),
   count: ganz,
   instructions: z.array(Instruction),
-  auftrag_id: z.string().nullable().optional(),
+  auftrag_id: z.string().nullable(),
 });
 export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.string() });
 
@@ -212,9 +212,9 @@ export const PdfEingabe = z.strictObject({
 export const PdfStand = z.looseObject({
   success: z.literal(true),
   status: z.string(),
-  error: z.string().nullable().optional(),
-  etaSeconds: z.number().nullable().optional(),
-  missingImages: z.unknown().optional(),
+  error: z.string().nullable(),
+  etaSeconds: z.number().nullable(),
+  missingImages: z.unknown(),
 });
 
 export const TeileGeladen = z.looseObject({ success: z.literal(true), count: ganz });

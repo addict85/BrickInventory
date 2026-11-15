@@ -30,7 +30,7 @@ Module.prototype.require = function (name, ...rest) {
     ...m,
     anzahlAnleitungen: async () => 0,
     letzterAbrufWarExtern: () => abruf.extern,
-    downloadSetInstructions: async () => {
+    setAnleitungenLaden: async () => {
       abruf.aufrufe++;
       if (abruf.fehler) throw abruf.fehler;
       return 1;

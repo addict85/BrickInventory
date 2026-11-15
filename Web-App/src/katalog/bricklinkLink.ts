@@ -18,7 +18,7 @@ export interface BlLink {
 }
 
 // Die Schreibweise kommt aus src/infra/setNummer.ts, nicht aus einer dritten Fassung.
-export function withVariant(setNumber: string): string {
+export function mitVariante(setNumber: string): string {
   return mitVersion(String(setNumber || '').trim());
 }
 
@@ -28,7 +28,7 @@ export function bareNumber(setNumber: string): string {
 
 const PARAM: Record<Exclude<BlType, 'NONE'>, string> = { SET: 'S', GEAR: 'G', BOOK: 'B', MINIFIG: 'M' };
 
-export function buildUrl(type: BlType, number: string): string | null {
+export function blAdresse(type: BlType, number: string): string | null {
   if (type === 'NONE') return null;
   const p = PARAM[type];
   // #T=<p> öffnet direkt den "For Sale"-Tab, O={"iconly":0} die Listenansicht.
@@ -39,7 +39,7 @@ export function buildUrl(type: BlType, number: string): string | null {
 }
 
 // Ohne eindeutige Zuordnung (etwa Sammelfiguren) eine Suche statt eines falschen Links.
-export function searchUrl(number: string): string {
+export function blSuchadresse(number: string): string {
   return `https://www.bricklink.com/v2/search.page?q=${encodeURIComponent(bareNumber(number))}`;
 }
 
@@ -49,20 +49,20 @@ function toLink(setNumber: string, blType: string | null | undefined): BlLink {
   const type = KNOWN.includes(blType as BlType) ? (blType as BlType) : null;
   // Ohne Cache-Eintrag ist SET die richtige Annahme für die grosse Mehrheit.
   const effective: BlType = type ?? 'SET';
-  const number = effective === 'SET' ? withVariant(setNumber) : bareNumber(setNumber);
-  const exactUrl = buildUrl(effective, number);
+  const number = effective === 'SET' ? mitVariante(setNumber) : bareNumber(setNumber);
+  const exactUrl = blAdresse(effective, number);
   // 'NONE' heisst nur „nicht als Set, Gear oder Buch gefunden" — das trifft
   // Sammelminifiguren, und für die darf der Button nicht verschwinden.
   return exactUrl
     ? { type: effective, number, url: exactUrl, exact: true, resolved: type !== null }
-    : { type: effective, number, url: searchUrl(setNumber), exact: false, resolved: type !== null };
+    : { type: effective, number, url: blSuchadresse(setNumber), exact: false, resolved: type !== null };
 }
 
 /** Eine Abfrage statt N Einzelabfragen, für Listen- und Katalogseiten.
  * @returns Map, geschlüsselt auf die Rebrickable-Schreibweise (mit -N) */
-export async function resolveMany(kx: KatalogKontext, setNumbers: string[]): Promise<Map<string, BlLink>> {
+export async function vieleAufloesen(kx: KatalogKontext, setNumbers: string[]): Promise<Map<string, BlLink>> {
   const out = new Map<string, BlLink>();
-  const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
+  const keys = [...new Set((setNumbers || []).filter(Boolean).map(mitVariante))];
   if (keys.length === 0) return out;
 
   const rows = await kx.katalogCache.blTypenDerSets(keys);
@@ -73,16 +73,16 @@ export async function resolveMany(kx: KatalogKontext, setNumbers: string[]): Pro
   return out;
 }
 
-/** Dünn über resolveMany, damit es nur eine Logik gibt. */
-export async function resolveOne(k: KatalogKontext, setNumber: string): Promise<BlLink> {
-  const m = await resolveMany(k, [setNumber]);
-  return m.get(withVariant(setNumber)) as BlLink;
+/** Dünn über vieleAufloesen, damit es nur eine Logik gibt. */
+export async function einesAufloesen(k: KatalogKontext, setNumber: string): Promise<BlLink> {
+  const m = await vieleAufloesen(k, [setNumber]);
+  return m.get(mitVariante(setNumber)) as BlLink;
 }
 
 /** Dieselbe Kette wie beim Preisabruf (set → gear → book → NONE), aber über
  * /items — günstiger, wenn nur der Typ zählt. */
-export async function resolveViaApi(k: KatalogKontext, setNumber: string): Promise<BlLink> {
-  const n = withVariant(setNumber);
+export async function ueberSchnittstelleAufloesen(k: KatalogKontext, setNumber: string): Promise<BlLink> {
+  const n = mitVariante(setNumber);
   const bare = bareNumber(setNumber);
 
   // Ohne Zugang bei der Annahme bleiben, nichts cachen.

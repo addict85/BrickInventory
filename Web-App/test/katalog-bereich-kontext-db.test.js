@@ -74,10 +74,10 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('die Transaktion geht über den übergebenen Zugang', async () => {
     sql.length = 0;
-    const { checkAndIncrementRateLimit } = require(
+    const { kontingentPruefenUndZaehlen } = require(
       require('node:path').join(require('./helpers/sources').ROOT, 'dist/src/fremdquellen/apiKontingent.js'),
     );
-    const r = await checkAndIncrementRateLimit(kontexte.fremdquellen, 'brickset');
+    const r = await kontingentPruefenUndZaehlen(kontexte.fremdquellen, 'brickset');
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_aufrufe/.test(s)),

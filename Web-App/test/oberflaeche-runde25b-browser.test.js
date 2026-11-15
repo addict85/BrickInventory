@@ -3,7 +3,7 @@
  * Schliessen, und die Vorschau eines durchsichtigen PNG bleibt durchsichtig (Dunkelmodus).
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  die ausstehende Speicherung wieder mit `if (!curSet) return` (Stand vor dem Nachtrag) → rot: „Menge
+ *   A  die ausstehende Speicherung wieder mit `if (!offenesSet) return` (Stand vor dem Nachtrag) → rot: „Menge
  *      beim sofortigen Schliessen gespeichert“ (mQtyInc verloren). Ohne den Beobachter allein bleibt es grün:
  *      Die Speicherung kommt dann 400 ms später, er macht sie nur sofort.
  *   B  liefereBild() ohne den Typ aus vorschauTyp() → rot: „Vorschau eines durchsichtigen PNG …“ (image/jpeg)
@@ -115,10 +115,10 @@ test('UX-Prüfung 25, Nachtrag im Browser', { concurrency: 1, timeout: 600_000 }
     name: `r25b_${process.pid}`,
     bestand: async (db, uid) => {
       await musterSammlung(db, uid);
-      // Wie die App Set-Bilder ablegt: <nr>.jpg, daneben die Vorschau aus generateThumb.
+      // Wie die App Set-Bilder ablegt: <nr>.jpg, daneben die Vorschau aus vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
       fs.writeFileSync(path.join(ordner, `${nr}.jpg`), schachbrett());
-      assert.ok(await req('src/bilder/thumbs.js').generateThumb(`/images/sets/${nr}.jpg`), 'Vorschau');
+      assert.ok(await req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${nr}.jpg`), 'Vorschau');
       await katalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
       await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_nummer_mit_version($1)', [
         nr,

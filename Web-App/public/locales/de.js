@@ -186,6 +186,8 @@ window.I18N_DE = {
   'api.unreachable': 'Keine Verbindung zum Server — bitte später erneut versuchen.',
   'auth.cookie_fehlt':
     'Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert. Die App braucht HTTPS – oder auf dem Server COOKIE_SECURE=0 (siehe README, „Ohne HTTPS“).',
+  'auth.ohne_https':
+    'Diese Seite läuft ohne HTTPS: Passwort und Sitzung gehen unverschlüsselt durchs Netz, und die Anmeldung hält nur mit COOKIE_SECURE=0 auf dem Server (siehe README, „Ohne HTTPS“).',
   'auth.session_expired': 'Sitzung abgelaufen — bitte erneut anmelden.',
   'api.server_error': 'Der Server hat mit einem Fehler geantwortet ({status}).',
   'api.unexpected': 'Unerwarteter Fehler — Einzelheiten in der Browser-Konsole.',

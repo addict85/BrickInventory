@@ -39,6 +39,16 @@
  *   L  'src/sets → parts_version_user' aus TRIGGER_FREMDZIELE gestrichen → rot: „Trigger schreiben
  *      nur in Tabellen ihres Besitzers …“ (15.11.2026)
  *
+ * Ein Lesebaustein in db/ zählt beim Bereich, der ihn importiert; was er liest, zeigt sein Ergebnis.
+ * Liegt der Bereich unter dem Besitzer, bekommt er den Baustein über seinen Lesevertrag (src/dienste.ts
+ * reicht ihn). Gegenproben (15.11.2026 gemessen, je einzeln):
+ *   M  src/bilder/repository/bildBlickfeld.ts importiert gezaehlteSets wieder aus db/bestandSicht →
+ *      rot: „… aufwärts über db/“ ['src/bilder → price_alerts', 'src/bilder → sets', 'src/bilder → wanted']
+ *   N  src/katalog/repository/katalogSuche.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
+ *      dieselbe Prüfung, ['src/katalog → set_acquisitions']
+ *   O  setBestand in db/bestandSicht.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
+ *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
+ *
  * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
  * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
  *
@@ -63,7 +73,7 @@ const { testServer } = require('./helpers/server');
 testQuellen(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
-  getSetInfo: async () => null,
+  setAngaben: async () => null,
 });
 
 const KATALOG = 'katalog'; // geprüfte Quellen (Rebrickable, BrickLink, Brickset, EZB)
@@ -170,7 +180,6 @@ const GEMEINSAM = {
 
 /** Dateien mit Tabellennamen aus einer Variablen: Wohin sie schreiben, steht daneben. */
 const DYNAMISCH = {
-  'db/migrate.ts': 'Kopien vor Migrationen (vor_migration_*, Spalten mit user_id)',
   'src/bestand/repository/kaufErfassungen.ts': 'set_/part_/minifig_acquisitions (user_id)',
   'src/bestand/repository/lagerort.ts': 'sets/parts/minifigs (user_id)',
   'src/bestand/repository/manuelleMengen.ts': 'part_/minifig_acquisitions (user_id)',
@@ -254,6 +263,107 @@ function fremdeLeser(besitzer) {
 }
 
 const bereichVon = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);
+
+const LESE = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g;
+
+/** Je Lesebaustein in db/ und Export die Tabellen, die sein Ergebnis liest: Jede Funktion läuft mit
+ * Proben je Art und einem Zugang, der die Abfragen nur mitschreibt. So zählt auch, was über eine
+ * Konstante (ZAEHLT) oder eine asynchrone Abfrage gelesen wird. */
+async function lesebausteine(_req) {
+  const je = {};
+  const ordner = path.join(ROOT, 'db');
+  for (const n of fs.readdirSync(ordner)) {
+    if (!n.endsWith('.ts') || ['database.ts', 'migrate.ts', 'schemaStart.ts'].includes(n)) continue;
+    if (!/\b(?:FROM|JOIN)\b/.test(fs.readFileSync(path.join(ordner, n), 'utf8'))) continue;
+    const modul = n.replace(/\.ts$/, '');
+    je[modul] = {};
+    for (const [name, wert] of Object.entries(_req(`db/${modul}.js`))) {
+      const tabellen = new Set();
+      const merke = sql => {
+        for (const m of String(sql).matchAll(LESE)) tabellen.add(m[1]);
+      };
+      const zugang = {
+        get: async sql => {
+          merke(sql);
+          return null;
+        },
+        all: async sql => {
+          merke(sql);
+          return [];
+        },
+        run: async sql => merke(sql),
+        toString: () => '$9',
+      };
+      if (typeof wert === 'string') merke(wert);
+      else if (typeof wert === 'function')
+        for (const art of ['part', 'fig', 'set']) {
+          const proben = [
+            [],
+            ['= ANY($1)'],
+            [art, '$1', ['3001', 4], zugang],
+            ['s', art, 'tm', '= ANY($1)'],
+            ['$1', '$2', zugang],
+            [1, '3001-1', zugang],
+          ];
+          for (const probe of proben) {
+            try {
+              const r = wert(...probe);
+              if (r && typeof r.then === 'function') await r.catch(() => {});
+              else merke(r);
+            } catch {
+              // Eine Probe, die nicht passt, liest nichts.
+            }
+          }
+        }
+      if (tabellen.size) je[modul][name] = [...tabellen].sort();
+    }
+  }
+  return je;
+}
+
+/** Paare „Bereich → Tabelle“, die ein Bereich über importierte Lesebausteine liest (auch `* as`). */
+function leserUeberDb(bausteine) {
+  const paare = new Set();
+  const dateien = [];
+  const lauf = d => {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) lauf(p);
+      else if (n.endsWith('.ts')) dateien.push(p);
+    }
+  };
+  for (const d of [
+    path.join(ROOT, 'src'),
+    path.join(ROOT, 'jobs'),
+    path.join(ROOT, 'routes'),
+    path.join(ROOT, 'startup'),
+  ])
+    lauf(d);
+  for (const p of dateien) {
+    const datei = path.relative(ROOT, p).split(path.sep).join('/');
+    const b = datei === 'src/dienste.ts' ? datei : bereichVon(datei);
+    const s = fs.readFileSync(p, 'utf8');
+    for (const m of s.matchAll(/^import\s+(?:type\s+)?(\{[^}]*\}|\*\s+as\s+\w+)\s+from\s+'(?:\.\.?\/)+db\/(\w+)'/gm)) {
+      const baustein = bausteine[m[2]];
+      if (!baustein) continue;
+      const namen = m[1].startsWith('*')
+        ? Object.keys(baustein)
+        : m[1]
+            .slice(1, -1)
+            .split(',')
+            .map(
+              x =>
+                x
+                  .trim()
+                  .replace(/^type\s+/, '')
+                  .split(/\s+as\s+/)[0],
+            )
+            .filter(Boolean);
+      for (const name of namen) for (const t of baustein[name] ?? []) paare.add(`${b} → ${t}`);
+    }
+  }
+  return [...paare].sort();
+}
 
 const MARKE = 'zzmarke7q';
 
@@ -403,7 +513,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(
       je.aufwärts,
       [],
-      'Ein tieferer Bereich liest die Tabelle eines höheren: über eine Sicht in db/ (bestandSicht.ts, kontoSicht.ts) lesen.',
+      'Ein tieferer Bereich liest die Tabelle eines höheren: Form im eigenen Lesevertrag nennen, SQL über src/dienste.ts reichen.',
     );
     for (const [art, schranke] of [
       ['katalog', KATALOG_LESER_HOECHSTENS],
@@ -418,6 +528,30 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     }
   });
 
+  await t.test('auch über db/ liest kein Bereich die Tabelle eines höheren', async () => {
+    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    const stufen = stufenAusDoku();
+    const bausteine = await lesebausteine(_req);
+    // Selbstbeweis: Was die Bausteine lesen, kommt aus ihrem Ergebnis, auch über Konstanten.
+    assert.deepEqual(bausteine.bestandSicht?.setBestand, ['sets'], 'setBestand liest sets');
+    assert.deepEqual(bausteine.zugangSicht?.familieLebt, ['api_tokens']);
+    assert.ok(bausteine.bestandSicht?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
+    assert.ok(bausteine.bestandsmenge?.mengeDesSets?.includes('sets'), 'asynchrone Bausteine zählen');
+    const leser = leserUeberDb(bausteine);
+    assert.ok(leser.includes('src/sets → set_acquisitions'), 'Selbstbeweis: sets liest eigene Käufe über db/');
+    assert.ok(leser.includes('src/dienste.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
+    const aufwaerts = leser.filter(paar => {
+      const [b, tabelle] = paar.split(' → ');
+      assert.ok(stufen.has(b), `${b} hat keine Stufe`);
+      return besitzer.has(tabelle) && stufen.get(besitzer.get(tabelle)) > stufen.get(b);
+    });
+    assert.deepEqual(
+      aufwaerts,
+      [],
+      'Ein Bereich liest über db/ aufwärts: die Form in seinen Lesevertrag (src/<bereich>/lesevertrag.ts), den Baustein über src/dienste.ts reichen.',
+    );
+  });
+
   await t.test('Eingaben eines Kontos landen in keiner gemeinsamen Tabelle', async () => {
     const neu = async name =>
       (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
@@ -429,11 +563,11 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
     await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
 
-    const { addManualPart } = _req('src/teile/manuelleTeile.js');
-    const { addManualFig, updateManualFig, importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
+    const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+    const { manuelleFigurAnlegen, manuelleFigurAendern, importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
     const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
     await alsKonto(A, async () => {
-      await addManualPart(A, {
+      await manuellesTeilAnlegen(A, {
         part_number: '3005',
         color_id: 4,
         part_name: `${MARKE} Teil`,
@@ -443,7 +577,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
         quantity: 1,
         unit_price: 1,
       });
-      await addManualFig(A, {
+      await manuelleFigurAnlegen(A, {
         fig_number: 'fig-000002',
         fig_name: `${MARKE} Figur`,
         image_url: bild,
@@ -453,8 +587,8 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       });
     });
     await alsKonto(B, async () => {
-      await addManualFig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
-      await updateManualFig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
+      await manuelleFigurAnlegen(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+      await manuelleFigurAendern(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
       await importiereFigurenCsv(
         B,
         `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`,

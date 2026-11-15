@@ -14330,16 +14330,9 @@
             ]
           },
           "owner_user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "price_estimated": {
             "type": "boolean"
@@ -14361,7 +14354,11 @@
           "id",
           "quantity",
           "condition",
-          "price_estimated"
+          "created_at",
+          "owner_user_id",
+          "price_estimated",
+          "currency",
+          "preis_konto"
         ],
         "additionalProperties": {}
       },
@@ -14437,16 +14434,10 @@
             "type": "boolean"
           },
           "action": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "fig_number": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "fig_name": {
             "type": [
@@ -14468,7 +14459,9 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "action",
+          "fig_number"
         ],
         "additionalProperties": {}
       },
@@ -14479,16 +14472,10 @@
             "type": "boolean"
           },
           "action": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "part_number": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "part_name": {
             "type": [
@@ -14510,7 +14497,9 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "action",
+          "part_number"
         ],
         "additionalProperties": {}
       },
@@ -14521,16 +14510,10 @@
             "type": "boolean"
           },
           "action": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "set_number": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "name": {
             "type": [
@@ -14563,6 +14546,11 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "action",
+          "set_number"
+        ],
         "additionalProperties": {}
       },
       "AndereBeendet": {
@@ -14617,7 +14605,8 @@
         "required": [
           "success",
           "count",
-          "instructions"
+          "instructions",
+          "auftrag_id"
         ],
         "additionalProperties": {}
       },
@@ -14762,34 +14751,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -14810,6 +14782,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -14991,7 +14972,9 @@
         },
         "required": [
           "success",
-          "theme"
+          "theme",
+          "vorgabe",
+          "eigenes"
         ],
         "additionalProperties": {}
       },
@@ -15044,10 +15027,7 @@
             ]
           },
           "scope": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "ip_bereich": {
             "type": [
@@ -15056,16 +15036,22 @@
             ]
           },
           "rotiert_am": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           }
         },
         "required": [
           "token_id",
+          "label",
+          "created_at",
+          "last_used",
+          "expires_at",
           "never_expires",
-          "aktuell"
+          "aktuell",
+          "token_prefix",
+          "hard_expires_at",
+          "scope",
+          "ip_bereich",
+          "rotiert_am"
         ],
         "additionalProperties": {}
       },
@@ -15464,6 +15450,10 @@
             "maximum": 9007199254740991
           }
         },
+        "required": [
+          "gesamt",
+          "lose"
+        ],
         "additionalProperties": {}
       },
       "BestandGeleert": {
@@ -15528,6 +15518,10 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "bestand"
+        ],
         "additionalProperties": {}
       },
       "BildDiagnose": {
@@ -15772,7 +15766,8 @@
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "hex"
         ],
         "additionalProperties": {}
       },
@@ -15859,8 +15854,12 @@
           }
         },
         "required": [
+          "created_at",
           "set_number",
-          "attempts"
+          "name",
+          "attempts",
+          "retry_after",
+          "last_error"
         ],
         "additionalProperties": {}
       },
@@ -15958,11 +15957,13 @@
           }
         },
         "required": [
+          "db_pool",
           "success",
           "prices",
           "subsets",
           "catalog",
-          "price_stale"
+          "price_stale",
+          "rate_limits"
         ],
         "additionalProperties": {}
       },
@@ -16034,6 +16035,8 @@
         "required": [
           "success",
           "themes",
+          "year_min",
+          "year_max",
           "year_counts"
         ],
         "additionalProperties": {}
@@ -16163,9 +16166,17 @@
         },
         "required": [
           "set_number",
+          "name",
+          "year",
+          "theme_id",
+          "theme_name",
+          "num_parts",
+          "image_url",
           "minifigs",
           "owned",
-          "owned_quantity"
+          "owned_quantity",
+          "bricklink",
+          "preisvergleich_url"
         ],
         "additionalProperties": {}
       },
@@ -16193,7 +16204,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "set"
         ],
         "additionalProperties": {}
       },
@@ -16274,6 +16286,13 @@
         },
         "required": [
           "set_number",
+          "name",
+          "year",
+          "theme_id",
+          "theme_name",
+          "num_parts",
+          "image_url",
+          "image_local",
           "owned",
           "owned_quantity"
         ],
@@ -16461,6 +16480,11 @@
             ]
           }
         },
+        "required": [
+          "market_price",
+          "purchase_price",
+          "pnl_prozent"
+        ],
         "additionalProperties": {}
       },
       "CsvImportStatus": {
@@ -16550,34 +16574,17 @@
             "type": "boolean"
           },
           "status": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "total": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "done": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "current": {
             "type": [
@@ -16586,40 +16593,19 @@
             ]
           },
           "ok": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "warn": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "err": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "error": {
             "type": [
@@ -16632,7 +16618,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "error"
         ],
         "additionalProperties": {}
       },
@@ -16702,16 +16689,10 @@
         "type": "object",
         "properties": {
           "currency": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "default_condition": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "user_default_condition": {
             "type": [
@@ -16761,6 +16742,9 @@
           }
         },
         "required": [
+          "currency",
+          "default_condition",
+          "user_default_condition",
           "total_sets",
           "total_quantity",
           "total_pieces",
@@ -16918,34 +16902,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -16966,6 +16933,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -17333,34 +17309,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -17381,6 +17340,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -17720,16 +17688,9 @@
         "type": "object",
         "properties": {
           "kaufpreise_umgerechnet": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "success": {
             "type": "boolean"
@@ -18114,6 +18075,7 @@
           }
         },
         "required": [
+          "kaufpreise_umgerechnet",
           "success",
           "total",
           "page",
@@ -18122,6 +18084,7 @@
           "figs",
           "total_value",
           "wert_gesamt",
+          "preise_ausstehend",
           "kaufpreise_fremde_waehrung"
         ],
         "additionalProperties": {}
@@ -18174,7 +18137,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "message"
         ],
         "additionalProperties": {}
       },
@@ -18203,6 +18167,11 @@
             ]
           }
         },
+        "required": [
+          "number",
+          "pin",
+          "currency"
+        ],
         "additionalProperties": {}
       },
       "Geloescht": {
@@ -18755,7 +18724,8 @@
         },
         "required": [
           "id",
-          "username"
+          "username",
+          "via"
         ],
         "additionalProperties": {}
       },
@@ -18815,6 +18785,12 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "voucher",
+          "angezeigt",
+          "waehrung_geaendert"
+        ],
         "additionalProperties": {}
       },
       "Gutschein": {
@@ -18844,16 +18820,10 @@
             "type": "boolean"
           },
           "created_at": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "updated_at": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "guthaben_geprueft_am": {
             "type": [
@@ -18865,9 +18835,13 @@
         "required": [
           "id",
           "number",
+          "pin",
           "amount",
           "currency",
-          "hat_pdf"
+          "hat_pdf",
+          "created_at",
+          "updated_at",
+          "guthaben_geprueft_am"
         ],
         "additionalProperties": {}
       },
@@ -18920,6 +18894,9 @@
             ]
           }
         },
+        "required": [
+          "success"
+        ],
         "additionalProperties": {}
       },
       "GutscheinKlartext": {
@@ -19017,6 +18994,13 @@
             "maximum": 9007199254740991
           }
         },
+        "required": [
+          "results",
+          "added",
+          "updated",
+          "errors",
+          "total"
+        ],
         "additionalProperties": {}
       },
       "HouseholdInviteCheckResponse": {
@@ -19081,22 +19065,20 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "code",
+          "expires_in"
+        ],
         "additionalProperties": {}
       },
       "HouseholdMember": {
         "type": "object",
         "properties": {
           "tiefe": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "id": {
             "type": "integer",
@@ -19111,6 +19093,7 @@
           }
         },
         "required": [
+          "tiefe",
           "id",
           "username",
           "is_self"
@@ -19234,10 +19217,12 @@
           }
         },
         "required": [
+          "blickfeld",
           "success",
           "is_main",
           "is_sub",
           "currency",
+          "linked_to",
           "parents",
           "sub_accounts",
           "open_invites",
@@ -19261,10 +19246,7 @@
             ]
           },
           "set_number": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "user_id": {
             "anyOf": [
@@ -19279,16 +19261,9 @@
             ]
           },
           "id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "url": {
             "type": "string"
@@ -19310,7 +19285,11 @@
           }
         },
         "required": [
+          "set_number",
+          "id",
           "url",
+          "description",
+          "local_path",
           "is_manual"
         ],
         "additionalProperties": {}
@@ -19337,6 +19316,7 @@
           }
         },
         "required": [
+          "year",
           "n"
         ],
         "additionalProperties": {}
@@ -19489,6 +19469,7 @@
           }
         },
         "required": [
+          "db",
           "success",
           "jobs",
           "schedules"
@@ -19717,7 +19698,8 @@
           "is_admin",
           "is_active",
           "created_at",
-          "zweiter_faktor"
+          "zweiter_faktor",
+          "wartet_auf_bestaetigung"
         ],
         "additionalProperties": {}
       },
@@ -19751,6 +19733,7 @@
           }
         },
         "required": [
+          "figuren",
           "ort",
           "sets",
           "teile"
@@ -19804,6 +19787,10 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "ort"
+        ],
         "additionalProperties": {}
       },
       "LagerorteResponse": {
@@ -19855,6 +19842,9 @@
             ]
           }
         },
+        "required": [
+          "success"
+        ],
         "additionalProperties": {}
       },
       "LagerortVorgabeResponse": {
@@ -19880,6 +19870,10 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "vorgabe"
+        ],
         "additionalProperties": {}
       },
       "LagerortVorratResponse": {
@@ -19913,7 +19907,8 @@
         },
         "required": [
           "success",
-          "orte"
+          "orte",
+          "vorgabe"
         ],
         "additionalProperties": {}
       },
@@ -19943,14 +19938,7 @@
             ]
           },
           "user": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AnmeldeNutzer"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AnmeldeNutzer"
           },
           "error": {
             "type": [
@@ -19973,10 +19961,15 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           }
         },
         "required": [
-          "success"
+          "success",
+          "never_expires",
+          "keks_fehlt"
         ],
         "additionalProperties": {}
       },
@@ -20883,34 +20876,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -20931,6 +20907,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -21180,10 +21165,7 @@
             "type": "string"
           },
           "created_at": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "user_id": {
             "type": "integer",
@@ -21262,11 +21244,21 @@
           }
         },
         "required": [
+          "theme_id",
           "set_number",
           "condition",
+          "created_at",
           "user_id",
+          "name",
+          "year",
+          "num_parts",
+          "image_url",
+          "image_local",
+          "marktpreis",
           "waehrung",
-          "owned"
+          "owned",
+          "alarm",
+          "preisvergleich_url"
         ],
         "additionalProperties": {}
       },
@@ -21316,6 +21308,11 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "war_neu",
+          "merkposten"
+        ],
         "additionalProperties": {}
       },
       "MerkpostenGeloescht": {
@@ -21459,34 +21456,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -21507,6 +21487,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -21602,6 +21591,12 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "verschoben",
+          "zusammengefuehrt",
+          "owner_user_id"
+        ],
         "additionalProperties": {}
       },
       "MerkpostenPreiseResponse": {
@@ -21674,22 +21669,20 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "action",
+          "set_number"
+        ],
         "additionalProperties": {}
       },
       "MinifigStats": {
         "type": "object",
         "properties": {
           "unique_figs": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "types": {
             "type": "integer",
@@ -21708,6 +21701,7 @@
           }
         },
         "required": [
+          "unique_figs",
           "types",
           "total_quantity",
           "manual"
@@ -21787,6 +21781,19 @@
             ]
           }
         },
+        "required": [
+          "success",
+          "set_number",
+          "quantity",
+          "acquisitions",
+          "merged",
+          "parts",
+          "minifigs",
+          "instructions",
+          "source_emptied",
+          "from_user_id",
+          "to_user_id"
+        ],
         "additionalProperties": {}
       },
       "Papierkorb": {
@@ -21941,6 +21948,8 @@
           }
         },
         "required": [
+          "category_name",
+          "label",
           "unique_parts",
           "total_quantity"
         ],
@@ -21973,6 +21982,8 @@
           }
         },
         "required": [
+          "color_name",
+          "color_hex",
           "unique_parts",
           "total_quantity"
         ],
@@ -22046,7 +22057,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "stats"
         ],
         "additionalProperties": {}
       },
@@ -22054,16 +22066,9 @@
         "type": "object",
         "properties": {
           "kaufpreise_umgerechnet": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "success": {
             "type": "boolean"
@@ -22460,6 +22465,7 @@
           }
         },
         "required": [
+          "kaufpreise_umgerechnet",
           "success",
           "total",
           "page",
@@ -22468,6 +22474,7 @@
           "parts",
           "total_value",
           "wert_gesamt",
+          "preise_ausstehend",
           "kaufpreise_fremde_waehrung"
         ],
         "additionalProperties": {}
@@ -22493,10 +22500,7 @@
             ]
           },
           "created_at": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "last_used": {
             "type": [
@@ -22508,6 +22512,7 @@
         "required": [
           "id",
           "name",
+          "transports",
           "created_at",
           "last_used"
         ],
@@ -22607,11 +22612,16 @@
                 "type": "null"
               }
             ]
+          },
+          "keks_fehlt": {
+            "type": "boolean"
           }
         },
         "required": [
           "success",
-          "user"
+          "user",
+          "never_expires",
+          "keks_fehlt"
         ],
         "additionalProperties": {}
       },
@@ -22878,7 +22888,10 @@
         },
         "required": [
           "success",
-          "status"
+          "status",
+          "error",
+          "etaSeconds",
+          "missingImages"
         ],
         "additionalProperties": {}
       },
@@ -22909,7 +22922,8 @@
         },
         "required": [
           "success",
-          "alerts"
+          "alerts",
+          "now"
         ],
         "additionalProperties": {}
       },
@@ -22974,10 +22988,7 @@
             ]
           },
           "condition": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "image_local": {
             "type": [
@@ -23103,8 +23114,21 @@
           }
         },
         "required": [
+          "added_at",
+          "condition",
+          "image_local",
+          "image_url",
+          "name",
+          "pnl_abs",
+          "purchase_price",
+          "year",
           "set_number",
-          "quantity"
+          "quantity",
+          "current_price",
+          "baseline_price",
+          "pnl_betrag",
+          "pnl_prozent",
+          "baseline_pnl_prozent"
         ],
         "additionalProperties": {}
       },
@@ -23112,16 +23136,9 @@
         "type": "object",
         "properties": {
           "kaufpreise_umgerechnet": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "pnl_current": {
             "type": [
@@ -23163,28 +23180,16 @@
             "maximum": 9007199254740991
           },
           "sets_purchase": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "parts_purchase": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "figs_purchase": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "grand_total": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "positionen": {
             "type": "integer",
@@ -23223,9 +23228,17 @@
           }
         },
         "required": [
+          "kaufpreise_umgerechnet",
+          "pnl_current",
+          "pnl_purchase",
           "purchase",
           "current",
-          "kaufpreise_fremde_waehrung"
+          "pnl_prozent",
+          "kaufpreise_fremde_waehrung",
+          "sets_purchase",
+          "parts_purchase",
+          "figs_purchase",
+          "grand_total"
         ],
         "additionalProperties": {}
       },
@@ -23282,11 +23295,13 @@
           }
         },
         "required": [
+          "messpunkte",
           "success",
           "currency",
           "period",
           "points",
-          "y_axis"
+          "y_axis",
+          "period_change_pct"
         ],
         "additionalProperties": {}
       },
@@ -23603,6 +23618,8 @@
           "schwelle",
           "currency_code",
           "ausgeloest",
+          "zuletzt_am",
+          "zuletzt_preis",
           "besitzt"
         ],
         "additionalProperties": {}
@@ -23660,6 +23677,9 @@
             ]
           }
         },
+        "required": [
+          "success"
+        ],
         "additionalProperties": {}
       },
       "PreisJobStand": {
@@ -23902,7 +23922,9 @@
           }
         },
         "required": [
-          "recorded_at"
+          "recorded_at",
+          "qty_avg_price",
+          "avg_price"
         ],
         "additionalProperties": {}
       },
@@ -24016,7 +24038,11 @@
         "required": [
           "id",
           "username",
-          "email_verified"
+          "email",
+          "first_name",
+          "last_name",
+          "email_verified",
+          "email_neu"
         ],
         "additionalProperties": {}
       },
@@ -24161,34 +24187,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -24209,6 +24218,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -24297,7 +24315,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "user"
         ],
         "additionalProperties": {}
       },
@@ -24555,34 +24574,17 @@
                     "type": "string"
                   },
                   "condition": {
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                    "type": "string"
                   },
                   "acq_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "used_count": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   },
                   "conditions": {
                     "type": "array",
@@ -24603,6 +24605,15 @@
                     ]
                   }
                 },
+                "required": [
+                  "set_number",
+                  "condition",
+                  "acq_count",
+                  "used_count",
+                  "conditions",
+                  "max_purchase_price",
+                  "avg_purchase_price"
+                ],
                 "additionalProperties": {}
               },
               {
@@ -24674,14 +24685,7 @@
             ]
           },
           "user": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AnmeldeNutzer"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/AnmeldeNutzer"
           },
           "error": {
             "type": [
@@ -24852,7 +24856,8 @@
           "token",
           "kopplung",
           "expires_in",
-          "url"
+          "url",
+          "token_days"
         ],
         "additionalProperties": {}
       },
@@ -24934,7 +24939,9 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "message",
+          "email_sent"
         ],
         "additionalProperties": {}
       },
@@ -25160,7 +25167,9 @@
         },
         "required": [
           "success",
-          "set_number"
+          "set_number",
+          "name",
+          "im_katalog"
         ],
         "additionalProperties": {}
       },
@@ -25168,16 +25177,9 @@
         "type": "object",
         "properties": {
           "acq_count": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "letzter_kauf": {
             "type": [
@@ -25194,16 +25196,9 @@
             }
           },
           "id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "storage_id": {
             "anyOf": [
@@ -25224,16 +25219,9 @@
             ]
           },
           "user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "set_number": {
             "type": "string"
@@ -25367,16 +25355,9 @@
             ]
           },
           "used_count": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "instructions": {
             "type": "array",
@@ -25429,9 +25410,23 @@
           }
         },
         "required": [
+          "acq_count",
           "set_number",
+          "name",
+          "year",
+          "theme",
+          "pieces",
+          "minifigs",
           "quantity",
+          "image_url",
+          "image_local",
+          "added_at",
+          "condition",
+          "storage",
           "conditions",
+          "max_purchase_price",
+          "avg_purchase_price",
+          "used_count",
           "instructions"
         ],
         "additionalProperties": {}
@@ -25483,6 +25478,10 @@
           "success",
           "set_number",
           "currency",
+          "avg_price",
+          "min_price",
+          "max_price",
+          "qty_avg_price",
           "no_price"
         ],
         "additionalProperties": {}
@@ -25511,7 +25510,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "set"
         ],
         "additionalProperties": {}
       },
@@ -25648,7 +25648,8 @@
         "required": [
           "success",
           "imported",
-          "note"
+          "note",
+          "smtp_uebergangen"
         ],
         "additionalProperties": {}
       },
@@ -25666,6 +25667,7 @@
           }
         },
         "required": [
+          "mode",
           "success"
         ],
         "additionalProperties": {}
@@ -25712,8 +25714,10 @@
         },
         "required": [
           "ready",
+          "step",
           "progress",
-          "total"
+          "total",
+          "sub"
         ],
         "additionalProperties": {}
       },
@@ -25735,7 +25739,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "stats"
         ],
         "additionalProperties": {}
       },
@@ -25790,6 +25795,13 @@
             ]
           }
         },
+        "required": [
+          "bild",
+          "success",
+          "zusammengelegt",
+          "verschoben",
+          "vereint"
+        ],
         "additionalProperties": {}
       },
       "TlsStand": {
@@ -25864,6 +25876,7 @@
         },
         "required": [
           "scope",
+          "hard_expires_at",
           "never_expires"
         ],
         "additionalProperties": {}
@@ -25940,6 +25953,7 @@
         },
         "required": [
           "scope",
+          "hard_expires_at",
           "never_expires",
           "rotation_faellig"
         ],
@@ -25987,7 +26001,11 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "token",
+          "token_info",
+          "alt_gueltig_bis",
+          "ueberlappung_sek"
         ],
         "additionalProperties": {}
       },
@@ -26029,7 +26047,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "deleted"
         ],
         "additionalProperties": {}
       },
@@ -26112,6 +26131,7 @@
           "price_condition",
           "price_cache_ttl",
           "default_price_condition",
+          "user_default_condition",
           "effective_condition",
           "app_theme"
         ],
@@ -26121,22 +26141,12 @@
         "type": "object",
         "properties": {
           "kaufpreise_umgerechnet": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "guide_type": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "ttl_hours": {
             "type": [
@@ -26186,16 +26196,9 @@
             "type": "string"
           },
           "ttl_stunden": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "kaufpreise_fremde_waehrung": {
             "type": "integer",
@@ -26219,14 +26222,19 @@
           }
         },
         "required": [
+          "kaufpreise_umgerechnet",
+          "guide_type",
+          "ttl_hours",
           "success",
           "total",
           "page",
           "page_size",
           "total_value",
           "wert_gesamt",
+          "preise_ausstehend",
           "currency",
           "condition",
+          "ttl_stunden",
           "kaufpreise_fremde_waehrung",
           "sets",
           "totals"
@@ -26240,10 +26248,7 @@
             "type": "boolean"
           },
           "condition": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "conditions": {
             "type": "array",
@@ -26266,16 +26271,9 @@
             ]
           },
           "user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           },
           "set_number": {
             "type": "string"
@@ -26517,8 +26515,27 @@
           }
         },
         "required": [
+          "bl_unbekannt",
+          "condition",
+          "conditions",
+          "user_id",
           "set_number",
+          "added_at",
+          "name",
+          "year",
           "quantity",
+          "image_local",
+          "image_url",
+          "min_price",
+          "avg_price",
+          "max_price",
+          "qty_avg_price",
+          "total_qty_avg",
+          "preis_ausstehend",
+          "total_avg",
+          "wert_gesamt",
+          "pnl_prozent",
+          "purchase_price",
           "from_cache",
           "is_fallback",
           "no_price",
@@ -27391,7 +27408,8 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "codes"
         ],
         "additionalProperties": {}
       },
@@ -27421,7 +27439,9 @@
           }
         },
         "required": [
-          "success"
+          "success",
+          "geheimnis",
+          "otpauth"
         ],
         "additionalProperties": {}
       },

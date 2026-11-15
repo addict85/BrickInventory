@@ -256,6 +256,13 @@ async function main() {
     );
     // Die Leserolle bekommt ihre Spalten erst, wenn die Tabellen stehen (wie beim nächsten `compose up`).
     rollenAnlegen(basis, vorlage, r);
+    // Wie nach dem ersten Start des Dienstes jobs: Ein Web-Prozess wartet sonst auf die Umschlüsselung.
+    const v = new Client({ connectionString: mitDb(basis, vorlage) });
+    await v.connect();
+    await v.query(
+      `INSERT INTO laufzustand (schluessel, wert) VALUES ('altbestand_v2', 'Testvorlage') ON CONFLICT DO NOTHING`,
+    );
+    await v.end();
     env = { ...env, TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
   }
   let code = 0;
@@ -304,6 +311,8 @@ function rollenAnlegen(basis, vorlage, r) {
       DB_MIGRATION_PASSWORD: r.eigen.passwort,
       DB_SYSTEM_USER: r.system.name,
       DB_SYSTEM_PASSWORD: r.system.passwort,
+      DB_SYSTEM_WEB_USER: r.systemweb.name,
+      DB_SYSTEM_WEB_PASSWORD: r.systemweb.passwort,
       DB_LESEN_USER: r.lesen.name,
       PGWEB_DB_PASSWORD: '',
     },

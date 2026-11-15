@@ -46,7 +46,7 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
 
 // Wie bei Sets: Eine gebrauchte Erfassung macht den Eintrag gebraucht; eine Abfrage je Seite.
 type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
-export async function applyManualCondition<R extends Schluessel>(
+export async function manuellenZustandSetzen<R extends Schluessel>(
   k: BestandKontext,
   userId: number | number[],
   rows: R[],

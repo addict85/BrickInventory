@@ -6,7 +6,7 @@ import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { Benachrichtigung, type Signale } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import { fehlerCode, meldeFehler } from '../src/infra/fehler';
-import { konfig, datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
+import { konfig, datenbankVerbindung, systemVerbindung, systemWebVerbindung } from '../src/infra/konfig';
 import { queryWithRetry, istLesend } from './wiederholung';
 import { inTransaktionsPfad, zeilenKontext } from '../src/infra/kontoKontext';
 import {
@@ -61,6 +61,8 @@ export interface DbKonfig {
   pool: PoolConfig;
   /** Die Systemrolle für den Systemrahmen; ohne sie läuft er über `verbindung`. */
   system?: PoolConfig | null;
+  /** Die Systemrolle für den Systemrahmen von HTTP-Anfragen (nur Zugangstabellen); ohne sie `system`. */
+  systemWeb?: PoolConfig | null;
   /** In Tests wirft ein Ersatzwert in einer Transaktion auch ausserhalb der Datenbank (src/infra/fehler.ts). */
   streng?: boolean;
   /** Die Zeitzone des Erfassungstags, beim Start in die Datenbank geschrieben (schemaStart.ts). */
@@ -76,6 +78,7 @@ export function dbKonfigAusUmgebung(): DbKonfig {
   return {
     verbindung: datenbankVerbindung(),
     system: systemVerbindung(),
+    systemWeb: systemWebVerbindung(),
     streng: K.nodeEnv === 'test',
     erfassungZeitzone: K.erfassungZeitzone,
     pool: {
@@ -108,6 +111,8 @@ export interface Db extends DbSchnittstelle, Zugang<Db> {
   readonly pool: Pool;
   /** Der Pool der Systemrolle, ohne eigene Rolle derselbe wie `pool`. */
   readonly systemPool: Pool;
+  /** Der Pool für den Systemrahmen von HTTP-Anfragen, ohne eigene Rolle derselbe wie `systemPool`. */
+  readonly systemWebPool: Pool;
   /** Ob der Systemrahmen den Zeilenschutz wirklich aufhebt (BYPASSRLS, Eigentum oder Superuser). */
   systemrahmenWirkt(): Promise<boolean>;
   /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). In einer
@@ -130,22 +135,30 @@ export interface Db extends DbSchnittstelle, Zugang<Db> {
 
 // SQL geht unverändert an PostgreSQL.
 
-/** Pool der Laufzeitrolle und, wenn konfiguriert, der Systemrolle. */
-function erzeugePools(k: DbKonfig): { pool: Pool; systemPool: Pool } {
+/** Pool der Laufzeitrolle und, wenn konfiguriert, der Systemrollen. */
+function erzeugePools(k: DbKonfig): { pool: Pool; systemPool: Pool; systemWebPool: Pool } {
   // Pipeline: abfrage() schickt BEGIN mit Kontext, Abfrage und COMMIT zugleich, ein Roundtrip statt drei.
   const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
   pool.on('error', err => {
     console.error('[db-pool] idle client error:', err.message);
   });
-  const systemPool = k.system ? new Pool({ ...k.pool, ...k.system }) : pool;
-  if (systemPool !== pool) {
-    systemPool.on('error', err => console.error('[db-pool] idle client error (System):', err.message));
+  const weitere: Pool[] = [];
+  const neben = (c: PoolConfig | null | undefined, name: string, sonst: Pool): Pool => {
+    if (!c) return sonst;
+    const p = new Pool({ ...k.pool, ...c });
+    p.on('error', err => console.error(`[db-pool] idle client error (${name}):`, err.message));
+    weitere.push(p);
+    return p;
+  };
+  const systemPool = neben(k.system, 'System', pool);
+  const systemWebPool = neben(k.systemWeb, 'System, Web', systemPool);
+  if (weitere.length) {
     // Wer den Zugang schliesst, schliesst pool; die Systemverbindungen hielten den Prozess sonst offen.
     const schliesse = pool.end.bind(pool);
-    pool.end = (() => Promise.all([schliesse(), systemPool.end()]).then(() => undefined)) as Pool['end'];
+    pool.end = (() => Promise.all([schliesse(), ...weitere.map(p => p.end())]).then(() => undefined)) as Pool['end'];
   }
-  return { pool, systemPool };
+  return { pool, systemPool, systemWebPool };
 }
 
 /** Was abfrage() und einmaligeTransaktion() über ihren Zugang wissen müssen. */
@@ -153,12 +166,16 @@ interface Rahmen {
   ich: object;
   pool: Pool;
   systemPool: Pool;
+  systemWebPool: Pool;
   streng: boolean;
   /** Der beständige Zugang je Verbindung (verbindungsZugang). */
   jeVerbindung: WeakMap<PoolClient, Verbindungsplatz>;
 }
 
-const poolDesRahmens = (r: Rahmen): Pool => (zeilenKontext().system ? r.systemPool : r.pool);
+function poolDesRahmens(r: Rahmen): Pool {
+  const { system, web } = zeilenKontext();
+  return system ? (web ? r.systemWebPool : r.systemPool) : r.pool;
+}
 
 /** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht; wer mitten in
  * ihr den Rahmen wechselt, fragte über eine zweite Verbindung neben ihr (ohne ihren
@@ -168,7 +185,7 @@ function offeneTx(r: Rahmen): TxStand | null {
   return t?.offen && t.db === r.ich ? t : null;
 }
 function pruefeRahmen(r: Rahmen, t: TxStand): void {
-  if (t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool === r.systemPool);
+  if (t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool !== r.pool);
 }
 /** Der ungebundene Zugang fragt nie in eine offene Transaktion dieses Pfads hinein. */
 function wache(r: Rahmen): void {
@@ -346,8 +363,15 @@ function neuerPlatz(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
-  const { pool, systemPool } = erzeugePools(k);
-  const r: Rahmen = { ich: {}, pool, systemPool, streng: k.streng === true, jeVerbindung: new WeakMap() };
+  const { pool, systemPool, systemWebPool } = erzeugePools(k);
+  const r: Rahmen = {
+    ich: {},
+    pool,
+    systemPool,
+    systemWebPool,
+    streng: k.streng === true,
+    jeVerbindung: new WeakMap(),
+  };
   const zaehler = { sicherungspunkte: 0 };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
@@ -383,6 +407,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const zugang: Db = {
     pool,
     systemPool,
+    systemWebPool,
     systemrahmenWirkt: async () =>
       (
         await systemPool.query<{ frei: boolean }>(

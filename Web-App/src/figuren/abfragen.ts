@@ -15,7 +15,7 @@ type FigurenWunsch = {
   page?: number | undefined;
   page_size?: number | null | undefined;
 };
-export async function getMinifigs(
+export async function figurenAbfrage(
   k: FigurenKontext,
   userIdWahl: Sicht | number | number[],
   { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {},
@@ -56,7 +56,7 @@ export async function getMinifigs(
 }
 
 // Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
-export async function getMinifigStats(k: FigurenKontext, userIdWahl: Sicht | number | number[]) {
+export async function figurenKennzahlenLesen(k: FigurenKontext, userIdWahl: Sicht | number | number[]) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const row = await k.figurenListe.figurenKennzahlen(uids);
@@ -70,7 +70,7 @@ export async function getMinifigStats(k: FigurenKontext, userIdWahl: Sicht | num
 }
 
 /** @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten. */
-export async function getManualMinifigs(
+export async function manuelleFigurenAbfrage(
   k: FigurenKontext,
   userIdWahl: Sicht | number | number[],
   viewerId: number,

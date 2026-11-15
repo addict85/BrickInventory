@@ -8,7 +8,7 @@ import { G, setzeHtml } from './dom.js';
 import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { feldFehler } from './formular.js';
-import { CURRENCY, ME, allSets, curSet, set_curSet } from './zustand.js';
+import { kontoWaehrung, angemeldetesKonto, galerieSets, offenesSet, setzeOffenesSet } from './zustand.js';
 import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './scope.js';
 import { tRaw } from '../i18n.js';
 
@@ -31,9 +31,9 @@ export async function speichereSetLagerort(sn) {
   }
   // Die Liste im Hintergrund trägt den Ort ebenfalls — ohne Nachziehen zeigte die Kachel den alten, bis
   // jemand neu lädt.
-  const eintrag = (allSets || []).find(x => x.set_number === sn);
-  if (eintrag) eintrag.storage = d.storage;
-  if (curSet && curSet.set_number === sn) curSet.storage = d.storage;
+  const eintrag = (galerieSets || []).find(x => x.set_number === sn);
+  if (eintrag) eintrag.storage = d.storage ?? null;
+  if (offenesSet && offenesSet.set_number === sn) offenesSet.storage = d.storage ?? null;
   meldeAmFeld(el);
   await ladeLagerorte();
 }
@@ -76,9 +76,9 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
         <option value="ueber">${tRaw('detail.alert_above')}</option>
       </select>
       <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${tRaw('detail.alert_preis_ph')}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${CURRENCY})"
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${kontoWaehrung})"
              data-input="alarmGetippt" data-arg="${sn}"
-             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${CURRENCY}</span>
+             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${kontoWaehrung}</span>
       <span id="${p}-alert-state" class="alarm-stand"></span>
       <button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="alarme">${tRaw('detail.alle_alarme')}</button>
     `;
@@ -325,8 +325,8 @@ async function sendeAlarm(sn, richtung, roh) {
  * Abfrage der App. Die Marke kommt vom Server (keine eigene Uhr) und gilt je Konto.
  */
 export async function zeigeOffeneAlarme() {
-  if (!ME?.id) return;
-  const schluessel = 'bim_alarm_marke_' + ME.id;
+  if (!angemeldetesKonto?.id) return;
+  const schluessel = 'bim_alarm_marke_' + angemeldetesKonto.id;
   /** @type {string | null} */
   let marke = null;
   try {
@@ -429,7 +429,7 @@ export function setzeMengenfeld(menge) {
 // darunter.
 export function closeModal() {
   G('set-modal').classList.remove('open');
-  set_curSet(null);
+  setzeOffenesSet(null);
 }
 
 registerActions({

@@ -227,7 +227,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
 test('db/ importiert nichts aus jobs/', () => {
   // Die Datenbankschicht ist die unterste; die Bilddienste startet
   // startup/datenbank.ts. Gegenprobe (28.10.2026): der Import von
-  // initImageQueue zurück in db/database.ts → rot.
+  // bildbedarfEinrichten zurück in db/database.ts → rot.
   const treffer = [];
   for (const d of innereDateien().filter(f => f.startsWith('db/')))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
@@ -766,15 +766,15 @@ function wertExporte(index) {
  * in einer Transaktion über `t` läuft und ein Test es an der Verdrahtung ersetzt. */
 function indexOhneZugang(indizes) {
   // Gegenproben (14.11.2026): `export { katalogStand } from './setStamm'` zurück in
-  // src/katalog/index.ts → rot (src/katalog.katalogStand); `export { generateThumb } from './thumbs'`
+  // src/katalog/index.ts → rot (src/katalog.katalogStand); `export { vorschauErzeugenAus } from './thumbs'`
   // in src/bilder/index.ts → rot (asynchron).
   const alle = indizes.filter(i => !/^src\/(?:infra|vertrag|http)\//.test(i)).flatMap(wertExporte);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
     alle.some(x => x.name === 'src/haushalt.asIds' && !x.zugang) &&
       deklaration('src/sets/lesen', 'setsLesen')?.zugang &&
-      deklaration('src/bilder/thumbs', 'generateThumb')?.zugang,
-    'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und generateThumb (asynchron) haben Zugang',
+      deklaration('src/bilder/thumbs', 'vorschauErzeugenAus')?.zugang,
+    'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und vorschauErzeugenAus (asynchron) haben Zugang',
   );
   assert.deepEqual(
     alle.filter(x => x.zugang).map(x => x.name),
@@ -805,7 +805,7 @@ test('Routen lösen keine Konten auf — das tun die Dienste', () => {
   // Gegenprobe (05.11.2026): `await blickfeldIds(req.apiUser.user_id)` zurück in
   // routes/api_v1/misc.ts → rot.
   const AUFLOESUNG =
-    /\b(?:blickfeldIds|schreibbereich|schreibzielOderNull|parseScopeMode|darfSchreibenFuer|asIds|lagerKonten|blickfeldAus|schreibbereichAus)\s*\(/;
+    /\b(?:blickfeldIds|schreibbereich|schreibzielOderNull|blickfeldArt|darfSchreibenFuer|asIds|lagerKonten|blickfeldAus|schreibbereichAus)\s*\(/;
   const dateien = tsUnter('routes');
   assert.ok(dateien.length > 15, 'zu wenige Routendateien gefunden');
   assert.deepEqual(

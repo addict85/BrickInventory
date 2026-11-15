@@ -5,13 +5,13 @@ import { DEGRADIERT, GenericResponse } from './gemeinsam';
 export const GetrenntesKonto = z.looseObject({
   id: z.number().int(),
   username: z.string(),
-  via: z.string().nullable().optional(),
+  via: z.string().nullable(),
 });
 
 export const HouseholdInviteResponse = z.looseObject({
-  success: z.boolean().optional(),
-  code: z.string().nullable().optional(),
-  expires_in: z.number().int().nullable().optional(),
+  success: z.boolean(),
+  code: z.string().nullable(),
+  expires_in: z.number().int().nullable(),
   error: z.string().nullable().optional(),
 });
 
@@ -21,7 +21,7 @@ export const HouseholdInviteCheckResponse = z.looseObject({
 });
 
 export const HouseholdMember = z.looseObject({
-  tiefe: z.number().int().nullable().optional(),
+  tiefe: z.number().int(),
   id: z.number().int(),
   username: z.string(),
   is_self: z.boolean(),
@@ -33,12 +33,12 @@ export const HouseholdMembersResponse = z.looseObject({
 });
 
 export const HouseholdStatusResponse = z.looseObject({
-  blickfeld: z.array(HouseholdMember).optional(),
+  blickfeld: z.array(HouseholdMember),
   success: z.boolean(),
   is_main: z.boolean(),
   is_sub: z.boolean(),
   currency: z.string(),
-  linked_to: KontoName.nullable().optional(),
+  linked_to: KontoName.nullable(),
   parents: z.array(KontoName),
   sub_accounts: z.array(HouseholdMember),
   open_invites: z.number().int(),

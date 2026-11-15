@@ -38,8 +38,8 @@ import { DEGRADIERT, GenericResponse } from './gemeinsam';
 export const AppThemeResponse = z.looseObject({
   success: z.boolean(),
   theme: z.string(),
-  vorgabe: z.string().nullable().optional(),
-  eigenes: z.string().nullable().optional(),
+  vorgabe: z.string().nullable(),
+  eigenes: z.string().nullable(),
   error: z.string().nullable().optional(),
 });
 
@@ -53,7 +53,7 @@ export const UserSettings = z.looseObject({
   price_condition: z.string(),
   price_cache_ttl: z.string(),
   default_price_condition: z.string(),
-  user_default_condition: z.string().nullable().optional(),
+  user_default_condition: z.string().nullable(),
   effective_condition: z.string(),
   app_theme: z.string(),
 });
@@ -68,11 +68,11 @@ export const StartupStatus = z.looseObject({
   fehler: z.string().nullable().optional(),
   pfad: z.string().nullable().optional(),
   ready: z.boolean(),
-  step: z.string().nullable().optional(),
+  step: z.string().nullable(),
   // Erledigte Schritte mit Anteil des laufenden (2.37 = Schritt 3 zu 37 %).
   progress: z.number().nonnegative(),
   total: z.number().int(),
-  sub: z.string().nullable().optional(),
+  sub: z.string().nullable(),
 });
 
 export const Einrichtung = z.looseObject({
@@ -133,7 +133,7 @@ export const SicherungEingespielt = z.looseObject({
   success: z.literal(true),
   imported: ganz,
   note: z.string(),
-  smtp_uebergangen: z.array(z.string()).optional(),
+  smtp_uebergangen: z.array(z.string()),
 });
 /** Ohne Anmeldung erreichbar (compose.yaml); alles ausser dem Status nur für den Verwalter. */
 export const Gesundheit = z.looseObject({
@@ -147,7 +147,7 @@ export const Lebenszeichen = z.strictObject({ status: z.literal('ok') });
 
 /** Ergebnis des Versands; bei Erfolg ohne Fehlertext. */
 export const SmtpProbe = z.looseObject({
-  mode: z.string().nullable().optional(),
+  mode: z.string().nullable(),
   success: z.boolean(),
 });
 

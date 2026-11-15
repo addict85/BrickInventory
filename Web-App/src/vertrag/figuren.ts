@@ -13,8 +13,8 @@ import {
 
 export const AddMinifigResponse = z.looseObject({
   success: z.boolean(),
-  action: z.string().nullable().optional(),
-  fig_number: z.string().nullable().optional(),
+  action: z.string(),
+  fig_number: z.string(),
   fig_name: z.string().nullable().optional(),
   price_from_condition: z.string().nullable().optional(),
   error: z.string().nullable().optional(),
@@ -30,7 +30,7 @@ export const ManualFigsResponse = z.looseObject({
 });
 
 export const MinifigStats = z.looseObject({
-  unique_figs: z.number().int().nullable().optional(),
+  unique_figs: z.number().int(),
   types: z.number().int(),
   total_quantity: z.number().int(),
   manual: z.number().int(),

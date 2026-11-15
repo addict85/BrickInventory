@@ -1,7 +1,7 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
  * Sekunden braucht. */
 import { meldeFehler } from '../infra/fehler';
-import { imSystemkontext } from '../infra/kontoKontext';
+import { imSystemkontext, zeilenKontext } from '../infra/kontoKontext';
 import * as repo from './repository/teileZusammenfassung';
 import type { TeileKontext } from './kontext';
 
@@ -86,8 +86,13 @@ export async function zusammenfassungFrisch(
   }
 }
 
-/** Ein Nachzug je Zugang: Die Konten eines Haushalts fragen gleichzeitig. */
-function katalogEinmalNachziehen(k: TeileKontext) {
+/** Ein Nachzug je Zugang: Die Konten eines Haushalts fragen gleichzeitig. Eine Anfrage stellt ihn
+ * als Auftrag ein, weil die Web-Systemrolle fremde Bestände nicht erreicht; bis dahin alte BL-Nummern. */
+async function katalogEinmalNachziehen(k: TeileKontext) {
+  if (zeilenKontext().web) {
+    await k.auftraege.stelleAuftragEin('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
+    return { konten: 0, gruppen: 0 };
+  }
   const z = zustand(k);
   z.nachzug ??= zieheKatalogNach(k).finally(() => {
     z.nachzug = null;

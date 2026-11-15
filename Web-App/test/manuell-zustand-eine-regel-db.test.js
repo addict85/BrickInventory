@@ -13,8 +13,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { getManualParts } = _req('src/teile/abfragen.js');
-const { getManualMinifigs } = _req('src/figuren/abfragen.js');
+const { manuelleTeileListe } = _req('src/teile/abfragen.js');
+const { manuelleFigurenAbfrage } = _req('src/figuren/abfragen.js');
 const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
@@ -76,9 +76,9 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
     }
 
     const [liste, bewertung, figListe, figBewertung] = await Promise.all([
-      getManualParts([uid]),
+      manuelleTeileListe([uid]),
       computePartsValuation(uid, [uid]),
-      getManualMinifigs([uid]),
+      manuelleFigurenAbfrage([uid]),
       computeMinifigsValuation(uid, [uid]),
     ]);
 

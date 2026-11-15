@@ -18,6 +18,8 @@
  *      `pull_policy: build` → rot: „ohne BRICK_IMAGE und CADDY_IMAGE …“
  *   G  (13.11.2026) den Aufruf von geheimnisse-einrichten.sh gestrichen → rot:
  *      „ein Update legt das neue Geheimnis der Systemrolle an …“
+ *   H  (15.11.2026) im Skript nur noch auf db_system_password geprüft → rot:
+ *      „… auch das der Web-Systemrolle …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -200,4 +202,18 @@ test('ein Update legt das neue Geheimnis der Systemrolle an, die übrigen bleibe
   const ohne = lauf(t, { cosignAntwort: signatur(D1) });
   assert.equal(ohne.code, 0, ohne.log);
   assert.equal(ohne.hatGeheimnisse, false, 'ohne ./geheimnisse legt das Update keine an');
+});
+
+test('… auch das der Web-Systemrolle, wenn nur es fehlt', t => {
+  const alt = {
+    db_password: 'su',
+    db_app_password: 'app',
+    db_migration_password: 'mig',
+    db_system_password: 'sys',
+    session_secret: 's'.repeat(48),
+  };
+  const r = lauf(t, { cosignAntwort: signatur(D1), geheim: alt });
+  assert.equal(r.code, 0, r.log);
+  assert.match(r.geheim('db_system_web_password'), /^[0-9a-f]{48}$/);
+  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} verändert`);
 });

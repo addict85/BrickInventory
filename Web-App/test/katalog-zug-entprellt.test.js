@@ -33,6 +33,8 @@ async function zugMessen(entprellt) {
   let code =
     ohneModulhuelle(fs.readFileSync(path.join(JS, 'bausteine.js'), 'utf8')) +
     '\n' +
+    ohneModulhuelle(fs.readFileSync(path.join(JS, 'lader.js'), 'utf8')) +
+    '\n' +
     ohneModulhuelle(fs.readFileSync(path.join(JS, 'catalog.js'), 'utf8'));
   if (!entprellt) {
     const vorher = code;

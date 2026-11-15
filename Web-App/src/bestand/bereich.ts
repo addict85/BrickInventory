@@ -1,4 +1,5 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
@@ -18,14 +19,14 @@ export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
 export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<BestandKontext>) {
   return baueBereich(
     a,
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: BestandKontext) => ({
-      bucheTageserfassung: mit(k)(acquisitions.recordAcquisitionForDay),
-      erfassungAmSelbenTag: mit(k)(acquisitions.findSameDayAcquisition),
+      bucheTageserfassung: mit(k)(acquisitions.kaufAmTagErfassen),
+      erfassungAmSelbenTag: mit(k)(acquisitions.kaufAmSelbenTag),
       setzeGeschaetztenPreis: mit(k)(acquisitions.setzeGeschaetztenPreis),
       erfassungenInKontowaehrung: mit(k)(acquisitions.erfassungenInKontowaehrung),
-      teileAlsCsv: mit(k)(bestandExportDienst.buildPartsCsv),
-      figurenAlsCsv: mit(k)(bestandExportDienst.buildFigsCsv),
+      teileAlsCsv: mit(k)(bestandExportDienst.teileCsv),
+      figurenAlsCsv: mit(k)(bestandExportDienst.figurenCsv),
       verwendendeSets: mit(k)(gemeinsamDienst.verwendendeSets),
       loescheManuellesTeil: mit(k)(gemeinsamDienst.loescheManuellesTeil),
       loescheManuelleFigur: mit(k)(gemeinsamDienst.loescheManuelleFigur),
@@ -43,7 +44,7 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
         figurenDesKontos: mit(k)(inhalt.figurenDesKontos),
         teilzeileUmfaerben: mit(k)(inhalt.teilzeileUmfaerben),
       },
-      setzeManuellenZustand: mit(k)(gemeinsamDienst.applyManualCondition),
+      setzeManuellenZustand: mit(k)(gemeinsamDienst.manuellenZustandSetzen),
       bestandsKennzahlen: mit(k)(kennzahlenDienst.getStats),
       passeManuelleMengeAn: mit(k)(manuelleMenge.passeManuelleMengeAn),
       legeInPapierkorb: mit(k)(papierkorbDienst.legeInPapierkorb),

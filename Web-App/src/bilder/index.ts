@@ -8,7 +8,7 @@ export {
   proxyCachePathFor,
   proxyCacheSchluessel,
   proxyImageUrl,
-  resolveIfExists,
+  bildFallsVorhanden,
   resolveImageLocal,
 } from './images';
 export { imgProxyFailures } from './imgProxyStats';

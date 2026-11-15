@@ -1,5 +1,6 @@
 /** Die Fabrik der Bilder. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern
  * dieses Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess teilen nichts. */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as bildbedarfDienst from './bildbedarf';
@@ -13,7 +14,7 @@ import * as imgCacheServe from './imgCacheServe';
 import * as bildDatei from './bildDatei';
 import * as vorschauenEinpassen from './vorschauenEinpassen';
 import { setBildHerunterladen } from './setImages';
-import { generateThumb } from './thumbs';
+import { vorschauErzeugenAus } from './thumbs';
 import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
 
 export type { Bildwerk, BilderAbhaengigkeiten, BilderKontext } from './kontext';
@@ -25,11 +26,11 @@ export function erzeugeBilder(
 ) {
   const bildwerk = a.bildwerk ?? {
     setBildLaden: (url: string, sn: string, info?: { status?: number }) => setBildHerunterladen(a, url, sn, info),
-    vorschauErzeugen: generateThumb,
+    vorschauErzeugen: vorschauErzeugenAus,
   };
   return baueBereich(
     { ...a, bildwerk, faecher: new Faecher() },
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: BilderKontext) => ({
       /** Grenzen des Bild-Proxys und des Caches aus der gereichten Konfiguration. */
       bildGrenzen: () => ({
@@ -44,7 +45,7 @@ export function erzeugeBilder(
       merkeGebraucht: mit(k)(bildbedarfDienst.merkeGebraucht),
       bildEinmalVormerken: mit(k)(bildbedarfDienst.bildEinmalVormerken),
       auftragsarten: () => bilderAuftragsarten(k),
-      starteBildbedarf: mit(k)(bildbedarfLauf.initImageQueue),
+      starteBildbedarf: mit(k)(bildbedarfLauf.bildbedarfEinrichten),
       stoppeBildbedarf: mit(k)(bildbedarfLauf.stoppeBildbedarf),
       beiSetBildGeladen: mit(k)(bildbedarfDienst.beiSetBildGeladen),
       meldeSetBildGeladen: mit(k)(bildbedarfDienst.meldeSetBildGeladen),
@@ -52,7 +53,7 @@ export function erzeugeBilder(
       setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
       vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
       vergissFehlend: mit(k)(imageMisses.vergissFehlend),
-      starteFehlanzeige: mit(k)(imageMisses.initImageMisses),
+      starteFehlanzeige: mit(k)(imageMisses.bildFehlstellenEinrichten),
       stoppeFehlanzeige: mit(k)(imageMisses.stoppeFehlanzeige),
       istBekanntFehlend: mit(k)(imageMisses.istBekanntFehlend),
       merkeFehlend: mit(k)(imageMisses.merkeFehlend),

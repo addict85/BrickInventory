@@ -48,7 +48,7 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
       await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
-      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
+      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }
@@ -62,7 +62,7 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
       // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
       await setzeFigurBildLokal(kx, f.fig_number, local);
-      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
+      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }

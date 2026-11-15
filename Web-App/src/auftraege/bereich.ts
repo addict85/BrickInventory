@@ -1,4 +1,5 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import { Arten, type Anmeldung } from './arten';
@@ -23,7 +24,7 @@ export function erzeugeAuftraege(
   const arten = new Arten();
   return baueBereich(
     { ...a, faecher: new Faecher(), arten },
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: AuftraegeKontext) => ({
       meldeArtAn: (an: Anmeldung) => arten.melde(an),
       angemeldeteArten: () => arten.alle(),

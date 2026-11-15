@@ -1,7 +1,7 @@
 import type * as repo from './repository/katalogSuche';
 
-import { dateiStamm, resolveIfExists, resolveImageLocal } from '../bilder';
-import { resolveOne, resolveViaApi } from './bricklinkLink';
+import { dateiStamm, bildFallsVorhanden, resolveImageLocal } from '../bilder';
+import { einesAufloesen, ueberSchnittstelleAufloesen } from './bricklinkLink';
 import { fuerSet } from './preisvergleich';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
@@ -146,13 +146,13 @@ export async function katalogSet(k: KatalogKontext, userId: number, roh: string)
   const m = invId ? await k.katalogSuche.figurenImInventar(invId) : undefined;
   const tree = await getThemeTree(k);
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
-  let bricklink = await resolveOne(k, set.set_number);
+  let bricklink = await einesAufloesen(k, set.set_number);
   // Scheitert die Prüfung, bleibt der Link als ungeprüft (resolved: false) gekennzeichnet.
   if (!bricklink.resolved) {
-    const r = await versuche('katalog:bricklink', resolveViaApi(k, set.set_number));
+    const r = await versuche('katalog:bricklink', ueberSchnittstelleAufloesen(k, set.set_number));
     if (r.ok) bricklink = r.wert;
   }
-  let image_local = resolveIfExists(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
+  let image_local = bildFallsVorhanden(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.

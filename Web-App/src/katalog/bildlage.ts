@@ -19,7 +19,7 @@ export async function bilderFuerNachlauf(k: KatalogKontext) {
 
 /** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
 export async function fuelleAusBrickset(k: KatalogKontext, setNumber: string): Promise<boolean> {
-  const info = await k.fremdquellen.quellen.getSetInfo(setNumber);
+  const info = await k.fremdquellen.quellen.setAngaben(setNumber);
   if (!info) return false;
   // Scheitert es, wirft es: Der Auftrag versucht es erneut, statt das Set namenlos zu lassen.
   await k.bildlage.fuelleSetLuecken(setNumber, info);
@@ -107,7 +107,7 @@ export async function setBilderNachladen(k: KatalogKontext): Promise<void> {
     // Ein Fehlschlag zählt im Abschluss; der nächste Lauf findet das Bild wieder ohne Eintrag.
     if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.merkeSetBildLokal(set_number, local))).ok)
       gescheitert++;
-    if (local && !(await versuche('nachlauf:generateThumb', k.bilder.vorschauErzeugen(local))).ok) gescheitert++;
+    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.bilder.vorschauErzeugen(local))).ok) gescheitert++;
     await new Promise(r => setTimeout(r, 300));
   }
   console.log(`[set-img-bg] Done${gescheitert ? `, ${gescheitert} Schritte gescheitert` : ''}`);
@@ -137,7 +137,7 @@ export async function vorschaubilderNachtragen(k: KatalogKontext): Promise<void>
   for (const { web: localPath, datei: fsPath } of lokale) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
-    if ((await versuche('nachlauf:generateThumb', k.bilder.vorschauErzeugen(localPath))).ok) generated++;
+    if ((await versuche('nachlauf:vorschauErzeugenAus', k.bilder.vorschauErzeugen(localPath))).ok) generated++;
     else gescheitert++;
     if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
   }

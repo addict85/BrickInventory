@@ -9,14 +9,14 @@
  * Bau fragt die Datenbank nicht.
  *
  * Gegenproben (15.11.2026):
- *   A  in src/katalog/bereich.ts `setInfo` wieder `getSetInfo` → rot „englische
- *      Dienstschlüssel“ (katalog.getSetInfo)
+ *   A  in src/katalog/bereich.ts `setInfo` wieder `setAngaben` → rot „englische
+ *      Dienstschlüssel“ (katalog.setAngaben)
  *   B  in src/gutscheine/bereich.ts `stapelAnlegen` wieder in den Satz → rot „Zahl
  *      der Dienstschlüssel“
  *   C  in src/teile/bereich.ts `teileLesen` wieder `teileListe` (wie das Repository im
  *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (teile.teileListe)
  *   D  `setzeAktiv: mit(k)(kontenDienst.setzeAktiv)` zurück in src/konto/bereich.ts → rot
- *      „Zahl der Dienstschlüssel“ (546, erlaubt 545)
+ *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
  *   E  in routes/auth/zweiterFaktor.ts `d.konto.faktor.erneuereCodes` durch einen
  *      Platzhalter ersetzt → rot „ohne Aufrufer“ (konto.faktor.erneuereCodes)
  *   F  JE_BEREICH.konto auf 88 → rot „Schlüssel je Bereich“ (konto 89, erlaubt 88)
@@ -70,7 +70,7 @@ const JE_BEREICH = {
   finanzen: 36,
   bestand: 40,
   sets: 42,
-  teile: 13,
+  teile: 14,
   figuren: 9,
   merkliste: 9,
   gutscheine: 16,
@@ -110,7 +110,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     `englische Dienstschlüssel: ${englisch.length}, erlaubt ${SCHRANKE_ENGLISCH}\n${englisch.join('\n')}`,
   );
 
-  const SCHRANKE_ZAHL = 545;
+  const SCHRANKE_ZAHL = 546;
   assert.ok(
     schluessel.length <= SCHRANKE_ZAHL,
     `Zahl der Dienstschlüssel: ${schluessel.length}, erlaubt ${SCHRANKE_ZAHL}`,

@@ -8,7 +8,7 @@
  *      Konto wie vorher) → rot: „ein fremdes Set wird nicht importiert“ und
  *      „das Set des Unterkontos … für dessen Besitzer“
  *   B  Drossel entfernt → rot: „je Konto höchstens 30 Importe je Stunde“
- *   C  der Merker `_leer` in getAllSetParts() nicht gelesen → rot: „eine
+ *   C  der Merker `_leer` in alleTeileDesSets() nicht gelesen → rot: „eine
  *      leere Antwort wird gemerkt“ (zwei Abrufe statt einem)
  *   D  (14.11.2026) in teileDesSetsImportieren() wieder ein Fang, der meldet
  *      und 0 liefert (früher importPartsForSet) → rot: „ein gescheiterter
@@ -129,10 +129,10 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   });
 
   await t.test('eine leere Antwort wird gemerkt', async () => {
-    const { getAllSetParts } = _req('src/katalog/rebrickableKatalog.js');
+    const { alleTeileDesSets } = _req('src/katalog/rebrickableKatalog.js');
     const leer = `TIL${P}-1`;
-    assert.deepEqual(await getAllSetParts(leer), []);
-    assert.deepEqual(await getAllSetParts(leer), []);
+    assert.deepEqual(await alleTeileDesSets(leer), []);
+    assert.deepEqual(await alleTeileDesSets(leer), []);
     assert.deepEqual(abrufe, [leer], 'die zweite Frage ging wieder an Rebrickable');
   });
 });

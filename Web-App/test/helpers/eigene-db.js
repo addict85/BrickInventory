@@ -3,7 +3,7 @@
  * Vorgeladen in jede Testdatei (scripts/test-lauf.js): eine eigene Kopie der Vorlage,
  * damit Dateien parallel laufen, ohne Zeilen, NOTIFY-Kanäle oder Sperren zu teilen.
  * Die App verbindet sich wie im Betrieb als Laufzeitrolle, der Systemrahmen als
- * Systemrolle, Testdaten schreibt die Eigentümerin (helpers/rollen.js, sources.js);
+ * Systemrolle (in HTTP-Anfragen als Web-Systemrolle), Testdaten schreibt die Eigentümerin (helpers/rollen.js, sources.js);
  * Dateien mit der Marke `@superuser` laufen noch als Superuser.
  */
 // Nur im Kind des Test-Runners und nur einmal: Gestartete Server erben die Umgebung samt Marke.
@@ -29,6 +29,8 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
   if (!superuser) {
     process.env.PGSYSTEM_USER = r.system.name;
     process.env.PGSYSTEM_PASSWORD = r.system.passwort;
+    process.env.PGSYSTEM_WEB_USER = r.systemweb.name;
+    process.env.PGSYSTEM_WEB_PASSWORD = r.systemweb.passwort;
   }
   process.env.TEST_DB_EIGEN = name;
   process.on('exit', () => {

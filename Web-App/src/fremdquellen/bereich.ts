@@ -25,14 +25,14 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   einblick?.(k);
   const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt);
   const kontingent = {
-    kontingentStand: mit(k)(apiKontingentDienst.getRateLimitStatus),
+    kontingentStand: mit(k)(apiKontingentDienst.kontingentUebersicht),
     kontingentFrei: mit(k)(apiKontingentDienst.kontingentFrei),
     setzeKontingentZurueck: mit(k)(apiKontingentDienst.setzeKontingentZurueck),
-    kontingentGrenze: mit(k)(apiKontingentDienst.getLimitForApi),
+    kontingentGrenze: mit(k)(apiKontingentDienst.grenzeDerQuelle),
   };
   const klienten: KlientenZugang = {
     schluessel: async name => (await k.einstellungen.globalerWert(name)) || '',
-    zaehle: api => apiKontingentDienst.checkAndIncrementRateLimit(k, api),
+    zaehle: api => apiKontingentDienst.kontingentPruefenUndZaehlen(k, api),
     kontingentStand: api => kontingent.kontingentStand(api),
     drossel,
     bricksetVormerken: mit(k)(brickset.bricksetVormerken),
@@ -42,7 +42,10 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     /** Die Klienten dieses Zugangs; ein Test ersetzt einzelne über `ersatz`. */
     quellen: mitErsatz(baueQuellen(klienten), a.ersatz),
     drossel,
-    ...kontingent,
+    kontingentStand: kontingent.kontingentStand,
+    kontingentFrei: kontingent.kontingentFrei,
+    setzeKontingentZurueck: kontingent.setzeKontingentZurueck,
+    kontingentGrenze: kontingent.kontingentGrenze,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
     /** Die Wiedervorlage der Sets, für die Brickset kein Kontingent mehr hatte. */
     brickset: {

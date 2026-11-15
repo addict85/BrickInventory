@@ -1,6 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
+import type { AuftraegeLesevertrag } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { EinstellungenDienste } from '../einstellungen';
 import * as auftraege from './repository/auftraege';
@@ -16,6 +17,7 @@ export interface AuftraegeAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
   /** Die angemeldeten Arten; geteilt über alle Sätze dieses Zugangs. */
   arten: Arten;
+  lesevertrag: AuftraegeLesevertrag;
 }
 
 /** Die Warteschlange gehört allen Konten; wer sie abarbeitet oder verwaltet, braucht den Systemrahmen.
@@ -23,7 +25,7 @@ export interface AuftraegeAbhaengigkeiten {
 const WARTESCHLANGE = 'Job-Prozess und Einstellen: Aufträge aller Konten und solche ohne Konto';
 const VERWALTUNG = 'Verwaltung: Übersicht über die Aufträge aller Konten';
 
-export const zugang = (db: Db) => ({
+export const zugang = (db: Db, l: AuftraegeLesevertrag) => ({
   auftraege: {
     fuegeAuftragEin: imSystem(db, WARTESCHLANGE, auftraege.fuegeAuftragEin),
     fuegeEigenenAuftragEin: mit(db)(auftraege.fuegeEigenenAuftragEin),
@@ -46,7 +48,7 @@ export const zugang = (db: Db) => ({
     leereArt: imSystem(db, WARTESCHLANGE, auftraege.leereArt),
     macheFaellig: imSystem(db, WARTESCHLANGE, auftraege.macheFaellig),
     statusZahlen: imSystem(db, VERWALTUNG, auftraege.statusZahlen),
-    kontoRolle: imSystem(db, VERWALTUNG, auftraege.kontoRolle),
+    kontoRolle: mit(l)(imSystem(db, VERWALTUNG, auftraege.kontoRolle)),
     setzeFaelligkeit: imSystem(db, WARTESCHLANGE, auftraege.setzeFaelligkeit),
     zieheTerminVor: imSystem(db, WARTESCHLANGE, auftraege.zieheTerminVor),
     laeuftArt: imSystem(db, WARTESCHLANGE, auftraege.laeuftArt),

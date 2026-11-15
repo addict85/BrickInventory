@@ -2,7 +2,8 @@
 import type { Konfig } from '../infra/konfig';
 import type { MailDienste } from '../mail';
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, mitVertrag, type Kontext } from '../infra/bereich';
+import type { FinanzenLesevertrag } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as bewertung from './repository/bewertung';
 import * as erfassungen from './repository/erfassungen';
@@ -33,29 +34,30 @@ export interface FinanzenAbhaengigkeiten {
   fremdquellen: FremdquellenDienste;
   faecher: Faecher;
   mail: MailDienste;
+  lesevertrag: FinanzenLesevertrag;
 }
 
 /** Bewertung, Erfassungen, Gewinn und Marktpreise. */
-const bestandszugang = (db: Db) => ({
+const bestandszugang = (db: Db, l: FinanzenLesevertrag) => ({
   bewertung: {
-    manuelleErfassungen: mit(db)(bewertung.manuelleErfassungen),
-    setsZurBewertung: mit(db)(bewertung.setsZurBewertung),
+    manuelleErfassungen: mitVertrag(db, l)(bewertung.manuelleErfassungen),
+    setsZurBewertung: mitVertrag(db, l)(bewertung.setsZurBewertung),
     katalogMerkmale: mit(db)(bewertung.katalogMerkmale),
-    manuelleFigurenZurBewertung: mit(db)(bewertung.manuelleFigurenZurBewertung),
-    manuelleTeileZurBewertung: mit(db)(bewertung.manuelleTeileZurBewertung),
+    manuelleFigurenZurBewertung: mitVertrag(db, l)(bewertung.manuelleFigurenZurBewertung),
+    manuelleTeileZurBewertung: mitVertrag(db, l)(bewertung.manuelleTeileZurBewertung),
   },
   erfassungen: {
-    ladeSetErfassungen: mit(db)(erfassungen.ladeSetErfassungen),
+    ladeSetErfassungen: mitVertrag(db, l)(erfassungen.ladeSetErfassungen),
   },
   gewinnVerlust: {
-    setsMitErfassungen: mit(db)(gewinnVerlust.setsMitErfassungen),
+    setsMitErfassungen: mitVertrag(db, l)(gewinnVerlust.setsMitErfassungen),
     frischeMarktpreise: mit(db)(gewinnVerlust.frischeMarktpreise),
     letzteMarktpreiseAusVerlauf: mit(db)(gewinnVerlust.letzteMarktpreiseAusVerlauf),
   },
   marktpreise: {
     setPreisAusCache: mit(db)(marktpreise.setPreisAusCache),
-    teilErfassungsZustand: mit(db)(marktpreise.teilErfassungsZustand),
-    figurErfassungsZustand: mit(db)(marktpreise.figurErfassungsZustand),
+    teilErfassungsZustand: mitVertrag(db, l)(marktpreise.teilErfassungsZustand),
+    figurErfassungsZustand: mitVertrag(db, l)(marktpreise.figurErfassungsZustand),
     figurenpreiseAusCache: mit(db)(marktpreise.figurenpreiseAusCache),
     teilepreiseAusCache: mit(db)(marktpreise.teilepreiseAusCache),
     geschaetzteFigurenpreise: mit(db)(marktpreise.geschaetzteFigurenpreise),
@@ -67,20 +69,20 @@ const bestandszugang = (db: Db) => ({
     tageswerteAusVerlauf: mit(db)(portfolioKurve.tageswerteAusVerlauf),
     cachePreiseDerSets: mit(db)(portfolioKurve.cachePreiseDerSets),
     letzteWerteVorBeginn: mit(db)(portfolioKurve.letzteWerteVorBeginn),
-    setsMitKaufsumme: mit(db)(portfolioKurve.setsMitKaufsumme),
+    setsMitKaufsumme: mitVertrag(db, l)(portfolioKurve.setsMitKaufsumme),
   },
 });
 
 /** Alarme, Preiszwischenspeicher, Preislauf und Kurse. */
-const preiszugang = (db: Db) => ({
+const preiszugang = (db: Db, l: FinanzenLesevertrag) => ({
   preisalarme: {
     uebertrageAlarm: mit(db)(preisalarme.uebertrageAlarm),
     schreibeAlarm: mit(db)(preisalarme.schreibeAlarm),
     entferneAlarm: mit(db)(preisalarme.entferneAlarm),
-    alarmeDesSets: mit(db)(preisalarme.alarmeDesSets),
-    alarmeImBlickfeld: mit(db)(preisalarme.alarmeImBlickfeld),
+    alarmeDesSets: mitVertrag(db, l)(preisalarme.alarmeDesSets),
+    alarmeImBlickfeld: mitVertrag(db, l)(preisalarme.alarmeImBlickfeld),
     datenbankJetzt: mit(db)(preisalarme.datenbankJetzt),
-    alarmeDesKontos: mit(db)(preisalarme.alarmeDesKontos),
+    alarmeDesKontos: mitVertrag(db, l)(preisalarme.alarmeDesKontos),
     alleAktivenAlarme: mit(db)(preisalarme.alleAktivenAlarme),
     cachePreisFuerAlarm: mit(db)(preisalarme.cachePreisFuerAlarm),
     setzeAlarmZurueck: mit(db)(preisalarme.setzeAlarmZurueck),
@@ -89,7 +91,7 @@ const preiszugang = (db: Db) => ({
     alarmeFuerExport: mit(db)(preisalarme.alarmeFuerExport),
   },
   preisCache: {
-    setZustandsZaehler: mit(db)(preisCache.setZustandsZaehler),
+    setZustandsZaehler: mitVertrag(db, l)(preisCache.setZustandsZaehler),
     loescheAlleSetPreise: mit(db)(preisCache.loescheAlleSetPreise),
     setPreisFrisch: mit(db)(preisCache.setPreisFrisch),
     setPreiseFrisch: mit(db)(preisCache.setPreiseFrisch),
@@ -108,26 +110,26 @@ const preiszugang = (db: Db) => ({
     merkeFigurVerlauf: mit(db)(preisCache.merkeFigurVerlauf),
   },
   preisLauf: {
-    bestandsPlaetze: mit(db)(preisLauf.bestandsPlaetze),
-    merklistenPlaetze: mit(db)(preisLauf.merklistenPlaetze),
-    erfassteZustaende: mit(db)(preisLauf.erfassteZustaende),
-    gewuenschteZustaende: mit(db)(preisLauf.gewuenschteZustaende),
+    bestandsPlaetze: mitVertrag(db, l)(preisLauf.bestandsPlaetze),
+    merklistenPlaetze: mitVertrag(db, l)(preisLauf.merklistenPlaetze),
+    erfassteZustaende: mitVertrag(db, l)(preisLauf.erfassteZustaende),
+    gewuenschteZustaende: mitVertrag(db, l)(preisLauf.gewuenschteZustaende),
     schreibeTagesstand: mit(db)(preisLauf.schreibeTagesstand),
     setsMitAlarm: mit(db)(preisLauf.setsMitAlarm),
   },
   preisverlauf: {
     tagespreiseDesSets: mit(db)(preisverlauf.tagespreiseDesSets),
     cachePreiseDesSets: mit(db)(preisverlauf.cachePreiseDesSets),
-    ersterKaufDesSets: mit(db)(preisverlauf.ersterKaufDesSets),
-    kaufschnittDesSets: mit(db)(preisverlauf.kaufschnittDesSets),
+    ersterKaufDesSets: mitVertrag(db, l)(preisverlauf.ersterKaufDesSets),
+    kaufschnittDesSets: mitVertrag(db, l)(preisverlauf.kaufschnittDesSets),
     loescheAltenVerlauf: mit(db)(preisverlauf.loescheAltenVerlauf),
     manualSeries: mit(db)(preisverlauf.manualSeries),
     cachePreiseNachSchluessel: mit(db)(preisverlauf.cachePreiseNachSchluessel),
-    kaufschnitteNachSchluessel: mit(db)(preisverlauf.kaufschnitteNachSchluessel),
+    kaufschnitteNachSchluessel: mitVertrag(db, l)(preisverlauf.kaufschnitteNachSchluessel),
   },
   setWert: {
     cachePreiseFuerSets: mit(db)(setWert.cachePreiseFuerSets),
-    setErfassungenZumWert: mit(db)(setWert.setErfassungenZumWert),
+    setErfassungenZumWert: mitVertrag(db, l)(setWert.setErfassungenZumWert),
   },
   wechselkurse: {
     schreibeKurse: mit(db)(wechselkurse.schreibeKurse),
@@ -135,5 +137,5 @@ const preiszugang = (db: Db) => ({
   },
 });
 
-export const zugang = (db: Db) => ({ ...bestandszugang(db), ...preiszugang(db) });
+export const zugang = (db: Db, l: FinanzenLesevertrag) => ({ ...bestandszugang(db, l), ...preiszugang(db, l) });
 export type FinanzenKontext = Kontext<FinanzenAbhaengigkeiten, ReturnType<typeof zugang>>;

@@ -9,7 +9,7 @@
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
  *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot);
  *   „nur 404 wird negativ gemerkt, kein 403“ läuft in bild-proxy-deckel.test.js.
- *   Am 08.11.2026 gestrichen: „getPriceGuide holt ohne Angabe den Neupreis“ und
+ *   Am 08.11.2026 gestrichen: „preisfuehrerAbfrage holt ohne Angabe den Neupreis“ und
  *   „ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen“ →
  *   bricklink-preisfuehrer-db.test.js (Gegenproben A–D dort).
  *   Am 09.11.2026 gestrichen: drei SQL-Suchen in Dateien ohne SQL (prüften nichts) und „der Preisjob
@@ -257,7 +257,7 @@ test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
   const fn = src.slice(i, i + 500);
   assert.match(
     fn,
-    /!curSet \|\| curSet\.set_number !== sn/,
+    /!offenesSet \|\| offenesSet\.set_number !== sn/,
     'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist',
   );
 });

@@ -142,7 +142,7 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
 
 /**
  * Der Verwalter-Hinweis steht IM Namen. Gegenproben (08.11.2026, am Bündel): zeigeBenutzernamen() ohne
- * `ME.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
+ * `angemeldetesKonto.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
  * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
  * username` statt zeigeBenutzernamen() → rot (nach dem Speichern).
  */

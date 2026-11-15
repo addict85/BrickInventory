@@ -165,7 +165,7 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
   const von = sitzung.indexOf("abonniere('sitzungBeendet'");
   assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
   const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
-  assert.match(fn, /if \(!ME\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
+  assert.match(fn, /if \(!angemeldetesKonto\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
   assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
   assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
   assert.match(fn, /showLogin\(\{ abgelaufen: true[,}]/, 'Die Anmeldemaske muss zurückkommen');

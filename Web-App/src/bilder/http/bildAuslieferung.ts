@@ -8,7 +8,7 @@ import { pfadSegmente } from '../../http/httpAntwort';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from '../../http/dateiAusliefern';
 import { zaehleProxyFehler } from '../imgProxyStats';
 import { bildFreigegeben } from '../bildBlickfeld';
-import { generateThumb, vorschauTyp } from '../thumbs';
+import { vorschauErzeugenAus, vorschauTyp } from '../thumbs';
 import { IMG_PROXY_PFAD } from '../images';
 import type { BildDienste } from './bildProxy';
 
@@ -31,7 +31,7 @@ async function originalStattVorschau(res: Response, segmente: string[]): Promise
   )
     return false;
   setImmediate(() => {
-    void generateThumb('/images/' + originalSegs.join('/')).catch(e => zaehleProxyFehler('bilder:vorschau', e));
+    void vorschauErzeugenAus('/images/' + originalSegs.join('/')).catch(e => zaehleProxyFehler('bilder:vorschau', e));
   });
   liefereDatei(res, originalPfad);
   return true;

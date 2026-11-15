@@ -178,8 +178,8 @@ function stilleFaengeDerOberflaeche() {
   // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
   // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
   // (localStorage, abgebrochene Ströme); neue braucht es nicht.
-  // Gegenprobe (14.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
-  // `.catch(() => null)` → rot (128 von 127).
+  // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
+  // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
   const SCHRANKE = 91;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
@@ -1247,9 +1247,9 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
 function englischeExportnamen() {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
   // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
-  // Gegenprobe (14.11.2026): in src/sets/dienst.ts `setAendern` wieder `updateSet` → rot (104 von 103).
+  // Gegenprobe (15.11.2026): in src/bestand/acquisitions.ts `kaufAmTagErfassen` wieder `recordAcquisitionForDay` → rot (50 von 49).
   const { englischerName } = require('./helpers/namen');
-  const SCHRANKE = 103;
+  const SCHRANKE = 49;
   assert.deepEqual(
     ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
       englischerName,

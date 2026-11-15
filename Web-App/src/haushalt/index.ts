@@ -3,7 +3,7 @@
 export {
   HAUSHALT_KANAL,
   asIds,
-  parseScopeMode,
+  blickfeldArt,
 } from './regeln';
 export type { Blickfeld, BlickfeldEingabe, ScopeMode, Schreiber, Sicht } from './regeln';
 export { erzeugeHaushalt } from './bereich';

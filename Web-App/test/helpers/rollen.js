@@ -1,7 +1,8 @@
 'use strict';
 /**
  * Die Rollen eines Testlaufs wie im Betrieb (postgres/app-rolle.sh): Eigentümerin
- * (Migrationen, Testdaten), Laufzeitrolle (App), Systemrolle (BYPASSRLS). Ein
+ * (Migrationen, Testdaten), Laufzeitrolle (App), Systemrolle (BYPASSRLS), Web-Systemrolle
+ * (BYPASSRLS, nur Zugangstabellen; der Systemrahmen der HTTP-Anfragen). Ein
  * Superuser umginge den Zeilenschutz; ein fehlender Systemrahmen bliebe unsichtbar.
  * Die Namen hängen an der Vorlage, damit parallele Läufe auf einem Server sich nicht treffen.
  */
@@ -10,7 +11,7 @@
 function rollen(vorlage) {
   /** @param {string} art */
   const r = art => ({ name: `${vorlage}_rolle_${art}`, passwort: `test-${vorlage}-${art}` });
-  return { eigen: r('eigen'), app: r('app'), system: r('system'), lesen: r('lesen') };
+  return { eigen: r('eigen'), app: r('app'), system: r('system'), systemweb: r('systemweb'), lesen: r('lesen') };
 }
 
 /** Dieselbe Adresse mit anderer Rolle. @param {string} url @param {{ name: string, passwort: string }} rolle */

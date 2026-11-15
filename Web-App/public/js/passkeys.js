@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 import { html } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './rueckfrage.js';
 
@@ -118,6 +118,7 @@ export async function passkeyAnmelden() {
     G('lerr').style.display = 'block';
     return;
   }
+  if (keksFehlt(d)) return;
   // Der Start liest die Sitzung neu (GET /auth/me) — derselbe Weg wie nach einem Neuladen.
   location.reload();
 }
@@ -137,7 +138,18 @@ export async function passkeyZweiterFaktor() {
     G('lerr').style.display = 'block';
     return;
   }
+  if (keksFehlt(d)) return;
   location.reload();
+}
+
+/** Ohne Cookie brächte das Neuladen nur die Maske zurück, ohne Grund; der Hinweis bleibt stehen.
+ * @param {{ keks_fehlt?: boolean }} d */
+function keksFehlt(d) {
+  if (!d.keks_fehlt) return false;
+  const h = G('login-hinweis');
+  h.textContent = tRaw('auth.cookie_fehlt');
+  h.hidden = false;
+  return true;
 }
 
 // ── Konto ────────────────────────────────────────────────────────────────────
@@ -162,7 +174,7 @@ export async function ladePasskeys() {
         )}</tbody></table></div>`
     : html`<p class="hinweis-absatz">${tRaw('pk.none')}</p>`;
   const neu = !d.verfuegbar
-    ? html`<p class="text-klein hinweis-warnung">${tRaw(ME?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
+    ? html`<p class="text-klein hinweis-warnung">${tRaw(angemeldetesKonto?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
     : !passkeysMoeglich()
       ? html`<p class="text-klein hinweis-warnung">${tRaw('pk.browser')}</p>`
       : html`<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">

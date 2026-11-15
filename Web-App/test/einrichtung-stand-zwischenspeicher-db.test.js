@@ -58,9 +58,9 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   const stand = _req('src/profil/einrichtungStand.js');
   // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
   const gelesen = [];
-  // In den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+  // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
   const zugang = require('./helpers/sources').testZugang();
-  const pools = [...new Set([zugang.pool, zugang.systemPool])];
+  const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
   const echt = pools.map(p => p.query);
   for (const [i, p] of pools.entries())
     p.query = (sql, params) => {

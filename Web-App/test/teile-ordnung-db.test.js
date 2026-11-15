@@ -81,12 +81,12 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
     for (const ordnung of Object.keys(ERWARTET)) {
       await db.run('DELETE FROM parts_summary_state WHERE user_id = ANY($1)', [[U, U2]]);
       await db.run('DELETE FROM parts_summary WHERE user_id = ANY($1)', [[U, U2]]);
-      const live = await H.getParts(U, abfrage(ordnung));
-      const liveHaushalt = await H.getParts([U, U2], abfrage(ordnung));
+      const live = await H.teileAbfrage(U, abfrage(ordnung));
+      const liveHaushalt = await H.teileAbfrage([U, U2], abfrage(ordnung));
       await PS.rebuildNow(U);
       await PS.rebuildNow(U2);
-      const zsf = await H.getParts(U, abfrage(ordnung));
-      const zsfHaushalt = await H.getParts([U, U2], abfrage(ordnung));
+      const zsf = await H.teileAbfrage(U, abfrage(ordnung));
+      const zsfHaushalt = await H.teileAbfrage([U, U2], abfrage(ordnung));
       for (const [weg, r, quelle] of [
         ['Live', live, 'db'],
         ['Live Haushalt', liveHaushalt, 'db'],
@@ -108,7 +108,7 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein unbekannter Wert gilt als Farbe', async () => {
-    assert.deepEqual(reihe(await H.getParts(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
+    assert.deepEqual(reihe(await H.teileAbfrage(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
   });
 
   await t.test('ungruppiert zeichnet die Oberfläche keine Farbkacheln', async () => {

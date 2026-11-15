@@ -1,6 +1,6 @@
 /** Die Währung gilt je Haushalt; geschrieben wird sie für alle Konten darin. */
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
-import { auchFremdGeteilt, haushaltAbwaerts, istUnterkonto } from '../../../db/haushaltSicht';
+import type { EinstellungenLesevertrag } from '../lesevertrag';
 
 export async function waehrungIn(tx: DbSchnittstelle, userId: number): Promise<string | null> {
   const r = await tx.get<{ value: string }>("SELECT value FROM user_settings WHERE user_id = $1 AND key = 'currency'", [
@@ -9,22 +9,35 @@ export async function waehrungIn(tx: DbSchnittstelle, userId: number): Promise<s
   return r?.value ?? null;
 }
 
-export async function eigenerHaushalt(tx: DbSchnittstelle, userId: number): Promise<number[]> {
-  const rows = await tx.all<{ id: number }>(haushaltAbwaerts('$1'), [userId]);
+export async function eigenerHaushalt(
+  tx: DbSchnittstelle,
+  l: EinstellungenLesevertrag,
+  userId: number,
+): Promise<number[]> {
+  const rows = await tx.all<{ id: number }>(l.haushaltAbwaerts('$1'), [userId]);
   return rows.map(r => r.id);
 }
 
 /** Unterkonten in `ids`, die auch an einem Hauptkonto ausserhalb hängen, das eine andere Währung führt. */
-export async function fremdGeteilt(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<number[]> {
+export async function fremdGeteilt(
+  tx: DbSchnittstelle,
+  l: EinstellungenLesevertrag,
+  ids: number[],
+  waehrung: string,
+): Promise<number[]> {
   const rows = await tx.all<{ id: number }>(
-    `SELECT DISTINCT g.id FROM (${auchFremdGeteilt('$1')}) g WHERE konto_waehrung(g.haupt) <> $2`,
+    `SELECT DISTINCT g.id FROM (${l.auchFremdGeteilt('$1')}) g WHERE konto_waehrung(g.haupt) <> $2`,
     [ids, waehrung],
   );
   return rows.map(r => r.id);
 }
 
-export async function hatHauptkonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
-  return !!(await tx.get<Treffer>(istUnterkonto('$1'), [userId]));
+export async function hatHauptkonto(
+  tx: DbSchnittstelle,
+  l: EinstellungenLesevertrag,
+  userId: number,
+): Promise<boolean> {
+  return !!(await tx.get<Treffer>(l.istUnterkonto('$1'), [userId]));
 }
 
 export async function setzeWaehrungFuer(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<void> {

@@ -187,7 +187,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency:
       abfragen++;
       return echtesQuery(...args);
     };
-    const csv = await _req('src/bestand/bestandExport.js').buildFigsCsv(uid);
+    const csv = await _req('src/bestand/bestandExport.js').figurenCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);
@@ -266,7 +266,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, 
       abfragen++;
       return echtesQuery(...args);
     };
-    const csv = await _req('src/bestand/bestandExport.js').buildPartsCsv(uid);
+    const csv = await _req('src/bestand/bestandExport.js').teileCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);

@@ -11,7 +11,7 @@
  *   D  beim Einlösen den Hinweis nicht gelöscht → rot: „die Umstellung trennt
  *      Ketten und hinterlässt einen Hinweis"
  *   E  (31.10.2026) in lagerKonten() den Ansichtsfilter angewandt
- *      (`blickfeldIds(uid, parseScopeMode(req.query.accounts))`) → rot: „die
+ *      (`blickfeldIds(uid, blickfeldArt(req.query.accounts))`) → rot: „die
  *      Lagerorte eines Unterkontos folgen dem Recht …“
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL,
@@ -121,7 +121,7 @@ async function seed() {
 /** Set + Erfassung für ein Konto anlegen. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   // Nur die Bestandszeile. Die Menge traegt die Erfassung weiter unten
-  // (recordAcquisitionForDay) — seit Migration 0036 der einzige Ort. Das
+  // (kaufAmTagErfassen) — seit Migration 0036 der einzige Ort. Das
   // frueher noetige `DO UPDATE SET quantity = sets.quantity + $3` faellt damit
   // weg: Zwei Aufrufe fuer dasselbe Set addieren sich jetzt dadurch, dass
   // ZWEI Erfassungen entstehen.
@@ -132,7 +132,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   await katalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
-  await _req('src/bestand/acquisitions.js').recordAcquisitionForDay('set', uid, [sn], {
+  await _req('src/bestand/acquisitions.js').kaufAmTagErfassen('set', uid, [sn], {
     quantity: qty,
     price,
     condition: cond,
@@ -627,15 +627,15 @@ test('Haushalt gegen echte Datenbank', async t => {
     await haeltFigur(db, U.kindB, 'mf-B', { menge: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
-    const nurA = nummern(await handlers.getManualParts(await household.blickfeldIds(U.eltern, U.kindA)));
-    const alle = nummern(await handlers.getManualParts(await household.blickfeldIds(U.eltern, 'all')));
+    const nurA = nummern(await handlers.manuelleTeileListe(await household.blickfeldIds(U.eltern, U.kindA)));
+    const alle = nummern(await handlers.manuelleTeileListe(await household.blickfeldIds(U.eltern, 'all')));
     // kindA hat aus einem früheren Test noch ein manuelles Teil ('9999') —
     // deshalb auf Enthaltensein prüfen statt auf die exakte Liste.
     assert.ok(nurA.includes('m-A'), 'eigenes Teil fehlt');
     assert.ok(!nurA.includes('m-B'), 'der Filter zeigt das Teil des Geschwisterkontos');
     assert.ok(alle.includes('m-A') && alle.includes('m-B'), 'ohne Filter müssen beide erscheinen');
 
-    const figsA = nummern(await handlers.getManualMinifigs(await household.blickfeldIds(U.eltern, U.kindA)));
+    const figsA = nummern(await handlers.manuelleFigurenAbfrage(await household.blickfeldIds(U.eltern, U.kindA)));
     assert.ok(figsA.includes('mf-A'));
     assert.ok(!figsA.includes('mf-B'), 'der Filter zeigt die Figur des Geschwisterkontos');
   });
