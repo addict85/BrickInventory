@@ -5,22 +5,22 @@ import { GenericResponse } from './gemeinsam';
 
 export const AppToken = z.looseObject({
   token_id: z.string(),
-  label: z.string().nullable().optional(),
-  created_at: zeit.nullable().optional(),
-  last_used: zeit.nullable().optional(),
-  expires_at: zeit.nullable().optional(),
+  label: z.string().nullable(),
+  created_at: zeit.nullable(),
+  last_used: zeit.nullable(),
+  expires_at: zeit.nullable(),
   never_expires: z.boolean(),
   aktuell: z.boolean(),
-  token_prefix: z.string().nullable().optional(),
-  hard_expires_at: zeit.nullable().optional(),
-  scope: z.string().nullable().optional(),
-  ip_bereich: z.string().nullable().optional(),
-  rotiert_am: zeit.nullable().optional(),
+  token_prefix: z.string().nullable(),
+  hard_expires_at: zeit.nullable(),
+  scope: z.string(),
+  ip_bereich: z.string().nullable(),
+  rotiert_am: zeit,
 });
 
 export const ForgotPasswordResponse = z.looseObject({
   success: z.boolean(),
-  message: z.string().nullable().optional(),
+  message: z.string().nullable(),
   error: z.string().nullable().optional(),
 });
 
@@ -34,7 +34,7 @@ export const User = z.looseObject({
 export const TokenAngaben = z.looseObject({
   scope: z.string(),
   expires_at: zeit.nullable().optional(),
-  hard_expires_at: zeit.nullable().optional(),
+  hard_expires_at: zeit.nullable(),
   never_expires: z.boolean(),
   rotiert_am: zeit.nullable().optional(),
   rotation_faellig: z.boolean().optional(),
@@ -54,11 +54,13 @@ export const AnmeldeNutzer = User.extend({
 export const LoginResponse = z.looseObject({
   success: z.boolean(),
   token: z.string().nullable().optional(),
-  user: AnmeldeNutzer.nullable().optional(),
+  /** Die App liest auch die Absage (zweiter_faktor) in diese Form; dort fehlt das Konto. */
+  user: AnmeldeNutzer.optional(),
   error: z.string().nullable().optional(),
   zweiter_faktor: z.boolean().optional(),
-  never_expires: z.boolean().optional(),
+  never_expires: z.boolean(),
   token_info: TokenAngaben.nullable().optional(),
+  keks_fehlt: z.boolean(),
 });
 
 export const MeResponse = z.looseObject({
@@ -75,24 +77,24 @@ export const MeResponse = z.looseObject({
 export const Profil = z.looseObject({
   id: z.number().int(),
   username: z.string(),
-  email: z.string().nullable().optional(),
-  first_name: z.string().nullable().optional(),
-  last_name: z.string().nullable().optional(),
+  email: z.string().nullable(),
+  first_name: z.string().nullable(),
+  last_name: z.string().nullable(),
   email_verified: z.boolean(),
   /** Beantragt, aber noch nicht bestätigt; bis dahin gilt `email`. */
-  email_neu: z.string().nullable().optional(),
+  email_neu: z.string().nullable(),
 });
 
 export const ProfilResponse = z.looseObject({
   success: z.boolean(),
-  user: Profil.nullable().optional(),
+  user: Profil.nullable(),
   error: z.string().nullable().optional(),
 });
 
 export const RegisterResponse = z.looseObject({
   success: z.boolean(),
-  message: z.string().nullable().optional(),
-  email_sent: z.boolean().optional(),
+  message: z.string().nullable(),
+  email_sent: z.boolean(),
   console_mode: z.boolean().optional(),
   error: z.string().nullable().optional(),
 });
@@ -106,15 +108,15 @@ export const RegistrationStatusResponse = z.looseObject({
 
 export const TokenRotation = z.looseObject({
   success: z.boolean(),
-  token: z.string().nullable().optional(),
-  token_info: TokenAngaben.nullable().optional(),
-  alt_gueltig_bis: zeit.nullable().optional(),
-  ueberlappung_sek: z.number().int().nullable().optional(),
+  token: z.string().nullable(),
+  token_info: TokenAngaben.nullable(),
+  alt_gueltig_bis: zeit.nullable(),
+  ueberlappung_sek: z.number().int().nullable(),
 });
 
 export const TokenWiderruf = z.looseObject({
   success: z.boolean(),
-  deleted: z.number().int().optional(),
+  deleted: z.number().int(),
 });
 
 export const TokensResponse = z.looseObject({
@@ -125,14 +127,14 @@ export const TokensResponse = z.looseObject({
 
 export const ZweiterFaktorCodes = z.looseObject({
   success: z.boolean(),
-  codes: z.array(z.string()).optional(),
+  codes: z.array(z.string()),
   error: z.string().nullable().optional(),
 });
 
 export const ZweiterFaktorEinrichtung = z.looseObject({
   success: z.boolean(),
-  geheimnis: z.string().nullable().optional(),
-  otpauth: z.string().nullable().optional(),
+  geheimnis: z.string().nullable(),
+  otpauth: z.string().nullable(),
   error: z.string().nullable().optional(),
 });
 
@@ -151,7 +153,7 @@ export const KontoInListe = z.looseObject({
   is_active: z.boolean(),
   created_at: zeit.nullable(),
   zweiter_faktor: z.boolean(),
-  wartet_auf_bestaetigung: z.boolean().optional(),
+  wartet_auf_bestaetigung: z.boolean(),
 });
 export const KontenListe = z.looseObject({ success: z.literal(true), users: z.array(KontoInListe) });
 export const KontoAktiv = z.looseObject({ success: z.literal(true), is_active: z.boolean() });
@@ -169,15 +171,15 @@ export const QrToken = z.looseObject({
   kopplung: ganz,
   expires_in: ganz,
   url: z.string(),
-  token_days: ganz.nullable().optional(),
+  token_days: ganz.nullable(),
   fp: z.string().optional(),
   zert_sha256: z.string().optional(),
 });
 export const Passkey = z.looseObject({
   id: ganz,
   name: z.string().nullable(),
-  transports: z.string().nullable().optional(),
-  created_at: zeit.nullable(),
+  transports: z.string().nullable(),
+  created_at: zeit,
   last_used: zeit.nullable(),
 });
 export const PasskeyListe = z.looseObject({
@@ -215,10 +217,11 @@ export const QrMeldung = z.looseObject({
   code: z.string(),
   expires_in: ganz,
 });
-/** Bis zur Bestätigung nur `wartet`; mit `vorschau` dann nur `username`, sonst wie eine Anmeldung,
- * Name und Konto zusätzlich flach, dazu die Nonce für die Attestation des Geräteschlüssels. */
-export const QrAbholung = LoginResponse.extend({
+/** Erst nur `wartet`, mit `vorschau` nur `username`, sonst eine Anmeldung samt Nonce für die Attestation.
+ * Ohne keks_fehlt: Die Abholung gibt immer ein Token, nie eine Sitzung. */
+export const QrAbholung = LoginResponse.omit({ keks_fehlt: true }).extend({
   wartet: z.boolean(),
+  never_expires: z.boolean().optional(),
   username: z.string().optional(),
   isAdmin: z.literal(false).optional(),
   userId: ganz.optional(),
@@ -241,6 +244,8 @@ export const ProfilGespeichert = GenericResponse.extend({
  * `label` fehlt, weil tokenLabel() jeden Wert kürzt oder ersetzt. */
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
+/** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/konto/verwalterAktionen.ts). */
+const VerwalterWeg = Erfolg.extend({ wirksam_ab: z.string().optional() });
 const PASSWORT = 1024;
 const code = z
   .union([z.string().max(64), z.number()])
@@ -325,10 +330,20 @@ export const routen = {
       'current',
     ),
   },
-  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, ...bestaetigt(), geheim: true },
+  'POST /api/v1/auth/zweiter-faktor/einrichten': {
+    antwort: ZweiterFaktorEinrichtung,
+    ...bestaetigt(),
+    geheim: true,
+    schritt: 'zweiter_faktor',
+  },
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
   'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, ...bestaetigt() },
-  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
+  'POST /api/v1/auth/zweiter-faktor/codes': {
+    antwort: ZweiterFaktorCodes,
+    eingabe: NurCode,
+    geheim: true,
+    schritt: 'zweiter_faktor',
+  },
   // Bestätigt wird nur der Widerruf eines FREMDEN Zugangs; den eigenen beendet jedes Gerät selbst.
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf, ...bestaetigt() },
   'POST /api/v1/auth/token-rotieren': { eingabe: OHNE_RUMPF, antwort: TokenRotation, geheim: true },
@@ -354,12 +369,12 @@ export const routen = {
   },
   'PUT /api/v1/auth/users/:id/freischalten': { antwort: Erfolg, ...verwalterBestaetigt() },
   'PUT /api/v1/auth/users/:id/password': {
-    antwort: Erfolg,
+    antwort: VerwalterWeg,
     ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }),
   },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
   'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },
-  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: VerwalterWeg, ...verwalterBestaetigt() },
   'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt(tokenWunsch), geheim: true },
   'POST /api/v1/auth/qr-token': {
     antwort: QrToken,

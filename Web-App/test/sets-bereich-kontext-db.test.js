@@ -1,14 +1,16 @@
 /**
- * Der Bereich Sets bekommt Datenbank und Nacharbeit übergeben (src/sets/bereich.ts):
+ * Der Bereich Sets bekommt Datenbank und Katalog übergeben (src/sets/bereich.ts):
  * Seine Dienste nehmen, was der Kontext ihnen gibt, nicht den Zugang des
- * Prozesses oder die Nacharbeit einer anderen Verdrahtung.
+ * Prozesses oder den Katalog einer anderen Verdrahtung.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln):
  *   A  in src/sets/repository/setDetail.ts setStamm() über `standardDb().get`
  *      statt über den übergebenen Zugang → rot: „Lesen geht über den
  *      übergebenen Zugang“ (keine Abfrage auf rb_sets gezählt)
  *   B  in teilelisteMitNacharbeit() wieder `nacharbeit().setTeileAnreichern(sn)` →
- *      rot: „die Nacharbeit kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
+ *      rot: „die Anreicherung kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
+ *   C  (15.11.2026) dort `sn => sk.katalog.reichereSetTeileAn(sn)` durch `async () => {}`
+ *      ersetzt → rot: „die Anreicherung kommt aus dem Kontext“ (nichts angestossen)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +20,6 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const N = _req('src/auftraege/nacharbeit.js');
 
 const SN = '99871-1';
 const INVENTAR = 987654;
@@ -39,15 +40,12 @@ function zaehlenderZugang(echt, sql) {
   });
 }
 
-/** Schreibt mit, welche Nacharbeit angestossen wurde. */
-function aufzeichnendeNacharbeit(notiz) {
-  const n = {};
-  for (const name of Object.keys(N.OHNE_NACHARBEIT))
-    n[name] = async (...a) => {
-      notiz.push([name, ...a]);
-    };
-  return n;
-}
+/** Ein Katalog, der mitschreibt, welche Anreicherung angestossen wurde. */
+const aufzeichnend = notiz => ({
+  reichereSetTeileAn: async sn => {
+    notiz.push(['reichereSetTeileAn', sn]);
+  },
+});
 
 test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
@@ -72,8 +70,10 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     prozessNotiz = [];
   const zugang = zaehlenderZugang(quellen.testZugang(), sql);
   const { baueDienste } = _req('startup/verdrahtung.js');
-  const sets = baueDienste(zugang, { nacharbeit: aufzeichnendeNacharbeit(notiz) }).sets;
-  Object.assign(quellen.testNacharbeit(), aufzeichnendeNacharbeit(prozessNotiz));
+  const alle = baueDienste(zugang);
+  Object.assign(alle.katalog, aufzeichnend(notiz));
+  const sets = alle.sets;
+  quellen.ersetzeDienste('katalog', aufzeichnend(prozessNotiz));
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await sets.setInfo(SN), null);
@@ -83,11 +83,11 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Nacharbeit kommt aus dem Kontext', async () => {
+  await t.test('die Anreicherung kommt aus dem Kontext', async () => {
     const r = await sets.teilelisteMitNacharbeit(SN);
     assert.equal(r.parts.length, 1);
     assert.ok(sql.some(s => /FROM rb_inventory_parts/.test(s)));
-    assert.deepEqual(notiz, [['setTeileAnreichern', SN]]);
+    assert.deepEqual(notiz, [['reichereSetTeileAn', SN]]);
     assert.deepEqual(prozessNotiz, []);
   });
 });

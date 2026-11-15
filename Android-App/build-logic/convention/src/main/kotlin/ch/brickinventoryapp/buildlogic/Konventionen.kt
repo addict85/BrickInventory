@@ -2,6 +2,8 @@ package ch.brickinventoryapp.buildlogic
 
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
+import ch.brickinventoryapp.buildlogic.kanten.Modulkanten
+import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -95,6 +97,7 @@ internal fun testprotokoll(test: Test) {
 /** Compose-Übersetzer, buildFeatures.compose und die Compose-Gruppe samt BOM. */
 class AndroidComposeKonvention : Plugin<Project> {
     override fun apply(target: Project) {
+        Modulkanten.oberflaecheVerstoss(target.name, listOf("brickinventory.android.compose"))?.let { throw GradleException(it) }
         target.beiAndroid { android ->
             target.pluginAusKatalog("kotlin.compose")
             android.buildFeatures.compose = true
@@ -135,8 +138,8 @@ abstract class KspNacheinander : BuildService<BuildServiceParameters.None>
 
 /**
  * Ein Bereich: Bibliothek mit Tests, Compose und Hilt. Namespace und Kanten setzt das Modul.
- * Die Serialisierung, weil jeder Bereich seine Navigationsziele als @Serializable-Routen selbst
- * hält; ohne sie stünden sie wieder gesammelt in einem Kernmodul.
+ * Die Serialisierung und Navigation, weil jeder Bereich seine Ziele als @Serializable-Routen
+ * selbst hält; die Oberflächentests, weil jeder Bereich Bildschirme unter Robolectric bedient.
  */
 class AndroidFeatureKonvention : Plugin<Project> {
     override fun apply(target: Project) {
@@ -146,5 +149,15 @@ class AndroidFeatureKonvention : Plugin<Project> {
         target.pluginManager.apply(AndroidHiltKonvention::class.java)
         target.pluginManager.apply(AndroidUnittestKonvention::class.java)
         target.bibliothek("implementation", "androidx.core.ktx")
+        target.bibliothek("implementation", "androidx.navigation.compose")
+        target.beiAndroid { android ->
+            // Robolectric liest Texte und Schriften aus den Ressourcen.
+            android.testOptions.unitTests.isIncludeAndroidResources = true
+            val bom = target.libs.findLibrary("androidx.compose.bom").get()
+            target.dependencies.add("testImplementation", target.dependencies.platform(bom))
+            for (alias in listOf("robolectric", "androidx.test.ext.junit", "androidx.ui.test.junit4"))
+                target.bibliothek("testImplementation", alias)
+            target.bibliothek("debugImplementation", "androidx.ui.test.manifest")
+        }
     }
 }

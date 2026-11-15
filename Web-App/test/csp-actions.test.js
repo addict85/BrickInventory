@@ -23,20 +23,20 @@ const path = require('node:path');
 
 const PUB = path.join(__dirname, '..', 'public');
 const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const ACT = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
+const ACT = fs.readFileSync(path.join(PUB, 'js', 'aktionen.js'), 'utf8');
 const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => istAppModul(f));
 
 test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
   // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
   // — el.onclick = fn in JavaScript ist CSP-konform und darf bleiben.
   const RE = /(?<!data-)\bon(click|change|input|blur|keydown|error|load|submit|mouseenter|mouseleave)=\\?"/g;
-  // Kommentare entfernen: Die Dokumentation in actions.js zitiert die alten
+  // Kommentare entfernen: Die Dokumentation in aktionen.js zitiert die alten
   // Handler ("War: onclick=…") und würde die Prüfung sonst selbst auslösen.
   const strip = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
   for (const [name, src] of [
     ['index.html', HTML],
-    ...JS_FILES.concat(['actions.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
+    ...JS_FILES.concat(['aktionen.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
   ]) {
     for (const m of strip(src).matchAll(RE)) found.push(`${name}: ${m[0]}`);
   }
@@ -108,7 +108,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
   let knoepfeGesamt = 0;
-  for (const file of ['gallery.js', 'parts.js', 'minifigs.js', 'set-detail.js']) {
+  for (const file of ['sammlung.js', 'sets-tabelle.js', 'teile.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
@@ -143,7 +143,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   );
 
   // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
-  const gallery = fs.readFileSync(path.join(PUB, 'js', 'gallery.js'), 'utf8');
+  const gallery = fs.readFileSync(path.join(PUB, 'js', 'sammlung.js'), 'utf8');
   assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
 
   // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
@@ -164,11 +164,11 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  for (const [file, expected] of [
-    ['gallery.js', 1],
-    ['parts.js', 1],
+  for (const [file, expected] of /** @type {[string, number][]} */ ([
+    ['sammlung.js', 1],
+    ['teile.js', 1],
     ['minifigs.js', 2],
-  ]) {
+  ])) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);

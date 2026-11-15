@@ -5,7 +5,7 @@
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in setErfassen() den Aufruf repo.sperreSetErfassen() entfernt → rot:
  *      „gleichzeitig erfasst, genau einmal angelegt“ (8 statt 1 'added')
- *   B  in setErfassen() vor dem Anlegen `await getSetInfo(sn)` eingefügt → rot:
+ *   B  in setErfassen() vor dem Anlegen `await setAngaben(sn)` eingefügt → rot:
  *      „die Anfrage fragt kein Netz …“ (Netzaufrufe 1 statt 0)
  *   C  in setErfassen() stelleAuftragEin() weggelassen → rot: „… und stellt den Auftrag ein“
  *   D  in setErgaenzen() die Schleife über die Erfassungen ohne Preis entfernt →
@@ -21,7 +21,7 @@
  * (alsKonto, Route über testServer) als Laufzeitrolle; Testdaten über die Eigentümerin.
  *   B' (13.11.) B über die gestellten Quellen wiederholt → rot: „die Anfrage fragt
  *      kein Netz …“ (Name „Testset“ schon in der Anfrage) und „der Auftrag …“
- *   G  (13.11.) in getSetInfo() (rebrickableKatalog.ts) wieder das importierte holeSet
+ *   G  (13.11.) in setAngaben() (rebrickableKatalog.ts) wieder das importierte holeSet
  *      statt quellen(k) → rot: „der Auftrag ergänzt …“ (kein Netzaufruf gezählt)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -47,7 +47,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
       return { set_num: sn, name: 'Testset', year: 2020, theme_id: 990001, num_parts: 10, set_img_url: null };
     },
     getThemeName: async () => 'Test',
-    getSetInfo: async () => null,
+    setAngaben: async () => null,
     bricklinkRequest: async (_m, pfad) => {
       netz.push(`preis ${pfad.split('/')[3]}`);
       return { avg_price: '42', qty_avg_price: '42', currency_code: 'EUR' };

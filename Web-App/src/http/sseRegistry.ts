@@ -1,3 +1,4 @@
+import { prozessweit } from '../infra/prozessweit';
 // Damit das Herunterfahren Ströme beendet.
 
 /** Was hier von einer offenen Antwort gebraucht wird. */
@@ -8,7 +9,7 @@ interface Strom {
   on?(e: 'close', f: () => void): unknown;
 }
 
-const _offen = new Set<Strom>();
+const _offen = prozessweit('offeneStroeme', () => new Set<Strom>());
 
 /** @returns Funktion zum Abmelden — im Aufräumpfad der Route aufrufen. */
 export function registerSse(res: Strom): () => void {

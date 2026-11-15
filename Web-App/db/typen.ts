@@ -6,3 +6,6 @@ export interface DbSchnittstelle {
   run(sql: string, params?: unknown[]): Promise<{ changes: number }>;
   exec(sql: string): Promise<void>;
 }
+
+/** Eine Zeile, deren Felder niemand liest: `SELECT 1 …` als Probe, ob es sie gibt. */
+export type Treffer = Record<string, unknown>;

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.gemeinsam
 
-import ch.brickinventoryapp.model.data.model.ChartPoint
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.ChartPoint
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

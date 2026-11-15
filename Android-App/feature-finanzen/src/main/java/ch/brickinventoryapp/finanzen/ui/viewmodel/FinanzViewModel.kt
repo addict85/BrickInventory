@@ -1,7 +1,10 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -15,7 +18,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
@@ -66,6 +68,15 @@ class FinanzViewModel @Inject constructor(
     private val _financeState = MutableStateFlow(gemerkterZustand())
     val financeState: StateFlow<FinanceUiState> = _financeState.asStateFlow()
 
+    init {
+        // Wer die Finanzen sieht, lädt, was fehlt; ein Zurückkehren lädt nichts doppelt.
+        ladeBeimBeobachten(_financeState) {
+            val s = _financeState.value
+            if (s.valuation == null && !s.bewertung.laedt) loadValuation()
+            if (s.historyPoints.isEmpty() && !s.verlauf.laedt) loadPortfolioHistory()
+        }
+    }
+
     private fun gemerkterZustand() = FinanceUiState(
         kategorien = gemerkt.get<ArrayList<String>>(KATEGORIEN)?.toSet() ?: emptySet(),
         historyPeriod = gemerkt.get<String>(ZEITRAUM) ?: "week",
@@ -73,27 +84,26 @@ class FinanzViewModel @Inject constructor(
 
     override fun loadValuation() {
         viewModelScope.launch {
-            _financeState.update { it.copy(valuationLoading = true, valuationFehler = null) }
+            _financeState.update { it.copy(bewertung = Laden.Laedt) }
             val konto = filter.kontoFuer(ScopeFilter.View.FINANCE)
             when (val r = finanzen.getValuation(konto)) {
-                is Ergebnis.Success -> {
-                    _financeState.update { it.copy(valuation = r.data.alsAnsicht(), valuationLoading = false) }
+                is Ergebnis.Erfolg -> {
+                    _financeState.update { it.copy(valuation = r.data, bewertung = Laden.Daten(Unit)) }
                     // Die Währung des Kontos kommt mit der Bewertung; das
                     // AppViewModel merkt sie sich für den nächsten Start.
                     sitzung.waehrungUebernommen(r.data.currency)
                 }
-                is Ergebnis.Error -> {
-                    _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldungen.meldung(r),
-                        valuationFehlerKlasse = fehlerklasse(r)) }
+                is Ergebnis.Fehler -> {
+                    _financeState.update { it.copy(bewertung = ladefehler(r)) }
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 }
             }
-            (finanzen.getPartsValuation(konto) as? Ergebnis.Success)
-                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data.alsAnsicht()) } }
-            (finanzen.getMinifigsValuation(konto) as? Ergebnis.Success)
-                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data.alsAnsicht()) } }
-            (finanzen.getPnl(konto) as? Ergebnis.Success)
-                ?.let { r -> _financeState.update { it.copy(pnl = r.data.alsAnsicht()) } }
+            (finanzen.getPartsValuation(konto) as? Ergebnis.Erfolg)
+                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
+            (finanzen.getMinifigsValuation(konto) as? Ergebnis.Erfolg)
+                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
+            (finanzen.getPnl(konto) as? Ergebnis.Erfolg)
+                ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
         }
     }
 
@@ -103,18 +113,18 @@ class FinanzViewModel @Inject constructor(
     override fun loadPortfolioHistory(period: String) {
         gemerkt[ZEITRAUM] = period
         viewModelScope.launch {
-            _financeState.update { it.copy(historyLoading = true, historyPeriod = period,
+            _financeState.update { it.copy(verlauf = Laden.Laedt, historyPeriod = period,
                 historyPoints = emptyList(), historyYAxis = emptyList(), historyTage = emptyList(),
                 historyPeriodChangePct = null) }
             when (val r = finanzen.getPortfolioHistory(period, filter.kontoFuer(ScopeFilter.View.FINANCE))) {
-                is Ergebnis.Success -> _financeState.update { it.copy(
-                    historyLoading         = false,
-                    historyPeriodChangePct = r.data.periodChangePct,
-                    historyPoints          = r.data.points.map { it.alsAnsicht() },
-                    historyYAxis           = r.data.yAxis.map { it.alsAnsicht() },
-                    historyTage            = r.data.chart?.x.orEmpty(),
-                    historyWaehrung        = r.data.currency) }
-                is Ergebnis.Error -> _financeState.update { it.copy(historyLoading = false) }
+                is Ergebnis.Erfolg -> _financeState.update { it.copy(
+                    verlauf                = Laden.Daten(Unit),
+                    historyPeriodChangePct = r.data.veraenderungProzent,
+                    historyPoints          = r.data.punkte,
+                    historyYAxis           = r.data.yAchse,
+                    historyTage            = r.data.tage,
+                    historyWaehrung        = r.data.waehrung) }
+                is Ergebnis.Fehler -> _financeState.update { it.copy(verlauf = ladefehler(r)) }
             }
         }
     }

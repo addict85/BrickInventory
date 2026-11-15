@@ -24,7 +24,7 @@ internal class Preisalarmeingabe(
     private val alarme: AlarmRepository,
     /** Meldung für den Meldungskanal; null heisst: nichts zu sagen. */
     private val melde: (String?) -> Unit,
-    private val beschreibe: (Ergebnis.Error) -> String?,
+    private val beschreibe: (Ergebnis.Fehler) -> String?,
     /** Nach dem Speichern: Alarme des Sets neu laden, Übersicht benachrichtigen. */
     private val gespeichert: (setNumber: String) -> Unit,
     private val ruhe: Long = Alarmeingabe.RUHE_MS,
@@ -40,9 +40,8 @@ internal class Preisalarmeingabe(
             val r = if (schwelle == null) alarme.deletePreisalarm(setNumber, zustand)
                     else alarme.setPreisalarm(setNumber, richtung, schwelle, zustand)
             when (r) {
-                is Ergebnis.Success ->
-                    if (r.data.success) gespeichert(setNumber) else melde(r.data.error ?: "")
-                is Ergebnis.Error -> melde(beschreibe(r))
+                is Ergebnis.Erfolg -> gespeichert(setNumber)
+                is Ergebnis.Fehler -> melde(beschreibe(r))
             }
         }
     }

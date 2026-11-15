@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
+import ch.brickinventoryapp.zustand.ui.LagerUiState
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.zustand.ui.gescheitert
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.model.fach.Alarmrichtung
@@ -7,9 +13,7 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.ui.model.alsDaten
+import ch.brickinventoryapp.model.fach.CsvImportArt
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -27,18 +31,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.LagerortEintragResponse
-import ch.brickinventoryapp.model.data.model.LagerortResponse
-import ch.brickinventoryapp.model.data.model.LagerortVorgabeResponse
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.Gelesen
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
@@ -69,10 +70,18 @@ class EinstellungenViewModel @Inject constructor(
     private val leser: DateiLeser,
 ) : ViewModel(), Filterwahl by filter, EinstellungenAktionen {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    private val sitzungBeobachtet = Beobachtet(sitzung.state)
+    val state: StateFlow<AppUiState> = sitzungBeobachtet
+
+    /** Die Lagerorte-Seite liest ihn; wer sie öffnet, bekommt die eigenen Orte frisch. */
+    private val lagerBeobachtet = Beobachtet(filter.lagerState)
+    override val lagerState: StateFlow<LagerUiState> = lagerBeobachtet
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
+        // Beim Öffnen der Einstellungen, nicht als Dauerabo: Der Zustand ändert sich ausserhalb kaum.
+        ladeJeServer(sitzung, sitzungBeobachtet) { viewModelScope.launch { sitzung.ladeEinstellungen(konto) } }
+        ladeBeimBeobachten(lagerBeobachtet) { ladeEigeneLagerorte() }
     }
 
     private val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
@@ -91,12 +100,12 @@ class EinstellungenViewModel @Inject constructor(
     override fun saveSettings(currency: Waehrung, condition: Zustand) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     meldungen.zeige(meldungen.text(R.string.vm_settings_saved))
                     sitzung.einstellungenGespeichert(currency, condition)
                     abgleich.bestand()
                 }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -105,12 +114,12 @@ class EinstellungenViewModel @Inject constructor(
     override fun saveUserDefaultCondition(condition: Zustand?) {
         viewModelScope.launch {
             when (val r = konto.setUserDefaultCondition(condition)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     // Die Wahl gilt ohne Speichern-Knopf; ohne diese Meldung bliebe offen, ob sie ankam.
                     meldungen.zeige(meldungen.text(R.string.vm_settings_saved))
                     sitzung.ladeEinstellungen(konto)
                 }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -119,33 +128,32 @@ class EinstellungenViewModel @Inject constructor(
 
     fun ladeCsvHoch(art: CsvImportArt, datei: DateiRef) {
         viewModelScope.launch {
-            _csvHochladenState.value = CsvHochladenUiState(laeuft = true, art = art)
+            _csvHochladenState.value = CsvHochladenUiState(hochladen = Vorgang.Laeuft, art = art)
             val bytes = when (val g = leser.liesHoechstens(datei, CSV_MAX_BYTES)) {
                 null -> {
-                    _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.text(R.string.csv_upload_unreadable))
+                    _csvHochladenState.value = CsvHochladenUiState(hochladen = Vorgang.Fehlgeschlagen(Meldung.Ressource(R.string.csv_upload_unreadable)))
                     return@launch
                 }
                 Gelesen.ZuGross -> {
-                    _csvHochladenState.value = CsvHochladenUiState(
-                        fehler = meldungen.text(R.string.csv_upload_too_big, CSV_MAX_BYTES / 1024 / 1024))
+                    _csvHochladenState.value = CsvHochladenUiState(hochladen = Vorgang.Fehlgeschlagen(
+                        Meldung.Ressource(R.string.csv_upload_too_big, listOf(CSV_MAX_BYTES / 1024 / 1024))))
                     return@launch
                 }
                 is Gelesen.Inhalt -> g.bytes
             }
             val name = leser.name(datei) ?: "import.csv"
-            when (val r = verwaltung.importiereCsv(art.alsDaten(), name, bytes)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data.alsAnsicht())
-                        when (art) {
-                            CsvImportArt.MERKLISTE -> abgleich.merkliste()
-                            CsvImportArt.PREISALARME -> alarmeNeu()
-                            CsvImportArt.TEILE -> abgleich.teile()
-                            CsvImportArt.MINIFIGUREN -> abgleich.figuren()
-                            CsvImportArt.SETS -> abgleich.sets()
-                        }
-                    } else _csvHochladenState.value = CsvHochladenUiState(fehler = r.data.error ?: meldungen.text(R.string.err_generic))
-                is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.meldung(r))
+            when (val r = verwaltung.importiereCsv(art, name, bytes)) {
+                is Ergebnis.Erfolg -> {
+                    _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data)
+                    when (art) {
+                        CsvImportArt.MERKLISTE -> abgleich.merkliste()
+                        CsvImportArt.PREISALARME -> alarmeNeu()
+                        CsvImportArt.TEILE -> abgleich.teile()
+                        CsvImportArt.MINIFIGUREN -> abgleich.figuren()
+                        CsvImportArt.SETS -> abgleich.sets()
+                    }
+                }
+                is Ergebnis.Fehler -> _csvHochladenState.value = CsvHochladenUiState(hochladen = gescheitert(r))
             }
         }
     }
@@ -160,16 +168,16 @@ class EinstellungenViewModel @Inject constructor(
         viewModelScope.launch {
             // Gezeigt wird die Ablage; ohne Netz die zuletzt geholte Liste samt Meldung.
             val r = alarme.aktualisiereAlarme()
-            if (r is Ergebnis.Error) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+            if (r is Ergebnis.Fehler) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             val lokal = alarme.beobachteAlarme().first()
-            if (r is Ergebnis.Success || lokal.stand != null)
-                _alarmUebersicht.value = AlarmUebersichtUiState(alarme = lokal.liste.map { it.alsAnsicht() }, geladen = true)
+            if (r is Ergebnis.Erfolg || lokal.stand != null)
+                _alarmUebersicht.value = AlarmUebersichtUiState(alarme = lokal.liste, geladen = true)
         }
     }
 
-    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Double) {
+    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld) {
         wartendeSchwellen.remove(setNumber to condition)?.cancel()
-        if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+        if (!schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { alarme.setPreisalarm(setNumber, richtung, schwelle, condition) }
     }
 
@@ -200,16 +208,16 @@ class EinstellungenViewModel @Inject constructor(
     override fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
         val schwelle = Alarmeingabe.zahl(roh)
-        if (nummer.isBlank() || schwelle == null || schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+        if (nummer.isBlank() || schwelle == null || !schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { alarme.setPreisalarm(nummer, richtung, schwelle, condition) }
     }
 
     /** Ändern und Löschen: rufen, melden, die Übersicht neu, wenn sie schon dasteht. */
-    private fun alarmSchleuse(tun: suspend () -> Ergebnis<PreisalarmResponse>) {
+    private fun alarmSchleuse(tun: suspend () -> Ergebnis<Unit>) {
         viewModelScope.launch {
             when (val r = tun()) {
-                is Ergebnis.Success -> if (!r.data.success) meldungen.zeige(r.data.error)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> Unit
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
             alarmeNeu()
         }
@@ -242,17 +250,10 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    /** Erfolg und Satz einer Lagerort-Antwort; ein Fehler ohne Satz bleibt still. */
-    private fun <T> Ergebnis<T>.auswerten(): Pair<Boolean, String?> = when (this) {
-        is Ergebnis.Success -> erfolgUndSatz(data)
-        is Ergebnis.Error -> false to meldungen.meldungFuerSnackbar(this)
-    }
-
-    private fun erfolgUndSatz(antwort: Any?): Pair<Boolean, String?> = when (antwort) {
-        is LagerortEintragResponse -> antwort.success to antwort.error
-        is LagerortVorgabeResponse -> antwort.success to antwort.error
-        is LagerortResponse -> antwort.success to antwort.error
-        else -> true to null
+    /** Eine Absage trägt den Satz des Servers; ein Fehler ohne Satz bleibt still. */
+    private fun Ergebnis<Unit>.auswerten(): Pair<Boolean, String?> = when (this) {
+        is Ergebnis.Erfolg -> true to null
+        is Ergebnis.Fehler -> false to meldungen.meldungFuerSnackbar(this)
     }
 
     private fun zuruecksetzen() {

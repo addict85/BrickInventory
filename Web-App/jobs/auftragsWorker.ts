@@ -3,25 +3,19 @@ import {
   type AuftraegeDienste,
   type AuftragsArt,
   type AuftragsZeile,
+  type Bearbeiter,
   type Fortschritt,
   type AuftragsKontext,
   AuftragUnterbrochen,
   AuftragVerloren,
   AuftragVerschieben,
-  hatZeitplan,
-  pruefeNutzlast,
   NutzlastUngueltig,
   type Nutzlast,
 } from '../src/auftraege';
-import { fehlertext, logAndContinue } from '../src/infra/fehler';
-import { konfig } from '../src/infra/konfig';
+import { fehlertext, logAndContinue, meldeFehler } from '../src/infra/fehler';
+import { VORGABE } from '../src/infra/konfig';
 
-/** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
-export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
-  ausfuehren(nutzlast: Nutzlast<A>, k: AuftragsKontext, a: AuftragsZeile): Promise<void>;
-  aufgegeben?(nutzlast: Nutzlast<A>, fehler: string, a: AuftragsZeile): Promise<void>;
-  exklusiv?: boolean;
-}
+export type { Bearbeiter } from '../src/auftraege';
 
 export interface WorkerOptionen {
   parallel?: number;
@@ -72,9 +66,14 @@ function fortschrittsKette(d: AuftraegeDienste, a: AuftragsZeile, ac: AbortContr
   };
 }
 
-/** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
+/** Was nicht mehr läuft, steht sonst bis zum Ablauf der Frist auf 'laeuft'; die Frist heilt auch einen Fehler hier. */
+async function zurueckInDieTabelle(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
+  await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+}
+
+/** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan; ohne Zeitplan nichts. */
 async function folgeplan(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
-  if (hatZeitplan(a.art)) await d.planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
+  await d.planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
 }
 
 function kontextFuer(
@@ -114,7 +113,7 @@ async function fuehreAuftragAus(
     // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
     if (!b || a.versuche > a.max_versuche)
       throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-    const geprueft = pruefeNutzlast(a.art, a.nutzlast);
+    const geprueft = d.pruefeNutzlast(a.art, a.nutzlast);
     nutzlast = geprueft;
     await d.imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
     if (await d.erledigt(a)) await folgeplan(d, a);
@@ -165,7 +164,7 @@ async function unterbrichLaufende(d: AuftraegeDienste, laufend: Map<string, Lauf
   for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
   await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
   const rest = [...laufend.values()];
-  for (const { a } of rest) await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+  for (const { a } of rest) await zurueckInDieTabelle(d, a);
   return rest;
 }
 
@@ -173,8 +172,9 @@ async function unterbrichLaufende(d: AuftraegeDienste, laufend: Map<string, Lauf
 function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const arten = Object.keys(bearbeiter);
   const exklusiv = arten.filter(a => bearbeiter[a as AuftragsArt]?.exklusiv);
-  const parallel = Math.max(1, o.parallel ?? konfig().auftragParallel);
-  const fristSek = o.fristSek ?? konfig().auftragFristSek;
+  // Die Werte reicht der Start (startup/jobsProzess.ts); ohne sie gilt die Vorgabe.
+  const parallel = Math.max(1, o.parallel ?? VORGABE.auftragParallel);
+  const fristSek = o.fristSek ?? VORGABE.auftragFristSek;
   const laufend = new Map<string, Lauf>();
   let beendet = false,
     gestartet = false,
@@ -190,7 +190,7 @@ function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: Wo
     const a = await d.belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
     if (!a) return null;
     if (beendet) {
-      await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+      await zurueckInDieTabelle(d, a);
       return null;
     }
     const ac = new AbortController();
@@ -232,7 +232,8 @@ function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: Wo
         });
       }
     } catch (e) {
-      logAndContinue('auftraege:belegen')(e);
+      // Die Runde endet; der nächste Takt oder ein NOTIFY versucht es wieder.
+      meldeFehler('auftraege:belegen', e);
     } finally {
       pumpt = false;
       letzteRunde = Date.now();

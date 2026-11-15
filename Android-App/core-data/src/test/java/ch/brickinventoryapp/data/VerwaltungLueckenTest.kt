@@ -1,19 +1,15 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.model.data.model.JobsResponse
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.vertrag.JobsResponse
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 
 /**
  * Drei Verwalter-Handlungen, die die Webapp schon kann, auch in der App: Zeitplan eines
@@ -38,8 +34,7 @@ class VerwaltungLueckenTest {
     fun `die App ruft alle drei Adressen`() {
         val pfade = PfadServer()
         try {
-            val admin = VerwaltungRepository(TestApi.fuer(pfade.server),
-                ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-verwaltung") })
+            val admin = testVerwaltungRepository(TestApi.fuer(pfade.server))
             runBlocking {
                 admin.setJobSchedule("prices", zeit = "07:05")
                 admin.queueCatalogImages()
@@ -57,7 +52,7 @@ class VerwaltungLueckenTest {
     /** Der Server schickt den Zeitplan seit jeher mit; die App liest ihn ein. */
     @Test
     fun `der Zeitplan wird eingelesen und angezeigt`() {
-        val r = ApiJson.decodeFromString(JobsResponse.serializer(),
+        val r = BrickJson.decodeFromString(JobsResponse.serializer(),
             """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
         assertEquals("07:05", r.schedules["prices"]?.time)
         // In den Zustand und an die Job-Karte: MonitoringNachladenTest und MonitoringJobsAnzeigeTest (app).

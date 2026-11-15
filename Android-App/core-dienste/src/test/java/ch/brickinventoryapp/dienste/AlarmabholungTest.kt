@@ -1,11 +1,14 @@
 package ch.brickinventoryapp.dienste
 
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.Geld
+import java.time.Instant
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.dienste.alarm.Alarmabholung
-import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
-import ch.brickinventoryapp.model.data.model.Preisalarm
+import ch.brickinventoryapp.model.fach.AlarmabrufAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -35,13 +38,13 @@ class AlarmabholungTest {
 
     private fun alarm(sn: String = "10179-1", richtung: Alarmrichtung = Alarmrichtung.UNTER,
                       schwelle: Double = 200.0, preis: Double? = 100.0) =
-        Preisalarm(setNumber = sn, condition = Zustand.NEU, richtung = richtung,
-                   schwelle = schwelle, currencyCode = Waehrung("EUR"),
-                   ausgeloest = true, zuletztAm = "2026-09-19T17:00:00.000Z",
-                   zuletztPreis = preis)
+        PreisalarmAnsicht(setNumber = sn, condition = Zustand.NEU, richtung = richtung,
+                   schwelle = Geld.aus(schwelle)!!, currencyCode = Waehrung("EUR"),
+                   ausgeloest = true, zuletztAm = Instant.parse("2026-09-19T17:00:00.000Z"),
+                   zuletztPreis = preis.alsGeld(), name = null, imageLocal = null, imageUrl = null, setImgUrl = null, besitzt = false)
 
-    private fun antwort(vararg a: Preisalarm, now: String? = "2026-09-19T18:00:00.000Z") =
-        Ergebnis.Success(PendingAlertsResponse(success = true, alerts = a.toList(), now = now))
+    private fun antwort(vararg a: PreisalarmAnsicht, now: String? = "2026-09-19T18:00:00.000Z") =
+        Ergebnis.Erfolg(AlarmabrufAnsicht(alarme = a.toList(), marke = now))
 
     @Test
     fun `der erste Durchgang markiert nur und meldet nichts`() = runTest {
@@ -94,13 +97,13 @@ class AlarmabholungTest {
 
     @Test
     fun `ohne brauchbare Antwort bleibt die Marke, wie sie war`() = runTest {
-        val kaputt = listOf<Pair<String, Ergebnis<PendingAlertsResponse>>>(
-            "Netz weg" to Ergebnis.Error.Netz("offline"),
-            "Server sagt nein" to Ergebnis.Success(PendingAlertsResponse(success = false)),
+        val kaputt = listOf<Pair<String, Ergebnis<AlarmabrufAnsicht>>>(
+            "Netz weg" to Ergebnis.Fehler.Netz("offline"),
+            "Server sagt nein" to Ergebnis.Fehler.Absage(),
             // Eine aeltere Serverfassung kennt das Feld nicht. Dann lieber gar
             // keine Marke als eine falsche — es bleibt beim Mailversand.
-            "kein Zeitpunkt" to Ergebnis.Success(PendingAlertsResponse(success = true, now = null)),
-            "leerer Zeitpunkt" to Ergebnis.Success(PendingAlertsResponse(success = true, now = "")),
+            "kein Zeitpunkt" to Ergebnis.Erfolg(AlarmabrufAnsicht(emptyList(), marke = null)),
+            "leerer Zeitpunkt" to Ergebnis.Erfolg(AlarmabrufAnsicht(emptyList(), marke = "")),
         )
         for ((warum, r) in kaputt) {
             val e = Alarmabholung.hole("2026-09-19T17:30:00.000Z") { r }

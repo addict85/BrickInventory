@@ -4,7 +4,7 @@
  * Sperre gelesen.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in updateSet die Zielmenge aus dem Blick vorab statt in der Sperre
+ *   A  in setAendern die Zielmenge aus dem Blick vorab statt in der Sperre
  *      genommen → rot: „zwei gleichzeitige +1 ergeben +2“ (3 statt 4)
  *   B  quantity_delta ignoriert (wie vor der Änderung) → rot: alle drei Fälle
  *
@@ -41,20 +41,20 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
   });
-  const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
+  const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
     await haeltSet(db, uid, SN, 2, { preis: 40 });
-    await Promise.all([updateSet(uid, SN, { quantity_delta: 1 }), updateSet(uid, SN, { quantity_delta: 1 })]);
+    await Promise.all([setAendern(uid, SN, { quantity_delta: 1 }), setAendern(uid, SN, { quantity_delta: 1 })]);
     assert.equal(await mengeVon(db, [uid], SN), 4);
   });
 
   await t.test('ein Schritt nach unten nimmt genau eines weg', async () => {
-    const r = await updateSet(uid, SN, { quantity_delta: -1 });
+    const r = await setAendern(uid, SN, { quantity_delta: -1 });
     assert.equal(r.quantity, 3);
   });
 
   await t.test('ein ungültiger Schritt wird abgewiesen', async () => {
-    await assert.rejects(updateSet(uid, SN, { quantity_delta: 1.5 }), e => e.art === 'ungueltig');
+    await assert.rejects(setAendern(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
   });
 });

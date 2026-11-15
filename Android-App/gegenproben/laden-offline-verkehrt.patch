@@ -1,0 +1,18 @@
+Gegenprobe: Laden.Daten.offline gilt für frische Daten
+Modul: core-model
+Test: ch.brickinventoryapp.model.LadenTest
+Rot: Daten aus der Ablage sind offline
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
+index 6242ab7..25df037 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
+@@ -10,7 +10,7 @@ sealed interface Laden<out T> {
+ 
+     /** [stand]: Zeitpunkt der Ablage, wenn die Daten offline aus ihr kommen; null heisst frisch. */
+     data class Daten<out T>(val wert: T, val stand: Long? = null) : Laden<T> {
+-        val offline: Boolean get() = stand != null
++        val offline: Boolean get() = stand == null
+     }
+ 
+     /** Keine Daten: [art] wählt Symbol und Rat, [meldung] ist der Satz dazu. */

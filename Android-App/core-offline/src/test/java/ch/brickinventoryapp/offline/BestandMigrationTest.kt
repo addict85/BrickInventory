@@ -109,7 +109,8 @@ class BestandMigrationTest {
                 nachSchema(alt, v)
                 // Ab Fassung 2 trägt jeder Posten seinen Schlüssel schon (Migration 1→2 oder beim Schreiben).
                 for (n in 1..2) {
-                    val b = AblageJson.encodeToString(Bearbeitung.serializer(), Bearbeitung.SetMenge("1000$n-1", n))
+                    // So, wie jede bisherige Fassung der App einen Posten schrieb (Ausgangsform Fassung 1).
+                    val b = """{"type":"set_menge","setNumber":"1000$n-1","schritt":$n}"""
                     if (v >= 2) alt.execSQL(
                         "INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche, schluessel) VALUES ('a', ?, $n, 0, ?)",
                         arrayOf(b, UUID.randomUUID().toString()))

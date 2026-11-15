@@ -1,17 +1,19 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Merkwunsch
+import ch.brickinventoryapp.model.fach.Geld
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,6 +52,8 @@ import ch.brickinventoryapp.testing.TestDienste
  *   H  loescheMerkposten() liest den Namen aus der rohen Liste statt aus der gezeigten
  *      (gegenproben/merkposten-name-ohne-ablage.patch) → rot „ein geloeschter Merkposten …“
  *      (Titanic erwartet, 10294-1 bekommen; nur in der CI messbar)
+ *   merkliste-laedt-nicht-beim-zeigen  (gegenproben/) ladeBeimBeobachten der Liste gestrichen
+ *      → rot „Liste und Detail laden, sobald jemand sie zeigt“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {
@@ -59,7 +63,7 @@ class MerklisteViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
-        KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
+        testKatalogRepository(t.api), testFinanzenRepository(t.api), gemerkt))
 
     @Before
     fun auf() {
@@ -154,11 +158,25 @@ class MerklisteViewModelTest {
     }
 
     @Test
+    fun `Liste und Detail laden, sobald jemand sie zeigt`() {
+        val vm = vm()
+        assertTrue("ohne Beobachter kein Abruf", pfade.anfragenAn("GET /api/v1/wanted").isEmpty())
+        val liste = CoroutineScope(Dispatchers.Main).launch { vm.merklisteState.collect {} }
+        assertEquals(listOf("10294-1"), vm.merklisteState.value.merkposten.map { it.setNumber })
+        liste.cancel()
+        val detail = vm.merkpostenDetailVon("10294-1")
+        val seite = CoroutineScope(Dispatchers.Main).launch { detail.collect {} }
+        assertEquals("10294-1", detail.value.setNumber)
+        assertTrue("Alarme des Postens geholt", pfade.anfragenAn("GET /api/v1/alerts").isNotEmpty())
+        seite.cancel()
+    }
+
+    @Test
     fun `ein Preisalarm im Merkposten wird entprellt gespeichert und neu geladen`() {
         val vm = vm()
         vm.ladeMerkpostenDetail("10294-1")
-        assertTrue("Detail geladen", !vm.merkpostenDetailState.value.laedt)
-        assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        assertTrue("Detail geladen", !vm.merkpostenDetailState.value.abruf.laedt)
+        assertEquals(Geld.aus(500.0), vm.merkpostenDetailState.value.preisalarme.single().schwelle)
         val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
 
         vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "4", Zustand.NEU)
@@ -169,9 +187,9 @@ class MerklisteViewModelTest {
         uhr.advanceTimeBy(900)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
         assertTrue("nachgeladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
-        assertEquals("gespeichert und nachgeladen", 450.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        assertEquals("gespeichert und nachgeladen", Geld.aus(450.0), vm.merkpostenDetailState.value.preisalarme.single().schwelle)
         val abgelegt = runBlocking { t.alarme().beobachteAlarme("10294-1").first().liste }
-        assertEquals("in der Ablage", listOf(450.0), abgelegt.map { it.schwelle })
+        assertEquals("in der Ablage", listOf(Geld.aus(450.0)), abgelegt.map { it.schwelle })
     }
 
     @Test
@@ -189,8 +207,8 @@ class MerklisteViewModelTest {
         vm.setzeMerklisteSuche("10294")
         uhr.advanceTimeBy(400)
         assertTrue("Suche geladen", vm.merklisteState.value.merkposten.isNotEmpty())
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("99999-1", Zustand.NEU, 1))) }
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("10294-1", Zustand.GEBRAUCHT, 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(Merkwunsch("99999-1", Zustand.NEU, 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(Merkwunsch("10294-1", Zustand.GEBRAUCHT, 1))) }
         uhr.advanceTimeBy(100)
         assertEquals("die Suche filtert auch offline Angelegtes", listOf("10294-1|U", "10294-1|N"),
             vm.merklisteState.value.merkposten.map { "${it.setNumber}|${it.condition.kennung}" })

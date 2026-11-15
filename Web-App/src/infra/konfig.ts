@@ -3,6 +3,7 @@
  * Die Liste mit Erklärung steht in .env.example. */
 import { proxyVertrauen } from './proxyVertrauen';
 import { readFileSync } from 'node:fs';
+import { prozessweit } from './prozessweit';
 
 type Umgebung = Record<string, string | undefined>;
 
@@ -12,6 +13,7 @@ export const DATEI_VARIABLEN = [
   'SESSION_SECRET',
   'PGPASSWORD',
   'PGSYSTEM_PASSWORD',
+  'PGSYSTEM_WEB_PASSWORD',
   'DATABASE_URL',
   'ADMIN_PASSWORD',
 ] as const;
@@ -48,11 +50,16 @@ export interface Konfig {
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
+  /** Ein Netz über acht Adressen in TRUST_PROXY ist gewollt (src/infra/proxyVertrauen.ts). */
+  proxyNetzBestaetigt: boolean;
   sessionSecret: string | undefined;
   /** null: nach NODE_ENV (secure nur in Produktion). */
   cookieSecure: boolean | null;
   sitzungLeerlaufMin: number;
   sitzungHoechstStd: number;
+  /** Eine offene Verwaltersitzung ist mehr wert: kürzer, höchstens die allgemeinen Fristen. */
+  sitzungVerwalterLeerlaufMin: number;
+  sitzungVerwalterHoechstStd: number;
   tokenLeerlaufTage: number;
   rolle: Rolle;
   /** Für einen Hinweis beim Start. */
@@ -78,6 +85,7 @@ export interface Konfig {
   erfassungZeitzone: string;
   preisverlaufTage: number;
   uploadKontingentMb: number;
+  uploadGesamtMb: number;
   mailKonsoleMitToken: boolean;
   bildUserAgent: string | null;
   bildCacheMaxMb: number;
@@ -95,17 +103,27 @@ export interface Konfig {
   /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
   androidZertifikate: string[];
   androidPaket: string;
-  /** PEM statt der Google-Wurzeln; nur in Entwicklung und Test (src/konto/attestation). */
+  /** PEM statt der Google-Wurzeln; nur in Entwicklung und Test (src/geraete/attestation). */
   attestationWurzeln: string | null;
   /** Bis dahin gelten Geräteschlüssel, die vor der Attestation hinterlegt wurden (UPGRADE.md). */
   geraeteschluesselAltBis: Date;
+  /** So alt darf Googles Widerrufsliste höchstens sein; älter nimmt der Server keinen Schlüssel an. */
+  attestationWiderrufTage: number;
+  attestationPatchMindestens: number | null;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
 const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
 
 /** Auch andere Module nennen sie; Höchstdauer eine Woche wie der Browser-Token. */
-export const VORGABE = { sitzungLeerlaufMin: 240, sitzungHoechstStd: 168 } as const;
+export const VORGABE = {
+  sitzungLeerlaufMin: 240,
+  sitzungHoechstStd: 168,
+  sitzungVerwalterLeerlaufMin: 30,
+  sitzungVerwalterHoechstStd: 12,
+  auftragParallel: 4,
+  auftragFristSek: 300,
+} as const;
 
 /** Die Meldung nennt jede ungültige Variable. */
 export class KonfigFehler extends Error {
@@ -121,10 +139,13 @@ export const VARIABLEN = [
   'PORT',
   'HSTS_MAX_AGE',
   'TRUST_PROXY',
+  'PROXY_NETZ_BESTAETIGT',
   'SESSION_SECRET',
   'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES',
   'SESSION_MAX_HOURS',
+  'SESSION_ADMIN_IDLE_MINUTES',
+  'SESSION_ADMIN_MAX_HOURS',
   'TOKEN_IDLE_DAYS',
   'ROLLE',
   'DATABASE_URL',
@@ -135,6 +156,8 @@ export const VARIABLEN = [
   'PGDATABASE',
   'PGSYSTEM_USER',
   'PGSYSTEM_PASSWORD',
+  'PGSYSTEM_WEB_USER',
+  'PGSYSTEM_WEB_PASSWORD',
   'PGSSLMODE',
   'PG_POOL_MAX',
   'PG_POOL_MIN',
@@ -154,6 +177,7 @@ export const VARIABLEN = [
   'TZ',
   'PRICE_HISTORY_KEEP_DAYS',
   'UPLOAD_KONTINGENT_MB',
+  'UPLOAD_GESAMT_MB',
   'MAIL_KONSOLE_MIT_TOKEN',
   'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB',
@@ -169,6 +193,8 @@ export const VARIABLEN = [
   'DB_SUPERUSER_ERLAUBT',
   'ATTESTATION_WURZELN',
   'GERAETESCHLUESSEL_ALT_BIS',
+  'ATTESTATION_WIDERRUF_TAGE',
+  'ATTESTATION_PATCH_MINDESTENS',
   ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
@@ -247,9 +273,23 @@ export const ALTSCHLUESSEL_STICHTAG = '2027-02-01';
 function altschluesselBis(env: Umgebung, fehler: string[]): Date {
   const roh = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || ALTSCHLUESSEL_STICHTAG;
   const d = /^\d{4}-\d{2}-\d{2}$/.test(roh) ? new Date(`${roh}T00:00:00Z`) : new Date(Number.NaN);
-  if (!Number.isNaN(d.getTime())) return d;
-  fehler.push(`GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`);
-  return new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
+  const stichtag = new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
+  // Nur früher, nie später: Ein Datum in ferner Zukunft liesse unattestierte Schlüssel auf Dauer gelten.
+  if (d.getTime() <= stichtag.getTime()) return d;
+  fehler.push(
+    Number.isNaN(d.getTime())
+      ? `GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`
+      : `GERAETESCHLUESSEL_ALT_BIS="${roh}" liegt nach ${ALTSCHLUESSEL_STICHTAG}; nur ein früheres Datum ist erlaubt`,
+  );
+  return stichtag;
+}
+
+function patchMindestens(env: Umgebung, fehler: string[]): number | null {
+  const roh = env.ATTESTATION_PATCH_MINDESTENS?.trim();
+  if (!roh) return null;
+  if (/^20\d\d(0[1-9]|1[0-2])$/.test(roh)) return Number(roh);
+  fehler.push(`ATTESTATION_PATCH_MINDESTENS="${roh}" ist kein Monat JJJJMM`);
+  return null;
 }
 
 /** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
@@ -280,6 +320,30 @@ function entwicklungsUmgebung(env: Umgebung): boolean {
 }
 
 /** Wirft KonfigFehler mit allen Fehlern auf einmal. */
+/** Fristen der Browsersitzung; für Verwalter eigene, kürzere (src/konto/sitzungsFrist.ts). */
+function sitzungsKonfig(env: Umgebung, f: string[]) {
+  return {
+    sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
+    sitzungHoechstStd: ganzzahl(env, 'SESSION_MAX_HOURS', VORGABE.sitzungHoechstStd, 1, 87_600, f),
+    sitzungVerwalterLeerlaufMin: ganzzahl(
+      env,
+      'SESSION_ADMIN_IDLE_MINUTES',
+      VORGABE.sitzungVerwalterLeerlaufMin,
+      1,
+      525_600,
+      f,
+    ),
+    sitzungVerwalterHoechstStd: ganzzahl(
+      env,
+      'SESSION_ADMIN_MAX_HOURS',
+      VORGABE.sitzungVerwalterHoechstStd,
+      1,
+      87_600,
+      f,
+    ),
+  };
+}
+
 export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const f: string[] = geheimnisseAusDateien(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
@@ -307,10 +371,10 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     port: ganzzahl(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: ganzzahl(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,
+    proxyNetzBestaetigt: schalter(env, 'PROXY_NETZ_BESTAETIGT', f) === true,
     sessionSecret: env.SESSION_SECRET || undefined,
     cookieSecure: schalter(env, 'COOKIE_SECURE', f),
-    sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
-    sitzungHoechstStd: ganzzahl(env, 'SESSION_MAX_HOURS', VORGABE.sitzungHoechstStd, 1, 87_600, f),
+    ...sitzungsKonfig(env, f),
     tokenLeerlaufTage: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
     rolle: rolleAus(env, f),
     veraltet: VERALTET.filter(n => env[n]?.trim()),
@@ -333,14 +397,15 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
     preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
     uploadKontingentMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
+    uploadGesamtMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
     mailKonsoleMitToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
     bildCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
     bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
-    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
+    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', VORGABE.auftragParallel, 1, 64, f),
     bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? ganzzahl(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
-    auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
+    auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', VORGABE.auftragFristSek, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
     vertragPruefen: env.VERTRAG_PRUEFEN?.trim() === '1',
@@ -348,6 +413,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     androidPaket: androidPaket(env, f),
     attestationWurzeln: attestationWurzeln(env, f),
     geraeteschluesselAltBis: altschluesselBis(env, f),
+    attestationWiderrufTage: ganzzahl(env, 'ATTESTATION_WIDERRUF_TAGE', 7, 1, 90, f),
+    attestationPatchMindestens: patchMindestens(env, f),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;
@@ -359,19 +426,19 @@ export function cookieSicher(k: Konfig): boolean {
   return k.cookieSecure ?? (k.betrieb || k.hinterTls);
 }
 
-let _konfig: Readonly<Konfig> | null = null;
+const K = prozessweit('konfig', () => ({ v: null as Readonly<Konfig> | null }));
 
 /** Beim ersten Aufruf gelesen und eingefroren: konfig() steht im heissen Pfad
  * jeder Anfrage, und der Betrieb ändert seine Umgebung nicht zur Laufzeit.
  * Wer es doch tut (Tests), sagt es ausdrücklich mit setzeKonfig/konfigNeuLesen. */
 export function konfig(): Readonly<Konfig> {
-  _konfig ??= Object.freeze(ladeKonfig(process.env));
-  return _konfig;
+  K.v ??= Object.freeze(ladeKonfig(process.env));
+  return K.v;
 }
 
 /** Für Tests: einzelne Werte über die gelesene Konfiguration legen; null hebt das auf. */
 export function setzeKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
-  _konfig = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
+  K.v = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
   return konfig();
 }
 
@@ -406,11 +473,11 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
 
 /** Die Systemrolle (BYPASSRLS) für Arbeit über Kontogrenzen, sonst null: Mit
  * einer einzigen Rolle, der die Tabellen gehören, greift der Zeilenschutz nicht. */
-export function systemVerbindung(env: NodeJS.ProcessEnv = process.env) {
+export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
   geheimnisseAusDateien(env);
-  const user = env.PGSYSTEM_USER?.trim();
+  const user = env[`${art}_USER`]?.trim();
   if (!user) return null;
-  const password = env.PGSYSTEM_PASSWORD ?? '';
+  const password = env[`${art}_PASSWORD`] ?? '';
   const basis = datenbankVerbindung(env);
   if (!('connectionString' in basis)) return { ...basis, user, password };
   const u = new URL(basis.connectionString);
@@ -418,6 +485,8 @@ export function systemVerbindung(env: NodeJS.ProcessEnv = process.env) {
   u.password = encodeURIComponent(password);
   return { connectionString: u.toString() };
 }
+
+export const systemWebVerbindung = (env: NodeJS.ProcessEnv = process.env) => systemVerbindung(env, 'PGSYSTEM_WEB');
 
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
 export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
@@ -445,18 +514,18 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
         'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).',
     );
   try {
-    proxyVertrauen(env.TRUST_PROXY);
+    proxyVertrauen(env.TRUST_PROXY, env.PROXY_NETZ_BESTAETIGT?.trim() === '1');
   } catch (e) {
     gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`);
   }
-  // Ohne die Adresse gibt es keinen Host-Filter gegen DNS-Rebinding; wer das will, sagt es ausdrücklich.
+  // Ohne die Adresse kennt der Host-Filter keinen Namen und nimmt nur IP-Adressen an; wer das will, sagt es.
   if (
     !env.APP_BASE_URL?.trim() &&
     env.ROLLE?.trim().toLowerCase() !== 'jobs' &&
     env.APP_BASE_URL_FEHLT_OK?.trim() !== '1'
   )
     gruende.push(
-      '[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding wäre aus — Start verweigert. ' +
+      '[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter nähme nur IP-Adressen an — Start verweigert. ' +
         'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).',
     );
   if (env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1')

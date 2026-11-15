@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.anzeigeKaufpreis
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -20,7 +21,7 @@ class PurchasePriceDisplayTest {
     // gegenproben/setitem-liest-purchase-price.patch (das Feld zurück in SetItem) → rot, derselbe Test.
     @Test
     fun `die Anzeigeregel steht im Modell und bevorzugt den Durchschnitt`() {
-        val set = ApiJson.decodeFromString(SetItem.serializer(),
+        val set = BrickJson.decodeFromString(SetItem.serializer(),
             """{"set_number":"75192-1","avg_purchase_price":712.5,"max_purchase_price":800,"purchase_price":99}""")
         assertEquals("Der mengengewichtete Wert, nie der alte gespiegelte", 712.5, set.anzeigeKaufpreis!!, 1e-9)
         // Was SetItem aus der Antwort liest: purchase_price kommt seit Migration 0032 immer

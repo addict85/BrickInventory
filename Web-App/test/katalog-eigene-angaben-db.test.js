@@ -19,21 +19,17 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testDaten();
 
-// Kein Netz: Rebrickable kennt nur 3003.
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
-const echtRb = require(rbPfad);
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+// Kein Netz: Rebrickable kennt nur 3003 (an der Verdrahtung gestellt, testQuellen).
+testQuellen(null, {
   lookupPart: async nr =>
     nr === '3003'
       ? {
@@ -90,7 +86,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     B = api(bob),
     C = api(carol),
     K = api(kind);
-  const { buildPartsCsv, buildFigsCsv } = _req('src/bestand/bestandExport.js');
+  const { teileCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
 
   const ALICE = ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur', 'Gefälscht'];
   await A('POST', '/parts', {
@@ -126,12 +122,12 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     const l = await listen(A);
     for (const s of ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur'])
       assert.ok(l.includes(s), `Alices Liste ohne ${s}`);
-    const csv = await buildPartsCsv(alice);
+    const csv = await teileCsv(alice);
     assert.match(csv, /geheim-77,1,4,Tresorrot/);
   });
 
   await t.test('Bob sieht Alices Eingaben in keiner Liste und keinem Export', async () => {
-    const l = (await listen(B)) + (await buildPartsCsv(bob)) + (await buildFigsCsv(bob));
+    const l = (await listen(B)) + (await teileCsv(bob)) + (await figurenCsv(bob));
     assert.ok(l.includes('geheim-77') && l.includes('fig-000001'), 'Testdaten: Bob führt beide Nummern');
     for (const s of ALICE) assert.ok(!l.includes(s), `Bob sieht ${s}`);
   });

@@ -32,25 +32,18 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
+// Rebrickable vorgeben (testQuellen): Ohne Namen im Rumpf fragt manuellesTeilAnlegen/manuelleFigurAnlegen
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
 // nicht um den Namen — der Abruf soll nicht ueber das Netz greifen.
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
-// Erst laden, dann ersetzen: Vor dem require gibt es den Eintrag im
-// Zwischenspeicher nicht, und `require.cache[…].exports = …` lief auf
-// `undefined` (als Zuweisungsziel wird die linke Seite zuerst aufgeloest).
-const echtRb = require(rbPfad);
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+testQuellen(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
@@ -98,8 +91,8 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     ...bestand.lagerortDienst,
     setzeVorgabe: bestand.setzeVorgabe,
   };
-  const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
+  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
 
   await setzeVorgabe(UID, await ortId('Kiste 7'));
 
@@ -115,12 +108,12 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   await t.test('ein Teil ohne Ortangabe bekommt die Vorgabe', async () => {
     // Genau so ruft der Wanted-Import an (routes/api_v1/wanted.ts, `anleger`):
     // Nummer, Farbe, Menge, Zustand — kein storage.
-    await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
+    await manuellesTeilAnlegen(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(await ortVonTeil('3001'), 'Kiste 7');
   });
 
   await t.test('eine Figur ohne Ortangabe bekommt sie auch', async () => {
-    await addManualFig(UID, { fig_number: 'fig-000123', quantity: 1 });
+    await manuelleFigurAnlegen(UID, { fig_number: 'fig-000123', quantity: 1 });
     const z = await db.get(
       `SELECT l.name FROM minifigs m LEFT JOIN storage_locations l ON l.id = m.storage_id
         WHERE m.user_id=$1 AND m.fig_number='fig-000123'`,
@@ -131,7 +124,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
 
   await t.test('ein Set wuerde sie ebenfalls bekommen', async () => {
     // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
-    // die Huelle in src/sets/setService.ts aus demselben Aufruf erhaelt.
+    // die Huelle in src/sets/dienst.ts aus demselben Aufruf erhaelt.
     assert.equal(await ortFuerNeuerfassung(UID, undefined), 'Kiste 7');
     assert.equal(
       await ortFuerNeuerfassung(UID, null),
@@ -142,17 +135,17 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   });
 
   await t.test('ein mitgegebener Ort gewinnt gegen die Vorgabe', async () => {
-    await addManualPart(UID, { part_number: '3002', color_id: 4, quantity: 1, storage: 'Kiste 3' });
+    await manuellesTeilAnlegen(UID, { part_number: '3002', color_id: 4, quantity: 1, storage: 'Kiste 3' });
     assert.equal(await ortVonTeil('3002'), 'Kiste 3');
   });
 
   await t.test('ein ausdruecklich geleertes Feld bleibt leer', async () => {
-    await addManualPart(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
+    await manuellesTeilAnlegen(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
     assert.equal(
       await ortVonTeil('3003'),
       null,
       'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-        'wurde (selectedStorage in gallery.js). Sie wieder einzusetzen waere ' +
+        'wurde (selectedStorage in sammlung.js). Sie wieder einzusetzen waere ' +
         'ein Ort, den niemand wegbekommt',
     );
   });
@@ -164,7 +157,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
       null,
       'vorgabeVon() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
     );
-    await addManualPart(UID, { part_number: '3004', color_id: 4, quantity: 1 });
+    await manuellesTeilAnlegen(UID, { part_number: '3004', color_id: 4, quantity: 1 });
     assert.equal(await ortVonTeil('3004'), null);
   });
 

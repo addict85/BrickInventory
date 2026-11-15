@@ -1,8 +1,7 @@
 import type * as repo from './repository/katalogSuche';
 
-import { resolveIfExists, resolveImageLocal } from './bilder/images';
-import { dateiStamm } from './bilder/bildBlickfeld';
-import { resolveOne, resolveViaApi } from './bricklinkLink';
+import { dateiStamm, bildFallsVorhanden, resolveImageLocal } from '../bilder';
+import { einesAufloesen, ueberSchnittstelleAufloesen } from './bricklinkLink';
 import { fuerSet } from './preisvergleich';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
@@ -147,19 +146,19 @@ export async function katalogSet(k: KatalogKontext, userId: number, roh: string)
   const m = invId ? await k.katalogSuche.figurenImInventar(invId) : undefined;
   const tree = await getThemeTree(k);
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
-  let bricklink = await resolveOne(k, set.set_number);
+  let bricklink = await einesAufloesen(k, set.set_number);
   // Scheitert die Prüfung, bleibt der Link als ungeprüft (resolved: false) gekennzeichnet.
   if (!bricklink.resolved) {
-    const r = await versuche('katalog:bricklink', resolveViaApi(k, set.set_number));
+    const r = await versuche('katalog:bricklink', ueberSchnittstelleAufloesen(k, set.set_number));
     if (r.ok) bricklink = r.wert;
   }
-  let image_local = resolveIfExists(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
+  let image_local = bildFallsVorhanden(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
-    const r = await versuche('katalog:downloadSetImage', k.bildwerk.setBildLaden(set.image_url, set.set_number));
+    const r = await versuche('katalog:setBildHerunterladen', k.bilder.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
-    if (image_local) k.nacharbeit.bildVormerken(String(set.image_url || ''), set.set_number);
+    if (image_local) k.bilder.merkeGebraucht(String(set.image_url || ''), set.set_number);
   }
   return {
     ...set,

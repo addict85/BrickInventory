@@ -21,7 +21,7 @@ internal sealed interface AppZiel {
 internal fun NavGraphBuilder.mehrZiel(u: ZielUmgebung) {
     val navController = u.navController
     composable<AppZiel.Mehr> {
-        val vm = u.app
+        val vm = u.aktivitaet.app
         val state by vm.state.collectAsStateWithLifecycle()
         val update by u.update.updateState.collectAsStateWithLifecycle()
         u.Reiter(stringResource(R.string.nav_more)) {

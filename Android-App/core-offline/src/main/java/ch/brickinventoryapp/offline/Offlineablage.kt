@@ -1,17 +1,15 @@
 package ch.brickinventoryapp.offline
 
 import kotlinx.coroutines.flow.mapLatest
+import ch.brickinventoryapp.model.json.BrickJson
+import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Gutschein
-import ch.brickinventoryapp.model.data.model.LagerortEintrag
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.Setzusammenfassung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -57,21 +55,25 @@ object Faecher {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,
             kategorie = it.categoryName, ersatzteil = it.isSpare)
     })
-    val FIGUREN = Fach(Bestandsart.FIGUREN, Ablageform.direkt(Minifig.serializer()), { it.figNumber }, spalten = {
+    val FIGUREN = Fach(Bestandsart.FIGUREN, Ablageform(FigurZeile.serializer(), Ablagezeilen::figur, Ablagezeilen::figur),
+        { it.figNumber }, spalten = {
         Filterspalten(suchtext(it.figNumber, it.figName))
     })
-    val MANUELLE_TEILE = Fach(Bestandsart.MANUELLE_TEILE, Ablageform.direkt(PartValuationItem.serializer()),
+    val MANUELLE_TEILE = Fach(Bestandsart.MANUELLE_TEILE,
+        Ablageform(ManuellesTeilZeile.serializer(), Ablagezeilen::manuellesTeil, Ablagezeilen::manuellesTeil),
         { "${it.partNumber}|${it.colorId}|${it.userId}" }, LokaleAnwendung::manuelleTeile) {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), lagerort = it.storage)
     }
-    val MANUELLE_FIGUREN = Fach(Bestandsart.MANUELLE_FIGUREN, Ablageform.direkt(FigValuationItem.serializer()),
+    val MANUELLE_FIGUREN = Fach(Bestandsart.MANUELLE_FIGUREN,
+        Ablageform(ManuelleFigurZeile.serializer(), Ablagezeilen::manuelleFigur, Ablagezeilen::manuelleFigur),
         { "${it.figNumber}|${it.userId}" }, LokaleAnwendung::manuelleFiguren) {
         Filterspalten(suchtext(it.figNumber, it.figName))
     }
-    val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Ablageform.direkt(Gutschein.serializer()), { it.id.toString() })
+    val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Ablageform(GutscheinZeile.serializer(), Ablagezeilen::gutschein, Ablagezeilen::gutschein),
+        { it.id.toString() })
 
     /** Je Set und Zustand höchstens ein Alarm, wie am Server. */
-    val PREISALARME = Fach(Bestandsart.PREISALARME, Ablageform.direkt(Preisalarm.serializer()),
+    val PREISALARME = Fach(Bestandsart.PREISALARME, Ablageform(AlarmZeile.serializer(), Ablagezeilen::alarm, Ablagezeilen::alarm),
         { "${it.setNumber}|${it.condition.kennung}" }, LokaleAnwendung::preisalarme) {
         Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)
     }
@@ -81,6 +83,17 @@ object Faecher {
         { it.ort.id.toString() }, LokaleAnwendung::lagerorte) {
         Filterspalten(suchtext(it.ort.name))
     }
+
+    /**
+     * Einzelne Antworten ohne Liste: je Bereich eine Zeile. Sie liegen wie die Listen in
+     * Room, damit Abmelden, Bereich und Verschlüsselung für alles dieselben sind.
+     */
+    val KENNZAHLEN = Fach(Bestandsart.KENNZAHLEN,
+        Ablageform(KennzahlenZeile.serializer(), Ablagezeilen::kennzahlen, Ablagezeilen::kennzahlen), { EINZELN })
+    val KATALOG_META = Fach(Bestandsart.KATALOG_META,
+        Ablageform(KatalogMetaZeile.serializer(), Ablagezeilen::katalogMeta, Ablagezeilen::katalogMeta), { EINZELN })
+
+    private const val EINZELN = "einzeln"
 
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
 }
@@ -113,6 +126,7 @@ class Offlineablage(
     bereichFluss: Flow<String?> = flow { emit(bereichQuelle()) },
     /** Wohin eine Meldung über Verworfenes geht; im Gerät das Log. */
     private val protokoll: (String) -> Unit = {},
+    private val json: Json = BrickJson,
 ) {
     /**
      * Was ein Schreibvorgang an den lokalen Listen ändert. Zwei Arten, damit der Typ
@@ -123,13 +137,6 @@ class Offlineablage(
         /** Die Listen, die sich ändern. */
         val arten: Set<Bestandsart>
     }
-
-    /**
-     * Eine Änderung, die ohne Verbindung im Ausgang wartet. Sie trägt genau die
-     * Anfrage, die online gegangen wäre — beim Senden entsteht nichts Neues, und
-     * der Server entscheidet wie sonst auch. Mengen von Sets gehen als Schritt,
-     * damit zwei Geräte, die offline je +1 tippen, zusammen +2 ergeben.
-     */
 
     /**
      * Das Ergebnis eines Schreibvorgangs, der nur online geht, für die lokale Liste.
@@ -154,7 +161,7 @@ class Offlineablage(
         }
 
         /** Ein geänderter Kauf: Der Server schickt die neue Zusammenfassung des Sets mit. */
-        data class SetZusammenfassung(val agg: SetAggregate) : Nachzug {
+        data class SetZusammenfassung(val agg: Setzusammenfassung) : Nachzug {
             override val arten get() = setOf(Bestandsart.SETS)
         }
 
@@ -164,7 +171,7 @@ class Offlineablage(
 
         /** Der Merkposten geht in die Sammlung: weg aus der Merkliste, dazu in der Galerie. */
         data class MerkpostenUebernommen(val setNumber: String, val zustand: Zustand, val besitzer: Int?,
-                                         val anfrage: AddSetRequest) : Nachzug {
+                                         val wunsch: Erfassungswunsch) : Nachzug {
             override val arten get() = setOf(Bestandsart.MERKLISTE, Bestandsart.SETS)
         }
 
@@ -183,12 +190,12 @@ class Offlineablage(
         }
 
         /** Ein umbenannter Ort heisst überall neu, wo er stand, auch im Vorrat. */
-        data class LagerortUmbenannt(val alt: String, val neu: LagerortEintrag) : Nachzug {
+        data class LagerortUmbenannt(val alt: String, val neu: LagerortEintragAnsicht) : Nachzug {
             override val arten get() = setOf(Bestandsart.SETS, Bestandsart.MANUELLE_TEILE, Bestandsart.MANUELLE_FIGUREN,
                 Bestandsart.LAGERORTE)
         }
 
-        data class LagerortAngelegt(val ort: LagerortEintrag) : Nachzug {
+        data class LagerortAngelegt(val ort: LagerortEintragAnsicht) : Nachzug {
             override val arten get() = setOf(Bestandsart.LAGERORTE)
         }
 
@@ -202,7 +209,7 @@ class Offlineablage(
         }
 
         /** Der Server schickt den gespeicherten Alarm zurück; er ersetzt den des Sets im selben Zustand. */
-        data class AlarmGesetzt(val alarm: Preisalarm) : Nachzug {
+        data class AlarmGesetzt(val alarm: PreisalarmAnsicht) : Nachzug {
             override val arten get() = setOf(Bestandsart.PREISALARME)
         }
 
@@ -335,7 +342,8 @@ class Offlineablage(
         Bestandsart.PREISALARME -> aendere(Faecher.PREISALARME, b, w)
         Bestandsart.LAGERORTE -> aendere(Faecher.LAGERORTE, b, w)
         // Nur vom Server geliefert, nie lokal bearbeitet.
-        Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE -> Unit
+        Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE, Bestandsart.KENNZAHLEN,
+        Bestandsart.KATALOG_META -> Unit
     }
 
     /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */
@@ -354,14 +362,14 @@ class Offlineablage(
     }
 
     private fun <T : Any> kodiere(fach: Fach<T>, liste: List<T>) =
-        liste.map { LokaleZeile(fach.schluessel(it), fach.form.kodiere(AblageJson, it), fach.spalten(it)) }
+        liste.map { LokaleZeile(fach.schluessel(it), fach.form.kodiere(json, it), fach.spalten(it)) }
 
     /**
      * Zeilen, die sich nicht mehr lesen lassen, fallen weg statt die Liste zu sperren —
      * aber nicht still: Ihre Zahl steht in [Lokal.verworfen] und geht ins [protokoll].
      */
     private fun <T : Any> dekodiere(fach: Fach<T>, l: Lokal<LokaleZeile>): Lokal<T> {
-        val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.dekodiere(AblageJson, z.inhalt) }.getOrNull() }
+        val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.dekodiere(json, z.inhalt) }.getOrNull() }
         val verworfen = l.liste.size - gelesen.size
         if (verworfen > 0) protokoll("Ablage ${fach.art}: $verworfen von ${l.liste.size} Zeilen unlesbar, verworfen")
         return Lokal(gelesen, l.stand, verworfen)

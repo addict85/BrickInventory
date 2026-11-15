@@ -19,8 +19,34 @@ function quoteIdent(name: string) {
   return `"${name}"`;
 }
 
+/** Ein Nachholen ohne Signal; scheitert es, holt das nächste Signal den Stand. */
+function holeNach(handler: Handler) {
+  Promise.resolve(handler()).catch(logAndContinue('notify:nachholen'));
+}
+
+/** Was ein Zugang an LISTEN/NOTIFY anbietet. */
+export interface Signale {
+  listen(channel: string, handler: Handler): void;
+  hoertZu(channel: string): boolean;
+  notify(channel: string, payload?: string): Promise<void>;
+  unlisten(channel: string, handler: Handler): void;
+  close(): Promise<void>;
+  /** Dieselben Signale, gesendet über `senden` (die Verbindung einer Transaktion). */
+  ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale;
+}
+
+/** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
+ * das Signal nur die Beschleunigung. */
+async function notifyUeber(senden: (sql: string, p: unknown[]) => Promise<unknown>, channel: string, payload: string) {
+  try {
+    await senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
+  } catch (e) {
+    console.error(`[notify:${channel}]`, (e as Error).message);
+  }
+}
+
 /** Gesendet wird über den Zugang (senden), gehorcht auf einer eigenen Verbindung. */
-export class Benachrichtigung {
+export class Benachrichtigung implements Signale {
   private readonly _handlers = new Map<string, Eintrag[]>();
   private _client: Client | null = null;
   private _connecting = false;
@@ -37,6 +63,7 @@ export class Benachrichtigung {
     private readonly senden: (sql: string, p: unknown[]) => Promise<unknown>,
   ) {}
 
+  /** Wirft nie: Ein Fehlschlag plant selbst den nächsten Versuch. */
   private async connect() {
     if (this._connecting || this._client || this._closed) return;
     this._connecting = true;
@@ -66,7 +93,7 @@ export class Benachrichtigung {
       for (const channel of this._handlers.keys()) await c.query(`LISTEN ${quoteIdent(channel)}`);
       // Ein Signal aus der Trennung ist verloren: Die Handler holen einmal nach.
       for (const [channel, hs] of this._handlers) {
-        for (const h of hs) Promise.resolve(h.lauf()).catch(logAndContinue('notify:h'));
+        for (const h of hs) holeNach(h.lauf);
         if (this._client === c) this._lauscht.add(channel);
       }
     } catch (e) {
@@ -95,7 +122,7 @@ export class Benachrichtigung {
     this._retryMs = Math.min(30_000, this._retryMs * 2); // exponentiell, gedeckelt
     this._reconnectTimer = setTimeout(() => {
       this._reconnectTimer = null;
-      this.connect().catch(logAndContinue('notify:connect'));
+      void this.connect();
     }, wait);
     // Ein wartender Reconnect darf den Prozess nicht am Beenden hindern.
     this._reconnectTimer.unref?.();
@@ -111,11 +138,11 @@ export class Benachrichtigung {
     const c = this._client;
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
-        Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
+        holeNach(handler);
         if (this._client === c) this._lauscht.add(channel);
-      }, logAndContinue('notify:quoteIdent'));
+      }, logAndContinue('notify:listen'));
     } else {
-      this.connect().catch(logAndContinue('notify:connect'));
+      void this.connect();
     }
   }
 
@@ -127,11 +154,18 @@ export class Benachrichtigung {
   /** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
    * das Signal nur die Beschleunigung. */
   async notify(channel: string, payload = '') {
-    try {
-      await this.senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
-    } catch (e) {
-      console.error(`[notify:${channel}]`, (e as Error).message);
-    }
+    await notifyUeber(this.senden, channel, payload);
+  }
+
+  ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale {
+    return {
+      listen: (c, h) => this.listen(c, h),
+      hoertZu: c => this.hoertZu(c),
+      notify: (c, p = '') => notifyUeber(senden, c, p),
+      unlisten: (c, h) => this.unlisten(c, h),
+      close: () => this.close(),
+      ueber: s => this.ueber(s),
+    };
   }
 
   unlisten(channel: string, handler: Handler) {

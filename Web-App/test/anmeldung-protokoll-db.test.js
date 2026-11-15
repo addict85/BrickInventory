@@ -7,7 +7,7 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  meldeAnmeldeereignis() in fehlversuch() entfernt → rot: „ein unbekannter
  *      Name …“, „falsches Passwort …“, „ein falscher Code …“
- *   B  die Zeile bei checkLoginAllowed() entfernt → rot: „die Sperre steht im Protokoll“
+ *   B  die Zeile bei anmeldungErlaubt() entfernt → rot: „die Sperre steht im Protokoll“
  *   C  meldeAnmeldeereignis() in gebremst() (passwortBestaetigung) entfernt →
  *      rot: „eine falsche Bestätigung …“, „die Zeile landet in app_logs“
  *   D  in fehlversuch() die Mail entfernt → rot: „falsches Passwort …“ (keine
@@ -38,14 +38,14 @@ const { testServer } = require('./helpers/server');
 const mails = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art) => {
+  mailKontoHinweis: async (an, _name, art) => {
     mails.push({ an, art });
     return { success: true };
   },
 });
 
 const db = S.testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const protokoll = _req('src/infra/protokoll.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const P = process.pid,

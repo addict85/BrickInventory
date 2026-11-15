@@ -1,7 +1,7 @@
 import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html } from './escapen.js';
-import { fehlerMeldung, api, apiRoh } from './api.js';
+import { fehlerMeldung, api, apiRoh, strom } from './api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
 import { feldFehler, istSetnummer } from './formular.js';
@@ -71,35 +71,15 @@ async function plAddSet() {
 
 G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet());
 
-/**
- * „Hinzufügen“ ist der eine Hauptknopf: Es rechnet die Liste gleich mit. „Neu berechnen“ bleibt für einen
- * zweiten Versuch; gesperrt nennt er den Grund sichtbar darunter und als Beschreibung, nicht nur durch Blässe.
- * @param {boolean} leer
- */
-function plSchritt(leer) {
-  const gen = G('btn-pl-gen'),
-    hinweis = G('pl-gen-hinweis');
-  if (!gen) return;
-  if (leer) gen.setAttribute('aria-disabled', 'true');
-  else gen.removeAttribute('aria-disabled');
-  if (hinweis) hinweis.hidden = !leer;
-  const beschreibung = (gen.getAttribute('aria-describedby') || '')
-    .split(/\s+/)
-    .filter(x => x && x !== 'pl-gen-hinweis');
-  if (leer) beschreibung.unshift('pl-gen-hinweis');
-  if (beschreibung.length) gen.setAttribute('aria-describedby', beschreibung.join(' '));
-  else gen.removeAttribute('aria-describedby');
-}
-
 export function plRenderSets() {
   const c = G('pl-sets');
   if (!c) return;
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
-  plSchritt(!_plSets.length);
+  // Ohne Set gibt es nichts neu zu berechnen; was zu tun ist, sagt der Leerzustand einmal.
+  G('btn-pl-gen').hidden = !_plSets.length;
   if (!_plSets.length) {
-    // Was zu tun ist, sagt der Hinweis unter den Knöpfen; der Leerzustand wiederholte es mit anderen Worten.
-    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets' }));
+    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.leer_wie' }));
     return;
   }
   setzeHtml(
@@ -178,7 +158,7 @@ async function plGenerate() {
           // doppelt, der Bestand einfach.
           const key = `${p.part_number}|${p.color_id || 0}`;
           if (combined[key]) {
-            combined[key].quantity += parseInt(String(p.total_quantity || p.quantity || 1), 10);
+            combined[key].quantity += parseInt(String(p.total_quantity || 1), 10);
           } else {
             combined[key] = {
               part_number: p.part_number,
@@ -188,8 +168,8 @@ async function plGenerate() {
               color_hex: p.color_hex || null,
               color_id: p.color_id || 0,
               bl_color_id: p.bl_color_id ?? rbToBlColor[p.color_id] ?? null,
-              quantity: parseInt(String(p.total_quantity || p.quantity || 1), 10),
-              image_local: p.image_local || null,
+              quantity: parseInt(String(p.total_quantity || 1), 10),
+              image_local: null,
               image_url: p.image_url || null,
             };
           }
@@ -270,7 +250,7 @@ async function plFuelleBestand() {
   // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere Bedienung derselben Sache,
   // kein zweiter Begriff daneben.
   const mitSubs = !!G('pl-bestand-subs')?.checked;
-  const d = await api('POST', `/v1/parts/owned${mitSubs ? '' : '?accounts=own'}`, { teile }).catch(() => null);
+  const d = await api('POST', `/v1/parts/owned${mitSubs ? '' : '?accounts=own'}`, { teile });
   frei();
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');
@@ -439,28 +419,22 @@ async function plExportPdf() {
         };
 
         const trySSE = () => {
-          if (typeof EventSource === 'undefined') {
-            pollPdfStatus(jobId, btn, finish, startEta);
-            return;
-          }
-          const es = new EventSource(`/api/v1/sets/partslist-pdf/stream/${jobId}`, { withCredentials: true });
-          es.onmessage = e => {
-            try {
-              const { status, error, etaSeconds } = JSON.parse(e.data);
+          const s = strom(`/v1/sets/partslist-pdf/stream/${jobId}`, {
+            ereignis: ({ status, error, etaSeconds }) => {
               if (status === 'running' && etaSeconds != null) startEta(etaSeconds);
               if (status === 'done') {
-                es.close();
+                s?.schliesse();
                 finish(null);
               } else if (status === 'error') {
-                es.close();
-                finish(error || t('pdf.server_error'));
+                s?.schliesse();
+                finish(error || tRaw('pdf.server_error'));
               }
-            } catch (_) {}
-          };
-          es.onerror = () => {
-            es.close();
-            if (!settled) pollPdfStatus(jobId, btn, finish, startEta);
-          };
+            },
+            fehler: () => {
+              if (!settled) pollPdfStatus(jobId, btn, finish, startEta);
+            },
+          });
+          if (!s) pollPdfStatus(jobId, btn, finish, startEta);
         };
         trySSE();
       })
@@ -520,8 +494,6 @@ async function pollPdfStatus(jobId, _btn, finish, startEta) {
 }
 
 export function plInit() {
-  // Capture server origin for local image paths
-  window._plServerUrl = window.location.origin;
   plRenderSets();
 }
 

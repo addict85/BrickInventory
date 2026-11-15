@@ -37,13 +37,13 @@ const GETIPPT = `https://cdn.rebrickable.com/media/parts/${T}-getippt.jpg`;
 function abfangen(t) {
   const echt = https.get;
   const abgerufen = [];
-  https.get = (url, _opt, cb) => {
+  /** @type {any} */ (https).get = (url, _opt, cb) => {
     abgerufen.push(String(url));
-    const req = new EventEmitter();
+    const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
     setImmediate(() => {
-      const r = new EventEmitter();
+      const r = /** @type {any} */ (new EventEmitter());
       r.statusCode = 404;
       r.headers = {};
       r.resume = () => {};
@@ -72,8 +72,8 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
       c.release();
     }
   }
-  const { neueJobId, pdfDateiPfad } = _req('src/auftraege/pdfAuftraege.js');
-  const jobId = neueJobId();
+  const { neueJobId, pdfDateiPfad } = _req('src/katalog/pdf/pdfAuftraege.js');
+  const jobId = neueJobId(Date.now());
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);
     await db.run('DELETE FROM users WHERE username = $1', [T]);

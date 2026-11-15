@@ -26,7 +26,7 @@ const db = testDaten();
 
 test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const { cdnFuerFehlendesBild, CDN_ABFRAGE } = _req('src/katalog/bilder/bildNachschlagen.js');
+  const { cdnFuerFehlendesBild, CDN_ABFRAGE } = _req('src/bilder/bildNachschlagen.js');
   const P = `bst${process.pid}`;
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local)

@@ -1,0 +1,17 @@
+Gegenprobe: KontoUiState trägt wieder ein speichert-Boolean
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/ZustandKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/ZustandKonto.kt
+index 3b4ab43..a9de27c 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/ZustandKonto.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/ZustandKonto.kt
+@@ -25,6 +25,7 @@ data class KontoUiState(
+     val profil: ProfilAnsicht? = null,
+     /** Profil, Passwort oder Design speichern; scheitert es, steht der Grund hier. */
+     val speichern: Vorgang = Vorgang.Fertig,
++    val speichert: Boolean = false,
+     /** Was das Speichern bewirkt hat. */
+     val meldung: Meldung? = null,
+     /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */

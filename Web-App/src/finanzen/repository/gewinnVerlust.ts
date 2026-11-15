@@ -1,9 +1,10 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 
 /** Eine Zeile je Set über alle Konten: Die Rechnung fasst die Käufe je
  * Setnummer zusammen; zwei Konten mit demselben Set zählten sonst doppelt. */
-export function setsMitErfassungen(db: DbSchnittstelle, uids: number[]) {
+export function setsMitErfassungen(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
   return db.all<{
     set_number: string;
     name: string | null;
@@ -23,7 +24,7 @@ export function setsMitErfassungen(db: DbSchnittstelle, uids: number[]) {
             COALESCE(SUM(a.acq_count), 0)::int  AS acq_count,
             COALESCE(SUM(a.used_count), 0)::int AS used_count
      -- Name und Jahr aus rb_sets, die Bilder aus set_catalog (0105).
-     FROM sets s
+     FROM ${l.setBestand('= ANY($1)')} s
      LEFT JOIN set_catalog c ON c.set_number = s.set_number
      ${setStammJoin('s.set_number')}
      LEFT JOIN (
@@ -31,7 +32,7 @@ export function setsMitErfassungen(db: DbSchnittstelle, uids: number[]) {
               SUM(quantity) AS total_qty,
               COUNT(*)                                AS acq_count,
               COUNT(*) FILTER (WHERE condition = 'U')  AS used_count
-       FROM set_acquisitions GROUP BY user_id, set_number
+       FROM ${l.setErfassungen('= ANY($1)')} e GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
      WHERE s.user_id = ANY($1)
      GROUP BY s.set_number, rs.name, rs.year, c.image_local, c.image_url`,

@@ -1,7 +1,7 @@
 /**
  * Ein Sets-Bereich mit eigenem Zugang (baueDienste(zweite, …)) liest und schreibt nur
  * dort, auch über Haushalt, Einstellungen, Lagerort, Preisalarm, Papierkorb, Katalog (Inventar),
- * Finanzen (fetchPrice, preisverlaufSet) und Aufträge. Der Zugang des Prozesses zählt mit und
+ * Finanzen (holePreis, preisverlaufSet) und Aufträge. Der Zugang des Prozesses zählt mit und
  * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
@@ -15,7 +15,7 @@
  *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   D  setPreis() in src/sets/preise.ts ruft fetchPrice() ohne den Zugang der
+ *   D  setPreis() in src/sets/preise.ts ruft holePreis() ohne den Zugang der
  *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
  *      Prozesszugang …“
  *   E  setPreisVerlauf() ruft preisverlaufSet() ohne sk.finanzen → rot:
@@ -26,7 +26,8 @@
  *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
  *      Prozesszugang …“
  *   H  src/haushalt/haushalt.ts wieder mit einem Gedächtnis für alle Zugänge →
- *      rot: „Haushaltsgedächtnis je Zugang“
+ *      rot: „Haushaltsgedächtnis je Zugang“ (14.11.2026 erneut, das Gedächtnis jetzt im
+ *      Fach des Bereichs: gedaechtnis() mit einem Fach für alle → rot, derselbe Test)
  *
  * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
@@ -43,8 +44,6 @@ const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { erzeugeDb } = _req('db/database.js');
-const H = _req('src/haushalt/haushalt.js');
-const N = _req('src/auftraege/nacharbeit.js');
 
 const NAME = testName('sets_zweite');
 const SN = '99877-1';
@@ -109,13 +108,15 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
 
   // Wie der Server (startup/verdrahtung.ts), nur über den zweiten Zugang.
   const { baueDienste } = _req('startup/verdrahtung.js');
-  const alle = baueDienste(zweite, { nacharbeit: N.OHNE_NACHARBEIT });
+  // Dienste ohne Schlüssel dafür rufen die Module über den Kontext dieses Zugangs.
+  const kontexte = {};
+  const alle = baueDienste(zweite, { kontexte });
   const sets = alle.sets;
   const prozess = zaehle(quellen.testZugang());
   t.after(() => prozess.zurueck());
 
   await t.test('Währung aus der zweiten Datenbank', async () => {
-    assert.equal(await sets.waehrungVon(uid), 'CHF');
+    assert.equal(await require(path.join(ROOT, 'dist/src/sets/preise.js')).waehrungVon(kontexte.sets, uid), 'CHF');
   });
 
   await t.test('Lagerort in der zweiten Datenbank', async () => {
@@ -154,7 +155,11 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   });
 
   await t.test('Teileliste aus dem Katalog der zweiten Datenbank, Bilderauftrag dort', async () => {
-    const r = await sets.teilelisteDesSets(SN, async () => {});
+    const r = await require(path.join(ROOT, 'dist/src/sets/inhalt.js')).teilelisteDesSets(
+      kontexte.sets,
+      SN,
+      async () => {},
+    );
     assert.equal(r.source, 'db');
     assert.deepEqual(
       r.parts.map(p => [p.part_number, p.total_quantity]),
@@ -186,9 +191,12 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     const UNTER = 987654;
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
-    H.leereHaushaltCache();
-    assert.deepEqual((await H.haushaltVon(zweite, uid)).memberIds, [uid, UNTER]);
-    const imProzess = await H.haushaltVon(quellen.testZugang(), uid);
+    alle.haushalt.meldeHaushaltsaenderung();
+    assert.deepEqual(
+      (await require(path.join(ROOT, 'dist/src/haushalt/haushalt.js')).haushaltVon(kontexte.haushalt, uid)).memberIds,
+      [uid, UNTER],
+    );
+    const imProzess = await _req('src/haushalt/haushalt.js').haushaltVon(uid);
     assert.ok(
       !imProzess.memberIds.includes(UNTER),
       `Gedächtnis der zweiten Datenbank geliehen: ${imProzess.memberIds}`,

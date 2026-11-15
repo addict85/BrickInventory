@@ -23,7 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
 import javax.inject.Inject
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.util.LanguageManager
@@ -157,9 +157,9 @@ class CsvImportService : Service() {
     /** Eine Status-Abfrage der Rückfallebene. */
     private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
         when (val resp = dateien.getCsvImportStatus()) {
-            is Ergebnis.Success ->
+            is Ergebnis.Erfolg ->
                 if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-            is Ergebnis.Error -> PollResult.ERROR
+            is Ergebnis.Fehler -> PollResult.ERROR
         }
     }.getOrElse { PollResult.ERROR }
 
@@ -169,10 +169,10 @@ class CsvImportService : Service() {
      *
      * @return true solange der Import läuft, false wenn er fertig ist.
      */
-    private fun applyStatus(s: CsvImportStatus): Boolean {
+    private fun applyStatus(s: CsvImportStandAnsicht): Boolean {
         val running = s.status?.laeuft == true
-        val done    = s.done  ?: 0
-        val total   = s.total ?: 0
+        val done    = s.done
+        val total   = s.total
         val current = s.current ?: ""
         if (!running) {
             // Anlaufschutz: Der Server meldet "idle", bis der Import-Job tatsächlich angelegt

@@ -1,15 +1,10 @@
 import * as repo from './repository/teileListe';
-import {
-  resolveImageLocal,
-  type RbSetTeil,
-  ersteBlNummer,
-  getRbKey,
-  httpsGetRobust,
-  blFarbnummerAus,
-} from '../katalog';
+import { blFarbnummerAus } from '../katalog';
+import { resolveImageLocal } from '../bilder';
+import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
 import { asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
-import { ensureFresh } from './partsSummary';
+import { zusammenfassungFrisch } from './partsSummary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
@@ -21,13 +16,13 @@ import type { TeileKontext } from './kontext';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
-export async function getPartsColors(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function teileFarbenAbfrage(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
   // multipliziert); strict, damit Webapp und App dieselben Zahlen zeigen.
-  return k.teileListe.farbenDesBestands(uids, await ensureFresh(k, uids, { strict: true }));
+  return k.teileListe.farbenDesBestands(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
 }
 
 function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
@@ -64,18 +59,18 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
       };
   }
 
-  // Rückfall über getAllSetParts(), nur mit Rebrickable-Schlüssel.
-  const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
+  // Rückfall über alleTeileDesSets(), nur mit Rebrickable-Schlüssel.
+  const rbKey = await k.einstellungen.globalerWert('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
-      const items = await ab.oder('rebrickable_teile', k.katalog.getAllSetParts(sn), []);
+      const items = await ab.oder('rebrickable_teile', k.katalog.alleSetTeile(sn), []);
       if (!items?.length) continue;
       const rbParts = items
-        .filter((it: RbSetTeil) => !it.is_spare)
+        .filter((it: RbSetTeil) => !it.is_spare && it.part?.part_num)
         .map((it: RbSetTeil) => ({
-          part_number: it.part?.part_num,
-          bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num,
-          part_name: it.part?.name || it.part?.part_num,
+          part_number: it.part?.part_num ?? '',
+          bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num || null,
+          part_name: it.part?.name || it.part?.part_num || null,
           color_id: it.color?.id ?? 0,
           color_name: it.color?.name || '',
           color_hex: it.color?.rgb || null,
@@ -86,8 +81,7 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
           total_quantity: it.quantity,
           quantity: it.quantity,
           in_sets: set_number,
-        }))
-        .filter((p: { part_number?: string | null }) => p.part_number);
+        }));
       if (rbParts.length)
         return {
           parts: rbParts,
@@ -115,14 +109,14 @@ function teilAlsAntwort(r: repo.TeilZeile) {
     ...r,
     total_quantity: parseInt(String(r.total_quantity), 10) || 0,
     is_spare: istErsatzteil(r.is_spare),
-    image_local: resolveImageLocal(r.image_local),
+    image_local: resolveImageLocal(r.image_local) ?? null,
   };
 }
 
 export async function tryPartsSummary(k: TeileKontext, userId: Blickfeld, o: Record<string, unknown>) {
   const uids = asIds(userId);
   // null heisst: Die Live-Abfrage übernimmt. Frisch nur, wenn alle Konten es sind.
-  if (!(await ensureFresh(k, uids))) return null;
+  if (!(await zusammenfassungFrisch(k, uids))) return null;
   const size = seitengroesse(o.page_size, !!o.set_number);
   const pg = Math.max(1, parseInt(String(o.page), 10) || 1);
   try {
@@ -140,7 +134,11 @@ export async function tryPartsSummary(k: TeileKontext, userId: Blickfeld, o: Rec
   }
 }
 
-export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
+export async function teileAbfrage(
+  k: TeileKontext,
+  userIdWahl: Sicht | Blickfeld,
+  query: Record<string, unknown> = {},
+) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const filter = teileFilter(query);
@@ -176,8 +174,7 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
   // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen".
   setImmediate(async () => {
     try {
-      if (await k.teileListe.hatUngeseheneBlNummer(uids))
-        k.katalog.fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
+      if (await k.teileListe.hatUngeseheneBlNummer(uids)) await k.katalog.blNummernNachladen();
     } catch (e) {
       meldeFehler('teile:bl-nummern-nachladen', e);
     }
@@ -194,18 +191,18 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
 
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
  * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
-export async function getPartsCategories(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function teileKategorienAbfrage(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  return k.teileListe.kategorien(uids, await ensureFresh(k, uids, { strict: true }));
+  return k.teileListe.kategorien(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
 }
 
-export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function teileKennzahlenLesen(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
-  if (await ensureFresh(k, uids, { strict: true })) {
+  if (await zusammenfassungFrisch(k, uids, { strict: true })) {
     const r = await k.teileListe.kennzahlen(uids, true);
     if (r) return r;
   }
@@ -219,7 +216,7 @@ export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfe
   );
 }
 
-export async function getBlColorMap(k: TeileKontext) {
+export async function blFarbkarteAbfrage(k: TeileKontext) {
   // farbkarte() merkt die Karte zehn Minuten.
   const karte = await k.finanzen.farbkarte();
   if (karte.size > 0) {
@@ -227,7 +224,7 @@ export async function getBlColorMap(k: TeileKontext) {
     for (const [id, blId] of karte) map[id] = blId;
     return { map, source: 'db' };
   }
-  const key = await getRbKey();
+  const key = await k.fremdquellen.quellen.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
   // Bricht der Abruf ab, ist die Tabelle unvollständig; das sagt `degradiert`.
   const ab = new Abstriche();
@@ -238,7 +235,7 @@ export async function getBlColorMap(k: TeileKontext) {
   while (hasNext) {
     const { status, body } = await ab.oder(
       'rebrickable_farben',
-      httpsGetRobust(
+      k.fremdquellen.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         15000,
@@ -260,10 +257,9 @@ export async function getBlColorMap(k: TeileKontext) {
   return { map, source: 'api', ...ab.angabe() };
 }
 
-/** @param viewerId Wessen EINSTELLUNGEN gelten (Währung) — getrennt von
- *   `userId`, das sagt, wessen DATEN gelesen werden.
- * @param search  Suchtext der Filterleiste; er wirkt auf beide Listen. */
-export async function getManualParts(
+/** @param viewerId wessen Einstellungen (Währung) gelten; `userId` sagt, wessen Daten gelesen werden.
+ * @param search Suchtext der Filterleiste, für beide Listen. */
+export async function manuelleTeileListe(
   k: TeileKontext,
   userIdWahl: Sicht | Blickfeld,
   viewerId: number,
@@ -280,7 +276,7 @@ export async function getManualParts(
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
   const rows = await k.teileListe.manuelleTeile(uids, { search, storage }, seite);
-  const mitZustand = await k.bestand.applyManualCondition(uids, rows, 'part');
+  const mitZustand = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
   // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
   const preise = await ab.oder(
@@ -295,7 +291,7 @@ export async function getManualParts(
 // Füllt die Spalte „Habe“ aus dem Bestand.
 export const BESTAND_MAX_TEILE = 5000;
 
-export async function getOwnedQuantities(
+export async function besesseneMengenAbfrage(
   k: TeileKontext,
   blickfeldWahl: Sicht | BlickfeldEingabe,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,

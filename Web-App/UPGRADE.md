@@ -72,9 +72,11 @@ QR-Code.
 ### Das Wurzelzertifikat auf Geräte bringen
 
 Caddy legt es unter `./caddy/data/caddy/pki/authorities/local/root.crt` ab.
-Die Web-App bietet es unter `https://<BRICK_HOST>/ca.crt` an — auch über
-`http://<BRICK_HOST>/ca.crt`, weil ein Gerät es braucht, bevor es HTTPS
-vertraut. Vor dem Installieren den Fingerabdruck vergleichen; auf dem Server:
+Die Web-App bietet es nur unter `https://<BRICK_HOST>/ca.crt` an (seit
+Abschnitt 63; `http://` leitet dorthin um). Ein Gerät ohne die Wurzel zeigt dort
+einmal eine Zertifikatswarnung; sie bestätigen („Weiter“, „Risiko akzeptieren“),
+dann kommt die Datei. Diese Verbindung ist so wenig vertrauenswürdig wie HTTP:
+Vor dem Installieren den Fingerabdruck vergleichen; auf dem Server:
 
 ```
 openssl x509 -in caddy/data/caddy/pki/authorities/local/root.crt -pubkey -noout \
@@ -1751,7 +1753,7 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
 - **Was sich ändert:** Die App hinterlegt ihren Geräteschlüssel für den
   Schrittschutz (Gutschein-PIN, Verwaltung, zweiter Faktor) nur noch mit seiner
   Attestierungskette. Der Server prüft, dass die Kette bis zu einer Google-Wurzel
-  reicht (`src/konto/attestation/googleWurzeln.ts`, Quelle und SHA-256 dort),
+  reicht (`src/geraete/attestation/googleWurzeln.ts`, Quelle und SHA-256 dort),
   dass sie die Nonce des Servers trägt (`POST /api/v1/geraet/schluessel/nonce`,
   einmalig, nur in den ersten 10 Minuten eines Zugangs), dass der Schlüssel im
   TEE oder StrongBox entstand und bei jeder Benutzung nur nach Gerätesperre oder
@@ -1772,7 +1774,8 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   Schlüssel mehr hinterlegen: zuerst die App aktualisieren.
 - **Geräte ohne Attestation** (sehr alte oder veränderte Geräte, Emulatoren)
   bekommen in der App eine Meldung und führen heikle Schritte in der Webapp aus.
-- **Widerrufsliste:** Die Liste widerrufener Attestierungsschlüssel
+- **Widerrufsliste** (**überholt durch Abschnitt 60**, dort wird sie geprüft):
+  Die Liste widerrufener Attestierungsschlüssel
   (`https://android.googleapis.com/attestation/status`) prüft der Server nicht,
   er bräuchte dafür Zugang ins Internet. Ein widerrufener Schlüssel eines
   kompromittierten Geräts käme durch, bräuchte aber weiterhin einen Token in
@@ -2072,3 +2075,252 @@ wird). Hinweise:
 - Zweiter Faktor: Nach 20 falschen Codes in 24 Stunden geht die Anmeldung für
   dieses Konto nur noch mit Wiederherstellungscode oder Passkey; der Inhaber
   bekommt sofort eine Mail. Nichts zu tun.
+
+## 60. Widerrufsliste und gesperrter Bootloader bei der Attestation (Migration 0113)
+
+- **Was sich ändert:** Ein Geräteschlüssel wird nur noch angenommen, wenn
+  1. kein Zertifikat seiner Kette auf Googles Widerrufsliste steht
+     (`https://android.googleapis.com/attestation/status`),
+  2. die Attestation einen gesperrten Bootloader (`deviceLocked`) und einen
+     verifizierten Start (`verifiedBootState = Verified`) meldet. Geräte mit
+     offenem Bootloader oder eigenem ROM mit eigenem Startschlüssel (`SelfSigned`)
+     führen heikle Schritte in der Webapp aus.
+- **Woher die Liste kommt:** Der Job-Prozess lädt sie als geplanten Auftrag
+  `widerrufsliste` beim Start und danach alle sechs Stunden und legt sie in der
+  Datenbank ab (`laufzustand`). Eine unlesbare Antwort oder ein Netzfehler lässt
+  die letzte gute Liste stehen; der Auftrag erscheint dann unter
+  **Hintergrundarbeiten** als gescheitert.
+- **Ohne Netz:** Ist die letzte geladene Liste älter als
+  `ATTESTATION_WIDERRUF_TAGE` (Vorgabe 7) oder gab es nie eine, nimmt der Server
+  **keinen neuen Geräteschlüssel** an (`… abgewiesen: widerrufsliste_fehlt` im
+  Protokoll). Schon hinterlegte Schlüssel gelten weiter. Der Job-Prozess braucht
+  dafür HTTPS zu `android.googleapis.com`; wer ihn ohne Internet betreibt, kann
+  in der App keine Schlüssel mehr hinterlegen und nutzt die Webapp für heikle
+  Schritte.
+- **Optional:** `ATTESTATION_PATCH_MINDESTENS=JJJJMM` verlangt mindestens diesen
+  Sicherheitspatch des Geräts (`… abgewiesen: patchstand_alt`).
+- **Zu tun:** nichts, ausser der Job-Prozess erreicht das Internet nicht. Der
+  Stichtag für Altschlüssel ohne Attestation (Abschnitt 49, 1. Februar 2027)
+  bleibt.
+
+<a id="runde-24"></a>
+
+## 61. Runde 24 – Zugangsdaten, Kontotabellen, Proxy, Passwörter (Migrationen 0114–0116)
+
+- **Zugangsdaten nur für das eigene Konto (0114):** Passkeys, zweiter Faktor,
+  Tokens, Geräteschlüssel und Schrittfreigaben sieht die Laufzeitrolle nur noch für
+  das Konto der Anfrage, nicht mehr für dessen Unterkonten. Nichts zu tun.
+- **Passwort-Hashes und Sitzungen nur über die Systemrolle (0115):** Die
+  Laufzeitrolle `brickinventory_app` liest `users.password_hash` nicht mehr und
+  `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über
+  `brickinventory_system`. Die Migration setzt die Rechte selbst, `db-rolle`
+  (`postgres/app-rolle.sh`) bei jedem `docker compose up -d` erneut. Wer eigene
+  Werkzeuge mit der Laufzeitrolle auf diese Spalte oder die Sitzungstabelle
+  zugreifen lässt, nimmt dafür die Systemrolle. Ohne Docker mit getrennten Rollen:
+  nach dem Update einmal `postgres/app-rolle.sh` ausführen.
+- **Haushalt (0115):** `account_links`, `account_link_invites` und
+  `household_former_links` stehen unter Zeilenschutz. Kopien vor Migrationen
+  (`vor_migration_*`) liest die Laufzeitrolle nicht mehr. Nichts zu tun.
+- **Proxy-Netze nur noch klein oder bestätigt — vor dem Update prüfen:**
+  `TRUST_PROXY` und `VORGELAGERTER_PROXY` nehmen ohne weiteres nur noch einzelne
+  Adressen oder Netze bis 8 Adressen (IPv4 `/29`, IPv6 `/120`). Steht in `.env`
+  ein weiteres Netz (etwa `172.18.0.0/16`), startet die App nicht („TRUST_PROXY
+  enthält …“) bzw. Caddy nicht („… ist zu weit“). Am besten die feste Adresse des
+  Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
+  setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
+  `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
+- **Verwalter setzt Passwort oder zweiten Faktor zurück (0116):** Danach enden
+  alle Anmeldungen und App-Tokens des Kontos, auch beim zweiten Faktor (bisher nur
+  beim Passwort). Ist das Konto selbst Verwalter (oder hat es die Rolle in den
+  letzten 24 Stunden verloren), gilt die Änderung **erst nach 24 Stunden**: Das
+  Konto und alle Verwalter bekommen eine Mail, die Oberfläche nennt den Zeitpunkt.
+  Meldet sich das Konto vorher an (Passwort oder Passkey), entfällt die Änderung;
+  ebenso, wenn der auslösende Verwalter bis dahin kein Verwalter mehr ist.
+  Ausgeführt wird sie im stündlichen Aufräumlauf (Dienst `jobs`). Nichts zu tun.
+- **Gesamtgrenze für Uploads:** Eigene Anleitungen und Gutschein-PDFs aller Konten
+  zusammen dürfen höchstens `UPLOAD_GESAMT_MB` belegen (Vorgabe 20480 = 20 GB);
+  darüber antwortet der Upload mit 507 und der Meldung, den Verwalter zu fragen.
+  Wer mehr Platz hat und braucht, setzt den Wert in `.env`. Die Grenze je Konto
+  (`UPLOAD_KONTINGENT_MB`, 2048) bleibt.
+- **Passwörter als argon2id:** Neue und geänderte Passwörter werden mit argon2id
+  gespeichert, vorhandene bcrypt-Hashes bei der nächsten erfolgreichen Anmeldung
+  ersetzt. Passwörter dürfen jetzt bis 1024 Zeichen lang sein (bisher 72 Byte).
+  Nichts zu tun. **Zurück auf eine ältere Fassung** geht danach nur mit einer
+  Sicherung von vorher: Die alte Fassung kennt argon2id nicht, und wer sich
+  inzwischen angemeldet hat, käme nicht mehr hinein (Ausweg: „Passwort vergessen“
+  oder ein Verwalter setzt das Passwort neu).
+
+<a id="schluessel-behalten"></a>
+
+## 62. Caddy behält seinen Schlüssel; Android-App mit strengeren Vorgaben
+
+- **Caddy:** Das Caddyfile setzt `reuse_private_keys`. Beim Erneuern eines
+  Zertifikats (Let's Encrypt alle 60–90 Tage, Caddys CA alle paar Stunden)
+  bleibt der Schlüssel derselbe. Grund: Die Android-App pinnt unter einer
+  öffentlichen CA zusätzlich den Schlüssel des Servers. Ein neuer Schlüssel
+  heisst dort ab dieser Fassung auf Android 11–15 **abtippen** (siehe unten);
+  mit diesem Schalter kommt das nur noch vor, wenn jemand den Schlüssel
+  bewusst wechselt — und dann fällt es auf. Nachteil: Ein Schlüssel wechselt
+  nicht mehr von selbst; nach einem Verdacht wechselt man ihn von Hand.
+- **Schlüssel bewusst wechseln** (etwa nach einem Verdacht): Caddy anhalten,
+  unter `caddy/data/caddy/certificates/<aussteller>/<BRICK_HOST>/` die Dateien
+  `.key`, `.crt` und `.json` löschen, Caddy starten. Danach fragt jede App
+  einmal nach; vorher die Geräte informieren.
+- **Android-App, neuer Serverschlüssel:** Auf Android 11–15 (ohne erzwungene
+  Certificate Transparency) genügt bei einem neuen Schlüssel unter derselben
+  öffentlichen CA kein Tipp mehr. Die App verlangt die letzten 24 Hex-Zeichen
+  des neuen Schlüssels: im Browser am Rechner das Schloss → Zertifikat →
+  *Fingerabdrücke → Öffentlicher Schlüssel (SHA-256)*, oder
+  `openssl s_client -connect <BRICK_HOST>:443 </dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256`.
+  Ab Android 16 prüft das System CT selbst; dort bleibt es beim bewussten Tipp.
+- **Android-App, Daten auf dem Gerät:** Adresse, Benutzername und Herkunft des
+  Tokens, Widget-Zahlen und Abmeldeaufträge liegen unter einem Schlüssel, der
+  nur bei entsperrtem Gerät arbeitet; Pins tragen keinen Hostnamen mehr im
+  Namen; Konto- und Lagerortfilter liegen nur noch im Speicher (nach einem
+  Neustart der App wieder „alle“). Die Übernahme läuft beim ersten Start nach
+  dem Update von selbst, sobald das Gerät entsperrt ist; das Widget zeigt bis
+  zum nächsten Abruf „leer“.
+- **Android-App, Token-Tausch:** Bei gesperrtem Gerät tauscht die App ihr Token
+  nicht mehr; der Tausch kommt mit dem nächsten Abruf nach dem Entsperren.
+  Der Server braucht dafür nichts Neues. Den Geräteschlüssel des Schrittschutzes
+  legt die App nur noch mit Attestation an (kein Rückfall bei 404) und, wo
+  vorhanden, im StrongBox-Chip.
+- **Android-App, App-Sperre:** Neu installiert und mit Displaysperre steht sie
+  auf 5 Minuten und wird in der Einrichtung angeboten. Ein Update stellt nichts um.
+- **Zu tun:** Caddy neu starten (`docker compose up -d caddy`), damit das
+  Caddyfile gilt. Sonst nichts.
+
+<a id="runde-25"></a>
+
+## 63. Runde 25 – Rechte der Laufzeitrolle, Passwort vergessen, Verwaltersitzungen, Dependabot (Migrationen 0117, 0118)
+
+- **Was die Laufzeitrolle schreiben darf (0117):** `brickinventory_app` ändert in
+  `users` nur noch Vor- und Nachname; Passwort, Verwalterrecht, aktiv, Adresse,
+  Links und Sitzungsversion schreibt nur `brickinventory_system`.
+  `global_settings` liest die Laufzeitrolle nur. `verwaltungsprotokoll` ist für
+  **beide** Rollen nur noch anfügbar; Einträge über ein Jahr räumt die Funktion
+  `verwaltungsprotokoll_aufraeumen()` der Migrationsrolle auf, die nur die
+  Systemrolle aufrufen darf (stündlicher Aufräumlauf wie bisher). Die Migration
+  setzt die Rechte selbst, `db-rolle` bei jedem `docker compose up -d` erneut.
+  **Ohne Docker mit getrennten Rollen:** nach dem Update einmal
+  `postgres/app-rolle.sh` ausführen. Wer eigene Werkzeuge mit der Laufzeitrolle in
+  `users`, `global_settings` oder `verwaltungsprotokoll` schreiben lässt, nimmt
+  dafür die Systemrolle; das Protokoll von Hand bereinigen geht nur noch als
+  Migrationsrolle.
+- **Gutscheine und Idempotenz nur fürs eigene Konto (0118):** Ein Hauptkonto
+  sieht die Gutscheinzeilen seiner Unterkonten auch in der Datenbank nicht mehr
+  (die App zeigte sie nie). Nichts zu tun.
+- **„Passwort vergessen“ räumt auf:** Wer sein Passwort per Mail-Link
+  zurücksetzt, verliert zusätzlich alle Verknüpfungen, in denen sein Konto
+  **Unterkonto** ist (das Hauptkonto sah und änderte seine Sammlung), seine
+  offenen Haushaltseinladungen und einen ausstehenden Wechsel der E-Mail-Adresse.
+  Die Mail an das Konto nennt, was gelöst wurde. Eigene Unterkonten bleiben. Ein
+  so getrennter Haushalt verbindet sich mit einer neuen Einladung wieder. Der
+  normale Passwortwechsel im angemeldeten Zustand ändert daran nichts.
+- **Kürzere Sitzungen für Verwalter:** Eine Browsersitzung eines Verwalters endet
+  nach 30 Minuten ohne Anfrage und spätestens 12 Stunden nach der Anmeldung
+  (alle anderen wie bisher 4 Stunden bzw. 7 Tage). Einstellbar in `.env` mit
+  `SESSION_ADMIN_IDLE_MINUTES` und `SESSION_ADMIN_MAX_HOURS` (nie länger als
+  `SESSION_IDLE_MINUTES`/`SESSION_MAX_HOURS`). Eine offene Seite, die regelmässig
+  fragt (etwa **Hintergrundarbeiten**), zählt als Betrieb. Sitzungen von vor dem
+  Update beginnen ihre Frist beim ersten Aufruf danach. Die App (Token) ist nicht
+  betroffen.
+- **Tagesgrenze der Anmeldung:** Nach 50 falschen Passwörtern für ein Konto
+  innerhalb von 24 Stunden, gezählt über alle Adressen, geht die Anmeldung mit
+  Passwort nur noch zusammen mit dem Code des zweiten Faktors; mit Passkey und
+  über „Passwort vergessen“ wie bisher (das Zurücksetzen hebt die Grenze auf).
+  Der Inhaber bekommt eine Mail. Bisher konnte jemand von einer Adresse, von der
+  sich das Konto schon angemeldet hatte (gemeinsames Netz, Proxy), unbegrenzt
+  langsam raten. Nichts zu tun.
+- **`/ca.crt` nur noch über HTTPS:** Port 80 leitet jetzt alles um, auch
+  `/ca.crt`. Ein Gerät ohne die Wurzel öffnet `https://<BRICK_HOST>/ca.crt`,
+  bestätigt die Zertifikatswarnung einmal und lädt die Datei; den Fingerabdruck
+  vor dem Installieren vergleichen wie bisher (Abschnitt 14). Die Android-App
+  braucht die Datei nicht. **Zu tun:** Caddy neu starten
+  (`docker compose up -d caddy`); Anleitungen oder Lesezeichen mit
+  `http://…/ca.crt` auf `https://` ändern.
+- **Dependabot statt Renovate:** Die Renovate-App war für das Repository nie
+  eingeschaltet (seit dem 2. November kein PR, kein Dependency-Dashboard).
+  `renovate.json` ist entfernt; `.github/dependabot.yml` pflegt npm (Web-App),
+  Gradle (Android-App), die Images in `Dockerfile`, `Dockerfile.caddy` und
+  `compose.yaml` sowie die Actions, montags früh, neue npm- und Gradle-Fassungen
+  frühestens nach drei Tagen; eine neue PostgreSQL-Hauptversion schlägt es nicht
+  vor. **Zu tun (GitHub):** unter *Settings → Code security* „Dependabot version
+  updates“ zulassen, falls ausgeschaltet; ist die Renovate-App doch installiert,
+  sie für dieses Repository abschalten (sonst kämen PRs doppelt).
+- **Bedrohungsmodell:** `docs/SICHERHEIT.md` hält fest, dass Web- und
+  Jobs-Prozess beide Rollen halten: Zeilenschutz und Rollenrechte fangen
+  Logikfehler, keine Codeausführung im Prozess.
+
+## 64. Runde 26 – Attestation-Kette, Tagesgrenze je Adresse, Host-Filter ohne Basis-URL
+
+- **Attestation:** Den Geräteschlüssel des Schrittschutzes nimmt der Server nur
+  noch mit einer Kette an, in der jedes Glied ausser dem Blatt ein CA-Zertifikat
+  ist und keines ausser dem Blatt eine KeyDescription trägt. Echte Keystore-Ketten
+  erfüllen das. Nichts zu tun.
+- **Tagesgrenze der Anmeldung:** Die 50 Fehlversuche je Tag zählen an Adressen,
+  von denen sich das Konto in den letzten 30 Tagen angemeldet hat, je Adresse für
+  sich, an allen anderen gemeinsam. Ein Fremder sperrt den Inhaber so nicht mehr an
+  dessen eigenen Geräten aus. Zähler von vor dem Update gelten als gemeinsame.
+  Nichts zu tun.
+- **Ohne `APP_BASE_URL` nur IP-Adressen:** Wer bewusst mit
+  `APP_BASE_URL_FEHLT_OK=1` startet, bekommt unter einem Namen (etwa
+  `http://nas.local:3000`) jetzt 421 `fremder_host`; Loopback und IP-Adressen gehen
+  weiter. **Zu tun**, falls die App unter einem Namen erreichbar sein soll:
+  `APP_BASE_URL` in `.env` setzen (compose setzt sie aus `BRICK_HOST` ohnehin).
+- **Systemrolle:** Der Web-Prozess behält die Zugangsdaten der Systemrolle; warum,
+  steht in `docs/SICHERHEIT.md` („Was der Zeilenschutz nicht leistet“). Seit Runde 27
+  (Abschnitt 65) hat er eine eigene, engere Systemrolle.
+
+<a id="systemrolle-web"></a>
+
+## 65. Runde 27 – Eigene Systemrolle für den Web-Prozess (Migration 0119)
+
+- **Was sich ändert:** Der Dienst `app` verbindet sich für Anmeldung und Verwaltung
+  nicht mehr als `brickinventory_system`, sondern als **`brickinventory_system_web`**.
+  Auch sie hebt den Zeilenschutz auf, erreicht aber nur Zugangs- und
+  Verwaltungstabellen, Kontoeinstellungen (`user_settings`), die Auftragstabelle und
+  Tabellen ohne Kontobezug (Katalog, Preis- und Bildspeicher). Gutscheine, Sammlung,
+  Kaufpreise, Papierkorb, Teilezusammenfassungen und die Kopien vor Migrationen
+  erreicht nur noch der Dienst `jobs`. Die Liste steht in Migration 0119 und in
+  `docs/SICHERHEIT.md`.
+- **Umschlüsselung nur noch in `jobs`:** Die Umstellung des Altbestands auf v2 und der
+  Schlüsselwechsel mit `DATA_KEY_ALT_FILE` laufen nur noch im Dienst `jobs`. Fehlt die
+  Marke der Umstellung (etwa nach dem Zurückspielen einer alten Sicherung), wartet
+  `app` beim Start, bis `jobs` sie gesetzt hat (Meldung „warte, bis der Dienst jobs …“).
+- **Teilezusammenfassung:** Ändert sich eine BrickLink-Zuordnung, zieht jetzt ein
+  Auftrag `katalog_nachzug` die Zusammenfassungen aller Konten nach (bisher die Anfrage
+  selbst). Bis er gelaufen ist (Sekunden), zeigt die Teileliste noch die alte Nummer.
+- **Preisprobe der Verwaltung** liest nur noch den eigenen Bestand des Verwalters, wie
+  die Oberfläche ihn schon bisher abfragte.
+- **Docker – zu tun:** nur der übliche Update-Weg. `sh scripts/image-pruefen.sh` legt
+  `./geheimnisse/db_system_web_password` an, wenn sie fehlt; `docker compose up -d`
+  lässt `db-rolle` die Rolle anlegen und `migration` ihr die Rechte geben. Wer selbst
+  baut (`up -d --build`), ruft vorher einmal `sh scripts/geheimnisse-einrichten.sh`.
+  Ohne die Datei bricht `docker compose up` mit „… db_system_web_password“ ab. Wer in
+  einer eigenen `compose.override.yaml` für `app` `PGSYSTEM_USER` setzt, stellt dort
+  auf `brickinventory_system_web` und `/run/secrets/db_system_web_password` um.
+- **Ohne Docker, Web und Jobs getrennt:** vor dem Update `postgres/app-rolle.sh` mit
+  `DB_SYSTEM_WEB_PASSWORD` ausführen (die Migration findet die Rolle nur, wenn es sie
+  schon gibt), danach im Web-Prozess `PGSYSTEM_USER=brickinventory_system_web` und ihr
+  Passwort. Wurde die Rolle erst nach 0119 angelegt: die Migration als Migrationsrolle
+  erneut einspielen (`psql -f db/migrations/0119-systemrolle-web.sql`), sie ist
+  wiederholbar. **Mit `ROLLE=beides`:** nichts zu tun; wer will, setzt zusätzlich
+  `PGSYSTEM_WEB_USER`/`PGSYSTEM_WEB_PASSWORD`, dann laufen die Anfragen über die
+  Web-Systemrolle.
+- **Zeilenschutz und eingeschleustes SQL:** `docs/SICHERHEIT.md` versprach, die
+  Zeilenregeln fingen eine eingeschleuste Abfrage über die Laufzeitrolle ab. Das stimmt
+  nicht, `app.konto` kann jede Rolle umsetzen; der Text ist berichtigt.
+
+## 66. Runde 28 – Pfade mit Schrägstrich am Ende, Stichtag der Geräteschlüssel, Sichten (Migration 0120)
+
+- **API-Pfade mit `/` am Ende** (`/api/v1/sets/`) antworten jetzt 404. Weder Webapp
+  noch App rufen solche Pfade; ein eigenes Skript, das es tut, lässt den Schrägstrich weg.
+- **`GERAETESCHLUESSEL_ALT_BIS`** darf nicht mehr nach dem Stichtag 2027-02-01 liegen. Ein
+  späteres Datum verweigert den Start („… liegt nach 2027-02-01“); dann die Variable
+  entfernen oder ein früheres Datum setzen.
+- **Migration 0120:** Sichten lesen mit den Rechten der abfragenden Rolle
+  (`security_invoker`), die Web-Systemrolle nur noch `set_parts_catalog` und
+  `set_minifigs_catalog`. Docker: nichts zu tun. Wer 0119 von Hand erneut einspielt
+  (Abschnitt 65, Rolle erst danach angelegt), spielt danach auch
+  `db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql` ein; sie ist wiederholbar.

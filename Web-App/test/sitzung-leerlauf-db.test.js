@@ -31,8 +31,13 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testDaten();
-const { drossleBeruehren, BERUEHREN_MS } = _req('src/konto/sitzungsBeruehrung.js');
-const { SITZUNG_LEERLAUF_MS, SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN } = _req('src/konto/sitzungsFrist.js');
+const { drossleBeruehren, beruehrenMs } = _req('src/konto/sitzungsBeruehrung.js');
+const { sitzungLeerlaufMs, sitzungLeerlaufSek, LEERLAUF_VORGABE_MIN } = _req('src/konto/sitzungsFrist.js');
+// Die Vorgabe als gereichte Konfiguration, wie baueDienste sie reicht.
+const VORGABE = { sitzungLeerlaufMin: LEERLAUF_VORGABE_MIN };
+const SITZUNG_LEERLAUF_MS = sitzungLeerlaufMs(VORGABE);
+const SITZUNG_LEERLAUF_SEK = sitzungLeerlaufSek(VORGABE);
+const BERUEHREN_MS = beruehrenMs(SITZUNG_LEERLAUF_MS);
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);

@@ -1,20 +1,17 @@
 package ch.brickinventoryapp.finanzen
 
-import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.testing.testGutscheineRepository
+import ch.brickinventoryapp.model.datei.DateiRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheineRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiLeser
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
 import org.junit.Assert.assertFalse
@@ -24,7 +21,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.File
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
 
@@ -52,7 +48,7 @@ class GutscheinSichtschutzAnzeigeTest {
     fun `die Gutscheinseite ist geschuetzt, solange sie steht`() {
         val pfade = PfadServer()
         val vm = GutscheinViewModel(
-            repo = GutscheineRepository(pfade.imTakt(), ResponseCache { File(compose.activity.cacheDir, "g") }),
+            repo = testGutscheineRepository(pfade.imTakt()),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = MeldungsKanal(),

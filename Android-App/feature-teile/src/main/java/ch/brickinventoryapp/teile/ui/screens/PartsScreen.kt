@@ -1,13 +1,18 @@
 package ch.brickinventoryapp.teile.ui.screens
 
-import ch.brickinventoryapp.model.fach.Postenart
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.teile.ui.Teilefilter
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
@@ -22,7 +27,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
-import ch.brickinventoryapp.teile.ui.PartsUiState
+import ch.brickinventoryapp.teile.ui.TeileUiState
+import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
@@ -56,11 +62,11 @@ import ch.brickinventoryapp.model.ui.Listenansicht
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 
-/** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
+/** Was der Teile-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 internal data class TeileZustand(
     val state: TeileSitzungUiState,
     val blick: BlickfeldUiState,
-    val partsState: PartsUiState,
+    val partsState: TeileUiState,
     val lagerState: LagerUiState,
 )
 
@@ -74,7 +80,7 @@ fun PartsRoute(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val partsState by vm.teileState.collectAsStateWithLifecycle()
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
     PartsScreen(TeileZustand(state, blick, partsState, lagerState), vm, imageLoader, onOpenDetail, gridState)
 }
@@ -108,7 +114,9 @@ internal fun PartsScreen(
     val parts = partsState.parts
     val stats = partsState.partsStats
     val total = partsState.partsTotal
-    val isLoading = partsState.partsLoading
+    val isLoading = partsState.teileAbruf.laedt
+    val fehler = partsState.teileAbruf as? Laden.Fehler
+    val fehlerText = fehler?.meldung?.satz()
     val currentPage = partsState.partsPage
     val colors = partsState.partsColors
     val serverUrl = state.serverUrl
@@ -129,7 +137,7 @@ internal fun PartsScreen(
     val lagerorte = lagerState.orte
     val lagerModus = lagerState.modi[ScopeFilter.View.PARTS] ?: ""
     val onLagerChange: (String) -> Unit = { aktionen.setLagerFilter(ScopeFilter.View.PARTS, it) }
-    val ansicht = partsState.partsView
+    val ansicht = partsState.filter.ansicht
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
     val lagerortVorrat = lagerState.eigene.map { it.name }
@@ -138,7 +146,7 @@ internal fun PartsScreen(
     // `rememberSaveable`: Der Text lebt im ViewModel, und nach dem Zurücknavigieren
     // soll das Feld zum tatsächlichen Filter der Liste passen, nicht zu einem eigenen
     // Gedächtnis.
-    var searchQuery by remember(partsState.partsQuery) { mutableStateOf(partsState.partsQuery) }
+    var searchQuery by remember(partsState.filter.suche) { mutableStateOf(partsState.filter.suche) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
     val distinctParts = remember(parts) { parts.distinctBy { "${it.partNumber}-${it.colorId}" } }
@@ -151,7 +159,7 @@ internal fun PartsScreen(
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
-    // Farbe und Kategorie — die beiden Filterlisten der Webapp (parts.js,
+    // Farbe und Kategorie — die beiden Filterlisten der Webapp (teile.js,
     // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
     // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
     val farbe = farbUebersetzer()
@@ -180,8 +188,8 @@ internal fun PartsScreen(
     // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
     // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
     val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
-        lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
-    val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
+        lagerModus, partsState.filter.ersatz, partsState.filter.farbe, partsState.filter.kategorie) > 0
+    val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, fehlerText, teileGefiltert)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Im Fehlerzustand weder Suche noch Filter — ohne Liste gibt es nichts zu suchen.
@@ -190,16 +198,17 @@ internal fun PartsScreen(
             onWert = { searchQuery = it; onSearch(it) },
             platzhalter = stringResource(R.string.parts_search_placeholder),
             aktiveFilter = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus,
-                partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter),
+                partsState.filter.ersatz, partsState.filter.farbe, partsState.filter.kategorie),
             onFilter = { zeigeFilter = true },
+            sortierung = { TeileSortierung(partsState.filter.ordnung, aktionen::setPartsOrdnung) },
             erfassen = erfassenText to { showAddDialog = true },
         )
 
-        OfflineHinweis(partsState.teileOfflineStand)
+        OfflineHinweis(partsState.teileOfflineStand, onErneut = onRefresh)
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
-            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
+            ZustandsHinweis { FehlerHinweis(fehlerText, onRefresh, fehler?.art) }
         } else if (anzeige == Ladeanzeige.KEINE_TREFFER) {
             // Die Kennzahlen meinen die ganze Sammlung; ohne Treffer bleibt der Weg zurück.
             if (stats != null) Box(Modifier.padding(Abstaende.mittel)) { TeileKennzahlen(stats) }
@@ -209,9 +218,9 @@ internal fun PartsScreen(
                     searchQuery = ""; onSearch("")
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
                     if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
-                    if (partsState.partsSpare != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
-                    if (partsState.partsColorFilter.isNotBlank()) aktionen.setPartsColorFilter("")
-                    if (partsState.partsCategoryFilter.isNotBlank()) aktionen.setPartsCategoryFilter("")
+                    if (partsState.filter.ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
+                    if (partsState.filter.farbe != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
+                    if (partsState.filter.kategorie != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
                 }) { Text(stringResource(R.string.search_clear_all)) }
             }
         } else if (anzeige == Ladeanzeige.LEER) {
@@ -270,7 +279,7 @@ internal fun PartsScreen(
                     ) { part ->
                         // BEIDE Ansichten oeffnen denselben Dialog — eine
                         // Ansicht darf nicht koennen, was die andere nicht kann.
-                        val oeffne = { aktionen.oeffneSetItem(Postenart.PART, part.partNumber, part.colorId) }
+                        val oeffne = { aktionen.oeffneSetItem(part.partNumber, part.colorId) }
                         Bewegt {
                             if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
                             else PartCard(part, serverUrl, imageLoader, oeffne,
@@ -343,4 +352,20 @@ private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
         GalleryStatChip(stats.teileGesamt, R.plurals.parts_stat_total,
             teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
     }
+}
+
+/** Die Reihenfolgen der Webapp (parts-ordnung), in derselben Bauform wie Galerie und Merkliste. */
+@Composable
+private fun TeileSortierung(gewaehlt: Teilefilter.Ordnung, onWahl: (Teilefilter.Ordnung) -> Unit) {
+    SortierMenue(
+        optionen = Teilefilter.Ordnung.entries.map { it to stringResource(it.beschriftung()) },
+        gewaehlt = gewaehlt, onWahl = onWahl,
+        vorgabe = Teilefilter.Ordnung.FARBE,
+    )
+}
+
+private fun Teilefilter.Ordnung.beschriftung(): Int = when (this) {
+    Teilefilter.Ordnung.FARBE -> R.string.parts_ordnung_farbe
+    Teilefilter.Ordnung.NAME -> R.string.parts_ordnung_name
+    Teilefilter.Ordnung.MENGE -> R.string.parts_ordnung_menge
 }

@@ -43,7 +43,16 @@ const STANDALONE = new Set([
  * liegt; die Schicht steht deshalb hier, und test/frontend-architektur.test.js
  * prüft, dass Kern und Bausteine keine Ansicht importieren. Alles übrige ist Ansicht.
  */
-const KERN = ['stile.js', 'escapen.js', 'ereignisse.js', 'ziele.js', 'zustand.js', 'registry.js', 'theme-boot.js'];
+const KERN = [
+  'stile.js',
+  'escapen.js',
+  'ereignisse.js',
+  'ziele.js',
+  'zustand.js',
+  'lader.js',
+  'registry.js',
+  'theme-boot.js',
+];
 const BAUSTEINE = [
   'dom.js',
   'format.js',
@@ -60,6 +69,16 @@ const BAUSTEINE = [
   'rueckfrage.js',
   'fadenkreuz.js',
   'diagramme.js',
+  // Von mehreren Ansichten geteilt, ohne selbst Ansicht zu sein (kein Reiter, kein eigener Bildschirm).
+  'kontofilter.js',
+  'kaufpreis-anzeige.js',
+  'rollbalken.js',
+  'erfassung-zustand.js',
+  'router.js',
+  'detailfelder.js',
+  'konten-orte.js',
+  'papierkorb.js',
+  'kennzahlen.js',
 ];
 
 /** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */

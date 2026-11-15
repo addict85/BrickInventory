@@ -78,7 +78,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     if (versandFehler) throw new Error(versandFehler);
     versandt.push(m);
   };
-  const pruefe = sn => A.pruefeSet(sn, { ...require('./helpers/sources').testDienste().mail, sendMail: versende });
+  const pruefe = sn => A.pruefeSet(sn, { ...require('./helpers/sources').testDienste().mail, sendeMail: versende });
 
   await t.test('die Richtung bedeutet, was sie sagt', () => {
     // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.
@@ -106,7 +106,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
       // Umformulierung, ohne dass sich das Verhalten ändert.
       await assert.rejects(
         () => A.setzeAlarm(U.ich, SN, 'EUR', eingabe),
-        e => String(e.code || '').startsWith('alarm_'),
+        (/** @type {any} */ e) => String(e.code || '').startsWith('alarm_'),
         `${feld}=${wert} wurde angenommen`,
       );
     }

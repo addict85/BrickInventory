@@ -1,16 +1,15 @@
 package ch.brickinventoryapp.verwaltung.ui
 
-import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
 
 /**
  * Das Server-Protokoll — eigener Zustand für Verwalter: Es liest genau ein
- * Bildschirm. Der Name bleibt, weil die Klasse trägt, was ein Verwalter in der App
- * sieht.
+ * Bildschirm. Die Zeilen bleiben stehen, während ein anderer Zeitraum geholt wird.
  */
 data class VerwaltungUiState(
-    val protokollLaden: Boolean = false,
     val protokoll: List<ProtokollZeileAnsicht> = emptyList(),
     /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
     val protokollMinuten: Int = 15,
-    val fehler: String? = null,
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
 )

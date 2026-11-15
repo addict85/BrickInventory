@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.zustand
 
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testTeileRepository
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -43,10 +43,10 @@ import ch.brickinventoryapp.testing.text
  *      der Ablage entfernt → rot „ein Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in lade() den Verlauf eines anderen Eintrags stehen gelassen → rot
  *      „der Preisverlauf eines anderen Eintrags bleibt nicht stehen“
- *   E  in UpdateAcquisitionRequest.fuerStueck() `purchasePrice = preis` statt
+ *   E  in aenderungFuerStueck() `purchasePrice = preis` statt
  *      `unitPrice = preis` → rot „ein Set schickt purchase_price, Teile und
  *      Figuren unit_price“ (Teil)
- *   F  in HaushaltRepository.updateAcquisition() fuerStueck statt fuerSet →
+ *   F  in HaushaltRepository.updateAcquisition() aenderungFuerStueck statt aenderungFuerSet →
  *      rot an derselben Stelle (Set)
  *   G  in updateManualAcquisition() den Rumpf von Hand gebaut,
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → rot an
@@ -54,6 +54,8 @@ import ch.brickinventoryapp.testing.text
  *   H  in loadManualPriceHistory() immer getPartPriceHistory
  *      (gegenproben/kaeufe-verlauf-nur-teile.patch) → rot „der Preisverlauf kommt für
  *      Teile und Figuren …“ (Figur ohne Verlauf; nur in der CI messbar)
+ *   kaeufe-laden-nicht-beim-zeigen  (gegenproben/) kaeufeVon ohne Abruf beim ersten Beobachter
+ *      → rot „die Kaeufe eines Eintrags laden, sobald …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KaeufeViewModelTest {
@@ -62,8 +64,8 @@ class KaeufeViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, HaushaltRepository(t.api, t.cache), t.sets(),
-        FinanzenRepository(t.api, t.cache), TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache)))
+    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.haushalt(), t.sets(),
+        testFinanzenRepository(t.api), testTeileRepository(t.api), testFigurenRepository(t.api)))
 
     @Before
     fun auf() {
@@ -89,7 +91,7 @@ class KaeufeViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung in die Ablage und laedt die Liste neu`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", usedCount = 0))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0)).map { it.alsAnsicht() }) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
         assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())
@@ -99,6 +101,19 @@ class KaeufeViewModelTest {
         val kachel = runBlocking { t.sets().beobachteSets().first().liste.single() }
         assertEquals("die Kachel der Galerie liest die Zusammenfassung", 1, kachel.usedCount)
         assertTrue("ohne den ganzen Bestand neu zu holen", pfade.anfragenAn("GET /api/v1/sets?").isEmpty())
+    }
+
+    @Test
+    fun `die Kaeufe eines Eintrags laden, sobald seine Seite sie zeigt`() {
+        val vm = vm()
+        val zustand = vm.kaeufeVon(Postenart.PART, "3001", 5)
+        assertTrue("ohne Beobachter kein Abruf", pfade.anfragenAn("GET /api/v1/parts/3001/5/acquisitions").isEmpty())
+        val seite = CoroutineScope(Dispatchers.Main).launch { zustand.collect {} }
+        assertEquals(listOf(9), zustand.value.acquisitions.map { it.id })
+        seite.cancel()
+        val set = CoroutineScope(Dispatchers.Main).launch { vm.kaeufeVon(Postenart.SET, "75192-1", 0).collect {} }
+        assertTrue("ein Set fragt seine Käufe", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").isNotEmpty())
+        set.cancel()
     }
 
     @Test
@@ -136,7 +151,7 @@ class KaeufeViewModelTest {
         return pfade.koerper[i]
     }
 
-    /** ApiJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
+    /** BrickJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
     private fun gesetzt(feld: String, json: String) = Regex("\"$feld\":[0-9]").containsMatchIn(json)
 
     @Test
@@ -165,7 +180,7 @@ class KaeufeViewModelTest {
         // 3002 hat keinen Verlauf auf dem Testserver: Er bleibt leer, statt den
         // von 3001 weiter zu zeigen.
         vm.loadManualAcquisitions(Postenart.PART, "3002", 5)
-        assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.isLoading && !vm.manDetailState.value.priceHistoryLoading)
+        assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.kaeufeAbruf.laedt && !vm.manDetailState.value.verlaufAbruf.laedt)
         assertNull(vm.manDetailState.value.priceHistory)
     }
 

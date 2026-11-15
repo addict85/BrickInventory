@@ -1,6 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { LIKE_ESCAPE, likeWoertlich } from '../../../db/likeSuche';
 import { mengeSkalar } from '../../../db/bestandsmenge';
+import type { Spalten } from '../../../db/zeilen';
 
 /** Die Route spricht db/ nicht selbst an. */
 
@@ -14,47 +15,62 @@ async function anzahl(db: DbSchnittstelle, sql: string): Promise<number> {
   return (await db.get<{ c: number }>(sql))?.c ?? 0;
 }
 
+export function preiseImCache(db: DbSchnittstelle): Promise<number> {
+  return anzahl(db, 'SELECT COUNT(*)::int AS c FROM price_cache');
+}
+
 export function veraltetePreise(db: DbSchnittstelle): Promise<number> {
   return anzahl(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
-/** Nur die Zahl der Konten: Welches ein Set führt, geht auch den Verwalter nichts an. */
+/** Nur die Zahl der Konten (Funktion aus 0119): Welches ein Set führt, geht auch den Verwalter nichts an. */
 export async function bildZeilenDerKonten(db: DbSchnittstelle, sn: string): Promise<KontoBildzeile> {
   const z = await db.get<KontoBildzeile>(
-    `SELECT COUNT(DISTINCT s.user_id)::int AS anzahl_konten, MAX(c.image_local) AS image_local, MAX(c.image_url) AS image_url
-       FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
-      WHERE s.set_number = $1`,
+    `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
+            CASE WHEN n.anzahl > 0 THEN c.image_url END AS image_url
+       FROM (SELECT konten_mit_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
     [sn],
   );
   return z ?? { anzahl_konten: 0, image_local: null, image_url: null };
 }
 
 export function katalogBild(db: DbSchnittstelle, sn: string): Promise<Bildzeile | undefined> {
-  return db.get(`SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]);
+  return db.get<Spalten<'set_catalog', 'image_url' | 'image_local'>>(
+    `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`,
+    [sn],
+  );
 }
 
 export function fehlanzeigeDesSets(db: DbSchnittstelle, sn: string): Promise<Fehlanzeige | undefined> {
-  return db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+    `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
+    ['set:' + sn],
+  );
 }
 
 /** @param datei der Dateiname ohne Endung, wie ihn die Bildablage bildet */
 export function fehlanzeigeDerVorschau(db: DbSchnittstelle, datei: string): Promise<Fehlanzeige | undefined> {
-  return db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`, [
-    'thumb:%' + likeWoertlich(datei + '_thumb.jpg'),
-  ]);
+  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+    `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
+    ['thumb:%' + likeWoertlich(datei + '_thumb.jpg')],
+  );
 }
 
 export function setFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(`SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`);
+  return db.all<Spalten<'image_misses', 'cache_key'>>(
+    `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`,
+  );
 }
 
 export function vorschauFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(`SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`);
+  return db.all<Spalten<'image_misses', 'cache_key'>>(
+    `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`,
+  );
 }
 
 /** Ein 404 vom CDN bleibt vermerkt: Ein neuer Versuch ändert daran nichts. */
 export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(
+  return db.all<Spalten<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses
             WHERE cache_key LIKE 'set:%'
               AND (reason IS NULL OR reason NOT LIKE '%404%')`,
@@ -62,7 +78,7 @@ export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[
 }
 
 export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: string; set_img_url: string }[]> {
-  return db.all(
+  return db.all<{ set_num: string; set_img_url: string }>(
     `SELECT rb.set_num, rb.set_img_url FROM rb_sets rb
         WHERE rb.set_img_url IS NOT NULL AND rb.set_img_url <> ''
           AND NOT EXISTS (SELECT 1 FROM image_misses m
@@ -71,7 +87,7 @@ export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: s
 }
 
 export function offeneBildauftraege(db: DbSchnittstelle): Promise<{ n: number } | undefined> {
-  return db.get(`SELECT COUNT(*)::int AS n FROM image_wanted`);
+  return db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM image_wanted`);
 }
 
 export function katalogBilderOffen(db: DbSchnittstelle): Promise<number> {
@@ -79,7 +95,7 @@ export function katalogBilderOffen(db: DbSchnittstelle): Promise<number> {
 }
 
 export function setsOhneAnleitung(db: DbSchnittstelle): Promise<{ set_number: string }[]> {
-  return db.all(`
+  return db.all<{ set_number: string }>(`
       SELECT DISTINCT s.set_number
       FROM sets s
       WHERE NOT EXISTS (
@@ -93,7 +109,7 @@ export function protokollSeit(
   db: DbSchnittstelle,
   minuten: number,
 ): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
-  return db.all(
+  return db.all<{ id: number; level: string; message: string; logged_at: Date }>(
     // bigint käme als Text; der Vertrag (und das Protokollfenster) nennt eine Zahl.
     `SELECT id::float8 AS id, level, message, logged_at
        FROM app_logs
@@ -164,7 +180,7 @@ export function probeErfassungen(
   uid: number,
   setNumber: string,
 ): Promise<{ quantity: number; condition: string; purchase_price: number | null; created_at: Date }[]> {
-  return db.all(
+  return db.all<Spalten<'set_acquisitions', 'quantity' | 'condition' | 'purchase_price' | 'created_at'>>(
     'SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at',
     [uid, setNumber],
   );
@@ -185,10 +201,6 @@ export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
              WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`,
     [setNumber],
   );
-}
-
-export function probeWaehrung(db: DbSchnittstelle, uid: number): Promise<{ value: string } | undefined> {
-  return db.get("SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'", [uid]);
 }
 
 export function letzterLaufDerArt(db: DbSchnittstelle) {

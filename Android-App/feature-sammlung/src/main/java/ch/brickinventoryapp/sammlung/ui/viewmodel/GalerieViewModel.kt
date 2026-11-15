@@ -1,9 +1,12 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.sitzung.abgeleitet
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -90,7 +93,6 @@ class GalerieViewModel @Inject constructor(
         aktualisiere = { g -> kontoAbfrage(g)?.let { kontosicht.galerie.aktualisiere(it) } ?: sets.aktualisiereSets() },
         holeKennzahlen = { finanzen.getStats(filter.kontoFuer(ScopeFilter.View.GALLERY)) },
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
-        beschreibeFehler = { meldungen.meldung(it) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
@@ -103,12 +105,13 @@ class GalerieViewModel @Inject constructor(
      * Die Galerie ohne das vorgemerkte Set: Die Ablage führt es bis zum Löschen beim
      * Server, und „Rückgängig“ zeigt es so ohne Neuladen wieder.
      */
-    val galleryState: StateFlow<GalleryUiState> = galerie.state
+    private val galerieBeobachtet = Beobachtet(galerie.state
         .abgeleitet(_vorgemerkt) { st, v ->
             // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.
             if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
                 stats = st.stats?.let { k -> v.set?.let { ohneSet(k, it) } ?: k })
-        }
+        })
+    val galleryState: StateFlow<GalleryUiState> = galerieBeobachtet
 
     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
     /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
@@ -120,18 +123,18 @@ class GalerieViewModel @Inject constructor(
             thema = gemerkt[THEMA] ?: "",
             sortierung = Setsortierung.aus(gemerkt[SORTIERUNG]),
         )
+        ladeJeServer(sitzung, galerieBeobachtet) { ladeWennLeer() }
     }
 
     fun loadSets() = galerie.laden()
 
     /**
-     * Beim Zeigen: laden, wenn die Galerie leer ist und ein Server eingetragen ist.
-     * Hier statt im Graphen, damit die Regel geprüft werden kann; ein Fehlschlag beim
-     * Start wird so beim nächsten Betreten wiederholt.
+     * Beim Zeigen (ladeJeServer): laden, wenn die Galerie leer ist und ein Server
+     * eingetragen ist; ein Fehlschlag beim Start wird so beim nächsten Betreten wiederholt.
      */
     fun ladeWennLeer() {
         val g = galerie.state.value
-        if (sitzung.state.value.serverUrl.isBlank() || g.sets.isNotEmpty() || g.galleryLoading) return
+        if (sitzung.state.value.serverUrl.isBlank() || g.sets.isNotEmpty() || g.abruf.laedt) return
         loadSets()
         loadStats()
     }
@@ -148,7 +151,7 @@ class GalerieViewModel @Inject constructor(
     private fun ladePreise() {
         viewModelScope.launch {
             val r = finanzen.getPnl(filter.kontoFuer(ScopeFilter.View.GALLERY))
-            if (r is Ergebnis.Success) _preise.value = kachelPreise(r.data.sets)
+            if (r is Ergebnis.Erfolg) _preise.value = kachelPreise(r.data.sets)
         }
     }
 
@@ -261,6 +264,6 @@ internal fun ohneSet(k: KennzahlenAnsicht, set: SetAnsicht): KennzahlenAnsicht {
  */
 internal suspend fun setLoeschen(sets: SetsRepository, texte: Texte, setNumber: String, name: String = setNumber): Pair<Boolean, String?> =
     when (val r = sets.deleteSet(setNumber)) {
-        is Ergebnis.Success -> true to texte.text(R.string.vm_set_deleted, name)
-        is Ergebnis.Error -> false to texte.meldungFuerSnackbar(r)
+        is Ergebnis.Erfolg -> true to texte.text(R.string.vm_set_deleted, name)
+        is Ergebnis.Fehler -> false to texte.meldungFuerSnackbar(r)
     }

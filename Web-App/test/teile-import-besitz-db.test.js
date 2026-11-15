@@ -4,12 +4,15 @@
  * Rebrickable wird kurz gemerkt, statt bei jedem Versuch erneut zu fragen.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  findSetInScope() aus der Route entfernt (Import für das fragende
+ *   A  findeSetImBlickfeld() aus der Route entfernt (Import für das fragende
  *      Konto wie vorher) → rot: „ein fremdes Set wird nicht importiert“ und
  *      „das Set des Unterkontos … für dessen Besitzer“
  *   B  Drossel entfernt → rot: „je Konto höchstens 30 Importe je Stunde“
- *   C  der Merker `_leer` in getAllSetParts() nicht gelesen → rot: „eine
+ *   C  der Merker `_leer` in alleTeileDesSets() nicht gelesen → rot: „eine
  *      leere Antwort wird gemerkt“ (zwei Abrufe statt einem)
+ *   D  (14.11.2026) in teileDesSetsImportieren() wieder ein Fang, der meldet
+ *      und 0 liefert (früher importPartsForSet) → rot: „ein gescheiterter
+ *      Import ist ein Fehler“ (200 mit count 0)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -32,15 +35,16 @@ const ersetze = (rel, zusatz) => {
   _req(rel);
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
-// Der Client zuerst: Wer ihn danach lädt, bekommt schon den Ersatz.
-ersetze('clients/rebrickable.js', {
+// Rebrickable an der Verdrahtung gestellt: Jeder Satz Dienste fragt über ihn.
+quellen.testQuellen(null, {
   holeSetTeile: async n => {
     abrufe.push(n);
     return { teile: [], verweigert: false };
   },
 });
-ersetze('src/katalog/partsImport.js', {
-  importPartsForSet: async (_k, sn, uid) => {
+ersetze('src/sets/setInhaltImport.js', {
+  importiereTeile: async (_k, sn, uid) => {
+    if (sn.startsWith('TIK')) throw new Error('Rebrickable antwortet nicht');
     importe.push([sn, uid]);
     return 3;
   },
@@ -68,8 +72,15 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
   const UNTER = `TIU${P}-1`,
-    FREMD = `TIF${P}-1`;
-  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [U, UNTER, F, FREMD]);
+    FREMD = `TIF${P}-1`,
+    KAPUTT = `TIK${P}-1`;
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4), ($1, $5)', [
+    U,
+    UNTER,
+    F,
+    FREMD,
+    KAPUTT,
+  ]);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
@@ -99,6 +110,14 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     assert.deepEqual(importe, [[UNTER, U]]);
   });
 
+  await t.test('ein gescheiterter Import ist ein Fehler, keine leere Liste', async () => {
+    const r = await importiere(H, KAPUTT);
+    assert.equal(r.status, 500, JSON.stringify(r.body));
+    assert.equal(r.body.success, false);
+    assert.equal(r.body.count, undefined);
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
+  });
+
   await t.test('je Konto höchstens 30 Importe je Stunde', async () => {
     const status = [];
     for (let i = 0; i < 30; i++) status.push((await importiere(U, UNTER)).status);
@@ -110,10 +129,10 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   });
 
   await t.test('eine leere Antwort wird gemerkt', async () => {
-    const { getAllSetParts } = _req('src/katalog/rebrickableKatalog.js');
+    const { alleTeileDesSets } = _req('src/katalog/rebrickableKatalog.js');
     const leer = `TIL${P}-1`;
-    assert.deepEqual(await getAllSetParts(leer), []);
-    assert.deepEqual(await getAllSetParts(leer), []);
+    assert.deepEqual(await alleTeileDesSets(leer), []);
+    assert.deepEqual(await alleTeileDesSets(leer), []);
     assert.deepEqual(abrufe, [leer], 'die zweite Frage ging wieder an Rebrickable');
   });
 });

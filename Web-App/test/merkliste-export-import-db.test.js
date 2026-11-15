@@ -108,20 +108,9 @@ function ausZip(buf, name) {
 }
 
 /**
- * Dieselbe CSV, aber aus POSTEN gebaut statt aus dem Export geholt.
- *
- * ── Warum es die gibt (beim Gegenprobieren gelernt) ─────────────────────────
- *
- * Faelle 4 bis 6 lasen anfangs `csvText` aus Fall 1 weiter. Als ich fuer die
- * Gegenprobe das `archive.append` entfernte, wurden deshalb FUENF Faelle rot
- * statt der drei, die wirklich etwas mit dem Archiv zu tun haben — 4 und 5
- * nur, weil sie nichts zum Hochladen hatten. Das ist eine Kettenreaktion, kein
- * Befund: Die Meldung zeigte auf den Import, der Fehler lag im Export.
- *
- * Fall 3 BEHAELT die Kopplung mit Absicht — genau sie ist der Rundlauf: Was
- * der Export erzeugt, muss der Import lesen koennen. Faelle 4 und 5 fragen
- * etwas anderes (verdoppelt der Import? prueft er das Konto?) und bekommen
- * deshalb ihre eigene Datei.
+ * Dieselbe CSV, aus POSTEN gebaut statt aus dem Export geholt: Fälle 4 und 5 fragen nach
+ * dem Import allein und sollen nicht rot werden, wenn der Export bricht. Fall 3 bleibt
+ * gekoppelt, er ist der Rundlauf.
  */
 function csvAusPosten() {
   return 'set_number,condition,created_at\n' + POSTEN.map(p => `${p.sn},${p.c},${p.am}`).join('\n') + '\n';

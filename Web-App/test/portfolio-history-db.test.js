@@ -86,7 +86,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
     c0.release();
   }
 
-  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('ph_a','x'),('ph_b','x')");
@@ -168,7 +168,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   for (const period of ['week', 'month', 'year', 'max']) {
     await t.test(`Zeitraum ${period}: gleiche Punkte wie die Vergleichsfassung`, async () => {
       const alt = await vergleichsFassung(setNumbers, setQty, 'CHF', 'N', filter[period]);
-      const neu = await getPortfolioHistory(u1, [u1, u2], period, db, getSetting);
+      const neu = await portfolioVerlauf(u1, [u1, u2], period, db, getSetting);
 
       assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
 
@@ -187,7 +187,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await t.test('ohne Preisverlauf bleibt die Kurve leer statt zu stürzen', async () => {
     await db.run('DELETE FROM price_history');
     await db.run('DELETE FROM price_cache');
-    const r = await getPortfolioHistory(u1, [u1, u2], 'max', db, getSetting);
+    const r = await portfolioVerlauf(u1, [u1, u2], 'max', db, getSetting);
     assert.equal(Array.isArray(r.points), true);
   });
 
@@ -227,12 +227,12 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     // gibt die Schnappschüsse nicht mehr, und Zeilen aus der Zeit davor sollen
     // von der Aufbewahrungsfrist wegkommen wie alles andere. Eine Ausnahme, die
     // nichts mehr schützt, hält nur noch Daten fest.
-    const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
+    const { loescheAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
     umgebung({ PRICE_HISTORY_KEEP_DAYS: '1095' });
-    const weg = await purgeAltePreise();
+    const weg = await loescheAltePreise();
     assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
       assert.equal(
@@ -243,11 +243,11 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   });
 
   await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
-    const { purgeAltePreise } = _req('src/finanzen/priceHistory.js');
+    const { loescheAltePreise } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
     umgebung({ PRICE_HISTORY_KEEP_DAYS: '0' });
-    assert.equal(await purgeAltePreise(), 0);
+    assert.equal(await loescheAltePreise(), 0);
     assert.equal((await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='77777-1'`)).c, 1);
     umgebung({ PRICE_HISTORY_KEEP_DAYS: undefined });
   });

@@ -2,12 +2,12 @@ package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenPreiseAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenPreiseAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.ui.Laden
 
 /**
  * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt
@@ -16,10 +16,8 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
  */
 data class MerklisteUiState(
     val merkposten: List<MerkpostenAnsicht> = emptyList(),
-    val laedt: Boolean = false,
-    /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
-    val fehler: String? = null,
-    val fehlerKlasse: Fehlerklasse? = null,
+    /** Der letzte Abruf vom Server; die Liste selbst kommt aus der Ablage. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
     // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
     // Minifiguren und Finanzen.
@@ -54,7 +52,7 @@ data class MerkpostenDetailUiState(
      * price_cache, diese Antwort füllt ihn — so stehen die Preise sofort da.
      */
     val preise: MerkpostenPreiseAnsicht? = null,
-    val laedt: Boolean = false,
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     /** Die Preisalarme dieses Sets — dieselben wie im Set-Detail. */
     val preisalarme: List<PreisalarmAnsicht> = emptyList(),
 )

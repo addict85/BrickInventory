@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
@@ -39,7 +43,6 @@ import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
-import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
 import ch.brickinventoryapp.model.util.zahlenLocale
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
@@ -90,10 +93,11 @@ internal fun FinanceScreen(
     val financeState = zustand.financeState
 
     val valuation = financeState.valuation
-    val isLoading = financeState.valuationLoading
+    val isLoading = financeState.bewertung.laedt
+    val bewertungsFehler = financeState.bewertung as? Laden.Fehler
     val serverUrl = state.serverUrl
     val priceCondition = state.priceCondition
-    val historyLoading = financeState.historyLoading
+    val historyLoading = financeState.verlauf.laedt
     val historyPeriod = financeState.historyPeriod
     val historyPeriodChangePct = financeState.historyPeriodChangePct
     // Achsen in der Sprache der Anzeige: Die Konfiguration ist der Schlüssel, damit ein
@@ -126,16 +130,17 @@ internal fun FinanceScreen(
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
-    fun fmtWert(v: Double?): String = v?.let { fmtMoney(it, currencyCode) } ?: "—"
+    fun fmtWert(v: Geld?): String = fmtMoneyOrDash(v, currencyCode)
 
     // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
     // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
     if (valuation == null) {
+        val fehlerText = bewertungsFehler?.meldung?.satz()
         Ladezustand(
-            anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = financeState.valuationFehler, gefiltert = false),
-            fehler = financeState.valuationFehler,
+            anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = fehlerText, gefiltert = false),
+            fehler = fehlerText,
             onErneut = onRefresh,
-            fehlerKlasse = financeState.valuationFehlerKlasse,
+            fehlerKlasse = bewertungsFehler?.art,
             laedt = {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
@@ -247,7 +252,7 @@ internal fun ManualFinanceRow(
     /**
      * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt. Wie in
      * der Set-Zeile (FinanceSections.kt) und in beiden Tabellen der Webapp
-     * (public/js/finance.js, pmRow, `detail.purchase_price`), damit die Zeilen
+     * (public/js/finanzen.js, pmRow, `detail.purchase_price`), damit die Zeilen
      * gleich viel sagen.
      */
     purchaseStr: String? = null,
@@ -323,8 +328,8 @@ internal fun ManualFinanceRow(
 }
 
 /** Gewinn als Betrag mit Vorzeichen, wie die Prozentzahl daneben (fmtProzent). */
-internal fun gewinnText(betrag: Double, fmtWert: (Double?) -> String): String =
-    if (betrag >= 0.005) "+" + fmtWert(betrag) else fmtWert(betrag)
+internal fun gewinnText(betrag: Geld, fmtWert: (Geld?) -> String): String =
+    if (betrag.aufRappen().signum() > 0) "+" + fmtWert(betrag) else fmtWert(betrag)
 
 @Composable
 internal fun SubtotalRow(label: String, value: String) {

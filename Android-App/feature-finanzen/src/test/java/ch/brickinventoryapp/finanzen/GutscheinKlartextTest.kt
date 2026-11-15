@@ -1,16 +1,17 @@
 package ch.brickinventoryapp.finanzen
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.finanzen.ui.GutscheinPdfZiel
 import ch.brickinventoryapp.finanzen.ui.GutscheinSchritt
 import ch.brickinventoryapp.finanzen.ui.Kopierauftrag
-import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.testing.testGutscheineRepository
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.eingabeUeberMaske
 import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
@@ -78,14 +79,14 @@ class GutscheinKlartextTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-klar-${System.nanoTime()}").apply { mkdirs() }
         kanal = MeldungsKanal()
         vm = GutscheinViewModel(
-            repo = GutscheineRepository(TestApi.fuer(server), ResponseCache { cacheDir }),
+            repo = testGutscheineRepository(TestApi.fuer(server)),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = kanal,
         )
         server.enqueue(antwort(maskiert))
         vm.ladeGutscheine()
-        warteBis("Liste") { vm.state.value.gutscheine.size == 1 && !vm.state.value.laedt }
+        warteBis("Liste") { vm.state.value.gutscheine.size == 1 && !vm.state.value.abruf.laedt }
         server.takeRequest()
     }
 
@@ -104,7 +105,7 @@ class GutscheinKlartextTest {
 
         server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.bestaetige("geheim", null)
-        warteBis("Codefeld") { vm.state.value.bestaetigung?.let { it.codeNoetig && !it.laeuft } == true }
+        warteBis("Codefeld") { vm.state.value.bestaetigung?.let { it.codeNoetig && !it.vorgang.laeuft } == true }
         assertTrue(vm.state.value.pinSichtbar.isEmpty())
         val erste = server.takeRequest()
         assertEquals("POST /api/v1/vouchers/1/klartext", "${erste.method} ${erste.path}")
@@ -154,8 +155,8 @@ class GutscheinKlartextTest {
         vm.loescheGutschein(1)
         server.shutdown()
         vm.bestaetige("geheim", null)
-        warteBis("Absage") { vm.state.value.bestaetigung?.let { !it.laeuft && it.fehler != null } == true }
-        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.bestaetigung?.fehler)
+        warteBis("Absage") { vm.state.value.bestaetigung?.let { it.vorgang is Vorgang.Fehlgeschlagen } == true }
+        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.bestaetigung?.vorgang?.fehlerMeldung.text)
         assertEquals("Der Gutschein steht noch da", 1, vm.state.value.gutscheine.size)
     }
 
@@ -192,7 +193,7 @@ class GutscheinKlartextTest {
         server.enqueue(antwort("""{"success":true,"voucher":{"id":1,"number":"…3333","pin":"•••","amount":60,"currency":"CHF","hat_pdf":true}}"""))
         server.enqueue(antwort(maskiert))
         vm.speichere(null)
-        warteBis("gespeichert") { server.requestCount >= 3 && !vm.state.value.speichert }
+        warteBis("gespeichert") { server.requestCount >= 3 && !vm.state.value.speichern.laeuft }
         val r = server.takeRequest()
         assertEquals("PUT /api/v1/vouchers/1", "${r.method} ${r.path}")
         val rumpf = JSONObject(r.body.readUtf8())

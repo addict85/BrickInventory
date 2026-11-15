@@ -12,6 +12,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { BUENDEL: BUNDLE, stelleBuendelSicher } = require('./helpers/buendel');
+const { portVon } = require('./helpers/server');
 stelleBuendelSicher();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
@@ -59,19 +60,6 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
   dom.window.close();
 });
 
-// HINWEIS: Hier stand der Versuch eines Wächters gegen vergessene Importe —
-// erst als Klick-Test durch alle Reiter, dann als statische Prüfung "jeder
-// modulfremde Aufruf muss importiert sein".
-//
-// Beide sind wieder entfernt, weil sie nicht funktionierten:
-//   • Der Klick-Test scheiterte an abgewiesenen Zusagen aus den Datenabrufen.
-//     Der Node-Test-Runner rechnet die dem Test an, unabhängig von einem
-//     eigenen unhandledRejection-Abfang.
-//   • Die statische Prüfung meldete NICHTS, als der fehlende Import von
-//     initCatalog zur Gegenprobe wieder entfernt wurde. Ein Test, der grün
-//     bleibt, während der Fehler vorhanden ist, ist schlechter als kein Test:
-//     Er erzeugt Sicherheit, die es nicht gibt.
-
 test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () => {
   // Woher dieser Test kommt
   const http = require('node:http');
@@ -86,8 +74,8 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
     if (q.url === '/api/bare500') return sende(500, 'application/json', JSON.stringify({ message: 'oops' }));
     return sende(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
   });
-  await new Promise(r => srv.listen(0, r));
-  const port = srv.address().port;
+  await new Promise(r => srv.listen(0, () => r(null)));
+  const port = portVon(srv);
 
   const { JSDOM } = require('jsdom');
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: `http://localhost:${port}/` });
@@ -177,12 +165,16 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
   const von = sitzung.indexOf("abonniere('sitzungBeendet'");
   assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
   const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
-  assert.match(fn, /if \(!ME\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
+  assert.match(fn, /if \(!angemeldetesKonto\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
   assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
   assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
-  assert.match(fn, /showLogin\(\{ abgelaufen: true \}\)/, 'Die Anmeldemaske muss zurückkommen');
+  assert.match(fn, /showLogin\(\{ abgelaufen: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
   // Die Meldung steht einmal in der Anmeldekarte (showLogin), nicht als Toast.
-  assert.match(core, /o\.abgelaufen \? tRaw\('auth\.session_expired'\)/, 'Ohne Meldung wüsste niemand, warum');
+  assert.match(
+    core,
+    /o\.abgelaufen \? (o\.hinweis \|\| )?tRaw\('auth\.session_expired'\)/,
+    'Ohne Meldung wüsste niemand, warum',
+  );
 
   // Der Text muss in beiden Sprachen existieren — sonst steht der Schlüssel da.
   for (const lang of ['de', 'en']) {

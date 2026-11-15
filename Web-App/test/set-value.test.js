@@ -2,14 +2,14 @@
  * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
+ *   cacheVerwendbar ohne die kurze Frist für 0-Einträge → rot „ein gecachter
  *   Null-Preis …“; effectiveCondition bei Erfassungen immer 'N' → rot
  *   „Bewertung und Anzeige …“; buildChart() mit firstRealIndex immer 0 oder
  *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-zustand-aggregat-db.test.js
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
  *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot);
  *   „nur 404 wird negativ gemerkt, kein 403“ läuft in bild-proxy-deckel.test.js.
- *   Am 08.11.2026 gestrichen: „getPriceGuide holt ohne Angabe den Neupreis“ und
+ *   Am 08.11.2026 gestrichen: „preisfuehrerAbfrage holt ohne Angabe den Neupreis“ und
  *   „ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen“ →
  *   bricklink-preisfuehrer-db.test.js (Gegenproben A–D dort).
  *   Am 09.11.2026 gestrichen: drei SQL-Suchen in Dateien ohne SQL (prüften nichts) und „der Preisjob
@@ -151,19 +151,29 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   // Ein 0-Eintrag galt für das volle TTL-Fenster als endgültige Antwort; die
   // Logik wich dann auf den ANDEREN Zustand aus. Ein Eintrag mit Preis gilt
   // das ganze Fenster, einer ohne nur kurz.
-  const { cacheUsable } = _req('src/finanzen/rechnung/preise.js');
-  const vor = (/** @type {number} */ h) => new Date(Date.now() - h * 3600000).toISOString();
-  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(1) }, 24), true, 'ein frischer 0-Eintrag antwortet');
+  const { cacheVerwendbar } = _req('src/finanzen/rechnung/preise.js');
+  // Die Zeit ist ein Parameter: ein fester Augenblick statt der Uhr des Rechners.
+  const JETZT = Date.UTC(2026, 0, 10, 12);
+  const vor = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
   assert.equal(
-    cacheUsable({ avg_price: '0', fetched_at: vor(7) }, 24),
+    cacheVerwendbar({ avg_price: '0', fetched_at: vor(1) }, 24, JETZT),
+    true,
+    'ein frischer 0-Eintrag antwortet',
+  );
+  assert.equal(
+    cacheVerwendbar({ avg_price: '0', fetched_at: vor(7) }, 24, JETZT),
     false,
     'ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen',
   );
-  assert.equal(cacheUsable({ avg_price: '0' }, 24), false, 'ohne fetched_at ist das Alter unbekannt');
-  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(3) }, 2), false, 'die kürzere Frist gewinnt');
-  assert.equal(cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24), true, 'ein Preis gilt das volle Fenster');
+  assert.equal(cacheVerwendbar({ avg_price: '0' }, 24, JETZT), false, 'ohne fetched_at ist das Alter unbekannt');
+  assert.equal(cacheVerwendbar({ avg_price: '0', fetched_at: vor(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
   assert.equal(
-    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24),
+    cacheVerwendbar({ avg_price: '12.5', fetched_at: vor(20) }, 24, JETZT),
+    true,
+    'ein Preis gilt das volle Fenster',
+  );
+  assert.equal(
+    cacheVerwendbar({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24, JETZT),
     true,
     'ein Mengenschnitt allein ist ein Preis (marktpreisAus) und gilt das volle Fenster',
   );
@@ -173,7 +183,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   // Der Detail-Dialog war nach dem letzten Fix richtig, der Finanzen-Reiter
   // nicht: Dort zeigte die als „Marktpreis" beschriftete Spalte qty_avg_price,
   // und die Total-Spalte rechnete damit.
-  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finance.js'), 'utf8');
+  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finanzen.js'), 'utf8');
   assert.match(
     fin,
     /const total\s*=\s*acq \? acq\.wert_gesamt : s\.wert_gesamt;/,
@@ -199,14 +209,14 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
 });
 
 test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
-  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finance.js'), 'utf8');
+  const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finanzen.js'), 'utf8');
   // Die Sets-Tabelle hatte zwei Preisspalten für dasselbe Konzept.
   assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/, 'Die mengengewichtete Spalte ist entfallen');
   // Einstand (Menge × Kaufpreis) vor Marktpreis, für alle drei Tabellen gleich.
   // Der Kopf darf ein Sortierknopf sein (sortKnopf), die Reihenfolge bleibt.
   assert.match(
     fin,
-    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortKnopf\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{t(?:Raw)?\('detail\.market_price'\)\}/,
+    /<th[^>]*>(?:<abbr[^>]*>)?\$\{(?:t(?:Raw)?\('finance\.col\.purchase'\)|sortKnopf\('kauf', \w+, tRaw\('finance\.col\.purchase'\)\))\}(?:<\/abbr>)?<\/th>`(?:\s*\+ `|\}\$\{html`)<th[^>]*>\$\{(?:t(?:Raw)?\('(?:detail\.market_price|finance\.grand\.value)'\)|sortKnopf\('wert', \w+, tRaw\('finance\.grand\.value'\)\))\}/,
     'Sets-Tabelle: Kaufpreis vor Marktpreis, wie bei Teilen und Minifiguren',
   );
   // fmtGeld statt fmtN: Ein Kaufpreis von 0 (Geschenk) steht als „0,00 €“ da.
@@ -224,10 +234,8 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   );
   assert.match(sv, /r\.purchase_price != null/, 'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
 
-  // Hier stand eine Regel auf den Rueckfall `set.purchase_price != null ?
-  // parseFloat(set.purchase_price) : null` in der Bewertung. Mit Migration 0032
-  // gibt es die Spalte nicht mehr; die Bewertung nimmt ausschliesslich den
-  // gewichteten Kaufpreis aus den Erfassungen. Das ist die Nachfolgeregel.
+  // Die Bewertung nimmt ausschliesslich den gewichteten Kaufpreis aus den
+  // Erfassungen, keinen Rueckfall auf eine Spalte der Bestandszeile.
   const fc = require('./helpers/sources').finanzQuelle();
   assert.match(
     fc,
@@ -242,14 +250,14 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
 });
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
-  // Marcos Konsole
   const src = require('./helpers/sources').adminQuelle();
-  const i = src.indexOf("api('GET', `/v1/minifigs?source=set`)");
-  assert.ok(i > 0, 'Die Nachfrage nach den Minifiguren fehlt');
+  // Seit Runde 24 (N7) kommt die Figurenzahl aus dem Katalog; nachgeladen wird nur noch der Preisverlauf.
+  const i = src.indexOf("api('GET', `/v1/sets/${sn}/price-history`)");
+  assert.ok(i > 0, 'Die Nachfrage nach dem Preisverlauf fehlt');
   const fn = src.slice(i, i + 500);
   assert.match(
     fn,
-    /!curSet \|\| curSet\.set_number !== sn/,
+    /!offenesSet \|\| offenesSet\.set_number !== sn/,
     'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist',
   );
 });
@@ -298,10 +306,10 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
     /const darfErzeugen = req\.query\.gen !== '0'/,
     'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
   );
-  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'catalog.js'), 'utf8');
+  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'katalog.js'), 'utf8');
   assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
   // Die Galerie NICHT — dort lohnt es sich.
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sammlung.js'), 'utf8');
   assert.match(
     gal,
     /imgUrl\(thumbUrl\(src\)\s*\|\|\s*src,\s*true\)/,

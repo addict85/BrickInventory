@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import android.os.Looper
@@ -15,18 +18,18 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
@@ -48,20 +51,28 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testTeileRepository
+import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
+import ch.brickinventoryapp.verwaltung.ui.screens.CacheEreignisse
+import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringScreen
+import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringZustand
+import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
+import kotlinx.coroutines.runBlocking
 
 /**
- * Kein Text bricht Zeichen für Zeichen um, und kein Knopf und keine Überschrift wird
- * gekürzt: Preisalarme, Sammlung, Set-Detail, Katalog-Detail und Anmeldung auf dem
- * Telefon (411 dp), je bei 100 und 200 % Schrift. Gemessen am Textlayout jedes
- * Textknotens: schmaler als etwa drei Zeichen, deutlich mehr Zeilen als Wörter, oder
- * in einem Knopf bzw. einer Überschrift mit Auslassung oder über den Rand.
+ * Kein Text bricht Zeichen für Zeichen oder im Wort um, keiner ragt über seinen Platz,
+ * kein Knopf und keine Überschrift wird gekürzt: Preisalarme, Sammlung, Set-Detail,
+ * Katalog-Detail und Anmeldung auf dem Telefon (411 dp) bei 100 und 200 % Schrift, dazu
+ * die Hintergrundarbeiten (100 %, 360 dp) und das Set-Detail mit fünfstelligen Beträgen (360 dp).
+ *
+ * Gemessen am Textlayout jedes Textknotens: schmaler als etwa drei Zeichen, mehr Zeilen
+ * als Wörter, ein Zeilenende zwischen zwei Buchstaben, eine Zeile breiter als der Text.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   preisalarm-zeile-gequetscht      Plakette und „zuletzt …“ wieder in einer Row, die Plakette
@@ -70,6 +81,12 @@ import ch.brickinventoryapp.testing.TeileRepository
  *   katalog-knoepfe-nebeneinander    Aufnehmen und Merken wieder nebeneinander, je eine Zeile mit
  *                                    Auslassung → rot „Katalog-Detail bei 100 Prozent“
  *                                    („Zur Sammlung hinzufügen“ gekürzt)
+ *   standard-zustand-in-der-zeile    „Standard-Zustand“ wieder neben der Wahl → rot
+ *                                    „Hintergrundarbeiten bei 100 Prozent“ (auf 360 dp „Gebraucht“
+ *                                    im Wort gebrochen)
+ *   gewinn-in-einer-zeile            Gewinn/Verlust wieder stets einzeilig → rot „Set-Detail schmal
+ *                                    bei 200 Prozent“ („+CHF 20’200.90 · +19.2%“ ragt über die Kachel,
+ *                                    gemessen an der natürlichen Breite)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -92,8 +109,10 @@ class UmbruchWaechterTest {
     private fun treiben(name: String, bereit: () -> Boolean) =
         treibeBis(name, anfragen = { welt.pfade.anfragen.size }, bereit = bereit)
 
-    private fun pruefe(name: String, schrift: Float, bereit: () -> Boolean = { true }, inhalt: @Composable () -> Unit) {
-        RuntimeEnvironment.setQualifiers("de-rCH-w411dp-h891dp-port-xxhdpi")
+    private fun pruefe(name: String, schrift: Float, bereit: () -> Boolean = { true },
+                       geraet: String = "w411dp-h891dp-port-xxhdpi", ganzeZeile: Boolean = false,
+                       inhalt: @Composable () -> Unit) {
+        RuntimeEnvironment.setQualifiers("de-rCH-$geraet")
         if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
         treiben(name, bereit)
@@ -113,7 +132,7 @@ class UmbruchWaechterTest {
             compose.mainClock.advanceTimeBy(100)
             shadowOf(Looper.getMainLooper()).idle()
         }
-        val (texte, befunde) = sammle(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        val (texte, befunde) = sammle(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(), ganzeZeile)
         // Leere Bildschirme prüfen nichts.
         assertTrue("$name: nur $texte Textknoten — sind die Daten da?", texte >= 5)
         assertTrue("$name: ${befunde.joinToString("; ")}", befunde.isEmpty())
@@ -134,7 +153,7 @@ class UmbruchWaechterTest {
      * Schaltfläche und höchstens zwei Texten darunter: Eine anklickbare Kachel trägt
      * die Rolle auch, darf ihren Namen aber nach zwei Zeilen kürzen.
      */
-    private fun sammle(wurzel: SemanticsNode): Pair<Int, List<String>> {
+    private fun sammle(wurzel: SemanticsNode, ganzeZeile: Boolean): Pair<Int, List<String>> {
         val befunde = mutableListOf<String>()
         var texte = 0
         fun lauf(n: SemanticsNode, imKnopf: Boolean, inUeberschrift: Boolean) {
@@ -143,7 +162,7 @@ class UmbruchWaechterTest {
             val l = layout(n)
             if (l != null && n.layoutInfo.isPlaced) {
                 texte++
-                befunde += auffaelligkeiten(l, knopf, kopf)
+                befunde += auffaelligkeiten(l, knopf, kopf, ganzeZeile)
             }
             n.children.forEach { lauf(it, knopf, kopf) }
         }
@@ -152,7 +171,7 @@ class UmbruchWaechterTest {
     }
 
     /** Was an einem gesetzten Text auffällt: zu schmal, Buchstabe je Zeile, gekürzt in Knopf oder Überschrift. */
-    private fun auffaelligkeiten(l: TextLayoutResult, knopf: Boolean, kopf: Boolean): List<String> {
+    private fun auffaelligkeiten(l: TextLayoutResult, knopf: Boolean, kopf: Boolean, ganzeZeile: Boolean): List<String> {
         val befunde = mutableListOf<String>()
         val text = l.layoutInput.text.text
         val wo = "„${text.take(40)}“"
@@ -164,6 +183,7 @@ class UmbruchWaechterTest {
             befunde += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
         if (l.lineCount >= 3 && l.lineCount > 2 * woerter)
             befunde += "$wo in ${l.lineCount} Zeilen bei $woerter Wörtern"
+        befunde += imWortOderUeberDenRand(l, wo, em, ganzeZeile)
         // Nur die Auslassung zählt: Breite, Höhe und maxLines melden unter
         // Robolectric auch bei ungekürzten Texten einen Überlauf (Schriftmetrik).
         val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
@@ -173,18 +193,42 @@ class UmbruchWaechterTest {
         return befunde
     }
 
+    /**
+     * „Gebrauch|t“: ein Zeilenende zwischen zwei Buchstaben oder Ziffern bricht das Wort
+     * selbst. Und eine Zeile, breiter als ihr Platz: Der Rest ist abgeschnitten. Gemessen
+     * wird die Breite der Zeile, nicht ihr rechtes Ende: Das Textlayout der Semantik liegt
+     * auf der ganzen Platzgrenze, eine zentrierte Zeile endet dort rechts der Anzeige.
+     *
+     * [ganzeZeile]: Einen Text ohne Umbruch (softWrap = false) setzt die Semantik neu in
+     * die Platzbreite und bricht ihn dort um; abgeschnitten sieht man ihn nur an seiner
+     * natürlichen Breite. Nur wo verlangt: Die übrigen Bildschirme sind so nicht gemessen.
+     */
+    private fun imWortOderUeberDenRand(l: TextLayoutResult, wo: String, em: Float, ganzeZeile: Boolean): List<String> {
+        val text = l.layoutInput.text.text
+        val befunde = mutableListOf<String>()
+        val imWort = (0 until l.lineCount - 1).map { l.getLineEnd(it) }
+            .firstOrNull { e -> e in 1 until text.length && text[e - 1].isLetterOrDigit() && text[e].isLetterOrDigit() }
+        if (imWort != null) befunde += "$wo im Wort gebrochen nach „${text.take(imWort).takeLast(12)}“"
+        val zeilen = (0 until l.lineCount).maxOf { l.getLineRight(it) - l.getLineLeft(it) }
+        val natuerlich = if (ganzeZeile && !l.layoutInput.softWrap && l.layoutInput.overflow != TextOverflow.Ellipsis)
+            l.multiParagraph.intrinsics.maxIntrinsicWidth else 0f
+        val ueberstand = maxOf(zeilen, natuerlich) - l.size.width
+        if (em > 0f && ueberstand > em * UEBERSTAND_EM) befunde += "$wo ragt ${ueberstand.toInt()} px über den Rand"
+        return befunde
+    }
+
     // ── Die Bildschirme ──
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-        KatalogRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+        testKatalogRepository(welt.t.api),
         object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-        KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
-        welt.t.alarme(), TeileRepository(welt.t.api, welt.t.cache),
+        testKontoRepository(welt.t.api, welt.t.io), testVerwaltungRepository(welt.t.api),
+        welt.t.alarme(), testTeileRepository(welt.t.api),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
@@ -205,7 +249,7 @@ class UmbruchWaechterTest {
     private fun galerie(schrift: Float) {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
         pruefe("Sammlung $schrift", schrift,
-            { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }) {
+            { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.abruf.laedt } }) {
             GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -214,7 +258,7 @@ class UmbruchWaechterTest {
         val vm = welt.setDetail()
         pruefe("Set-Detail $schrift", schrift, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
-                !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }) {
+                !s.detailAbruf.laedt && !s.preisAbruf.laedt && !s.verlaufAbruf.laedt && !s.kaeufeAbruf.laedt } }) {
             SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
         }
     }
@@ -226,11 +270,66 @@ class UmbruchWaechterTest {
             bricklink = BrickLinkAnsicht(number = "10305-1",
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
         pruefe("Katalog-Detail $schrift", schrift) {
-            CatalogDetailScreen(setNumber = "10305-1", detail = detail, isLoading = false, imageLoader = bilder,
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(detail), imageLoader = bilder,
                 serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
     }
+
+    /**
+     * Fünfstellige Beträge auf 360 dp: „+CHF 20’200.90 · +19.2%“ ist bei 200 % breiter als
+     * die Kachel (ein dreistelliger Gewinn passt gerade noch). Der Betrag steht ohne Umbruch,
+     * deshalb misst [pruefe] hier die natürliche Breite.
+     */
+    private fun setDetailSchmal(schrift: Float) {
+        welt.pfade.antworten["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
+            "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
+            "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1/price"] =
+            """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":21249.9,"min_price":20180.0,"max_price":21320.0,"qty_avg_price":21249.9}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+            {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
+            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":"19.2","pnl_prozent":19.2}},
+            "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
+                     "x":["2026-08-01","2026-10-01"]},
+            "pnl_prozent":19.2,"purchase_price":1049.0}"""
+        val vm = welt.setDetail()
+        pruefe("Set-Detail schmal $schrift", schrift, { vm.setDetailState.value.let { s ->
+            s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
+                !s.detailAbruf.laedt && !s.preisAbruf.laedt && !s.verlaufAbruf.laedt && !s.kaeufeAbruf.laedt } },
+            geraet = "w360dp-h740dp-port-xxhdpi", ganzeZeile = true) {
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+        }
+        imBild("Set-Detail schmal $schrift", "200.90")
+    }
+
+    /**
+     * Wie das Foto der Hintergrundarbeiten: ein laufender Auftrag, darunter der Preisspeicher.
+     * Auf 360 dp: Das Segment misst seine Beschriftung ohne das Häkchen, auf 411 dp passt
+     * „Gebraucht“ deshalb auch neben „Standard-Zustand“.
+     */
+    private fun hintergrundarbeiten(schrift: Float) {
+        welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
+            "auftraege":[
+              {"id":"17","art":"bilder","status":"laeuft","versuche":1,"max_versuche":5,"faellig_ab":"2026-10-30T10:00:00Z",
+               "frist_bis":null,"gestartet":"2026-10-30T10:00:05Z","erstellt":"2026-10-30T09:59:00Z","aktualisiert":null,
+               "fortschritt":{"erledigt":3,"gesamt":12,"text":"Bilder"},"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
+            "zusammenfassung":[],"pausen":[],"bildbedarf":7,
+            "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
+        val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), welt.t.meldungen)
+        runBlocking { vm.ladeHintergrund() }
+        val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        pruefe("Hintergrundarbeiten $schrift", schrift, geraet = "w360dp-h891dp-port-xxhdpi") {
+            MonitoringScreen(MonitoringZustand(MonitoringUiState(vorgabeZustand = Zustand.GEBRAUCHT), vm.hintergrund.value, VerwaltungUiState(),
+                emptyMap(), Design.CLASSIC, 0L), vm, ereignisse)
+        }
+        imBild("Hintergrundarbeiten $schrift", "Gebraucht")
+    }
+
+    /** Die Stelle, die eine Gegenprobe kaputt macht, muss geprüft worden sein: Ein fehlender Knoten meldet nichts. */
+    private fun imBild(name: String, text: String) = assertTrue("$name: kein Text mit „$text“ — die Stelle lag nicht im Bild",
+        compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
 
     private fun anmeldung(schrift: Float) {
         pruefe("Anmeldung $schrift", schrift) {
@@ -253,9 +352,14 @@ class UmbruchWaechterTest {
     @Test fun `Katalog-Detail bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = katalogDetail(2f)
     @Test fun `Anmeldung bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = anmeldung(1f)
     @Test fun `Anmeldung bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = anmeldung(2f)
+    @Test fun `Set-Detail schmal bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = setDetailSchmal(1f)
+    @Test fun `Set-Detail schmal bei 200 Prozent ohne Zeichenumbruch und Kuerzung`() = setDetailSchmal(2f)
+    @Test fun `Hintergrundarbeiten bei 100 Prozent ohne Zeichenumbruch und Kuerzung`() = hintergrundarbeiten(1f)
 
     private companion object {
         /** Etwa drei schmale Zeichen: Ein Zeichen pro Zeile ist schmaler, „Neu“ breiter. */
         const val MINDESTBREITE_EM = 1.2f
+        /** Mehr als ein halbes Zeichen über den Rand; darunter liegt die Ungenauigkeit der Schriftmetrik. */
+        const val UEBERSTAND_EM = 0.5f
     }
 }

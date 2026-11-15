@@ -24,7 +24,7 @@ const db = testDaten();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/gallery.js'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/sammlung.js'), 'utf8'));
   const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
 
   // Der Knopf im Detail-Dialog darf NICHT selbst fragen.
@@ -38,15 +38,19 @@ test('das Löschen fragt genau einmal', () => {
   );
   assert.match(handler, /await delSet\(/, 'Er muss über delSet() gehen');
 
-  // …und delSet fragt genau einmal.
-  const fn = src.slice(src.indexOf('export async function delSet'), src.indexOf('export async function reimportParts'));
+  // …und delSet fragt genau einmal: über loeschWahl(), je nach Haushalt mit oder ohne Kontenwahl
+  // (UX-Prüfung 23, M1; das Verhalten prüft abmelden-loeschen-kontrast-browser).
+  const fn = src.slice(src.indexOf('async function loeschWahl'), src.indexOf('export async function reimportParts'));
   assert.equal((fn.match(/confirmDelete\(/g) || []).length, 1, 'delSet() muss GENAU EINE Rückfrage stellen');
+  assert.equal((fn.match(/loeschenMitWahl\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
+  assert.match(fn, /if \(!fremd\)\s*return \(await confirmDelete\(/, 'die beiden Rückfragen schliessen sich aus');
   // Und die Rückfrage muss abbrechen können, ohne dass gelöscht wird.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
+  // loadGallery() lädt die Kennzahlen mit; die Teile und Minifiguren des Sets sind mit weg.
   assert.match(
     fn,
-    /loadStats\(\)/,
-    'Nach dem Löschen müssen die Kennzahlen nachziehen — die Teile und ' + 'Minifiguren des Sets sind mit weg',
+    /loadGallery\(\);\s*melde\('teileLaden'\);/,
+    'Nach dem Löschen müssen Sammlung und Teile nachziehen',
   );
 });
 
@@ -127,17 +131,17 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       assert.equal(st.total_minifigs, 3, `Minifiguren ${st.total_minifigs} statt 3`);
 
       // Auch die LISTEN, nicht nur die Kennzahlen — sie fragen anders ab.
-      const p = await H.getParts([uid], {});
+      const p = await H.teileAbfrage([uid], {});
       const teil = (p.parts || []).find(x => x.part_number === '3001');
       assert.equal(Number(teil?.quantity ?? teil?.total_quantity), 30, 'die Teileliste multipliziert nicht mit');
-      const m = await H.getMinifigs([uid], {});
+      const m = await H.figurenAbfrage([uid], {});
       assert.equal(
         Number(m.figs[0]?.total_quantity ?? m.figs[0]?.quantity),
         3,
         'die Minifigurenliste multipliziert nicht mit',
       );
       assert.equal(
-        (await H.getMinifigStats([uid])).total_quantity,
+        (await H.figurenKennzahlenLesen([uid])).total_quantity,
         3,
         'die Minifiguren-Kennzahl multipliziert nicht mit',
       );

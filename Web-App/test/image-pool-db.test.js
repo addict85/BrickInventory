@@ -17,10 +17,10 @@ const db = testDaten();
 test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
-  const IM = _req('src/katalog/bilder/imageMisses.js');
-  const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
-  await IM.initImageMisses();
-  await IQ.initImageQueue();
+  const IM = _req('src/bilder/imageMisses.js');
+  const IQ = _req('src/bilder/bildbedarfLauf.js');
+  await IM.bildFehlstellenEinrichten();
+  await IQ.bildbedarfEinrichten();
   const PRAEFIX = `PL${process.pid}`;
   const weg = async () => {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%']).catch(() => {});
@@ -98,20 +98,19 @@ test('eine gescheiterte Verkleinerung wird nicht endlos wiederholt', () => {
   const q = px.slice(px.indexOf('function queueThumb('), px.indexOf('function drainThumbQueue'));
   assert.match(
     q,
-    /istBekanntFehlend\('thumb:' \+ thumbFile\)/,
+    /istBekanntFehlend\(k, 'thumb:' \+ thumbFile\)/,
     'queueThumb() fragt nicht, ob die Verkleinerung schon einmal gescheitert ist',
   );
   // Und der Fehlschlag muss festgehalten werden — an BEIDEN Stellen, an denen
   // er auftreten kann: beim Entpacken selbst und bei der Vorprüfung.
   assert.equal(
-    (px.match(/merkeFehlend\('thumb:' \+ thumbFile\)/g) || []).length,
+    (px.match(/merkeFehlend\(k, 'thumb:' \+ thumbFile\)/g) || []).length,
     2,
     'Der Fehlschlag wird nicht an beiden Stellen gemerkt (Vorprüfung und catch)',
   );
 });
 
 test('ein 404 darf der Browser sich merken', () => {
-  // Marcos Konsole
   const px = require('./helpers/sources').proxyThumbQuelle();
   // Der Weg heisst jetzt sendePlatzhalter
   assert.match(px, /function sendePlatzhalter\(res(: \w+)?\)/, 'Kein gemeinsamer Weg für ein fehlendes Bild');

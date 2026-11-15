@@ -1,10 +1,8 @@
 import { geldEingabe } from '../infra/geld';
 import type { FinanzenKontext } from './kontext';
 
-/** Für Teile UND Figuren an einer Stelle: Die Regel musste schon zweimal
- * nachgezogen werden. Leer heisst „nimm den Marktpreis", nicht „Preis null".
- * @param marktpreis   Bleibt beim Aufrufer, weil Teil und Figur verschiedene
- *                     Schlüssel haben. */
+/** Für Teile und Figuren an einer Stelle; leer heisst „nimm den Marktpreis", nicht „Preis null".
+ * @param marktpreis beim Aufrufer, weil Teil und Figur verschiedene Schlüssel haben. */
 export async function kaufpreisAusEingabe(
   k: FinanzenKontext,
   roh: unknown,

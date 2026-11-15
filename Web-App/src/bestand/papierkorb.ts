@@ -4,6 +4,8 @@ import * as repo from './repository/papierkorb';
 import * as kauf from './repository/kaufErfassungen';
 import type { PapierArt } from './repository/papierkorb';
 import type { BestandKontext } from './kontext';
+import type { BestandLesevertrag } from './lesevertrag';
+import { fachfehler, nichtGefunden } from '../infra/fehlerTexte';
 
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
@@ -22,41 +24,46 @@ function parameter(art: Art, userId: number, nummer: string, farbeId: number | n
  * wird auch nicht gelöscht.
  * @returns die id des Eintrags, oder null, wenn es keine Stammzeile gab */
 export async function legeInPapierkorb(
-  tx: DbSchnittstelle,
+  k: BestandKontext,
   art: Art,
   userId: number,
   nummer: string,
   farbeId: number | null = null,
 ): Promise<number | null> {
   const p = parameter(art, userId, nummer, farbeId);
-  const zeilen = await repo.bestandsZeilen(tx, art, p);
+  const zeilen = await repo.bestandsZeilen(k.db, art, p);
   const stamm = repo.tabellenDerArt(art)[0] ?? '';
   if (!zeilen[stamm]?.length) return null;
 
-  const name = await repo.bezeichnung(tx, art, userId, nummer, farbeId);
-  return repo.legeEintragAn(tx, userId, art, nummer, art === 'teil' ? farbeId : null, name, zeilen);
+  const name = await repo.bezeichnung(k.db, art, userId, nummer, farbeId);
+  return repo.legeEintragAn(k.db, userId, art, nummer, art === 'teil' ? farbeId : null, name, zeilen);
 }
 
 /** Einzelne Käufe eines Sets, die eine Mengenverringerung wegnahm: Die Bestandszeile bleibt, darum ein
  * Eintrag ohne `sets`-Zeile. Wiederherstellen legt die Mengen zurück (stelleKaeufeWiederHer).
  * @param zeilen je Kauf die ganze Zeile, `quantity` = die weggenommene Menge */
 export async function legeKaeufeInPapierkorb(
-  tx: DbSchnittstelle,
+  k: BestandKontext,
   userId: number,
   nummer: string,
   zeilen: Record<string, unknown>[],
 ): Promise<number | null> {
   if (!zeilen.length) return null;
-  const name = await repo.bezeichnung(tx, 'set', userId, nummer, null);
+  const name = await repo.bezeichnung(k.db, 'set', userId, nummer, null);
   const leer = Object.fromEntries(repo.tabellenDerArt('set').map(t => [t, [] as unknown[]]));
-  return repo.legeEintragAn(tx, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: zeilen });
+  return repo.legeEintragAn(k.db, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: zeilen });
 }
 
 /** Zurück in die Zeile, aus der die Menge kam; gibt es sie nicht mehr, in eine gleiche Zeile desselben Tages
  * (der eindeutige Index erlaubt keine zweite), sonst als neue Zeile. Ohne Bestandszeile ging das Set
  * inzwischen ganz weg: Dann zuerst dessen Eintrag wiederherstellen. */
-async function stelleKaeufeWiederHer(tx: DbSchnittstelle, e: { user_id: number; nummer: string }, kaeufe: Kauf[]) {
-  if (!(await repo.hatSetZeile(tx, e.user_id, e.nummer))) return false;
+async function stelleKaeufeWiederHer(
+  tx: DbSchnittstelle,
+  l: BestandLesevertrag,
+  e: { user_id: number; nummer: string },
+  kaeufe: Kauf[],
+) {
+  if (!(await repo.hatSetZeile(tx, l, e.user_id, e.nummer))) return false;
   for (const k of kaeufe) {
     const menge = Number(k.quantity) || 0;
     if (await kauf.stockeErfassungAuf(tx, 'set', Number(k.id), e.user_id, menge)) continue;
@@ -67,7 +74,7 @@ async function stelleKaeufeWiederHer(tx: DbSchnittstelle, e: { user_id: number; 
       waehrung: k.currency == null ? null : String(k.currency),
     });
     if (gleich && (await kauf.stockeErfassungAuf(tx, 'set', gleich, e.user_id, menge))) continue;
-    await repo.schreibeZurueck(tx, 'set_acquisitions', [k]);
+    await repo.schreibeZurueck(tx, 'set', { set_acquisitions: [k] });
   }
   return true;
 }
@@ -95,9 +102,7 @@ export async function listePapierkorb(k: BestandKontext, uidsWahl: Schreiber | n
   });
 }
 
-export type Wiederherstellung =
-  | { ok: true; art: Art; nummer: string; user_id: number }
-  | { ok: false; code: 'nicht_gefunden' | 'papierkorb_schon_vorhanden' };
+export type Wiederherstellung = { art: Art; nummer: string; user_id: number };
 
 /** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
  * wird nichts verändert und der Eintrag bleibt. */
@@ -110,32 +115,27 @@ export async function stelleWiederHer(
   try {
     return await k.transaktion(async (t): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(t.db, id, uids);
-      if (!e) return { ok: false, code: 'nicht_gefunden' };
+      if (!e) nichtGefunden();
       const art = e.art as Art;
       const kaeufe = art === 'set' && !e.zeilen?.sets?.length ? (e.zeilen?.set_acquisitions ?? []) : null;
       if (kaeufe) {
-        if (!(await stelleKaeufeWiederHer(t.db, e, kaeufe))) return { ok: false, code: 'nicht_gefunden' };
+        if (!(await stelleKaeufeWiederHer(t.db, t.lesevertrag, e, kaeufe))) nichtGefunden();
         await repo.entferneEintrag(t.db, id);
-        return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
+        return { art, nummer: e.nummer, user_id: e.user_id };
       }
-      for (const tabelle of repo.tabellenDerArt(art))
-        await repo.schreibeZurueck(t.db, tabelle, e.zeilen?.[tabelle] ?? []);
+      await repo.schreibeZurueck(t.db, art, e.zeilen ?? {});
       await repo.entferneEintrag(t.db, id);
-      return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
+      return { art, nummer: e.nummer, user_id: e.user_id };
     });
   } catch (err) {
-    if ((err as { code?: string })?.code === '23505') return { ok: false, code: 'papierkorb_schon_vorhanden' };
+    if ((err as { code?: string })?.code === '23505') fachfehler('konflikt', 'papierkorb_schon_vorhanden');
     throw err;
   }
 }
 
-export async function loescheEndgueltig(
-  k: BestandKontext,
-  uidsWahl: Schreiber | number[],
-  id: number,
-): Promise<boolean> {
+export async function loescheEndgueltig(k: BestandKontext, uidsWahl: Schreiber | number[], id: number): Promise<void> {
   const uids = await k.haushalt.schreibbereichAus(uidsWahl);
-  return (await k.papierkorb.entferneEintragDesKontos(id, uids)) > 0;
+  if (!(await k.papierkorb.entferneEintragDesKontos(id, uids))) nichtGefunden();
 }
 
 export async function leerePapierkorb(k: BestandKontext, uidsWahl: Schreiber | number[]): Promise<number> {

@@ -1,12 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { quellen } from './fremdquellen';
-import { generateThumb } from './bilder/thumbs';
-import { merkeFehlend } from './bilder/imageMisses';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, logAndContinue } from '../infra/fehler';
 import { KEINE_FARBE } from '../infra/validate';
 import { versuche } from '../infra/ergebnis';
+import { anleitungEinreihen } from './anleitungsAuftrag';
 import type { KatalogKontext } from './kontext';
 
 export async function bilderFuerNachlauf(k: KatalogKontext) {
@@ -22,10 +19,10 @@ export async function bilderFuerNachlauf(k: KatalogKontext) {
 
 /** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
 export async function fuelleAusBrickset(k: KatalogKontext, setNumber: string): Promise<boolean> {
-  const info = await quellen(k).getSetInfo(setNumber);
+  const info = await k.fremdquellen.quellen.setAngaben(setNumber);
   if (!info) return false;
-  // Scheitert es, bleibt das Set namenlos — darum mit Protokoll.
-  await k.bildlage.fuelleSetLuecken(setNumber, info).catch(logAndContinue(`brickset-nachlauf:set ${setNumber}`));
+  // Scheitert es, wirft es: Der Auftrag versucht es erneut, statt das Set namenlos zu lassen.
+  await k.bildlage.fuelleSetLuecken(setNumber, info);
   return true;
 }
 
@@ -77,7 +74,7 @@ export async function bilderAusKatalog<T extends Bildposten>(
 export async function anleitungenNachtragen(k: KatalogKontext): Promise<void> {
   const missing = await k.bildlage.setsOhneAnleitungsabruf();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
-  for (const set_number of missing) await k.auftraege.anleitungEinreihen(set_number);
+  for (const set_number of missing) await anleitungEinreihen(k, set_number);
 }
 
 /** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag
@@ -92,56 +89,58 @@ export async function setBildLokalEintragen(
 }
 
 export async function setBilderNachladen(k: KatalogKontext): Promise<void> {
-  try {
-    const missing = await k.bildlage.setBilderOhneDatei();
-    if (!missing.length) return;
-    console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
-    for (const { set_number, image_url } of missing) {
-      // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
-      const info: { status?: number } = {};
-      const r = await versuche('nachlauf:downloadSetImage', k.bildwerk.setBildLaden(image_url, set_number, info));
-      const local = r.ok ? r.wert : null;
-      if (!local && (info.status === 404 || info.status === 410))
-        merkeFehlend('set:' + set_number, `HTTP ${info.status} vom CDN`);
-      if (!local && (info.status === 403 || info.status === 429)) {
-        console.warn(`[set-img-bg] CDN drosselt (HTTP ${info.status}) — Rest im nächsten Lauf`);
-        break;
-      }
-      if (local) {
-        await k.bildlage.merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
-        k.bildwerk.vorschauErzeugen(local).catch(logAndContinue('nachlauf:generateThumb'));
-      }
-      await new Promise(r => setTimeout(r, 300));
+  const missing = await k.bildlage.setBilderOhneDatei();
+  if (!missing.length) return;
+  console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
+  let gescheitert = 0;
+  for (const { set_number, image_url } of missing) {
+    // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
+    const info: { status?: number } = {};
+    const r = await versuche('nachlauf:setBildHerunterladen', k.bilder.setBildLaden(image_url, set_number, info));
+    const local = r.ok ? r.wert : null;
+    if (!local && (info.status === 404 || info.status === 410))
+      k.bilder.merkeFehlend('set:' + set_number, `HTTP ${info.status} vom CDN`);
+    if (!local && (info.status === 403 || info.status === 429)) {
+      console.warn(`[set-img-bg] CDN drosselt (HTTP ${info.status}) — Rest im nächsten Lauf`);
+      break;
     }
-    console.log(`[set-img-bg] Done`);
-  } catch (e) {
-    console.error('[set-img-bg]', fehlertext(e));
+    // Ein Fehlschlag zählt im Abschluss; der nächste Lauf findet das Bild wieder ohne Eintrag.
+    if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.merkeSetBildLokal(set_number, local))).ok)
+      gescheitert++;
+    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.bilder.vorschauErzeugen(local))).ok) gescheitert++;
+    await new Promise(r => setTimeout(r, 300));
   }
+  console.log(`[set-img-bg] Done${gescheitert ? `, ${gescheitert} Schritte gescheitert` : ''}`);
 }
 
 /** Asynchron geprüft, damit der Lauf die Ereignisschleife nicht blockiert. */
 export async function vorschaubilderNachtragen(k: KatalogKontext): Promise<void> {
-  try {
-    const paths = await k.bildlage.lokaleKatalogbilder();
-    let generated = 0;
-    const exists = (fp: string) =>
-      fs.promises.access(fp).then(
-        () => true,
-        () => false,
-      );
-    for (const localPath of paths) {
-      let fsPath: string;
-      if (localPath.startsWith('/images/')) fsPath = path.join(IMAGES_DIR, localPath.slice('/images/'.length));
-      else if (localPath.startsWith('/data/')) fsPath = path.join(APP_ROOT, localPath.slice(1));
-      else continue;
-      const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
-      if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
-      await generateThumb(localPath).catch(logAndContinue('nachlauf:generateThumb'));
-      generated++;
-      if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
-    }
-    if (generated > 0) console.log(`  🖼️  ${generated} Thumbnails generiert`);
-  } catch (e) {
-    console.error('Thumb gen error:', fehlertext(e));
+  const paths = await k.bildlage.lokaleKatalogbilder();
+  let generated = 0,
+    gescheitert = 0;
+  const exists = (fp: string) =>
+    fs.promises.access(fp).then(
+      () => true,
+      () => false,
+    );
+  const datei = (localPath: string) =>
+    localPath.startsWith('/images/')
+      ? path.join(IMAGES_DIR, localPath.slice('/images/'.length))
+      : localPath.startsWith('/data/')
+        ? path.join(APP_ROOT, localPath.slice(1))
+        : null;
+  const lokale = paths.flatMap(web => {
+    const d = datei(web);
+    return d ? [{ web, datei: d }] : [];
+  });
+  await versuche('nachlauf:vorschauen einpassen', k.bilder.zugeschnitteneVorschauenEinpassen(lokale));
+  for (const { web: localPath, datei: fsPath } of lokale) {
+    const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
+    if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
+    if ((await versuche('nachlauf:vorschauErzeugenAus', k.bilder.vorschauErzeugen(localPath))).ok) generated++;
+    else gescheitert++;
+    if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
   }
+  if (generated > 0 || gescheitert > 0)
+    console.log(`  🖼️  ${generated} Thumbnails generiert${gescheitert ? `, ${gescheitert} gescheitert` : ''}`);
 }

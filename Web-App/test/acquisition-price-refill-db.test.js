@@ -88,10 +88,10 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
 
   try {
     const ergebnisse = {};
-    for (const [name, pfad] of [
+    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
       ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
       ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-    ]) {
+    ])) {
       const id = await aufbauen();
       const r = await fetch(`${base}${pfad(id)}`, {
         method: 'PUT',
@@ -114,7 +114,11 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
       // Und die Kachel oben — dort stand Marcos Strich. Sie rechnet seit
       // Migration 0032 aus den Erfassungen; der Bestand hat hier zwei (7.30
       // gebraucht, 12.55 neu, je ein Exemplar), der Mittelwert ist 9.925.
-      const kachel = await require('./helpers/sources').bereichsSeite('sets').getSetConditionAggregate([subId], SN);
+      const kachel = await _req('src/sets/lesen.js').zustandsAggregat(
+        require('./helpers/sources').testKontext('sets'),
+        [subId],
+        SN,
+      );
       assert.equal(
         kachel.avg_purchase_price,
         9.925,

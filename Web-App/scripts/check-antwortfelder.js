@@ -6,7 +6,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { quellwurzeln } = require('../test/helpers/android');
 
 /**
  * Schlüssel, die absichtlich kein Client liest. Jeder mit Grund — die Liste
@@ -32,6 +31,9 @@ const ERLAUBT = new Map([
   ['token_last_used', 'API-Token-Verwaltung'],
   ['instruction', 'Einzelanleitung; die Liste kommt über instructions'],
   ['missingImages', 'PDF-Job: die Oberfläche zeigt etaSeconds, nicht die Zahl'],
+  // Bis 14.11.2026 verdeckt, weil die Prüfung jedes Wort im Kotlin-Quelltext als Leser zählte.
+  ['blickfeld', 'Haushaltsstand: die Clients lesen parents und sub_accounts'],
+  ['geloescht', 'Merkposten löschen: die Clients laden die Liste danach neu'],
 ]);
 
 /** Technische Umschläge, die in fast jeder Antwort stehen. */
@@ -125,22 +127,37 @@ for (const [rel, s] of texte) {
       }
       return oben;
     });
-  for (const k of [antwortSchluessel(s), ...rumpfe.map(r => antwortSchluessel(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
+  // Eine Route unter routes/ gibt den Rumpf zurück; der Vertragsrouter setzt ihn in die Hülle.
+  // Hilfsfunktionen stehen vor dem ersten Endpunkt; gezählt wird ab dort.
+  const ab = s.indexOf('.endpunkt(');
+  const eigen =
+    rel.startsWith(`routes${path.sep}`) && ab >= 0
+      ? new Set([
+          ...antwortSchluessel(s.slice(0, ab)),
+          ...antwortSchluessel(s.slice(ab), /res\.json\(\s*\{|return\s*\{/g),
+        ])
+      : antwortSchluessel(s);
+  for (const k of [eigen, ...rumpfe.map(r => antwortSchluessel(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
     woher.set(k, (woher.get(k) || []).concat(rel));
 }
 
-const verbraucher = [
-  ...dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']),
-  ...quellwurzeln().flatMap(w => dateien(w, ['.kt'], [])),
-];
-if (verbraucher.length < 50) {
+const verbraucher = dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']);
+if (verbraucher.length < 40) {
   console.error(
     `❌ Nur ${verbraucher.length} Verbraucherdateien gefunden — ohne sie ` +
       'gälte JEDES Feld als ungelesen, und die Prüfung wäre wertlos.',
   );
   process.exit(1);
 }
-const kunde = verbraucher.map(p => fs.readFileSync(p, 'utf8')).join('\n');
+// Was die App liest, steht in shared/app-schnittstelle.json (aus ihren Modellen erzeugt).
+const appFelder = JSON.parse(
+  fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-schnittstelle.json'), 'utf8'),
+).antwortfelder;
+if (!Array.isArray(appFelder) || appFelder.length < 100) {
+  console.error('❌ shared/app-schnittstelle.json nennt kaum Antwortfelder der App — erzeugt?');
+  process.exit(1);
+}
+const kunde = [...verbraucher.map(p => fs.readFileSync(p, 'utf8')), ...appFelder].join('\n');
 
 const fehler = [];
 for (const [k, dateienListe] of [...woher].sort()) {

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.Kategoriewahl
 import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -10,12 +12,12 @@ import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartsResponse
-import ch.brickinventoryapp.model.data.model.ManualPartsResponse
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.SetsResponse
+import ch.brickinventoryapp.vertrag.Part
+import ch.brickinventoryapp.vertrag.PartsResponse
+import ch.brickinventoryapp.vertrag.ManualPartsResponse
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.SetsResponse
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
@@ -41,6 +43,7 @@ import java.net.ConnectException
  *   ohne-netz-filter-spalte    die Spalte thema bekommt den Lagerort → rot „Suche, Thema …“
  *   galerie-ablage-ungefiltert beobachteSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
  *   teile-nur-seite-eins       aktualisiereSeitenweise bricht nach Seite 1 ab → rot „alle Seiten der Teile …“
+ *   teile-farbwahl-verloren    beobachteTeile reicht die Farbwahl nicht weiter → rot „Farbe, Kategorie, Ersatzteile …“
  */
 @RunWith(RobolectricTestRunner::class)
 class OhneNetzFilterTest {
@@ -105,10 +108,10 @@ class OhneNetzFilterTest {
 
     private fun teileOffline(search: String? = null, color: String? = null, category: String? = null,
                              spare: Ersatzteilwahl = Ersatzteilwahl.ALLE) =
-        runBlocking { teileRepo.beobachteTeile(search, color, category, spare).first() }
+        runBlocking { teileRepo.beobachteTeile(search, Farbwahl.aus(color), Kategoriewahl.aus(category), spare).first() }
             .liste.map { "${it.partNumber}/${it.colorName}" }
 
-    private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success) }
+    private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg) }
 
     @Test
     fun `Suche, Thema, Lagerort und Sortierung der Galerie wirken ohne Netz auf die ganze lokale Liste`() {
@@ -133,7 +136,7 @@ class OhneNetzFilterTest {
 
     @Test
     fun `Farbe, Kategorie, Ersatzteile und Suche der Teileliste wirken ohne Netz`() {
-        runBlocking { assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success) }
+        runBlocking { assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Erfolg) }
         offline = true
         assertEquals(listOf("3001/Red", "3023/Red"), teileOffline(color = "Red"))
         assertEquals(listOf("3001/Red"), teileOffline(color = "Red", spare = Ersatzteilwahl.OHNE))
@@ -146,21 +149,21 @@ class OhneNetzFilterTest {
 
     @Test
     fun `die Galerie filtert in Room, der Abruf fuellt nur die Ablage`() = runBlocking {
-        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success)
+        assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Erfolg)
         assertEquals("alle Sets in der Ablage", sets.size, setsRepo.beobachteSets().first().liste.size)
         val city = setsRepo.beobachteSets(thema = "City", sort = Setsortierung.NUMMER).first().liste.map { it.setNumber }
         assertEquals("die Galerie filtert in Room und sortiert wie der Server", listOf("10002-1", "21000-1"), city)
         offline = true
-        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Error)
+        assertTrue("ohne Netz meldet der Abruf den Fehler", setsRepo.aktualisiereSets() is Ergebnis.Fehler)
         assertEquals("und die Ablage bleibt", sets.size, setsRepo.beobachteSets().first().liste.size)
     }
 
     @Test
     fun `die Teile kommen ganz in die Ablage und filtern dort`() = runBlocking {
-        assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success)
+        assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Erfolg)
         assertEquals("alle Seiten der Teile in der Ablage", teile.size, teileRepo.beobachteTeile().first().liste.size)
         assertEquals("die manuellen Teile ebenso", listOf("m1"), teileRepo.beobachteManuelleTeile().first().liste.map { it.partNumber })
-        val rot = teileRepo.beobachteTeile(farbe = "Red", ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
+        val rot = teileRepo.beobachteTeile(farbe = Farbwahl.Farbe("Red"), ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
         assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), rot)
     }
 

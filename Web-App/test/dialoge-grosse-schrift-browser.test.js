@@ -152,9 +152,9 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
   // Der Testserver hat weder APP_BASE_URL noch SMTP: Beide Wege fehlen auf der Maske.
   await t.test('Anmeldemaske ohne Passkey und „Passwort vergessen?“', async () => {
     await zu();
-    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
+    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
     await bis(
-      `getComputedStyle(document.getElementById('login-screen')).display !== 'none' && document.getElementById('link-forgot').hidden`,
+      `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none' && document.getElementById('link-forgot').hidden`,
       'Anmeldemaske',
     );
     assert.deepEqual(

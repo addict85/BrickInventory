@@ -39,10 +39,7 @@ async function seed() {
   HAUPT = (await db.get("SELECT id FROM users WHERE username='haupt'")).id;
   KIND = (await db.get("SELECT id FROM users WHERE username='kind'")).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [HAUPT, KIND]);
-  // Der Setname steht seit Migration 0033 im Katalog, nicht an der
-  // Bestandszeile; die Stueckzahl seit 0036 in der Erfassung. Hier stand
-  // `INSERT INTO sets (user_id, set_number, name, quantity)` — beide Spalten
-  // gibt es nicht mehr.
+  // Der Setname steht im Katalog, die Stueckzahl in der Erfassung, nicht an der Bestandszeile.
   await katalogSet(db, SN, { name: 'Falcon' });
   // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
   // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.
@@ -64,6 +61,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   };
   const S = require('./helpers/sources').bereichsSeite('sets');
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -82,7 +80,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   );
 
   await t.test('Befund 1: der Detail-Aufruf liefert den Namen des Lagerorts', async () => {
-    const detail = await S.getSet(schreibbar, SN);
+    const detail = await S.setLesen(schreibbar, SN);
     assert.equal(
       detail.storage,
       'Estrich',
@@ -91,8 +89,8 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     );
 
     // Liste und Detail müssen dasselbe sagen. Genau zwischen diesen beiden ist
-    // schon die MENGE auseinandergelaufen (siehe getSet in src/sets/lesen.ts).
-    const liste = await S.getSets(schreibbar, { page: 1, page_size: 10 });
+    // schon die MENGE auseinandergelaufen (siehe setLesen in src/sets/lesen.ts).
+    const liste = await S.setsLesen(schreibbar, { page: 1, page_size: 10 });
     const zeile = (liste.sets || []).find(s => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Liste');
     assert.equal(
@@ -104,7 +102,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
 
     // ── GEGENPROBE: die Abfrage in ihrer frueheren Form ────────────────────
     // `SELECT s.*` ohne aufgeloesten Namen. Sie liefert storage_id und kein
-    // storage — genau das Bild aus Marcos Bericht.
+    // storage — genau das gemeldete Bild.
     const alt = await db.get(`SELECT s.* FROM sets s WHERE s.user_id = ANY($1) AND s.set_number = $2 LIMIT 1`, [
       schreibbar,
       SN,
@@ -186,7 +184,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     }
     // Und das Detail fasst beide zusammen, statt einen zu verschweigen.
     await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
-    const detail = await S.getSet(schreibbar, SN);
+    const detail = await S.setLesen(schreibbar, SN);
     assert.equal(
       detail.storage,
       'Estrich, Keller',
@@ -197,15 +195,9 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
 });
 
 /**
- * Befund 3: der Lagerortfilter der Set-Liste — über die ROUTE geprüft.
- *
- * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
- *
- *   a) `storage` aus der Weitergabe in routes/api_v1/sets.ts entfernt → der
- *      Fall wird rot („2 Sets statt 1"). Das ist der Zustand, den Marco
- *      gemeldet hat.
- *   b) Der Fall OHNE Filter prüft, dass dann wirklich beide Sets kommen —
- *      sonst wäre der Test auch grün, wenn die Liste immer leer wäre.
+ * Der Lagerortfilter der Set-Liste, über die ROUTE geprüft. Gegenprobe: `storage` aus
+ * der Weitergabe in routes/api_v1/sets.ts entfernt → rot („2 Sets statt 1“); ohne Filter
+ * kommen beide Sets (sonst bestünde auch eine leere Liste).
  */
 test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   try {
@@ -264,7 +256,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
       nummern,
       [SN],
       `Erwartet nur ${SN}, bekam ${JSON.stringify(nummern)}. Kommen BEIDE, hat die ` +
-        'Route den Parameter weggelassen — der Filter in getSets() ist in Ordnung, ' +
+        'Route den Parameter weggelassen — der Filter in setsLesen() ist in Ordnung, ' +
         'er bekommt ihn nur nie zu sehen.',
     );
     assert.equal(

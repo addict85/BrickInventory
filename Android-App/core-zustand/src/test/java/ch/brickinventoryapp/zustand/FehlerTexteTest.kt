@@ -30,25 +30,26 @@ class FehlerTexteTest {
 
     /** Je Art ein Beispiel; [name] ist erschöpfend, eine neue Art bricht dort den Build. */
     private val beispiele = listOf(
-        Ergebnis.Error.Netz(), Ergebnis.Error.Zeitueberschreitung, Ergebnis.Error.Abgebrochen,
-        Ergebnis.Error.LeereAntwort(), Ergebnis.Error.Abgewiesen(), Ergebnis.Error.Server(500),
-        Ergebnis.Error.Klartext, Ergebnis.Error.Unbekannt(),
+        Ergebnis.Fehler.Netz(), Ergebnis.Fehler.Zeitueberschreitung, Ergebnis.Fehler.Abgebrochen,
+        Ergebnis.Fehler.LeereAntwort(), Ergebnis.Fehler.Abgewiesen(), Ergebnis.Fehler.Server(500),
+        Ergebnis.Fehler.Klartext, Ergebnis.Fehler.Unbekannt(), Ergebnis.Fehler.Absage(),
     )
 
-    private fun name(f: Ergebnis.Error): String = when (f) {
-        is Ergebnis.Error.Netz -> "Netz"
-        Ergebnis.Error.Zeitueberschreitung -> "Zeitueberschreitung"
-        Ergebnis.Error.Abgebrochen -> "Abgebrochen"
-        is Ergebnis.Error.LeereAntwort -> "LeereAntwort"
-        is Ergebnis.Error.Abgewiesen -> "Abgewiesen"
-        is Ergebnis.Error.Server -> "Server"
-        Ergebnis.Error.Klartext -> "Klartext"
-        is Ergebnis.Error.Unbekannt -> "Unbekannt"
+    private fun name(f: Ergebnis.Fehler): String = when (f) {
+        is Ergebnis.Fehler.Netz -> "Netz"
+        Ergebnis.Fehler.Zeitueberschreitung -> "Zeitueberschreitung"
+        Ergebnis.Fehler.Abgebrochen -> "Abgebrochen"
+        is Ergebnis.Fehler.LeereAntwort -> "LeereAntwort"
+        is Ergebnis.Fehler.Abgewiesen -> "Abgewiesen"
+        is Ergebnis.Fehler.Server -> "Server"
+        Ergebnis.Fehler.Klartext -> "Klartext"
+        is Ergebnis.Fehler.Unbekannt -> "Unbekannt"
+        is Ergebnis.Fehler.Absage -> "Absage"
     }
 
     @Test
     fun `jede Fehlerart hat einen eigenen Text`() {
-        assert(beispiele.map { name(it) }.toSet().size == 8) { "Nicht jede Art hat ein Beispiel" }
+        assert(beispiele.map { name(it) }.toSet().size == 9) { "Nicht jede Art hat ein Beispiel" }
         val zuordnung = beispiele.associate { name(it) to fehlerTextId(it) }
 
         zuordnung.forEach { (art, id) ->
@@ -70,7 +71,7 @@ class FehlerTexteTest {
 
     @Test
     fun `ein Abriss im Strom zeigt den Netz-Text`() {
-        assert(fehlerTextId(Ergebnis.Error.Abgebrochen) == fehlerTextId(Ergebnis.Error.Netz())) {
+        assert(fehlerTextId(Ergebnis.Fehler.Abgebrochen) == fehlerTextId(Ergebnis.Fehler.Netz())) {
             "Abgebrochen hiess bisher „kein Netz“ — ein neuer Satz wäre eine Änderung, kein Umbau"
         }
     }
@@ -81,8 +82,8 @@ class FehlerTexteTest {
         // liefert stillschweigend denselben Text — ein falsches Argument hier
         // fiele also nirgends auf. Umgekehrt zeigte ein fehlendes beim
         // Serverfehler den Platzhalter „%1$d" im Klartext.
-        assert(fehlerTextArgument(Ergebnis.Error.Server(503)) == 503) { "Server braucht den Status" }
-        beispiele.filter { it !is Ergebnis.Error.Server }.forEach {
+        assert(fehlerTextArgument(Ergebnis.Fehler.Server(503)) == 503) { "Server braucht den Status" }
+        beispiele.filter { it !is Ergebnis.Fehler.Server }.forEach {
             assert(fehlerTextArgument(it) == null) { "${name(it)} braucht keinen Code" }
         }
     }
@@ -98,13 +99,13 @@ class FehlerTexteTest {
             "Netz" to Fehlerklasse.OFFLINE, "Zeitueberschreitung" to Fehlerklasse.OFFLINE,
             "Abgebrochen" to Fehlerklasse.OFFLINE, "Server" to Fehlerklasse.SERVER,
             "LeereAntwort" to Fehlerklasse.SERVER, "Abgewiesen" to Fehlerklasse.ANMELDUNG,
-            "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT,
+            "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT, "Absage" to Fehlerklasse.UNBEKANNT,
         )
         assert(erwartet.keys == beispiele.map { name(it) }.toSet()) { "neue Fehlerart ohne Klasse" }
         beispiele.forEach { f -> assert(fehlerklasse(f) == erwartet[name(f)]) { "${name(f)} ergab ${fehlerklasse(f)}" } }
-        assert(fehlerklasse(Ergebnis.Error.Abgewiesen("Satz")) == Fehlerklasse.ANMELDUNG)
-        assert(fehlerklasse(Ergebnis.Error.Server(503, "Satz")) == Fehlerklasse.SERVER)
-        assert(fehlerklasse(Ergebnis.Error.Server(409, "Satz")) == Fehlerklasse.UNBEKANNT)
-        assert(fehlerklasse(Ergebnis.Error.Server(409)) == Fehlerklasse.SERVER)
+        assert(fehlerklasse(Ergebnis.Fehler.Abgewiesen("Satz")) == Fehlerklasse.ANMELDUNG)
+        assert(fehlerklasse(Ergebnis.Fehler.Server(503, "Satz")) == Fehlerklasse.SERVER)
+        assert(fehlerklasse(Ergebnis.Fehler.Server(409, "Satz")) == Fehlerklasse.UNBEKANNT)
+        assert(fehlerklasse(Ergebnis.Fehler.Server(409)) == Fehlerklasse.SERVER)
     }
 }

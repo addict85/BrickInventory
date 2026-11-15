@@ -1,0 +1,17 @@
+Gegenprobe: Der Tausch läuft auch bei gesperrtem Gerät; den neuen Token nimmt dann kein Schlüssel auf
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenTauschTest
+Rot: bei gesperrtem Geraet wird nicht getauscht
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
+index b4dff53..08c2ec4 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
+@@ -151,7 +151,6 @@ internal class TokenTausch(
+     private suspend fun tauscheGesperrt(alterToken: String): Tauschergebnis {
+         val vorher = stand()
+         if (vorher.token != alterToken) return Tauschergebnis.SCHON_GETAUSCHT
+-        if (!bereit()) return Tauschergebnis.SPAETER
+         val beginn = uhr()
+         for (versuch in 0..pausen.size) {
+             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.

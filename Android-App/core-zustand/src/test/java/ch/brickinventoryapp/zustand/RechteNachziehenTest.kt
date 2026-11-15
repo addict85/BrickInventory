@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.rechteNachziehen
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -22,14 +21,14 @@ import ch.brickinventoryapp.testing.TestDienste
  * Gegenproben:
  *   A  die Abfrage `if (!state.value.isAdmin) return false` entfernt → rot
  *      „ein entzogenes Recht wird einmal nachgezogen …“ (zweiter /me-Abruf)
- *   B  ohne Antwort das Recht behalten (`me !is Success -> return false`) → rot
+ *   B  ohne Antwort das Recht behalten (`me !is Erfolg -> return false`) → rot
  *      „ohne Antwort von /auth/me gilt das 403“
  */
 class RechteNachziehenTest {
 
     private val pfade = PfadServer()
     private val t = TestDienste(pfade.server)
-    private val konto = KontoRepository(t.api, t.cache)
+    private val konto = testKontoRepository(t.api)
 
     @After
     fun zu() { t.aufraeumen(); pfade.server.shutdown() }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.update.data.UpdateLader
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Anmeldestand
@@ -50,6 +51,8 @@ import ch.brickinventoryapp.model.ui.Meldung
  * Gegenproben:
  *   update-angebot-ohne-frische  Angebot mit istNeuer statt anzubietendeFassung →
  *                                rot „eine zurueckgesetzte Beschreibung bietet nichts an“
+ *   update-vm-abgelaufen-ohne-angebot  Angebot nur bei AKTUELL → rot „eine abgelaufene,
+ *                                neuere Beschreibung bietet die Fassung mit Hinweis an“
  *   update-signatur-ungeprueft   die Signaturprüfung nach dem Download entfernt →
  *                                rot „eine fremde Signatur loescht das APK …“
  *   update-zweiter-weg-ungeprueft  starteInstallation() ohne signaturPasst →
@@ -114,9 +117,12 @@ class UpdateViewModelTest {
     private fun hex(b: ByteArray) = MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
 
     /** Wie der Signierjob: Base64 der Beschreibung und ihre ECDSA-Signatur. */
-    private fun beschreibung(code: Int = 20, groesse: Long = apk.size.toLong(), sha: String = hex(apk), schluessel: KeyPair = eigen): ByteArray {
+    private fun beschreibung(
+        code: Int = 20, groesse: Long = apk.size.toLong(), sha: String = hex(apk), schluessel: KeyPair = eigen,
+        ausgestellt: Long = jetzt - 60, gueltigBis: Long = jetzt + 86_400,
+    ): ByteArray {
         val daten = """{"versionCode":$code,"versionName":"2.$code","apkUrl":"$apkAdresse","apkSize":$groesse,""" +
-            """"apkSha256":"$sha","ausgestellt":${jetzt - 60},"gueltigBis":${jetzt + 86_400}}"""
+            """"apkSha256":"$sha","ausgestellt":$ausgestellt,"gueltigBis":$gueltigBis}"""
         val signatur = Signature.getInstance("SHA256withECDSA").run {
             initSign(schluessel.private); update(daten.toByteArray()); sign()
         }
@@ -172,6 +178,16 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         assertEquals(UpdateFrische.ZURUECKGESETZT, zustand().frische)
         assertNull("Eine ältere Beschreibung hält nicht auf einer Zwischenfassung fest", zustand().neuereFassung)
+    }
+
+    @Test
+    fun `eine abgelaufene, neuere Beschreibung bietet die Fassung mit Hinweis an`() = runTest(takt) {
+        antworten[UPDATE_VERSION_URL] = 200 to beschreibung(ausgestellt = jetzt - 8 * 86_400, gueltigBis = jetzt - 86_400)
+        vm.pruefeAufUpdate(still = false)
+        advanceUntilIdle()
+        assertEquals(UpdateFrische.ABGELAUFEN, zustand().frische)
+        assertEquals("Sonst bliebe das Gerät auf der alten Fassung", 20, zustand().neuereFassung?.versionCode)
+        assertNull("Eine abgelaufene setzt keine Messlatte", ablage.stand)
     }
 
     @Test
@@ -282,7 +298,7 @@ class UpdateViewModelTest {
             assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
             assertEquals("Die Prüfung beim Start ist still", 20, eigenes.updateState.value.neuereFassung?.versionCode)
             assertNull(eigenes.updateState.value.fehler)
-            assertFalse("kein Ladebalken", eigenes.updateState.value.laedtPruefung)
+            assertFalse("kein Ladebalken", eigenes.updateState.value.pruefung.laeuft)
         } finally {
             eigenes.viewModelScope.cancel()
         }

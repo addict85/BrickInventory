@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.app.TargetSdkConfigTest
 Rot: kein Modulskript setzt die SDK-Stände selbst
 
 diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
+index 4bd1160..ad084f5 100644
 --- a/Android-App/app/build.gradle.kts
 +++ b/Android-App/app/build.gradle.kts
-@@ -56,6 +56,7 @@ android {
+@@ -58,6 +58,7 @@ android {
      // compileSdk, minSdk und targetSdk setzt brickinventory.android.application.
      defaultConfig {
          applicationId = "ch.brickinventoryapp"
 +        minSdk = 31
          versionCode   = generatedVersionCode
          versionName   = generatedVersionName
-     }
+         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

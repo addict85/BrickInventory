@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
@@ -11,12 +13,10 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.model.data.model.Gutschein
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.vertrag.Gutschein
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.testing.testKatalogRepository
+import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.finanzen.ui.GutscheinUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
@@ -49,7 +49,9 @@ import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerTextId
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import android.content.Context
-import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import ch.brickinventoryapp.finanzen.ui.screens.GutscheineSeite
 import java.util.Locale
 
 /**
@@ -121,17 +123,17 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         compose.onRoot().captureRoboImage("src/test/bildschirmfotos/${name}_${design}_${hell}_$geraet.png")
     }
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-        KatalogRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+        testKatalogRepository(welt.t.api),
         object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
     @Test
     fun galerie() {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
-        foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }, { vm.galleryState.value }) {
+        foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.abruf.laedt } }, { vm.galleryState.value }) {
             GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -143,7 +145,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         // in eigenen Abrufen, und ein Foto mitten im Laden weicht vom Referenzbild ab.
         val fertig = { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
-                !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }
+                !s.detailAbruf.laedt && !s.preisAbruf.laedt && !s.verlaufAbruf.laedt && !s.kaeufeAbruf.laedt } }
         foto("set-detail", fertig, { vm.setDetailState.value }) {
             SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
@@ -153,15 +155,15 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun teile() {
         val vm = welt.teile().also { it.loadParts() }
-        foto("teile", { vm.partsState.value.parts.isNotEmpty() }, { vm.partsState.value }) {
+        foto("teile", { vm.teileState.value.parts.isNotEmpty() }, { vm.teileState.value }) {
             PartsRoute(vm = vm, imageLoader = bilder)
         }
     }
 
     @Test
     fun figuren() {
-        val vm = welt.teile().also { it.loadMinifigs() }
-        foto("figuren", { vm.partsState.value.minifigs.isNotEmpty() }, { vm.partsState.value }) {
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        foto("figuren", { vm.figurenZustand.value.minifigs.isNotEmpty() }, { vm.figurenZustand.value }) {
             MinifigsRoute(vm = vm, imageLoader = bilder)
         }
     }
@@ -172,7 +174,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         // Teile, Figuren und G&V lädt loadValuation() erst nach der Bewertung nach.
         foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
             it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
-            !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
+            !it.bewertung.laedt && !it.verlauf.laedt } }, { vm.financeState.value }) {
             FinanceRoute(vm = vm, imageLoader = bilder)
         }
     }
@@ -237,18 +239,21 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     }
 }
 
-/** Zwei Gutscheine, einer mit PIN und Guthabenstand, einer ohne — die beiden Zeilenformen. */
+/**
+ * Zwei Gutscheine, einer mit PIN und Guthabenstand, einer ohne — die beiden Zeilenformen —
+ * auf ihrer Seite mit Menü in der Leiste und dem schwebenden Knopf zum Anlegen.
+ */
 @Composable
 internal fun Gutscheine() {
     val gutscheine = GutscheinUiState(gutscheine = listOf(
         Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht(),
         Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = Waehrung("CHF")).alsAnsicht()))
-    Column {
+    GutscheineSeite(gutscheine, remember { SnackbarHostState() }, onZurueck = {}, onGuthabenAlle = {}, onExportieren = {}) { neu, onNeu ->
         GutscheineCard(
             zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
             onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },
-            onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {}, onGuthabenAbbrechen = {}, onErneut = {},
-            onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
+            onGuthaben = {}, onGuthabenAbbrechen = {}, onErneut = {},
+            onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {}, neu = neu, onNeu = onNeu,
         )
     }
 }
@@ -264,7 +269,7 @@ internal class KontextTexte(
         if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
     override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
         ctx.resources.getQuantityString(id, anzahl, *args)
-    override fun meldung(fehler: Ergebnis.Error): String {
+    override fun meldung(fehler: Ergebnis.Fehler): String {
         if (fehler.message.isNotBlank()) return fehler.message
         val id = fehlerTextId(fehler)
         return fehlerTextArgument(fehler)?.let { text(id, it) } ?: text(id)

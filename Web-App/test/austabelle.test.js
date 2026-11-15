@@ -54,6 +54,7 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 
 // ── Die drei Fundstellen: kein direkter Tabellenzugriff mehr ────────────────
 
+/** @type {[string, string, RegExp][]} */
 const STELLEN = [
   ['src/katalog/repository/katalogSuche.ts', 'ORDNUNGEN', /ORDNUNGEN\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],

@@ -1,6 +1,7 @@
-import type { Db, DbSchnittstelle } from '../../../db/database';
+import type { Db, DbSchnittstelle, Treffer } from '../../../db/database';
 import { entferneKontoAusSicherungen } from '../../../db/migrate';
 import { LOCKS } from '../../infra/lockNamespaces';
+import type { Spalten } from '../../../db/zeilen';
 
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
@@ -10,7 +11,6 @@ export interface Konto {
   email: string | null;
   first_name: string | null;
   last_name: string | null;
-  password_hash: string;
   is_admin: boolean;
   is_active: boolean;
   email_verified: boolean;
@@ -22,16 +22,22 @@ export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'l
   email_neu: string | null;
 };
 export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & {
-  zweiter_faktor: boolean;
   wartet_auf_bestaetigung: boolean;
 };
 
 export function kontoKurz(db: DbSchnittstelle, id: number): Promise<KontoKurz | undefined> {
-  return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
+  return db.get<Spalten<'users', 'id' | 'username' | 'is_admin' | 'must_change_password'>>(
+    'SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1',
+    [id],
+  );
 }
 
+/** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0115). */
+const KONTO_SPALTEN = `id, username, email, first_name, last_name, is_admin, is_active, email_verified,
+  must_change_password, created_at, sitzungs_version, registrierung_offen, email_neu`;
+
 export function kontoVoll(db: DbSchnittstelle, id: number): Promise<Konto | undefined> {
-  return db.get<Konto>('SELECT * FROM users WHERE id=$1', [id]);
+  return db.get<Konto>(`SELECT ${KONTO_SPALTEN} FROM users WHERE id=$1`, [id]);
 }
 
 export function profilZeile(db: DbSchnittstelle, id: number): Promise<Profil | undefined> {
@@ -43,23 +49,40 @@ export function profilZeile(db: DbSchnittstelle, id: number): Promise<Profil | u
 
 /** Der Login sucht Name ODER E-Mail ohne Gross/klein — beides muss deshalb über beide Spalten eindeutig sein. */
 export async function nameVergeben(db: DbSchnittstelle, name: string, ausser: number): Promise<boolean> {
-  return !!(await db.get(
+  return !!(await db.get<Spalten<'users', 'id'>>(
     'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2',
     [name, ausser],
   ));
 }
 
-/** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. */
-const PROFILSPALTEN = new Set(['username', 'first_name', 'last_name']);
+/** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. Nur
+ * diese Spalten darf die Laufzeitrolle schreiben (Migration 0117). */
+const NAMENSSPALTEN = new Set(['first_name', 'last_name']);
 
-export async function aendereProfil(db: DbSchnittstelle, id: number, felder: Record<string, unknown>): Promise<void> {
+export async function aendereNamen(db: DbSchnittstelle, id: number, felder: Record<string, unknown>): Promise<void> {
   const spalten = Object.keys(felder);
   if (!spalten.length) return;
-  for (const s of spalten) if (!PROFILSPALTEN.has(s)) throw new Error(`Profilspalte nicht erlaubt: ${s}`);
+  for (const s of spalten) if (!NAMENSSPALTEN.has(s)) throw new Error(`Namensspalte nicht erlaubt: ${s}`);
   await db.run(
     `UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')} WHERE id=$${spalten.length + 1}`,
     [...spalten.map(s => felder[s]), id],
   );
+}
+
+/** Mit dem Namen meldet man sich an: Den schreibt nur die Systemrolle. */
+export async function aendereBenutzernamen(db: DbSchnittstelle, id: number, name: string): Promise<void> {
+  await db.run('UPDATE users SET username = $2 WHERE id = $1', [id, name]);
+}
+
+/** Ein Eindringling kann ihn angestossen haben. @returns die verworfene Adresse oder null */
+export async function verwirfAusstehendeAdresse(db: DbSchnittstelle, id: number): Promise<string | null> {
+  const r = await db.get<{ adresse: string }>(
+    `UPDATE users u SET ${OHNE_EMAIL_NEU} FROM users alt
+      WHERE u.id = $1 AND alt.id = u.id AND alt.email_neu IS NOT NULL AND NOT alt.registrierung_offen
+      RETURNING alt.email_neu AS adresse`,
+    [id],
+  );
+  return r?.adresse ?? null;
 }
 
 export async function merkeEmailNeu(
@@ -149,10 +172,10 @@ export async function schalteRegistrierungFrei(
   if (!k) return 'nicht_wartend';
   if (
     k.email_neu &&
-    (await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))', [
-      k.email_neu,
-      id,
-    ]))
+    (await tx.get<Treffer>(
+      'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+      [k.email_neu, id],
+    ))
   )
     return 'vergeben';
   await tx.run(
@@ -175,7 +198,6 @@ export async function ausstehendOhneLink(db: DbSchnittstelle): Promise<number[]>
 export function alleKonten(db: DbSchnittstelle): Promise<KontoInListe[]> {
   return db.all<KontoInListe>(
     `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
-            EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor,
             (u.registrierung_offen AND NOT u.email_verified) AS wartet_auf_bestaetigung
        FROM users u ORDER BY u.id`,
   );
@@ -280,7 +302,7 @@ export async function setzeEigenesPasswort(db: DbSchnittstelle, id: number, hash
 }
 
 export async function kontoExistiert(db: DbSchnittstelle, id: number): Promise<boolean> {
-  return !!(await db.get('SELECT 1 FROM users WHERE id = $1', [id]));
+  return !!(await db.get<Treffer>('SELECT 1 FROM users WHERE id = $1', [id]));
 }
 
 /** Auch aus den Kopien vor Migrationen; den Namen im Protokoll nimmt raeumeProtokollAuf(). */
@@ -348,7 +370,11 @@ export function kontoMitEmail(
   db: DbSchnittstelle,
   email: string,
 ): Promise<(Omit<KontoKurz, 'must_change_password'> & { email: string }) | undefined> {
-  return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+  // Die Bedingung auf email schliesst NULL aus.
+  return db.get<Spalten<'users', 'id' | 'username' | 'is_admin'> & { email: string }>(
+    'SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)',
+    [email],
+  );
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
@@ -375,7 +401,10 @@ export async function registriereKonto(
 }
 
 export function aktivesKontoNachEmail(db: DbSchnittstelle, email: string): Promise<Konto | undefined> {
-  return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active AND email_verified', [email]);
+  return db.get<Konto>(
+    `SELECT ${KONTO_SPALTEN} FROM users WHERE LOWER(email) = LOWER($1) AND is_active AND email_verified`,
+    [email],
+  );
 }
 
 /** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung
@@ -422,7 +451,10 @@ export function kontoNachRuecksetzToken(
   db: DbSchnittstelle,
   hash: string,
 ): Promise<{ id: number; username: string } | undefined> {
-  return db.get('SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
+  return db.get<Spalten<'users', 'id' | 'username'>>(
+    'SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()',
+    [hash],
+  );
 }
 
 /** Prüfen und Verbrauchen in einer Anweisung: Zwei gleichzeitige Anfragen mit
@@ -530,4 +562,14 @@ export async function mussPasswortAendern(db: DbSchnittstelle, uid: number): Pro
     uid,
   ]);
   return r?.must_change_password === true;
+}
+
+export function kontoZumNamen(db: DbSchnittstelle, name: string) {
+  return db.get<{ kennung: string; id: number | null }>(
+    `
+    SELECT lower($1::text) AS kennung,
+           (SELECT id FROM users WHERE lower(username) = lower($1::text) OR lower(email) = lower($1::text)
+             ORDER BY id LIMIT 1) AS id`,
+    [name],
+  );
 }

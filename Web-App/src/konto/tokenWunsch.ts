@@ -1,5 +1,5 @@
 /** Wie ein neuer Gerätezugang heisst, gilt und was die Antwort über ihn sagt. */
-import { hashToken, type TokenScope } from './geraeteToken';
+import { tokenAbdruck, type TokenScope } from './geraeteToken';
 import type { KontoKontext } from './kontext';
 
 /** Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab. */
@@ -19,7 +19,7 @@ export function tokenScope(roh: unknown): TokenScope {
 
 /** `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt". */
 export async function tokenAngaben(k: KontoKontext, klartext: string) {
-  const z = await k.konten.tokenStand(hashToken(klartext));
+  const z = await k.konten.tokenStand(tokenAbdruck(klartext));
   return z
     ? {
         scope: z.scope,

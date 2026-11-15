@@ -23,20 +23,23 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { setzeKonfig } = _req('src/infra/konfig.js');
 
 /** Ein Router mit echten Schlüsseln des Vertrags, der antwortet, was der Test will. */
 function server(t, antworten) {
-  const router = vertragsRouter();
-  router.get('/registration-status', (_req, res) => res.status(antworten.status ?? 200).json(antworten.rumpf));
-  router.put('/users/:id/admin', (_req, res) => res.json({ success: true }));
+  const router = vertragsRouter('/api/v1/auth');
+  router.endpunkt('GET /api/v1/auth/registration-status', (_req, res) =>
+    res.status(antworten.status ?? 200).json(antworten.rumpf),
+  );
+  router.endpunkt('PUT /api/v1/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
   const app = express();
   app.use(express.json());
   app.use('/api/v1/auth', router);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  return `http://127.0.0.1:${srv.address().port}/api/v1/auth`;
+  return `http://127.0.0.1:${portVon(srv)}/api/v1/auth`;
 }
 
 test('eine abweichende Antwort wird zur 500', async t => {

@@ -73,7 +73,7 @@ export function einmalDekodiert(text: string): string {
   }
 }
 
-export function requireItemNumber(value: unknown, field = 'part_number'): string {
+export function nummerPflicht(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
   if (!v) fachfehler('ungueltig', 'feld_erforderlich', { feld: field });
   if (!ITEM_NUMBER_RE.test(v)) fachfehler('ungueltig', 'feld_nummer_ungueltig', { feld: field });
@@ -235,7 +235,7 @@ export const eingabe = {
   /** Eine eigene Regel mit eigenem Fehlercode; Pflicht. */
   regel: <T>(pruefe: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(pruefe, json, true),
   artikelnummer: (feld: string) =>
-    alsSchema(v => requireItemNumber(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
+    alsSchema(v => nummerPflicht(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
   bildUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
   /** Ohne `pflicht` darf die Menge fehlen oder null sein; dann bleibt sie, wie sie ist. */

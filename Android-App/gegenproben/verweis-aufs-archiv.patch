@@ -13,4 +13,4 @@ diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sich
 + * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/TokenTresor.kt.md#z12
   */
  
- /**
+ /** Wo die Schlüssel liegen: im Gerät der AndroidKeyStore, im Test ein Bund im Speicher. */

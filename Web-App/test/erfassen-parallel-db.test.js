@@ -7,10 +7,11 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
@@ -35,8 +36,9 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     c.release();
   }
 
-  const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
-  const { mitInventarSperre } = _req('db/txLock.js');
+  // Ungebunden geladen: In der Transaktion bekommt der Dienst ihren Kontext `t`.
+  const { kaufAmTagErfassen } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
+  const bestand = testKontext('bestand');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
@@ -52,8 +54,9 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     await haeltSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
-        mitInventarSperre(testZugang(), uid, '70001-1', tx =>
-          recordAcquisitionForDay('set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }, tx),
+        bestand.transaktion(
+          tt => kaufAmTagErfassen(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
+          { sperren: [{ konto: uid, schluessel: '70001-1' }] },
         ),
       ),
     );
@@ -175,27 +178,14 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
 
   // Und der Erfassen-Pfad schreibt gesperrt.
   const sets = ohneKommentare(require('./helpers/sources').setKernQuelle());
-  // Nur der Rumpf von addSet(): bis zur NÄCHSTEN Funktion auf oberster Ebene.
-  // Ein Schnitt bis addSetWithDate() umfasste 1200 Zeilen samt fremder Routen
-  // und zählte deren Sperren mit.
-  const beginn = sets.indexOf('async function addSetIntern(');
+  // Nur der Rumpf von setErfassen(), des einen Wegs zum Erfassen: bis zur nächsten Funktion.
+  const beginn = sets.indexOf('async function setErfassen(');
   const naechste = sets.slice(beginn + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
-  const addSet = sets.slice(beginn, beginn + 10 + naechste);
-  // Und die Huelle selbst schreibt keine Erfassung an der Sperre vorbei.
-  const huelleAb = sets.indexOf('async function addSet(');
-  const huelle = sets.slice(huelleAb, sets.indexOf('async function addSetIntern('));
-  assert.equal(
-    (huelle.match(/recordAcquisition\(/g) || []).length,
-    0,
-    'Die Huelle von addSet() schreibt selbst eine Erfassung — die laeuft dann ohne Sperre.',
-  );
-  const schreibt = (addSet.match(/recordAcquisition\(/g) || []).length;
-  assert.ok(schreibt >= 2, `nur ${schreibt} Erfassungs-Schreibstellen gefunden`);
-  assert.equal(
-    (addSet.match(/mitInventarSperre\(/g) || []).length,
-    schreibt,
-    'nicht jede Schreibstelle in addSet() läuft unter der Bestandssperre',
-  );
+  const kern = sets.slice(beginn, beginn + 10 + naechste);
+  const sperre = kern.indexOf('repo.sperreSetErfassen(');
+  const stellen = [...kern.matchAll(/erfassungBuchen\(/g)].map(m => m.index);
+  assert.ok(stellen.length >= 2, `nur ${stellen.length} Erfassungs-Schreibstellen gefunden`);
+  assert.ok(sperre > 0 && stellen.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
 });
 
 test('ein kaputter CSV-Eintrag kippt nicht die ganze Datei', () => {
@@ -232,7 +222,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
   // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [
-    ['routes/api_v1/sets.ts', 'src/sets/csvImport.ts'],
+    ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
     ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
     ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts'],
   ]) {
@@ -297,17 +287,18 @@ test('die Teileliste liefert, was sie meldet', () => {
 
   // Die Antwort meldet die TATSÄCHLICHE Seitengrösse, nicht die angefragte.
   const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
-  const antwort = v1.slice(v1.indexOf("router.get('/parts'"), v1.indexOf("router.get('/parts/brick-colors'"));
+  const antwort = v1.slice(
+    v1.indexOf("router.endpunkt('GET /api/v1/parts'"),
+    v1.indexOf("router.endpunkt('GET /api/v1/parts/brick-colors'"),
+  );
   // Geprüft wird, WOHER die Zahl kommt, nicht wie die Zeile geschrieben ist.
   //
-  // Vorher stand hier der Wortlaut `page_size: result.page_size`. Der war seit
-  // jeher wirkungslos — er stand VOR `...result`, das ihn mit demselben Wert
-  // überschrieb — und wurde beim Aufräumen entfernt. Der Test wurde dadurch
-  // rot, obwohl die Antwort sich um kein Byte geändert hat.
+  // Ein Wortlaut wie `page_size: result.page_size` wäre die falsche Probe: Er kann
+  // wirkungslos dastehen oder fehlen, ohne dass die Antwort sich ändert.
   assert.match(
     antwort,
     /\.\.\.result/,
-    'Die Antwort übernimmt das Ergebnis von getParts nicht mehr — dann fehlt page_size ganz',
+    'Die Antwort übernimmt das Ergebnis von teileAbfrage nicht mehr — dann fehlt page_size ganz',
   );
   assert.doesNotMatch(
     antwort,
@@ -316,9 +307,9 @@ test('die Teileliste liefert, was sie meldet', () => {
   );
 
   // Und die SET-Liste bleibt unbegrenzt
-  const getSets = src.slice(src.indexOf('async function setListe'));
+  const setsLesen = src.slice(src.indexOf('async function setListe'));
   assert.match(
-    getSets,
+    setsLesen,
     /if \(f\.seite\) \{/,
     'Die Set-Liste darf ohne page_size NICHT gedeckelt werden — Aufrufer ohne ' +
       'page_size (Skripte, ältere App-Stände) bekämen sonst stillschweigend weniger Sets',

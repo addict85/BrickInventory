@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.anmeldung.ui
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.Meldung
+
 /**
  * Welches der drei Formulare der Anmeldebildschirm zeigt — dieselben wie in der
  * Webapp (`showPanel`).
@@ -29,9 +32,11 @@ internal data class AnmeldeUiState(
      * Er antwortet absichtlich immer gleich, damit niemand erfährt, wer ein Konto hat;
      * eine eigene Erfolgsmeldung verriete es.
      */
-    val meldung: String? = null,
-    val fehler: String? = null,
-    val laeuft: Boolean = false,
+    val meldung: Meldung? = null,
+    /** Ein Zusatz zur Meldung, etwa dass der Server keine E-Mail verschickt. */
+    val hinweis: Meldung? = null,
+    /** Registrieren oder „Passwort vergessen“. */
+    val konto: Vorgang = Vorgang.Fertig,
     /** Der Server verlangt beim Anmelden den Code des zweiten Faktors. */
     val codeNoetig: Boolean = false,
     /** Er nimmt statt des Codes auch einen Passkey (`passkey: true` in der Antwort). */
@@ -42,13 +47,11 @@ internal data class AnmeldeUiState(
      * Verwaltung braucht man dort selten.
      */
     val vollerZugriff: Boolean = false,
-    /** Läuft die ANMELDUNG (nicht Registrieren oder „Passwort vergessen")? */
-    val loginLaeuft: Boolean = false,
     /**
-     * Fehler des Anmeldeformulars. Bleibt stehen, solange man das Passwort
-     * korrigiert — flüchtige Meldungen gehen in den Meldungskanal.
+     * Die Anmeldung selbst. Ihr Fehler bleibt stehen, solange man das Passwort
+     * korrigiert; flüchtige Meldungen gehen in den Meldungskanal.
      */
-    val loginError: String? = null,
+    val anmeldung: Vorgang = Vorgang.Fertig,
     /** Der Code, den man nach einem QR-Scan im Browser eintippt; null ohne laufende Kopplung. */
     val qrBestaetigung: String? = null,
     /** Nach der Bestätigung im Browser: welches Konto auf welchem Server; der Token erst nach dem Ja. */

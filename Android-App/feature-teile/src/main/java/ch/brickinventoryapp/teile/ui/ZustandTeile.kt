@@ -1,96 +1,93 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.BestandteilKopfAnsicht
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.VerwendendesSetAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.fach.BestandteilKopfAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.VerwendendesSetAnsicht
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
+import java.io.Serializable
 
 /**
- * Teile und Minifiguren — eigener Fluss: Nur zwei Bildschirme brauchen die Felder,
- * und jedes `partsLoading` beim Blättern zeichnete sonst alles neu, was AppUiState
- * liest.
+ * Was die Teileliste filtert und wie sie sie zeigt — ein Wert, der als Ganzes im
+ * SavedStateHandle liegt und nach dem Prozesstod wiederkommt. Jeder Lader liest ihn aus
+ * dem Zustand, nie als Parameter: Sonst hängte `onLoadMore` eine ungefilterte Seite an.
+ * Konto und Lagerort gehören nicht dazu; sie bleiben nur im Speicher (Blickfeld).
  */
-data class PartsUiState(
+data class Teilefilter(
+    val suche: String = "",
+    /** Wie parts-spare der Webapp. */
+    val ersatz: Ersatzteilwahl = Ersatzteilwahl.ALLE,
+    /** Karten oder Tabelle; die Tabelle holt „In Sets“ mit (`with_sets=1`), darum im Filter. */
+    val ansicht: Listenansicht = Listenansicht.KARTEN,
+    /** Sortiert wird in der Ansicht, die Liste liegt ganz vor. */
+    val ordnung: Ordnung = Ordnung.FARBE,
+    /** Der Farbname reist als `color=` mit. */
+    val farbe: Farbwahl = Farbwahl.Alle,
+    /** Der Wert (`category_name`), nicht die Beschriftung: Der Server filtert danach. */
+    val kategorie: Kategoriewahl = Kategoriewahl.Alle,
+) : Serializable {
+    /** Die drei Reihenfolgen der Webapp; die Regeln stehen in sortiert() (TeileOrdnung.kt). */
+    enum class Ordnung { FARBE, NAME, MENGE }
+
+    private companion object {
+        // Fest, sonst rechnet die JVM die Kennung aus der Klassenform, und jede neue Fassung
+        // der App verwürfe den gemerkten Filter.
+        private const val serialVersionUID: Long = 2L
+    }
+}
+
+/** Der Teile-Reiter: Liste, Filter mit ihren Auswahllisten, Kennzahlen. */
+data class TeileUiState(
     val parts: List<TeilAnsicht> = emptyList(),
     /**
-     * Die manuell erfassten Teile aus /api/v1/parts/manual, derselben Quelle wie die
-     * Webapp — nicht aus der Bewertung, die dafür samt Marktpreisen geladen werden
-     * müsste. null heisst „noch nicht geladen“, leer „keine vorhanden“: Die
-     * Wiederherstellung der Rollposition wartet auf die Liste, auch wenn sie leer ist.
+     * Die manuell erfassten Teile (/parts/manual). null heisst „noch nicht geladen“, leer
+     * „keine vorhanden“: Die Rollposition wartet auf die Liste, auch wenn sie leer ist.
      */
     val manualParts: List<ManuellesTeilAnsicht>? = null,
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
-    /**
-     * Der Suchtext der Teileliste im Zustand, nicht im Bildschirm: Jeder Lader
-     * (Nachladen, Löschen, Kontofilter, Betreten) liest den Filter von hier; sonst
-     * hängte `onLoadMore` eine ungefilterte Seite 2 an eine gefilterte Seite 1.
-     */
-    val partsQuery: String = "",
-    /** Ersatzteil-Filter wie parts-spare der Webapp; im Zustand aus demselben Grund wie partsQuery. */
-    val partsSpare: Ersatzteilwahl = Ersatzteilwahl.ALLE,
-    /**
-     * Darstellung der Teileliste wie parts-view in der Webapp. Im Zustand, weil der
-     * Ladeweg sie braucht: `with_sets=1` kostet den Server eine eigene Abfrage und
-     * wird nur für die Tabelle geholt.
-     */
-    val partsView: Listenansicht = Listenansicht.KARTEN,
-    /**
-     * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl
-     * (/parts/colors und /parts/categories, wie in der Webapp).
-     */
+    val filter: Teilefilter = Teilefilter(),
+    /** Die Auswahl der beiden Filter mit Anzahl (/parts/colors und /parts/categories). */
     val partsFilterColors: List<FilterFarbeAnsicht> = emptyList(),
     val partsCategories: List<KategorieAnsicht> = emptyList(),
-    /** Gewaehlte Farbe; "" = alle. Der Wert reist als `color=` mit. */
-    val partsColorFilter: String = "",
-    /**
-     * Gewählte Kategorie; "" = alle. Gespeichert wird der Wert (`category_name`, meist
-     * eine Katalog-ID als Text), nicht die Beschriftung — der Server filtert danach.
-     */
-    val partsCategoryFilter: String = "",
-    val partsLoading: Boolean = false,
-    /** Warum die Teile nicht kamen; null, solange nichts scheiterte. */
-    val partsFehler: String? = null,
-    val partsFehlerKlasse: Fehlerklasse? = null,
+    /** Der letzte Abruf; die Liste kommt aus der Ablage und bleibt stehen. */
+    val teileAbruf: Laden<Unit> = Laden.Daten(Unit),
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val teileOfflineStand: Long? = null,
+    val partsStats: TeileKennzahlenAnsicht? = null,
+    /** Alle Farben für den Erfassungsdialog. */
+    val partsColors: List<FarbeAnsicht> = emptyList(),
+)
+
+/** Der Figuren-Reiter: eigener Zustand, damit Blättern in den Teilen ihn nicht neu zeichnet. */
+data class FigurenUiState(
     val minifigs: List<FigurAnsicht> = emptyList(),
-    /** Die manuell erfassten Figuren — siehe manualParts, null wie dort. */
+    /** Die manuell erfassten Figuren, null wie bei [TeileUiState.manualParts]. */
     val manualFigs: List<ManuelleFigurAnsicht>? = null,
     /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
     val minifigStats: FigurenKennzahlenAnsicht = FigurenKennzahlenAnsicht(),
-    val minifigsLoading: Boolean = false,
-    val minifigsFehler: String? = null,
-    val minifigsFehlerKlasse: Fehlerklasse? = null,
-    /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
+    val figurenAbruf: Laden<Unit> = Laden.Daten(Unit),
     val figurenOfflineStand: Long? = null,
-    /**
-     * Suchtext der Figurenliste im Zustand: Gesucht wird auf dem Server, vor der
-     * Gruppierung über jede fig_name-Zeile; eine zweite Suche im Composable träfe
-     * anderes. Wie partsQuery.
-     */
+    /** Gesucht wird auf dem Server vor der Gruppierung; eine zweite Suche im Bildschirm träfe anderes. */
     val minifigsQuery: String = "",
-    /**
-     * Darstellung der Figurenliste wie figs-view in der Webapp. Im Zustand, damit
-     * die Ansicht beim Zurücknavigieren dieselbe ist.
-     */
     val minifigsView: Listenansicht = Listenansicht.KARTEN,
-    val partsStats: TeileKennzahlenAnsicht? = null,
-    val partsColors: List<FarbeAnsicht> = emptyList(),
 )
 
 /**
@@ -104,10 +101,9 @@ data class SetItemUiState(
     val art: Postenart? = null,
     val nummer: String = "",
     val colorId: Int = OHNE_FARBE,
-    val laedt: Boolean = false,
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     val kopf: BestandteilKopfAnsicht? = null,
     val sets: List<VerwendendesSetAnsicht> = emptyList(),
-    val fehler: String? = null,
 ) {
     val offen: Boolean get() = art != null
 }
@@ -121,14 +117,15 @@ data class TeilelisteUiState(
     val sets: List<PlSet> = emptyList(),
     val parts: List<PlPart> = emptyList(),
     val generated: Boolean = false,
-    val isLoading: Boolean = false,
-    /** Fortschritt, Ergebnis oder Fehler der letzten Handlung, in der Sprache der App. */
-    val status: String = "",
+    /** Das Erzeugen der Liste; Fehler einzelner Sets nennt [status]. */
+    val erzeugen: Laden<Unit> = Laden.Daten(Unit),
+    /** Fortschritt, Ergebnis oder Fehler der letzten Handlung; null heisst nichts zu sagen. */
+    val status: Meldung? = null,
     val nurLose: Boolean = false,
     val mitUnterkonten: Boolean = false,
-    val bestandLaeuft: Boolean = false,
-    val isExporting: Boolean = false,
-    val pdfError: String? = null,
+    /** Der Abgleich mit dem eigenen Bestand; sein Ergebnis nennt [status]. */
+    val bestand: Vorgang = Vorgang.Fertig,
+    val pdf: Vorgang = Vorgang.Fertig,
     /** Fertiges PDF, das der Bildschirm einmal zum Öffnen anbietet. */
     val pdfDatei: java.io.File? = null,
 )
@@ -138,7 +135,7 @@ data class TeilelisteUiState(
  * der vorgewählte Zustand beim Erfassen. Nicht die ganze Sitzung, damit eine
  * Änderung an Anmeldung oder Design die Listen nicht neu zeichnet.
  */
-data class TeileSitzungUiState(
+internal data class TeileSitzungUiState(
     val serverUrl: String = "",
     val currency: Waehrung = Waehrung.EUR,
     val userDefaultCondition: Zustand? = null,

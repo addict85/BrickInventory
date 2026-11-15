@@ -1,0 +1,18 @@
+Gegenprobe: Der Lagerortfilter früherer Fassungen bleibt im Klartext im DataStore liegen
+Modul: core-data
+Test: ch.brickinventoryapp.data.KlartextResteTest
+Rot: die Filter frueherer Fassungen gehen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/KlartextReste.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/KlartextReste.kt
+index 9d35e21..f03f25e 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/KlartextReste.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/KlartextReste.kt
+@@ -24,7 +24,7 @@ internal object KlartextReste {
+     val SPIEGEL = listOf("klartext_experte", "klartext_experte_uebernommen")
+ 
+     /** Die Namen beginnen mit der Ansicht (ScopeFilter.View.key); die Werte waren immer Text. */
+-    private val FILTER = listOf("scope_", "lager_")
++    private val FILTER = listOf("scope_")
+ 
+     fun entferne(prefs: MutablePreferences) {
+         DATASTORE.forEach { prefs.remove(it) }

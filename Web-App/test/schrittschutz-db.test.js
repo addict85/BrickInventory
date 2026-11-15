@@ -27,6 +27,14 @@
  *      statt `requireAdmin`, für Import und Anleitungen ohne freigegeben()
  *   J  in /settings/raw `istVerwalter(req)` statt alsVerwalter() → rot:
  *      „ohne Freigabe zeigt /settings/raw nur Kontowerte“
+ *   K  (14.11.2026) in hinterlegeSchluessel() `if (!widerrufen) return …` gestrichen und
+ *      `widerrufen ?? new Set()` übergeben → rot: „ohne frische Widerrufsliste …“;
+ *      `widerrufen: new Set()` (Liste nie geprüft) → rot im selben Test
+ *   L  (15.11.2026) drei Linien zugleich: in startup/app.ts die Absage für `/` am Ende
+ *      gestrichen, schrittschutzAmEingang wieder mit den Regexen `^…$` auf req.path und
+ *      in vertragsRouter die Prüfung von res.locals.schritt gestrichen → rot: „auch anders
+ *      geschrieben …“ (klartext/, DELETE vouchers/n/ und zweiter-faktor/einrichten/ 200). Je eine Linie
+ *      allein fängt die anderen beiden auf (vertrag-schreibung-db, vertrag-endpunkt).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -36,6 +44,7 @@ const assert = require('node:assert/strict');
 const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { X509Certificate } = require('node:crypto');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
@@ -50,7 +59,7 @@ const { bis } = require('./helpers/zeit');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { geraeteSchluessel, signiere, geraetFreigeben, hinterlege } = require('./helpers/geraet');
 const attestation = require('./helpers/attestation');
-const repo = require('./helpers/sources').testBereich('konto').geraeteSchluessel;
+const repo = require('./helpers/sources').testBereich('geraete').geraeteSchluessel;
 const { qrKoppeln } = require('./helpers/qr');
 const freierPort = () =>
   new Promise(r => {
@@ -150,6 +159,52 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.deepEqual([c.status, c.body.code], [403, 'geraeteschluessel_fehlt']);
   });
 
+  await t.test(
+    'auch anders geschrieben kommt ein App-Token ohne Freigabe nicht an PIN, Löschung oder Codes',
+    async () => {
+      const offen = [];
+      for (const [method, weg] of [
+        ['POST', `/vouchers/${gid}/klartext`],
+        ['POST', `/vouchers/${gid}/pdf-freigabe`],
+        ['POST', '/vouchers/export/pdf-freigabe'],
+        ['DELETE', `/vouchers/${gid}`],
+        ['POST', '/auth/zweiter-faktor/codes'],
+        ['POST', '/auth/zweiter-faktor/einrichten'],
+      ]) {
+        const genau = await ruf(weg, { method, token, body: { password: PASS, code: '123456' } });
+        assert.deepEqual([genau.status, genau.body.code], [403, 'geraeteschluessel_fehlt'], `${method} ${weg}`);
+        const gross = weg.replace(/[a-z-]+$/, x => x.toUpperCase());
+        for (const anders of [`${weg}/`, `${weg}//`, `${weg}%2F`, gross]) {
+          const r = await ruf(anders, { method, token, body: { password: PASS, code: '123456' } });
+          if (r.status < 400 || ![403, 404, 400].includes(r.status)) offen.push(`${method} ${anders} → ${r.status}`);
+        }
+      }
+      assert.deepEqual(offen, []);
+      assert.ok(await db.get('SELECT 1 FROM vouchers WHERE id = $1', [gid]), 'der Gutschein ist noch da');
+    },
+  );
+
+  await t.test(
+    'ohne frische Widerrufsliste oder mit widerrufener Kette nimmt der Server keinen Schlüssel an',
+    async () => {
+      const versuch = async grund => {
+        const h = await hinterlege(ruf, (await anmelden(NAME)).body.token);
+        assert.deepEqual([h.antwort.status, h.antwort.body.code], [400, 'geraeteschluessel_attestation'], grund);
+        await bis(() => log.includes(`abgewiesen: ${grund}`), 5000);
+        assert.match(log, new RegExp(`abgewiesen: ${grund}`));
+        log = '';
+      };
+      await db.run("DELETE FROM laufzustand WHERE schluessel = 'attestation_widerruf'");
+      await versuch('widerrufsliste_fehlt');
+      await attestation.widerrufslisteAblegen(db, [], new Date(Date.now() - 8 * 86_400_000));
+      await versuch('widerrufsliste_fehlt');
+      const wurzel = new X509Certificate(attestation.WURZEL.der);
+      await attestation.widerrufslisteAblegen(db, ['1', wurzel.serialNumber.toLowerCase().replace(/^0+/, '')]);
+      await versuch('widerrufen');
+      await attestation.widerrufslisteAblegen(db, ['1']);
+    },
+  );
+
   await t.test('der Schlüssel gilt einmal je Zugang; ein anderer wird nicht nachgeschoben', async () => {
     const h = await hinterlege(ruf, token);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
@@ -196,7 +251,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     const z = await db.get(
       `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS seit FROM api_tokens
       WHERE token = $1`,
-      [auth.hashToken(alt)],
+      [auth.tokenAbdruck(alt)],
     );
     const f = { uid: z.uid, seit: z.seit.toISOString() };
     await db.run('INSERT INTO geraete_schluessel (user_id, familie, oeffentlich) VALUES ($1, $2, $3)', [
@@ -284,7 +339,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
   await t.test('ein alter Zugang kann keinen Schlüssel mehr hinterlegen', async () => {
     const alt = (await anmelden(NAME)).body.token;
     await db.run(`UPDATE api_tokens SET created_at = NOW() - INTERVAL '1 hour' WHERE token = $1`, [
-      auth.hashToken(alt),
+      auth.tokenAbdruck(alt),
     ]);
     const n = await ruf('/geraet/schluessel/nonce', { method: 'POST', token: alt, body: {} });
     assert.deepEqual([n.status, n.body.code], [403, 'geraeteschluessel_frist']);
@@ -293,7 +348,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     await db.run(
       `INSERT INTO geraete_nonces (nonce, user_id, familie, ablauf) SELECT $2, user_id,
        date_trunc('milliseconds', created_at), NOW() + INTERVAL '1 hour' FROM api_tokens WHERE token = $1`,
-      [auth.hashToken(alt), altNonce.toString('base64url')],
+      [auth.tokenAbdruck(alt), altNonce.toString('base64url')],
     );
     const r = await ruf('/geraet/schluessel', {
       method: 'POST',

@@ -1,7 +1,7 @@
-/** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
- * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { bindeZugang, type Kontext } from '../infra/bereich';
+import { mit, mitVertrag, type Kontext } from '../infra/bereich';
+import type { BestandLesevertrag } from './lesevertrag';
 import * as bestandExport from './repository/bestandExport';
 import * as gemeinsam from './repository/gemeinsam';
 import * as kaufErfassungen from './repository/kaufErfassungen';
@@ -15,36 +15,63 @@ import type { HaushaltDienste } from '../haushalt';
 import type { KontoDienste } from '../konto';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
+import type { Uhr } from '../infra/uhr';
 
 export interface BestandAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   haushalt: HaushaltDienste;
   konto: KontoDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
+  lesevertrag: BestandLesevertrag;
 }
 
-export const zugang = (db: Db) => ({
-  bestandExport: bindeZugang(db, bestandExport),
-  gemeinsam: bindeZugang(db, gemeinsam, ['erfassungsKennzahlen', 'setsMitBestandteil']),
-  kaufErfassungen: bindeZugang(db, kaufErfassungen, ['inWaehrungDesKontos']),
-  kennzahlen: bindeZugang(db, kennzahlen),
-  lagerort: bindeZugang(db, lagerort, [
-    'andererOrtGleichenNamens',
-    'entferneOrt',
-    'fuegeOrtEin',
-    'ortBelegung',
-    'ortDesKontos',
-    'ortNachName',
-    'ortName',
-    'orteDerKonten',
-    'orteMitBestand',
-    'schreibeOrtNamen',
-    'vorgabeOrt',
-  ]),
-  manuelleMengen: bindeZugang(db, manuelleMengen, ['summeDerErfassungen']),
-  nachtrag: bindeZugang(db, nachtrag),
-  papierkorb: bindeZugang(db, papierkorb, ['eintraege', 'entferneAeltere', 'entferneAlle', 'entferneEintragDesKontos']),
+export const zugang = (db: Db, l: BestandLesevertrag) => ({
+  bestandExport: {
+    teileFuerCsv: mitVertrag(db, l)(bestandExport.teileFuerCsv),
+    figurenFuerCsv: mitVertrag(db, l)(bestandExport.figurenFuerCsv),
+  },
+  gemeinsam: {
+    erfassungsKennzahlen: mitVertrag(db, l)(gemeinsam.erfassungsKennzahlen),
+    setsMitBestandteil: mitVertrag(db, l)(gemeinsam.setsMitBestandteil),
+  },
+  kaufErfassungen: {
+    inWaehrungDesKontos: mit(db)(kaufErfassungen.inWaehrungDesKontos),
+  },
+  kennzahlen: {
+    setZahlen: mitVertrag(db, l)(kennzahlen.setZahlen),
+    anleitungsZahlen: mitVertrag(db, l)(kennzahlen.anleitungsZahlen),
+    teileImBestand: mitVertrag(db, l)(kennzahlen.teileImBestand),
+    teileEinzeln: mitVertrag(db, l)(kennzahlen.teileEinzeln),
+    figurenImBestand: mitVertrag(db, l)(kennzahlen.figurenImBestand),
+  },
+  lagerort: {
+    andererOrtGleichenNamens: mit(db)(lagerort.andererOrtGleichenNamens),
+    entferneOrt: mit(db)(lagerort.entferneOrt),
+    fuegeOrtEin: mit(db)(lagerort.fuegeOrtEin),
+    ortBelegung: mitVertrag(db, l)(lagerort.ortBelegung),
+    ortDesKontos: mit(db)(lagerort.ortDesKontos),
+    ortNachName: mit(db)(lagerort.ortNachName),
+    ortName: mit(db)(lagerort.ortName),
+    orteDerKonten: mit(db)(lagerort.orteDerKonten),
+    orteMitBestand: mitVertrag(db, l)(lagerort.orteMitBestand),
+    schreibeOrtNamen: mit(db)(lagerort.schreibeOrtNamen),
+  },
+  manuelleMengen: {
+    summeDerErfassungen: mit(db)(manuelleMengen.summeDerErfassungen),
+  },
+  nachtrag: {
+    setErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.setErfassungenOhnePreis),
+    teilErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.teilErfassungenOhnePreis),
+    figurErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.figurErfassungenOhnePreis),
+  },
+  papierkorb: {
+    eintraege: mit(db)(papierkorb.eintraege),
+    entferneAeltere: mit(db)(papierkorb.entferneAeltere),
+    entferneAlle: mit(db)(papierkorb.entferneAlle),
+    entferneEintragDesKontos: mit(db)(papierkorb.entferneEintragDesKontos),
+  },
 });
 export type BestandKontext = Kontext<BestandAbhaengigkeiten, ReturnType<typeof zugang>>;

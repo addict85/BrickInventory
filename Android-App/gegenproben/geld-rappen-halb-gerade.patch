@@ -1,0 +1,17 @@
+Gegenprobe: auf Rappen halb zur geraden Zahl statt von der Null weg
+Modul: core-model
+Test: ch.brickinventoryapp.model.GeldTest
+Rot: auf Rappen gerundet wird halb
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+@@ -21,7 +21,7 @@
+     fun alsBigDecimal(): BigDecimal = BigDecimal.valueOf(zehntausendstel, STELLEN)
+ 
+     /** Auf Rappen, halbe von der Null weg wie aufRappen() des Servers. */
+-    fun aufRappen(): BigDecimal = alsBigDecimal().setScale(2, RoundingMode.HALF_UP)
++    fun aufRappen(): BigDecimal = alsBigDecimal().setScale(2, RoundingMode.HALF_EVEN)
+ 
+     /** Für das Wire-Format und für Diagrammhöhen; gerechnet wird mit [zehntausendstel]. */
+     fun alsDouble(): Double = zehntausendstel / FAKTOR.toDouble()

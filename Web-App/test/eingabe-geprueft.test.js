@@ -22,25 +22,26 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   let aufrufe = 0;
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
   // An res.json vorbei: Die Prüfung der Antwort (Testmodus) gilt dem echten Rumpf.
   const zeige = (req, res) => {
     aufrufe++;
     res.type('json').send(JSON.stringify({ eingabe: req.eingabe, abfrage: req.abfrage }));
   };
-  router.post('/sets', zeige);
-  router.get('/catalog/sets', zeige);
+  router.endpunkt('POST /api/v1/sets', zeige);
+  router.endpunkt('GET /api/v1/catalog/sets', zeige);
   const app = express();
   app.use(express.json());
   app.use('/api/v1', router);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const basis = `http://localhost:${srv.address().port}/api/v1`;
+  const basis = `http://localhost:${portVon(srv)}/api/v1`;
   const sende = async (pfad, rumpf) => {
     const r = await fetch(
       basis + pfad,

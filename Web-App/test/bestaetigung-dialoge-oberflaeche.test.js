@@ -5,9 +5,9 @@
  * Passkey) und wiederholt die Anfrage. Echtes Bündel in jsdom.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in settings.js „Alles löschen" wieder api() direkt → rot: „Alles
+ *   A  in einstellungen.js „Alles löschen" wieder api() direkt → rot: „Alles
  *      löschen fragt den Code nach" und „der Passkey ersetzt den Code"
- *   B  in settings.js das Anlegen eines Kontos wieder api() direkt → rot:
+ *   B  in einstellungen.js das Anlegen eines Kontos wieder api() direkt → rot:
  *      „ein Konto anlegen fragt den Code nach"
  *   C  in passkeys.js setzePasskeyHolen() nicht aufgerufen → rot: „der
  *      Passkey ersetzt den Code"
@@ -40,19 +40,20 @@ function mitFaktor(liste, passkey = false) {
   };
 }
 
+/** @param {Document} d @param {{ passwort?: string, code?: string }} eingabe */
 async function bestaetige(d, { passwort, code }) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(
     await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden),
     'der Passwortdialog erscheint',
   );
-  d.getElementById('cd-pw').value = passwort;
+  /** @type {HTMLInputElement} */ (d.getElementById('cd-pw')).value = passwort;
   d.getElementById('cd-confirm').click();
   await takt(20);
   const codeWrap = d.getElementById('cd-code-wrap');
   assert.ok(await warte(() => !codeWrap.hidden && modal.style.display === 'flex'), 'der Code-Dialog erscheint');
   if (code === undefined) return;
-  d.getElementById('cd-code').value = code;
+  /** @type {HTMLInputElement} */ (d.getElementById('cd-code')).value = code;
   d.getElementById('cd-confirm').click();
 }
 

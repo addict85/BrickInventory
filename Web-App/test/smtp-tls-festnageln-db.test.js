@@ -30,7 +30,7 @@ process.env.DATA_KEY = Buffer.alloc(32, 9).toString('base64');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { routerServer } = require('./helpers/server');
+const { routerServer, portVon } = require('./helpers/server');
 const db = testDaten();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -99,7 +99,7 @@ function smtpServer(z) {
     });
   });
   srv.on('tlsClientError', () => {});
-  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, post, port: srv.address().port })));
+  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, post, port: portVon(srv) })));
 }
 
 test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 120_000 }, async t => {

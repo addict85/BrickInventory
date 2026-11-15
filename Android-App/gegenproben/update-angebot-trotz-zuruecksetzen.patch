@@ -1,17 +1,17 @@
-Gegenprobe: eine abgelaufene Beschreibung bietet wieder ein Update an (Stand vor sec12 H2, halb)
+Gegenprobe: das Angebot fragt nicht mehr nach der Frische, auch eine zurückgesetzte Beschreibung bietet an (Stand vor sec12 H2)
 Modul: core-update
 Test: ch.brickinventoryapp.update.UpdateFrischeTest
-Rot: aus einer zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten
+Rot: aus einer zurueckgesetzten Beschreibung wird nichts angeboten
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
 +++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
-@@ -35,7 +35,7 @@ fun quelleVeraltet(frische: UpdateFrische?): Boolean = frische != null && frisch
-  * fest; statt des Angebots steht dann der Hinweis aus [quelleVeraltet] da.
+@@ -36,7 +36,7 @@
+  * Fassung stehen. Den Hinweis, dass es Neueres geben könnte, gibt [quelleVeraltet].
   */
  fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend: Int): UpdateBeschreibung? =
--    b.takeIf { frische == UpdateFrische.AKTUELL && istNeuer(laufend, it.versionCode) }
-+    b.takeIf { frische != UpdateFrische.ZURUECKGESETZT && istNeuer(laufend, it.versionCode) }
+-    b.takeIf { frische != UpdateFrische.ZURUECKGESETZT && istNeuer(laufend, it.versionCode) }
++    b.takeIf { istNeuer(laufend, it.versionCode) }
  
  /**
   * Eine echt signierte, aber alte Beschreibung hält Updates still zurück: Ihre

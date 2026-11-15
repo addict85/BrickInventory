@@ -1,4 +1,4 @@
-import { resolveImageLocal } from '../katalog';
+import { resolveImageLocal } from '../bilder';
 import { asIds, type Sicht } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { mitVersion } from '../infra/setNummer';
@@ -15,7 +15,7 @@ type FigurenWunsch = {
   page?: number | undefined;
   page_size?: number | null | undefined;
 };
-export async function getMinifigs(
+export async function figurenAbfrage(
   k: FigurenKontext,
   userIdWahl: Sicht | number | number[],
   { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {},
@@ -48,7 +48,7 @@ export async function getMinifigs(
     conditions: conditionsFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
   }));
 
-  // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
+  // Mit Gesamtzahl für den Endlos-Scroll, wie bei setsLesen.
   return {
     figs: await k.haushalt.besitzerAnhaengen(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
@@ -56,7 +56,7 @@ export async function getMinifigs(
 }
 
 // Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
-export async function getMinifigStats(k: FigurenKontext, userIdWahl: Sicht | number | number[]) {
+export async function figurenKennzahlenLesen(k: FigurenKontext, userIdWahl: Sicht | number | number[]) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const row = await k.figurenListe.figurenKennzahlen(uids);
@@ -70,7 +70,7 @@ export async function getMinifigStats(k: FigurenKontext, userIdWahl: Sicht | num
 }
 
 /** @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten. */
-export async function getManualMinifigs(
+export async function manuelleFigurenAbfrage(
   k: FigurenKontext,
   userIdWahl: Sicht | number | number[],
   viewerId: number,
@@ -90,7 +90,7 @@ export async function getManualMinifigs(
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
-  const mitZustand = await k.bestand.applyManualCondition(uids, mapped, 'fig');
+  const mitZustand = await k.bestand.setzeManuellenZustand(uids, mapped, 'fig');
 
   // Der Marktpreis NUR aus dem Cache, in einer Abfrage für die ganze Liste:
   // Ein Live-Abruf je Eintrag liesse die Liste auf BrickLink warten.

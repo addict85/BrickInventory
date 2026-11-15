@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +20,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
 
 /**
  * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
@@ -32,13 +33,11 @@ internal class Galerie(
      * Ablage, über gewählte Konten die Kontosicht. Was offline geändert wird, steht
      * so sofort da.
      */
-    private val quelle: (GalleryUiState) -> Flow<Lokal<SetItem>>,
+    private val quelle: (GalleryUiState) -> Flow<Lokal<SetAnsicht>>,
     /** Füllt die Quelle des Zustands; die Antwort selbst zeigt niemand. */
     private val aktualisiere: suspend (GalleryUiState) -> Ergebnis<Unit>,
-    private val holeKennzahlen: suspend () -> Ergebnis<StatsResponse>,
-    private val meldeFehler: (Ergebnis.Error) -> Unit,
-    /** Der Satz zum Fehler, der in der leeren Galerie stehen bleibt. */
-    private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
+    private val holeKennzahlen: suspend () -> Ergebnis<KennzahlenAnsicht?>,
+    private val meldeFehler: (Ergebnis.Fehler) -> Unit,
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
@@ -65,23 +64,22 @@ internal class Galerie(
             liste.collect { l ->
                 if (l.stand == null) return@collect
                 _state.update {
-                    it.copy(sets = l.liste.map { s -> s.alsAnsicht() }, galleryTotal = l.liste.size,
+                    it.copy(sets = l.liste, galleryTotal = l.liste.size,
                         galleryThemes = if (it.galleryQuery.isBlank() && it.galleryTheme.isBlank()) themenAus(l.liste) else it.galleryThemes)
                 }
             }
         }
         listJob = scope.launch {
-            _state.update { it.copy(galleryLoading = true, galleryFehler = null) }
+            _state.update { it.copy(abruf = Laden.Laedt) }
             val r = aktualisiere(st)
             // Ohne Netz zählt, was die Quelle schon hält; sie hat sich durch den Fehlschlag nicht geändert.
-            val stand = if (r is Ergebnis.Error && r.transient) liste.first().stand else null
+            val stand = if (r is Ergebnis.Fehler && r.transient) liste.first().stand else null
             when {
-                r is Ergebnis.Success -> _state.update { it.copy(galleryLoading = false, offlineStand = null) }
-                r is Ergebnis.Error && r.transient && stand != null ->
-                    _state.update { it.copy(galleryLoading = false, offlineStand = stand) }
-                r is Ergebnis.Error -> {
-                    _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r),
-                        galleryFehlerKlasse = fehlerklasse(r)) }
+                r is Ergebnis.Erfolg -> _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = null) }
+                r is Ergebnis.Fehler && r.transient && stand != null ->
+                    _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = stand) }
+                r is Ergebnis.Fehler -> {
+                    _state.update { it.copy(abruf = ladefehler(r)) }
                     meldeFehler(r)
                 }
             }
@@ -112,7 +110,7 @@ internal class Galerie(
     fun ladeKennzahlen() {
         scope.launch {
             val r = holeKennzahlen()
-            if (r is Ergebnis.Success) _state.update { it.copy(stats = r.data.stats?.alsAnsicht()) }
+            if (r is Ergebnis.Erfolg) _state.update { it.copy(stats = r.data) }
         }
     }
 
@@ -130,7 +128,7 @@ internal class Galerie(
 }
 
 /** Die Themen der abgelegten Sets für den Filter; der Server schickt sie sonst mit Seite 1. */
-private fun themenAus(sets: List<SetItem>): List<String> =
+private fun themenAus(sets: List<SetAnsicht>): List<String> =
     sets.mapNotNull { it.theme?.takeIf(String::isNotBlank) }.distinct().sorted()
 
 /** Was die Galerie zeigt, wenn noch keine Kachel da ist — oder eben die Liste. */
@@ -142,4 +140,4 @@ internal typealias GalerieAnzeige = Ladeanzeige
  * ein gescheitertes Neuladen lässt die alte Liste stehen.
  */
 internal fun galerieAnzeige(g: GalleryUiState, gefiltert: Boolean): GalerieAnzeige =
-    ladeanzeige(g.sets.isNotEmpty(), g.galleryLoading, g.galleryFehler, gefiltert)
+    ladeanzeige(g.sets.isNotEmpty(), g.abruf.laedt, g.abruf is Laden.Fehler, gefiltert)

@@ -11,7 +11,7 @@ import org.junit.Test
  *
  * Gegenproben (lokal mit kotlinc gemessen):
  *   A  MIGRATION_2_3 wieder über die heutigen Modelle (Faecher.SETS.spalten nach
- *      AblageJson.decodeFromString) und in SetItem `set_number` zu `set_nummer`
+ *      BrickJson.decodeFromString) und in SetItem `set_number` zu `set_nummer`
  *      umbenannt → rot „Set: Nummer, Name, Thema, Jahr“ (die Zeile gälte als unlesbar)
  *   B  in SpaltenFassung2 der Rückfall `?: "N"` bei MERKLISTE entfernt → rot
  *      „Merkposten ohne Zustand“

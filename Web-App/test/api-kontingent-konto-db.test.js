@@ -4,7 +4,7 @@
  * gegen das Gesamtkontingent. Ein abgewiesener Aufruf zählt auch gesamt nicht.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  die Zählung je Konto in checkAndIncrementRateLimit entfernt → rot:
+ *   A  die Zählung je Konto in kontingentPruefenUndZaehlen entfernt → rot:
  *      „ein Konto bekommt ein Viertel …“
  *   B  bei voller Kontogrenze nicht zurückgerollt (return statt throw) → rot:
  *      „… und der abgewiesene Aufruf zählt gesamt nicht“
@@ -24,8 +24,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const k = _req('src/katalog/apiKontingent.js');
-const { imNamenVon } = _req('src/infra/kontoKontext.js');
+const k = _req('src/fremdquellen/apiKontingent.js');
+const { alsAnfrage } = _req('src/infra/kontoKontext.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
@@ -41,7 +41,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
   });
   const kind = { apiUser: { user_id: 990101, is_admin: 0 } };
   const chef = { apiUser: { user_id: 990102, is_admin: 1 } };
-  const zaehle = req => imNamenVon(req, () => k.checkAndIncrementRateLimit('brickset'));
+  const zaehle = req => alsAnfrage(req, () => k.kontingentPruefenUndZaehlen('brickset'));
 
   await t.test('ein Konto bekommt ein Viertel, und der abgewiesene Aufruf zählt gesamt nicht', async () => {
     assert.equal((await zaehle(kind)).allowed, true);
@@ -49,8 +49,8 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     const dritter = await zaehle(kind);
     assert.equal(dritter.allowed, false);
     assert.equal(dritter.jeKonto, true);
-    assert.equal((await k.getRateLimitStatus('brickset')).count, 2);
-    assert.equal((await imNamenVon(kind, () => k.kontingentFrei('brickset'))).allowed, false);
+    assert.equal((await k.kontingentUebersicht('brickset')).count, 2);
+    assert.equal((await alsAnfrage(kind, () => k.kontingentFrei('brickset'))).allowed, false);
   });
 
   await t.test('alle Nicht-Verwalter zusammen höchstens die Hälfte', async () => {
@@ -60,9 +60,9 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     for (const kto of konten.slice(0, 2)) for (let i = 0; i < 2; i++) assert.equal((await zaehle(kto)).allowed, true);
     const dritter = await zaehle(konten[2]);
     assert.equal(dritter.allowed, false);
-    assert.equal((await imNamenVon(konten[2], () => k.kontingentFrei('brickset'))).allowed, false);
+    assert.equal((await alsAnfrage(konten[2], () => k.kontingentFrei('brickset'))).allowed, false);
     assert.equal((await zaehle(chef)).allowed, true, 'Verwalter haben die andere Hälfte');
-    assert.equal((await k.getRateLimitStatus('brickset')).count, 5);
+    assert.equal((await k.kontingentUebersicht('brickset')).count, 5);
   });
 
   await t.test('ein Auftrag zählt beim Konto, das ihn eingestellt hat', async () => {
@@ -83,7 +83,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
       {
         wechselkurse: {
           ausfuehren: async () => {
-            for (let i = 0; i < 3; i++) ergebnisse.push((await k.checkAndIncrementRateLimit('brickset')).allowed);
+            for (let i = 0; i < 3; i++) ergebnisse.push((await k.kontingentPruefenUndZaehlen('brickset')).allowed);
           },
         },
       },
@@ -101,8 +101,8 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     await k.setzeKontingentZurueck('brickset');
     for (let i = 0; i < 2; i++) assert.equal((await zaehle(kind)).allowed, true);
     for (let i = 0; i < 5; i++) assert.equal((await zaehle(chef)).allowed, true, `Verwalter ${i + 1}`);
-    assert.equal((await k.checkAndIncrementRateLimit('brickset')).allowed, true, 'Hintergrund');
-    assert.equal((await k.checkAndIncrementRateLimit('brickset')).allowed, false, 'gesamt voll');
-    assert.equal((await k.getRateLimitStatus('brickset')).count, 8);
+    assert.equal((await k.kontingentPruefenUndZaehlen('brickset')).allowed, true, 'Hintergrund');
+    assert.equal((await k.kontingentPruefenUndZaehlen('brickset')).allowed, false, 'gesamt voll');
+    assert.equal((await k.kontingentUebersicht('brickset')).count, 8);
   });
 });

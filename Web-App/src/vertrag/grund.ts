@@ -14,12 +14,17 @@ export interface Route {
   abfrage?: z.ZodType;
   /** Antworten, die kein JSON sind: Datei, Ereignisstrom oder CSV. */
   art?: 'pdf' | 'datei' | 'strom' | 'csv' | 'zip';
+  /** Bei `strom`: ein Ereignis (data: JSON); die Oberfläche liest es über strom() in js/api.js. */
+  ereignis?: z.ZodType;
   /** Die Anfrage ist ein Formular mit Datei (multipart). */
   formular?: true;
   /** Felder von Passwort und Code der erneuten Bestätigung (bestaetigeMitFaktor). */
   bestaetigung?: { passwort: string; code: string };
   /** Die Antwort trägt einen Zugang, Code oder Klartext: Sie wird nie gespeichert. */
   geheim?: true;
+  /** Ein App-Token braucht vorher die Freigabe des Geräteschlüssels für diesen Schritt
+   * (src/konto/http/schrittschutz.ts); am Vertrag, damit sie an der Route hängt und nicht an einem Pfadmuster. */
+  schritt?: 'gutschein' | 'zweiter_faktor';
   /** Die Liste ist von Natur aus kurz (ein Set, eine Zeitspanne); sonst SEITE. */
   klein?: true;
 }
@@ -91,7 +96,7 @@ export const Fehler = z.looseObject({
 });
 
 /** Die Codes aus fehlerTexte.ts als eigene Komponente: Die App verzweigt nach ihnen
- * (Fehlercode.kt), und vertrag-kotlin.test.js hält beide Listen zusammen. Die
+ * (Fehlercode.kt), und Android-App/tools/vertrag/vertrag-kotlin.test.js hält beide Listen zusammen. Die
  * Laufzeitprüfung oben bleibt beim Muster, weil auch Codes ausserhalb der Tabelle
  * gesendet werden (vertrag_verletzt). */
 export const Fehlercode = z.enum(Object.keys(FEHLER) as [FehlerCode, ...FehlerCode[]]);
@@ -159,7 +164,7 @@ export const Q = {
   text: (max = 200) => z.string().max(max),
   /** '1' oder 'true' ist ja — so schicken es Oberfläche und App. */
   schalter: z.enum(['0', '1', 'true', 'false']).transform(v => v === '1' || v === 'true'),
-  /** Welche Konten des Haushalts eine Liste zeigt (src/haushalt: parseScopeMode). */
+  /** Welche Konten des Haushalts eine Liste zeigt (src/haushalt: blickfeldArt). */
   konten: z.union([z.enum(['all', 'own', 'subs', '']), z.string().regex(/^\d{1,10}$/)]),
   /** Ein Konto als Besitzer oder Ziel; leer heisst „das eigene“. */
   konto: z.string().regex(/^\d{0,10}$/),
@@ -168,12 +173,27 @@ export const Q = {
 export const SEITE = { page: Q.zahl(), page_size: Q.zahl() };
 /** Was eine Seite über die ganze Liste sagt (src/infra/seite.ts). */
 export const SEITEN_ANGABE = { total: ganz, page: ganz, page_size: ganz };
-export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]);
+/** Eine Kennung im Rumpf; App und Oberfläche schicken Zahl oder Ziffern, die Route liest eine Zahl. */
+export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]).transform(Number);
 export const TEXT = (max = 200) => z.string().max(max);
-export const ZUSTAND = z.union([z.enum(['N', 'U', 'n', 'u']), z.literal('')]);
+/** Klein geschrieben gilt wie gross; die Route liest nur 'N', 'U' oder ''. */
+export const ZUSTAND = z
+  .union([z.enum(['N', 'U', 'n', 'u']), z.literal('')])
+  .transform(v => v.toUpperCase() as 'N' | 'U' | '');
+/** Ein Text, der fehlen darf; die Route liest dann ''. */
+export const TEXT_ODER_LEER = (max = 200) =>
+  z
+    .string()
+    .max(max)
+    .nullable()
+    .optional()
+    .transform(v => v ?? '');
 export const JA_NEIN = z.union([z.boolean(), z.literal(0), z.literal(1), z.enum(['0', '1', 'true', 'false'])]);
 /** Einstellungen als Schlüssel und einfacher Wert; welche gelten, prüft die Route. */
-export const EINSTELLUNGEN = z.record(z.string().max(64), EINFACH);
+export const EINSTELLUNGEN = z.record(
+  z.string().max(64),
+  EINFACH.transform(v => String(v)),
+);
 
 /** Ein Konto in Besitzerlisten. */
 export const KontoName = z.looseObject({ id: ganz, username: z.string() });

@@ -55,7 +55,6 @@ test('die Suite trennt die Rollen wie im Betrieb, Ausnahmen werden weniger', asy
     await eigen.pool.end();
   }
 
-  // Gemessen am 13.11.2026.
   const SCHRANKE = { superuser: 21, systemrahmen: 129 };
   const dateien = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js'));
   const quelle = (/** @type {string} */ n) => fs.readFileSync(path.join(__dirname, n), 'utf8');

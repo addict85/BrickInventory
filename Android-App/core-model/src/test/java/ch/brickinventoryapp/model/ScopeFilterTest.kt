@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.ui.model.kontoOptionen
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.kontoOptionen
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.model.data.ScopeFilter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

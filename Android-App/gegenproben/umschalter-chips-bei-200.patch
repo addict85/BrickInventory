@@ -1,0 +1,19 @@
+Gegenprobe: Sets | Teile | Minifiguren bei grosser Schrift als Chipreihe statt Segmente
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: der Sammlungs-Umschalter zeigt bei 200 Prozent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
+@@ -105,7 +105,9 @@
+     modifier: Modifier = Modifier,
+ ) {
+     if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
+-        SegmentSpalte(optionen, gewaehlt, onWahl, modifier)
++        Row(modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
++            optionen.forEach { (w, t) -> WahlChip(t, w == gewaehlt, { onWahl(w) }) }
++        }
+         return
+     }
+     SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {

@@ -1,5 +1,13 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
+import type { Spalten, Tabellen } from '../../../db/zeilen';
+
+/** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
+export type AlarmZeile = Spalten<
+  'price_alerts',
+  'set_number' | 'condition' | 'richtung' | 'schwelle' | 'currency_code' | 'ausgeloest' | 'zuletzt_am' | 'zuletzt_preis'
+> & { besitzt: boolean };
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
 /** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
@@ -13,7 +21,8 @@ export async function uebertrageAlarm(db: DbSchnittstelle, zuId: number, vonId: 
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [vonId, sn, c]);
 }
 
-const BESITZT = 'EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt';
+const besitzt = (l: FinanzenLesevertrag) =>
+  `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
 
 export function schreibeAlarm(
   db: DbSchnittstelle,
@@ -38,17 +47,25 @@ export function entferneAlarm(db: DbSchnittstelle, userId: number, setNumber: st
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function alarmeDesSets(db: DbSchnittstelle, userId: number, setNumber: string, blickfeld: number[]) {
-  return db.all(
+export function alarmeDesSets(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  userId: number,
+  setNumber: string,
+  blickfeld: number[],
+) {
+  return db.all<AlarmZeile>(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
+            ausgeloest, zuletzt_am, zuletzt_preis, ${besitzt(l)}
        FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
     [userId, setNumber, blickfeld],
   );
 }
 
-export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld: number[]) {
-  return db.all(
+export function alarmeImBlickfeld(db: DbSchnittstelle, l: FinanzenLesevertrag, userId: number, blickfeld: number[]) {
+  return db.all<
+    AlarmZeile & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
+  >(
     `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
@@ -58,7 +75,7 @@ export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
        -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
        -- besitzt und der Detaildialog), set_catalog liefert das Bild.
-       LEFT JOIN sets s ON s.user_id = ANY($2) AND s.set_number = a.set_number
+       LEFT JOIN ${l.setBestand('= ANY($2)')} s ON s.set_number = a.set_number
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
@@ -70,10 +87,16 @@ export function datenbankJetzt(db: DbSchnittstelle) {
   return db.get<{ jetzt: Date }>('SELECT NOW() AS jetzt');
 }
 
-export function alarmeDesKontos(db: DbSchnittstelle, userId: number, marke: Date, blickfeld: number[]) {
-  return db.all(
+export function alarmeDesKontos(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  userId: number,
+  marke: Date,
+  blickfeld: number[],
+) {
+  return db.all<AlarmZeile>(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
+            ausgeloest, zuletzt_am, zuletzt_preis, ${besitzt(l)}
        FROM price_alerts a
       WHERE user_id = $1 AND ausgeloest = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
@@ -85,7 +108,13 @@ export function alarmeDesKontos(db: DbSchnittstelle, userId: number, marke: Date
 }
 
 export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
-  return db.all(
+  return db.all<
+    Spalten<
+      'price_alerts',
+      'user_id' | 'set_number' | 'condition' | 'richtung' | 'schwelle' | 'currency_code' | 'ausgeloest'
+    > &
+      Spalten<'users', 'email' | 'username'> & { sprache: NonNullable<Tabellen['user_settings']['value']> }
+  >(
     `SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
             a.currency_code, a.ausgeloest, u.email, u.username,
             COALESCE(us.value, 'de') AS sprache

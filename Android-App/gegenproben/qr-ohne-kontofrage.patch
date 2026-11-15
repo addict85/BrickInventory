@@ -6,12 +6,12 @@ Rot: eine QR-Anmeldung zeigt Konto und Server und uebernimmt den Token erst nach
 diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
 --- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
 +++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
-@@ -250,7 +250,7 @@
-             qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
+@@ -277,7 +277,7 @@
+             qrGescheitert(Meldung.Ressource(R.string.err_qr_login_failed))
              return
          }
 -        if (!frageNachKonto(QrKonto(benutzer, ziel.adresse))) {
 +        if (benutzer.isEmpty() && !frageNachKonto(QrKonto(benutzer, ziel.adresse))) {
              konto.qrVerwerfen(abholung)
-             _anmeldeState.update { it.copy(loginLaeuft = false) }
+             _anmeldeState.update { it.copy(anmeldung = Vorgang.Fertig) }
              return

@@ -6,12 +6,12 @@ Rot: die zwei Bilderknoepfe
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
-@@ -365,7 +365,7 @@
-                     onClick = {
-                         scope.launch {
-                             katMsg = startingMsg
--                            if (aktionen.reiheKatalogbilderEin()) {
-+                            if (aktionen.ladeFehlendeBilderNach()) {
-                                 katMsg = startedMsg
-                                 kotlinx.coroutines.delay(4000)
-                                 katMsg = null
+@@ -217,7 +217,7 @@
+                 "imgDl" -> {
+                     // Der erste holt die Bilder des Bestands nach, der zweite die des Katalogs (wie in der Webapp).
+                     StartKnopf(Jobstart.BESTANDSBILDER, knoepfe, Icons.Default.Download, R.string.monitoring_redownload_missing, starte)
+-                    StartKnopf(Jobstart.KATALOGBILDER, knoepfe, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
++                    StartKnopf(Jobstart.BESTANDSBILDER, knoepfe, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
+                 }
+                 "instrQueue" ->
+                     StartKnopf(Jobstart.ANLEITUNGEN, knoepfe, Icons.Default.Download, R.string.monitoring_import_missing_instr, starte)

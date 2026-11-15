@@ -3,13 +3,12 @@ import type { AuftragsLauf } from '../auftraege';
 import {
   EZB_HISTORIE,
   EZB_TAGESKURSE,
-  ezbAbruf,
   ersteZipDatei,
   historieLesen,
   tageskurseLesen,
   type Abruf,
   type Kurs,
-} from '../katalog';
+} from '../fremdquellen';
 import type { FinanzenKontext } from './kontext';
 
 const BLOCK = 5000;
@@ -31,7 +30,7 @@ export async function speichereKurse(kx: FinanzenKontext, kurse: Kurs[]): Promis
 
 export async function kurseNachladen(
   k: FinanzenKontext,
-  abruf: Abruf = ezbAbruf,
+  abruf: Abruf = k.fremdquellen.quellen.ezbAbruf,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
   const leer = !(await k.wechselkurse.gibtEsKurse());
@@ -44,7 +43,11 @@ export async function kurseNachladen(
 
 /** 15:30 UTC liegt nach der Veröffentlichung der EZB. Je Tag ein eigener
  * Schlüssel: Ein gescheiterter Versuch darf den nächsten Tag nicht sperren. */
-export async function planeKursabruf(k: FinanzenKontext, jetzt = new Date(), morgen = false): Promise<string | null> {
+export async function planeKursabruf(
+  k: FinanzenKontext,
+  jetzt = k.uhr.datum(),
+  morgen = false,
+): Promise<string | null> {
   const ziel = new Date(
     Date.UTC(jetzt.getUTCFullYear(), jetzt.getUTCMonth(), jetzt.getUTCDate() + (morgen ? 1 : 0), 15, 30),
   );
@@ -61,8 +64,12 @@ export async function planeKursabruf(k: FinanzenKontext, jetzt = new Date(), mor
 }
 
 /** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
-export async function kursauftrag(k: FinanzenKontext, abruf: Abruf = ezbAbruf, lauf?: AuftragsLauf): Promise<void> {
-  await planeKursabruf(k, new Date(), true);
+export async function kursauftrag(
+  k: FinanzenKontext,
+  abruf: Abruf = k.fremdquellen.quellen.ezbAbruf,
+  lauf?: AuftragsLauf,
+): Promise<void> {
+  await planeKursabruf(k, k.uhr.datum(), true);
   const r = await kurseNachladen(k, abruf, lauf?.signal);
   console.log(`[wechselkurse] ${r.kurse} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }

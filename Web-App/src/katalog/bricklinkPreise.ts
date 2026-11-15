@@ -1,8 +1,7 @@
 /** Hier fällt die Entscheidung, unter welcher Art (Set, Gear, Buch) gefragt
  * wird; der Katalog merkt sich die Antwort, damit der nächste Abruf gleich
  * richtig fragt. */
-import { alsAbrufFehler } from './quellen';
-import { quellen } from './fremdquellen';
+import { alsAbrufFehler } from '../fremdquellen';
 import { mitVersion, ohneBricklinkPreis, ohneVersion } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { KatalogEintrag } from './repository/katalogCache';
@@ -52,17 +51,23 @@ async function getPriceGuideRaw(
   const bare = ohneVersion(n);
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
   const cached = await katalogEintrag(k, n);
-  if (cached?.bl_type === 'GEAR') return await quellen(k).bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
-  if (cached?.bl_type === 'BOOK') return await quellen(k).bricklinkRequest('GET', `/items/book/${bare}/price`, params);
+  if (cached?.bl_type === 'GEAR')
+    return await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
+  if (cached?.bl_type === 'BOOK')
+    return await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
   if (ohneBricklinkPreis(cached)) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
   try {
-    return await quellen(k).bricklinkRequest('GET', `/items/set/${n}/price`, params);
+    return await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {
     if (!weiterVersuchen(e)) throw e;
   }
   for (const art of ['GEAR', 'BOOK'] as const) {
     try {
-      const result = await quellen(k).bricklinkRequest('GET', `/items/${art.toLowerCase()}/${bare}/price`, params);
+      const result = await k.fremdquellen.quellen.bricklinkRequest(
+        'GET',
+        `/items/${art.toLowerCase()}/${bare}/price`,
+        params,
+      );
       await k.katalogCache.merkeBricklinkArt(n, art);
       return result;
     } catch (e) {
@@ -74,7 +79,7 @@ async function getPriceGuideRaw(
 }
 
 // Erst Verkäufe, sonst Angebote: Selten gehandelte Artikel hätten sonst nie einen Preis.
-export async function getPriceGuide(
+export async function preisfuehrerAbfrage(
   k: KatalogKontext,
   setNumber: string,
   condition = 'N',
@@ -96,11 +101,11 @@ export async function getPriceGuide(
 }
 
 // Ohne Nummer der ganze Speicher.
-export async function clearSubsetsCache(k: KatalogKontext, sn: string | null = null) {
+export async function teilmengenCacheLeeren(k: KatalogKontext, sn: string | null = null) {
   await k.katalogCache.leereSubsetsCache(sn ? mitVersion(sn) : null);
 }
 
-export async function clearCatalogCache(k: KatalogKontext, sn: string | null = null) {
+export async function katalogCacheLeeren(k: KatalogKontext, sn: string | null = null) {
   await k.katalogCache.leereKatalogCache(sn ? mitVersion(sn) : null);
 }
 

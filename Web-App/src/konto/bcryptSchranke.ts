@@ -4,8 +4,8 @@ import path from 'node:path';
 import { neuerPool } from './bcryptPool';
 import { konfig } from '../infra/konfig';
 
-/** bcrypt mit 12 Runden kostet je Lauf rund 270 ms Rechenzeit. Die Bremsen je
- * Adresse und Konto helfen nicht gegen viele Adressen; diese Schranke hält die
+/** Jede Passwortprüfung kostet Rechenzeit und Speicher (argon2id, alte bcrypt-Hashes, passwortHash.ts).
+ * Die Bremsen je Adresse und Konto helfen nicht gegen viele Adressen; diese Schranke hält die
  * Zahl gleichzeitiger Läufe fest, und wer zu lange warten müsste, bekommt 503. */
 export class BcryptUeberlast extends Error {
   status = 503;
@@ -91,10 +91,3 @@ export function bcryptArbeiter(
 const KERNE = bcryptArbeiter();
 export const bcryptSchranke = neueSchranke(KERNE, KERNE * 8, 5000);
 export const bcryptPool = neuerPool(KERNE);
-
-export function passwortPasst(passwort: string | null | undefined, hash: string, vorrang = false): Promise<boolean> {
-  return bcryptSchranke.mit(() => bcryptPool.vergleiche(String(passwort), hash), vorrang);
-}
-export function hashePasswort(passwort: string | null | undefined, runden: number): Promise<string> {
-  return bcryptSchranke.mit(() => bcryptPool.hash(String(passwort), runden));
-}

@@ -110,14 +110,14 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
 
   const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
   const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
-  const { hashToken } = _req('src/konto/geraeteToken.js');
+  const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
   const registriert = async (name, tageAlt) => {
     const roh = crypto.randomBytes(16).toString('hex');
     const id = await K.registriere({
       username: name,
       email: `${name}@example.org`,
       passwort: PASS,
-      tokenHash: hashToken(roh),
+      tokenHash: tokenAbdruck(roh),
       bis: new Date(Date.now() + 86_400_000),
     });
     await db.run(`UPDATE users SET created_at = NOW() - make_interval(days => $2) WHERE id = $1`, [id, tageAlt]);
@@ -128,7 +128,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     const alt = await registriert(NAMEN[3], 8),
       neu = await registriert(NAMEN[4], 6);
     const bestaetigt = await registriert(NAMEN[6], 8);
-    assert.equal((await verifiziereEmailToken(bestaetigt.roh)).ok, true);
+    assert.ok((await verifiziereEmailToken(bestaetigt.roh)).userId);
     // Ein altes Konto, dessen neue Adresse noch nicht bestätigt ist.
     const adresse = await konto(NAMEN[5]);
     await db.run(

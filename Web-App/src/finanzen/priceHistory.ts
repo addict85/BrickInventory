@@ -1,11 +1,10 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
-import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt';
+import { setZustand, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
+import { asIds, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
 import { marktpreisAus } from '../katalog';
 import { entwicklungProzent } from './setValue';
-import { konfig } from '../infra/konfig';
 import type { FinanzenKontext } from './kontext';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
@@ -50,8 +49,8 @@ export async function preisverlaufSet(
   setNumber: string,
   currency: string,
 ) {
-  const uids = asIds(await blickfeldAus(k.db, uidWahl));
-  const condition = await resolveSetCondition(k, uids, setNumber);
+  const uids = asIds(await k.haushalt.blickfeldAus(uidWahl));
+  const condition = await setZustand(k, uids, setNumber);
 
   const [historyNew, historyUsed] = await Promise.all([
     seriesFor(k, setNumber, currency, 'N'),
@@ -140,8 +139,7 @@ export async function preisverlaufSet(
 /** Nur für Zustände mit Erfassung, sonst fehlte der Prozentangabe die Basis. */
 export async function conditionRows(
   k: FinanzenKontext,
-  cacheTable: string,
-  acqTable: string,
+  art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   uid: number | number[],
@@ -152,8 +150,8 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
-  const cacheRows = await k.preisverlauf.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
-  const acqRows = await k.preisverlauf.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
+  const cacheRows = await k.preisverlauf.cachePreiseNachSchluessel(art, keySql, keyVals, currency);
+  const acqRows = await k.preisverlauf.kaufschnitteNachSchluessel(art, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -178,18 +176,16 @@ async function manualPriceHistory(
   k: FinanzenKontext,
   uid: number | number[],
   currency: string,
-  historyTable: string,
-  cacheTable: string,
-  acqTable: string,
+  art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   acqKeySql: string = keySql,
   acqKeyVals: unknown[] = keyVals,
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    k.preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
-    k.preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
-    conditionRows(k, cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
+    k.preisverlauf.manualSeries(art, keySql, keyVals, currency, 'N'),
+    k.preisverlauf.manualSeries(art, keySql, keyVals, currency, 'U'),
+    conditionRows(k, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung; die Rohreihen bleiben vollständig.
   const zustaende = zustaendeFuerVerlauf(Object.keys(by_condition), ['N', 'U']);
@@ -219,9 +215,7 @@ export async function preisverlaufTeil(
     k,
     uid,
     currency,
-    'part_price_history',
-    'part_price_cache',
-    'part_acquisitions',
+    'part',
     'part_number = ANY($1) AND color_id = $2',
     [nummern, blFarbe],
     'part_number = $1 AND color_id = $2',
@@ -242,9 +236,7 @@ export async function preisverlaufFigur(
     k,
     uid,
     currency,
-    'minifig_price_history',
-    'minifig_price_cache',
-    'minifig_acquisitions',
+    'fig',
     'fig_number = ANY($1)',
     [nummern],
     // Die Erfassungen tragen nur die Nummer des Benutzers.
@@ -260,8 +252,8 @@ async function preisNummernFuerFigur(k: FinanzenKontext, uid: number | number[],
 }
 
 /** @returns Anzahl entfernter Zeilen */
-export async function purgeAltePreise(k: FinanzenKontext): Promise<number> {
-  const tage = konfig().preisverlaufTage;
+export async function loescheAltePreise(k: FinanzenKontext): Promise<number> {
+  const tage = k.konfig.preisverlaufTage;
   if (tage <= 0) return 0;
   const r = await k.preisverlauf.loescheAltenVerlauf(String(tage));
   return r?.changes || 0;

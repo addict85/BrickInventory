@@ -1,9 +1,7 @@
-/** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
- * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { bindeZugang, type Kontext } from '../infra/bereich';
-import * as erfassungen from './repository/erfassungen';
-import * as loeschen from './repository/loeschen';
+import { mit, type Kontext } from '../infra/bereich';
+import * as setErfassungen from './repository/setErfassungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KatalogDienste } from '../katalog';
@@ -13,8 +11,10 @@ import type { SetsDienste } from '../sets';
 import type { TeileDienste } from '../teile';
 import type { FigurenDienste } from '../figuren';
 import type { MerklisteDienste } from '../merkliste';
+import type { Uhr } from '../infra/uhr';
 
 export interface SammlungAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   haushalt: HaushaltDienste;
   auftraege: AuftraegeDienste;
@@ -28,7 +28,6 @@ export interface SammlungAbhaengigkeiten {
 }
 
 export const zugang = (db: Db) => ({
-  erfassungen: bindeZugang(db, erfassungen, ['kontoDerErfassung', 'setErfassungenImBlickfeld', 'zustandDerErfassung']),
-  loeschen: bindeZugang(db, loeschen, ['manuelleFigurenDesKontos', 'manuelleTeileDesKontos', 'setsDesKontos']),
+  setKaeufe: { imBlickfeld: mit(db)(setErfassungen.setErfassungenImBlickfeld) },
 });
 export type SammlungKontext = Kontext<SammlungAbhaengigkeiten, ReturnType<typeof zugang>>;

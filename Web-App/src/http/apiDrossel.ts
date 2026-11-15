@@ -1,15 +1,10 @@
-/** Ein Budget je Konto für die angemeldete API: Wer ein Konto hat, kann teure
- * Wege (PDF, Importe, Katalogabrufe) sonst im Takt rufen, bis der Prozess
- * antwortet und niemand mehr. Die Kosten sind gewichtet, damit ein Katalog-
- * Abruf nicht so viel zählt wie ein Leseaufruf; Aufträge haben zusätzlich
- * einen eigenen, kleinen Topf.
- * Gezählt wird im Prozess: Der Web-Prozess ist genau einer (src/http/kontoSchranke.ts
- * sagt dasselbe für gleichzeitige Uploads). Bei mehreren Replicas gälte das
- * Budget je Replica — dann wäre es zu erhöhen, nicht zu vertrauen. */
+/** Ein Budget je Konto für die angemeldete API, gewichtet nach Kosten (PDF, Importe, Katalog), damit
+ * ein Konto teure Wege nicht im Takt rufen kann. Gezählt im Prozess: Es gibt genau einen Web-Prozess. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './nutzerId';
 import { sendeFehler } from './httpAntwort';
 import { prozessweit } from '../infra/prozessweit';
+import { schluesselFuerAnfrage, type Schluessel } from '../vertrag';
 
 export const FENSTER_MS = 5 * 60 * 1000;
 /** Einheiten je Konto und Fenster; ein Leseaufruf zählt 1. */
@@ -21,52 +16,51 @@ export const KOSTEN = { normal: 1, abruf: 5, preis: 20, auftrag: 25 } as const;
 
 /** Was einen Auftrag, einen Upload oder einen mehrsekündigen Lauf startet.
  * Bewusst aufgezählt statt „alles unter /admin": Eine neue Route soll hier
- * auffallen und nicht still im Normalbudget landen. */
-const AUFTRAEGE: ReadonlyArray<readonly [string, RegExp]> = [
-  ['POST', /^\/sets\/partslist-pdf$/],
-  ['POST', /^\/sets\/import\/csv$/],
-  ['POST', /^\/sets\/add-stream$/],
-  ['POST', /^\/parts\/import\/csv$/],
-  ['POST', /^\/minifigs\/import\/csv$/],
-  ['POST', /^\/wanted\/import\/csv$/],
-  ['POST', /^\/wanted-list\/import\/xml$/],
-  ['POST', /^\/alerts\/import\/csv$/],
-  ['POST', /^\/settings\/import$/],
-  ['POST', /^\/vouchers\/pdf$/],
-  ['GET', /^\/settings\/export\/data$/],
-];
-
-/** Der Katalog fragt Rebrickable je Suche; das Tageskontingent dort ist endlich. */
-const ABRUF = /^\/catalog(\/|$)/;
+ * auffallen und nicht still im Normalbudget landen. Vertragsschlüssel statt Pfadmuster:
+ * Eingeordnet wird die Route, die Express finden wird, nicht eine Schreibung davon. */
+const AUFTRAEGE: ReadonlySet<Schluessel> = new Set<Schluessel>([
+  'POST /api/v1/sets/partslist-pdf',
+  'POST /api/v1/sets/import/csv',
+  'POST /api/v1/sets/add-stream',
+  'POST /api/v1/parts/import/csv',
+  'POST /api/v1/minifigs/import/csv',
+  'POST /api/v1/wanted/import/csv',
+  'POST /api/v1/wanted-list/import/xml',
+  'POST /api/v1/alerts/import/csv',
+  'POST /api/v1/settings/import',
+  'POST /api/v1/vouchers/pdf',
+  'GET /api/v1/settings/export/data',
+]);
 
 /** Bis zu vier BrickLink-Aufrufe je Anfrage (zwei Zustände, je ein Rückfall), alle aus
  * dem Tageskontingent, das sich ALLE Konten teilen. */
-const PREISABRUF: ReadonlyArray<readonly [string, RegExp]> = [
-  ['GET', /^\/wanted\/[^/]+\/preise$/],
-  ['GET', /^\/sets\/[^/]+\/price$/],
-];
+const PREISABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
+  'GET /api/v1/wanted/:setNumber/preise',
+  'GET /api/v1/sets/:setNumber/price',
+]);
 
 /** Lösen je Anfrage einen Abruf bei Rebrickable, Brickset, einem Barcode-Dienst oder
- * dem Gutschein-Shop aus. Wie die Aufträge aufgezählt: Eine neue Route soll auffallen. */
-const FREMDABRUF: ReadonlyArray<readonly [string, RegExp]> = [
-  ['GET', /^\/sets\/info\/[^/]+$/],
-  ['GET', /^\/sets\/barcode\/[^/]+$/],
-  ['POST', /^\/sets$/],
-  ['POST', /^\/sets\/[^/]+\/parts$/],
-  ['POST', /^\/sets\/[^/]+\/instructions$/],
-  ['POST', /^\/parts$/],
-  ['PUT', /^\/parts\/[^/]+\/[^/]+\/color$/],
-  ['POST', /^\/minifigs$/],
-  ['POST', /^\/wanted\/[^/]+\/[^/]+\/uebernehmen$/],
-  ['POST', /^\/vouchers\/[^/]+\/guthaben$/],
-];
+ * dem Gutschein-Shop aus. Der Katalog fragt Rebrickable je Suche; das Tageskontingent dort ist endlich. */
+const FREMDABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
+  'GET /api/v1/sets/info/:setNumber',
+  'GET /api/v1/sets/barcode/:barcode',
+  'POST /api/v1/sets',
+  'POST /api/v1/sets/:setNumber/parts',
+  'POST /api/v1/sets/:setNumber/instructions',
+  'POST /api/v1/parts',
+  'PUT /api/v1/parts/:partNumber/:colorId/color',
+  'POST /api/v1/minifigs',
+  'POST /api/v1/wanted/:setNumber/:condition/uebernehmen',
+  'POST /api/v1/vouchers/:id/guthaben',
+]);
 
+/** @param pfad relativ zu /api/v1, wie apiDrossel ihn dort sieht */
 export function einordnung(methode: string, pfad: string): { kosten: number; auftrag: boolean } {
-  const m = methode === 'HEAD' ? 'GET' : methode;
-  if (AUFTRAEGE.some(([mm, re]) => mm === m && re.test(pfad))) return { kosten: KOSTEN.auftrag, auftrag: true };
-  if (PREISABRUF.some(([mm, re]) => mm === m && re.test(pfad))) return { kosten: KOSTEN.preis, auftrag: false };
-  if (FREMDABRUF.some(([mm, re]) => mm === m && re.test(pfad))) return { kosten: KOSTEN.abruf, auftrag: false };
-  if (m === 'GET' && ABRUF.test(pfad)) return { kosten: KOSTEN.abruf, auftrag: false };
+  const k = schluesselFuerAnfrage(methode === 'HEAD' ? 'GET' : methode, `/api/v1${pfad}`);
+  if (!k) return { kosten: KOSTEN.normal, auftrag: false };
+  if (AUFTRAEGE.has(k)) return { kosten: KOSTEN.auftrag, auftrag: true };
+  if (PREISABRUF.has(k)) return { kosten: KOSTEN.preis, auftrag: false };
+  if (FREMDABRUF.has(k) || k.startsWith('GET /api/v1/catalog')) return { kosten: KOSTEN.abruf, auftrag: false };
   return { kosten: KOSTEN.normal, auftrag: false };
 }
 
@@ -120,5 +114,5 @@ export function apiDrossel(req: Request, res: Response, next: NextFunction): voi
     return;
   }
   res.setHeader('Retry-After', String(r.restSek));
-  sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSek / 60)) });
+  sendeFehler(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: Math.max(1, Math.ceil(r.restSek / 60)) });
 }

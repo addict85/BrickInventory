@@ -1,11 +1,11 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
 import type { Sicht } from '../haushalt';
-import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
+import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
-import { getMinifigInfo } from '../katalog';
+import type { Quellen } from '../fremdquellen';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -15,7 +15,7 @@ import type { FigurenKontext } from './kontext';
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
 
 // Preis und Zustand einmal für Einzelerfassung und CSV-Import; ohne Preis gilt der Marktpreis.
-export async function resolveManualFigPurchase(
+export async function manuellerFigurenkauf(
   k: FigurenKontext,
   uid: number,
   {
@@ -40,8 +40,8 @@ export async function resolveManualFigPurchase(
   };
 }
 
-/** Zwilling zu addManualPart — eine Umsetzung für Webapp und App. */
-export async function addManualFig(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
+/** Zwilling zu manuellesTeilAnlegen — eine Umsetzung für Webapp und App. */
+export async function manuelleFigurAnlegen(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos.
   const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
   const ergebnis = await addManualFigIntern(k, uid, body);
@@ -53,8 +53,8 @@ export async function addManualFig(k: FigurenKontext, uid: number, body: Record<
 
 async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen: Die Felder werden gerendert.
-  const num = V.requireItemNumber(body?.fig_number, 'fig_number');
-  const blNum = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
+  const num = V.nummerPflicht(body?.fig_number, 'fig_number');
+  const blNum = body?.bl_fig_number ? V.nummerPflicht(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
   const unit_price = geldEingabe(body?.unit_price, 'Stückpreis');
@@ -69,14 +69,14 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
   if (existing) {
     // Auch eine erneut erfasste Figur bekommt eine Erfassung (Kaufpreis, Datum);
     // die Menge ergibt sich daraus beim Lesen.
-    const re = await resolveManualFigPurchase(k, uid, {
+    const re = await manuellerFigurenkauf(k, uid, {
       figNumber: num,
       blFigNumber: blNum,
       unitPrice: unit_price,
       condition,
     });
     // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
-    await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
+    await k.bestand.bucheTageserfassung('fig', uid, [num], {
       quantity,
       // In der Stammzeile ist die 0 ein Anzeigewert, in der Erfassung hiesse sie
       // „für null gekauft".
@@ -89,7 +89,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
     return { action: 'updated', fig_number: num };
   }
 
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualFigPurchase(k, uid, {
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await manuellerFigurenkauf(k, uid, {
     figNumber: num,
     blFigNumber: blNum,
     unitPrice: unit_price,
@@ -100,12 +100,11 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
   await k.katalog.merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
   await k.katalog.merkeFigur(num, eingabe.name, eingabe.bild, null, k.db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
-  await k.manuelleFiguren.legeFigurManuellAn(uid, num);
-  if (blNum)
-    await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum).catch(logAndContinue(`minifiguren:bl-nummer ${num}`));
+  await k.bestand.manuell.legeZeileAn('fig', uid, [num]);
+  if (blNum) await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum);
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
   // Erfassungshistorie und G&V stimmen.
-  await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
+  await k.bestand.bucheTageserfassung('fig', uid, [num], {
     quantity,
     price: erfassungsPreis,
     geschaetzt,
@@ -126,7 +125,7 @@ async function figurBeschreibung(
 ) {
   let fig_name = eingabe.name;
   let image_url = eingabe.bild;
-  let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
+  let gefunden: Awaited<ReturnType<Quellen['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, gefunden };
 
   const lokal = await k.katalog.katalogFigur(num, uid);
@@ -138,7 +137,7 @@ async function figurBeschreibung(
   // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
   if (!fig_name || !(image_url || lokal?.hatBild)) {
     // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
-    const abruf = await versuche('figuren:getMinifigInfo', getMinifigInfo(num));
+    const abruf = await versuche('figuren:getMinifigInfo', k.fremdquellen.quellen.getMinifigInfo(num));
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: Was der Katalog schon wusste, bleibt stehen.
     if (gefunden) fig_name = fig_name || gefunden.fig_name;
@@ -146,9 +145,9 @@ async function figurBeschreibung(
   return { fig_name, gefunden };
 }
 
-/** Zwilling zu updateManualPart.
+/** Zwilling zu manuellesTeilAendern.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualFig(
+export async function manuelleFigurAendern(
   k: FigurenKontext,
   uid: number,
   figNumber: string,
@@ -169,7 +168,7 @@ export async function updateManualFig(
       [figNumber],
       wunsch,
       cond,
-      () => k.finanzen.getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
+      () => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, existing.bl_fig_number, cond),
       ab,
     );
   }
@@ -186,20 +185,20 @@ export async function updateManualFig(
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finanzen.getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
+      zustand => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, newBlNum, zustand),
     );
     // In die NEUESTE Erfassung, wie bei den Teilen.
-    await k.manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
+    await k.bestand.neuesteSetzen('fig', 'preis', unitPrice, uid, [figNumber]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V.zustand(body.condition);
-    await k.manuelleFiguren.setzeFigurzustandNeueste(uid, figNumber, cond);
+    await k.bestand.neuesteSetzen('fig', 'zustand', cond, uid, [figNumber]);
   }
   return { ...raus, ...ab.angabe() };
 }
 
 /** `uid` ist das Blickfeld (Liste). */
-export async function getFigAcquisitions(k: FigurenKontext, uidWahl: Sicht | number[], figNumber: string) {
+export async function figurenkaeufe(k: FigurenKontext, uidWahl: Sicht | number[], figNumber: string) {
   const uid = await k.haushalt.blickfeldAus(uidWahl);
   return k.manuelleFiguren.figurErfassungen(uid, figNumber);
 }
@@ -228,14 +227,14 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       let imageUrl: string | null = null;
       if (!figName) {
         // Ohne Rebrickable wird die Figur ohne Namen erfasst; der Bildnachlauf holt ihn nicht nach.
-        const abruf = await versuche('figuren:import-info', getMinifigInfo(figNumber));
+        const abruf = await versuche('figuren:import-info', k.fremdquellen.quellen.getMinifigInfo(figNumber));
         const info = abruf.ok ? abruf.wert : null;
         if (info) {
           figName = info.fig_name;
           imageUrl = info.image_url;
         }
       }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualFigPurchase(k, uid, {
+      const { erfassungsPreis, effectiveCondition, geschaetzt } = await manuellerFigurenkauf(k, uid, {
         figNumber,
         blFigNumber,
         unitPrice,
@@ -246,23 +245,20 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
         price: erfassungsPreis,
         geschaetzt,
         condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || new Date().toISOString().slice(0, 10),
+        createdAt: acquiredAt || k.uhr.datum().toISOString().slice(0, 10),
       };
 
       if (await manuelleFigur(k, uid, figNumber)) {
-        await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+        await k.bestand.bucheTageserfassung('fig', uid, [figNumber], erfassung);
         updated++;
         results.push({ fig_number: figNumber, action: 'updated' });
         continue;
       }
       // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
       await k.katalog.merkeFigur(figNumber, figName, imageUrl, null, k.db, eingetippt ? uid : null);
-      await k.manuelleFiguren.legeFigurManuellAn(uid, figNumber);
-      if (blFigNumber)
-        await k.katalog
-          .merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber)
-          .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
-      await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+      await k.bestand.manuell.legeZeileAn('fig', uid, [figNumber]);
+      if (blFigNumber) await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber);
+      await k.bestand.bucheTageserfassung('fig', uid, [figNumber], erfassung);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {

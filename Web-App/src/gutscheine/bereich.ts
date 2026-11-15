@@ -1,38 +1,41 @@
-/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
- * Parameter; erzeugeGutscheine bindet ihn einmal für alle. So greift kein Dienst auf den
- * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import { mit, baueBereich, type Einblick } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import * as dienst from './dienst';
-import * as gutscheinGuthabenSchranke from './gutscheinGuthabenSchranke';
+import * as pdfTicket from './pdfTicket';
+import { verschluesseleGutscheinAltbestand } from './gutscheinDateien';
 import { zugang, type GutscheineAbhaengigkeiten, type GutscheineKontext } from './kontext';
 
 export type { GutscheineAbhaengigkeiten, GutscheineKontext } from './kontext';
 
-export function erzeugeGutscheine(a: GutscheineAbhaengigkeiten, einblick?: Einblick<GutscheineKontext>) {
-  const k: GutscheineKontext = baueKontext(a, zugang);
-  einblick?.(k);
-  return {
-    ...bindeZugang(k, dienst, [
-      'gutscheinMitPdfAnlegen',
-      'gutscheinBearbeiten',
-      'gutscheinKlartext',
-      'pdfFreigeben',
-      'exportFreigeben',
-      'guthabenAbfragen',
-      'gutscheinListe',
-      'gutscheinErfassen',
-      'stapelAnlegen',
-      'gutscheinEntfernen',
-      'gutscheinAusPdf',
-      'gutscheineExportieren',
-      'gutscheinPdf',
-    ]),
-    ...bindeZugang(k, gutscheinGuthabenSchranke, ['frageGuthabenAb']),
-    // Umschlüsseln beim Start (startup/datenbank.ts): über alle Konten, ohne Anfrage.
-    nummernNachverschluesseln: k.gutscheine.nummernNachverschluesseln,
-    kopienVerschluesseln: k.gutscheine.kopienVerschluesseln,
-    gutscheineNeuVerschluesseln: k.gutscheine.gutscheineNeuVerschluesseln,
-  };
+export function erzeugeGutscheine(
+  a: Omit<GutscheineAbhaengigkeiten, 'faecher'>,
+  einblick?: Einblick<GutscheineKontext>,
+) {
+  return baueBereich(
+    { ...a, faecher: new Faecher() },
+    zugang,
+    (k: GutscheineKontext) => ({
+      gutscheinBearbeiten: mit(k)(dienst.gutscheinBearbeiten),
+      gutscheinKlartext: mit(k)(dienst.gutscheinKlartext),
+      pdfFreigeben: mit(k)(dienst.pdfFreigeben),
+      gibExportFrei: mit(k)(dienst.ausfuhrFreigeben),
+      guthabenAbfragen: mit(k)(dienst.guthabenAbfragen),
+      gutscheinListe: mit(k)(dienst.gutscheinListe),
+      gutscheinErfassen: mit(k)(dienst.gutscheinErfassen),
+      gutscheinEntfernen: mit(k)(dienst.gutscheinEntfernen),
+      gutscheinAusPdf: mit(k)(dienst.gutscheinAusPdf),
+      gutscheineExportieren: mit(k)(dienst.gutscheineExportieren),
+      gutscheinPdf: mit(k)(dienst.gutscheinPdf),
+      loeseTicketEin: mit(k)(pdfTicket.loeseTicketEin),
+      verschluesseleAltbestand: verschluesseleGutscheinAltbestand,
+      // Umschlüsseln beim Start (startup/datenbank.ts): über alle Konten, ohne Anfrage.
+      nummernNachverschluesseln: k.gutscheine.nummernNachverschluesseln,
+      kopienVerschluesseln: k.gutscheine.kopienVerschluesseln,
+      gutscheineNeuVerschluesseln: k.gutscheine.gutscheineNeuVerschluesseln,
+    }),
+    einblick,
+  );
 }
 
 export type GutscheineDienste = ReturnType<typeof erzeugeGutscheine>;

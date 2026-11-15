@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -54,7 +54,7 @@ internal fun YearScrubber(
     val thumbOffsetY = CatalogYearMath.daumenOffset(anteil, heightPx, thumbHeightPx)
     val etikett = CatalogYearMath.jahrFuer(anteil, total, verteilung, jahrGeladen)
 
-    /** Beruehrung -> Anteil -> rollen. Wie js/scrollbar.js -> rollen(). */
+    /** Beruehrung -> Anteil -> rollen. Wie js/rollbalken.js -> rollen(). */
     fun rollen(y: Float) {
         ziehAnteil = CatalogYearMath.anteilAus(y, heightPx, thumbHeightPx)
         onScrollTo(CatalogYearMath.nummerAus(ziehAnteil, total))

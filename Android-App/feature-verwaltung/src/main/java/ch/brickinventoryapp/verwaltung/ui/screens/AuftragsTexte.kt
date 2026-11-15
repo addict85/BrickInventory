@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.AuftragStatus
+import ch.brickinventoryapp.model.fach.AuftragStatus
 
 // Die Texte zu Aufträgen gehören zur Anzeige: Das UI-Modell in core-model kennt
 // keine Android-Ressourcen.
 
 /** Text eines Auftragszustands; ERLEDIGT und UNBEKANNT zeigen keinen. */
-val AuftragStatus.statusText: Int?
+internal val AuftragStatus.statusText: Int?
     get() = when (this) {
         AuftragStatus.OFFEN -> R.string.hintergrund_offen
         AuftragStatus.LAEUFT -> R.string.hintergrund_laeuft

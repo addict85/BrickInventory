@@ -100,11 +100,11 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
   const knopf = menueKnopf(document);
 
   // Die ID bleibt gefordert: menueSchliessen() und benutzerMenue() in
-  // js/gallery.js führen `aria-expanded` über G('btn-umenu') mit.
+  // js/sammlung.js führen `aria-expanded` über G('btn-umenu') mit.
   assert.equal(
     knopf.id,
     'btn-umenu',
-    'Der Menüknopf heißt nicht mehr `btn-umenu` — gallery.js führt `aria-expanded` darüber mit',
+    'Der Menüknopf heißt nicht mehr `btn-umenu` — sammlung.js führt `aria-expanded` darüber mit',
   );
 
   assert.equal(knopf.getAttribute('aria-haspopup'), 'true');
@@ -141,13 +141,8 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
 });
 
 /**
- * Nachtrag vom 17.10.: der Verwalter-Hinweis steht IM Namen
- *
- * Gegenproben (durchgeführt): `ME.isAdmin` in der Bedingung durch `true`
- * ersetzt → „ohne Verwalterrecht steht nur der Name" rot. Den Zusatz ganz
- * entfernt → „mit Verwalterrecht steht (Admin) dahinter" rot.
- * Gegenproben (08.11.2026 gemessen, am Bündel): zeigeBenutzernamen() ohne
- * `ME.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
+ * Der Verwalter-Hinweis steht IM Namen. Gegenproben (08.11.2026, am Bündel): zeigeBenutzernamen() ohne
+ * `angemeldetesKonto.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
  * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
  * username` statt zeigeBenutzernamen() → rot (nach dem Speichern).
  */

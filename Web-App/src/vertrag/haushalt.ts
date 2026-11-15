@@ -1,18 +1,21 @@
 import { z } from 'zod';
-import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG } from './grund';
+import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT_ODER_LEER } from './grund';
 import { DEGRADIERT, GenericResponse } from './gemeinsam';
+
+export const HaushaltBeigetreten = GenericResponse.extend({ linked_to: KontoName });
+
+export const HaushaltGeloest = GenericResponse.extend({ removed: z.number().int() });
 
 export const GetrenntesKonto = z.looseObject({
   id: z.number().int(),
   username: z.string(),
-  via: z.string().nullable().optional(),
+  via: z.string().nullable(),
 });
 
 export const HouseholdInviteResponse = z.looseObject({
-  success: z.boolean().optional(),
-  code: z.string().nullable().optional(),
-  expires_in: z.number().int().nullable().optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  code: z.string().nullable(),
+  expires_in: z.number().int().nullable(),
 });
 
 export const HouseholdInviteCheckResponse = z.looseObject({
@@ -21,7 +24,7 @@ export const HouseholdInviteCheckResponse = z.looseObject({
 });
 
 export const HouseholdMember = z.looseObject({
-  tiefe: z.number().int().nullable().optional(),
+  tiefe: z.number().int(),
   id: z.number().int(),
   username: z.string(),
   is_self: z.boolean(),
@@ -33,17 +36,16 @@ export const HouseholdMembersResponse = z.looseObject({
 });
 
 export const HouseholdStatusResponse = z.looseObject({
-  blickfeld: z.array(HouseholdMember).optional(),
+  blickfeld: z.array(HouseholdMember),
   success: z.boolean(),
   is_main: z.boolean(),
   is_sub: z.boolean(),
   currency: z.string(),
-  linked_to: KontoName.nullable().optional(),
+  linked_to: KontoName.nullable(),
   parents: z.array(KontoName),
   sub_accounts: z.array(HouseholdMember),
   open_invites: z.number().int(),
   former_links: z.array(GetrenntesKonto),
-  error: z.string().nullable().optional(),
   degradiert: DEGRADIERT,
 });
 
@@ -53,21 +55,21 @@ export const routen = {
   'POST /api/v1/settings/household/invite': { eingabe: OHNE_RUMPF, antwort: HouseholdInviteResponse, geheim: true },
   'POST /api/v1/settings/household/redeem/pruefen': {
     antwort: HouseholdInviteCheckResponse,
-    eingabe: z.strictObject({ code: z.string().max(64).nullable().optional() }),
+    eingabe: z.strictObject({ code: TEXT_ODER_LEER(64) }),
   },
   'POST /api/v1/settings/household/redeem': {
-    antwort: GenericResponse,
-    ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code'),
+    antwort: HaushaltBeigetreten,
+    ...bestaetigt({ code: TEXT_ODER_LEER(64) }, 'password', 'faktor_code'),
   },
   'POST /api/v1/settings/household/unlink': {
     eingabe: z.strictObject({
       sub_user_id: KENNUNG.nullable().optional(),
       main_user_id: KENNUNG.nullable().optional(),
     }),
-    antwort: GenericResponse,
+    antwort: HaushaltGeloest,
   },
   'POST /api/v1/settings/household/former/dismiss': {
     eingabe: z.strictObject({ sub_user_id: KENNUNG }),
-    antwort: GenericResponse,
+    antwort: HaushaltGeloest,
   },
 } satisfies Record<string, Route>;

@@ -2,11 +2,11 @@
  * Auf der Set-Kachel steht das Datum des letzten Kaufs, nicht die Aufnahme ins
  * Konto (die war nach einem Import für alle Sets derselbe Tag).
  *
- *   - getSets() liefert `letzter_kauf` = späteste Erfassung des Sets.
+ *   - setsLesen() liefert `letzter_kauf` = späteste Erfassung des Sets.
  *   - Die Kachel (jsdom, echtes Bündel) zeigt dieses Datum, nicht added_at.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  MAX(…created_at) in src/sets/repository/sets.ts zu MIN → rot: „getSets
+ *   A  MAX(…created_at) in src/sets/repository/sets.ts zu MIN → rot: „setsLesen
  *      liefert den letzten Kauf“
  *   B  gridCard() wieder mit s.added_at → rot: „die Kachel zeigt das Kaufdatum“
  *
@@ -24,7 +24,7 @@ const { haeltSet, erfasse } = require('./helpers/bestand');
 const { datenOderSkip } = require('./helpers/db');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
-test('getSets liefert den letzten Kauf', { concurrency: 1 }, async t => {
+test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const NAME = `kaufdatum_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -35,8 +35,8 @@ test('getSets liefert den letzten Kauf', { concurrency: 1 }, async t => {
   });
   await haeltSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
   await erfasse(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
-  const { getSets } = require('./helpers/sources').bereichsSeite('sets');
-  const { sets } = await getSets(uid, {});
+  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+  const { sets } = await setsLesen(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
   assert.ok(s, 'Set fehlt');
   assert.equal(new Date(s.letzter_kauf).toISOString().slice(0, 10), '2025-07-14');

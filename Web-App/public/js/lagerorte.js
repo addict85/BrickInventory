@@ -1,10 +1,10 @@
+import { melde } from './ereignisse.js';
 import { echt, registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { antwortFehler, feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
-import { loadGallery } from './gallery.js';
 import { html } from './escapen.js';
 import { confirmDelete } from './rueckfrage.js';
 import { ladeLagerortVorgabe } from './konten-orte.js';
@@ -127,7 +127,7 @@ async function benenneLagerortUm(id, wert) {
   await ladeLagerortVerwaltung();
   // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie zeigt sonst weiter den alten
   // Namen.
-  loadGallery();
+  melde('sammlungLaden');
 }
 
 /**

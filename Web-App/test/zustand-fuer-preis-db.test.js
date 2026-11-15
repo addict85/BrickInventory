@@ -24,7 +24,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { zustandFuerPreis, setGlobalSetting } = _req('src/einstellungen/settings.js');
-const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
+const { nutzerEinstellungSetzen: setUserSetting } = _req('src/einstellungen/nutzerEinstellung.js');
 
 test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;

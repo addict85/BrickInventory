@@ -4,7 +4,7 @@
 pluginManagement {
     repositories {
         // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
-        // oder dem Plugin-Portal würde gar nicht erst angefragt (sec17 B-N4).
+        // oder dem Plugin-Portal würde gar nicht erst angefragt.
         exclusiveContent {
             forRepository { google() }
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
@@ -19,7 +19,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
-        // oder dem Plugin-Portal würde gar nicht erst angefragt (sec17 B-N4).
+        // oder dem Plugin-Portal würde gar nicht erst angefragt.
         exclusiveContent {
             forRepository { google() }
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }

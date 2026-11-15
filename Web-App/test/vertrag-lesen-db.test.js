@@ -2,8 +2,9 @@
  * Jede GET-Route der App gegen ihren Vertrag (src/vertrag/): echte
  * Antworten auf einem Bestand, in dem keine Liste leer ist — ein Set mit
  * Teilen und Figur, ein manuelles Teil, eine manuelle Figur, Merkliste,
- * Lagerort, Gutschein, Preisalarm, Preise im Cache. Dass die Kotlin-Modelle
- * zum Vertrag passen, prüft vertrag-kotlin.test.js.
+ * Lagerort, Gutschein, Preisalarm, Preise im Cache. Welche Routen die App ruft,
+ * steht in shared/app-schnittstelle.json; dass ihre Modelle zum Vertrag passen,
+ * prüft der Android-Lauf (tools/vertrag/vertrag-kotlin.test.js).
  *
  * Gegenproben (31.10.2026 gemessen):
  *   A  in src/sets/repository/sets.ts das ::int an used_count entfernt → rot:
@@ -17,7 +18,6 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,8 +31,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { routerEinhaengungen, testDaten } = require('./helpers/sources');
 const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
-const { apiRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
-const { vertragZu } = require('./helpers/vertrag');
+const { vertragZu, appSchnittstelle } = require('./helpers/vertrag');
 const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
@@ -220,7 +219,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     getrennt,
     sub,
   ]);
-  await _req('src/konto/geraeteToken.js').createToken(uid, 'Vertragsprobe');
+  await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/auftraege keine leeren Listen liefert.
   const auftrag = await {
@@ -269,22 +268,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const routen = apiRouten(
-    path.join(
-      __dirname,
-      '..',
-      '..',
-      'Android-App',
-      'core-data',
-      'src',
-      'main',
-      'java',
-      'ch',
-      'brickinventoryapp',
-      'data',
-      'api',
-    ),
-  );
+  const routen = appSchnittstelle().routen.filter(r => r.methode === 'GET');
   const werte = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
   const abweichungen = [],
@@ -299,7 +283,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
       status.push(`${r.pfad}: kein Wert für einen Platzhalter`);
       continue;
     }
-    const anfrage = [...r.anfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), ZUSATZ.get(r.pfad)]
+    const anfrage = [...r.abfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), ZUSATZ.get(r.pfad)]
       .filter(Boolean)
       .join('&');
     const antwort = await fetch(basis + pfad + (anfrage ? '?' + anfrage : ''));

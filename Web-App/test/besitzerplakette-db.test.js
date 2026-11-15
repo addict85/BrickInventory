@@ -59,6 +59,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   await haeltFigur(db, kind, 'sw0002', { menge: 2 });
 
   const { blickfeldIds } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -67,13 +68,14 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   const P = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
 
+  /** @type {[string, () => Promise<any[]>][]} */
   const listen = [
-    ['/v1/sets', async () => (await S.getSets(uids, { page_size: 60 })).sets],
-    // getManualParts/getManualMinifigs liefern ein NACKTES Array; die Route
+    ['/v1/sets', async () => (await S.setsLesen(uids, { page_size: 60 })).sets],
+    // manuelleTeileListe/manuelleFigurenAbfrage liefern ein NACKTES Array; die Route
     // verpackt es. Die drei anderen Listen liefern ein Objekt mit `total`.
-    ['/v1/parts/manual', async () => await P.getManualParts(uids, {})],
-    ['/v1/minifigs', async () => (await M.getMinifigs(uids, { source: 'set' })).figs],
-    ['/v1/minifigs/manual', async () => await M.getManualMinifigs(uids, {})],
+    ['/v1/parts/manual', async () => await P.manuelleTeileListe(uids, {})],
+    ['/v1/minifigs', async () => (await M.figurenAbfrage(uids, { source: 'set' })).figs],
+    ['/v1/minifigs/manual', async () => await M.manuelleFigurenAbfrage(uids, {})],
   ];
 
   for (const [name, hole] of listen) {
@@ -94,7 +96,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   // nach Teilenummer UND Farbe über den ganzen Haushalt, und keiner der beiden
   // Clients zeichnet dort eine Plakette. Kommt eine dazu, schlägt diese
   // Zusicherung an — dann gehört auch das Aggregat in die Abfrage.
-  const teile = (await P.getParts(uids, { page_size: 60, exclude_manual: '1' })).parts;
+  const teile = (await P.teileAbfrage(uids, { page_size: 60, exclude_manual: '1' })).parts;
   assert.ok(teile?.length, 'Vorlage: Set-Teile fehlen');
   for (const z of teile) {
     assert.equal(
@@ -129,6 +131,7 @@ test('im Einzelkonto steht keine Plakette', async t => {
   await haeltFigur(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
   const { blickfeldIds } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -139,8 +142,8 @@ test('im Einzelkonto steht keine Plakette', async t => {
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in
   // jeder Antwort. Dieselbe Entscheidung wie bei den Sets seit jeher.
   for (const [name, zeilen] of [
-    ['/v1/sets', (await S.getSets(uids, { page_size: 60 })).sets],
-    ['/v1/minifigs', (await M.getMinifigs(uids, { source: 'set' })).figs],
+    ['/v1/sets', (await S.setsLesen(uids, { page_size: 60 })).sets],
+    ['/v1/minifigs', (await M.figurenAbfrage(uids, { source: 'set' })).figs],
   ]) {
     assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);
     for (const z of zeilen) {

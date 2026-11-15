@@ -1,5 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. */
+/** Die öffentliche Seite des Bereichs; was die Datenbank braucht, ist ein Dienst (`t.bestand`). */
 
 export {
   MAX_PAGE_SIZE,
@@ -8,16 +7,9 @@ export {
   clampPageSize,
   conditionFromAcquisitions,
   conditionsFromAcquisitions,
-  entferneSetInhalt,
-  kopiereSetInhalt,
-  legeManuellAn,
-  loescheManuelleFigur,
-  loescheManuellesTeil,
 } from './gemeinsam';
-export { normalisiereLagerort, ortFuerNeuerfassung, vorgabeVon } from './lagerort';
+export { normalisiereLagerort } from './lagerort';
 export { mengenwunsch } from './manuelleMenge';
-export { legeInPapierkorb, legeKaeufeInPapierkorb } from './papierkorb';
 export { acquisitionTotals } from './acquisitions';
-export { benenneOrtUm, lagerorte, legeOrtAn, loescheOrt } from './lagerort';
 export { erzeugeBestand } from './bereich';
 export type { BestandDienste, BestandKontext } from './bereich';

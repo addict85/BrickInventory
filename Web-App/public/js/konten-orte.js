@@ -2,7 +2,7 @@
 // gemeinsame Quelle, damit alle Formulare dieselbe Liste zeigen.
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
-import { SCOPE_VIEWS, scopeMode, setScopeMode } from './scope.js';
+import { SCOPE_VIEWS, scopeMode, setScopeMode } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock } from './detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { html, ungeprueft } from './escapen.js';
@@ -93,7 +93,7 @@ export function haushaltsKonten() {
  * einen Eintrag, und eine Auswahl mit einer Möglichkeit bleibt verborgen.
  */
 export async function loadHouseholdMembers() {
-  const d = await api('GET', '/v1/sets/household-members').catch(() => null);
+  const d = await api('GET', '/v1/sets/household-members');
   const members = d?.members || [];
   _haushalt = members;
   // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto heisst Hauptkonto mit Unterkonten.
@@ -193,7 +193,7 @@ export function zeichneLagerortFelder() {
  * ein noch leeres Feld: Wer inzwischen selbst gewählt hat, behält seine Wahl.
  */
 export async function ladeLagerortVorgabe() {
-  const d = await api('GET', '/v1/storage/locations').catch(() => null);
+  const d = await api('GET', '/v1/storage/locations');
   if (!d?.success) return;
   _ortVorgabe = d.vorgabe?.name || '';
   if (!_ortVorgabe) return;

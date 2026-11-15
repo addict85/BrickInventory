@@ -44,7 +44,7 @@ umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
 const { idempotenz, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
 const { nichtWiederholbar } = _req('src/vertrag/grund.js');

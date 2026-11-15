@@ -7,7 +7,7 @@ import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { registerActions, resolveAction } from './registry.js';
 import { esc, html, ungeprueft } from './escapen.js';
-import { ME, CURRENCY } from './zustand.js';
+import { angemeldetesKonto, kontoWaehrung } from './zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
@@ -112,12 +112,12 @@ export function fehlerZustand(o) {
  * @param {HTMLElement|null} ziel
  * @template D
  * @param {D} d          Antwort von api() — null zählt als Fehler
- * @param {{ erneut: string, arg?: string, behalten?: boolean }} o
+ * @param {{ erneut: string, arg?: string, behalten?: boolean, titel?: string }} o
  * @returns {d is Extract<D, { success: false }>} true, wenn es ein Fehler war und der Aufrufer aufhören soll
  */
 export function listeLadefehler(ziel, d, o) {
   const a =
-    /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean } | null | undefined} */ (
+    /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean, warteSek?: unknown } | null | undefined} */ (
       d
     );
   if (a && a.success !== false) return false;
@@ -130,27 +130,34 @@ export function listeLadefehler(ziel, d, o) {
   };
   // „Der letzte Stand bleibt“ nur, wenn einer dasteht: Über einem Fehlerzustand widerspräche der Toast der Liste.
   const alterStand = o.behalten && !ziel?.querySelector('.fehler-zustand, .lade-geruest, .skelett-raster');
+  const gedrosselt = a?.status === 429;
   if (alterStand)
     toast(
-      tRaw('liste.alter_stand_kurz'),
+      gedrosselt ? grund : tRaw('liste.alter_stand_kurz'),
       'error',
       { text: tRaw('liste.erneut'), fn: nochmal },
-      [grund, details].filter(Boolean).join(' — '),
+      gedrosselt ? undefined : [grund, details].filter(Boolean).join(' — '),
     );
-  else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg }));
+  else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg, titel: o.titel }));
   return true;
 }
 
 /**
  * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann; der Rohtext steht unter
- * „Details“ für die Meldung an den Verwalter. 4xx-Texte schreibt der Server selbst verständlich.
- * @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d Antwort von api()
+ * „Details“ für die Meldung an den Verwalter. Der Verwalter selbst bekommt den Weg zum Protokoll. 4xx-Texte
+ * schreibt der Server selbst verständlich.
+ * @param {{ networkError?: boolean, status?: number, error?: unknown, warteSek?: unknown } | null | undefined} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
 export function verstaendlicherGrund(d) {
   if (d?.networkError) return { grund: tRaw('net.liste_offline') };
+  if (d?.status === 429)
+    return { grund: tRaw('liste.gedrosselt', { minuten: Math.max(1, Math.ceil((Number(d.warteSek) || 60) / 60)) }) };
   if (!d || (d.status ?? 0) >= 500 || !d.error)
-    return { grund: tRaw('liste.server_fehler'), details: d?.error ? String(d.error) : undefined };
+    return {
+      grund: tRaw(angemeldetesKonto?.isAdmin ? 'liste.server_fehler_verwalter' : 'liste.server_fehler'),
+      details: d?.error ? String(d.error) : undefined,
+    };
   return { grund: String(d.error) };
 }
 
@@ -216,7 +223,7 @@ export function pnlBadge(pct, kauf) {
  * @param {{ id: number, username: string }} o
  */
 export function kontoAnzeige(o) {
-  return ME && o.id === ME.id ? `${o.username} ${tRaw('household.ich')}` : o.username;
+  return angemeldetesKonto && o.id === angemeldetesKonto.id ? `${o.username} ${tRaw('household.ich')}` : o.username;
 }
 
 /**
@@ -226,7 +233,7 @@ export function kontoAnzeige(o) {
  */
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
-  if (item.owners.every(o => ME && o.id === ME.id)) return '';
+  if (item.owners.every(o => angemeldetesKonto && o.id === angemeldetesKonto.id)) return '';
   return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${kontoAnzeige(o)}">${kontoAnzeige(o)}</span>`)}`;
 }
 
@@ -262,7 +269,8 @@ export function oeffneErfassen(art) {
     }
   });
   const w = /** @type {HTMLSelectElement | null} */ (dialog?.querySelector('#add-currency') ?? null);
-  if (w && !(/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value)) w.value = CURRENCY;
+  if (w && !(/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value))
+    w.value = kontoWaehrung;
   dialog?.classList.add('open');
 }
 
@@ -276,7 +284,10 @@ export function heuteIso() {
  * @param {string} [art]
  */
 export function schliesseErfassen(art) {
-  erfassenDialog(art)?.classList.remove('open');
+  const dialog = erfassenDialog(art);
+  dialog?.classList.remove('open');
+  // Geschlossen ist verworfen: Ein Preis von vorhin hinge sonst still am nächsten Set, das jemand eintippt.
+  dialog?.querySelector('form')?.reset();
 }
 
 /**

@@ -57,16 +57,16 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel-pfade');
   const echt = https.get;
   const abgerufen = [];
-  https.get = (url, opt, cb) => {
+  /** @type {any} */ (https).get = (url, opt, cb) => {
     // httpsGetRobust ruft mit Optionen statt Adresse.
     abgerufen.push(typeof url === 'string' ? url : `https://${url.hostname}${url.path}`);
     const fertig = typeof opt === 'function' ? opt : cb;
-    const req = new EventEmitter();
+    const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
     req.end = () => {};
     setImmediate(() => {
-      const r = new EventEmitter();
+      const r = /** @type {any} */ (new EventEmitter());
       r.statusCode = 404;
       r.headers = {};
       r.resume = () => {};
@@ -79,7 +79,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
   t.after(async () => {
     https.get = echt;
     if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
-    else await S.deleteGlobalSetting('rebrickable_api_key');
+    else await S.globaleWerteLoeschen('rebrickable_api_key');
     await db.pool.end().catch(() => {});
   });
 
@@ -90,7 +90,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     t,
   });
   let geprueft = 0;
-  const { holeSetTeile } = _req('src/katalog/quellen.js');
+  const { holeSetTeile } = require('./helpers/sources').testDienste().fremdquellen.quellen;
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
     const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
     assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);

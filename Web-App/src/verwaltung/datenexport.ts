@@ -1,8 +1,8 @@
 /** Sicherung der Einstellungen (JSON) und der Bestandsdaten (ZIP mit CSVs), dazu
  * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
 import type { Writable } from 'node:stream';
-import { SECRET_KEYS, isMaskedValue, globalerWertGueltig } from '../einstellungen';
-import { DAILY_JOBS } from '../auftraege';
+import { SECRET_KEYS, istMaskiert, globalerWertGueltig } from '../einstellungen';
+import { DAILY_JOBS } from './tageszeiten';
 import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -17,7 +17,7 @@ export const istHeikel = (k: string) =>
  * SMTP-Daten gehen ein Unterkonto nichts an. */
 export async function konfigExport(k: VerwaltungKontext, uid: number, verwalter: boolean, name: string | null) {
   return {
-    exported_at: new Date().toISOString(),
+    exported_at: k.uhr.datum().toISOString(),
     exported_by: name,
     version: '3.0',
     global: verwalter ? await k.einstellungen.globaleWerteOhneGeheimnisse() : {},
@@ -35,11 +35,11 @@ export async function datenZip(
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiv };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
-    k.sets.buildSetsCsv(uid),
-    k.bestand.buildPartsCsv(uid),
-    k.bestand.buildFigsCsv(uid),
-    k.merkliste.buildMerklisteCsv(uid),
-    k.finanzen.preisalarm.buildPreisalarmeCsv(uid),
+    k.sets.setsAlsCsv(uid),
+    k.bestand.teileAlsCsv(uid),
+    k.bestand.figurenAlsCsv(uid),
+    k.merkliste.merklisteAlsCsv(uid),
+    k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
   ]);
   const archiv = new ZipArchive({ zlib: { level: 9 } });
   archiv.on('error', beiFehler);
@@ -95,17 +95,22 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
     const geaendert: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
-      if (SECRET_KEYS.has(key) && isMaskedValue(global[key])) continue;
-      if (String(global[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
-      await kx.einstellungen.setGlobalSetting(key, global[key]);
+      if (SECRET_KEYS.has(key) && istMaskiert(global[key])) continue;
+      if (String(global[key]) !== String((await kx.einstellungen.globalerWert(key)) ?? '')) geaendert.push(key);
+      await kx.einstellungen.setzeGlobalenWert(key, global[key]);
       imported++;
     }
     if (geaendert.length)
-      await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
+      await kx.konto.verwalter.verwalterAktionMerken(
+        uid,
+        uid,
+        'einstellungen_geaendert',
+        `Import: ${geaendert.join(', ')}`,
+      );
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
   for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {
-    await kx.konto.setUserSetting(uid, key, konto![key]);
+    await kx.einstellungen.nutzerEinstellungSetzen(uid, key, konto![key]);
     imported++;
   }
   // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache leeren.

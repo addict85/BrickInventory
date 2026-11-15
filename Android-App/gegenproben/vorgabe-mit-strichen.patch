@@ -1,0 +1,17 @@
+Gegenprobe: Die globale Vorgabe steht wieder zwischen Gedankenstrichen
+Modul: app
+Test: ch.brickinventoryapp.app.StringResourceParityTest
+Rot: ein Begriff je Sache
+
+diff --git a/Android-App/core-ressourcen/src/main/res/values/strings.xml b/Android-App/core-ressourcen/src/main/res/values/strings.xml
+--- a/Android-App/core-ressourcen/src/main/res/values/strings.xml
++++ b/Android-App/core-ressourcen/src/main/res/values/strings.xml
+@@ -23,7 +23,7 @@
+     <string name="settings_default_condition">Default condition</string>
+     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
+     <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background jobs.</string>
+-    <string name="settings_default_condition_global">Global default</string>
++    <string name="settings_default_condition_global">— Global default —</string>
+     <string name="condition_new">New</string>
+     <string name="condition_used">Used</string>
+     <string name="monitoring_default_condition">Default condition</string>

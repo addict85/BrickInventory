@@ -1,10 +1,12 @@
 package ch.brickinventoryapp.finanzen
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import ch.brickinventoryapp.model.ui.laedt
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,8 @@ import ch.brickinventoryapp.testing.TestDienste
  *      Kontofilter des Reiters reist mit …“
  *   D  in zuruecksetzen() das Leeren des Zustands entfernt → rot „nach dem
  *      Abmelden ist nichts mehr da“
+ *   finanzen-laden-ohne-verlauf  beim Beobachten nur die Bewertung geladen → rot „wer die
+ *      Finanzen sieht …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FinanzViewModelTest {
@@ -41,7 +45,7 @@ class FinanzViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) =
-        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), gemerkt))
+        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFinanzenRepository(t.api), gemerkt))
 
     @Before
     fun auf() {
@@ -71,11 +75,22 @@ class FinanzViewModelTest {
         val erstes = vm(gemerkt)
         erstes.finanzKategorieUmschalten("parts")
         erstes.loadPortfolioHistory("month")
-        assertTrue("Verlauf geladen", !erstes.financeState.value.historyLoading)
+        assertTrue("Verlauf geladen", !erstes.financeState.value.verlauf.laedt)
 
         val neu = vm(gemerkt).financeState.value
         assertEquals(setOf("parts"), neu.kategorien)
         assertEquals("month", neu.historyPeriod)
+    }
+
+    @Test
+    fun `wer die Finanzen sieht, laedt Bewertung und Verlauf, die Bewertung einmal`() {
+        val vm = vm()
+        assertTrue("Ohne Beobachter wird nichts geholt", pfade.anfragenAn("/finance/").isEmpty())
+        val sicht = CoroutineScope(Dispatchers.Main).launch { vm.financeState.collect {} }
+        sicht.cancel()
+        CoroutineScope(Dispatchers.Main).launch { vm.financeState.collect {} }.cancel()
+        assertEquals(1, pfade.anfragenAn("/finance/valuation").size)
+        assertTrue("Der Verlauf kommt mit", pfade.anfragenAn("/finance/portfolio-history").isNotEmpty())
     }
 
     @Test

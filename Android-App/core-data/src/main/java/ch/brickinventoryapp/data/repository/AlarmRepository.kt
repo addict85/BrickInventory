@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.AlarmabrufAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -18,16 +18,16 @@ interface AlarmRepository {
      * Was seit [since] ausgelöst hat. Nie abgelegt: Die Antwort gilt genau einmal —
      * zweimal gelesen, käme dieselbe Meldung zweimal.
      */
-    suspend fun getPendingAlerts(since: String?): Ergebnis<PendingAlertsResponse>
+    suspend fun getPendingAlerts(since: String?): Ergebnis<AlarmabrufAnsicht>
 
     /** Die Alarme aus der Ablage; mit [setNumber] nur die dieses Sets. */
-    fun beobachteAlarme(setNumber: String? = null): Flow<Lokal<Preisalarm>>
+    fun beobachteAlarme(setNumber: String? = null): Flow<Lokal<PreisalarmAnsicht>>
 
     /** Alle Alarme des Kontos vom Server in die Ablage. */
     suspend fun aktualisiereAlarme(): Ergebnis<Unit>
 
-    suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Double,
-                              condition: Zustand = Zustand.NEU): Ergebnis<PreisalarmResponse>
+    suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,
+                              condition: Zustand = Zustand.NEU): Ergebnis<Unit>
 
-    suspend fun deletePreisalarm(setNumber: String, condition: Zustand = Zustand.NEU): Ergebnis<PreisalarmResponse>
+    suspend fun deletePreisalarm(setNumber: String, condition: Zustand = Zustand.NEU): Ergebnis<Unit>
 }

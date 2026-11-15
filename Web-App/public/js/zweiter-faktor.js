@@ -6,9 +6,16 @@ import { formularFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { loadUsers } from './nutzerverwaltung.js';
 import { html, ungeprueft } from './escapen.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
+import { fmtDatum } from './format.js';
+import {
+  confirmDelete,
+  bestaetigeMitPasswort,
+  frageCode,
+  mitZweitemFaktor,
+  mitPasswortBestaetigen,
+} from './rueckfrage.js';
 
-// ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
+// ═══ Zweiter Faktor im Profil (Server: src/faktoren/zweiterFaktor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn Wiederherstellungscodes einmal
 // zeigen. Danach: abschalten oder neue Codes.
 
@@ -67,14 +74,12 @@ export async function ladeZweitenFaktor() {
     if (pflicht) G('zf-start')?.focus();
     return;
   }
+  // Den Code fragt jede Aktion in ihrem eigenen Dialog: Ein Feld für zwei Knöpfe liess offen, wofür es gilt.
   zeichne(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
-    <form class="sform" data-stil="max-width:420px">
-      ${CODEFELD(tRaw('login.code'))}
-      <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
-        ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
-        ${knopf('zfAbschalten', tRaw('zf.disable'), 'bd')}
-      </div>
-    </form>`);
+    <div class="zf-knoepfe">
+      ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
+      ${knopf('zfAbschalten', tRaw('zf.disable'), 'bd')}
+    </div>`);
 }
 
 export async function zfEinrichten() {
@@ -155,7 +160,9 @@ export async function zfBestaetigen() {
 }
 
 export async function zfNeueCodes() {
-  const d = await api('POST', '/v1/auth/zweiter-faktor/codes', { code: G('zf-code')?.value || '' });
+  const code = await frageCode(tRaw('zf.new_codes'), tRaw('zf.code_fuer_codes'));
+  if (!code) return;
+  const d = await api('POST', '/v1/auth/zweiter-faktor/codes', { code });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -164,7 +171,6 @@ export async function zfNeueCodes() {
 }
 
 export async function zfAbschalten() {
-  const code = G('zf-code')?.value || '';
   if (
     !(await confirmDelete(tRaw('zf.disable'), tRaw('zf.disable_confirm'), 'schloss', {
       knopf: 'confirm.btn.abschalten',
@@ -173,7 +179,7 @@ export async function zfAbschalten() {
   )
     return;
   const d = await mitPasswortBestaetigen(tRaw('zf.disable'), (password, z) =>
-    api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...(code ? { code } : {}), ...z }),
+    api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...z }),
   );
   if (!d) return;
   if (!d?.success) {
@@ -224,7 +230,10 @@ export async function zfZuruecksetzen(uid, name) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  toast(tRaw('zf.disabled'), 'success');
+  toast(
+    d.wirksam_ab ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') }) : tRaw('zf.disabled'),
+    'success',
+  );
   loadUsers();
 }
 

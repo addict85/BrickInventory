@@ -5,7 +5,6 @@
 import type { Request } from 'express';
 import { meldeFehler } from '../../infra/fehler';
 import type { KontoDienste } from '../bereich';
-import { hashToken } from '../geraeteToken';
 import { beiZugangsAenderung } from '../zugangsAenderung';
 
 export { meldeZugangsAenderung } from '../zugangsAenderung';
@@ -26,13 +25,13 @@ function sitzungLebt(req: Request): Promise<boolean> {
 export async function zugangGiltNoch(konto: KontoDienste, req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
-    if ((await konto.sitzungsVersionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
+    if ((await konto.sitzungen.versionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
     // Abmelden löscht nur diese eine Sitzung, die Version bleibt.
     return sitzungLebt(req);
   }
   const kopf = String(req.headers.authorization || '');
   if (!kopf.startsWith('Bearer ')) return false;
-  return !!(await konto.gueltigerToken(hashToken(kopf.slice(7))));
+  return konto.tokenGilt(kopf.slice(7));
 }
 
 /** `beenden` läuft höchstens einmal, sobald der Zugang nicht mehr gilt. Ein

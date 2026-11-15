@@ -1,11 +1,11 @@
 /**
  * Eine heruntergeladene Anleitung landet nur im gemeinsamen Cache (und geht
  * von dort an alle Konten), wenn sie mit `%PDF-` beginnt. Gemessen an
- * downloadSetInstructions: Die Quellen und das Netz sind ersetzt, Datenbank
+ * setAnleitungenLaden: Die Quellen und das Netz sind ersetzt, Datenbank
  * und Platte sind echt.
  *
  * Gegenproben (am 08.11.2026 gemessen, je einzeln):
- *   A  in downloadSetInstructions() `PDF_ANFANG` nicht mehr übergeben → rot:
+ *   A  in setAnleitungenLaden() `PDF_ANFANG` nicht mehr übergeben → rot:
  *      „eine Datei ohne %PDF- wird nicht abgelegt“ (Datei liegt, Pfad steht
  *      in der Tabelle)
  *   B  in downloadFile() den Block `if (anfang && …)` entfernt → dasselbe rot
@@ -32,12 +32,10 @@ const { datenOderSkip } = require('./helpers/db');
 
 // Die Quelle nennt zwei Adressen; was dort liegt, bestimmt der Test.
 const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrickable.com/media/seite.pdf'];
-const quellenPfad = require.resolve(path.join(S.DIST, 'src/katalog/quellen.js'));
-const echteQuellen = _req('src/katalog/quellen.js');
-require.cache[quellenPfad].exports = Object.assign({}, echteQuellen, {
+S.testQuellen(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),
 });
-const { downloadSetInstructions } = _req('src/katalog/instructions.js');
+const { setAnleitungenLaden } = _req('src/katalog/instructions.js');
 
 const INHALT = {
   [URLS[0]]: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(3000, 7)]),
@@ -72,7 +70,7 @@ test('Anleitungen nur mit PDF-Anfang', async t => {
     https.get = echt;
   });
 
-  await downloadSetInstructions(sn, true);
+  await setAnleitungenLaden(sn, true);
 
   const zeilen = await db.all('SELECT url, local_path FROM shared_instructions WHERE set_number = $1 ORDER BY url', [
     sn,

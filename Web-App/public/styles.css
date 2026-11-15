@@ -80,6 +80,8 @@
     .llogo .icon{width:44px;height:44px;background:var(--b600);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
     .llogo .llogo-name{font-size:var(--fs-6);font-weight:800;min-width:0;text-align:center;overflow-wrap:break-word;hyphens:auto}
     .llogo .llogo-name span{color:var(--b600)}
+    /* Im Codefeld und in seiner Beschreibung: Der Fokus springt dorthin, und dabei wird der Satz vorgelesen. */
+    .lc-status{margin:0 0 var(--sp-1);font-size:var(--fs-2);font-weight:600;color:var(--txt)}.lc-status:empty{display:none}
     /* Fehlermeldung direkt am Feld (feldFehler in 01-core.js). */
     .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%;grid-column:1/-1;contain:inline-size;min-width:100%}
     /* Meldung unter einer Tabellenzeile (feldFehler): über alle Spalten, dicht an der Zeile darüber. */
@@ -89,6 +91,7 @@
     input[aria-invalid="true"]{border-color:var(--r500)}
     .login-hinweis{background:var(--b50);color:var(--b700);border:1px solid var(--b200);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem}
     .login-hinweis[hidden]{display:none}
+    .login-warnung{background:var(--a100);color:var(--a-schrift);border-color:var(--a500)}
     .lerr{background:var(--r100);color:var(--r700);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem;display:none}
 
     /* APP */
@@ -351,7 +354,7 @@
        darueber gibt jedem select width:100%.
        Stand bis jetzt viermal gleichlautend im style-Attribut; die Klasse gab
        es schon, sie trug nur nichts. Was DORT bleibt, bleibt mit Grund:
-       display:none schaltet JavaScript um (gallery.js setzt style.display
+       display:none schaltet JavaScript um (sammlung.js setzt style.display
        leer, was eine CSS-Regel nicht ueberschreiben koennte), margin-left:auto
        gilt nur fuer die Finanzen-Auswahl. */
     .scope-select{width:auto}
@@ -502,6 +505,9 @@
        Papierkorb aber genauso zeigen — „analog den Kacheln bei den Sets". */
     @media (hover:hover){.sc:hover .ca, .man-tile:hover .ca, .mk-zeile:hover .ca{opacity:1}}
     :is(.sc, .man-tile, .mk-zeile, .part-card):focus-visible > .ca{opacity:1}
+    /* Mit der Tastatur löscht Entf; der Papierkorb selbst ist kein Knopf (in der Kachel nicht erlaubt), also sagt es ein Etikett daneben. */
+    .delbtn[data-taste]{position:relative}
+    :is(.sc, .man-tile, .mk-zeile, .part-card):focus-visible > .ca > .delbtn[data-taste]::before{content:attr(data-taste);position:absolute;right:calc(100% + 6px);top:50%;transform:translateY(-50%);white-space:nowrap;padding:2px 8px;border-radius:999px;background:var(--txt);color:var(--sur);font-size:var(--fs-0);font-weight:600;line-height:1.5}
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
@@ -533,11 +539,14 @@
     .acq-ok[hidden]{display:inline-flex;visibility:hidden}
     /* Knopf einer anklickbaren Tabellenzeile: sieht aus wie der Zellentext, bedient sich wie ein Knopf. */
     .zeile-oeffnen{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:32px;min-width:32px;display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
-    .toast-zu{background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;border-radius:6px;flex:0 0 auto}
+    .toast-zu{position:absolute;top:6px;right:6px;background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
     .toast-zu .ico{width:1rem;height:1rem}
     .alarm-waehrung{font-size:var(--fs-1);color:var(--mut);margin-left:4px;font-weight:600}
     /* Platz für „aktiv“/„gemeldet“ reserviert: Sonst rückte die Zeile beim Speichern. */
-    .alarm-stand{font-size:var(--fs-1);color:var(--mut);display:inline-block;min-width:6.5em}
+    .alarm-stand:empty{display:none}
+    .alarm-stand.alarm-marke{white-space:normal}
+    /* „Alle Preisalarme“ in eigener Zeile: Daneben las sich der Zustand „aktiv“ als Teil des Verweises. */
+    .alarm-stand ~ .zu-sicht{flex-basis:100%;text-align:end}
     .zeichen-zaehler{display:block;font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .zeichen-zaehler[hidden]{display:none}
     .sort-knopf{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:32px;min-width:32px;text-transform:inherit;letter-spacing:inherit}
@@ -545,11 +554,13 @@
     th[aria-sort="descending"] .sort-knopf::after{content:" ▼";font-size:.8em}
     .fin-suche-zeile{display:flex;margin:0 0 .75rem}
     .fin-suche-zeile .suchfeld{flex:1 1 16rem;max-width:28rem}
+    .fin-suche-zeile .suchfeld:disabled{opacity:.5;cursor:not-allowed}
     /* Eigene Regel statt Inline-Stil: 23 px hoch lag der Knopf unter der Mindestgrösse für Tippziele. */
     .prog-minimieren{position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400;min-width:32px;min-height:28px}
     .zf-qr{background:#fff;padding:8px;align-self:center;border-radius:8px;line-height:0}
-    .preis-mit-waehrung{display:flex;gap:6px;align-items:stretch;min-width:0;max-width:100%}
-    .preis-mit-waehrung input{flex:1 1 0;min-width:0;width:auto}
+    /* Umbrechend: Bei grosser Schrift steht die Währung unter dem Preis, statt das Feld auf eine Ziffernbreite zu drücken. */
+    .preis-mit-waehrung{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch;min-width:0;max-width:100%}
+    .preis-mit-waehrung input{flex:1 1 8em;min-width:0;width:auto}
     .preis-mit-waehrung select{flex:0 0 auto;width:5.75em;min-width:0}
     .acq-preisfeld{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
     .acq-waehrung{font-size:var(--fs-1);color:var(--mut);font-weight:600}
@@ -597,7 +608,7 @@
     .fsub:empty{display:none}
     /* Grundlage der drei Karten: was gerechnet ist und was nicht. */
     .fin-basis{display:flex;gap:8px;align-items:flex-start;margin:-0.5rem 0 1.5rem;font-size:var(--fs-2);color:var(--mut);line-height:1.45}
-    .fin-basis[hidden]{display:none}
+    .fin-basis[hidden],.fgrid[hidden]{display:none}
     .fin-basis .ico{flex:none;width:16px;height:16px;margin-top:2px}
     .fin-basis strong{color:var(--txt);font-weight:600}
     .fin-fussnote{margin:8px 13px 0;font-size:var(--fs-1);color:var(--mut);text-align:right}
@@ -624,6 +635,7 @@
     .bstat .bstat-s{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     /* Die Unterzeile hält ihren Platz auch leer: Kommt sie mit den Zahlen, wuchs sonst die Kachelreihe. */
     .bstat .bstat-s:empty::before{content:"\00a0"}
+    .bstat-hinweis{display:none}
     .bstat .bstat-v{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:700;line-height:1.2;margin-top:2px;color:var(--txt)}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
@@ -693,6 +705,9 @@
     .ssec.full{grid-column:1/-1}
     .stit{font-size:var(--fs-3);font-weight:700;color:var(--txt);display:flex;flex-wrap:wrap;align-items:center;gap:6px;overflow-wrap:anywhere;hyphens:auto;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
     .sform{display:flex;flex-direction:column;gap:13px}
+    /* Mit contain:inline-size rechnete Chrome die Feldmeldung beim Bemessen der Spalte auf Breite 0, also
+       zweizeilig: Unter „Bitte Benutzername … eingeben.“ blieb eine leere Zeile, unter der Passwortmeldung nicht. */
+    .sform .fg > .feld-fehler{contain:none}
     .ibox{background:var(--b50);border:1px solid var(--b200);border-radius:8px;padding:11px 13px;font-size:var(--fs-2);color:var(--b700);line-height:1.7}
     .ibox a{color:var(--b700);font-weight:600;text-decoration:underline}
     .ibox code{background:var(--b100);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:var(--fs-1)}
@@ -795,6 +810,10 @@
              margin:1.25rem calc(var(--modal-padx) * -1) calc(var(--modal-padb) * -1);
              padding:.85rem var(--modal-padx);
              display:flex;gap:10px;justify-content:flex-end;align-items:flex-end}
+    /* Wenig Höhe für die Schrift (320 px bei 200 %, Querformat): Kopf und Fuss rollen mit, fest liessen sie dem
+       Inhalt ein Drittel. Gemessen in der Schrift des Dialogs, deshalb ein Container statt @media. */
+    .ovl{container:ovl / size}
+    @container ovl (max-height: 30em){ .mhd,.mfooter{position:static} }
     .il{margin-top:1rem}
     .ii{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s50);border:1px solid var(--bdr);border-radius:7px;margin-bottom:5px;font-size:var(--fs-2)}
     .ii a{color:var(--b600);font-weight:600;text-decoration:none;flex:1}
@@ -803,7 +822,9 @@
     /* TOAST */
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
     .toast{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 15px;font-size:var(--fs-3);min-width:240px;max-width:360px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh2);animation:tIn .25s ease}
-    .toast{cursor:default;flex-wrap:wrap}
+    /* Das Schliessen bleibt oben rechts, wie umbrechend der Rest auch steht. */
+    .toast{cursor:default;flex-wrap:wrap;position:relative}
+    .toast:has(> .toast-zu){padding-right:40px}
     /* Bei grosser Schrift rückt der Knopf unter den Text, statt ihn auf eine Spalte zu drücken. */
     .toast-text{flex:1 1 9em;min-width:0}
     .toast-details{margin-top:.35rem;font-size:var(--fs-2)}
@@ -835,7 +856,7 @@
     .pst{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;font-size:var(--fs-1);font-weight:700;cursor:help}
     .pst-ok{background:var(--g100);color:var(--g700)}
     .pst-err{background:var(--r100);color:var(--r700)}
-    .pst-leer{background:var(--s100);color:var(--mut)}
+    .pst-leer{background:none;box-shadow:inset 0 0 0 1px var(--bdr);color:var(--mut)}
     /* Nur für Vorleseprogramme: Spaltenköpfe, die sichtbar leer bleiben sollen.
        Kein display:none — das nähme der Ausgabe auch den Text. */
     .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -844,7 +865,8 @@
     .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
-    .besitzer-badge{background:var(--b100);color:var(--b700);max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+    /* clip statt hidden: Mit hidden zählt der untere Rand als Grundlinie, das Abzeichen sass neben „Neuware“ tiefer. */
+    .besitzer-badge{background:var(--b100);color:var(--b700);max-width:100%;min-width:0;overflow:clip;text-overflow:ellipsis}
     .admin-hinweis{font-size:var(--fs-1);color:var(--mut);font-weight:400}
     .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
@@ -865,8 +887,12 @@
 @media not (forced-colors: active){
   html{scrollbar-width:none;-ms-overflow-style:none}
   html::-webkit-scrollbar{width:0;height:0}
+  /* Rollbereiche in Dialogen sehen aus wie der eigene Balken der Seite. */
+  .ovl :is(.modal, .modal *){scrollbar-width:thin;scrollbar-color:var(--s500) transparent}
 }
 @media (forced-colors: active){#app-scrollbar{display:none !important}}
+/* Der Hauptknopf hat nur eine Füllfarbe; im Kontrastmodus fiele sie weg und mit ihr jede Knopfgrenze. */
+@media (forced-colors: active){.btn.bp{border:1px solid ButtonText}}
 /* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/mobile.js. */
 html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bottom:calc(var(--leiste-unten,0px) + .5rem)}
 
@@ -1086,6 +1112,8 @@ html[data-offline] label:has(> input[data-offline-gesperrt]){opacity:.5;cursor:n
 input.suchfeld{width:220px}
 /* Die Suche nimmt den Rest der Zeile: Die Filterzeile endet an der Rasterkante. */
 .filterzeile > input.suchfeld{flex:1 1 14rem;width:auto;min-width:0}
+/* Neben sechs Auswahlfeldern der Teile stand der Ansichtsumschalter sonst allein in der zweiten Zeile. */
+.filterleiste > input.suchfeld{flex-basis:9rem}
 /* Auswahlfelder, deren Optionen erst mit den Daten kommen, haben eine feste Breite: Mit der längsten Option
    wuchsen sie nach dem Laden, und das Suchfeld daneben schrumpfte sichtbar. */
 @media (min-width:641px){#gtheme{width:14rem}:is(#parts-color,#parts-cat){width:12rem}}
@@ -1114,7 +1142,9 @@ input.suchfeld{width:220px}
 .mehr-liste{display:flex;gap:8px;flex-wrap:wrap}
 .merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
 .merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
-.merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px}
+/* Mittig: Am Telefon ist die Zeile 44 px hoch (Tippziel); oben angeschlagen blieb zugeklappt darunter Leerraum. */
+.merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px;display:flex;align-items:center}
+.merk-kasten-kopf > .stit{flex:1 1 auto}
 .merk-kasten-kopf::-webkit-details-marker{display:none}
 .merk-kasten:not([open]) .merk-kasten-kopf .stit{margin-bottom:0;padding-bottom:0;border-bottom:0}
 /* Zugeklappt ist die Box nur noch ihr Titel: Der volle Innenabstand machte sie am Telefon fast doppelt so hoch. */
@@ -1130,7 +1160,7 @@ input.suchfeld{width:220px}
    einer davon. !important, weil die Anmeldung #usermgmt inline einblendet. */
 /* Die Spalte wächst mit der Schrift (em), sonst kürzt sie bei 200 % lange Namen. */
 #global-settings-grid{grid-template-columns:minmax(max(170px,10.7em),max(210px,13.2em)) minmax(0,1fr);align-items:start}
-#global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:1rem}
+#global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:calc(var(--leiste-oben,0px) + 1rem)}
 #global-settings-grid > .einst-nav a{justify-content:flex-start}
 /* Die Abschnittsleiste ist auch ein <nav>: Die Leistenfarbe der Designs (Rot,
    Schwarzlack) gehört nur der Hauptnavigation. */
@@ -1140,16 +1170,18 @@ input.suchfeld{width:220px}
 #global-settings-grid > .ssec:not(.einst-aktiv){display:none !important}
 @media(max-width:700px){
   #global-settings-grid{grid-template-columns:minmax(0,1fr)}
-  #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
+  /* Wie die Sprungleiste im Konto: Ein langer Abschnitt rollte sie sonst aus dem Bild. */
+  #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;
+    top:var(--leiste-oben,0px);bottom:auto;left:auto;right:auto;z-index:20;background:var(--bg)}
   /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus mobile.js): ein runder Knopf mit Rand
      statt eines Schriftzeichens, das neben dem Text nicht auffiel. Ein Verlauf blendete weisse Knöpfe in
      weissen Grund. sticky hält den Pfeil beim Rollen am Rand der Leiste. */
-  .einst-nav[data-mehr*="r"]::after,.einst-nav[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
+  :is(.einst-nav,.konto-nav)[data-mehr*="r"]::after,:is(.einst-nav,.konto-nav)[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
     justify-content:center;align-self:center;box-sizing:border-box;width:2.25rem;height:2.25rem;border-radius:50%;
     background:var(--sur);border:2px solid var(--b600);box-shadow:var(--sh1,0 1px 4px rgba(15,23,42,.25));
     font-size:var(--fs-5);font-weight:800;line-height:1;color:var(--b600);pointer-events:none;z-index:1}
-  .einst-nav[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2.25rem}
-  .einst-nav[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2.25rem}
+  :is(.einst-nav,.konto-nav)[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2.25rem}
+  :is(.einst-nav,.konto-nav)[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2.25rem}
   #global-settings-grid > .einst-nav a{flex:none}
   #global-settings-grid > .ssec{grid-column:1}
 }
@@ -1165,14 +1197,22 @@ input.suchfeld{width:220px}
 .passwort-zeile{display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)}
 .passwort-zeile input{font-size:var(--fs-2);padding:4px 8px}
 .bestaetigung-passwort{margin:0 0 1.25rem;text-align:left}
+.cd-wahl{border:0;padding:0;margin:0 0 1.25rem;text-align:left;display:grid;gap:.25rem}
+.cd-wahl[hidden]{display:none}
+.cd-wahl-zeile{display:flex;align-items:center;gap:.6rem;min-height:44px;cursor:pointer}
 .bestaetigung-passwort label{font-size:var(--fs-2)}
 .bestaetigung-passwort input{width:100%;margin-top:.35rem}
 #wanted-xml-modal :is(input,select){min-height:24px}
 #wanted-xml-modal .btn{hyphens:auto}
 .zoombar{cursor:zoom-in}
+.zoom-knopf{display:block;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;border-radius:8px;cursor:zoom-in}
+.zoom-knopf:disabled{cursor:default}
+.zoom-knopf > .mimg{display:block;cursor:inherit}
 .zoombar[aria-hidden="true"]{cursor:default}
 .ohne-unterstrich{text-decoration:none}
-.ladepunkt{height:1px}
+/* Mindesthöhe statt Höhe: Die Abschlusszeile darin lag sonst ausserhalb des Flusses, im Abstand für den
+   schwebenden Knopf, und unter ihm. */
+.ladepunkt{min-height:1px}
 .hinweis-absatz{font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0}
 .etikett-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem}
 .trenner-oben{border-top:1px solid var(--bdr);padding-top:1.1rem}
@@ -1200,7 +1240,8 @@ a{color:var(--b600);text-underline-offset:2px}
 /* ── Fehler, Verbindung, Laden ──────────────────────────────────────────── */
 .fehler-zustand .leer-ico .ico{color:var(--a-schrift)}
 .fehler-zustand p{margin:0 0 .9rem}
-.offline-band{position:sticky;top:0;z-index:120;display:flex;justify-content:center;gap:8px;padding:8px 16px;
+/* Klebt unter Kopf und Leiste statt über ihnen (Höhe aus js/mobile.js): Oben deckte es das Benutzermenü zu. */
+.offline-band{position:sticky;top:var(--band-oben,0px);z-index:98;display:flex;justify-content:center;gap:8px;padding:8px 16px;
   background:var(--a100);color:var(--a-schrift);border-bottom:1px solid var(--bdr);font-size:var(--fs-2);font-weight:600;text-align:center}
 .offline-band[hidden]{display:none}
 /* Kompakt in einer Zeile; schmal steht der Knopf unter dem Text, das Schliessen bleibt oben rechts. */
@@ -1220,7 +1261,12 @@ a{color:var(--b600);text-underline-offset:2px}
   .hinweis-band .hinweis-kurz{display:inline}
   /* Der kurze Satz bleibt stehen (warum), Knopf und Schliessen folgen in derselben Zeile, wenn Platz ist. */
   .hinweis-band > .btn.bp{flex:0 1 auto;font-size:var(--fs-2);min-width:0;white-space:normal;overflow-wrap:break-word;hyphens:auto}
+  /* Das Schliessen fest oben rechts: Im Fluss rutschte es bei 320 px allein in eine dritte Zeile. */
+  .hinweis-band{position:relative;padding-right:60px}
+  .hinweis-band > .hinweis-zu{position:absolute;top:4px;right:8px;width:44px;min-width:44px;padding:0}
 }
+/* Ohne Verbindung sagt das Offline-Band schon, dass nichts Neues kommt; zwei Bänder nahmen am Telefon 110 px. */
+html[data-offline] #rb-hinweis{display:none}
 /* Der Schlüssel betrifft Sammlung, Bauliste (Teilelisten der Sets) und Katalog; anderswo wäre das Band nur Lärm. */
 body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-catalog).active)) #rb-hinweis{display:none}
 .loading.klein{padding:1rem;font-size:var(--fs-2);gap:6px}
@@ -1235,7 +1281,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .fin-abschnitt{margin:0 0 6px;display:flex;align-items:center;gap:6px}
 .fin-name-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px}
 .fin-datum{font-size:var(--fs-1);color:var(--mut)}
-.dt-fin{table-layout:fixed;width:100%;min-width:1030px}
+.dt-fin{table-layout:fixed;width:100%;min-width:920px}
 /* Datum, Beträge und G/V brechen nie mitten im Wort um; Spalten sind breit genug. */
 .dt-fin td{padding-left:8px;padding-right:8px}
 .dt-fin :is(.fin-datum,.zahl,.fin-guv,.pnl-geschenk){white-space:nowrap}
@@ -1250,8 +1296,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
-/* Tablet und 200 % Zoom: Nummer, Menge und Datum rücken unter den Namen, darunter auch der
-   Stückpreis. Die Kernzahlen (Kaufpreis, Wert, G/V, Stand) bleiben ohne seitliches Rollen sichtbar. */
+/* Tablet und 200 % Zoom: Nummer, Menge und Datum rücken unter den Namen. Die Kernzahlen (Kaufpreis,
+   Wert, G/V, Stand) bleiben ohne seitliches Rollen sichtbar. */
 @media (min-width:641px) and (max-width:1100px){
   .dt-fin{min-width:0}
   .dt-fin col.fin-k-zusatz{visibility:collapse}
@@ -1260,7 +1306,6 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
   .dt-fin .fin-jahr{display:none}
 }
 @media (min-width:641px) and (max-width:800px){
-  .dt-fin col.fin-k-markt{visibility:collapse}
   .dt-fin col.fin-k-name{width:170px}
 }
 
@@ -1298,9 +1343,9 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .erfassen-raster .fg{min-width:0}
 .erfassen-raster .fg select,.erfassen-raster .fg input{width:100%}
 .erfassen-raster .zeile > select{flex:1 1 auto;min-width:0}
-.erfassen-raster .preis-mit-waehrung input{width:auto;flex:1 1 0}
+.erfassen-raster .preis-mit-waehrung input{width:auto;flex:1 1 8em}
 .erfassen-raster .preis-mit-waehrung select{width:5.75em;flex:0 0 auto}
-.erfassen-fuss{grid-column:1 / -1;display:flex;justify-content:flex-end}
+.erfassen-fuss{grid-column:1 / -1;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .feld-titel{font-size:var(--fs-1);font-weight:600;color:var(--s600)}
 
 /* ── Konto (Profil): begrenzte Breite, eine Beschriftungsgrösse ─────────── */
@@ -1323,7 +1368,10 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .diagramm-werte{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .diagramm-flaeche{min-height:80px}
 .diagramm-hinweis{color:var(--mut);font-size:var(--fs-2);padding:1rem}
-.zeitraum-wahl{display:flex;gap:6px;margin-top:.75rem;justify-content:center;flex-wrap:wrap}
+/* Der Zeitraum ist eine Wahl aus vier, kein Filter: dieselbe Segmentform wie Karten/Tabelle, nicht Chips. */
+.zeitraum-wahl{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;width:fit-content;max-width:100%;margin:.75rem auto 0;padding:3px;background:var(--s100);border:1px solid var(--bedienrand);border-radius:8px}
+.zeitraum-wahl .period-btn{min-width:44px;border:2px solid transparent;border-radius:6px;background:none;color:var(--s600)}
+.zeitraum-wahl .period-btn.active{background:var(--sur);color:var(--b600);box-shadow:var(--sh0);border-color:var(--b600)}
 /* Die Veränderung im gewählten Zeitraum gehört zum Diagramm, nicht neben die Kennzahl zum Einstand (N3). */
 .zeitraum-wert{display:flex;justify-content:center;margin-top:.5rem;font-size:var(--fs-2)}
 .zeitraum-wert:has(#portfolio-pnl:empty){display:none}
@@ -1390,8 +1438,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .ohne-abstand-u{margin-bottom:0}
 
 /* Ohne Überfahren (Touch, auch mit Stift) kein Papierkorb auf jeder Kachel: dauerhaft sichtbar war er auf
-   jeder Karte das Auffälligste und beim Wischen leicht getroffen. Gelöscht wird im Detail, wie in der App. */
-@media (hover:none){ #tab-gallery .sc .ca{display:none} }
+   jeder Karte das Auffälligste und beim Wischen leicht getroffen. Mit der Tastatur (Entf) erscheint er samt Etikett. */
+@media (hover:none){ #tab-gallery .sc:not(:focus-visible) .ca{display:none} }
 /* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
 .hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}
 /* Die weisse QR-Fläche erst, wenn ein Code darin steht. */
@@ -1426,8 +1474,10 @@ p.mon-leise{margin:0 0 .35rem}
 .mon-aktionen .btn{flex:0 1 auto}
 .mon-tabelle td{vertical-align:top}
 .mon-tabelle .zahl{text-align:right;font-variant-numeric:tabular-nums}
+/* Die Zahl bleibt rechtsbündig über der Spalte, der Zusatz steht darunter. */
+.mon-tabelle .mon-zusatz{display:block;flex-basis:100%;font-size:var(--fs-1);white-space:nowrap}
 .mon-name{display:inline-flex;align-items:center;gap:.5rem;font-weight:600}
-.mon-sinnbild{flex:none;width:16px;height:16px}
+.mon-sinnbild{flex:none;width:1.1em;height:1.1em;color:var(--b600)}
 .mon-zustand{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
 .mon-zustand .ico{width:1em;height:1em}
 .mon-ziffer{font-variant-numeric:tabular-nums;color:var(--mut)}
@@ -1435,6 +1485,8 @@ p.mon-leise{margin:0 0 .35rem}
 .mon-ziffer.mon-fehler,.mon-zustand.mon-fehler,.mon-zustand.mon-error{color:var(--r700)}
 .mon-knoepfe{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:flex-start}
 .mon-knoepfe .btn{flex:0 1 auto}
+/* Ein Wort je Knopf trennt nicht („Abbre-chen“): Die Spalte nimmt die Breite des ganzen Worts. */
+#tab-monitor .mon-knoepfe .btn{hyphens:manual}
 .mon-plan{display:inline-flex;align-items:center;gap:.35rem;flex-wrap:wrap;font-size:var(--fs-2);color:var(--mut)}
 .mon-plan input{min-height:32px;padding:4px 8px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt);font:inherit;font-variant-numeric:tabular-nums}
 .mon-plan input[aria-invalid="true"]{border-color:var(--r500)}
@@ -1533,13 +1585,13 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 /* Bauliste: der Leerzustand mittig über die volle Breite, Zurücksetzen erst
    mit Inhalt — ein gesperrter roter Knopf las sich wie ein aktiver (N4). */
 #pl-sets > .empty{flex:1 1 100%}
-#btn-pl-reset:disabled{display:none}
+#btn-pl-reset:disabled,#btn-pl-gen[hidden]{display:none}
 /* Bauliste in drei Schritten: Sets wählen, erstellen, exportieren. */
-.pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start}
-.pl-feld{display:flex;flex-direction:column;gap:.3rem;max-width:100%}
+.pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start;align-self:stretch}
+/* Mehrere Nummern mit Komma brauchen Platz: Das Feld nimmt die Breite bis 40rem, am Telefon die ganze Zeile. */
+.pl-feld{display:flex;flex-direction:column;gap:.3rem;width:min(100%,40rem)}
 .pl-feld label,.pl-zustand label{font-size:var(--fs-2);font-weight:600}
-.pl-hinweis{font-size:var(--fs-2);color:var(--mut);margin:0}
-.pl-setnr{width:14em;max-width:100%;flex:0 1 auto}
+.pl-setnr{width:auto;min-width:0;flex:1 1 12em}
 /* Bauliste: Set-Chips (Name in Textfarbe: --mut auf --b50 kam nur auf 4,4:1) und Optionen. */
 .pl-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px}
 .pl-chip{display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3);max-width:100%}
@@ -1567,6 +1619,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
 .import-mehr,.nur-telefon{display:none}
 #tab-finance.finanzen-leer :is(#portfolio-chart-section,#fin-sum,#fin-basis,#fin-filter,.fin-suche-zeile){display:none}
+#tab-finance.finanzen-fehler :is(.zeitraum-wahl,#fin-filter,.fin-suche-zeile){display:none}
 
 /* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
    kleiner Umrandungsknöpfe (I5). Am Telefon eine rollende Reihe von Reitern. */
@@ -1580,6 +1633,18 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
   .einst-link{min-height:44px;border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
   #global-settings-grid > .einst-nav .einst-link[aria-current="page"]{border-bottom-color:var(--b600)}
 }
+
+/* Konto und Hintergrundarbeiten: dieselben Reiter als Sprungleiste über allen Abschnitten; am Telefon eine
+   rollende Reihe. Sie klebt unter Kopf und Leiste (--leiste-oben aus mobile.js), sonst war sie nach dem ersten
+   Sprung auf langen Seiten weg; der eigene Grund deckt den Inhalt darunter ab. */
+.konto-nav{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--bdr);margin-bottom:1rem;grid-column:1/-1;
+  position:sticky;top:var(--leiste-oben,0px);z-index:20;background:var(--bg)}
+.konto-nav .einst-link{border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
+#tab-profil [tabindex="-1"],#tab-monitor .mon-titel{scroll-margin-top:72px}
+/* Das Feld mit dem Fokus darf nicht unter der klebenden Leiste verschwinden (WCAG 2.4.11). */
+html:has(#tab-profil.active,#tab-monitor.active){scroll-padding-top:calc(var(--leiste-oben,0px) + 3.5rem)}
+@media(max-width:700px){html:has(#tab-settings.active){scroll-padding-top:calc(var(--leiste-oben,0px) + 3.5rem)}}
+@media(max-width:700px){.konto-nav{flex-wrap:nowrap;overflow-x:auto}.konto-nav .einst-link{flex:none}}
 
 /* Einrichtung: ein Dienst je Schritt, die Knöpfe in einer festen Fussleiste (M8). */
 .ew-titel{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:var(--fs-4);font-weight:700;margin:0 0 .5rem}
@@ -1667,14 +1732,16 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 /* Als Flex verliert summary sein Dreieck; ohne Zeichen sah „Einzelne Aufträge“ wie eine Überschrift aus. */
 .mon-einzeln > summary::before{content:"";flex:none;width:.45em;height:.45em;margin:0 .2em;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg)}
 .mon-einzeln[open] > summary::before{transform:rotate(45deg)}
-.btn[aria-disabled="true"]{opacity:.6}
+.btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+#gallery .dt :is(th,td).zahl{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#gallery .dt .tab-pnl{display:block;font-size:var(--fs-1)}
 /* Klappen öffnen mit kurzem Einblenden statt zu springen; bei reduzierter
    Bewegung schaltet die Regel oben jede Animation ab. */
 @keyframes aufklappen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .umenu-pop:not([hidden]),details[open] > :is(.import-klappe,.mehr-liste){animation:aufklappen .14s ease-out}
-/* Die Wertlinie in Finanzen bleibt blau, auch wo die Marke rot ist (Noppe,
-   Hochglanz): Rot liest sich bei Beträgen als Verlust. Werkbank hat kein Rot. */
-:root{--chart-wert:var(--chart-new)}
+/* Die Wertlinie trägt die Farbe der Beträge (--preis, sonst der Akzent): Wo die Marke rot ist (Noppe, Hochglanz),
+   läse sich Rot als Verlust, und ein festes Blau passte zu keinem Akzent. Werkbank: Messing. */
+:root{--chart-wert:var(--preis,var(--b600))}
 [data-theme="werkbank"]{--chart-wert:var(--messing)}
 /* Der Dialog selbst bekommt beim Öffnen den Fokus nur als Ausgangspunkt für Tab; ein Ring um die ganze Fläche lenkt ab. */
 .ovl > [tabindex="-1"]:focus-visible{outline:none}
@@ -1706,8 +1773,8 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .alarm-ue-betrag{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .filter-zahl{display:inline-grid;place-items:center;min-width:1.25rem;height:1.25rem;padding:0 4px;border-radius:999px;background:var(--b600);color:var(--auf-primaer,#fff);font-size:var(--fs-0);font-weight:700}
 .filter-zahl[hidden]{display:none}
-#tab-gallery .filterleiste > .filter-knopf{position:relative}
-#tab-gallery .filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
+.filterleiste > .filter-knopf{position:relative}
+.filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
 /* minmax(0, …): Bei grosser Schrift schrumpfen die Spalten und der Knopf bricht
    um, statt die Seite seitlich zu verschieben (WCAG 1.4.10). */
 .haushalt-liste{list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:minmax(0,max-content) minmax(0,max-content);align-items:center;column-gap:.6rem;row-gap:.4rem}
@@ -1720,3 +1787,5 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .quelle-stand.quelle-ok{color:var(--gewinn,var(--g700))}
 .quelle-stand.quelle-fehler{color:var(--r700)}
 .v-btn-text{display:none}
+.zeilen-aktionen{white-space:nowrap}
+.zeilen-aktionen > .btn + .btn{margin-left:4px}

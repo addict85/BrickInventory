@@ -1,16 +1,18 @@
 package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.model.lokal.Bestandsart
-import ch.brickinventoryapp.model.data.model.AddMinifigRequest
-import ch.brickinventoryapp.model.data.model.AddPartRequest
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Figurenerfassung
+import ch.brickinventoryapp.model.fach.Merkwunsch
+import ch.brickinventoryapp.model.fach.Stueckaenderung
+import ch.brickinventoryapp.model.fach.Teilerfassung
 import ch.brickinventoryapp.model.fach.Zustand
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
-@Serializable
+/**
+ * Eine Änderung, die ohne Verbindung im Ausgang wartet, in Fachwerten; die Anfrage daraus
+ * baut erst core-data beim Senden. Mengen von Sets gehen als Schritt, damit zwei Geräte
+ * zusammen +2 ergeben. Auf der Platte liegt sie als [Ausgangsform].
+ */
 sealed class Bearbeitung : Offlineablage.Wirkung {
     /** Welche lokale Liste die Änderung betrifft. */
     abstract val art: Bestandsart
@@ -20,69 +22,55 @@ sealed class Bearbeitung : Offlineablage.Wirkung {
     /** Wofür die Änderung gilt (Set-, Teile- oder Figurennummer) — für den Hinweis. */
     abstract val ziel: String
 
-    @Serializable @SerialName("set_menge")
     data class SetMenge(val setNumber: String, val schritt: Int) : Bearbeitung() {
         override val art get() = Bestandsart.SETS
         override val ziel get() = setNumber
     }
 
-    @Serializable @SerialName("set_erfassen")
-    data class SetErfassen(val anfrage: AddSetRequest) : Bearbeitung() {
+    data class SetErfassen(val wunsch: Erfassungswunsch) : Bearbeitung() {
         override val art get() = Bestandsart.SETS
-        override val ziel get() = anfrage.setNumber
+        override val ziel get() = wunsch.setNumber
     }
 
-    @Serializable @SerialName("merkposten_anlegen")
-    data class MerkpostenAnlegen(val anfrage: MerkpostenRequest) : Bearbeitung() {
+    data class MerkpostenAnlegen(val wunsch: Merkwunsch) : Bearbeitung() {
         override val art get() = Bestandsart.MERKLISTE
-        override val ziel get() = anfrage.setNumber
+        override val ziel get() = wunsch.setNumber
     }
 
-    @Serializable @SerialName("merkposten_loeschen")
     data class MerkpostenLoeschen(val setNumber: String, val zustand: Zustand, val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MERKLISTE
         override val ziel get() = setNumber
     }
 
-    @Serializable @SerialName("teil_erfassen")
-    data class TeilErfassen(val anfrage: AddPartRequest) : Bearbeitung() {
+    data class TeilErfassen(val erfassung: Teilerfassung) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_TEILE
-        override val ziel get() = anfrage.partNumber
+        override val ziel get() = erfassung.nummer
     }
 
-    /**
-     * Die Anfrage trägt die neue Menge und, wenn die bisherige bekannt war, den
-     * Schritt dorthin: Ein Server mit quantity_delta zählt zwei Geräte zusammen,
-     * einer ohne nimmt die Menge — dann gewinnt wie früher der Letzte.
-     */
-    @Serializable @SerialName("teil_aendern")
-    data class TeilAendern(val partNumber: String, val colorId: Int, val anfrage: UpdateManualItemRequest,
+    /** Die Änderung trägt die neue Menge und, wenn die bisherige bekannt war, den Schritt dorthin. */
+    data class TeilAendern(val partNumber: String, val colorId: Int, val aenderung: Stueckaenderung,
                            val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_TEILE
         override val ziel get() = partNumber
     }
 
     /** Löschen wartet wie jede Änderung; was der Server schon nicht mehr kennt, gilt als gelöscht. */
-    @Serializable @SerialName("teil_loeschen")
     data class TeilLoeschen(val partNumber: String, val colorId: Int, val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_TEILE
         override val ziel get() = partNumber
     }
 
-    @Serializable @SerialName("figur_erfassen")
-    data class FigurErfassen(val anfrage: AddMinifigRequest) : Bearbeitung() {
+    data class FigurErfassen(val erfassung: Figurenerfassung) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_FIGUREN
-        override val ziel get() = anfrage.figNumber
+        override val ziel get() = erfassung.nummer
     }
 
-    @Serializable @SerialName("figur_aendern")
-    data class FigurAendern(val figNumber: String, val anfrage: UpdateManualItemRequest,
+    data class FigurAendern(val figNumber: String, val aenderung: Stueckaenderung,
                             val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_FIGUREN
         override val ziel get() = figNumber
     }
 
-    @Serializable @SerialName("figur_loeschen")
     data class FigurLoeschen(val figNumber: String, val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_FIGUREN
         override val ziel get() = figNumber

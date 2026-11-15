@@ -1,6 +1,4 @@
 import type { Db } from '../db/database';
-import { logAndContinue } from '../src/infra/fehler';
-import { verschluesseleGutscheinAltbestand } from '../src/gutscheine';
 import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
 import type { Dienste } from './verdrahtung';
@@ -34,9 +32,9 @@ export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluessel
   const n =
     (await d.gutscheine.nummernNachverschluesseln()) +
     (await d.gutscheine.kopienVerschluesseln()) +
-    (await d.konto.verschluesseleAltbestand()) +
+    (await d.faktoren.verschluesseleAltbestand()) +
     (await d.idempotenz.antwortenUmschluesseln()) +
-    (await verschluesseleGutscheinAltbestand());
+    (await d.gutscheine.verschluesseleAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await d.idempotenz.alteAbdrueckeLoeschen();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
@@ -50,10 +48,10 @@ export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluessel
 export async function schluesselWechsel(d: Dienste): Promise<number | null> {
   if (!altSchluessel()) return null;
   const n =
-    (await d.konto.verschluesseleAltbestand({ alle: true })) +
+    (await d.faktoren.verschluesseleAltbestand({ alle: true })) +
     (await d.gutscheine.gutscheineNeuVerschluesseln()) +
     (await d.gutscheine.kopienVerschluesseln(true)) +
-    (await verschluesseleGutscheinAltbestand({ alle: true }));
+    (await d.gutscheine.verschluesseleAltbestand({ alle: true }));
   // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
   await d.idempotenz.alleVergessen();
   console.log(
@@ -63,12 +61,22 @@ export async function schluesselWechsel(d: Dienste): Promise<number | null> {
   return n;
 }
 
+/** Der Web-Prozess allein darf Gutscheine nicht anfassen (Web-Systemrolle): Er wartet,
+ * bis der Dienst jobs den Altbestand umgestellt hat, statt alte Zeilen zu lesen. */
+export async function warteAufAltbestand(d: Dienste, takt = 2000): Promise<void> {
+  for (let n = 0; !(await d.auftraege.liesZustand(ALTBESTAND_MARKE)); n++) {
+    if (n % 15 === 0) console.log('[geheimnis] warte, bis der Dienst jobs die Geheimnisse auf v2 umgestellt hat');
+    await new Promise(r => setTimeout(r, takt));
+  }
+}
+
 /**
  * Schema und Migrationen, danach die Bild-Hilfsdienste — in JEDEM
  * Arbeitsprozess, weil sie prozess-lokal sind (Bestand im Speicher, Takt des
  * Puffers). Hier und nicht in db/: Die Datenbankschicht kennt keine Jobs.
+ * Umschlüsseln nur mit `jobs`: Allein dessen Systemrolle erreicht die Gutscheine.
  */
-export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
+export async function bereiteDatenbankVor(db: Db, d: Dienste, o: { jobs?: boolean } = {}): Promise<void> {
   // Beim Start statt bei der ersten Verschlüsselung: Ein falscher oder alter
   // Ort des Schlüssels soll im Startprotokoll stehen.
   datenSchluessel();
@@ -80,8 +88,11 @@ export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
       'Die Rolle für Arbeit über Kontogrenzen unterliegt dem Zeilenschutz: PGSYSTEM_USER und ' +
         'PGSYSTEM_PASSWORD(_FILE) auf die Systemrolle setzen (postgres/app-rolle.sh, UPGRADE.md#systemrolle).',
     );
-  await altbestandAufruesten(d);
-  await schluesselWechsel(d);
-  await d.katalog.initImageMisses().catch(logAndContinue('db:image_misses'));
-  await d.katalog.initImageQueue().catch(logAndContinue('db:image_wanted'));
+  if (o.jobs === false) await warteAufAltbestand(d);
+  else {
+    await altbestandAufruesten(d);
+    await schluesselWechsel(d);
+  }
+  await d.bilder.starteFehlanzeige();
+  await d.bilder.starteBildbedarf();
 }

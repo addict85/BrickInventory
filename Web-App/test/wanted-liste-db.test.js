@@ -218,45 +218,16 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
 });
 
 /**
- * .10.: was der SCHREIBWEG mit `farbeOffen` tut
- *
- * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
- *
- * Ausgangslage, dieselbe Datei, derselbe Aufruf: `# pass 17 / # fail 0`.
- * Jede Gegenprobe ist EINE Änderung in src/merkliste/wantedListe.ts, danach wieder
- * zurückgenommen (die Datei wurde gegen ihre Sicherung verglichen).
- *
- *   A  die alte Fassung des Schreibwegs: `a.farbeOffen` aus der Abbruch-
- *      bedingung entfernt, damit der offene Posten wieder mit
- *      `color_id: a.rbFarbe ?? 0` hinausgeht
- *      → `# pass 13 / # fail 4`. Rot sind DREI Unterfälle, nicht einer:
- *        „eine offene Farbe wird nicht erfunden" („Der Anleger bekam 2
- *        Posten statt einem"), „ein zweiter Lauf stockt auf" und „in der
- *        Vorschau wird nichts geschrieben" — denn mit dem erfundenen
- *        Schwarz zählt der Bericht 2 statt 1. Eine Gegenprobe darf mehr
- *        umwerfen als den Fall, für den sie gedacht war; sie trifft hier
- *        alles, was an der Zahl hängt.
- *   B  `color_name`/`color_hex` nicht mehr übergeben (die zwei Zeilen
- *      gelöscht)
- *      → `# pass 15 / # fail 2`. Rot ist genau „die Farbe reist mit Namen
- *        und Farbwert": `expected: 'Red'`, bekommen hat der Anleger nichts.
- *   C  `action` des Anlegers ignoriert (`const wieAngelegt = true`)
- *      → `# pass 15 / # fail 2`. Rot ist genau „ein zweiter Lauf stockt
- *        auf, statt anzulegen": `angelegt: 1`, erwartet 0.
- *
- * Am 21.10. ist „MAXPRICE wird zum Kaufpreis" dazugekommen (Marcos
- * Entscheidung, den Betrag zu übernehmen). Ausgangslage damit
- * `# pass 21 / # fail 0`; die Zahlen von A bis C verschieben sich
- * entsprechend.
- *
- *   M  `unit_price` wieder weggelassen (der Stand vor Marcos Wunsch)
- *      → `# pass 19 / # fail 2`. Rot: „MAXPRICE wird zum Kaufpreis".
- *   N  `unit_price: a.posten.maxPreis` ohne die Bedingung, also auch bei
- *      MAXPRICE=-1 ein Feld mit `null`
- *      → `# pass 19 / # fail 2`. Rot: derselbe Fall, zweite Hälfte. Das
- *        Feld muss FEHLEN und nicht null sein — die Anleger unterscheiden
- *        „nichts angegeben" (dann gilt der Marktpreis) von einer
- *        ausdrücklichen Null, und nur das Weglassen führt zum Marktpreis.
+ * Was der Schreibweg mit `farbeOffen` tut. Gegenproben, je eine Änderung in
+ * src/merkliste/wantedListe.ts:
+ *   A  `a.farbeOffen` aus der Abbruchbedingung entfernt (Posten mit `color_id: 0`)
+ *      → rot: „eine offene Farbe wird nicht erfunden“, „ein zweiter Lauf stockt auf“,
+ *      „in der Vorschau wird nichts geschrieben“
+ *   B  `color_name`/`color_hex` nicht übergeben → rot: „die Farbe reist mit Namen …“
+ *   C  `action` des Anlegers ignoriert → rot: „ein zweiter Lauf stockt auf …“
+ *   M  `unit_price` weggelassen → rot: „MAXPRICE wird zum Kaufpreis“
+ *   N  `unit_price` auch bei MAXPRICE=-1 (als null) → rot: ebenda; das Feld muss
+ *      FEHLEN, nur dann gilt der Marktpreis
  */
 test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 1 }, async t => {
   try {
@@ -281,7 +252,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   // BL-Farbe 5 ist abbildbar, 85 nicht — genau Marcos Lage.
   const xml = `<INVENTORY>${item('P', '3001', 5, 10)}${item('P', '3001', 85, 7)}</INVENTORY>`;
 
-  /** Ein Anleger, der nur mitschreibt. `action` wie addManualPart. */
+  /** Ein Anleger, der nur mitschreibt. `action` wie manuellesTeilAnlegen. */
   function zaehler(zweiterLauf = false) {
     const gesehen = [];
     return {
@@ -374,7 +345,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(bericht.angelegt, 1, 'Der abbildbare Posten muss angelegt werden');
   });
 
-  // Abbrechen (Marcos Wunsch vom 20.10., indirekt)
+  // Abbrechen
 
   await t.test('ein Abbruch hält nach spätestens zehn Posten an', async () => {
     // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die

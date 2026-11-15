@@ -27,6 +27,7 @@ const ZWEI_SETS = {
 };
 
 test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut versuchen“', async () => {
+  /** @type {object} */
   let antwort = SERVERFEHLER;
   const { w, d } = await oeffneOberflaeche({ '/v1/sets': () => antwort });
   try {
@@ -47,6 +48,7 @@ test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut ver
 });
 
 test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () => {
+  /** @type {object} */
   let antwort = ZWEI_SETS;
   const { w, d } = await oeffneOberflaeche({ '/v1/sets': () => antwort });
   try {
@@ -81,7 +83,8 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
       ['parts', '#parts-main'],
       ['minifigs', '#figs-list'],
       ['catalog', '#catalog-grid'],
-      ['finance', '#fin-tbl'],
+      // Seit Runde 24 (M2) oben im Diagrammkasten, solange noch nichts geladen war.
+      ['finance', '#portfolio-chart'],
     ]) {
       await reiter(w, tab);
       await warte(() => d.querySelector(`${ziel} .fehler-zustand`));

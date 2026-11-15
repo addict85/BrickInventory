@@ -14,7 +14,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
@@ -29,13 +29,13 @@ const stoerung = async () => {
   if (rebrickable === 'gestoert') throw new Error('Rebrickable antwortet nicht');
   return null;
 };
-ersetze('src/katalog/rebrickableKatalog.js', { getAllSetParts: stoerung });
-ersetze('src/katalog/quellen.js', { getSetMinifigs: stoerung });
+ersetze('src/katalog/rebrickableKatalog.js', { alleTeileDesSets: stoerung });
+testQuellen(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};
-ersetze('src/katalog/partsImport.js', { importiereTeile: still, fetchMissingBlIds: still });
-ersetze('src/katalog/minifigsImport.js', { importiereFiguren: still });
-ersetze('src/auftraege/anleitungsAuftrag.js', { anleitungEinreihen: still });
+ersetze('src/katalog/partsImport.js', { blNummernNachladen: still });
+ersetze('src/sets/setInhaltImport.js', { importiereTeile: still, importiereFiguren: still });
+ersetze('src/katalog/anleitungsAuftrag.js', { anleitungEinreihen: still });
 ersetze('src/katalog/teileAnreicherung.js', {
   enrichSetParts: stoerung,
   enrichSetMinifigs: still,
@@ -57,15 +57,16 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const SN = `99${String(process.pid).slice(-4)}-1`;
-  const { teilelisteDesSets, figurenlisteDesSets } = require('./helpers/sources').bereichsSeite('sets');
+  const { figurenlisteDesSets } = require('./helpers/sources').bereichsSeite('sets');
+  const { teilelisteDesSets } = _req('src/sets/inhalt.js');
 
   await t.test('eine gestörte Quelle ist keine leere Liste', async () => {
     rebrickable = 'gestoert';
-    const r = await teilelisteDesSets(SN, async () => {});
+    const r = await teilelisteDesSets(require('./helpers/sources').testKontext('sets'), SN, async () => {});
     assert.equal(r.source, 'quelle_gestoert');
     assert.match(r.error, /Rebrickable antwortet nicht/);
     rebrickable = 'leer';
-    const leer = await teilelisteDesSets(SN, async () => {});
+    const leer = await teilelisteDesSets(require('./helpers/sources').testKontext('sets'), SN, async () => {});
     assert.equal(leer.source, 'not_found');
     assert.equal(leer.error, undefined);
   });
@@ -81,13 +82,26 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   await t.test('die Nacharbeit nennt gescheiterte Schritte', async () => {
     rebrickable = 'gestoert';
     const staende = [];
-    const { zieheNach } = require('./helpers/sources').bereichsSeite('sets');
-    await zieheNach(SN, 0, 'zweit', {
-      fortschritt: async f => {
-        staende.push(f);
-        return true;
-      },
-    });
+    // Über die angemeldete Art, wie der Worker sie ausführt.
+    const nacharbeit = require('./helpers/sources')
+      .testDienste()
+      .auftraege.angemeldeteArten()
+      .find(a => a.art === 'nacharbeit');
+    // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
+    await require('./helpers/bestand').katalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
+    try {
+      await nacharbeit.ausfuehren(
+        { set_number: SN, user_id: 0, art: 'zweit' },
+        {
+          fortschritt: async f => {
+            staende.push(f);
+            return true;
+          },
+        },
+      );
+    } finally {
+      await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
+    }
     assert.deepEqual(
       staende.map(f => f.ohne),
       [['teile-anreichern', 'bilder']],

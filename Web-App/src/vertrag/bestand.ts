@@ -3,7 +3,9 @@ import { eingabe } from '../infra/validate';
 import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
 /** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
 const LAGER_KONTEN = z.string().regex(/^[0-9,]{0,200}$/);
-import { DEGRADIERT, GenericResponse } from './gemeinsam';
+import { DEGRADIERT, Erfassungsantwort } from './gemeinsam';
+
+export { Erfassungsantwort };
 
 export const Acquisition = z.looseObject({
   id: z.number().int(),
@@ -11,12 +13,12 @@ export const Acquisition = z.looseObject({
   purchase_price: z.number().nullable().optional(),
   unit_price: z.number().nullable().optional(),
   condition: z.string(),
-  created_at: zeit.nullable().optional(),
-  owner_user_id: z.number().int().nullable().optional(),
+  created_at: zeit.nullable(),
+  owner_user_id: z.number().int(),
   price_estimated: z.boolean(),
-  currency: z.string().nullable().optional(),
+  currency: z.string().nullable(),
   /** Der Preis in der Währung des Kontos (Kurs des Kauftags); null ohne Preis oder ohne Kurs. */
-  preis_konto: z.number().nullable().optional(),
+  preis_konto: z.number().nullable(),
 });
 
 export const AcquisitionTotals = z.looseObject({
@@ -43,7 +45,7 @@ export const DeleteWithQuantityResponse = z.looseObject({
 });
 
 export const Lagerort = z.looseObject({
-  figuren: z.number().int().nullable().optional(),
+  figuren: z.number().int().nullable(),
   ort: z.string(),
   sets: z.number().int(),
   teile: z.number().int(),
@@ -56,35 +58,30 @@ export const LagerortEintrag = z.looseObject({
 });
 
 export const LagerortEintragResponse = z.looseObject({
-  success: z.boolean().optional(),
-  ort: LagerortEintrag.nullable().optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  ort: LagerortEintrag.nullable(),
 });
 
 export const LagerortResponse = z.looseObject({
-  success: z.boolean().optional(),
+  success: z.boolean(),
   storage: z.string().nullable().optional(),
   changed: z.number().int().optional(),
-  error: z.string().nullable().optional(),
 });
 
 export const LagerortVorgabeResponse = z.looseObject({
-  success: z.boolean().optional(),
-  vorgabe: LagerortEintrag.nullable().optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  vorgabe: LagerortEintrag.nullable(),
 });
 
 export const LagerortVorratResponse = z.looseObject({
   success: z.boolean(),
   orte: z.array(LagerortEintrag),
-  vorgabe: LagerortEintrag.nullable().optional(),
-  error: z.string().nullable().optional(),
+  vorgabe: LagerortEintrag.nullable(),
 });
 
 export const LagerorteResponse = z.looseObject({
   success: z.boolean(),
   orte: z.array(Lagerort),
-  error: z.string().nullable().optional(),
 });
 
 export const PapierkorbEintrag = z.looseObject({
@@ -157,17 +154,17 @@ export const routen = {
     eingabe: z.strictObject({ storage: TEXT().nullable().optional() }),
     antwort: LagerortResponse,
   },
-  'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
-  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
+  'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: Erfassungsantwort, eingabe: Erfassungsaenderung },
+  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: Erfassungsantwort },
   'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': {
-    antwort: GenericResponse,
+    antwort: Erfassungsantwort,
     eingabe: Erfassungsaenderung,
   },
   'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': {
     eingabe: OHNE_RUMPF,
     antwort: DeleteWithQuantityResponse,
   },
-  'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
+  'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: Erfassungsantwort, eingabe: Erfassungsaenderung },
   'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': {
     eingabe: OHNE_RUMPF,
     antwort: DeleteWithQuantityResponse,

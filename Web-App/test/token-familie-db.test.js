@@ -33,7 +33,7 @@ const { datenOderSkip } = require('./helpers/db');
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art, o) => {
+  mailKontoHinweis: async (an, _name, art, o) => {
     gesendet.push({ an, art, name: o.passkey });
     return { success: true };
   },
@@ -103,7 +103,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
 
   await t.test('der Vorgänger ist als verbraucht vermerkt', async () => {
     assert.equal(await gilt(b), true, 'die erste Nutzung des Nachfolgers');
-    assert.deepEqual(await verbraucht(), [auth.hashToken(a)]);
+    assert.deepEqual(await verbraucht(), [auth.tokenAbdruck(a)]);
     assert.equal(await gilt(a), false, 'der Vorgänger gilt nach der Überlappung nicht mehr');
   });
 
@@ -137,10 +137,10 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
     const c2 = await ruf('/token-rotieren', anderes, {});
     assert.equal(await gilt(c2.body.token), true);
     assert.equal((await verbraucht()).length, 1, 'Vorbedingung: ein Vermerk der lebenden Familie');
-    await auth.purgeExpiredTokens();
+    await auth.tokensAufraeumen();
     assert.equal((await verbraucht()).length, 1, 'der Vermerk einer lebenden Familie bleibt');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
-    await auth.purgeExpiredTokens();
+    await auth.tokensAufraeumen();
     assert.deepEqual(await verbraucht(), []);
   });
 });

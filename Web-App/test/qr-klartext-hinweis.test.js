@@ -8,7 +8,7 @@
  *      „http:// …“
  *   B  (01.11.2026) qr.klartext_hinweis und tls.ohne_https auf dem alten Text
  *      („… geht unverschlüsselt mit“) → rot: „http:// …“ und „ohne HTTPS …“
- *   C  (08.11.2026) in settings.js wieder `let secs = 1800` → rot: „der
+ *   C  (08.11.2026) in einstellungen.js wieder `let secs = 1800` → rot: „der
  *      Countdown zählt von der Dauer des Servers“; settings.qr.hint in de.js
  *      wieder mit „30 Minuten“ → rot: dort (Hinweis nennt nicht 5 Minuten).
  *      Dass der Server 300 Sekunden nennt, prüft anmeldung-regeln-db.test.js.
@@ -58,10 +58,10 @@ test('ohne HTTPS nennt die TLS-Fläche, dass die App sich nur über HTTPS verbin
 });
 
 test('der Countdown zählt von der Dauer des Servers, der Hinweis nennt dieselbe', async () => {
-  for (const [sprache, minuten] of [
+  for (const [sprache, minuten] of /** @type {[string, RegExp][]} */ ([
     ['de', /5 Minuten gültig/],
     ['en', /valid for 5 minutes/],
-  ]) {
+  ])) {
     const { w, d } = await oeffneOberflaeche(
       {
         '/v1/auth/qr-token': {

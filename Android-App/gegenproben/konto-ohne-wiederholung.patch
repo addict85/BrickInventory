@@ -1,4 +1,4 @@
-Gegenprobe: Passwort ändern im Konto auch ohne passende Wiederholung frei
+Gegenprobe: Passwort ändern im Konto schickt ohne Prüfung der Wiederholung ab
 Modul: app
 Test: ch.brickinventoryapp.app.UnterseitenTest
 Rot: Konto wechselt
@@ -6,12 +6,12 @@ Rot: Konto wechselt
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
-@@ -222,7 +222,7 @@
+@@ -258,7 +258,7 @@
+             KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) }))
+         // Tonal statt umrandet: Ein deaktivierter umrandeter Knopf war kaum zu sehen.
          FilledTonalButton(
-             onClick = onAendern,
-             enabled = !speichert && pwAktuell.isNotBlank() && pwNeu.isNotEmpty() &&
--                !passwortZuKurz(pwNeu) && pwWiederholt == pwNeu,
-+                !passwortZuKurz(pwNeu) && pwWiederholt.length >= 0,
+-            onClick = { pruefung.absenden(pwAktuell, pwNeu, pwWiederholt, onAendern) },
++            onClick = onAendern,
+             enabled = !speichert,
+             colors = tonKnopfFarben(),
              modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-         ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
-     }

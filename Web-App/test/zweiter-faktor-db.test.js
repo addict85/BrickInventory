@@ -5,7 +5,7 @@
  * Gegenproben (25.10., gemessen):
  *   A  istAktiv-Prüfung in pruefeAnmeldedaten() entfernt → rot: „ohne Code angemeldet"
  *   B  `letzter_schritt < $2` in pruefeCode() entfernt   → rot: „derselbe Code zweimal"
- *   C  recordLoginFailure beim falschen Code entfernt    → rot: „keine Sperre"
+ *   C  anmeldungGescheitert beim falschen Code entfernt    → rot: „keine Sperre"
  *   D  hotp(): Offset aus dem ersten statt letzten Byte  → rot: RFC-Vektoren
  *   E  change-password wieder mit 401                    → rot: „die Clients melden dann ab"
  *   F  (28.10.) beendeAndereZugaenge() beim Bestätigen entfernt → rot: „Ein
@@ -35,7 +35,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -44,14 +44,14 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test('RFC 6238: die Testvektoren für SHA-1', () => {
   // Anhang B der RFC: Schlüssel "12345678901234567890", acht Stellen.
   const schluessel = Buffer.from('12345678901234567890');
-  for (const [sekunden, erwartet] of [
+  for (const [sekunden, erwartet] of /** @type {[number, string][]} */ ([
     [59, '94287082'],
     [1111111109, '07081804'],
     [1111111111, '14050471'],
     [1234567890, '89005924'],
     [2000000000, '69279037'],
     [20000000000, '65353130'],
-  ]) {
+  ])) {
     assert.equal(zf.hotp(schluessel, Math.floor(sekunden / 30), 8), erwartet, `T=${sekunden}`);
   }
   // Und Base32 hin und zurück, wie es eine Authenticator-App liest.

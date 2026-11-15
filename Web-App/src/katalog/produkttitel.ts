@@ -13,10 +13,11 @@ function gueteIndex(stellen: number): number {
   return i < 0 ? GUETE.length : i;
 }
 
-/** @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt */
-export function setnummerKandidaten(titel: string): string[] {
+/** `jahr`: das laufende; eine Zahl darüber hinaus ist kein Erscheinungsjahr.
+ * @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt */
+export function setnummerKandidaten(titel: string, jahr: number): string[] {
   if (!titel) return [];
-  const jahrGrenze = new Date().getFullYear() + 1;
+  const jahrGrenze = jahr + 1;
 
   type Kandidat = { wert: string; mitSuffix: boolean; mitRaute: boolean; jahr: boolean; guete: number };
   const gefunden: Kandidat[] = [];

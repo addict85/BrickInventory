@@ -1,6 +1,5 @@
 import * as repo from './repository/gemeinsam';
-export { entferneSetInhalt, kopiereSetInhalt, legeManuellAn } from './repository/gemeinsam';
-import type { DbSchnittstelle } from '../../db/database';
+import * as kaeufe from './repository/kaeufe';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, type Sicht } from '../haushalt';
 import type { BestandKontext } from './kontext';
@@ -48,7 +47,7 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
 
 // Wie bei Sets: Eine gebrauchte Erfassung macht den Eintrag gebraucht; eine Abfrage je Seite.
 type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
-export async function applyManualCondition<R extends Schluessel>(
+export async function manuellenZustandSetzen<R extends Schluessel>(
   k: BestandKontext,
   userId: number | number[],
   rows: R[],
@@ -155,17 +154,21 @@ export async function verwendendeSets(
   return { item, sets };
 }
 
-/** Eine Stelle für Löschroute und Aufräumen der Erfassungen.
- * @param dbh Transaktionsgriff, wo einer gebraucht wird */
-export async function loescheManuellesTeil(
-  dbh: Pick<DbSchnittstelle, 'run'>,
+/** Eine Stelle für Löschroute und Aufräumen der Erfassungen; in einer Transaktion über `t`. */
+/** Die Zeile und, gab es sie, ihre Käufe: Die Finanzsummen zählten das Teil sonst weiter. */
+export async function loescheManuell(
+  k: BestandKontext,
+  art: 'part' | 'fig',
   ownerId: number,
-  partNumber: string,
-  colorId: number,
+  schluessel: (string | number)[],
 ) {
-  return repo.loescheTeilZeile(dbh, ownerId, partNumber, colorId);
-}
-
-export async function loescheManuelleFigur(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {
-  return repo.loescheFigurZeile(dbh, ownerId, figNumber);
+  const [nummer = '', farbe = 0] = schluessel;
+  const r =
+    art === 'part'
+      ? await repo.loescheTeilZeile(k.db, ownerId, String(nummer), Number(farbe))
+      : await repo.loescheFigurZeile(k.db, ownerId, String(nummer));
+  if (!r.changes) return r;
+  if (art === 'part') await kaeufe.loescheTeilErfassungen(k.db, ownerId, String(nummer), Number(farbe) || 0);
+  else await kaeufe.loescheFigurErfassungen(k.db, ownerId, String(nummer));
+  return r;
 }

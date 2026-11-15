@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.dienste.service
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import android.content.Context
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.service.ExportErgebnis
@@ -24,7 +24,7 @@ internal class DienstExport @Inject constructor(
 ) : TeilelistenExport {
     override val fortschritt: Flow<PdfFortschritt?> = manager.state.map { (it as? PdfExportState.Running)?.fortschritt }
 
-    override suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis {
+    override suspend fun erzeuge(auftrag: Teilelistenauftrag): ExportErgebnis {
         manager.beauftrage(auftrag)
         PdfExportService.start(ctx)
         return when (val r = manager.state.first { it is PdfExportState.Done || it is PdfExportState.Error }) {
@@ -32,7 +32,7 @@ internal class DienstExport @Inject constructor(
             is PdfExportState.Error -> ExportErgebnis.Fehler(r.grund)
             // Ohne else-Zweig, damit ein neuer Zustand hier auffällt; first{} lässt beide nicht durch.
             is PdfExportState.Idle, is PdfExportState.Running ->
-                ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Unbekannt()))
+                ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Fehler.Unbekannt()))
         }
     }
 }

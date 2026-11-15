@@ -1,0 +1,29 @@
+Gegenprobe: Zustandsfilter der Merkliste wieder als Segmente statt Filterchips
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: Merkliste filtert den Zustand mit Chips
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
+index eeeb429..14be0aa 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
+@@ -49,6 +49,7 @@ import ch.brickinventoryapp.ui.components.KnopfStapel
+ import ch.brickinventoryapp.ui.components.ListeUndDetail
+ import ch.brickinventoryapp.ui.components.ScanKnopf
+ import ch.brickinventoryapp.ui.components.AuswahlChip
++import ch.brickinventoryapp.ui.components.SegmentWahl
+ import ch.brickinventoryapp.ui.components.SortierMenue
+ import ch.brickinventoryapp.ui.components.mitSchrift
+ import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterZeile
+@@ -211,7 +212,10 @@ internal fun MerklisteScreen(
+ 
+             // Der Zustand schränkt die Liste ein: ein Filter, also Chips wie in Galerie und
+             // Finanzen; Segmente stehen nur für Ansichten (Sets | Teile | Minifiguren).
+-            if (mitKopf) ZustandFilterChips(
++            if (mitKopf) SegmentWahl(
++                optionen = listOf(null to stringResource(R.string.filter_condition_all),
++                                  Zustand.NEU to stringResource(R.string.condition_new),
++                                  Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
+                 gewaehlt = zustand.zustandFilter,
+                 onWahl = { aktionen.setzeMerklisteZustand(it) },
+                 modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),

@@ -5,7 +5,7 @@ import { ico, setzeHtml } from './dom.js';
 // Platzhalter seiner Art statt des Browsersymbols.
 
 /**
- * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt actions.js den Platzhalter seiner Art (`ph`) an
+ * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt aktionen.js den Platzhalter seiner Art (`ph`) an
  * seine Stelle — dasselbe Bild wie für einen Eintrag ganz ohne Bild, statt des Browser-Symbols für kaputte
  * Bilder.
  * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', klasse?: string,
@@ -115,7 +115,7 @@ function stripOwnOrigin(src) {
 export const PLATZHALTER_SET = '/assets/set-placeholder.svg';
 
 /**
- * Ein festes Dialogbild neu belegen. Die Merker der Fehlerbehandlung (actions.js) hängen am Element und
+ * Ein festes Dialogbild neu belegen. Die Merker der Fehlerbehandlung (aktionen.js) hängen am Element und
  * blieben vom letzten Öffnen stehen: Beim zweiten Mal gab es dann keinen Platzhalter, nur ein kaputtes Bild.
  * @param {HTMLElement} el @param {string} src @param {string} [orig]
  */
@@ -136,6 +136,15 @@ export function setzeDialogbild(el, src, orig) {
 export function zoomStand(img) {
   if (!img.classList.contains('zoombar')) return;
   const leer = !img.getAttribute('src') || img.getAttribute('src') === PLATZHALTER_SET;
+  // Die Dialogbilder liegen in einem echten Knopf (Tastatur, Vorleser); gesperrt ist er kein Tab-Halt.
+  const knopf = img.parentElement;
+  if (knopf instanceof HTMLButtonElement && knopf.classList.contains('zoom-knopf')) {
+    knopf.disabled = leer;
+    knopf.toggleAttribute('aria-hidden', leer);
+    if (leer) knopf.removeAttribute('data-click');
+    else knopf.dataset.click = knopf.dataset.zoomKlick || '';
+    return;
+  }
   // Auch der Klick ruht: Eine Maus-Klickfläche ohne Tab-Halt wäre nur für die Maus da.
   if (leer) {
     img.removeAttribute('role');
@@ -213,7 +222,9 @@ export function thumbUrl(src) {
   return src;
 }
 
-// Lazy image loading with IntersectionObserver and fade-in
+/** Einer für alle Bilder der Seite. @type {IntersectionObserver | null} */
+let bildBeobachter = null;
+
 /**
  * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten alle
  * <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand da.
@@ -228,7 +239,7 @@ export function observeLazyImages(root) {
   imgs.forEach(img => {
     if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
   });
-  window._imgObserver ??= new IntersectionObserver(
+  bildBeobachter ??= new IntersectionObserver(
     (entries, obs) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
@@ -241,7 +252,7 @@ export function observeLazyImages(root) {
     },
     { rootMargin: '200px' },
   );
-  const beobachter = window._imgObserver;
+  const beobachter = bildBeobachter;
   imgs.forEach(img => {
     img.classList.add('observed');
     beobachter.observe(img);

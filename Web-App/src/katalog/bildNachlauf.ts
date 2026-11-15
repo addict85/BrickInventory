@@ -1,12 +1,11 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
-import { bilderFuerNachlauf } from './bildlage';
-import { logAndContinue } from '../infra/fehler';
-import { generateThumb } from './bilder/thumbs';
+import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
 import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
+import { bilderFuerNachlauf } from './bildlage';
 import type { KatalogKontext } from './kontext';
 
 async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
@@ -33,39 +32,37 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     if (k.beendet) throw new AuftragUnterbrochen();
   };
   for (const set_number of sets) {
-    await enrich.downloadSetImages(kx, set_number).catch(e => console.warn(`[img-dl-bg] ${set_number}: ${e.message}`));
+    await enrich.downloadSetImages(kx, set_number).catch((e: unknown) => meldeFehler(`bild-nachlauf:${set_number}`, e));
     await tick();
   }
   for (const p of manualParts) {
     // Ein Fehler lässt das Teil ohne Bild; der nächste Nachlauf versucht es wieder.
     const r = await versuche(
       'bild-nachlauf:downloadImage',
-      enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'),
+      enrich.downloadImage(kx, p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'),
     );
     const local = r.ok ? r.wert : null;
     if (local) {
-      // Einmal für alle Konten in den Katalog; scheitert es, liegt das Bild zwar
-      // auf der Platte, die Oberfläche zeigt es aber nicht — darum mit Protokoll.
-      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local).catch(
-        logAndContinue(`bilder:teil ${p.part_number}`),
-      );
+      // Einmal für alle Konten in den Katalog. Ein Schreibfehler bricht den Lauf ab wie bei
+      // den Figuren; der nächste findet die Datei und schreibt nach.
+      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
-      generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
+      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }
   for (const f of figsToFetch) {
     const r = await versuche(
       'bild-nachlauf:downloadImage',
-      enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig'),
+      enrich.downloadImage(kx, f.image_url, f.fig_number, 0, 'minifig'),
     );
     const local = r.ok ? r.wert : null;
     if (local) {
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
       // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
       await setzeFigurBildLokal(kx, f.fig_number, local);
-      generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
+      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }

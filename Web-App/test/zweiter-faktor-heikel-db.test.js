@@ -34,12 +34,12 @@ const { routerServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
 require('./helpers/sources').ersetzeDienste('mail', {
-  sendEmailGeaendertMail: async () => ({ success: true }),
-  sendVerificationMail: async () => ({ success: true }),
+  mailEmailGeaendert: async () => ({ success: true }),
+  mailBestaetigung: async () => ({ success: true }),
 });
 
 const db = S.testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Faktor-Passwort-1';

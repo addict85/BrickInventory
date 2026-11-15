@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -51,7 +50,7 @@ fun ProduktBild(
     /**
      * Die ganze Fläche als Bildgrund (Kacheln): Produktbilder stehen auf Weiss, und mit
      * weissem Grund geht ihr Rand in der Fläche auf, statt als Kasten in der Karte
-     * zu stehen. Im Dunkeln liegt ein Schleier darüber, damit die Fläche nicht blendet.
+     * zu stehen. Im Dunkeln trägt die Fläche den dunklen Ton des Designs.
      */
     bildgrund: Boolean = false,
     /** Abstand des Bilds zum Rand seiner Fläche; der Grund reicht bis an den Rand. */
@@ -62,13 +61,14 @@ fun ProduktBild(
     val ziel = (model as? ImageRequest)?.data ?: model
     var geladen by remember(ziel) { mutableStateOf(false) }
     val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    // Auch im Dunkeln ein Grund in der Farbe des Bilds, über die ganze Fläche gedämpft:
-    // Ein dunkler Rand um das weisse Bild stand als heller Kasten in der Karte.
-    val grund = if (bildgrund && geladen) Modifier.background(BILDGRUND) else Modifier
-    val schleier = if (bildgrund && geladen && dunkel) Modifier.drawWithContent {
-        drawContent(); drawRect(Color.Black, alpha = SCHLEIER_FLAECHE)
-    } else Modifier
-    Box(modifier.then(grund).then(schleier), contentAlignment = Alignment.Center) {
+    // Im Dunkeln eine dunkle Fläche aus dem Design statt gedämpftem Weiss: Eine hellgraue
+    // Fläche über die ganze Kachel blendete und sah in jedem dunklen Design gleich aus.
+    val grund = when {
+        !bildgrund || !geladen -> Modifier
+        dunkel -> Modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest)
+        else -> Modifier.background(BILDGRUND)
+    }
+    Box(modifier.then(grund), contentAlignment = Alignment.Center) {
         if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
         if (model != null) {
             AsyncImage(
@@ -77,9 +77,9 @@ fun ProduktBild(
                 contentDescription = contentDescription,
                 modifier = Modifier.matchParentSize().padding(innenAbstand),
                 contentScale = contentScale,
-                // Ohne Bildgrund (Katalog, kleine Vorschauen) dämpft der Schleier nur die Bildpunkte
-                // selbst; ein Rechteck darüber dunkelte auch die Karte um ein freigestelltes Bild.
-                colorFilter = if (dunkel && !bildgrund) DAEMPFUNG_DUNKEL else null,
+                // Im Dunkeln dämpft der Schleier nur die Bildpunkte selbst; ein Rechteck darüber
+                // dunkelte auch die Fläche um ein freigestelltes Bild.
+                colorFilter = if (dunkel) DAEMPFUNG_DUNKEL else null,
                 onState = { st ->
                     geladen = st is AsyncImagePainter.State.Success
                     onState?.invoke(st)
@@ -97,9 +97,6 @@ private val BILDGRUND = Color.White
  * Drittel wirkten die Produktbilder grau und matt.
  */
 private const val SCHLEIER_DUNKEL = 0.2f
-
-/** Der Schleier über einer ganzen Bildfläche: Sie ist grösser als das Bild, darum etwas dichter. */
-private const val SCHLEIER_FLAECHE = 0.3f
 
 /** Derselbe Schleier als Filter auf den Bildpunkten, für Bilder ohne eigenen Grund. */
 private val DAEMPFUNG_DUNKEL = ColorFilter.tint(Color.Black.copy(alpha = SCHLEIER_DUNKEL), BlendMode.SrcAtop)

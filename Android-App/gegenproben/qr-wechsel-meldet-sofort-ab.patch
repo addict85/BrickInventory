@@ -17,5 +17,5 @@ diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/an
 -                if (wechsel) ablage.kopplungsziel(neu) else ablage.saveServerUrl(neu)
 +                richteEin(neu)
                  when (val r = nachZertifikatsfrage(neu) { konto.qrLogin(token, geraet) }) {
-                     is Ergebnis.Success -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
-                     is Ergebnis.Error -> qrGescheitert(meldungen.meldung(r))
+                     is Ergebnis.Erfolg -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
+                     // Eine Absage ohne Satz heisst hier: Der Code gilt nicht.

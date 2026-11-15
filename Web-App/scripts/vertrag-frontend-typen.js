@@ -90,6 +90,20 @@ function erzeuge(dok) {
     }
   }
   aus.push(...routen.map((z, i) => (i === routen.length - 1 ? z + ';' : z)), '');
+  const stroeme = [];
+  for (const [pfad, ops] of Object.entries(dok.paths || {})) {
+    const schema = ops.get?.responses?.['200']?.content?.['text/event-stream']?.schema;
+    if (!schema) continue;
+    const muster = pfad.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
+    const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
+    stroeme.push(`  | { p: ${p}; e: ${typ(schema, '  ')} }`);
+  }
+  aus.push(
+    '/** Je Ereignisstrom (GET): Pfad und ein Ereignis, wie strom() in js/api.js es liefert. */',
+    'export type Strom =',
+    ...stroeme.map((z, i) => (i === stroeme.length - 1 ? z + ';' : z)),
+    '',
+  );
   return aus.join('\n');
 }
 

@@ -12,7 +12,7 @@
  *      und „/v1/sets/:nr/parts-list trifft nur seine Route“
  *   C  in api.d.ts FehlerZu durch ApiFehler ersetzt → rot: „ohne Prüfung auf
  *      success ist ein Feld undefined, nicht unbekannt“
- *   D  in acquisition-modals.js einen Pfad als Variable statt Vorlage → rot:
+ *   D  in kauf-dialoge.js einen Pfad als Variable statt Vorlage → rot:
  *      „api()-Pfade stehen als Literal oder Vorlage da“ (13 statt 12)
  */
 const { istAppModul } = require('../scripts/build-frontend');

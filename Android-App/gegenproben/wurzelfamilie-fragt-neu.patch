@@ -6,7 +6,7 @@ Rot: eine neue Wurzel desselben Betreibers gilt ohne neue Frage
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -254,7 +254,7 @@
+@@ -274,7 +274,7 @@
       * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
       */
      private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
@@ -14,13 +14,13 @@ diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sich
 +        if (oeffentlicherPin) lage.oeffentlich && lage.fingerabdruck == pin
          else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
  
-     /** Beide sind System-Wurzeln, und ihr Subjekt nennt dieselbe Organisation (O=). */
-@@ -292,7 +292,7 @@
-         if (pin in systemWurzeln) {
-             system()
+     /**
+@@ -327,7 +327,7 @@
              val wurzel = spkiFingerabdruck(anker(chain, fremdeHosts.acceptedIssuers) ?: chain.last())
--            if (wurzel == pin || gleicherBetreiber(pin, wurzel)) return
-+            if (wurzel == pin) return
+             val blatt = eigenerServer()?.let { pins.pin(blattPinSchluessel(it)) }
+             val blattPasst = blatt == null || chain.firstOrNull()?.let(::spkiFingerabdruck) == blatt
+-            if ((wurzel == pin || gleicherBetreiber(pin, wurzel)) && blattPasst) return
++            if (wurzel == pin && blattPasst) return
          } else if (passtZumPin(chain, pin)) return
          throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
      }

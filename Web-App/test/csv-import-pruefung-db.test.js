@@ -4,7 +4,7 @@
  * nicht still übersprungen, jedes Ergebnis nennt seine Zeile, ein dem Katalog
  * unbekanntes Set zählt als Warnung, und vor dem Übernehmen sagt die Prüfung,
  * welche Sets schon in der Sammlung sind. Datei wie im Bericht
- * (import-fehler.csv), Import als Auftrag mit gestelltem addSetWithDate.
+ * (import-fehler.csv), Import als Auftrag mit gestelltem setErfassen.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  csvMenge() wieder mit .replace(/[^0-9]/g, '') → rot: „jede Zeile mit
@@ -29,9 +29,8 @@ Module.prototype.require = function (name, ...rest) {
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => {
-        if (k === 'nacharbeitEinstellen') return async () => {};
-        if (k !== 'addSetWithDate') return t[k];
-        return async (_sk, sn, qty) => {
+        if (k !== 'setErfassen') return t[k];
+        return async (_sk, { setNumber: sn, menge: qty }) => {
           if (sn === 'abc') throw new Error('Das ist keine Setnummer');
           gebucht.push(`${sn}×${qty}`);
           return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { katalog_offen: true } : {}) };

@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
 import androidx.compose.foundation.layout.Box
@@ -34,6 +39,9 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -49,7 +57,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
@@ -68,17 +76,19 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ui.components.BILD_ERSATZ
 import ch.brickinventoryapp.ui.components.ErfassenFab
 import ch.brickinventoryapp.ui.components.MarkenKopf
 import ch.brickinventoryapp.ui.components.OfflineHinweis
 import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
 import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
+import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
@@ -87,8 +97,8 @@ import ch.brickinventoryapp.konto.ui.screens.StartpasswortMaske
 import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
 import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.Lesebreite
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.util.fmtInt
 import android.content.Context
@@ -98,8 +108,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsNode
 import java.util.Locale
 import org.robolectric.Shadows
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
@@ -125,12 +135,16 @@ import ch.brickinventoryapp.sammlung.ui.SammlungZiel
  *   finanzen-verlauf-zuerst     Verlauf wieder vor der Kopfkachel → rot „Finanzen nennen den Marktwert …“
  *   katalog-bild-ohne-grenze    Katalogbild wieder ohne Höchstbreite → rot „Katalog-Detail steht …“
  *   alarme-volle-breite         Preisalarme wieder in Listenbreite → rot „Konto und Preisalarme …“
+ *   alarm-feld-tablet-breit     Felder eines Alarms füllen auch die Tabletkarte → rot „Konto und Preisalarme …“
  *   markenkopf-immer-gross      Markenkopf auch bei 200 % gross → rot „Markenkopf bei 200 Prozent …“
  *   bewegung-immer-an           bewegungReduziert() liefert immer false → rot „reduzierte Bewegung …“
  *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
  *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
  *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
- *   startpasswort-ohne-grund    gesperrter Knopf ohne Grund → rot „Startpasswort-Maske sagt …“
+ *   startpasswort-ohne-pruefung Knopf schickt ohne Prüfung ab → rot „Startpasswort-Maske markiert …“
+ *   offline-ohne-handlung       Banner ohne „Erneut versuchen“ → rot „Offline-Hinweis bietet an …“
+ *   aufschluesselung-bricht     Aufschlüsselung wieder mit Leerzeichen in derselben Zeile → rot
+ *                               „Teile-Aufschluesselung bricht bei 200 Prozent …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -224,15 +238,24 @@ class GeruestUndFormularTest {
     }
 
     @Test
-    fun `Preisalarme zeigen die Schwelle als Betrag und die Richtung im Feld`() {
+    fun `Offline-Hinweis bietet an, die Liste erneut zu holen`() {
+        var geholt = 0
+        zeige { Column { OfflineHinweis(1_793_000_000_000L, onErneut = { geholt++ }) } }
+        compose.onNode(hasText(ctx.getString(R.string.common_retry)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals("Erneut versuchen holt die Liste", 1, geholt)
+    }
+
+    @Test
+    fun `Preisalarme zeigen die Schwelle als Betrag und die Richtung in der Wahl`() {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-                {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
+                {"set_number":"75192-1","condition":"N","richtung":"ueber","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-                KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
-                TeileRepository(welt.t.api, welt.t.cache),
+                testKontoRepository(welt.t.api, welt.t.io),
+                testVerwaltungRepository(welt.t.api), welt.t.alarme(),
+                testTeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
@@ -242,9 +265,13 @@ class GeruestUndFormularTest {
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
             }
             warte("Alarme") { vm.alarmUebersicht.value.geladen }
-            // „750.00“ wie jeder Betrag (de-CH), nicht die Rohzahl „750.0“; die Richtung im Feld.
+            // „750.00“ wie jeder Betrag (de-CH), nicht die Rohzahl „750.0“; das Feld heisst „Schwelle“,
+            // die Richtung steht gewählt in der Wahl darüber (N2 der zweiten UX-Prüfung). „Steigt
+            // über“, weil das Formular zum Anlegen „Fällt unter“ vorwählt.
             compose.onNode(hasSetTextAction() and hasText("750.00")).fetchSemanticsNode()
-            compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.detail_alert_chip_below))).fetchSemanticsNode()
+            compose.onNode(hasSetTextAction() and hasText("750.00") and hasText(ctx.getString(R.string.alerts_schwelle)))
+                .fetchSemanticsNode()
+            compose.onNode(hasText(ctx.getString(R.string.detail_alert_chip_above)) and isSelected()).fetchSemanticsNode()
             // Kein eigener Speichern-Knopf: gespeichert wird wie im Set-Detail beim Tippen.
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.settings_save)).assertCountEquals(0)
         } finally {
@@ -264,9 +291,10 @@ class GeruestUndFormularTest {
                     kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
                     onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
                 )
-                1 -> StartpasswortMaske(KontoUiState(fehler = fehler[1]), { _, _, _ -> }, {})
+                1 -> StartpasswortMaske(KontoUiState(speichern = Vorgang.Fehlgeschlagen(Meldung.Text(fehler[1]))), { _, _, _ -> }, {})
                 else -> ZweiterFaktorPflichtMaske(
-                    ZweiterFaktorUiState(aktiv = false, fehler = fehler[2]), {}, {}, {}, {})
+                    ZweiterFaktorUiState(aktiv = false, abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text(fehler[2]))),
+                    {}, {}, {}, {})
             }
         }
         val angesagt = SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)
@@ -310,9 +338,9 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-                KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
-                TeileRepository(welt.t.api, welt.t.cache),
+                testKontoRepository(welt.t.api, welt.t.io),
+                testVerwaltungRepository(welt.t.api), welt.t.alarme(),
+                testTeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
@@ -384,18 +412,25 @@ class GeruestUndFormularTest {
         }
     }
 
-    /** Ein gesperrter Hauptknopf sagt, was fehlt, bis alles da ist. */
+    /** Der Hauptknopf bleibt antippbar; leer markiert er das erste Feld und setzt den Cursor hinein. */
     @Test
-    fun `Startpasswort-Maske sagt, was zum Aendern fehlt`() {
-        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
-        val grund = ctx.getString(R.string.passwort_aendern_fehlt)
-        compose.onNodeWithText(grund).fetchSemanticsNode()
+    fun `Startpasswort-Maske markiert beim Absenden, was fehlt, und fokussiert das erste Feld`() {
+        var ersetzt = 0
+        zeige { StartpasswortMaske(KontoUiState(), { _, _, _ -> ersetzt++ }, {}) }
+        val knopf = compose.onNode(hasText(ctx.getString(R.string.konto_password_button)) and hasClickAction())
+        knopf.assertIsEnabled().performClick()
+        compose.waitForIdle()
+        assertEquals("Leer wird nichts abgeschickt", 0, ersetzt)
+        compose.onNodeWithText(ctx.getString(R.string.login_password_fehlt)).fetchSemanticsNode()
+        compose.onAllNodes(hasSetTextAction())[0].assertIsFocused()
         val felder = compose.onAllNodes(hasSetTextAction())
         felder[0].performTextInput("altes-passwort-1")
         felder[1].performTextInput("neues-passwort-12")
         felder[2].performTextInput("neues-passwort-12")
+        knopf.performClick()
         compose.waitForIdle()
-        compose.onAllNodesWithText(grund).assertCountEquals(0)
+        assertEquals("Vollständig geht es ab", 1, ersetzt)
+        compose.onAllNodesWithText(ctx.getString(R.string.login_password_fehlt)).assertCountEquals(0)
     }
 
     @Test
@@ -432,6 +467,29 @@ class GeruestUndFormularTest {
             val text = ctx.resources.getQuantityString(id, n, fmtInt(n))
             val b = compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             assertTrue("„$text“ ragt über den Rand ($b, Rand $rand)", b.right <= rand + 1f && b.width > 0f)
+        }
+    }
+
+    /** „82 Teile (42 aus Sets · 40 einzeln)“: Bei 200 % steht die Klammer auf eigener Zeile und bricht nie zwischen Zahl und Wort. */
+    @Test
+    fun `Teile-Aufschluesselung bricht bei 200 Prozent nicht zwischen Zahl und Wort`() {
+        zeige(schrift = 2f) {
+            Box(Modifier.width(360.dp)) {
+                KennzahlenReihe { GalleryStatChip(82, R.plurals.gallery_stat_parts, teileAufschluesselung(42, 40)) }
+            }
+        }
+        val haupt = ctx.resources.getQuantityString(R.plurals.gallery_stat_parts, 82, "82")
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNode(hasText(haupt, substring = true), useUnmergedTree = true).fetchSemanticsNode()
+            .config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        val l = layouts.single()
+        val text = l.layoutInput.text.text
+        fun zeile(stelle: Int) = l.getLineForOffset(stelle)
+        val klammer = text.indexOf('(')
+        assertTrue("Klammer beginnt eine Zeile: „$text“", klammer >= 0 && l.getLineStart(zeile(klammer)) == klammer)
+        Regex("""\d+[\s\u00A0]\p{L}+""").findAll(text.substring(klammer)).forEach { m ->
+            val von = klammer + m.range.first
+            assertEquals("„${m.value}“ bricht um in „$text“", zeile(von), zeile(klammer + m.range.last))
         }
     }
 
@@ -504,8 +562,8 @@ class GeruestUndFormularTest {
     fun `Detailkarten stehen auf dem Tablet in Lesebreite`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
-            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
-                isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(katalogDetail),
+                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
@@ -525,8 +583,8 @@ class GeruestUndFormularTest {
     fun `Katalog-Detail steht auf dem Tablet in zwei Spalten, Aufnehmen vor BrickLink`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
-            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
-                isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(katalogDetail),
+                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
@@ -551,7 +609,7 @@ class GeruestUndFormularTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading && !it.historyLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.bewertung.laedt && !it.verlauf.laedt } }
             val kopf = compose.onNodeWithText(ctx.getString(R.string.finance_market_avg), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val verlauf = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)

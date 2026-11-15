@@ -93,11 +93,11 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   const vorher = await gemeinsam();
 
   // Bruno hält dieselben Dinge, damit seine Bewertung Zeilen hat.
-  const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig, updateManualFig } = _req('src/figuren/manuelleFiguren.js');
+  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAnlegen, manuelleFigurAendern } = _req('src/figuren/manuelleFiguren.js');
   await alsKonto(BRUNO, async () => {
-    await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
-    await addManualFig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+    await manuellesTeilAnlegen(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
+    await manuelleFigurAnlegen(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
   });
 
   const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
@@ -159,7 +159,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('die BrickLink-Nr. einer eigenen Figur bleibt beim Konto', async () => {
-    await alsKonto(BRUNO, () => updateManualFig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
+    await alsKonto(BRUNO, () => manuelleFigurAendern(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
     assert.deepEqual(await gemeinsam(), vorher);
     assert.equal(await alsKonto(BRUNO, () => blNummerVon('fig', 'fig-000001', BRUNO)), 'sw9999');
     assert.equal(await alsKonto(ANNA, () => blNummerVon('fig', 'fig-000001', ANNA)), 'sw0001a');

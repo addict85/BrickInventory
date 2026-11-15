@@ -4,7 +4,8 @@
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in der Strom-Route der erste send() vor die Anmeldung der Hörer
  *      gezogen → rot: „der CSV-Fortschrittsstrom überlebt Gegendruck …“
- *      (ReferenceError in cleanup); csvImportBus.off() in cleanup gestrichen → rot
+ *      (ReferenceError in cleanup); das Abmelden (csvImportStandAbonnieren) in cleanup gestrichen → rot
+ *      „kein Hörer bleibt …“ (15.11.2026: 1 angemeldet, 0 abgemeldet)
  * Gestrichen, weil anderswo ausgeführt: Sitzungsschlüssel in Produktion →
  * startverbot.test.js K/L, compose.yaml ohne SESSION_SECRET → compose-
  * geheimnisse A; Pfad-Normalisierung → sicherheit-querschnitt-db I.
@@ -20,6 +21,7 @@ const { ROOT, buildAndRequire, ohneKommentare, testDaten, testZugang } = require
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
+const { portVon } = require('./helpers/server');
 const db = testDaten();
 
 /** Datei ohne Kommentare lesen (siehe ohneKommentare() in helpers/sources.js). */
@@ -59,7 +61,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('marco','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='marco'`)).id;
 
-  const { getParts } = require('./helpers/sources').handlerModul(_req);
+  const { teileAbfrage } = require('./helpers/sources').handlerModul(_req);
 
   await t.test('ohne eigene Teile kommt die Liste aus dem CSV-Bestand', async () => {
     await db.run(`INSERT INTO rb_inventories (id, set_num, version) VALUES (1,'10280-1',1)`);
@@ -70,7 +72,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
     await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
                   VALUES (1,'3001',4,6,false)`);
 
-    const r = await getParts([uid], { set_number: '10280-1' });
+    const r = await teileAbfrage([uid], { set_number: '10280-1' });
     assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
     assert.equal(r.total, 1);
     assert.equal(r.parts[0].part_number, '3001');
@@ -81,7 +83,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
     // Namen auf, den das Teilemodul nie exportiert hat — TypeError statt
     // Antwort. Ohne Schlüssel wird der Zweig übersprungen; DASS er keinen
     // TypeError mehr wirft, sichert test/require-exports.test.js ab.
-    const r = await getParts([uid], { set_number: '99999-1' });
+    const r = await teileAbfrage([uid], { set_number: '99999-1' });
     assert.equal(r.total, 0);
     assert.equal(r.source, 'db');
   });
@@ -91,8 +93,8 @@ test.after(() => db.pool.end().catch(() => {}));
 // ── Regeln ──────────────────────────────────────────────────────────────────
 
 test('Bilddownloads sind nach oben begrenzt', () => {
-  const src = quelle('src/katalog/bilder/setImages.ts');
-  const fn = src.slice(src.indexOf('async function downloadSetImage'));
+  const src = quelle('src/bilder/setImages.ts');
+  const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
   const ende = fn.indexOf('\n}\n');
   const körper = fn.slice(0, ende);
 
@@ -112,7 +114,8 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
   // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte …
   const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
-  const stellen = [...src.matchAll(/router\.(post|put|delete)\(\s*'([^']+)'/g)];
+  // Alte Form router.post('/pfad' und Vertragsform router.endpunkt('POST /api/v1/auth/pfad'.
+  const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpunkt\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
   const offen = [];
@@ -121,10 +124,10 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
     const geschuetzt =
-      /requireLogin|requireToken|requireAdmin|ipThrottle|checkLoginAllowed|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(
+      /requireLogin|requireToken|requireAdmin|ipThrottle|anmeldungErlaubt|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
-    if (!geschuetzt) offen.push(`${stellen[i][1].toUpperCase()} ${stellen[i][2]}`);
+    if (!geschuetzt) offen.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
   }
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
 });
@@ -231,7 +234,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   const app = express();
   let geschrieben = 0;
   app.use((req, res, next) => {
-    req.session = { userId: uid };
+    /** @type {any} */ (req).session = { userId: uid };
     const schreibe = res.write.bind(res);
     res.write = (...a) => {
       schreibe(...a);
@@ -249,8 +252,23 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   t.after(() => new Promise(r => srv.close(r)));
   // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
   t.after(() => testZugang().benachrichtigung.close());
-  const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
-  const r = await fetch(`http://localhost:${srv.address().port}/api/v1/sets/import/csv/stream`, {
+  // Der Strom horcht über den Signalweg des Zugangs; gezählt wird an ihm.
+  const signale = testZugang().benachrichtigung;
+  const zahl = { an: 0, ab: 0 };
+  const { listen, unlisten } = signale;
+  signale.listen = (kanal, h) => {
+    if (kanal === 'csv_import_progress') zahl.an++;
+    return listen.call(signale, kanal, h);
+  };
+  signale.unlisten = (kanal, h) => {
+    if (kanal === 'csv_import_progress') zahl.ab++;
+    return unlisten.call(signale, kanal, h);
+  };
+  t.after(() => {
+    signale.listen = listen;
+    signale.unlisten = unlisten;
+  });
+  const r = await fetch(`http://localhost:${portVon(srv)}/api/v1/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),
   });
   const text = await r.text();
@@ -261,6 +279,8 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     [],
     'cleanup() greift auf noch nicht angelegte Hörer zu',
   );
-  // Aufgeräumt: kein Hörer bleibt am Bus hängen.
-  assert.equal(csvImportBus.listenerCount(`progress:${uid}`), 0);
+  // Aufgeräumt: kein Hörer bleibt am Signalweg hängen.
+  for (let i = 0; i < 40 && zahl.ab < zahl.an; i++) await new Promise(r => setTimeout(r, 50));
+  assert.ok(zahl.an > 0, 'der Strom horchte gar nicht — greift die Zählung noch?');
+  assert.equal(zahl.ab, zahl.an, 'kein Hörer bleibt am Signalweg hängen');
 });

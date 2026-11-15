@@ -8,8 +8,8 @@ import { logAndContinue } from '../src/infra/fehler';
 
 export async function schliessePufferUndTakte(zugang: Db, d: Dienste): Promise<void> {
   // Beide fangen ihre Schreibfehler selbst.
-  await d.katalog.stoppeBildbedarf();
-  await d.katalog.stoppeFehlanzeige();
+  await d.bilder.stoppeBildbedarf();
+  await d.bilder.stoppeFehlanzeige();
   await zugang.benachrichtigung.close().catch(logAndContinue('server:close'));
   await stoppeProtokoll();
 }

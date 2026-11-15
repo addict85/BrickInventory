@@ -1,17 +1,18 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.BrickColorsResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.PartsCategoriesResponse
-import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
-import ch.brickinventoryapp.model.data.model.PartsStatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,152 +23,142 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 
-/** Die Abrufe neben den Listen: Kennzahlen und Filterwerte; Blickfeld setzt der Aufrufer. */
+/** Die Abrufe neben der Teileliste: Kennzahlen und Filterwerte; Blickfeld setzt der Aufrufer. */
 internal interface TeileQuelle {
-    suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse>
-    suspend fun filterFarben(): Ergebnis<PartsFilterColorsResponse>
-    suspend fun kategorien(): Ergebnis<PartsCategoriesResponse>
-    suspend fun alleFarben(): Ergebnis<BrickColorsResponse>
-    suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse>
+    suspend fun teileKennzahlen(): Ergebnis<TeileKennzahlenAnsicht?>
+    suspend fun filterFarben(): Ergebnis<List<FilterFarbeAnsicht>>
+    suspend fun kategorien(): Ergebnis<List<KategorieAnsicht>>
+    suspend fun alleFarben(): Ergebnis<List<FarbeAnsicht>>
 }
 
 /**
- * Die Listen für die Filter eines Zustands, und wie sie gefüllt werden — die
- * einzige Quelle der Anzeige wie in der Galerie: die Ablage, wo Konto, Lagerort
- * oder „In Sets“ es verlangen die Kontosicht. Der Abruf füllt nur die Quelle.
+ * Die Listen für einen Filter, und wie sie gefüllt werden — die einzige Quelle der Anzeige
+ * wie in der Galerie: die Ablage, wo Konto, Lagerort oder „In Sets“ es verlangen die
+ * Kontosicht. Der Abruf füllt nur die Quelle.
  */
 internal class TeileLokal(
-    val teile: (PartsUiState) -> Flow<Lokal<Part>>,
-    val manuelleTeile: (PartsUiState) -> Flow<Lokal<PartValuationItem>>,
-    val figuren: (PartsUiState) -> Flow<Lokal<Minifig>>,
-    val manuelleFiguren: (PartsUiState) -> Flow<Lokal<FigValuationItem>>,
-    val aktualisiereTeile: suspend (PartsUiState) -> Ergebnis<Unit>,
-    val aktualisiereFiguren: suspend (PartsUiState) -> Ergebnis<Unit>,
+    val teile: (TeileUiState) -> Flow<Lokal<TeilAnsicht>>,
+    val manuelleTeile: (TeileUiState) -> Flow<Lokal<ManuellesTeilAnsicht>>,
+    val aktualisiere: suspend (TeileUiState) -> Ergebnis<Unit>,
+)
+
+/** Dasselbe für die Figuren. */
+internal class FigurenLokal(
+    val figuren: (FigurenUiState) -> Flow<Lokal<FigurAnsicht>>,
+    val manuelleFiguren: (FigurenUiState) -> Flow<Lokal<ManuelleFigurAnsicht>>,
+    val aktualisiere: suspend (FigurenUiState) -> Ergebnis<Unit>,
+    val kennzahlen: suspend () -> Ergebnis<FigurenKennzahlenAnsicht>,
 )
 
 /**
- * Zustand der Teile- und Figurenliste und wie er sich ändert — wie die Galerie:
- * privater Fluss, benannte Methoden, Quellen von aussen. Die Filter liest jeder
- * Lader aus dem Zustand, nie als Parameter: So passen Quelle und Abruf immer zu
- * dem, was die Filterchips zeigen.
+ * Folgt der Ablage und meldet den Abruf — gemeinsam für Teile und Figuren. Ein neuer
+ * Auftrag bricht den alten ab: Eine langsame alte Antwort überschriebe sonst eine neuere,
+ * und beim Tippen löscht jeder Tastendruck den entprellten vorigen.
  */
-internal class Teile(
+internal class Listenfolge<S>(
     private val scope: CoroutineScope,
-    private val quelle: TeileQuelle,
-    private val meldeFehler: (Ergebnis.Error) -> Unit,
-    /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
-    private val vergissScroll: () -> Unit,
-    private val suchPause: Long = 350,
-    /** Der Satz zum Fehler, der in der leeren Liste stehen bleibt (wie in der Galerie). */
-    private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
-    private val listen: TeileLokal,
+    private val zustand: MutableStateFlow<S>,
+    private val meldeFehler: (Ergebnis.Fehler) -> Unit,
+    private val suchPause: Long,
 ) {
-    private val _state = MutableStateFlow(PartsUiState())
-    val state: StateFlow<PartsUiState> = _state.asStateFlow()
-
-    private var teileFolgen: List<Job> = emptyList()
-    private var figurenFolgen: List<Job> = emptyList()
+    private var folgen: List<Job> = emptyList()
+    private var auftrag: Job? = null
 
     /** Eine nie geladene Liste (ohne Stand) leert nichts. */
-    private fun <T> folge(quelle: Flow<Lokal<T>>, neu: (PartsUiState, List<T>) -> PartsUiState): Job =
-        scope.launch {
-            quelle.collect { l -> if (l.stand != null) _state.update { st -> neu(st, l.liste) } }
-        }
+    fun <T> folge(quelle: Flow<Lokal<T>>, neu: (S, List<T>) -> S): Job =
+        scope.launch { quelle.collect { l -> if (l.stand != null) zustand.update { st -> neu(st, l.liste) } } }
 
-    /** Ohne Netz bleibt die Ablage mit ihrem Stand; ohne Ablage ist es ein Fehler wie bisher. */
-    private fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (PartsUiState, Long?) -> PartsUiState,
-                        fehler: (PartsUiState, Ergebnis.Error) -> PartsUiState) {
+    fun starte(entprellt: Boolean, laden: suspend () -> Unit) {
+        abbrechen()
+        auftrag = scope.launch {
+            if (entprellt) delay(suchPause)
+            laden()
+        }
+    }
+
+    fun folgeAllen(neu: List<Job>) { folgen = neu }
+
+    /** Ohne Netz bleibt die Ablage mit ihrem Stand; ohne Ablage ist es ein Fehler. */
+    fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Fehler) -> S) {
         when {
-            r is Ergebnis.Success -> _state.update { fertig(it, null) }
-            r is Ergebnis.Error && r.transient && stand != null -> _state.update { fertig(it, stand) }
-            r is Ergebnis.Error -> {
-                _state.update { fehler(it, r) }
+            r is Ergebnis.Erfolg -> zustand.update { fertig(it, null) }
+            r is Ergebnis.Fehler && r.transient && stand != null -> zustand.update { fertig(it, stand) }
+            r is Ergebnis.Fehler -> {
+                zustand.update { fehler(it, r) }
                 meldeFehler(r)
             }
         }
     }
 
-    // Ein neuer Auftrag bricht den alten ab: Eine langsame alte Antwort
-    // überschriebe sonst eine neuere, und beim Tippen löscht jeder Tastendruck
-    // den entprellten vorigen.
-    private var teileJob: Job? = null
-    private var figurenJob: Job? = null
+    fun abbrechen() {
+        auftrag?.cancel()
+        folgen.forEach { it.cancel() }
+    }
+}
+
+/**
+ * Zustand der Teileliste und wie er sich ändert — wie die Galerie: privater Fluss,
+ * benannte Methoden, Quellen von aussen. Die Filter liest jeder Lader aus dem Zustand:
+ * So passen Quelle und Abruf immer zu dem, was die Filterchips zeigen.
+ */
+internal class Teile(
+    private val scope: CoroutineScope,
+    private val quelle: TeileQuelle,
+    meldeFehler: (Ergebnis.Fehler) -> Unit,
+    /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
+    private val vergissScroll: () -> Unit,
+    suchPause: Long = 350,
+    private val listen: TeileLokal,
+    /** Jeder neue Filter, damit der Aufrufer ihn merken kann. */
+    private val filterGeaendert: (Teilefilter) -> Unit = {},
+) {
+    private val _state = MutableStateFlow(TeileUiState())
+    val state: StateFlow<TeileUiState> = _state.asStateFlow()
+    private val folge = Listenfolge(scope, _state, meldeFehler, suchPause)
 
     /** Alles steht auf einmal da; eine weitere Seite gibt es nicht mehr. */
     fun laden(seite: Int = 1, entprellt: Boolean = false) {
         if (seite > 1) return
-        teileJob?.cancel()
-        teileFolgen.forEach { it.cancel() }
-        teileJob = scope.launch {
-            if (entprellt) delay(suchPause)
-            ladeTeile(listen)
-        }
+        folge.starte(entprellt) { ladeTeile() }
     }
 
-    /** Nach dem Entprellen gelesen: Der zuletzt gestartete Auftrag sieht den neuesten Text. */
-    private suspend fun ladeTeile(ablage: TeileLokal) {
+    /** Nach dem Entprellen gelesen: Der zuletzt gestartete Auftrag sieht den neuesten Filter. */
+    private suspend fun ladeTeile() {
         val st = _state.value
-        teileFolgen = listOf(
-            folge(ablage.teile(st)) { s, l ->
-                s.copy(parts = l.map { it.alsAnsicht() }, partsTotal = l.size, partsPage = 1)
+        folge.folgeAllen(listOf(
+            folge.folge(listen.teile(st)) { s, l ->
+                s.copy(parts = sortiert(l, s.filter.ordnung), partsTotal = l.size, partsPage = 1)
             },
-            folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l.map { it.alsAnsicht() }) },
-        )
-        _state.update { it.copy(partsLoading = true, partsFehler = null) }
-        val r = ablage.aktualisiereTeile(st)
-        ausgang(r, ablage.teile(st).first().stand,
-            { s, stand -> s.copy(partsLoading = false, teileOfflineStand = stand) },
-            { s, r -> s.copy(partsLoading = false, partsFehler = beschreibeFehler(r), partsFehlerKlasse = fehlerklasse(r)) })
+            folge.folge(listen.manuelleTeile(st)) { s, l -> s.copy(manualParts = l) },
+        ))
+        _state.update { it.copy(teileAbruf = Laden.Laedt) }
+        val r = listen.aktualisiere(st)
+        folge.ausgang(r, listen.teile(st).first().stand,
+            { s, stand -> s.copy(teileAbruf = Laden.Daten(Unit), teileOfflineStand = stand) },
+            { s, r -> s.copy(teileAbruf = ladefehler(r)) })
         ladeKennzahlen()
     }
 
     /** Kennzahlen sind Beiwerk: Ein Fehlschlag lässt die Liste stehen. */
     suspend fun ladeKennzahlen() {
-        (quelle.teileKennzahlen() as? Ergebnis.Success)
-            ?.let { s -> _state.update { it.copy(partsStats = s.data.stats?.alsAnsicht()) } }
+        (quelle.teileKennzahlen() as? Ergebnis.Erfolg)
+            ?.let { s -> _state.update { it.copy(partsStats = s.data) } }
     }
 
-    suspend fun ladeFigurKennzahlen() {
-        (quelle.figurKennzahlen() as? Ergebnis.Success)
-            ?.let { r -> _state.update { it.copy(minifigStats = r.data.stats.alsAnsicht()) } }
-    }
-
-    fun setzeSuche(q: String) {
-        vergissScroll()
-        _state.update { it.copy(partsQuery = q) }
-        laden(entprellt = true)
-    }
-
-    /** Ein Klick ist ein fertiger Wunsch: nicht entprellt. */
-    fun setzeErsatzteile(wert: Ersatzteilwahl) {
-        vergissScroll()
-        _state.update { it.copy(partsSpare = wert) }
-        laden()
-    }
-
-    /** Karten oder Tabelle; neu laden, weil die Tabelle „In Sets" mitbestellt. */
-    fun setzeAnsicht(wert: Listenansicht) {
-        if (_state.value.partsView == wert) return
-        _state.update { it.copy(partsView = wert) }
-        laden()
-    }
-
-    fun setzeFarbe(wert: String) {
-        if (_state.value.partsColorFilter == wert) return
-        vergissScroll()
-        _state.update { it.copy(partsColorFilter = wert) }
-        laden()
-    }
-
-    fun setzeKategorie(wert: String) {
-        if (_state.value.partsCategoryFilter == wert) return
-        vergissScroll()
-        _state.update { it.copy(partsCategoryFilter = wert) }
-        laden()
+    /**
+     * Einen neuen Filter setzen. Ein Klick ist ein fertiger Wunsch; nur das Tippen der Suche
+     * wird entprellt. Die Ordnung sortiert nur um: Die ganze Liste liegt schon vor.
+     */
+    fun setzeFilter(neu: Teilefilter) {
+        val alt = _state.value.filter
+        if (alt == neu) return
+        if (neu.copy(ansicht = alt.ansicht) != alt) vergissScroll()
+        _state.update { it.copy(filter = neu, parts = if (neu.ordnung != alt.ordnung) sortiert(it.parts, neu.ordnung) else it.parts) }
+        filterGeaendert(neu)
+        if (neu.copy(ordnung = alt.ordnung) == alt) return
+        laden(entprellt = neu.suche != alt.suche)
     }
 
     /**
@@ -176,65 +167,84 @@ internal class Teile(
      */
     fun ladeFilter() {
         scope.launch {
-            (quelle.filterFarben() as? Ergebnis.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsFilterColors = d.colors.map { c -> c.alsAnsicht() }) } }
-            (quelle.kategorien() as? Ergebnis.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsCategories = d.categories.map { c -> c.alsAnsicht() }) } }
+            (quelle.filterFarben() as? Ergebnis.Erfolg)?.data
+                ?.let { d -> _state.update { it.copy(partsFilterColors = d) } }
+            (quelle.kategorien() as? Ergebnis.Erfolg)?.data
+                ?.let { d -> _state.update { it.copy(partsCategories = d) } }
         }
     }
 
     /** Farbauswahl im Erfassungsdialog; fehlt sie, tippt man die Farb-ID. */
     fun ladeFarben() {
         scope.launch {
-            (quelle.alleFarben() as? Ergebnis.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsColors = d.colors.map { c -> c.alsAnsicht() }) } }
+            (quelle.alleFarben() as? Ergebnis.Erfolg)?.data
+                ?.let { d -> _state.update { it.copy(partsColors = d) } }
         }
     }
 
-    /** Karten oder Tabelle der Figuren; ohne Neuladen, die Felder sind schon da. */
-    fun setzeFigurAnsicht(wert: Listenansicht) = _state.update { it.copy(minifigsView = wert) }
+    /** Einen gemerkten Filter übernehmen, ohne zu laden. */
+    fun stelleFilterWieder(f: Teilefilter) = _state.update { it.copy(filter = f) }
+
+    /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
+    fun zuruecksetzen() {
+        folge.abbrechen()
+        _state.value = TeileUiState()
+    }
+}
+
+/** Zustand der Figurenliste, gebaut wie [Teile]. */
+internal class Figuren(
+    private val scope: CoroutineScope,
+    meldeFehler: (Ergebnis.Fehler) -> Unit,
+    suchPause: Long = 350,
+    private val listen: FigurenLokal,
+) {
+    private val _zustand = MutableStateFlow(FigurenUiState())
+    val zustand: StateFlow<FigurenUiState> = _zustand.asStateFlow()
+    private val folge = Listenfolge(scope, _zustand, meldeFehler, suchPause)
+
+    suspend fun ladeKennzahlen() {
+        (listen.kennzahlen() as? Ergebnis.Erfolg)
+            ?.let { r -> _zustand.update { it.copy(minifigStats = r.data) } }
+    }
 
     /**
      * Figurenliste laden. Die Kennzahlen kommen nebenher und zeigen den ganzen
      * Bestand — beim Tippen nicht, sonst zählte jeder Tastendruck neu, ohne
      * Auftrag, der ihn abbrechen könnte.
      */
-    fun ladeFiguren(entprellt: Boolean = false) {
-        if (!entprellt) scope.launch { ladeFigurKennzahlen() }
-        figurenJob?.cancel()
-        figurenFolgen.forEach { it.cancel() }
-        figurenJob = scope.launch {
-            if (entprellt) delay(suchPause)
-            folgeFiguren(listen)
-        }
+    fun laden(entprellt: Boolean = false) {
+        if (!entprellt) scope.launch { ladeKennzahlen() }
+        folge.starte(entprellt) { folgeFiguren() }
     }
 
-    private suspend fun folgeFiguren(ablage: TeileLokal) {
-        val st = _state.value
-        figurenFolgen = listOf(
-            folge(ablage.figuren(st)) { s, l -> s.copy(minifigs = l.map { it.alsAnsicht() }) },
-            folge(ablage.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l.map { it.alsAnsicht() }) },
-        )
-        _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
-        val r = ablage.aktualisiereFiguren(st)
-        ausgang(r, ablage.figuren(st).first().stand,
-            { s, stand -> s.copy(minifigsLoading = false, figurenOfflineStand = stand) },
-            { s, r -> s.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r), minifigsFehlerKlasse = fehlerklasse(r)) })
+    private suspend fun folgeFiguren() {
+        val st = _zustand.value
+        folge.folgeAllen(listOf(
+            folge.folge(listen.figuren(st)) { s, l -> s.copy(minifigs = l) },
+            folge.folge(listen.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l) },
+        ))
+        _zustand.update { it.copy(figurenAbruf = Laden.Laedt) }
+        val r = listen.aktualisiere(st)
+        folge.ausgang(r, listen.figuren(st).first().stand,
+            { s, stand -> s.copy(figurenAbruf = Laden.Daten(Unit), figurenOfflineStand = stand) },
+            { s, r -> s.copy(figurenAbruf = ladefehler(r)) })
     }
 
-    fun setzeFigurSuche(q: String) {
-        _state.update { it.copy(minifigsQuery = q) }
-        ladeFiguren(entprellt = true)
+    fun setzeSuche(q: String) {
+        _zustand.update { it.copy(minifigsQuery = q) }
+        laden(entprellt = true)
     }
 
-    /** Gemerkte Filter und Ansichten übernehmen, ohne zu laden. */
-    fun stelleFilterWieder(aenderung: (PartsUiState) -> PartsUiState) = _state.update(aenderung)
+    /** Karten oder Tabelle; ohne Neuladen, die Felder sind schon da. */
+    fun setzeAnsicht(wert: Listenansicht) = _zustand.update { it.copy(minifigsView = wert) }
 
-    /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
+    /** Gemerkte Suche und Ansicht übernehmen, ohne zu laden. */
+    fun stelleWieder(suche: String, ansicht: Listenansicht) =
+        _zustand.update { it.copy(minifigsQuery = suche, minifigsView = ansicht) }
+
     fun zuruecksetzen() {
-        teileJob?.cancel()
-        figurenJob?.cancel()
-        (teileFolgen + figurenFolgen).forEach { it.cancel() }
-        _state.value = PartsUiState()
+        folge.abbrechen()
+        _zustand.value = FigurenUiState()
     }
 }

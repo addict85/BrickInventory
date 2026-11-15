@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { FehlerCode } from './fehlerTexte';
+import { prozessweit } from './prozessweit';
 
 /** Eine Konstante für alle Wege, die ein Passwort setzen. Bestehende Passwörter
  * gelten weiter; die Regel greift beim nächsten Setzen. */
@@ -10,28 +11,30 @@ export function passwortZuKurz(passwort: unknown): boolean {
   return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;
 }
 
-/** bcrypt liest nur die ersten 72 Byte: Was dahinter steht, prüfte nie jemand,
- * und zwei Passwörter mit gleichem Anfang wären gleich. */
-export const PASSWORT_MAX_BYTE = 72;
+/** argon2id liest das ganze Passwort; die Grenze hält nur übergrosse Eingaben fern
+ * (dieselbe wie im API-Vertrag, src/vertrag/konto.ts). */
+export const PASSWORT_MAX_ZEICHEN = 1024;
 
-let liste: Set<string> | null = null;
 /** Mitgeliefert (haeufige-passwoerter.txt neben dieser Datei), ohne Netzabfrage. */
 function haeufige(): Set<string> {
-  liste ??= new Set(
-    fs
-      .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
-      .split('\n')
-      .map(z => z.trim())
-      .filter(z => z && !z.startsWith('#')),
+  return prozessweit(
+    'haeufigePasswoerter',
+    () =>
+      new Set(
+        fs
+          .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
+          .split('\n')
+          .map(z => z.trim())
+          .filter(z => z && !z.startsWith('#')),
+      ),
   );
-  return liste;
 }
 
 /** Für jeden Weg, der ein Passwort setzt: der Grund der Ablehnung oder null. */
 export function passwortMangel(passwort: unknown, benutzername?: unknown): FehlerCode | null {
   if (passwortZuKurz(passwort)) return 'passwort_zu_kurz';
   const p = String(passwort);
-  if (Buffer.byteLength(p, 'utf8') > PASSWORT_MAX_BYTE) return 'passwort_zu_lang';
+  if (p.length > PASSWORT_MAX_ZEICHEN) return 'passwort_zu_lang';
   const klein = p.toLowerCase();
   if (haeufige().has(klein) || (typeof benutzername === 'string' && klein === benutzername.toLowerCase()))
     return 'passwort_zu_haeufig';

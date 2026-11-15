@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import androidx.compose.ui.semantics.contentDescription
@@ -58,7 +59,7 @@ import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
 import ch.brickinventoryapp.ui.components.LocalOfflineHinweise
 import ch.brickinventoryapp.ui.components.LocalSnackbarPlatz
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.AnsichtUmschalter
 import ch.brickinventoryapp.ui.components.UpdatePunkt
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
@@ -210,10 +211,10 @@ fun MainScaffold(
                     }
                     // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
                     if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
-                    if (csvImport.running) {
+                    if (csvImport.lauf.laeuft) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
-                            ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.running,
+                            ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.lauf.laeuft,
                             onAbbrechen = onCsvAbbrechen,
                         )
                     }
@@ -312,7 +313,9 @@ private fun ReiterLeiste(
     val messer = rememberTextMeasurer()
     val dichte = LocalDensity.current
     Surface(color = farben.leiste) {
-        BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)) {
+        // Ein Rand links und rechts: Bei 200 % stiess „Mehr“ samt Punkt an den Bildschirmrand.
+        BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
+            .padding(horizontal = LEISTE_RAND)) {
             val satz = with(dichte) {
                 reiterSatz(ziele.map { messer.measure(it.beschriftung, stil).size.width.toFloat() },
                     ziele.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
@@ -381,6 +384,8 @@ private val ANZEIGE_HOEHE = 32.dp
 /** Breite eines unbeschrifteten Ziels: Anzeige und Rand. */
 private val ANZEIGE_MIN = 64.dp
 private val LEISTE_HOEHE = 80.dp
+/** Abstand der äussersten Ziele zum Bildschirmrand. */
+private val LEISTE_RAND = 8.dp
 private val SEITENLEISTE_BREITE = 80.dp
 
 /** Der Schlüssel der gemerkten Rollposition; Ziele ohne Liste haben keinen eigenen. */
@@ -418,14 +423,14 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
     }
 
 /**
- * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Über
- * SegmentWahl, damit er bei grosser Schrift wie jede Einfachwahl zu Chips wird.
+ * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Ein Wechsel
+ * der Ansicht, darum Segmente, auch bei 200 % Schrift (dann untereinander).
  */
 @Composable
 private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
     val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
     val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
-    SegmentWahl<Any?>(
+    AnsichtUmschalter<Any?>(
         optionen = ziele,
         gewaehlt = aktuell,
         onWahl = { if (it != null) onWahl(it) },

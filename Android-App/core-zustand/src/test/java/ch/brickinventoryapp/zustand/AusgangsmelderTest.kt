@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.lokal.Ausgangslage
 import ch.brickinventoryapp.data.lokal.Ausgangslage.VerworfeneAenderung
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.zustand.ui.Ausgangsmelder
-import ch.brickinventoryapp.testing.Bestandsabgleich
+import ch.brickinventoryapp.testing.testBestandsabgleich
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.Testablage
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,6 +35,8 @@ import org.junit.Test
  *      Mal wartet, wird beim Start eingeplant“
  *   E  in AusgangsBeobachter.starte die Prüfung `gestartet` entfernt → rot „ein zweiter
  *      Start folgt dem Ausgang nicht doppelt“ (2 statt 1)
+ *   F  in meldeVerworfen die Abfrage `v.unlesbar` gestrichen → rot „ein nach dem Update
+ *      unlesbarer Posten wird als solcher gemeldet“ (nur in der CI messbar)
  *   (B, D und E lokal mit kotlinc gemessen)
  *   gegenproben/verworfen-sofort-quittiert.patch (meldeVerworfen quittiert gleich nach
  *      zeige) → rot „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
@@ -60,7 +62,7 @@ class AusgangsmelderTest {
         val lage = Lage()
         val fake = FakeApi()
         val kanal = MeldungsKanal()
-        val melder = Ausgangsmelder(lage, Bestandsabgleich(fake.api, Testablage()), kanal)
+        val melder = Ausgangsmelder(lage, testBestandsabgleich(fake.api, Testablage()), kanal)
         melder.starte(backgroundScope)
         runCurrent()
         assertEquals("was vom letzten Mal wartet, wird beim Start eingeplant", 1, lage.geplant)
@@ -90,7 +92,7 @@ class AusgangsmelderTest {
         val erstes = VerworfeneAenderung("k1", "10001-1", "gibt es nicht", 404)
         val zweites = VerworfeneAenderung("k2", "10002-1", "gibt es auch nicht", 404)
         lage.verworfen.value = listOf(erstes, zweites)
-        Ausgangsmelder(lage, Bestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
+        Ausgangsmelder(lage, testBestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
         runCurrent()
         assertEquals(Meldung.Ressource(R.string.offline_verworfen, listOf("10001-1", "gibt es nicht")), kanal.meldung.value)
         assertEquals("noch nicht gesehen: bleibt in der Ablage", listOf(erstes, zweites), lage.verworfen.value)
@@ -101,10 +103,22 @@ class AusgangsmelderTest {
     }
 
     @Test
+    fun `ein nach dem Update unlesbarer Posten wird als solcher gemeldet`() = runTest {
+        val lage = Lage()
+        val kanal = MeldungsKanal()
+        lage.verworfen.value = listOf(VerworfeneAenderung("k1", "10001-1", "", null, unlesbar = true))
+        Ausgangsmelder(lage, testBestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
+        runCurrent()
+        assertEquals("ein nach dem Update unlesbarer Posten wird als solcher gemeldet",
+            Meldung.Ressource(R.string.offline_verworfen, listOf("10001-1", Meldung.Ressource(R.string.offline_verworfen_unlesbar))),
+            kanal.meldung.value)
+    }
+
+    @Test
     fun `ein zweiter Start folgt dem Ausgang nicht doppelt`() = runTest {
         val lage = Lage()
         val kanal = MeldungsKanal()
-        val melder = Ausgangsmelder(lage, Bestandsabgleich(FakeApi().api, Testablage()), kanal)
+        val melder = Ausgangsmelder(lage, testBestandsabgleich(FakeApi().api, Testablage()), kanal)
         melder.starte(backgroundScope)
         melder.starte(backgroundScope)
         runCurrent()

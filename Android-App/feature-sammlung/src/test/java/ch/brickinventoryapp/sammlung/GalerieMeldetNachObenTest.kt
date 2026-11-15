@@ -11,8 +11,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState

@@ -1,7 +1,7 @@
 Gegenprobe: Suchfeld ohne contentDescription: Nach der Eingabe hat es keinen Namen mehr
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
-Rot: M5 Suchfeld behaelt seinen Namen nach der Eingabe
+Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Rot: Suchfeld behaelt seinen Namen nach der Eingabe und bricht bei 200 Prozent um
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Suchfeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Suchfeld.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Suchfeld.kt

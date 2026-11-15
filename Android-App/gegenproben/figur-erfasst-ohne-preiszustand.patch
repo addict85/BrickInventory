@@ -1,0 +1,17 @@
+Gegenprobe: das Erfassen einer Figur verliert, woher der Kaufpreis stammt
+Modul: core-data
+Test: ch.brickinventoryapp.data.TeileFachwerteTest
+Rot: das Erfassen einer Figur meldet
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FigurenRepositoryImpl.kt
+@@ -72,7 +72,7 @@
+             ablage.schreibe(Bearbeitung.FigurErfassen(erfassung),
+                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
+                 sicherAufrufen { api.addMinifig(anfrage, schluessel) }
+-            }.zugesagt({ it.success }) { Erfasst(it.action == "added", it.figNumber, it.priceFromCondition) }
++            }.zugesagt({ it.success }) { Erfasst(it.action == "added", it.figNumber) }
+         }
+ 
+     /**

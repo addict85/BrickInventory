@@ -458,7 +458,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
   }
   const name = testName('rst');
   await raeumeReste(admin, 'rst');
-  const [ziel, alt, APP, MIG, LESEN, BOESE, SYS] = [
+  const [ziel, alt, APP, MIG, LESEN, BOESE, SYS, SYSWEB] = [
     name,
     `${name}_alt`,
     `${name}_app`,
@@ -466,12 +466,14 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
     `${name}_lesen`,
     `${name}_boese`,
     `${name}_sys`,
+    `${name}_sysweb`,
   ];
   const id = s => `"${s}"`;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));
   t.after(async () => {
     for (const d of [ziel, alt]) await admin.query(`DROP DATABASE IF EXISTS ${id(d)} WITH (FORCE)`).catch(() => {});
-    for (const r of [APP, MIG, LESEN, BOESE, SYS]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
+    for (const r of [APP, MIG, LESEN, BOESE, SYS, SYSWEB])
+      await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await admin.end();
     fs.rmSync(tmp, { recursive: true, force: true });
   });
@@ -492,6 +494,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
     PGWEB_DB_PASSWORD: '',
     DB_SYSTEM_USER: SYS,
     DB_SYSTEM_PASSWORD: `sys-${process.pid}`,
+    DB_SYSTEM_WEB_USER: SYSWEB,
   };
   const dbUrl = (db, nutzer = suNutzer, pw = suPw) => {
     const u = new URL(basis);
@@ -593,7 +596,8 @@ esac
       assert.equal(
         (
           await c.query(
-            `SELECT has_table_privilege($1, 'public.users', 'INSERT') AND NOT has_table_privilege($1, 'public.users', 'TRUNCATE')
+            `SELECT has_table_privilege($1, 'public.sets', 'INSERT') AND NOT has_table_privilege($1, 'public.sets', 'TRUNCATE')
+        AND NOT has_table_privilege($1, 'public.users', 'INSERT')
         AND NOT has_schema_privilege($1, 'public', 'CREATE') AS ok`,
             [APP],
           )

@@ -6,11 +6,11 @@ Rot: ein Filterwechsel beginnt oben
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-@@ -100,7 +100,6 @@
+@@ -109,7 +109,6 @@
          catalogListJob = viewModelScope.launch {
              // Auch die gemerkte Stelle vergessen: Nach einem Filterwechsel zeigte sie auf
              // Sets, die es in der neuen Liste nicht mehr gibt.
 -            rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
              _catalogState.update {
-                 it.copy(isLoading = true, error = null, fehlerKlasse = null,
+                 it.copy(abruf = Laden.Laedt,
                          loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,

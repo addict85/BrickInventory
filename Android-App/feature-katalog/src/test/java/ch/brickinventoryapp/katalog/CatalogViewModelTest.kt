@@ -2,26 +2,30 @@ package ch.brickinventoryapp.katalog
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.data.model.CatalogSetDetail
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetItem
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
-import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
-import ch.brickinventoryapp.model.data.model.JahrAnzahl
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.vertrag.CatalogSetDetail
+import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
+import ch.brickinventoryapp.vertrag.CatalogSetItem
+import ch.brickinventoryapp.vertrag.CatalogSetsResponse
+import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.vertrag.JahrAnzahl
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.MerklisteResponse
-import ch.brickinventoryapp.model.data.model.MerkpostenAntwort
-import ch.brickinventoryapp.model.data.model.PreisalarmRequest
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.MerklisteResponse
+import ch.brickinventoryapp.vertrag.MerkpostenAntwort
+import ch.brickinventoryapp.vertrag.PreisalarmRequest
+import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,7 +44,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
@@ -59,6 +63,7 @@ import ch.brickinventoryapp.testing.text
  *   katalog-verteilung-ohne-filter ladeJahrVerteilung() ohne `themeId` → rot „die Jahresverteilung …“
  *   katalog-detail-fehler-verschluckt loadCatalogDetail() legt den Fehler nicht in den
  *                                  Zustand → rot „scheitert das Detail, steht der Grund …“
+ *   katalog-laedt-nicht-beim-beobachten  beim Beobachten nur die Metadaten geladen → rot „wer den Katalog sieht …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
@@ -74,14 +79,13 @@ class CatalogViewModelTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     private fun seite(vararg nummern: String) =
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
+        val vm = CatalogViewModel(testKatalogRepository(fake.api), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
         try {
             block(vm)
         } finally {
@@ -147,15 +151,14 @@ class CatalogViewModelTest {
         fake.codes["getCatalogSets"] = 500
         vm.loadCatalogSets()
         advanceUntilIdle()
-        assertEquals("fehler", vm.state.value.error)
+        assertEquals(Meldung.Ressource(R.string.err_server, listOf(500)), vm.state.value.abruf.fehlerMeldung)
         assertNull("Ohne geladene Liste keine zweite Meldung", t.meldungen.text)
 
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
-        assertEquals("t${R.string.err_set_not_found}", vm.state.value.detailFehler)
+        assertEquals(Meldung.Ressource(R.string.err_set_not_found), vm.state.value.detail.fehlerMeldung)
         assertNull("Der Bildschirm zeigt den Fehler selbst", t.meldungen.text)
-        assertNull(vm.state.value.detail)
     }
 
     @Test
@@ -163,20 +166,28 @@ class CatalogViewModelTest {
         fake.codes["getCatalogSetDetail"] = 503
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        val gescheitert = vm.state.value
-        assertEquals(false, gescheitert.detailLoading)
-        assertNull(gescheitert.detail)
-        assertEquals("Ohne Grund bliebe der Kringel stehen", "fehler", gescheitert.detailFehler)
-        assertEquals(Fehlerklasse.SERVER, gescheitert.detailFehlerKlasse)
+        assertEquals("Ohne Grund bliebe der Kringel stehen",
+            Laden.Fehler(Fehlerklasse.SERVER, Meldung.Ressource(R.string.err_server, listOf(503))), vm.state.value.detail)
 
         fake.codes.remove("getCatalogSetDetail")
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true,
             set = CatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        assertEquals("10305-1", vm.state.value.detail?.setNumber)
-        assertNull("Der neue Versuch räumt den alten Fehler ab", vm.state.value.detailFehler)
-        assertNull(vm.state.value.detailFehlerKlasse)
+        assertEquals("Der neue Versuch räumt den alten Fehler ab", "10305-1", vm.state.value.detail.datenOderNull()?.setNumber)
+    }
+
+    @Test
+    fun `wer den Katalog sieht, laedt ihn, ein Zurueckkehren laedt nicht noch einmal`() = mitVm { vm ->
+        fake.antworten["getCatalogSets"] = seite("10294-1")
+        val erster = backgroundScope.launch { vm.state.collect {} }
+        advanceUntilIdle()
+        assertEquals(setOf(1), vm.state.value.loadedPages.keys)
+        erster.cancel()
+        advanceUntilIdle()
+        backgroundScope.launch { vm.state.collect {} }
+        advanceUntilIdle()
+        assertEquals("Die Liste ist da, ein zweiter Abruf wäre nur Last", 1, gesucht().size)
     }
 
     /** Die Jahre liegen nur auf dem Server; geholt mit denselben Filtern wie die Liste. */
@@ -184,7 +195,7 @@ class CatalogViewModelTest {
     fun `die Jahresverteilung kommt vom Server, mit den Filtern der Liste`() = mitVm { vm ->
         fake.antworten["getCatalogSets"] = seite("10294-1")
         fake.antworten["getCatalogYearVerteilung"] = CatalogYearVerteilungResponse(
-            success = true, years = listOf(JahrAnzahl(1999, 4), JahrAnzahl(null, 2), JahrAnzahl(2024, 7)))
+            success = true, years = listOf(JahrAnzahl(year = 1999, n = 4), JahrAnzahl(year = null, n = 2), JahrAnzahl(year = 2024, n = 7)))
         vm.setCatalogSort(Katalogsortierung.JAHR_ABSTEIGEND)
         vm.setCatalogTheme(158)
         advanceUntilIdle()
@@ -203,7 +214,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         val alarm = synchronized(fake.argumente) { fake.argumente.single { it.first == "setPreisalarm" }.second }
         assertEquals("10305-1", alarm[0])
-        assertEquals(PreisalarmRequest(Alarmrichtung.UEBER, 120.0, Zustand.GEBRAUCHT), alarm[1])
+        assertEquals(PreisalarmRequest(richtung = Alarmrichtung.UEBER, schwelle = 120.0, condition = Zustand.GEBRAUCHT), alarm[1])
         assertEquals(Meldung.Ressource(R.string.wanted_added), t.meldungen.meldung.value)
     }
 

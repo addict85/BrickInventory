@@ -1,13 +1,13 @@
 /**
  * Der BrickLink-Preisführer, wie ihn Sets, Teile und Figuren abfragen: an
- * einer Attrappe von bricklinkRequest (clients/bricklink.js im
- * require-Zwischenspeicher ersetzt, bevor jemand sie lädt) und der Test-DB.
+ * einer Attrappe von bricklinkRequest (an der Verdrahtung gestellt,
+ * testQuellen) und der Test-DB.
  * Erst Verkäufe der letzten sechs Monate, ohne Preis dort die Angebote.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  getPriceGuide mit Vorgabe `condition = 'U'` → rot: „ohne Angabe der
+ *   A  preisfuehrerAbfrage mit Vorgabe `condition = 'U'` → rot: „ohne Angabe der
  *      Neupreis aus den Verkäufen“
- *   B  getPriceGuide ohne den Rückfall (`return { ...first, guide_used }`
+ *   B  preisfuehrerAbfrage ohne den Rückfall (`return { ...first, guide_used }`
  *      sofort) → rot: „ohne Verkauf … die Angebote“ (Set)
  *   C  in fetchPartPrice bzw. fetchMinifigPrice den Abruf mit guide_type
  *      'stock' gestrichen → rot: „ohne Verkauf … die Angebote“ (Teil bzw. Figur)
@@ -16,27 +16,23 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
-const blPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'bricklink.js'));
-const echt = require(blPfad);
 const abrufe = [];
 /** Preis je guide_type; fehlt einer, liefert BrickLink 0. */
 let preise = {};
-require.cache[blPfad].exports = {
-  ...echt,
+testQuellen(null, {
   bricklinkRequest: async (_methode, pfad, params) => {
     abrufe.push({ pfad, ...params });
     const p = String(preise[params.guide_type] ?? 0);
     return { avg_price: p, qty_avg_price: p, min_price: p, max_price: p, total_quantity: p === '0' ? '0' : '3' };
   },
-};
-const { getPriceGuide } = _req('src/katalog/bricklinkPreise.js');
+});
+const { preisfuehrerAbfrage } = _req('src/katalog/bricklinkPreise.js');
 const { fetchPartPrice, fetchMinifigPrice } = _req('src/finanzen/rechnung/preise.js');
 
 const N = `${process.pid}`;
@@ -58,7 +54,7 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
   await t.test('ohne Angabe der Neupreis aus den Verkäufen', async () => {
     abrufe.length = 0;
     preise = { sold: 120 };
-    const g = await getPriceGuide(SET);
+    const g = await preisfuehrerAbfrage(SET);
     assert.deepEqual(
       abrufe.map(a => [a.new_or_used, a.guide_type]),
       [['N', 'sold']],
@@ -69,7 +65,7 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
   await t.test('ohne Verkauf in sechs Monaten die Angebote — für Sets, Teile und Figuren', async () => {
     preise = { sold: 0, stock: 80 };
     abrufe.length = 0;
-    const g = await getPriceGuide(SET, 'U');
+    const g = await preisfuehrerAbfrage(SET, 'U');
     assert.deepEqual(
       abrufe.map(a => [a.new_or_used, a.guide_type]),
       [

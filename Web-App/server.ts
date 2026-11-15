@@ -11,7 +11,7 @@ import { fehlertext, logAndContinue } from './src/infra/fehler';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { bereiteDatenbankVor } from './startup/datenbank';
-import { starteJobs, stoppeJobs } from './startup/jobsProzess';
+import { starteJobs, stoppeJobs, type JobsLauf } from './startup/jobsProzess';
 import { verdrahteProzess, type Dienste } from './startup/verdrahtung';
 import { baueApp } from './startup/app';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
@@ -65,9 +65,15 @@ function sitzungsGeheimnis(): string {
 /** SSE-Ströme zuerst beenden: Sie enden nie von selbst und hielten close() auf.
  * Ohne geordnetes Ende bräche jedes Deploy laufende Antworten ab. */
 const SHUTDOWN_TIMEOUT_MS = 8000;
-let _beendetWird = false;
+
+/** Was der Start hält und das Beenden braucht; ein zweites Signal findet `beendetWird`. */
+interface Lauf {
+  beendetWird: boolean;
+  jobs: JobsLauf | null;
+}
 
 async function herunterfahren(
+  lauf: Lauf,
   signal: string,
   httpServer: Server | null,
   jobs: boolean,
@@ -75,8 +81,8 @@ async function herunterfahren(
   dienste: Dienste,
   webSperreFrei: (() => Promise<void>) | null,
 ): Promise<void> {
-  if (_beendetWird) return;
-  _beendetWird = true;
+  if (lauf.beendetWird) return;
+  lauf.beendetWird = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
   // Notbremse für eine hängende Verbindung; Exit-Code 0, denn sie ist kein Fehler.
   const notbremse = setTimeout(() => {
@@ -92,7 +98,7 @@ async function herunterfahren(
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
-    if (jobs) await stoppeJobs(dienste);
+    if (jobs && lauf.jobs) await stoppeJobs(dienste, lauf.jobs);
     await schliessePufferUndTakte(zugang, dienste);
     await webSperreFrei?.();
     await zugang.pool.end().catch(logAndContinue('server:end'));
@@ -128,7 +134,7 @@ async function starte(): Promise<void> {
   if (!k.appBaseUrl && k.betrieb && web)
     console.error(
       '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
-        'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.',
+        'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
   const geheimnis = web ? sitzungsGeheimnis() : ''; // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
@@ -138,7 +144,7 @@ async function starte(): Promise<void> {
 
   try {
     // Migrationen, Erststart und Umschlüsselung gehen über alle Konten.
-    await imSystemkontext('start', () => bereiteDatenbankVor(zugang, dienste));
+    await imSystemkontext('start', () => bereiteDatenbankVor(zugang, dienste, { jobs }));
   } catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
@@ -151,30 +157,38 @@ async function starte(): Promise<void> {
         process.exit(1);
       })
     : null;
-  if (web) await dienste.mail.meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
-  if (web) await dienste.konto.meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
-  if (web) await dienste.konto.meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
+  // Hinweise ins Protokoll: Einer, der scheitert, hält weder den Start noch die übrigen auf.
+  const hinweise: [string, () => Promise<unknown>][] = [
+    ['start:smtp-altlast', () => dienste.mail.meldeSmtpAltlast()],
+    ...dienste.konto.adressHinweise(),
+  ];
+  if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
   if (web) dienste.konto.horcheAufTokenWiderruf();
+  // Web und Jobs (auch getrennte Prozesse) leeren ihr Haushaltsgedächtnis auf jede Änderung.
+  dienste.haushalt.horcheAufAenderungen();
+  // Ein globaler Wert aus einem anderen Prozess (Nachlauf, zweiter Web-Prozess) leert den Einrichtungsstand.
+  if (web) dienste.einstellungen.horcheAufAenderungen();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web
     ? http
         .createServer(
           { ...HTTP_FRISTEN },
-          baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
+          baueApp({ pool: zugang.systemWebPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })
     : null;
+  const lauf: Lauf = { beendetWird: false, jobs: null };
   process.on('SIGTERM', () => {
-    void herunterfahren('SIGTERM', httpServer, jobs, zugang, dienste, webSperreFrei);
+    void herunterfahren(lauf, 'SIGTERM', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
   process.on('SIGINT', () => {
-    void herunterfahren('SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
+    void herunterfahren(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
-  // Aufträge arbeiten über Kontogrenzen; HTTP-Anfragen erben diesen Rahmen nicht.
-  if (jobs) await imSystemkontext('auftraege', () => starteJobs(dienste, web));
+  // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/auftraege/kontext.ts, dienst.ts).
+  if (jobs) lauf.jobs = await starteJobs(dienste);
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

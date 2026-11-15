@@ -3,25 +3,25 @@ Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
 Rot: Praesentation holt nichts selbst am Netz
 
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
+@@ -6,6 +6,7 @@
+ import ch.brickinventoryapp.model.fach.Merksortierung
+ import ch.brickinventoryapp.model.fach.Erfassungswunsch
+ import ch.brickinventoryapp.ui.components.nebenKnopfFarben
++import retrofit2.Response
+ import ch.brickinventoryapp.ui.components.nebenKnopfRand
+ import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+ import androidx.compose.foundation.Image
 diff --git a/Android-App/feature-sammlung/build.gradle.kts b/Android-App/feature-sammlung/build.gradle.kts
 --- a/Android-App/feature-sammlung/build.gradle.kts
 +++ b/Android-App/feature-sammlung/build.gradle.kts
-@@ -23,6 +23,7 @@
+@@ -21,6 +21,7 @@
      implementation(libs.bundles.camera)
      implementation(libs.mlkit.barcode)
      implementation(libs.mlkit.textrec)
 +    implementation(libs.retrofit)
  
      testImplementation(project(":core-testing"))
-     testImplementation(platform(libs.androidx.compose.bom))
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
-@@ -4,6 +4,7 @@
- import ch.brickinventoryapp.model.fach.Merksortierung
- import ch.brickinventoryapp.model.fach.Erfassungswunsch
- import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-+import retrofit2.Response
- import ch.brickinventoryapp.ui.components.nebenKnopfRand
- import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
- import androidx.compose.foundation.Image
+     // Die Testserver antworten im Wire-Format.

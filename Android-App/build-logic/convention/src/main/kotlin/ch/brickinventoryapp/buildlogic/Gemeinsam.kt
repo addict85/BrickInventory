@@ -34,12 +34,15 @@ internal fun Project.guavaMindestens() {
 }
 
 /**
- * Ein Modul mit wenigen Abhängigkeiten griffe allein auf arch-core 2.0.0 und
- * tracing 1.1.0 zurück, die nicht im Prüfsummenverzeichnis stehen. Einschränkungen
- * wie bei Guava heben sie auf die Fassungen, die die App ohnehin nimmt.
+ * Ein Modul mit wenigen Abhängigkeiten griffe allein auf arch-core 2.0.0, tracing 1.1.0,
+ * emoji2 1.2.0 oder (über navigation-runtime) activity-ktx 1.7.1 zurück, die nicht im
+ * Prüfsummenverzeichnis stehen und unsigniert sind. Einschränkungen wie bei Guava heben
+ * sie auf die Fassungen, die die App ohnehin nimmt. Nicht activity selbst: Das höbe
+ * Module mit activity 1.5.1 an und zöge lifecycle 2.6.1 nach.
  */
 internal fun Project.androidxMindestens() {
-    for (alias in listOf("androidx.arch.core.common", "androidx.arch.core.runtime", "androidx.tracing")) {
+    for (alias in listOf("androidx.arch.core.common", "androidx.arch.core.runtime", "androidx.tracing",
+        "androidx.emoji2", "androidx.emoji2.views.helper", "androidx.activity.ktx")) {
         val bib = libs.findLibrary(alias).get().get()
         dependencies.constraints.add("implementation", "${bib.module}:${bib.versionConstraint.requiredVersion}")
     }

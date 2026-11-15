@@ -1,15 +1,16 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.sammlung.ui.Galerie
 import ch.brickinventoryapp.sammlung.ui.GalerieAnzeige
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
 import ch.brickinventoryapp.sammlung.ui.galerieAnzeige
+import ch.brickinventoryapp.model.ui.Meldung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -35,7 +36,7 @@ import org.junit.Test
  *      die Galerie nur die neue Quelle“ (die alte Quelle schreibt weiter hinein)
  *   B  in laden() den Zweig „ohne Netz mit Stand“ entfernt → rot „ohne Netz bleibt
  *      die Quelle stehen, mit ihrem Stand“
- *   C  in laden() `galleryFehler = beschreibeFehler(r)` entfernt → rot „ein
+ *   C  in laden() `galleryFehler = fehlerMeldung(r)` entfernt → rot „ein
  *      Ladefehler wird zur Fehleranzeige mit Grund“
  *   D  `galleryFehler = null` beim neuen Versuch entfernt → rot „ein
  *      erfolgreicher neuer Versuch raeumt den Fehler weg“
@@ -47,12 +48,17 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieTest {
 
-    private fun set(nr: Int, menge: Int = 1, thema: String? = null) = SetItem(setNumber = "$nr-1", quantity = menge, theme = thema)
+    private fun set(nr: Int, menge: Int = 1, thema: String? = null) = SetAnsicht(setNumber = "$nr-1", quantity = menge, theme = thema)
 
     private fun kurz(l: List<SetAnsicht>) = l.map { "${it.setNumber}x${it.quantity}" }
 
     /** Die Quelle je Thema; [aktualisiert] schreibt mit, für welches Thema gefüllt wurde. */
-    private class Quelle(start: Lokal<SetItem> = Lokal(listOf(SetItem("1-1"), SetItem("2-1", theme = "Star Wars")), 1L)) {
+    private class Quelle(
+        start: Lokal<SetAnsicht> = Lokal(
+            listOf(SetAnsicht(setNumber = "1-1"), SetAnsicht(setNumber = "2-1", theme = "Star Wars")),
+            1L,
+        ),
+    ) {
         val ablage = MutableStateFlow(start)
         val aktualisiert = mutableListOf<String>()
     }
@@ -63,12 +69,11 @@ class GalerieTest {
      */
     private fun TestScope.vordergrund() = CoroutineScope(coroutineContext + Job(backgroundScope.coroutineContext[Job]))
 
-    private fun TestScope.galerie(q: Quelle, ergebnis: () -> Ergebnis<Unit> = { Ergebnis.Success(Unit) }) = Galerie(
+    private fun TestScope.galerie(q: Quelle, ergebnis: () -> Ergebnis<Unit> = { Ergebnis.Erfolg(Unit) }) = Galerie(
         scope = vordergrund(),
         quelle = { st -> q.ablage.map { l -> l.copy(liste = l.liste.filter { st.galleryTheme.isBlank() || it.theme == st.galleryTheme }) } },
         aktualisiere = { st -> q.aktualisiert += st.galleryTheme; delay(10); ergebnis() },
-        beschreibeFehler = { "Grund: ${it.message}" },
-        holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
+        holeKennzahlen = { Ergebnis.Erfolg(null) },
         meldeFehler = {},
         vergissScroll = {},
     )
@@ -91,7 +96,7 @@ class GalerieTest {
         val alt = MutableStateFlow(Lokal(listOf(set(1)), 1L))
         val neu = MutableStateFlow(Lokal(listOf(set(2, thema = "Star Wars")), 1L))
         val g = Galerie(scope = vordergrund(), quelle = { st -> if (st.galleryTheme.isBlank()) alt else neu },
-            aktualisiere = { Ergebnis.Success(Unit) }, holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
+            aktualisiere = { Ergebnis.Erfolg(Unit) }, holeKennzahlen = { Ergebnis.Erfolg(null) },
             meldeFehler = {}, vergissScroll = {})
         g.laden(); advanceUntilIdle()
         g.setzeThema("Star Wars"); advanceUntilIdle()
@@ -124,30 +129,30 @@ class GalerieTest {
 
     @Test
     fun `ein Ladefehler wird zur Fehleranzeige mit Grund`() = runTest {
-        val g = galerie(Quelle(Lokal(emptyList(), null))) { Ergebnis.Error.Server(504, "Zeitüberschreitung") }
+        val g = galerie(Quelle(Lokal(emptyList(), null))) { Ergebnis.Fehler.Server(504, "Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
-        assertEquals("Grund: Zeitüberschreitung", st.galleryFehler)
+        assertEquals(Meldung.Text("Zeitüberschreitung"), st.abruf.fehlerMeldung)
         assertEquals(GalerieAnzeige.FEHLER, galerieAnzeige(st, gefiltert = false))
     }
 
     @Test
     fun `ein erfolgreicher neuer Versuch raeumt den Fehler weg`() = runTest {
         var kaputt = true
-        val g = galerie(Quelle()) { if (kaputt) Ergebnis.Error.Server(503, "Netz") else Ergebnis.Success(Unit) }
+        val g = galerie(Quelle()) { if (kaputt) Ergebnis.Fehler.Server(503, "Netz") else Ergebnis.Erfolg(Unit) }
         g.laden(); advanceUntilIdle()
         kaputt = false
         g.laden(); advanceUntilIdle()
-        assertNull(g.state.value.galleryFehler)
+        assertNull(g.state.value.abruf.fehlerMeldung)
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(g.state.value, gefiltert = false))
     }
 
     @Test
     fun `ohne Netz bleibt die Quelle stehen, mit ihrem Stand`() = runTest {
-        val g = galerie(Quelle(Lokal(listOf(set(7)), 5L))) { Ergebnis.Error.Netz() }
+        val g = galerie(Quelle(Lokal(listOf(set(7)), 5L))) { Ergebnis.Fehler.Netz() }
         g.laden(); advanceUntilIdle()
         assertEquals(listOf("7-1x1"), kurz(g.state.value.sets))
-        assertNull("ohne Netz bleibt die Ablage stehen", g.state.value.galleryFehler)
+        assertNull("ohne Netz bleibt die Ablage stehen", g.state.value.abruf.fehlerMeldung)
         assertEquals(5L, g.state.value.offlineStand)
     }
 
@@ -166,12 +171,12 @@ class GalerieTest {
     fun `eine leere Sammlung ist kein Fehler`() {
         assertEquals(GalerieAnzeige.LEER, galerieAnzeige(GalleryUiState(), gefiltert = false))
         assertEquals(GalerieAnzeige.KEINE_TREFFER, galerieAnzeige(GalleryUiState(), gefiltert = true))
-        assertEquals(GalerieAnzeige.LAEDT, galerieAnzeige(GalleryUiState(galleryLoading = true), gefiltert = false))
+        assertEquals(GalerieAnzeige.LAEDT, galerieAnzeige(GalleryUiState(abruf = Laden.Laedt), gefiltert = false))
     }
 
     @Test
     fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
-        val st = GalleryUiState(sets = listOf(set(1).alsAnsicht()), galleryFehler = "Netz")
+        val st = GalleryUiState(sets = listOf(set(1)), abruf = Laden.Fehler(Fehlerklasse.OFFLINE, Meldung.Text("Netz")))
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
     }
 }

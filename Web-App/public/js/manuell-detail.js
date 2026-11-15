@@ -1,3 +1,4 @@
+import { melde } from './ereignisse.js';
 import { detailZeile } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
@@ -8,14 +9,13 @@ import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './dom.js';
 import { betragFuerFeld } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
-import { loadFinance } from './finance.js';
 import { deleteManualFig, loadManualFigsTable, manuelleFiguren, updateManualFig } from './minifigs.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 import { lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { acqSummary, renderManAcqSummary, kurzfassungMan } from './kaufpreis-anzeige.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
-import { deleteManualPart, loadManualParts, manuelleTeile, updateManualPart } from './parts.js';
+import { deleteManualPart, loadManualParts, manuelleTeile, updateManualPart } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
 import {
   erfassung,
@@ -26,12 +26,12 @@ import {
   gespeichertMarke,
   zeigeGespeichert,
 } from './erfassung-zustand.js';
-import { closeAcqModal } from './acquisition-modals.js';
+import { closeAcqModal } from './kauf-dialoge.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
 
 // Detailfenster und Erfassungen manuell erfasster Teile und Minifiguren; das Fenster #acq-modal teilt es mit
-// dem Kaufpreis-Dialog des Sets (acquisition-modals.js).
+// dem Kaufpreis-Dialog des Sets (kauf-dialoge.js).
 // ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
 /** @type {{ type: string, id: string, colorId: number, owner?: number } | null} */
 let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefined }
@@ -192,9 +192,8 @@ export async function openManDetail(type, id, colorId) {
   let item = finde(manuelleFiguren(), manuelleTeile());
   // Die Caches der Reiter Teile und Minifiguren folgen deren Suche, Lagerort und Kontowahl; die Finanztabelle
   // nicht. Fehlt der Eintrag, wird er deshalb ungefiltert gesucht — der Cache des Reiters bleibt, wie er ist.
-  if (!item && type === 'fig')
-    item = finde((await api('GET', '/v1/minifigs/manual').catch(() => null))?.figs, undefined);
-  if (!item && type !== 'fig') item = finde(undefined, (await api('GET', '/v1/parts/manual').catch(() => null))?.parts);
+  if (!item && type === 'fig') item = finde((await api('GET', '/v1/minifigs/manual'))?.figs, undefined);
+  if (!item && type !== 'fig') item = finde(undefined, (await api('GET', '/v1/parts/manual'))?.parts);
   // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die Eintraege aller Konten; ohne diese
   // Angabe schrieb der Server in die Zeile des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte
   // des Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher 99|9), und die Antwort
@@ -221,7 +220,7 @@ export async function openManDetail(type, id, colorId) {
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
       : `/v1/parts/${encodeURIComponent(id)}/${parseInt(String(colorId), 10) || 0}/acquisitions`;
-  const ad = await api('GET', acqUrl).catch(() => null);
+  const ad = await api('GET', acqUrl);
   const acqs = ad?.acquisitions || [];
 
   setzeHtml(bodyEl, verbinde(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad)));
@@ -305,7 +304,7 @@ async function speichereTeilFarbe() {
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
-  if (aktiverReiter() === 'finance') loadFinance();
+  if (aktiverReiter() === 'finance') melde('finanzenLaden');
   await openManDetail('part', nummer, neu);
 }
 
@@ -396,14 +395,14 @@ async function loadManAcqModal(type, id, colorId) {
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
       : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
-  const ad = await api('GET', url).catch(() => null);
+  const ad = await api('GET', url);
   // Wie im Set-Dialog: Ohne Mitgliederliste und ohne owner_user_id wüsste die Eigentümer-Auswahl nicht,
   // worauf sie steht.
   if (!erfassung.mitglieder.length) {
-    const hm = await api('GET', '/v1/sets/household-members').catch(() => null);
+    const hm = await api('GET', '/v1/sets/household-members');
     erfassung.mitglieder = hm?.members || [];
   }
-  erfassung.besitzer = ad?.owner_user_id ?? ME?.id ?? null;
+  erfassung.besitzer = ad?.owner_user_id ?? angemeldetesKonto?.id ?? null;
   renderManAcqBody(type, id, colorId, ad?.acquisitions || [], ad?.totals);
 }
 
@@ -579,7 +578,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
   // Mengenfeld im Detaildialog nachführen
   const qEl = G('man-det-qty');
   if (qEl && d.new_quantity !== undefined) qEl.value = d.new_quantity;
-  const ad = await api('GET', listUrl).catch(() => null);
+  const ad = await api('GET', listUrl);
   const acqs = ad?.acquisitions || [];
   // Zusammenfassung im Detaildialog auffrischen
   const sumEl = G('man-acq-summary');

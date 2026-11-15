@@ -8,7 +8,7 @@
  *   A  in SET_SORTS qty_asc auf `s.quantity DESC, …` → rot: „nach Anzahl …“
  *   B  ausTabelle(SET_SORTS, …) durch `SET_SORTS[sort] ?? …` ersetzt → rot:
  *      „unbekannte Sortierung …“ (constructor liefert eine Funktion → 500)
- *   C  in getSets `themen: !!page_size && …` durch `themen: !!page_size` →
+ *   C  in setsLesen `themen: !!page_size && …` durch `themen: !!page_size` →
  *      rot: „die Themenliste …“ (Seite 2 trägt Themen)
  *   D  im Figurenzähler GROUP BY ohne m.source/LOWER(TRIM) durch
  *      `GROUP BY m.set_number, m.fig_number` → rot: „Minifiguren zählen …“

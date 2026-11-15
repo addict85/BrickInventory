@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import androidx.compose.foundation.ScrollState
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
@@ -7,12 +8,12 @@ import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.filled.Bookmark
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.components.ErfassenDialog
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -53,7 +54,9 @@ import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.LadeKreis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
@@ -77,8 +80,8 @@ import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 @Composable
 fun CatalogDetailScreen(
     setNumber: String,
-    detail: KatalogDetailAnsicht?,
-    isLoading: Boolean,
+    /** Ein Fehler steht mit „Erneut versuchen“ statt des Kringels. */
+    geladen: Laden<KatalogDetailAnsicht>,
     imageLoader: ImageLoader,
     serverUrl: String,
     defaultCondition: Zustand = Zustand.NEU,
@@ -98,10 +101,8 @@ fun CatalogDetailScreen(
     gemerkt: MerkpostenAnsicht? = null,
     /** Den Merkposten öffnen — Setnummer und Zustand. */
     onOeffneMerkposten: (String, Zustand) -> Unit = { _, _ -> },
-    /** Warum kein Detail da ist; dann steht der Fehler mit „Erneut versuchen“ statt des Kringels. */
-    fehler: String? = null,
-    fehlerKlasse: Fehlerklasse? = null,
 ) {
+    val detail = geladen.datenOderNull()
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showWishDialog by rememberSaveable { mutableStateOf(false) }
@@ -125,101 +126,153 @@ fun CatalogDetailScreen(
         topBar = { DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
     ) { padding ->
         when {
-            fehler != null && !isLoading && detail == null -> ZustandsHinweis(Modifier.padding(padding)) {
-                FehlerHinweis(fehler, { onLoad(setNumber) }, fehlerKlasse)
+            geladen is Laden.Fehler -> ZustandsHinweis(Modifier.padding(padding)) {
+                FehlerHinweis(geladen.meldung.satz(), { onLoad(setNumber) }, geladen.art)
             }
-            isLoading || detail == null -> LadeKreis(Modifier.padding(padding))
-            else -> BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
-                // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
-                // vor, derselbe Server-Check wie in der Katalog-Liste.
-                val fullUrl = remember(detail.setNumber, serverUrl) {
-                    resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
-                }
-                // Antippen öffnet den Zoom wie im Set-Detail. Weisser Bildgrund, im Dunkeln
-                // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
-                val bild: @Composable (Modifier) -> Unit = { m ->
-                    ProduktBild(
-                        model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
-                        imageLoader = imageLoader,
-                        contentDescription = detail.name,
-                        modifier = m.clip(Formen.karte)
-                            .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { showImageZoom = true },
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                        ersatzGroesse = 64.dp,
-                        bildgrund = true,
-                        innenAbstand = Abstaende.mittel,
-                    )
-                }
-                val angaben: @Composable ColumnScope.() -> Unit = {
-                    KatalogAngaben(
-                        detail = detail,
-                        gemerkt = gemerkt,
-                        onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
-                        onAufnehmen = { showAddDialog = true },
-                        onOpenInGallery = onOpenInGallery,
-                        onBrickLink = { url ->
-                            // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
-                            if (!oeffneExtern(ctx, externeAdresse(url))) {
-                                bereich.launch { meldungen.showSnackbar(keineAppText) }
-                            }
-                        },
-                    )
-                }
-                // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
-                // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
-                // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
-                if (zweiSpaltig(maxWidth.value)) {
-                    Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
-                        Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),
-                            contentAlignment = Alignment.TopCenter) {
-                            bild(Modifier.widthIn(max = BILD_HOECHSTENS).fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
-                        }
-                        Column(
-                            Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
-                            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-                        ) { angaben() }
+            detail == null -> LadeKreis(Modifier.padding(padding))
+            else -> KatalogDetailInhalt(
+                detail, serverUrl, imageLoader, gemerkt, rollen, Modifier.padding(padding),
+                onZoom = { showImageZoom = true },
+                onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
+                onAufnehmen = { showAddDialog = true },
+                onOpenInGallery = onOpenInGallery,
+                onBrickLink = { url ->
+                    // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
+                    if (!oeffneExtern(ctx, externeAdresse(url))) {
+                        bereich.launch { meldungen.showSnackbar(keineAppText) }
                     }
-                } else Column(
-                    Modifier.fillMaxSize().verticalScroll(rollen).padding(Abstaende.gross),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-                ) {
-                    bild(Modifier.fillMaxWidth().height(220.dp))
-                    angaben()
-                }
-            }
+                },
+            )
         }
     }
 
-    if (showWishDialog && detail != null) {
+    KatalogDetailDialoge(
+        detail = detail, merken = showWishDialog, aufnehmen = showAddDialog, zoom = showImageZoom,
+        defaultCondition = defaultCondition, householdMembers = householdMembers,
+        lagerorte = lagerorte, lagerortVorgabe = lagerortVorgabe, serverUrl = serverUrl, imageLoader = imageLoader,
+        onWish = onWish, onAddToGallery = onAddToGallery,
+        onSchliessen = { showWishDialog = false; showAddDialog = false; showImageZoom = false },
+    )
+}
+
+/** Bild und Angaben; ab „expanded“ in zwei Spalten. */
+@Composable
+private fun KatalogDetailInhalt(
+    detail: KatalogDetailAnsicht,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    gemerkt: MerkpostenAnsicht?,
+    rollen: ScrollState,
+    modifier: Modifier,
+    onZoom: () -> Unit,
+    onMerken: () -> Unit,
+    onAufnehmen: () -> Unit,
+    onOpenInGallery: (String) -> Unit,
+    onBrickLink: (String) -> Unit,
+) {
+    val ctx = LocalContext.current
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
+        // vor, derselbe Server-Check wie in der Katalog-Liste.
+        val fullUrl = remember(detail.setNumber, serverUrl) {
+            resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
+        }
+        // Antippen öffnet den Zoom wie im Set-Detail. Weisser Bildgrund, im Dunkeln
+        // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
+        val bild: @Composable (Modifier) -> Unit = { m ->
+            ProduktBild(
+                model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                imageLoader = imageLoader,
+                contentDescription = detail.name,
+                modifier = m.clip(Formen.karte)
+                    .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { onZoom() },
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                ersatzGroesse = 64.dp,
+                bildgrund = true,
+                innenAbstand = Abstaende.mittel,
+            )
+        }
+        val angaben: @Composable ColumnScope.() -> Unit = {
+            KatalogAngaben(
+                detail = detail,
+                gemerkt = gemerkt,
+                onMerken = onMerken,
+                onAufnehmen = onAufnehmen,
+                onOpenInGallery = onOpenInGallery,
+                onBrickLink = onBrickLink,
+            )
+        }
+        // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
+        // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
+        // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
+        if (zweiSpaltig(maxWidth.value)) {
+            Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),
+                    contentAlignment = Alignment.TopCenter) {
+                    bild(Modifier.widthIn(max = BILD_HOECHSTENS).fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
+                }
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+                ) { angaben() }
+            }
+        } else Column(
+            Modifier.fillMaxSize().verticalScroll(rollen).padding(Abstaende.gross),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+        ) {
+            bild(Modifier.fillMaxWidth().height(220.dp))
+            angaben()
+        }
+    }
+}
+
+/** Merken, Aufnehmen und Zoom des Katalog-Details; [onSchliessen] schliesst, was offen ist. */
+@Composable
+private fun KatalogDetailDialoge(
+    detail: KatalogDetailAnsicht?,
+    merken: Boolean,
+    aufnehmen: Boolean,
+    zoom: Boolean,
+    defaultCondition: Zustand,
+    householdMembers: List<MitgliedAnsicht>,
+    lagerorte: List<String>,
+    lagerortVorgabe: String,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onWish: (Merkwunsch) -> Unit,
+    onAddToGallery: (Erfassungswunsch) -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    if (merken && detail != null) {
         MerkpostenDialog(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
-            onDismiss = { showWishDialog = false },
+            onDismiss = onSchliessen,
             onWish = { zustand, richtung, schwelle, konto ->
                 onWish(Merkwunsch(detail.setNumber, zustand, richtung, schwelle, konto))
-                showWishDialog = false
+                onSchliessen()
             },
         )
     }
 
-    if (showAddDialog && detail != null) {
+    if (aufnehmen && detail != null) {
         CatalogAddDialog(
             setName = detail.name ?: detail.setNumber,
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
             lagerorte = lagerorte,
             lagerortVorgabe = lagerortVorgabe,
-            onDismiss = { showAddDialog = false },
+            onDismiss = onSchliessen,
             onAdd = { wunsch ->
-                showAddDialog = false
+                onSchliessen()
                 onAddToGallery(wunsch.copy(setNumber = detail.setNumber))
             }
         )
     }
 
-    if (showImageZoom) {
+    if (zoom) {
         // Dieselbe Adresse wie das Vorschaubild oben: resolveFullUrl() liefert
         // bereits die volle Auflösung (kein Thumb) — ein zweiter Aufruf mit
         // anderen Werten würde nur auseinanderlaufen.
@@ -229,7 +282,7 @@ fun CatalogDetailScreen(
                 imageUrl = zoomUrl,
                 contentDescription = detail?.name,
                 imageLoader = imageLoader,
-                onDismiss = { showImageZoom = false }
+                onDismiss = onSchliessen
             )
         }
     }
@@ -353,61 +406,56 @@ private fun CatalogAddDialog(
     // Vorgabe danach nicht mehr aendert.
     var lagerort      by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
     // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
-    var owner         by remember(householdMembers) {
-        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
-    }
+    val eigenes = householdMembers.firstOrNull { it.isSelf }?.id
+    var owner         by remember(householdMembers) { mutableStateOf(eigenes) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.catalog_add_to_gallery), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(setName, fontWeight = FontWeight.SemiBold)
-                // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
-                OwnerPicker(householdMembers, owner, { owner = it })
-                // Menge und Preis wie im Erfassen-Dialog der Galerie: gefiltert
-                // UND mit der passenden Tastatur. Hier fehlte beides — derselbe
-                // Dialog, zwei Bildschirme weiter, hatte es laengst.
-                OutlinedTextField(
-                    shape = Formen.feld,
-                    value = quantity,
-                    onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.common_quantity)) },
-                    isError = NumericInput.mengeUngueltig(quantity),
-                    supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                OutlinedTextField(
-                    shape = Formen.feld,
-                    value = purchasePrice,
-                    onValueChange = { purchasePrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                    isError = NumericInput.preisUngueltig(purchasePrice),
-                    supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = NumericInput.preisTastatur()
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
-                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { if (!erfassungUngueltig(quantity, purchasePrice)) onAdd(Erfassungswunsch(
-                setNumber = "",
-                menge = quantity.toIntOrNull() ?: 1,
-                kaufpreis = NumericInput.leseBetrag(purchasePrice),
-                zustand = condition,
-                // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
-                // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
-                besitzer = if (householdMembers.size > 1) owner else null,
-                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
-            )) }) {
-                Text(stringResource(R.string.catalog_add_confirm))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
-    )
+    // Der gemeinsame Rahmen (ErfassenDialog): Titel als Überschrift und Fenstername, rollbar
+    // und bei grosser Schrift Vollbild; vorher fehlte beides.
+    ErfassenDialog(
+        titel = stringResource(R.string.catalog_add_to_gallery),
+        bestaetigen = stringResource(R.string.catalog_add_confirm),
+        onBestaetigen = { onAdd(Erfassungswunsch(
+            setNumber = "",
+            menge = quantity.toIntOrNull() ?: 1,
+            kaufpreis = NumericInput.leseGeld(purchasePrice),
+            zustand = condition,
+            // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
+            // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
+            besitzer = if (householdMembers.size > 1) owner else null,
+            lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+        )) },
+        onAbbrechen = onDismiss,
+        bestaetigenAn = !erfassungUngueltig(quantity, purchasePrice),
+        geaendert = quantity != "1" || purchasePrice.isNotEmpty() || condition != defaultCondition ||
+            lagerort != lagerortVorgabe || owner != eigenes,
+    ) {
+        Text(setName, fontWeight = FontWeight.SemiBold)
+        // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
+        OwnerPicker(householdMembers, owner, { owner = it })
+        // Menge und Preis wie im Erfassen-Dialog der Galerie: gefiltert und mit der passenden Tastatur.
+        OutlinedTextField(
+            shape = Formen.feld,
+            value = quantity,
+            onValueChange = { quantity = NumericInput.quantity(it) },
+            label = { Text(stringResource(R.string.common_quantity)) },
+            isError = NumericInput.mengeUngueltig(quantity),
+            supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = NumericInput.ganzzahlTastatur()
+        )
+        OutlinedTextField(
+            shape = Formen.feld,
+            value = purchasePrice,
+            onValueChange = { purchasePrice = NumericInput.price(it) },
+            label = { Text(stringResource(R.string.gallery_purchase_price)) },
+            isError = NumericInput.preisUngueltig(purchasePrice),
+            supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = NumericInput.preisTastatur()
+        )
+        Zustandszeile(zustand = condition, onZustand = { condition = it })
+        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
+    }
 }
 
 /**
@@ -442,6 +490,7 @@ private fun MerkpostenDialog(
             // beim eigenen Konto (gleiche Regel wie im Erfassungsdialog).
             if (householdMembers.size > 1) konto else null) },
         onAbbrechen = onDismiss,
+        geaendert = schwelle.isNotEmpty() || zustand != defaultCondition || richtung != Alarmrichtung.UNTER,
     ) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
                 // Zielkonto wie beim Erfassen; blendet sich bei weniger als

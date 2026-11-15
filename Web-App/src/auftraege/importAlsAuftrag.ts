@@ -1,18 +1,11 @@
-/** Jeder Import läuft als Auftrag im Job-Prozess; die Anfrage reicht ein und
- * wartet auf das Ergebnis. Bricht der Web-Prozess ab, läuft der Import weiter,
- * und Fremdabrufe belasten nicht den Prozess, der die Seiten ausliefert. */
+/** Ein Auftrag, auf dessen Ergebnis die Anfrage wartet (etwa ein Import): Bricht der Web-Prozess
+ * ab, läuft er weiter, und Fremdabrufe belasten nicht den Prozess, der die Seiten ausliefert. */
 import { stelleAuftragEin } from './dienst';
-import type { Fortschritt } from './auftraege';
-import type { z } from 'zod';
-import type { ImportNutzlast, NutzlastEingabe } from './nutzlasten';
+import type { AuftragsArt, Fortschritt, NutzlastEingabe } from './auftraege';
 import { Fachfehler, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import type { AuftraegeKontext } from './kontext';
 
-export type ImportQuelle = z.input<typeof ImportNutzlast>['quelle'];
-/** Was der Import der Quelle braucht (src/auftraege/nutzlasten.ts). */
-export type ImportEingabe<Q extends ImportQuelle> = Extract<z.input<typeof ImportNutzlast>, { quelle: Q }>['eingabe'];
-
-/** So lange wartet die Anfrage; danach läuft der Import im Hintergrund weiter. */
+/** So lange wartet die Anfrage; danach läuft der Auftrag im Hintergrund weiter. */
 export const IMPORT_WARTEN_MS = 10 * 60_000;
 const TAKT_MS = 150;
 
@@ -34,22 +27,20 @@ export async function setzeFachfehler(k: AuftraegeKontext, id: string, e: Fachfe
 }
 
 /** @typeParam T die Antwort, die der Job ablegt; der Vertrag prüft sie im Testlauf. */
-export async function importAlsAuftrag<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(
+export async function warteAufAuftrag<T, A extends AuftragsArt>(
   k: AuftraegeKontext,
-  uid: number,
-  quelle: Q,
-  eingabe: ImportEingabe<Q>,
-  o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {},
+  art: A,
+  nutzlast: NutzlastEingabe<A>,
+  o: { userId: number; fortschritt?: (f: Fortschritt) => void; wartenMs?: number },
 ): Promise<T> {
+  const uid = o.userId;
   // Ein Versuch: Ein zweiter Lauf legte schon Angelegtes noch einmal an.
-  // tsc verbindet Q nicht mit dem Zweig der Union; geprüft wird beim Einstellen.
-  const nutzlast = { user_id: uid, quelle, eingabe } as NutzlastEingabe<'csv_import'>;
-  const id = await stelleAuftragEin(k, 'csv_import', nutzlast, { userId: uid, maxVersuche: 1 });
+  const id = await stelleAuftragEin(k, art, nutzlast, { userId: uid, maxVersuche: 1 });
   if (!id) fachfehler('intern', 'interner_fehler');
-  const bis = Date.now() + (o.wartenMs ?? IMPORT_WARTEN_MS);
+  const bis = k.uhr.jetzt() + (o.wartenMs ?? IMPORT_WARTEN_MS);
   let zuletzt = '';
   for (;;) {
-    const s = await k.auftraege.auftragsStand(id);
+    const s = await k.auftraege.auftragsStand(id, uid);
     if (s?.fortschritt && o.fortschritt) {
       const j = JSON.stringify(s.fortschritt);
       if (j !== zuletzt) {
@@ -67,7 +58,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
     }
     if (!s || s.status === 'abgebrochen') fachfehler('konflikt', 'import_abgebrochen');
     if (s.status === 'fehler') fachfehler('intern', 'import_fehlgeschlagen');
-    if (Date.now() > bis) fachfehler('zeitueberschreitung', 'import_laeuft_noch');
+    if (k.uhr.jetzt() > bis) fachfehler('zeitueberschreitung', 'import_laeuft_noch');
     await new Promise(r => setTimeout(r, TAKT_MS));
   }
 }

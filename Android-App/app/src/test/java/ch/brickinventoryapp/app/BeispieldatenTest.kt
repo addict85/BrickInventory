@@ -1,22 +1,17 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.testTeileRepository
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
@@ -46,7 +41,6 @@ import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
 import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 import ch.brickinventoryapp.finanzen.ui.setZeilen
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
-import java.math.BigDecimal
 import java.util.Locale
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
@@ -100,13 +94,14 @@ class BeispieldatenTest {
     @Test
     fun `jeder Hauptbildschirm bekommt Inhalt`() {
         val galerie = welt.galerie().also { it.loadSets() }
-        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
+        val teile = welt.teile().also { it.loadParts() }
+        val figuren = welt.figuren().also { it.loadMinifigs() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val detail = welt.setDetail()
         da("Galerie") { galerie.galleryState.value.sets.size == 3 }
-        da("Teile") { teile.partsState.value.parts.isNotEmpty() }
-        da("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
+        da("Teile") { teile.teileState.value.parts.isNotEmpty() }
+        da("Figuren") { figuren.figurenZustand.value.minifigs.isNotEmpty() }
         da("Finanzen") { finanzen.financeState.value.valuation != null }
         da("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
         da("Detail") { detail.setDetailState.value.setDetail != null }
@@ -117,13 +112,15 @@ class BeispieldatenTest {
     /** Die Fotos von Teilen und Figuren zeigen Namen und Kennzahlen, nicht „Name unbekannt“. */
     @Test
     fun `Teile und Figuren tragen echte Namen`() {
-        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
-        da("Teile und Figuren") { teile.partsState.value.let {
-            it.parts.isNotEmpty() && it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
-        val z = teile.partsState.value
+        val teile = welt.teile().also { it.loadParts() }
+        val figuren = welt.figuren().also { it.loadMinifigs() }
+        da("Teile und Figuren") { teile.teileState.value.parts.isNotEmpty() && figuren.figurenZustand.value.let {
+            it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
+        val z = teile.teileState.value
+        val f = figuren.figurenZustand.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
-        assertTrue(z.minifigs.toString(), z.minifigs.all { !it.figName.isNullOrBlank() })
-        assertTrue("Ein Name ist lang genug zum Kürzen", z.minifigs.any { (it.figName?.length ?: 0) > 30 })
+        assertTrue(f.minifigs.toString(), f.minifigs.all { !it.figName.isNullOrBlank() })
+        assertTrue("Ein Name ist lang genug zum Kürzen", f.minifigs.any { (it.figName?.length ?: 0) > 30 })
     }
 
     /**
@@ -178,17 +175,18 @@ class BeispieldatenTest {
     @Test
     fun `jede Kachel hat ein Beispielbild`() {
         val galerie = welt.galerie().also { it.loadSets() }
-        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
+        val teile = welt.teile().also { it.loadParts() }
+        val figuren = welt.figuren().also { it.loadMinifigs() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
         da("alles") {
-            galerie.galleryState.value.sets.isNotEmpty() && teile.partsState.value.parts.isNotEmpty() &&
-                teile.partsState.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
+            galerie.galleryState.value.sets.isNotEmpty() && teile.teileState.value.parts.isNotEmpty() &&
+                figuren.figurenZustand.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
                 finanzen.financeState.value.valuation != null
         }
         val adressen = galerie.galleryState.value.sets.map { it.setNumber to it.imageLocal } +
-            teile.partsState.value.parts.map { it.partNumber to it.imageLocal } +
-            teile.partsState.value.minifigs.map { it.figNumber to it.imageLocal } +
+            teile.teileState.value.parts.map { it.partNumber to it.imageLocal } +
+            figuren.figurenZustand.value.minifigs.map { it.figNumber to it.imageLocal } +
             merkliste.merklisteState.value.merkposten.map { it.setNumber to it.imageLocal } +
             finanzen.financeState.value.valuation!!.sets.map { it.setNumber to it.imageLocal }
         val ohne = adressen.filter { (_, a) -> a == null || Beispielbilder.ressource(a) == null }
@@ -202,8 +200,8 @@ class BeispieldatenTest {
     @Test
     fun `die Teilekacheln ergeben die Gesamtzahl`() {
         val teile = welt.teile().also { it.loadParts() }
-        da("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
-        val z = teile.partsState.value
+        da("Teile") { teile.teileState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        val z = teile.teileState.value
         assertEquals(z.partsStats!!.teileGesamt, z.parts.sumOf { it.totalQuantity })
     }
 
@@ -224,7 +222,7 @@ class BeispieldatenTest {
         assertTrue(bewertet.toString(), bewertet.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
         assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
         val kopf = finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
-        assertEquals(0, kopf.compareTo(bewertet.sumOf { BigDecimal.valueOf(it.wert!!) }))
+        assertEquals(0, kopf.compareTo(bewertet.sumOf { it.wert!!.alsBigDecimal() }))
     }
 }
 
@@ -311,14 +309,15 @@ object Beispiele {
         val pfade = PfadServer(*ANTWORTEN)
         val t = TestDienste(pfade.imTakt(), texte, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen(Waehrung.CHF) }
 
-        fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, SetsRepository(t.api, t.cache),
-            t.kontosicht, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
-        fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testSetsRepository(t.api),
+            t.kontosicht, testFinanzenRepository(t.api), SavedStateHandle()))
+        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht, SavedStateHandle()))
+        fun figuren() = t.merke(FigurenViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+        fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFinanzenRepository(t.api), SavedStateHandle()))
         fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
-            KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+            testKatalogRepository(t.api), testFinanzenRepository(t.api), SavedStateHandle()))
         fun setDetail() = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
-            FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache),
+            testFinanzenRepository(t.api), testHaushaltRepository(t.api),
             object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
 
@@ -330,8 +329,8 @@ object Beispiele {
                 override fun sortiert(teile: Collection<PlPart>) = teile.toList()
             }, object : TeilelistenExport {
                 override val fortschritt = flowOf<PdfFortschritt?>(null)
-                override suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis =
-                    ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))
+                override suspend fun erzeuge(auftrag: Teilelistenauftrag): ExportErgebnis =
+                    ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Fehler.Netz()))
             }, SavedStateHandle()))
 
         override fun close() {

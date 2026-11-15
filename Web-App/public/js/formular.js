@@ -27,8 +27,8 @@ export function passwortZuKurzText() {
   return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
 }
 
-/** bcrypt liest 72 Byte; dieselbe Grenze wie PASSWORT_MAX_BYTE im Server. */
-export const PASSWORT_MAX_BYTE = 72;
+/** Dieselbe Grenze wie PASSWORT_MAX_ZEICHEN im Server (src/infra/passwortRegel.ts). */
+export const PASSWORT_MAX_ZEICHEN = 1024;
 
 /**
  * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die Liste häufiger Passwörter kennt
@@ -37,8 +37,7 @@ export const PASSWORT_MAX_BYTE = 72;
  */
 export function passwortRegelText(p) {
   if (passwortZuKurz(p)) return passwortZuKurzText();
-  if (new TextEncoder().encode(String(p)).length > PASSWORT_MAX_BYTE)
-    return tRaw('settings.password.too_long', { n: PASSWORT_MAX_BYTE });
+  if (String(p).length > PASSWORT_MAX_ZEICHEN) return tRaw('settings.password.too_long', { n: PASSWORT_MAX_ZEICHEN });
   return null;
 }
 
@@ -72,6 +71,18 @@ function linienNachbarn(kind) {
   });
 }
 
+/** Eine Zelle in einem Raster aus Feldgruppen, die alle oben bündig auf ihrer Linie stehen? @param {Element} zelle */
+function feldzelle(zelle) {
+  const raster = zelle.parentElement;
+  if (!raster || !/grid$/.test(getComputedStyle(raster).display)) return false;
+  const oben = (/** @type {Element} */ x) => {
+    const s = getComputedStyle(x);
+    const lage = s.alignSelf === 'auto' || s.alignSelf === 'normal' ? getComputedStyle(raster).alignItems : s.alignSelf;
+    return ['normal', 'stretch', 'start', 'flex-start', 'self-start'].includes(lage);
+  };
+  return [zelle, ...linienNachbarn(zelle)].every(x => x.classList.contains('fg') && oben(x));
+}
+
 /**
  * Stellt die Meldung unter die Formularzeile, nicht in sie: In einer Flex-Zeile schob sie sonst den Knopf
  * daneben zur Seite oder hob die Nachbarn aus der Flucht. Steht das Feld allein auf seiner Linie, bleibt
@@ -80,9 +91,16 @@ function linienNachbarn(kind) {
  */
 function fehlerPlatzieren(feld, meldung) {
   /** @type {Element} */
-  let anker = feld.closest('.preis-mit-waehrung') ?? feld;
+  let anker = feld.closest('.preis-mit-waehrung, .geheim-feld') ?? feld;
   let gruppe = anker.parentElement?.closest('.fg') ?? null;
   if (gruppe && !gruppe.contains(anker)) gruppe = null;
+  // Im Raster ist die Feldgruppe selbst die Zelle: Die Meldung bleibt in ihrer Spalte unter dem Feld. Hinter der
+  // Zeile stand sie sonst links unter beiden Spalten, auch für das rechte Feld. Nur neben anderen Feldern, oben
+  // bündig; einen unten bündigen Knopf daneben schöbe die wachsende Zelle nach unten.
+  if (gruppe && feldzelle(gruppe)) {
+    if (anker.nextElementSibling !== meldung) anker.insertAdjacentElement('afterend', meldung);
+    return;
+  }
   /** @type {Element} */
   let kind = gruppe ?? anker;
   while (kind.parentElement && nebeneinander(kind.parentElement)) {

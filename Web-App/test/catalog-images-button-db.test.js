@@ -91,7 +91,6 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
         `skipped=${d.skipped} statt 1 — die Rückmeldung soll nennen, wie viele ` + 'schon fertig waren',
       );
 
-      // ── Marcos Wunsch ─────────────────────────────────────
       // „Kannst du die Logik so anpassen, dass er die image_misses löscht und
       // sie erneut versucht? Aktuell stehen in der Tabelle sehr viele
       // Einträge." — Die vielen Einträge sind der Fehler aus einer früheren Runde:
@@ -148,7 +147,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
     });
 
     await t.test('der Job holt nur, was fehlt', async () => {
-      const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+      const IQ = _req('src/bilder/bildbedarfLauf.js');
       let n = 0;
       // `.gesamt` = bearbeitete Notizen (geladen, Vorschau erzeugt oder
       // übersprungen). Seit einer früheren Runde liefert der Durchgang eine

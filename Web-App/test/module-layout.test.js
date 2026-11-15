@@ -48,7 +48,14 @@ test('die API-Kontingente heissen nach der API, nicht nach einem Pfad', () => {
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const fn of ['checkAndIncrementRateLimit', 'getRateLimitStatus', 'getLimitForApi']) {
+    for (const fn of [
+      'zaehleKontingent',
+      'kontingentStand',
+      'kontingentGrenze',
+      'kontingentPruefenUndZaehlen',
+      'kontingentUebersicht',
+      'grenzeDerQuelle',
+    ]) {
       const re = new RegExp(`${fn}\\(\\s*'([^']+)'`, 'g');
       for (const m of src.matchAll(re)) {
         if (m[1].includes('/') || m[1].includes('.')) {
@@ -108,7 +115,7 @@ test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8'));
     assert.doesNotMatch(
       src,
-      /^\s*router\.(get|post|put|delete|patch)\(/m,
+      /^\s*router\.(get|post|put|delete|patch|endpunkt)\(/m,
       `clients/${f} hat eine Route — dann ist es ein Router und gehört nach routes/`,
     );
   }

@@ -1,6 +1,11 @@
 package ch.brickinventoryapp.teile
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -77,7 +82,6 @@ class TeilelisteViewModelTest {
         takt.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         pfade.server.shutdown()
-        t.cacheDir.deleteRecursively()
     }
 
     private class Quelle(val teile: Map<String, List<PlPart>> = emptyMap()) : TeilelistenQuelle {
@@ -97,13 +101,13 @@ class TeilelisteViewModelTest {
         val ergebnis: ExportErgebnis,
         override val fortschritt: Flow<PdfFortschritt?> = flowOf(null),
     ) : TeilelistenExport {
-        val auftraege = mutableListOf<PdfAuftragAnfrage>()
-        override suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis { auftraege += auftrag; return ergebnis }
+        val auftraege = mutableListOf<Teilelistenauftrag>()
+        override suspend fun erzeuge(auftrag: Teilelistenauftrag): ExportErgebnis { auftraege += auftrag; return ergebnis }
     }
 
     private fun vm(
         quelle: Quelle = Quelle(),
-        export: Export = Export(ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))),
+        export: Export = Export(ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Fehler.Netz()))),
         gemerkt: SavedStateHandle = SavedStateHandle(),
     ) = TeilelisteViewModel(t.sitzung, t.hinweise, quelle, export, gemerkt).also { erzeugt += it }
 
@@ -116,12 +120,12 @@ class TeilelisteViewModelTest {
         val vm = vm(quelle)
         vm.erstelle("21318")
         advanceUntilIdle()
-        assertTrue("Während des Abrufs lädt die Liste", vm.zustand.value.isLoading)
-        assertEquals("t${R.string.partslist_loading_set}", vm.zustand.value.status)
+        assertTrue("Während des Abrufs lädt die Liste", vm.zustand.value.erzeugen.laedt)
+        assertEquals(R.string.partslist_loading_set, (vm.zustand.value.status as Meldung.Ressource).id)
         quelle.bremse!!.complete(Unit)
         advanceUntilIdle()
         val z = vm.zustand.value
-        assertFalse(z.isLoading)
+        assertFalse(z.erzeugen.laedt)
         assertTrue(z.generated)
         assertEquals(listOf("3001"), z.parts.map { it.partNumber })
         assertEquals("Der Name aus dem Katalog steht am Set", listOf("Name 21318-1"), z.sets.map { it.name })
@@ -148,7 +152,7 @@ class TeilelisteViewModelTest {
         vm.fuegeHinzu("10294")
         vm.fuegeHinzu("10294-1")
         assertEquals(listOf("10294-1"), vm.zustand.value.sets.map { it.setNumber })
-        assertEquals("t${R.string.partslist_set_already_added}", vm.zustand.value.status)
+        assertEquals(Meldung.Ressource(R.string.partslist_set_already_added), vm.zustand.value.status)
     }
 
     @Test
@@ -173,13 +177,13 @@ class TeilelisteViewModelTest {
         vm.ladeBestand()
         advanceUntilIdle()
         // Drei Stück fehlen, von einem Teil: die Mengenform mit der Zahl der Stücke.
-        assertEquals("m${R.plurals.partslist_owned_missing}:3", vm.zustand.value.status)
+        assertEquals("m${R.plurals.partslist_owned_missing}:3", vm.zustand.value.status.text)
         assertEquals(listOf(1, 1), vm.zustand.value.parts.map { it.vorhanden })
         quelle.bestand = null
         vm.ladeBestand()
         advanceUntilIdle()
-        assertEquals("t${R.string.partslist_owned_error}", vm.zustand.value.status)
-        assertFalse(vm.zustand.value.bestandLaeuft)
+        assertEquals(Meldung.Ressource(R.string.partslist_owned_error), vm.zustand.value.status)
+        assertEquals(Vorgang.Fertig, vm.zustand.value.bestand)
     }
 
     @Test
@@ -193,8 +197,8 @@ class TeilelisteViewModelTest {
         advanceUntilIdle()
         assertEquals(datei, vm.zustand.value.pdfDatei)
         val auftrag = export.auftraege.single()
-        assertEquals("Der Auftrag nennt das Set", listOf("10294-1"), auftrag.sets.map { it.setNumber })
-        assertEquals(listOf("3001" to 2), auftrag.parts.map { it.partNumber to it.quantity })
+        assertEquals("Der Auftrag nennt das Set", listOf("10294-1"), auftrag.sets.map { it.nummer })
+        assertEquals(listOf("3001" to 2), auftrag.zeilen.map { it.nummer to it.menge })
         vm.pdfGeoeffnet()
         assertNull(vm.zustand.value.pdfDatei)
 
@@ -203,9 +207,10 @@ class TeilelisteViewModelTest {
         advanceUntilIdle()
         ohne.exportiere()
         advanceUntilIdle()
-        // Der Abruf spricht wie jeder Abruf (NummernTexte.meldung), nicht leer.
-        assertEquals("fehler", ohne.zustand.value.pdfError)
-        assertFalse(ohne.zustand.value.isExporting)
+        // Der Abruf spricht wie jeder Abruf (fehlerMeldung), nicht leer.
+        assertTrue(ohne.zustand.value.pdf is Vorgang.Fehlgeschlagen)
+        ohne.pdfFehlerGesehen()
+        assertEquals(Vorgang.Fertig, ohne.zustand.value.pdf)
     }
 
     @Test
@@ -214,14 +219,14 @@ class TeilelisteViewModelTest {
             PdfFehlschlag.Auftrag(null) to "t${R.string.pdfexp_server_error}",
             PdfFehlschlag.Auftrag("") to "t${R.string.pdfexp_server_error}",
             PdfFehlschlag.Auftrag("Bild fehlt") to "Bild fehlt",
-            PdfFehlschlag.Abruf(Ergebnis.Error.Abgewiesen()) to "fehler",
+            PdfFehlschlag.Abruf(Ergebnis.Fehler.Abgewiesen()) to "t${R.string.err_session_expired}",
         )) {
             val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), Export(ExportErgebnis.Fehler(grund)))
             vm.erstelle("10294")
             advanceUntilIdle()
             vm.exportiere()
             advanceUntilIdle()
-            assertEquals("$grund", erwartet, vm.zustand.value.pdfError)
+            assertEquals("$grund", erwartet, vm.zustand.value.pdf.fehlerMeldung.text)
         }
     }
 

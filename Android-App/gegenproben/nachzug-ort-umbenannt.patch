@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.data.NachzugTest
 Rot: ein umbenannter Ort heisst ueberall neu
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
-index e6e67c6..5e86f81 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
-@@ -111,7 +111,7 @@ class TeileRepositoryImpl @Inject constructor(
-         }
+@@ -143,7 +143,7 @@
+         }.zugesagt({ it.success }) { }
  
-     override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<LagerortEintragResponse> =
--        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it) } }) {
+     override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<Unit> =
+-        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it.alsAnsicht()) } }) {
 +        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { null } }) {
-             sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
-         }
+             sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name = name)) }
+         }.zugesagt({ it.success }) { }
  

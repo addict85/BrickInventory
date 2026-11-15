@@ -4,57 +4,55 @@ import { eingabe } from '../infra/validate';
 import {
   CsvImportErgebnis,
   DEGRADIERT,
-  GenericResponse,
-  PartValuationItem,
+  StueckGeaendert,
+  ManuellesTeil,
   PartsResponse,
   VerwendendeSetsResponse,
   InDenPapierkorb,
 } from './gemeinsam';
 
+export { ManuellesTeil, StueckGeaendert };
+
 export const AddPartResponse = z.looseObject({
   success: z.boolean(),
-  action: z.string().nullable().optional(),
-  part_number: z.string().nullable().optional(),
+  action: z.string(),
+  part_number: z.string(),
   part_name: z.string().nullable().optional(),
   price_from_condition: z.string().nullable().optional(),
-  error: z.string().nullable().optional(),
 });
 
 export const BestandEintrag = z.looseObject({
-  gesamt: z.number().int().optional(),
-  lose: z.number().int().optional(),
+  gesamt: z.number().int(),
+  lose: z.number().int(),
 });
 
 export const BestandResponse = z.looseObject({
-  success: z.boolean().optional(),
-  bestand: z.record(z.string(), BestandEintrag).optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  bestand: z.record(z.string(), BestandEintrag),
 });
 
 export const BrickColor = z.looseObject({
   id: z.number().int(),
   name: z.string(),
-  hex: z.string().nullable().optional(),
+  hex: z.string().nullable(),
 });
 
 export const BrickColorsResponse = z.looseObject({
   success: z.boolean(),
   colors: z.array(BrickColor),
-  error: z.string().nullable().optional(),
 });
 
 export const ManualPartsResponse = z.looseObject({
   success: z.boolean(),
   ...SEITEN_ANGABE,
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
-  parts: z.array(PartValuationItem.extend({ acquisitions: PartValuationItem.shape.acquisitions.optional() })),
-  error: z.string().nullable().optional(),
+  parts: z.array(ManuellesTeil),
   degradiert: DEGRADIERT,
 });
 
 export const PartsCategory = z.looseObject({
-  category_name: z.string().nullable().optional(),
-  label: z.string().nullable().optional(),
+  category_name: z.string().nullable(),
+  label: z.string().nullable(),
   unique_parts: z.number().int(),
   total_quantity: z.number().int(),
 });
@@ -65,8 +63,8 @@ export const PartsCategoriesResponse = z.looseObject({
 });
 
 export const PartsFilterColor = z.looseObject({
-  color_name: z.string().nullable().optional(),
-  color_hex: z.string().nullable().optional(),
+  color_name: z.string().nullable(),
+  color_hex: z.string().nullable(),
   unique_parts: z.number().int(),
   total_quantity: z.number().int(),
 });
@@ -85,16 +83,15 @@ export const PartsStats = z.looseObject({
 
 export const PartsStatsResponse = z.looseObject({
   success: z.boolean(),
-  stats: PartsStats.nullable().optional(),
+  stats: PartsStats.nullable(),
 });
 
 export const TeilFarbeResponse = z.looseObject({
-  bild: z.string().nullable().optional(),
-  success: z.boolean().optional(),
-  zusammengelegt: z.boolean().optional(),
-  verschoben: z.number().int().optional(),
-  vereint: z.number().int().optional(),
-  error: z.string().nullable().optional(),
+  bild: z.string().nullable(),
+  success: z.boolean(),
+  zusammengelegt: z.boolean(),
+  verschoben: z.number().int(),
+  vereint: z.number().int(),
 });
 
 /** BrickLink-Farbe → Rebrickable-Farbe; `source` sagt, woher die Tabelle stammt. */
@@ -193,7 +190,7 @@ export const routen = {
       unit_price: eingabe.geld('Stückpreis'),
       condition: ZUSTAND.nullable().optional(),
     }),
-    antwort: GenericResponse,
+    antwort: StueckGeaendert,
   },
   'DELETE /api/v1/parts/:partNumber/:colorId': {
     eingabe: OHNE_RUMPF,

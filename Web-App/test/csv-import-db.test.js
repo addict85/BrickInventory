@@ -249,6 +249,22 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
   await db.pool.end().catch(() => {});
 });
 
+// Gegenprobe (15.11.2026): in erzeugeImportZugang() `pool: { max: 2 }` gestrichen → rot:
+// statement_timeout '30s' statt '0' (die Fristen der Anfragen träfen den Tausch).
+test('der Importprozess baut seinen Zugang über erzeugeDb, ohne Fristen der Anfragen', async t => {
+  const zugang = _req('src/katalog/index.js').erzeugeImportZugang();
+  t.after(() => zugang.pool.end());
+  let zeile;
+  try {
+    zeile = (await zugang.systemPool.query('SHOW statement_timeout')).rows[0];
+  } catch (e) {
+    keineDb(t, e);
+    return;
+  }
+  assert.notEqual(zugang.systemPool, zugang.pool, 'der Tausch braucht einen eigenen Pool');
+  assert.equal(zeile.statement_timeout, '0');
+});
+
 test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', () => {
   // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/abruf-helfer.test.js
   // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.

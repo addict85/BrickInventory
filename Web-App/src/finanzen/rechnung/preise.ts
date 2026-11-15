@@ -2,17 +2,17 @@
  * und BL-Nummern. Eigene Datei, weil Bewertung und Gewinnrechnung auf ihr
  * stehen, nicht umgekehrt. */
 
-import type { DbSchnittstelle } from '../../../db/database';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
-import { type KatalogEintrag, bricklinkRequest, hatPreis, marktpreisAus } from '../../katalog';
+import { type KatalogEintrag, hatPreis, marktpreisAus } from '../../katalog';
 import { asIds } from '../../haushalt';
-import { fehlertext, logAndContinue } from '../../infra/fehler';
+import { logAndContinue, meldeFehler } from '../../infra/fehler';
 import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
 import { effectiveCondition } from './zustand';
 import { KEINE_FARBE } from '../../infra/validate';
 import { versuche } from '../../infra/ergebnis';
 import type { FinanzenKontext } from '../kontext';
+import type { Uhr } from '../../infra/uhr';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../haushalt';
@@ -25,15 +25,9 @@ type Stunden = string | number;
 
 /** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
  * auseinandergelaufen waren. */
-export async function resolveSetCondition(
-  k: FinanzenKontext,
-  uid: number | number[],
-  setNumber: string,
-  dbh?: Pick<DbSchnittstelle, 'get'>,
-): Promise<'N' | 'U'> {
-  // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
-  // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const row = await k.preisCache.setZustandsZaehler(asIds(uid), setNumber, dbh);
+export async function setZustand(k: FinanzenKontext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
+  // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto.
+  const row = await k.preisCache.setZustandsZaehler(asIds(uid), setNumber);
   return effectiveCondition(row);
 }
 
@@ -60,13 +54,13 @@ export async function preisAusCache(
   return k.preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
-export function cacheUsable(row: PreisZeile, ttlHours: number) {
+export function cacheVerwendbar(row: PreisZeile, ttlHours: number, jetzt: number) {
   if (!row) return false;
   // avg_price ist numeric, und pg liefert numeric als Zeichenkette.
   if (hatPreis(row)) return true;
   // 0-Eintrag: nur kurz vertrauen, danach neu versuchen.
   if (!row.fetched_at) return false;
-  const ageH = (Date.now() - new Date(row.fetched_at).getTime()) / 3600000;
+  const ageH = (jetzt - new Date(row.fetched_at).getTime()) / 3600000;
   return ageH < Math.min(ZERO_PRICE_TTL_HOURS, ttlHours);
 }
 
@@ -93,7 +87,7 @@ export async function speicherePreis(
   const qty = parseInt(String(g?.total_quantity ?? 0), 10) || 0;
 
   // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
-  // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
+  // den nächsten Abruf zurück; wie lange, entscheidet cacheVerwendbar().
   const preis = { min, avg, max, qavg, qty };
   // Cache und Verlauf zusammen: Ein Cache ohne seinen Verlaufspunkt hielte den nächsten
   // Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
@@ -154,7 +148,8 @@ async function rufeAb(q: Preisquelle, zustand: string): Promise<CacheZeile | nul
   try {
     return await q.merke(zustand, await q.frage(zustand));
   } catch (e) {
-    console.log(`  ${q.name} cond=${zustand} error: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    // Ausnahme: holePreisMitRueckfall macht aus null den Rückfall oder einen Fachfehler.
+    meldeFehler(`preisabruf:${q.name} ${zustand}`, e);
     return null;
   }
 }
@@ -170,17 +165,18 @@ async function holePreisMitRueckfall(
   const anderer = zustand === 'N' ? 'U' : 'N';
   const z = await q.lies(zustand);
   if (hatPreis(z)) return ausZeile(z!);
-  const bekanntLeer = cacheUsable(z, ttl);
+  const bekanntLeer = cacheVerwendbar(z, ttl, k.uhr.jetzt());
   let pd: CacheZeile | null = null;
   if (!bekanntLeer) {
-    if (!(await k.katalog.kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
+    if (!(await k.fremdquellen.kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
     pd = await rufeAb(q, zustand);
     if (hatPreis(pd)) return ausZeile(pd!, { from_cache: false, condition_used: zustand });
   }
   const zf = await q.lies(anderer);
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
-  if (bekanntLeer && cacheUsable(zf, ttl)) return { ...OHNE_PREIS, from_cache: true, no_price: true };
-  const frei = (await k.katalog.kontingentFrei('bricklink')).allowed;
+  if (bekanntLeer && cacheVerwendbar(zf, ttl, k.uhr.jetzt()))
+    return { ...OHNE_PREIS, from_cache: true, no_price: true };
+  const frei = (await k.fremdquellen.kontingentFrei('bricklink')).allowed;
   const pd2 = frei ? await rufeAb(q, anderer) : null;
   if (hatPreis(pd2)) return ausZeile(pd2!, { from_cache: false, condition_used: anderer, is_fallback: true });
   if (bekanntLeer || pd || pd2) return { ...OHNE_PREIS, from_cache: !pd && !pd2, no_price: true };
@@ -199,7 +195,7 @@ export async function preisOderKeiner(abruf: Promise<PreisDaten>): Promise<Preis
 
 const stunden = (ttlHours: Stunden) => Math.max(1, parseInt(String(ttlHours), 10));
 
-export async function fetchPrice(
+export async function holePreis(
   k: FinanzenKontext,
   setNumber: string,
   condition: string,
@@ -219,7 +215,7 @@ export async function fetchPrice(
     name: `Price ${setNumber}`,
     lies: c =>
       pre?.cache ? pre.cache.get(`${setNumber}|${c}`) || null : preisAusCache(k, setNumber, c, currency, ttl),
-    frage: c => k.katalog.getPriceGuide(setNumber, c, guideType, currency),
+    frage: c => k.katalog.preisfuehrer(setNumber, c, guideType, currency),
     merke: async (c, g) => {
       const p = await speicherePreis(k, setNumber, c, currency, g);
       console.log(`  Price ${setNumber} cond=${c}: avg=${p.avg} qty_avg=${p.qavg}`);
@@ -235,13 +231,14 @@ export function preisAusVorrat(
   lies: (zustand: 'N' | 'U') => CacheZeile | null | undefined,
   zustand: 'N' | 'U',
   ttlStunden: number,
+  jetzt: number,
 ): PreisDaten {
   const anderer = zustand === 'N' ? 'U' : 'N';
   const z = lies(zustand) ?? null;
   if (hatPreis(z)) return ausZeile(z!);
   const zf = lies(anderer) ?? null;
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
-  if (cacheUsable(z, ttlStunden) && cacheUsable(zf, ttlStunden))
+  if (cacheVerwendbar(z, ttlStunden, jetzt) && cacheVerwendbar(zf, ttlStunden, jetzt))
     return { ...OHNE_PREIS, from_cache: true, no_price: true };
   return { ...OHNE_PREIS, from_cache: false, ausstehend: true };
 }
@@ -250,11 +247,12 @@ export function setPreisAusVorrat(
   setNumber: string,
   zustand: 'N' | 'U',
   ttlStunden: number,
+  jetzt: number,
   pre: { catalog: Map<string, unknown>; cache: Map<string, CacheZeile> },
 ): PreisDaten {
   if (ohneBricklinkPreis((pre.catalog.get(mitVersion(setNumber)) as Parameters<typeof ohneBricklinkPreis>[0]) ?? null))
     return { ...OHNE_PREIS, from_cache: true, no_price: true, bl_unbekannt: true };
-  return preisAusVorrat(c => pre.cache.get(`${setNumber}|${c}`), zustand, ttlStunden);
+  return preisAusVorrat(c => pre.cache.get(`${setNumber}|${c}`), zustand, ttlStunden, jetzt);
 }
 
 export async function teilSchluessel(k: FinanzenKontext, partNumber: string, rbColorId: number): Promise<string> {
@@ -283,10 +281,10 @@ const NACHSCHLAG_TTL_MS = 10 * 60 * 1000;
 const NACHSCHLAG_MAX = 5000;
 
 /** Ein `null` (nichts gefunden) wird nicht gemerkt. */
-function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
+function nachschlagwerk<S, W>(uhr: Uhr, hole: (schluessel: S) => Promise<W | null>) {
   const karte = new Map<S, { wert: W; zeit: number }>();
   const frage = async (schluessel: S): Promise<W | null> => {
-    const jetzt = Date.now();
+    const jetzt = uhr.jetzt();
     const treffer = karte.get(schluessel);
     if (treffer && jetzt - treffer.zeit < NACHSCHLAG_TTL_MS) return treffer.wert;
     const wert = await hole(schluessel);
@@ -301,23 +299,21 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
   // Kein Leeren: Die Quelltabellen werden nur ergänzt, ein Treffer bleibt richtig.
   frage.kennt = (schluessel: S) => {
     const treffer = karte.get(schluessel);
-    return !!treffer && Date.now() - treffer.zeit < NACHSCHLAG_TTL_MS;
+    return !!treffer && uhr.jetzt() - treffer.zeit < NACHSCHLAG_TTL_MS;
   };
   frage.merken = (schluessel: S, wert: W) => {
     if (karte.size >= NACHSCHLAG_MAX) karte.clear();
-    karte.set(schluessel, { wert, zeit: Date.now() });
+    karte.set(schluessel, { wert, zeit: uhr.jetzt() });
   };
   return frage;
 }
 
-/** Die ganze Tabelle (rund 200 Zeilen): Je Schlüssel bliebe eine unbekannte
- * Farbe je Teil eine eigene Abfrage, weil Fehlschläge nicht gemerkt werden. */
-// Der Ladevorgang wird geteilt, nicht nur sein Ergebnis: Parallele Bewerter
-// lüden sonst je selbst. Je Zugang, weil die Karte aus seiner Datenbank kommt.
+/** Die ganze Tabelle (rund 200 Zeilen), einmal je Zugang geladen und geteilt: Je Schlüssel
+ * bliebe jede unbekannte Farbe eine eigene Abfrage, parallele Bewerter lüden je selbst. */
 type Farbstand = { karte: Map<number, number> | null; zeit: number; ladung: Promise<Map<number, number>> | null };
 export async function farbkarte(k: FinanzenKontext): Promise<Map<number, number>> {
   const st = k.faecher.fach<Farbstand>('farbkarte', () => ({ karte: null, zeit: 0, ladung: null }));
-  const jetzt = Date.now();
+  const jetzt = k.uhr.jetzt();
   if (st.karte && jetzt - st.zeit < NACHSCHLAG_TTL_MS) return st.karte;
   if (st.ladung) return st.ladung;
   st.ladung = (async () => {
@@ -349,7 +345,9 @@ export async function resolveBlColorId(k: FinanzenKontext, rbColorId: number): P
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
 // (bl_zuordnung), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
 const blTeil = (k: FinanzenKontext) =>
-  k.faecher.fach('blTeil', () => nachschlagwerk((partNumber: string) => k.katalog.blAbrufNummer('part', partNumber)));
+  k.faecher.fach('blTeil', () =>
+    nachschlagwerk(k.uhr, (partNumber: string) => k.katalog.blAbrufNummer('part', partNumber)),
+  );
 
 /** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
  * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
@@ -409,11 +407,20 @@ export async function ladeFigurenpreiseVor(
 
 /** Erst Verkäufe, sonst Angebote: Bei Teilen in seltenen Farben ist „kein Verkauf
  * in sechs Monaten“ der Normalfall. */
-async function fragePreisfuehrer(pfad: string, zustand: string, currency: string, extra: Record<string, string> = {}) {
+async function fragePreisfuehrer(
+  k: FinanzenKontext,
+  pfad: string,
+  zustand: string,
+  currency: string,
+  extra: Record<string, string> = {},
+) {
   const qp = { guide_type: 'sold', new_or_used: zustand, currency_code: currency, vat: 'N', ...extra };
-  const g = await bricklinkRequest('GET', pfad, qp);
+  const g = await k.fremdquellen.quellen.bricklinkRequest('GET', pfad, qp);
   if (hatPreis(g)) return g;
-  const alt = await versuche('preise:alt', bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }));
+  const alt = await versuche(
+    'preise:alt',
+    k.fremdquellen.quellen.bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }),
+  );
   return alt.ok && hatPreis(alt.wert) ? alt.wert : g;
 }
 
@@ -449,7 +456,8 @@ export async function fetchPartPrice(
     name: `Part price ${partNumber}${nummer !== partNumber ? ` (bl ${nummer})` : ''} color ${farbe} (rb color ${rbColorId})`,
     lies: c =>
       vorrat ? (vorrat.get(`${nummer}|${f}|${c}`) ?? null) : cache.teilpreisFrisch(nummer, f, c, currency, ttl),
-    frage: c => fragePreisfuehrer(`/items/part/${nummer}/price`, c, currency, farbe ? { color_id: String(farbe) } : {}),
+    frage: c =>
+      fragePreisfuehrer(k, `/items/part/${nummer}/price`, c, currency, farbe ? { color_id: String(farbe) } : {}),
     merke: (c, g) =>
       merkeMitVerlauf(
         g,
@@ -477,7 +485,7 @@ export async function fetchMinifigPrice(
     name: `Minifig price ${figNumber}`,
     lies: c =>
       vorrat ? (vorrat.get(`${figNumber}|${c}`) ?? null) : cache.figurpreisFrisch(figNumber, c, currency, ttl),
-    frage: c => fragePreisfuehrer(`/items/minifig/${figNumber}/price`, c, currency),
+    frage: c => fragePreisfuehrer(k, `/items/minifig/${figNumber}/price`, c, currency),
     merke: (c, g) =>
       merkeMitVerlauf(
         g,

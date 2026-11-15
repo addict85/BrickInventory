@@ -2,7 +2,7 @@ import { buildChart } from '../chartData';
 import type { KurvenPunkt } from './kurve';
 
 /** Alle Beschriftungen entstehen auf dem Server, damit Webapp und App gleich aussehen. */
-export function baueDiagrammdaten(rawPoints: KurvenPunkt[], currency: string, downsampled: boolean) {
+export function baueDiagrammdaten(rawPoints: KurvenPunkt[], currency: string, downsampled: boolean, now: Date) {
   function fmtX(point: { day?: string }) {
     const d = (point.day || '').toString();
     if (d.length === 10 && d[4] === '-' && d[7] === '-') {
@@ -44,7 +44,6 @@ export function baueDiagrammdaten(rawPoints: KurvenPunkt[], currency: string, do
   for (let i = 0; i < n; i += step) labelIdxs.add(i);
   labelIdxs.add(n - 1); // always label last point
 
-  const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   const todayFmt = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}`;
 

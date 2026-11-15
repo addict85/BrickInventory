@@ -1,12 +1,21 @@
 package ch.brickinventoryapp.anmeldung.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.beendet
+import ch.brickinventoryapp.model.ui.ohneFehler
+import ch.brickinventoryapp.zustand.ui.gescheitert
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.Meldung
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.model.data.model.RegisterRequest
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_VOLL
+import ch.brickinventoryapp.model.fach.Anmeldung
+import ch.brickinventoryapp.model.fach.Kontoanlage
+import ch.brickinventoryapp.model.fach.QrAbholstand
+import ch.brickinventoryapp.model.fach.QrKopplung
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
@@ -20,9 +29,8 @@ import ch.brickinventoryapp.sicherheit.RpIdBefund
 import ch.brickinventoryapp.sicherheit.hostVon
 import ch.brickinventoryapp.sicherheit.pruefeRpId
 import kotlinx.serialization.json.Json
-import ch.brickinventoryapp.model.data.model.LoginResponse
-import ch.brickinventoryapp.model.data.model.PASSKEY_ANMELDEN
-import ch.brickinventoryapp.model.data.model.PASSKEY_ZWEITER_FAKTOR
+import ch.brickinventoryapp.model.fach.PASSKEY_ANMELDEN
+import ch.brickinventoryapp.model.fach.PASSKEY_ZWEITER_FAKTOR
 import ch.brickinventoryapp.anmeldung.ui.PasskeyAbfrage
 import ch.brickinventoryapp.anmeldung.ui.PasskeyErgebnis
 import kotlinx.serialization.json.JsonObject
@@ -36,8 +44,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.model.data.model.QrAbholung
-import ch.brickinventoryapp.model.data.model.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
@@ -110,11 +116,11 @@ class AnmeldungViewModel @Inject constructor(
     /** Ohne Passwort: Der Credential Manager bietet die Passkeys dieses Servers an. */
     internal fun passkeyAnmelden(abfrage: PasskeyAbfrage) {
         viewModelScope.launch {
-            _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+            _anmeldeState.update { it.copy(anmeldung = Vorgang.Laeuft) }
             val antwort = holePasskey(PASSKEY_ANMELDEN, abfrage) ?: return@launch
             when (val r = konto.passkeyAnmelden(ablage.serverUrlJetzt(), antwort, scope())) {
-                is Ergebnis.Success -> nachAntwort(r.data, "", mitCode = false)
-                is Ergebnis.Error -> _anmeldeState.update { it.copy(loginLaeuft = false, loginError = meldungen.meldung(r)) }
+                is Ergebnis.Erfolg -> nachAntwort(r.data, "", mitCode = false)
+                is Ergebnis.Fehler -> _anmeldeState.update { it.copy(anmeldung = gescheitert(r)) }
             }
         }
     }
@@ -123,33 +129,33 @@ class AnmeldungViewModel @Inject constructor(
     private suspend fun mitPasswort(username: String, password: String, code: String?,
                                     passkey: (suspend () -> JsonObject?)? = null) {
         val url = ablage.serverUrlJetzt()
-        _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+        _anmeldeState.update { it.copy(anmeldung = Vorgang.Laeuft) }
         val antwort = passkey?.let { it() ?: return }
         val mitCode = !code.isNullOrBlank() || antwort != null
         when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() }, scope(), antwort)) {
-            is Ergebnis.Success -> {
+            is Ergebnis.Erfolg -> {
                 if (r.data.antwort.zweiterFaktor)
                     _anmeldeState.update { it.copy(passkeyStattCode = r.data.passkeyStattCode) }
                 nachAntwort(r.data.antwort, username, mitCode)
             }
-            is Ergebnis.Error -> _anmeldeState.update { it.copy(loginLaeuft = false, loginError = meldungen.meldung(r)) }
+            is Ergebnis.Fehler -> _anmeldeState.update { it.copy(anmeldung = gescheitert(r)) }
         }
     }
 
     /** [mitCode]: Ein zweiter Faktor wurde mitgeschickt; dann ist ein Nein des Servers ein Fehler. */
-    private suspend fun nachAntwort(antwort: LoginResponse, benutzer: String, mitCode: Boolean) {
+    private suspend fun nachAntwort(antwort: Anmeldung, benutzer: String, mitCode: Boolean) {
         // In eine lokale Variable: Das Modell liegt in core-model, über die
         // Modulgrenze prüft Kotlin `!= null` nicht für den Aufruf darunter.
         val neuesToken = antwort.token
         when {
-            antwort.zweiterFaktor -> _anmeldeState.update { it.copy(codeNoetig = true, loginLaeuft = false,
-                loginError = if (mitCode) antwort.error else null) }
-            antwort.success && neuesToken != null -> {
-                angemeldet(neuesToken, antwort.user?.username ?: benutzer, antwort.verwalter)
-                _anmeldeState.update { it.copy(codeNoetig = false, passkeyStattCode = false, loginLaeuft = false) }
+            antwort.zweiterFaktor -> _anmeldeState.update { it.copy(codeNoetig = true,
+                anmeldung = beendet(if (mitCode) antwort.fehler?.let(Meldung::Text) else null)) }
+            antwort.erfolg && neuesToken != null -> {
+                angemeldet(neuesToken, antwort.benutzer ?: benutzer, antwort.verwalter)
+                _anmeldeState.update { it.copy(codeNoetig = false, passkeyStattCode = false, anmeldung = Vorgang.Fertig) }
             }
             else -> _anmeldeState.update {
-                it.copy(loginLaeuft = false, loginError = antwort.error ?: meldungen.text(R.string.err_login_failed))
+                it.copy(anmeldung = Vorgang.Fehlgeschlagen(antwort.fehler?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_login_failed)))
             }
         }
     }
@@ -161,31 +167,31 @@ class AnmeldungViewModel @Inject constructor(
      * Signatur an einen anderen Server als den, dessen Optionen geprüft wurden.
      */
     private suspend fun holePasskey(zweck: String, abfrage: PasskeyAbfrage): JsonObject? {
-        _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+        _anmeldeState.update { it.copy(anmeldung = Vorgang.Laeuft) }
         val adresse = ablage.serverUrlJetzt()
         val optionen = when (val o = konto.passkeyOptionen(zweck)) {
-            is Ergebnis.Success -> o.data.optionen ?: return passkeyGescheitert(o.data.error ?: meldungen.text(R.string.login_passkey_fehler))
-            is Ergebnis.Error -> return passkeyGescheitert(meldungen.meldung(o))
+            is Ergebnis.Erfolg -> o.data.takeIf { it.isNotEmpty() } ?: return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
+            is Ergebnis.Fehler -> return passkeyGescheitert(fehlerMeldung(o))
         }
-        if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(meldungen.text(R.string.login_passkey_fehler))
+        if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
         when (pruefeRpId(optionen, adresse)) {
             RpIdBefund.PASST -> Unit
-            RpIdBefund.FEHLT -> return passkeyGescheitert(meldungen.text(R.string.login_passkey_rpid_fehlt))
-            RpIdBefund.FREMD -> return passkeyGescheitert(meldungen.text(R.string.login_passkey_rpid_fremd, hostVon(adresse)))
+            RpIdBefund.FEHLT -> return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_rpid_fehlt))
+            RpIdBefund.FREMD -> return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_rpid_fremd, listOf(hostVon(adresse))))
         }
         val ergebnis = abfrage.hole(optionen.toString())
-        if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(meldungen.text(R.string.login_passkey_fehler))
+        if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
         return when (val e = ergebnis) {
             is PasskeyErgebnis.Antwort -> runCatching { Json.parseToJsonElement(e.json).jsonObject }.getOrNull()
-                ?: passkeyGescheitert(meldungen.text(R.string.login_passkey_fehler))
+                ?: passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
             PasskeyErgebnis.Abgebrochen -> passkeyGescheitert(null)
-            PasskeyErgebnis.KeinPasskey -> passkeyGescheitert(meldungen.text(R.string.login_passkey_keiner))
-            is PasskeyErgebnis.Fehler -> passkeyGescheitert(meldungen.text(R.string.login_passkey_fehler))
+            PasskeyErgebnis.KeinPasskey -> passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_keiner))
+            is PasskeyErgebnis.Fehler -> passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
         }
     }
 
-    private fun passkeyGescheitert(satz: String?): JsonObject? {
-        _anmeldeState.update { it.copy(loginLaeuft = false, loginError = satz) }
+    private fun passkeyGescheitert(satz: Meldung?): JsonObject? {
+        _anmeldeState.update { it.copy(anmeldung = beendet(satz)) }
         return null
     }
 
@@ -205,12 +211,12 @@ class AnmeldungViewModel @Inject constructor(
     ) {
         val neu = NetworkPolicy.normalisiere(serverUrl)
         qrAbgelehnt(serverUrl, neu, fingerabdruck, pinWechselEingabe)?.let { satz ->
-            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = meldungen.text(satz)) }
+            _anmeldeState.update { it.copy(anmeldung = Vorgang.Fehlgeschlagen(Meldung.Ressource(satz))) }
             return
         }
         val schluessel = if (fingerabdruck != null) pinSchluessel(neu) else null
         viewModelScope.launch {
-            _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+            _anmeldeState.update { it.copy(anmeldung = Vorgang.Laeuft) }
             if (schluessel != null && fingerabdruck != null) ablage.halteVor(schluessel, fingerabdruck)
             // Angemeldet bei einem anderen Server: Er bleibt, bis Browser und Konto-Ja die
             // Kopplung bestätigen (koppleQr); ein Abbruch liesse sonst gar keine Anmeldung zurück.
@@ -219,8 +225,10 @@ class AnmeldungViewModel @Inject constructor(
             try {
                 if (wechsel) ablage.kopplungsziel(neu) else ablage.saveServerUrl(neu)
                 when (val r = nachZertifikatsfrage(neu) { konto.qrLogin(token, geraet) }) {
-                    is Ergebnis.Success -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
-                    is Ergebnis.Error -> qrGescheitert(meldungen.meldung(r))
+                    is Ergebnis.Erfolg -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
+                    // Eine Absage ohne Satz heisst hier: Der Code gilt nicht.
+                    is Ergebnis.Fehler -> qrGescheitert(
+                        if (r is Ergebnis.Fehler.Absage) Meldung.Ressource(R.string.err_qr_login_failed) else fehlerMeldung(r))
                 }
             } finally {
                 kopplungMitWechsel = false
@@ -245,7 +253,7 @@ class AnmeldungViewModel @Inject constructor(
     private suspend fun <T> nachZertifikatsfrage(adresse: String, abruf: suspend () -> Ergebnis<T>): Ergebnis<T> {
         val r = abruf()
         val schluessel = pinSchluessel(adresse) ?: return r
-        if (r !is Ergebnis.Error || frage.offen.value?.schluessel != schluessel) return r
+        if (r !is Ergebnis.Fehler || frage.offen.value?.schluessel != schluessel) return r
         frage.offen.first { it == null }
         return if (ablage.gemerkterPin(schluessel) != null) abruf() else r
     }
@@ -264,23 +272,18 @@ class AnmeldungViewModel @Inject constructor(
      * Code darf keinen Schlüssel und keinen Token zurücklassen. Das Warten auf das Ja
      * bleibt in dieser Koroutine, damit der vorgehaltene Pin bis zur Abholung gilt.
      */
-    private suspend fun koppleQr(antwort: QrMeldung, ziel: QrZiel) {
+    private suspend fun koppleQr(antwort: QrKopplung, ziel: QrZiel) {
         val abholung = antwort.abholung
-        val code = antwort.code
-        if (!antwort.success || abholung == null || code == null) {
-            qrGescheitert(antwort.error ?: meldungen.text(R.string.err_qr_login_failed))
-            return
-        }
-        _anmeldeState.update { it.copy(qrBestaetigung = code) }
-        val vorschau = warteAufBestaetigung(abholung, antwort.expiresIn) ?: return
-        val benutzer = vorschau.username ?: vorschau.user?.username
+        _anmeldeState.update { it.copy(qrBestaetigung = antwort.code) }
+        val vorschau = warteAufBestaetigung(abholung, antwort.gueltigSekunden) ?: return
+        val benutzer = vorschau.benutzer
         if (benutzer.isNullOrBlank()) {
-            qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
+            qrGescheitert(Meldung.Ressource(R.string.err_qr_login_failed))
             return
         }
         if (!frageNachKonto(QrKonto(benutzer, ziel.adresse))) {
             konto.qrVerwerfen(abholung)
-            _anmeldeState.update { it.copy(loginLaeuft = false) }
+            _anmeldeState.update { it.copy(anmeldung = Vorgang.Fertig) }
             return
         }
         val neuesToken = vorschau.token ?: holeQrToken(abholung) ?: return
@@ -289,7 +292,7 @@ class AnmeldungViewModel @Inject constructor(
         val fingerabdruck = ziel.fingerabdruck
         if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
         angemeldet(neuesToken, benutzer, false)
-        _anmeldeState.update { it.copy(loginLaeuft = false) }
+        _anmeldeState.update { it.copy(anmeldung = Vorgang.Fertig) }
     }
 
     /**
@@ -315,8 +318,8 @@ class AnmeldungViewModel @Inject constructor(
 
     private suspend fun holeQrToken(abholung: String): String? {
         val satz = when (val r = konto.qrAbholen(abholung)) {
-            is Ergebnis.Success -> r.data.token?.let { return it } ?: r.data.error ?: meldungen.text(R.string.err_qr_login_failed)
-            is Ergebnis.Error -> meldungen.meldung(r)
+            is Ergebnis.Erfolg -> r.data.token?.let { return it } ?: r.data.fehler?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_qr_login_failed)
+            is Ergebnis.Fehler -> fehlerMeldung(r)
         }
         qrGescheitert(satz)
         return null
@@ -365,24 +368,24 @@ class AnmeldungViewModel @Inject constructor(
      * Fragt, bis der Browser die Kopplung bestätigt oder ablehnt; null heisst gescheitert,
      * der Zustand sagt dann schon, warum. Nach der Frist des Codes fragt die App nicht weiter.
      */
-    private suspend fun warteAufBestaetigung(abholung: String, sekunden: Int): QrAbholung? {
+    private suspend fun warteAufBestaetigung(abholung: String, sekunden: Int): QrAbholstand? {
         val ende = System.currentTimeMillis() + sekunden * 1000L
         while (System.currentTimeMillis() < ende) {
             when (val r = konto.qrAbholen(abholung, vorschau = true)) {
-                is Ergebnis.Success -> if (r.data.vorschau || r.data.token != null) return r.data
-                    else if (!r.data.wartet) return qrGescheitert(r.data.error ?: meldungen.text(R.string.err_qr_login_failed))
-                is Ergebnis.Error -> return qrGescheitert(meldungen.meldung(r))
+                is Ergebnis.Erfolg -> if (r.data.vorschau || r.data.token != null) return r.data
+                    else if (!r.data.wartet) return qrGescheitert(r.data.fehler?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_qr_login_failed))
+                is Ergebnis.Fehler -> return qrGescheitert(fehlerMeldung(r))
             }
             delay(QR_ABFRAGE_MS)
         }
-        return qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
+        return qrGescheitert(Meldung.Ressource(R.string.err_qr_login_failed))
     }
 
     /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrFehler). */
-    private fun qrGescheitert(satz: String): QrAbholung? {
+    private fun qrGescheitert(satz: Meldung): QrAbholstand? {
         val schonAngemeldet = sitzung.state.value.isLoggedIn && !kopplungMitWechsel
-        _anmeldeState.update { it.copy(loginLaeuft = false, qrBestaetigung = null, qrKonto = null,
-            loginError = qrFehler(schonAngemeldet, satz)) }
+        _anmeldeState.update { it.copy(qrBestaetigung = null, qrKonto = null,
+            anmeldung = beendet(qrFehler(schonAngemeldet, satz))) }
         return null
     }
 
@@ -401,8 +404,8 @@ class AnmeldungViewModel @Inject constructor(
     fun pruefeRegistrierungOffen() {
         viewModelScope.launch {
             when (val r = konto.getRegistrationStatus()) {
-                is Ergebnis.Success -> _anmeldeState.update { it.copy(registrierungOffen = r.data.enabled) }
-                is Ergebnis.Error -> Unit
+                is Ergebnis.Erfolg -> _anmeldeState.update { it.copy(registrierungOffen = r.data.offen) }
+                is Ergebnis.Fehler -> Unit
             }
         }
     }
@@ -410,30 +413,29 @@ class AnmeldungViewModel @Inject constructor(
     fun zeigeAnmeldeFormular(formular: AnmeldeFormular) {
         // Meldung und Fehler gehen mit, sonst stünde die Bestätigung der
         // Registrierung noch im Formular „Passwort vergessen“.
-        _anmeldeState.update { it.copy(formular = formular, meldung = null, fehler = null) }
+        _anmeldeState.update { it.copy(formular = formular, meldung = null, hinweis = null, konto = it.konto.ohneFehler()) }
     }
 
     fun registriere(username: String, email: String, vorname: String, nachname: String, passwort: String) {
         viewModelScope.launch {
-            _anmeldeState.update { it.copy(laeuft = true, fehler = null, meldung = null) }
-            val anfrage = RegisterRequest(
-                username = username.trim(),
+            _anmeldeState.update { it.copy(konto = Vorgang.Laeuft, meldung = null, hinweis = null) }
+            val anfrage = Kontoanlage(
+                benutzer = username.trim(),
                 email = email.trim(),
-                firstName = vorname.trim().ifBlank { null },
-                lastName = nachname.trim().ifBlank { null },
-                password = passwort,
+                vorname = vorname.trim().ifBlank { null },
+                nachname = nachname.trim().ifBlank { null },
+                passwort = passwort,
                 // Die Sprache der Oberfläche steuert Bestätigungs-E-Mail und Kontoeinstellung.
-                language = meldungen.text(R.string.lang_code),
+                sprache = meldungen.text(R.string.lang_code),
             )
             when (val r = konto.register(anfrage)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        // Ohne Mailversand wartet man sonst auf eine E-Mail, die nie kommt.
-                        val hinweis = if (r.data.consoleMode) " " + meldungen.text(R.string.register_console_hint) else ""
-                        _anmeldeState.update { it.copy(laeuft = false,
-                            meldung = (r.data.message ?: meldungen.text(R.string.register_done)) + hinweis) }
-                    } else _anmeldeState.update { it.copy(laeuft = false, fehler = r.data.error ?: meldungen.text(R.string.err_generic)) }
-                is Ergebnis.Error -> _anmeldeState.update { it.copy(laeuft = false, fehler = meldungen.meldung(r)) }
+                is Ergebnis.Erfolg -> {
+                    // Ohne Mailversand wartet man sonst auf eine E-Mail, die nie kommt.
+                    _anmeldeState.update { it.copy(konto = Vorgang.Fertig,
+                        meldung = r.data.meldung?.let(Meldung::Text) ?: Meldung.Ressource(R.string.register_done),
+                        hinweis = if (r.data.ohneMailversand) Meldung.Ressource(R.string.register_console_hint) else null) }
+                }
+                is Ergebnis.Fehler -> _anmeldeState.update { it.copy(konto = gescheitert(r)) }
             }
         }
     }
@@ -444,12 +446,12 @@ class AnmeldungViewModel @Inject constructor(
      */
     fun passwortVergessen(email: String) {
         viewModelScope.launch {
-            _anmeldeState.update { it.copy(laeuft = true, fehler = null, meldung = null) }
+            _anmeldeState.update { it.copy(konto = Vorgang.Laeuft, meldung = null, hinweis = null) }
             when (val r = konto.forgotPassword(email.trim())) {
-                is Ergebnis.Success -> _anmeldeState.update {
-                    it.copy(laeuft = false, meldung = r.data.message ?: meldungen.text(R.string.forgot_done))
+                is Ergebnis.Erfolg -> _anmeldeState.update {
+                    it.copy(konto = Vorgang.Fertig, meldung = r.data?.let(Meldung::Text) ?: Meldung.Ressource(R.string.forgot_done))
                 }
-                is Ergebnis.Error -> _anmeldeState.update { it.copy(laeuft = false, fehler = meldungen.meldung(r)) }
+                is Ergebnis.Fehler -> _anmeldeState.update { it.copy(konto = gescheitert(r)) }
             }
         }
     }

@@ -2,22 +2,19 @@
  * was fehlt, bevor es ein Konto gibt. Antworten sind Schalter und das
  * Wurzelzertifikat — beides steht schon unter /ca.crt. */
 import { istVerwalter, ipThrottle } from '../../src/konto/http/anmeldung';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { vertragsRouter, type OffeneAnfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Dienste } from '../../src/dienste';
 
-export function baueEinrichtungRouter(d: Dienste) {
-  const router = vertragsRouter();
+export function baueEinrichtungRouter(d: Pick<Dienste, 'konto' | 'profil'>) {
+  const router = vertragsRouter('/api/v1');
 
-  router.get(
-    '/einrichtung/stand',
+  router.endpunkt(
+    'GET /api/v1/einrichtung/stand',
     ipThrottle(d.konto, 'einrichtung-stand', 120, 10 * 60 * 1000),
-    async (req: OffeneAnfrage<'GET /api/v1/einrichtung/stand'>, res: Antwort<'GET /api/v1/einrichtung/stand'>) => {
+    async (req, res) => {
       res.set('Cache-Control', 'no-store');
-      res.json({ success: true, ...(await d.konto.einrichtungStand({ verwalter: istVerwalter(req) })) });
+      return { ...(await d.profil.einrichtungStand({ verwalter: istVerwalter(req) })) };
     },
   );
-
-  router.use(fehlerAntwort);
   return router;
 }

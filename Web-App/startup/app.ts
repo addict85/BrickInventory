@@ -10,7 +10,15 @@ import type { Konfig } from '../src/infra/konfig';
 import { anfrageKontext, anfrageKennung } from '../src/infra/protokoll';
 import { fehlerAntwort, unbekannterApiPfad } from '../src/http/httpAntwort';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-import { drossleBeruehren, SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer, startStilHash } from '../src/konto';
+import {
+  beruehrenMs,
+  drossleBeruehren,
+  sitzungsfristen,
+  sitzungLeerlaufMs,
+  sitzungLeerlaufSek,
+  sitzungsHoechstdauer,
+} from '../src/konto';
+import { stilHashDerStartseite, type ProfilDienste } from '../src/profil';
 import { sitzungsVersionPruefen } from '../src/konto/http/sitzungsPruefung';
 import type { KontoDienste } from '../src/konto';
 import { merkeAnfrage } from '../src/http/kontoMerken';
@@ -19,7 +27,7 @@ import { proxyHinweis } from '../src/http/proxyHinweis';
 import { nurEigeneHerkunft, nurEigenerHost } from '../src/http/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from '../src/http/apiVersion';
 import { PUBLIC_DIR } from '../src/infra/appPaths';
-import { sendeStartseite } from '../src/konto/http/startseite';
+import { sendeStartseite } from '../src/profil/http/startseite';
 import { registerImgProxy } from '../routes/imgProxy';
 import { waechterFuer, rumpfLesen } from '../routes/api_v1/middleware';
 import { schrittschutzAmEingang } from '../src/konto/http/schrittschutz';
@@ -28,16 +36,16 @@ import { idempotenz } from '../src/idempotenz/http/middleware';
 import { baueDatenDateienRouter } from '../routes/datenDateien';
 import { baueApiRouter } from '../routes/api_v1/index';
 import { baueAuthRouter } from '../routes/auth';
-import zertifikatRouter from '../routes/zertifikat';
-import cspBerichtRouter from '../src/http/cspBericht';
-import wellKnownRouter from '../routes/wellKnown';
+import { baueZertifikatRouter } from '../routes/zertifikat';
+import { baueCspBerichtRouter } from '../src/http/cspBericht';
+import { baueWellKnownRouter } from '../routes/wellKnown';
 import { baueGesundheitRouter } from '../routes/gesundheit';
 import { baueSeitenRouter } from '../routes/seiten';
 import { vertragPruefen } from '../src/http/vertragsRouter';
 import type { Dienste } from './verdrahtung';
 
 export interface AppZutaten {
-  /** Für den Sitzungsspeicher (user_sessions). */
+  /** Für den Sitzungsspeicher (user_sessions): der Pool der Systemrolle, die Laufzeitrolle liest sie nicht. */
   pool: Pool;
   konfig: Konfig;
   /** Geprüft in server.ts: Ein Platzhalter beendet dort den Start. */
@@ -57,10 +65,10 @@ export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sitzungsSpei
   // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
   app.set('case sensitive routing', true);
   grundschutz(app, konfig);
-  sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis), dienste.konto);
-  dateienUndBilder(app, dienste);
+  sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis, konfig), dienste.konto, konfig);
+  dateienUndBilder(app, dienste, konfig);
   apiRouten(app, dienste);
-  rueckfaelle(app, dienste.konto);
+  rueckfaelle(app, dienste.profil);
   return app;
 }
 
@@ -82,17 +90,17 @@ function grundschutz(app: express.Express, k: Konfig): void {
 
   // Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
   // ohnehin auf die App zugeschnitten sein.
-  app.use(sicherheitsKoepfe(k.hstsMaxAge));
+  app.use(sicherheitsKoepfe(k.hstsMaxAge, k.produktion));
 
-  // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
+  // Das Konto der Anfrage für Zähler tief unten (src/fremdquellen/apiKontingent.ts).
   app.use(merkeAnfrage);
 
   // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
   if (k.betrieb) {
-    app.set('trust proxy', proxyVertrauen(k.trustProxy));
+    app.set('trust proxy', proxyVertrauen(k.trustProxy, k.proxyNetzBestaetigt));
   }
   // Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
-  app.locals.proxyHinweis = proxyHinweis(k.trustProxy);
+  app.locals.proxyHinweis = proxyHinweis(k.trustProxy, console.warn, Date.now, k.proxyNetzBestaetigt);
   app.use(app.locals.proxyHinweis);
 
   // `//api/…` fiele sonst bis zum SPA-Catch-all durch und bekäme index.html mit 200.
@@ -108,7 +116,7 @@ function grundschutz(app: express.Express, k: Konfig): void {
 
   app.use(nurEigenerHost);
   // Vor der Herkunftsprüfung: Browser schicken CSP-Berichte ohne verlässliche Herkunft.
-  app.use(cspBerichtRouter);
+  app.use(baueCspBerichtRouter());
   app.use(nurEigeneHerkunft);
   // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
   // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
@@ -132,7 +140,7 @@ function grundschutz(app: express.Express, k: Konfig): void {
 }
 
 const sicherheitsKoepfe =
-  (hstsAlter: number) =>
+  (hstsAlter: number, produktion: boolean) =>
   (req: Request, res: Response, next: NextFunction): void => {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -154,10 +162,10 @@ const sicherheitsKoepfe =
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        // Ohne 'unsafe-inline': Alle Handler laufen über js/actions.js.
+        // Ohne 'unsafe-inline': Alle Handler laufen über js/aktionen.js.
         "script-src 'self'",
         // Stile setzt js/stile.js per CSSOM; inline nur das Startgerüst, per Hash.
-        `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
+        `style-src 'self'${stilHashDerStartseite(produktion) ? ' ' + stilHashDerStartseite(produktion) : ''}`,
         "font-src 'self'",
         // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
         // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
@@ -181,7 +189,7 @@ const sicherheitsKoepfe =
     next();
   };
 
-function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
+function sitzungInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHandler {
   // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
   const PgSession = connectPgSimple(session);
   const sitzungsSpeicher = new PgSession({
@@ -190,7 +198,7 @@ function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
     createTableIfMissing: false,
     pruneSessionInterval: 60 * 15,
     // Nach Stunden Leerlauf endet eine Webapp-Sitzung.
-    ttl: SITZUNG_LEERLAUF_SEK,
+    ttl: sitzungLeerlaufSek(k),
     errorLog: err => {
       if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
         console.error('[session-store]', err.message);
@@ -199,7 +207,7 @@ function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
   });
 
   // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
-  drossleBeruehren(sitzungsSpeicher);
+  drossleBeruehren(sitzungsSpeicher, beruehrenMs(sitzungLeerlaufMs(k)));
 
   return session({
     store: sitzungsSpeicher,
@@ -211,22 +219,22 @@ function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
   });
 }
 
-function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDienste): void {
+function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDienste, k: Konfig): void {
   app.use(speicher);
   app.use(sitzungsVersionPruefen(konto));
-  app.use(sitzungsHoechstdauer());
+  app.use(sitzungsHoechstdauer(sitzungsfristen(k)));
 }
 
-function dateienUndBilder(app: express.Express, d: Dienste): void {
+function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): void {
   app.use(baueDatenDateienRouter(d));
-  app.use(zertifikatRouter);
-  app.use(wellKnownRouter);
+  app.use(baueZertifikatRouter());
+  app.use(baueWellKnownRouter(konfig));
   registerImgProxy(app, d);
 
   app.use(baueSeitenRouter(d));
   app.use(
     express.static(PUBLIC_DIR, {
-      // `/` geht über den Renderer (src/konto/indexHtml.ts), nicht als Datei.
+      // `/` geht über den Renderer (src/profil/indexHtml.ts), nicht als Datei.
       index: false,
       // Gestempelte Assets (?v=) lange cachen; index.html no-cache, damit Deploys sofort gelten.
       maxAge: '7d',
@@ -242,6 +250,11 @@ function dateienUndBilder(app: express.Express, d: Dienste): void {
 function apiRouten(app: express.Express, d: Dienste): void {
   const pruefung = vertragPruefen();
   if (pruefung) app.use('/api/v1', pruefung);
+  // Express fände `/vouchers/1/klartext/` unter `/vouchers/:id/klartext`, alles davor (Drossel,
+  // Schrittschutz, Caddy) sieht einen anderen Pfad. Mit `/` am Ende kennt der Vertrag nur `/api/v1/`.
+  app.use('/api', (req, res, next) =>
+    req.path !== '/v1/' && req.path.length > 1 && req.path.endsWith('/') ? unbekannterApiPfad(req, res) : next(),
+  );
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
   app.use('/api/v1', baueGesundheitRouter(d));
   apiEingang(app, d);
@@ -265,7 +278,7 @@ function apiEingang(app: express.Express, d: Dienste): void {
   app.use('/api/v1', idempotenz(d.idempotenz));
 }
 
-function rueckfaelle(app: express.Express, konto: KontoDienste): void {
+function rueckfaelle(app: express.Express, profil: ProfilDienste): void {
   // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
   // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
   app.use((req, res, next) => (/^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next()));
@@ -274,9 +287,10 @@ function rueckfaelle(app: express.Express, konto: KontoDienste): void {
   // naheliegende Form träfe die Startseite `/` nicht.
   app.get('/{*splat}', async (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    await sendeStartseite(konto, res, req.session?.userId);
+    await sendeStartseite(profil, res, req.session?.userId);
   });
 
-  // Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.
+  // Der eine Fehlerweg aller Router: Ein Fehler überspringt alles ohne Fehlerparameter
+  // bis hierher; die Router selbst hängen keinen eigenen an.
   app.use(fehlerAntwort);
 }

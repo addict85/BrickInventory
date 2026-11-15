@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.ressourcen.R
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
@@ -21,8 +23,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
-import ch.brickinventoryapp.model.data.model.Gutschein
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.Gutschein
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.finanzen.ui.GutscheinBestaetigung
 import ch.brickinventoryapp.finanzen.ui.GutscheinSchritt
@@ -66,6 +68,9 @@ import androidx.compose.ui.test.SemanticsMatcher
  *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
  *   (g) in PasswortRueckfrage das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
  *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
+ *   (g2) die Absage rollt nicht ins Bild → dasselbe rot, „Bitte den Code eingeben.“ ist
+ *       nicht zu sehen (gegenproben/rueckfrage-meldung-ausser-sicht.patch; der Stand vor
+ *       der Korrektur, rot in der CI auf 0223f52)
  *   (h) im Set-Detail der Papierkorb immer mit Rückfrage → rot „ein Set loescht mit
  *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
  *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“
@@ -178,7 +183,7 @@ class AblaufTest {
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
-        // Die Menge steht unter Wert-Kacheln und Marktpreis (M2); auf dem kleinen
+        // Die Menge steht unter Wert-Kacheln und Marktpreis; auf dem kleinen
         // Robolectric-Bildschirm (320 × 470 dp) ist sie erst nach dem Rollen da.
         val plus = androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.cd_qty_increase))
         compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction() and
@@ -229,7 +234,7 @@ class AblaufTest {
                     zustand = zustand, onFeld = { _, _, _, _ -> },
                     onPinSchalten = { id -> zustand = zustand.copy(pinSichtbar = zustand.pinSichtbar + id) },
                     onBearbeiten = {}, onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {},
-                    onKopieren = { id, _ -> kopiert += id.toString() }, onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {},
+                    onKopieren = { id, _ -> kopiert += id.toString() }, onGuthaben = {},
                     onGuthabenAbbrechen = {}, onErneut = {}, onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
                 )
             }
@@ -282,7 +287,8 @@ class AblaufTest {
         compose.onNodeWithText(ctx.getString(R.string.konto_password_current)).assertIsDisplayed()
         compose.onNodeWithText(ctx.getString(R.string.login_code)).assertDoesNotExist()
         compose.onNodeWithText(ctx.getString(R.string.vouchers_confirm_button)).assertIsNotEnabled()
-        zustand = zustand.copy(bestaetigung = zustand.bestaetigung?.copy(codeNoetig = true, fehler = "Bitte den Code eingeben."))
+        zustand = zustand.copy(bestaetigung = zustand.bestaetigung?.copy(
+            codeNoetig = true, vorgang = Vorgang.Fehlgeschlagen(Meldung.Text("Bitte den Code eingeben."))))
         compose.onNodeWithText(ctx.getString(R.string.login_code)).assertIsDisplayed()
         compose.onNodeWithText("Bitte den Code eingeben.").assertIsDisplayed()
     }

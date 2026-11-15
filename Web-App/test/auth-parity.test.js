@@ -21,7 +21,8 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { assertLoginAllowed, BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
+const { assertLoginAllowed } = _req('src/konto/anmeldepruefung.js');
+const { ARGON2_KOSTEN } = _req('src/konto/passwortHash.js');
 const { USERNAME_RE } = _req('src/konto/namensRegeln.js');
 const { escapeLike } = _req('src/konto/geraeteToken.js');
 const { ohneKommentare } = require('./helpers/sources');
@@ -39,12 +40,14 @@ function anmeldeHandler() {
   const treffer = [];
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/(?:router|app)\.(post|put)\(\s*'([^']*login[^']*)'/g)) {
+    for (const m of src.matchAll(
+      /(?:router|app)\.(?:(?:post|put)\(\s*'|endpunkt\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
+    )) {
       // Der Rumpf reicht bis zur nächsten Routendefinition. Kommentare sind
       // schon weg — sonst zählte ein Erklärtext, der „password" erwähnt, mit.
       const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
       const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
-      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[2], koerper });
+      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[1], koerper });
     }
   }
   return treffer;
@@ -118,7 +121,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
   // Wer den Zähler selbst hochzählt, hat auch die Passwortprüfung selbst
   // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
   // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
-  const zaehler = /\b(checkLoginAllowed|recordLoginFailure|recordLoginSuccess)\s*\(/;
+  const zaehler = /\b(anmeldungErlaubt|anmeldungGescheitert|anmeldungGelungen)\s*\(/;
   const erlaubt = new Set(['src/konto/anmeldepruefung.ts', 'src/konto/loginLimiter.ts']);
 
   const sammle = dir =>
@@ -143,7 +146,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
 
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
   const zentral = require('./helpers/sources').dienstQuelle('src/konto/anmeldepruefung.ts');
-  for (const name of ['checkLoginAllowed', 'recordLoginFailure', 'recordLoginSuccess'])
+  for (const name of ['anmeldungErlaubt', 'anmeldungGescheitert', 'anmeldungGelungen'])
     assert.match(zentral, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
 });
 
@@ -169,5 +172,5 @@ test('die Gleitfrist lässt sich nicht abschalten', () => {
   const { ladeKonfig } = _req('src/infra/konfig.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
   assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenLeerlaufTage, 23);
-  assert.ok(BCRYPT_ROUNDS >= 12);
+  assert.ok(ARGON2_KOSTEN.memoryCost >= 19_456 && ARGON2_KOSTEN.timeCost >= 2);
 });

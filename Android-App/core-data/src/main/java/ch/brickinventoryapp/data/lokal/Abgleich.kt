@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.lokal
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.model.data.model.UpdateQuantityRequest
+import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.sicherAufrufen
 import kotlinx.coroutines.flow.Flow
@@ -43,22 +43,23 @@ fun interface Bearbeitungssender {
  * ohne Rumpf ist angekommen.
  */
 fun einordnen(r: Ergebnis<*>): Sendeergebnis = when (r) {
-    is Ergebnis.Success -> Sendeergebnis.Angenommen
-    is Ergebnis.Error -> einordnenFehler(r)
+    is Ergebnis.Erfolg -> Sendeergebnis.Angenommen
+    is Ergebnis.Fehler -> einordnenFehler(r)
 }
 
 /** Beim Löschen ist „gibt es nicht (mehr)“ das Ziel: Ein 404 ist angekommen, nicht abgelehnt. */
 fun einordnenLoeschen(r: Ergebnis<*>): Sendeergebnis =
-    if (r is Ergebnis.Error.Server && r.status == 404) Sendeergebnis.Angenommen else einordnen(r)
+    if (r is Ergebnis.Fehler.Server && r.status == 404) Sendeergebnis.Angenommen else einordnen(r)
 
 // Ohne HTTP-Status hat der Server nicht geurteilt (Netz, Abriss, Ausnahme): später noch einmal.
-private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis = when (r) {
-    is Ergebnis.Error.LeereAntwort -> Sendeergebnis.Angenommen
-    is Ergebnis.Error.Server ->
+private fun einordnenFehler(r: Ergebnis.Fehler): Sendeergebnis = when (r) {
+    is Ergebnis.Fehler.LeereAntwort -> Sendeergebnis.Angenommen
+    is Ergebnis.Fehler.Server ->
         if (r.status in 400..499 && r.status !in setOf(401, 408, 429)) Sendeergebnis.Abgelehnt(r.message, r.status)
         else Sendeergebnis.Spaeter
-    is Ergebnis.Error.Abgewiesen, is Ergebnis.Error.Netz, Ergebnis.Error.Zeitueberschreitung,
-    Ergebnis.Error.Abgebrochen, Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Sendeergebnis.Spaeter
+    is Ergebnis.Fehler.Absage -> Sendeergebnis.Abgelehnt(r.message, null)
+    is Ergebnis.Fehler.Abgewiesen, is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Zeitueberschreitung,
+    Ergebnis.Fehler.Abgebrochen, Ergebnis.Fehler.Klartext, is Ergebnis.Fehler.Unbekannt -> Sendeergebnis.Spaeter
 }
 
 enum class Abgleichsergebnis {
@@ -94,7 +95,7 @@ class Abgleich @Inject constructor(
     override fun offene(): Flow<Int> = ablage.offene()
 
     override fun verworfene(): Flow<List<VerworfeneAenderung>> = ablage.verworfene().map { l ->
-        l.map { VerworfeneAenderung(it.id, it.ziel, it.meldung, it.httpCode) }
+        l.map { VerworfeneAenderung(it.id, it.ziel, it.meldung, it.httpCode, it.unlesbar) }
     }
 
     override suspend fun quittiere(v: VerworfeneAenderung) = ablage.quittiereVerworfen(v.id)
@@ -106,6 +107,8 @@ class Abgleich @Inject constructor(
     suspend fun sende(): Abgleichsergebnis = sperre.withLock {
         val bereich = ablage.bereich() ?: return@withLock Abgleichsergebnis.NICHT_ANGEMELDET
         val betroffen = mutableSetOf<Bestandsart>()
+        // Vor dem Senden: Was sich nicht mehr lesen lässt, wird gemeldet statt übersprungen.
+        ausgang.raeumeUnlesbare(bereich)
         try {
             lauf(bereich, betroffen)
         } finally {
@@ -152,7 +155,7 @@ class Abgleich @Inject constructor(
     }
 }
 
-/** Sendet eine Bearbeitung mit genau der Anfrage, die online gegangen wäre, samt ihrem Schlüssel. */
+/** Sendet eine Bearbeitung mit der Anfrage, die online gegangen wäre (dieselbe Abbildung), samt ihrem Schlüssel. */
 class ServerSender @Inject constructor(
     private val sets: SetsApi,
     private val teile: TeileApi,
@@ -162,21 +165,21 @@ class ServerSender @Inject constructor(
         is Bearbeitung.SetMenge -> einordnen(sicherAufrufen {
             sets.updateSetQuantity(b.setNumber, UpdateQuantityRequest(quantityDelta = b.schritt), schluessel)
         })
-        is Bearbeitung.SetErfassen -> einordnen(sicherAufrufen { sets.addSet(b.anfrage, schluessel) })
-        is Bearbeitung.MerkpostenAnlegen -> einordnen(sicherAufrufen { sets.legeMerkpostenAn(b.anfrage, schluessel) })
+        is Bearbeitung.SetErfassen -> einordnen(sicherAufrufen { sets.addSet(b.wunsch.alsAnfrage(), schluessel) })
+        is Bearbeitung.MerkpostenAnlegen -> einordnen(sicherAufrufen { sets.legeMerkpostenAn(b.wunsch.alsAnfrage(), schluessel) })
         is Bearbeitung.MerkpostenLoeschen -> einordnenLoeschen(sicherAufrufen {
             sets.loescheMerkposten(b.setNumber, b.zustand.kennung, b.besitzer, schluessel)
         })
-        is Bearbeitung.TeilErfassen -> einordnen(sicherAufrufen { teile.addPart(b.anfrage, schluessel) })
+        is Bearbeitung.TeilErfassen -> einordnen(sicherAufrufen { teile.addPart(b.erfassung.alsAnfrage(), schluessel) })
         is Bearbeitung.TeilAendern -> einordnen(sicherAufrufen {
-            teile.updatePart(b.partNumber, b.colorId, b.anfrage, b.besitzer, schluessel)
+            teile.updatePart(b.partNumber, b.colorId, b.aenderung.alsAnfrage(), b.besitzer, schluessel)
         })
         is Bearbeitung.TeilLoeschen -> einordnenLoeschen(sicherAufrufen {
             teile.deletePart(b.partNumber, b.colorId, b.besitzer, schluessel)
         })
-        is Bearbeitung.FigurErfassen -> einordnen(sicherAufrufen { figuren.addMinifig(b.anfrage, schluessel) })
+        is Bearbeitung.FigurErfassen -> einordnen(sicherAufrufen { figuren.addMinifig(b.erfassung.alsAnfrage(), schluessel) })
         is Bearbeitung.FigurAendern -> einordnen(sicherAufrufen {
-            figuren.updateMinifig(b.figNumber, b.anfrage, b.besitzer, schluessel)
+            figuren.updateMinifig(b.figNumber, b.aenderung.alsAnfrage(), b.besitzer, schluessel)
         })
         is Bearbeitung.FigurLoeschen -> einordnenLoeschen(sicherAufrufen {
             figuren.deleteMinifig(b.figNumber, b.besitzer, schluessel)

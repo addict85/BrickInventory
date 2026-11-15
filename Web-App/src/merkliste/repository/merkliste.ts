@@ -1,4 +1,5 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import { setBestand } from '../../../db/bestandSicht';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { marktpreisSql } from '../../../db/geldSql';
 import { LIKE_ESCAPE, enthaeltMuster } from '../../../db/likeSuche';
 import { ausTabelle } from '../../infra/validate';
@@ -19,7 +20,7 @@ export function streicheVormerkung(db: DbSchnittstelle, userId: number, setNumbe
 }
 
 export function istVorgemerkt(db: DbSchnittstelle, zuId: number, sn: string, c: string) {
-  return db.get('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
+  return db.get<Treffer>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
 }
 
 export function uebertrageVormerkung(db: DbSchnittstelle, zuId: number, vonId: number, sn: string, c: string) {
@@ -49,6 +50,23 @@ export interface MerkAuswahl {
   sortierung: unknown;
 }
 
+export type MerkZeile = {
+  set_number: string;
+  condition: string;
+  created_at: Date;
+  user_id: number;
+  name: string | null;
+  year: number | null;
+  theme_id: number | null;
+  num_parts: number | null;
+  image_url: string | null;
+  alarm_richtung: string | null;
+  alarm_schwelle: number | null;
+  alarm_ausgeloest: boolean | null;
+  marktpreis: number | null;
+  owned: boolean;
+};
+
 export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: MerkAuswahl, waehrung: string) {
   const werte: unknown[] = [userIds];
   let wo = '';
@@ -70,15 +88,15 @@ export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: 
   const ordnung = ausTabelle(MERK_SORTS, f.sortierung, MERK_SORTS.added_desc);
   werte.push(waehrung);
   const pWaehrung = `$${werte.length}`;
-  return db.all(
+  return db.all<MerkZeile>(
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
             sc.image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
             ${marktpreisSql('pc')} AS marktpreis,
-            EXISTS (SELECT 1 FROM sets s
-                     WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
+            EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
+                     WHERE s.set_number = w.set_number) AS owned
        FROM wanted w
        LEFT JOIN rb_sets rb ON rb.set_num = w.set_number
        -- Das Bild steht nur in set_catalog (0108).

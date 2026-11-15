@@ -38,7 +38,7 @@ const { routerServer } = require('./helpers/server');
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art, o) => {
+  mailKontoHinweis: async (an, _name, art, o) => {
     gesendet.push({ an, art, ...o });
     return { success: true };
   },
@@ -134,9 +134,22 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     );
   });
 
+  // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
+  const faellig = async () => {
+    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+      zwei,
+    ]);
+    assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
+  };
+
   await t.test('entfernter zweiter Faktor', async () => {
     await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [zwei]);
     await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
+    assert.deepEqual(
+      (await mails('uebernahme_angekuendigt', 1)).map(m => [m.an, m.durch]),
+      [[NAMEN[1], NAMEN[0]]],
+    );
+    await faellig();
     assert.deepEqual(
       (await mails('zweiter_faktor_entfernt', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
@@ -153,6 +166,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   await t.test('fremdes Passwort durch einen Verwalter', async () => {
     await ruf('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
+    await faellig();
     assert.deepEqual(
       (await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
@@ -176,7 +190,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
   });
 
   await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
-    const zf = _req('src/konto/zweiterFaktor.js');
+    const zf = _req('src/faktoren/zweiterFaktor.js');
     const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
     const code = versatz => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
     await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });

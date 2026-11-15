@@ -1,35 +1,35 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.AddSetResponse
-import ch.brickinventoryapp.model.data.model.BarcodeResponse
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.LagerortRequest
-import ch.brickinventoryapp.model.data.model.LagerortResponse
-import ch.brickinventoryapp.model.data.model.MerklisteResponse
-import ch.brickinventoryapp.model.data.model.MerkpostenAntwort
-import ch.brickinventoryapp.model.data.model.MerkpostenInhaberAntwort
-import ch.brickinventoryapp.model.data.model.MerkpostenInhaberRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenPreiseResponse
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenUebernahmeRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenUebernahmeResponse
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.MoveSetRequest
-import ch.brickinventoryapp.model.data.model.MoveSetResponse
-import ch.brickinventoryapp.model.data.model.PartsResponse
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
-import ch.brickinventoryapp.model.data.model.PdfAuftragAntwort
-import ch.brickinventoryapp.model.data.model.PdfAuftragStand
-import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
-import ch.brickinventoryapp.model.data.model.PreisalarmRequest
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
-import ch.brickinventoryapp.model.data.model.PreisalarmeResponse
-import ch.brickinventoryapp.model.data.model.SetDetailResponse
-import ch.brickinventoryapp.model.data.model.SetResponse
-import ch.brickinventoryapp.model.data.model.SetsResponse
-import ch.brickinventoryapp.model.data.model.UpdateQuantityRequest
+import ch.brickinventoryapp.vertrag.AddSetRequest
+import ch.brickinventoryapp.vertrag.AddSetResponse
+import ch.brickinventoryapp.vertrag.BarcodeResponse
+import ch.brickinventoryapp.vertrag.GenericAdminResponse
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.LagerortRequest
+import ch.brickinventoryapp.vertrag.LagerortResponse
+import ch.brickinventoryapp.vertrag.MengeGeaendert
+import ch.brickinventoryapp.vertrag.MerklisteResponse
+import ch.brickinventoryapp.vertrag.MerkpostenAntwort
+import ch.brickinventoryapp.vertrag.MerkpostenInhaberAntwort
+import ch.brickinventoryapp.vertrag.MerkpostenInhaberRequest
+import ch.brickinventoryapp.vertrag.MerkpostenPreiseResponse
+import ch.brickinventoryapp.vertrag.MerkpostenRequest
+import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeRequest
+import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeResponse
+import ch.brickinventoryapp.vertrag.MinifigsResponse
+import ch.brickinventoryapp.vertrag.MoveSetRequest
+import ch.brickinventoryapp.vertrag.MoveSetResponse
+import ch.brickinventoryapp.vertrag.PartsResponse
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAntwort
+import ch.brickinventoryapp.vertrag.PdfAuftragStand
+import ch.brickinventoryapp.vertrag.PendingAlertsResponse
+import ch.brickinventoryapp.vertrag.PreisalarmRequest
+import ch.brickinventoryapp.vertrag.PreisalarmResponse
+import ch.brickinventoryapp.vertrag.PreisalarmeResponse
+import ch.brickinventoryapp.vertrag.SetResponse
+import ch.brickinventoryapp.vertrag.SetsResponse
+import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -40,9 +40,9 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.SetExistsResponse
-import ch.brickinventoryapp.model.data.model.SetInfoResponse
+import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.vertrag.SetExistsResponse
+import ch.brickinventoryapp.vertrag.SetInfoResponse
 
 /**
  * Sets, Anleitungen, Preisalarme, Lagerort je Set, Merkliste, PDF-Export und
@@ -96,7 +96,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String
-    ): Response<SetDetailResponse>
+    ): Response<SetResponse>
 
     // ── Kontofilter (Haushalt) ──
     //
@@ -137,7 +137,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
         @Path("setNumber") setNumber: String,
         @Body request: UpdateQuantityRequest,
         @Header("Idempotency-Key") schluessel: String? = null,
-    ): Response<GenericResponse>
+    ): Response<MengeGeaendert>
 
     @DELETE("api/v1/sets/{setNumber}")
     suspend fun deleteSet(
@@ -147,7 +147,8 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     /**
      * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
      *
-     * Siehe die Begruendung fuer POST an BestandRequest (TeileMinifigModels.kt).
+     * POST, obwohl nichts geändert wird: Über tausend Teil-Farb-Paare ergäben eine Adresse,
+     * die kein Proxy durchlässt.
      */
     // ── Preisalarm ──────────────────────────────────────────────────────────
     //

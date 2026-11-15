@@ -1,14 +1,12 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.testing.mitRepo
 
 /**
@@ -33,18 +31,18 @@ class ServerStartTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die App fragt den Startzustand ab`() = mitRepo(::VerwaltungRepository) { pfade, admin ->
+    fun `die App fragt den Startzustand ab`() = mitRepo(::testVerwaltungRepository) { pfade, admin ->
         runBlocking { admin.getStartupStatus() }
         assertEquals(listOf("GET /api/v1/startup-status"), pfade.anfragen.toList())
     }
 
     @Test
-    fun `ein Fortschritt mit Anteil wird gelesen`() = mitRepo(::VerwaltungRepository) { pfade, admin ->
+    fun `ein Fortschritt mit Anteil wird gelesen`() = mitRepo(::testVerwaltungRepository) { pfade, admin ->
         // Der Server meldet Schritte samt Anteil des laufenden (2.37 von 8).
         pfade.antworten["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
-        assert(r is Ergebnis.Success) { "Startzustand nicht gelesen: $r" }
-        assertEquals(2.37f / 8, (r as Ergebnis.Success).data.alsAnsicht().anteil!!, 0.0001f)
+        assert(r is Ergebnis.Erfolg) { "Startzustand nicht gelesen: $r" }
+        assertEquals(2.37f / 8, (r as Ergebnis.Erfolg).data.anteil!!, 0.0001f)
     }
 
     @Test

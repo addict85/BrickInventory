@@ -6,15 +6,15 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in bewertung.ts total_avg wieder aus dem gerundeten Stückpreis
  *      ((unitAvg * qty).toFixed(2)) → rot: „120,3333 × 3 ist 361,00“ (360.99)
- *   B  kaufpreise_fremde_waehrung in computeSetsValuation fest auf 0 → rot:
+ *   B  kaufpreise_fremde_waehrung in bewerteSets fest auf 0 → rot:
  *      „ein Kaufpreis in EUR wird gezählt“
  *   C  erfassung_waehrung() in der Datenbank auf den alten Rumpf (Konto, sonst
  *      EUR) zurückgesetzt → rot: „ohne Kontowährung gilt die der Installation“
  *   D  kachelWerte() in gewinnVerlust.ts nicht angehängt → rot: „die Kachel
  *      kommt fertig vom Server“
- *   E  (30.10.) in computePartsValuation hasCost wieder `acqs.length > 0` →
+ *   E  (30.10.) in bewerteTeile hasCost wieder `acqs.length > 0` →
  *      rot: „nur ein Kaufpreis in EUR: keine G&V“ (Teil: kauf 0, pnl 21000 statt null)
- *   F  (30.10.) dasselbe in computeMinifigsValuation → rot: „nur ein
+ *   F  (30.10.) dasselbe in bewerteFiguren → rot: „nur ein
  *      Kaufpreis in EUR: keine G&V“ (Figur: kauf 0, pnl 40000 statt null)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -87,8 +87,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   );
 
   await t.test('120,3333 × 3 ist 361,00, und ein Kaufpreis in EUR wird gezählt', async () => {
-    const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
-    const r = await computeSetsValuation(uid, [uid]);
+    const { bewerteSets } = _req('src/finanzen/financeCalc.js');
+    const r = await bewerteSets(uid, [uid]);
     const set = r.sets.find(s => s.set_number === SN);
     assert.equal(set.total_avg, '361.00', '120,3333 × 3 ist 361,00');
     assert.equal(set.wert_gesamt, 361);
@@ -101,8 +101,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Kachel kommt fertig vom Server', async () => {
-    const { computePnl } = _req('src/finanzen/financeCalc.js');
-    const r = await computePnl(uid, [uid]);
+    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
+    const r = await gewinnUndVerlust(uid, [uid]);
     const zeile = r.sets.find(s => s.set_number === SN);
     assert.equal(zeile.kachel_preis, 120.33);
     assert.equal(zeile.kachel_pnl_pct, 20.3);
@@ -127,9 +127,9 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',4)`,
       [FIG],
     );
-    const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
-    const teile = await computePartsValuation(uid, [uid]);
-    const figuren = await computeMinifigsValuation(uid, [uid]);
+    const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
+    const teile = await bewerteTeile(uid, [uid]);
+    const figuren = await bewerteFiguren(uid, [uid]);
     const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
     assert.deepEqual(
       {

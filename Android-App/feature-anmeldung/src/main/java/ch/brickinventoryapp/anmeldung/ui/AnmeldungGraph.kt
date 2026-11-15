@@ -1,9 +1,12 @@
 package ch.brickinventoryapp.anmeldung.ui
 
+import androidx.compose.runtime.getValue
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.ui.satz
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,15 +104,16 @@ private fun NavGraphBuilder.anmeldeZiel(navigation: AnmeldungNavigation) {
             ServerStartAnzeige(serverStart)
         } else LoginScreen(
             serverUrl = state.serverUrl,
-            isLoading = anmeldeZustand.loginLaeuft,
-            error = anmeldeZustand.loginError,
+            isLoading = anmeldeZustand.anmeldung.laeuft,
+            error = anmeldeZustand.anmeldung.fehlerMeldung?.satz(),
             qrBestaetigung = anmeldeZustand.qrBestaetigung,
             codeNoetig = anmeldeZustand.codeNoetig,
             formular = anmeldeZustand.formular,
             registrierungOffen = anmeldeZustand.registrierungOffen,
-            kontoLaeuft = anmeldeZustand.laeuft,
-            kontoMeldung = anmeldeZustand.meldung,
-            kontoFehler = anmeldeZustand.fehler,
+            kontoLaeuft = anmeldeZustand.konto.laeuft,
+            kontoMeldung = listOfNotNull(anmeldeZustand.meldung?.satz(), anmeldeZustand.hinweis?.satz())
+                .joinToString(" ").ifEmpty { null },
+            kontoFehler = anmeldeZustand.konto.fehlerMeldung?.satz(),
             onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
             vollerZugriff = anmeldeZustand.vollerZugriff,
             onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },

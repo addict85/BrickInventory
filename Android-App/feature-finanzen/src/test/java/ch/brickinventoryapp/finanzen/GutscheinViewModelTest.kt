@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.finanzen
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.testing.testGutscheineRepository
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -72,7 +72,7 @@ class GutscheinViewModelTest {
         val api = server.api
         kanal = MeldungsKanal()
         vm = GutscheinViewModel(
-            repo = GutscheineRepository(api, ResponseCache(io = takt) { cacheDir }),
+            repo = testGutscheineRepository(api),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = kanal,
@@ -91,7 +91,7 @@ class GutscheinViewModelTest {
     fun `die Liste wird geladen und ein Gutschein ins Formular geholt`() {
         server.enqueue(antwort(zweiKarten))
         vm.ladeGutscheine()
-        bis("Liste") { vm.state.value.gutscheine.size == 2 && !vm.state.value.laedt }
+        bis("Liste") { vm.state.value.gutscheine.size == 2 && !vm.state.value.abruf.laedt }
 
         vm.bearbeiteGutschein(1)
         val s = vm.state.value
@@ -109,7 +109,7 @@ class GutscheinViewModelTest {
         server.enqueue(antwort("""{"success":false,"error":"Betrag fehlt",
             "gelesen":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
         vm.speichere { "application/pdf" to byteArrayOf(37, 80, 68, 70) }
-        bis("Formular") { !vm.state.value.speichert && server.requestCount == 1 && kanal.text != null }
+        bis("Formular") { !vm.state.value.speichern.laeuft && server.requestCount == 1 && kanal.text != null }
 
         val s = vm.state.value
         assertEquals("6000999988887777", s.nummer)
@@ -123,7 +123,7 @@ class GutscheinViewModelTest {
     @Test
     fun `eine Nicht-PDF-Datei geht nicht zum Server`() {
         vm.speichere { "image/png" to byteArrayOf(1, 2, 3) }
-        bis("Meldung") { kanal.text != null && !vm.state.value.speichert }
+        bis("Meldung") { kanal.text != null && !vm.state.value.speichern.laeuft }
         assertEquals("t${R.string.vouchers_only_pdf}", kanal.text)
         assertEquals(0, server.requestCount)
     }

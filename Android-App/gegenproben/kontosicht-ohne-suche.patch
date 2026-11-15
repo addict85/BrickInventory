@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.data.KontosichtTest
 Rot: jeder Filter der Kontosicht steht in der Anfrage
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
-index abb5147..b7e2b47 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Kontosicht.kt
-@@ -94,7 +94,7 @@ class Kontosicht @Inject constructor(
+@@ -103,7 +103,7 @@
  
-     val galerie = Serversicht<SetsAbfrage, SetItem>(ablage, arrayOf(Faecher.SETS)) { a ->
+     val galerie = Serversicht<SetsAbfrage, SetAnsicht>(ablage, arrayOf(Faecher.SETS)) { a ->
          alleSeiten({ it.sets }, { it.setNumber }, { it.total }, wiederholung) { seite ->
 -            sicherAufrufen { sets.getSets(a.konten?.anfrage, a.suche, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
 +            sicherAufrufen { sets.getSets(a.konten?.anfrage, null, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
-         }
+         }.abgebildet { l -> l.map { it.alsAnsicht() } }
      }
  

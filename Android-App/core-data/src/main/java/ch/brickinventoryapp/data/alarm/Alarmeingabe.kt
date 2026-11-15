@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.alarm
 
+import ch.brickinventoryapp.model.fach.Geld
+
 /**
  * Was aus dem, was jemand ins Schwellenfeld tippt, wird. Gespeichert wird beim Tippen,
  * entprellt, wie der Kaufpreis — nicht erst beim Fokusverlust: Am Telefon tippt man die Zahl,
@@ -17,16 +19,16 @@ object Alarmeingabe {
     const val RUHE_MS = 800L
 
     /**
-     * Die getippte Zeichenkette als Zahl — oder `null`, wenn der Alarm weg soll. Das
+     * Die getippte Zeichenkette als Betrag — oder `null`, wenn der Alarm weg soll. Das
      * Feld zu leeren ist die natürliche Geste, einen Alarm loszuwerden; ein eigener
      * Knopf wäre ein zweiter Weg für dieselbe Absicht.
      */
-    fun zahl(roh: String): Double? {
-        val z = roh.replace(',', '.').trim().toDoubleOrNull() ?: return null
+    fun zahl(roh: String): Geld? {
+        val z = Geld.ausText(roh.replace(',', '.')) ?: return null
         // Nicht-positive Schwellen sind kein Alarm, sondern einer, der nie
         // oder immer meldet. Der Server lehnt sie ebenfalls ab
         // (pruefeEingabe in utils/preisalarm.ts) — hier faengt es die Anfrage
         // schon vorher ab.
-        return if (z > 0.0) z else null
+        return z.takeIf { it.positiv }
     }
 }

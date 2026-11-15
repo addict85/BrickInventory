@@ -1,6 +1,6 @@
 Gegenprobe: Reiterbeschriftung schrumpft bei grosser Schrift wieder bis zur Normalgrösse
 Modul: app
-Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
 Rot: Reiterbeschriftung waechst bei 200 Prozent mindestens aufs Anderthalbfache
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt

@@ -1,0 +1,18 @@
+Gegenprobe: Gewinn/Verlust steht immer in einer Zeile, auch wenn die Breite nicht reicht
+Modul: app
+Test: ch.brickinventoryapp.app.UmbruchWaechterTest
+Rot: Set-Detail schmal bei 200 Prozent
+
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+index 5b45eb7..4687087 100644
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+@@ -428,7 +428,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
+         } + Abstaende.mittel * 2 + 2.dp
+         val bedarf = listOf(markt, kauf, pnlEinzeilig).maxOf { breite(it) }
+         // Passt „Betrag · Prozent“ nicht einmal in die volle Breite, stehen beide untereinander.
+-        val pnlText = if (breite(pnlEinzeilig) > maxWidth) pnlTeile.joinToString("\n") else pnlEinzeilig
++        val pnlText = pnlEinzeilig
+         val abstand = Abstaende.klein
+         val gleichHoch = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+         when (kachelAnordnung(maxWidth, bedarf, abstand)) {

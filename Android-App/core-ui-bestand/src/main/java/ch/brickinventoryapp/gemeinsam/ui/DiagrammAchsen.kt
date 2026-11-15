@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.ui.model.DiagrammAchse
-import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
+import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.DiagrammPunkt
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -48,7 +48,7 @@ fun lokaleAchse(punkte: List<DiagrammPunkt>, tage: List<String>, locale: Locale)
  * bei 200 % ein Drittel der Diagrammbreite; der Betrag steht in der Kopfkarte darüber.
  */
 fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: Waehrung, locale: Locale, kompakt: Boolean = false): List<DiagrammAchse> {
-    if (kompakt) return achse.map { it.copy(label = kompakterBetrag(it.value, locale)) }
+    if (kompakt) return achse.map { it.copy(label = kompakterBetrag(it.wert.alsDouble(), locale)) }
     val nf = runCatching {
         NumberFormat.getCurrencyInstance(locale).apply {
             currency = Currency.getInstance(waehrung.code)
@@ -56,7 +56,7 @@ fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: Waehrung, locale: Locale, 
             minimumFractionDigits = 0
         }
     }.getOrNull() ?: return achse
-    return achse.map { it.copy(label = mitWaehrungsAbstand(nf.format(it.value))) }
+    return achse.map { it.copy(label = mitWaehrungsAbstand(nf.format(it.wert.alsBigDecimal()))) }
 }
 
 /** Ein Betrag in höchstens vier Zeichen und Einheit: 850, 1,7k, 12k, 1,2M. */

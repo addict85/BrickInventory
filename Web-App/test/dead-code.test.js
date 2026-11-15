@@ -118,11 +118,8 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
 
   // Selbstbeweis, je Schreibweise EINZELN
   //
-  // Hier stand eine Summe ueber beide Muster. Die Gegenprobe hat sie
-  // ueberlebt: Ich habe das erste Muster zerstoert, das zweite fand weiterhin
-  // genug Namen, und die Schranke blieb erfuellt. Ein Selbstbeweis, der
-  // Zahlen addiert, deckt das Sterben eines Summanden zu — genau die
-  // Fehlerart, gegen die er gebaut ist.
+  // Nicht als Summe: Ein Selbstbeweis, der Zahlen addiert, deckt das Sterben
+  // eines Summanden zu — genau die Fehlerart, gegen die er gebaut ist.
   assert.ok(
     gefunden.inline > 70,
     `Nur ${gefunden.inline} Exporte in der Form \`export function x\` gefunden ` +

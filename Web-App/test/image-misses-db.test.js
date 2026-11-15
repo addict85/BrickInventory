@@ -1,5 +1,8 @@
 /**
  * Fehlende Bilder werden EINMAL geholt — nicht je Prozess und Besuch neu.
+ *
+ * Gegenprobe (14.11.2026): in istBekanntFehlend `k.uhr.jetzt()` → `Date.now()` → rot:
+ * „nach einer Woche wird erneut gesucht“ (die Uhr der Dienste wirkte nicht).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Der Bild-Download über das Bildwerk der Dienste: null = das CDN hat kein Bild.
 let versuche = 0;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testBildwerk, testUhr } = require('./helpers/sources');
 const _req = buildAndRequire();
 testBildwerk(null, {
   setBildLaden: async () => {
@@ -52,7 +55,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
   try {
     // Die Liste löst seit einer früheren Runde gar keine Bildarbeit mehr aus (sie lief
     // an allen Drosselungen vorbei). Der Weg führt jetzt über den Proxy und
-    // src/katalog/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
+    // src/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
     // die Liste.
     await besuch();
     assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
@@ -61,7 +64,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
       // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
       // Arbeitsprozessen wird dasselbe Bild viermal geholt.
-      const IM = _req('src/katalog/bilder/imageMisses.js');
+      const IM = _req('src/bilder/imageMisses.js');
       IM.merkeFehlend('set:' + PRAEFIX + '_probe');
       await IM._schreibePuffer();
       IM._leereVordergrund();
@@ -78,10 +81,22 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
       );
     });
 
+    await t.test('nach einer Woche wird erneut gesucht (gestellte Uhr statt Warten)', () => {
+      const IM = _req('src/bilder/imageMisses.js');
+      IM.merkeFehlend('set:' + PRAEFIX + '_frist');
+      assert.equal(IM.istBekanntFehlend('set:' + PRAEFIX + '_frist'), true);
+      testUhr().vor(7 * 24 * 60 * 60 * 1000 + 1);
+      try {
+        assert.equal(IM.istBekanntFehlend('set:' + PRAEFIX + '_frist'), false, 'die Frist ist abgelaufen');
+      } finally {
+        testUhr().zurueck();
+      }
+    });
+
     await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {
       // Gegenrichtung: Sonst wäre der Test auch grün, wenn pauschal alles als
       // fehlend gälte — und kein Bild würde je geladen.
-      const IM = _req('src/katalog/bilder/imageMisses.js');
+      const IM = _req('src/bilder/imageMisses.js');
       IM._leereVordergrund();
       assert.equal(IM.istBekanntFehlend('set:gibt-es-nicht-in-der-tabelle'), false);
     });

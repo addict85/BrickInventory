@@ -6,12 +6,12 @@ Rot: die Kantenregel verbietet Bereich an Bereich
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
-@@ -49,7 +49,7 @@
-             // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
+@@ -91,7 +91,7 @@
+             // api reicht ein Modul an jeden weiter, der dieses kennt; nur core-model ist gemeinsame Sprache.
              k.konfiguration == "api" && k.nach != "core-model" ->
                  "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
 -            k.nurTest -> null
 +            false -> null
+             k.nach == "core-vertrag" && k.von !in wireKenner ->
+                 "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
              k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
-             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
-             k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->

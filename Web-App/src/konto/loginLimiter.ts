@@ -1,27 +1,16 @@
 /** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
-import { createHash } from 'node:crypto';
-import { isIPv4, isIPv6 } from 'node:net';
 import { einzelwert } from '../infra/validate';
-import { fehlertext, meldeUndLiefere } from '../infra/fehler';
+import { meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
-import * as repo from './repository/anmeldezaehler';
 import type { KontoKontext } from './kontext';
-import { prozessweit } from '../infra/prozessweit';
-
-/** Typisiert: Ein vertippter Feldname ergäbe `undefined >= MAX_ATTEMPTS`, also keine Sperre. */
-interface Zaehlerstand {
-  count: number;
-  waitMin: number;
-  seitLetztem: number;
-}
+import { drosselAdresse } from '../infra/drosselAdresse';
 
 export const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
-/** Je KONTO über alle Adressen, verdoppelnd: Wer viele Adressen hat, rät nur
- * noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei einem Vertipper
- * Sekunden statt einer festen Sperre. */
+/** Je Konto über alle Adressen, verdoppelnd: Ein Angreifer rät rund 15 Mal je Viertelstunde,
+ * der Inhaber wartet nach einem Vertipper Sekunden statt einer festen Sperre. */
 export function wartezeitSekunden(fehlversuche: number): number {
   if (fehlversuche < MAX_ATTEMPTS) return 0;
   return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
@@ -33,37 +22,6 @@ const WINDOW_MIN = WINDOW_MS / 60000;
 /** Ein reservierter Platz, dessen Prüfung nie gemeldet wurde, verfällt danach. */
 const LAUFEND_VERFALL_S = 60;
 
-type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend: number };
-/** Rückfall, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen.
- * Er zählt nur je Prozess; gemeldet wird höchstens einmal je Minute. */
-const rueckfall = () =>
-  prozessweit('anmeldeRueckfall', () => ({ eintraege: new Map<string, Eintrag>(), gemeldetAm: 0 }));
-function imSpeicher(wo: string, e: unknown): void {
-  const r = rueckfall();
-  if (Date.now() - r.gemeldetAm < 60_000) return;
-  r.gemeldetAm = Date.now();
-  console.warn(`[anmeldung] Zähler im Prozessspeicher statt in der Datenbank (${wo}): ${fehlertext(e)}`);
-}
-
-/** Ein IPv6-Anschluss bekommt ein ganzes /64; je Adresse gezählt, wäre jede
- * Bremse mit einer neuen Adresse aus dem eigenen Netz umgangen. IPv4 in IPv6
- * (::ffff:a.b.c.d) zählt als IPv4. Alles andere (`konto:7`) bleibt, wie es ist. */
-export function drosselAdresse(ip: string): string {
-  const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
-  if (v4 && isIPv4(v4[1]!)) return v4[1]!;
-  if (!isIPv6(ip)) return ip;
-  const [links = '', rechts = ''] = ip.toLowerCase().split('::');
-  const l = links ? links.split(':') : [],
-    r = rechts ? rechts.split(':') : [];
-  const gruppen = ip.includes('::') ? [...l, ...Array(8 - l.length - r.length).fill('0'), ...r] : l;
-  return (
-    gruppen
-      .slice(0, 4)
-      .map(g => g.replace(/^0+(?=.)/, ''))
-      .join(':') + '::/64'
-  );
-}
-
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
 const _key = (ip: string, name: string) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
@@ -71,139 +29,18 @@ const _nameKey = (name: string) => `login-name|${einzelwert(name).toLowerCase()}
 /** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
  * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
 function adressAbdruck(ip: string): string {
-  const a = drosselAdresse(ip);
-  try {
-    return suchwert('anmeldeadresse', a);
-  } catch {
-    return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex');
-  }
+  return suchwert('anmeldeadresse', drosselAdresse(ip));
 }
 const _bekanntKey = (ip: string, name: string) =>
   `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
 const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${adressAbdruck(ip)}|${kennung}`;
 
-function _prune() {
-  if (rueckfall().eintraege.size <= 5000) return;
-  const cutoff = Date.now() - WINDOW_MS;
-  for (const [k, v] of rueckfall().eintraege) if (v.firstAt < cutoff) rueckfall().eintraege.delete(k);
-}
-
-const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
-  Math.max(1, Math.ceil((firstAt + windowMin * 60000 - now) / 60000));
-
-async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Zaehlerstand | null> {
-  try {
-    const row = await k.anmeldezaehler.lies(key, windowMin);
-    if (!row) return null;
-    return {
-      count: parseInt(row.count, 10) || 0,
-      waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
-      seitLetztem: Math.max(0, parseFloat(row.seit) || 0),
-    };
-  } catch (fehler) {
-    imSpeicher('lesen', fehler);
-    const e = rueckfall().eintraege.get(key);
-    if (!e || Date.now() - e.firstAt > windowMin * 60000) return null;
-    return {
-      count: e.count,
-      waitMin: _restMin(e.firstAt, windowMin),
-      seitLetztem: (Date.now() - (e.lastAt ?? e.firstAt)) / 1000,
-    };
-  }
-}
-
-async function _bump(k: KontoKontext, key: string, windowMin: number): Promise<number> {
-  try {
-    return await k.anmeldezaehler.erhoehe(key, windowMin);
-  } catch (fehler) {
-    imSpeicher('zählen', fehler);
-    const now = Date.now();
-    const e = rueckfall().eintraege.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000)
-      rueckfall().eintraege.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
-    else {
-      e.count++;
-      e.lastAt = now;
-      e.laufend = Math.max(0, (e.laufend || 0) - 1);
-    }
-    _prune();
-    return rueckfall().eintraege.get(key)?.count ?? 1;
-  }
-}
-
-type Stand = Zaehlerstand & { laufend: number };
-
-/** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche einander sehen. */
-async function _reserviere(
-  k: KontoKontext,
-  key: string,
-  windowMin: number,
-  erlaubt: (s: Stand) => boolean,
-): Promise<{ ok: boolean; stand: Stand }> {
-  try {
-    return await k.transaktion(async t => {
-      const r = await repo.sperre(t.db, key, windowMin, LAUFEND_VERFALL_S);
-      const neu = !!r.abgelaufen;
-      const stand: Stand = {
-        count: neu ? 0 : parseInt(r.count, 10) || 0,
-        laufend: r.laufend_alt ? 0 : parseInt(r.laufend, 10) || 0,
-        waitMin: neu ? windowMin : Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)),
-        seitLetztem: Math.max(0, parseFloat(r.seit) || 0),
-      };
-      if (!erlaubt(stand)) return { ok: false, stand };
-      await repo.belegeLaufplatz(t.db, key, stand.laufend + 1, neu);
-      return { ok: true, stand };
-    });
-  } catch (fehler) {
-    imSpeicher('reservieren', fehler);
-    // Im Prozessspeicher ist dieser Block ohne await atomar.
-    const now = Date.now();
-    let e = rueckfall().eintraege.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) {
-      e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
-      rueckfall().eintraege.set(key, e);
-    }
-    const stand: Stand = {
-      count: e.count,
-      laufend: e.laufend || 0,
-      waitMin: _restMin(e.firstAt, windowMin, now),
-      seitLetztem: (now - (e.lastAt ?? e.firstAt)) / 1000,
-    };
-    if (!erlaubt(stand)) return { ok: false, stand };
-    e.laufend = stand.laufend + 1;
-    _prune();
-    return { ok: true, stand };
-  }
-}
-
-async function _freigeben(k: KontoKontext, key: string): Promise<void> {
-  try {
-    await k.anmeldezaehler.gibLaufplatzFrei(key);
-  } catch (fehler) {
-    imSpeicher('freigeben', fehler);
-    const e = rueckfall().eintraege.get(key);
-    if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
-  }
-}
-
-async function _clear(k: KontoKontext, key: string): Promise<void> {
-  try {
-    await k.anmeldezaehler.loescheZaehler(key);
-  } catch (e) {
-    imSpeicher('löschen', e);
-    rueckfall().eintraege.delete(key);
-  }
-}
-
-/** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
- * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
- * zwei Zeichen. */
+/** Name und E-Mail eines Kontos zählen gemeinsam, sonst gälte jede Grenze doppelt.
+ * Klein schreibt PostgreSQL wie beim Login: JS macht aus „İ" zwei Zeichen. */
 async function kontoKennung(k: KontoKontext, username: string): Promise<string> {
   // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
   // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
-  const z = await k.anmeldezaehler
-    .kontoZumNamen(einzelwert(username))
-    .catch(meldeUndLiefere('anmeldung:konto-kennung', null));
+  const z = await k.konten.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
 }
@@ -211,39 +48,44 @@ async function kontoKennung(k: KontoKontext, username: string): Promise<string> 
 /** Ein unbekannter Name ist oft ein vertipptes Passwort, und die Tabelle liest die
  * Leserolle: nur der HMAC, der für denselben Namen gleich bleibt und weiter zählt. */
 function namensAbdruck(name: string): string {
-  try {
-    return suchwert('anmeldename', name);
-  } catch {
-    // Ohne Datenschlüssel (Werkzeuge, frühe Tests) wenigstens kein Klartext.
-    return createHash('sha256').update(`brickinventory/anmeldename/${name}`).digest('hex');
-  }
+  return suchwert('anmeldename', name);
 }
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
-/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn frei. */
-export async function checkLoginAllowed(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
+/** Belegt den Versuch; anmeldungGescheitert, anmeldungGelungen oder gibAnmeldeplatzFrei geben ihn frei. */
+export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(k, username);
   // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
   // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
-  const bekannt = !!(await _read(k, _bekanntKey(ip, kennung), BEKANNT_MIN));
-  const gesamt = await _reserviere(k, _adressKey(ip), WINDOW_MIN, s => bekannt || s.count + s.laufend < MAX_JE_ADRESSE);
+  const bekannt = !!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN));
+  const gesamt = await k.drossel.reserviere(
+    _adressKey(ip),
+    WINDOW_MIN,
+    LAUFEND_VERFALL_S,
+    s => bekannt || s.count + s.laufend < MAX_JE_ADRESSE,
+  );
   if (!gesamt.ok) return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
-  const adresse = await _reserviere(k, _key(ip, kennung), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
+  const adresse = await k.drossel.reserviere(
+    _key(ip, kennung),
+    WINDOW_MIN,
+    LAUFEND_VERFALL_S,
+    s => s.count + s.laufend < MAX_ATTEMPTS,
+  );
   if (!adresse.ok) {
-    await _freigeben(k, _adressKey(ip));
+    await k.drossel.gibPlatzFrei(_adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
   }
   if (bekannt) return null;
   let rest = 0;
-  const konto = await _reserviere(k, _nameKey(kennung), WINDOW_MIN, s => {
+  const konto = await k.drossel.reserviere(_nameKey(kennung), WINDOW_MIN, LAUFEND_VERFALL_S, s => {
     rest = wartezeitSekunden(s.count) - s.seitLetztem;
     // In der Wartezeit-Phase höchstens ein Versuch zugleich je Konto.
     return rest <= 0 && (s.count < MAX_ATTEMPTS || s.laufend === 0);
   });
   if (!konto.ok) {
-    await _freigeben(k, _key(ip, kennung));
-    await _freigeben(k, _adressKey(ip));
+    await k.drossel.gibPlatzFrei(_key(ip, kennung));
+    await k.drossel.gibPlatzFrei(_adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
   }
   return null;
@@ -251,23 +93,46 @@ export async function checkLoginAllowed(k: KontoKontext, ip: string, username: s
 
 export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(k, username);
-  await _freigeben(k, _key(ip, kennung));
-  await _freigeben(k, _nameKey(kennung));
-  await _freigeben(k, _adressKey(ip));
+  await k.drossel.gibPlatzFrei(_key(ip, kennung));
+  await k.drossel.gibPlatzFrei(_nameKey(kennung));
+  await k.drossel.gibPlatzFrei(_adressKey(ip));
 }
 
-/** @returns die Fehlversuche des Kontos im Fenster */
-export async function recordLoginFailure(k: KontoKontext, ip: string, username: string): Promise<number> {
+/** @returns die Fehlversuche des Kontos im Fenster und ob die Tagesgrenze gerade erreicht ist */
+export async function anmeldungGescheitert(
+  k: KontoKontext,
+  ip: string,
+  username: string,
+): Promise<{ n: number; tagesgrenze: boolean }> {
   const kennung = await kontoKennung(k, username);
-  await _bump(k, _key(ip, kennung), WINDOW_MIN);
-  const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
-  await _bump(k, _adressKey(ip), WINDOW_MIN);
-  return n;
+  await k.drossel.zaehleVersuch(_key(ip, kennung), WINDOW_MIN);
+  const n = await k.drossel.zaehleVersuch(_nameKey(kennung), WINDOW_MIN);
+  await k.drossel.zaehleVersuch(_adressKey(ip), WINDOW_MIN);
+  const tag = await k.drossel.zaehleVersuch(await _tagKey(k, ip, kennung), KONTO_FENSTER_MIN);
+  return { n, tagesgrenze: tag === MAX_JE_KONTO_TAG };
+}
+
+/** Eine bekannte Adresse umgeht die Bremse je Konto; wer dort sitzt, riete sonst 480 Mal am Tag.
+ * Darüber gilt das Passwort nur mit zweitem Faktor; Passkey und „Passwort vergessen“ bleiben
+ * offen, das Zurücksetzen leert den Zähler. Bekannte Adressen zählen je für sich: Sonst
+ * sperrte ein Fremder mit 50 Versuchen den Inhaber auch an seinen eigenen Geräten aus. */
+export const MAX_JE_KONTO_TAG = 50;
+async function _tagKey(k: KontoKontext, ip: string, kennung: string): Promise<string> {
+  const bekannt = !!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN));
+  return bekannt ? `login-tag|${kennung}|${adressAbdruck(ip)}` : `login-tag|${kennung}`;
+}
+export async function tagesgrenzeErreicht(k: KontoKontext, ip: string, username: string): Promise<boolean> {
+  const key = await _tagKey(k, ip, await kontoKennung(k, username));
+  return ((await k.drossel.zaehlerStand(key, KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
+}
+export async function loescheTagesgrenze(k: KontoKontext, uid: number): Promise<void> {
+  await k.drossel.vergissZaehler(`login-tag|konto:${uid}`, { auchDarunter: true });
 }
 
 export type Anmeldeereignis =
   | 'anmeldung_fehlgeschlagen'
   | 'anmeldung_gesperrt'
+  | 'anmeldung_tagesgrenze'
   | 'zweiter_faktor_falsch'
   | 'bestaetigung_fehlgeschlagen'
   | 'bestaetigung_gesperrt'
@@ -299,14 +164,14 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
   });
 }
 
-export async function recordLoginSuccess(k: KontoKontext, ip: string, username: string): Promise<void> {
+export async function anmeldungGelungen(k: KontoKontext, ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(k, username);
-  await _clear(k, _key(ip, kennung));
-  await _clear(k, _nameKey(kennung));
+  await k.drossel.vergissZaehler(_key(ip, kennung));
+  await k.drossel.vergissZaehler(_nameKey(kennung));
   // Nur freigeben: Ein Erfolg setzt den Zähler der Adresse nach Fehlversuchen gegen andere Konten nicht zurück.
-  await _freigeben(k, _adressKey(ip));
-  await _bump(k, _bekanntKey(ip, kennung), BEKANNT_MIN);
-  await _bump(k, _erfolgKey(ip, kennung), WINDOW_MIN);
+  await k.drossel.gibPlatzFrei(_adressKey(ip));
+  await k.drossel.zaehleVersuch(_bekanntKey(ip, kennung), BEKANNT_MIN);
+  await k.drossel.zaehleVersuch(_erfolgKey(ip, kennung), WINDOW_MIN);
 }
 
 /** Weiche Grenze: Wer sich öfter anmeldet, verliert nur den Vorrang. Eine harte träfe
@@ -316,44 +181,25 @@ export const ERFOLGE_MIT_VORRANG = 30;
 /** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
 export async function bekannteAnmeldung(k: KontoKontext, ip: string, username: string): Promise<boolean> {
   const kennung = await kontoKennung(k, username);
-  if (!(await _read(k, _bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
-  return ((await _read(k, _erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
+  if (!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
+  return ((await k.drossel.zaehlerStand(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
 }
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
 export async function raeumeAnmeldezaehlerAuf(k: KontoKontext): Promise<number> {
-  return k.anmeldezaehler.raeumeAuf(BEKANNT_MIN);
+  return k.drossel.raeumeAuf(BEKANNT_MIN);
 }
 
-/** In einem Schritt, sonst kamen gleichzeitige Anfragen durch. Abgewiesene zählen, verlängern aber nicht. */
-export async function zaehleAnfrage(
+export function zaehleAnfrage(
   k: KontoKontext,
   bucket: string,
   ip: string,
   windowMs: number,
 ): Promise<{ count: number; waitMin: number }> {
-  const key = `${bucket}|${drosselAdresse(ip)}`;
-  const windowMin = windowMs / 60000;
-  try {
-    const r = await k.anmeldezaehler.zaehleHoch(key, windowMin);
-    return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
-  } catch (fehler) {
-    imSpeicher('anfrage', fehler);
-    const now = Date.now();
-    let e = rueckfall().eintraege.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) {
-      e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };
-      rueckfall().eintraege.set(key, e);
-    }
-    e.count++;
-    e.lastAt = now;
-    _prune();
-    return { count: e.count, waitMin: _restMin(e.firstAt, windowMin, now) };
-  }
+  return k.drossel.zaehleImFenster(`${bucket}|${drosselAdresse(ip)}`, windowMs / 60000);
 }
 
-/** Je Konto UND Zugang (Sitzung oder Token-Familie): Fehlversuche aus einem
- * erbeuteten Zugang sperren nicht die Notbremsen des Inhabers in seinem eigenen.
+/** Je Konto und Zugang: Ein erbeuteter Zugang sperrt nicht die Notbremsen des Inhabers.
  * Codes zählen getrennt und länger; nur ein richtiger Code setzt sie zurück. */
 export type Bremse = 'passwort' | 'faktor';
 const FAKTOR_FENSTER_MIN = 60;
@@ -374,12 +220,12 @@ export async function bestaetigungGesperrt(
   uid: number,
   zugang: string,
 ): Promise<Sperre | null> {
-  const konto = await _read(k, _kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+  const konto = await k.drossel.zaehlerStand(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   const kontoVoll = !!konto && konto.count >= MAX_BESTAETIGUNG_JE_KONTO;
-  const r = await _reserviere(
-    k,
+  const r = await k.drossel.reserviere(
     _bestaetigungKey(art, uid, zugang),
     fenster(art),
+    LAUFEND_VERFALL_S,
     s => s.count + s.laufend < MAX_ATTEMPTS && !(kontoVoll && s.count > 0),
   );
   if (r.ok) return null;
@@ -393,12 +239,12 @@ export async function bestaetigungFehlgeschlagen(
   uid: number,
   zugang: string,
 ): Promise<boolean> {
-  const jeZugang = await _bump(k, _bestaetigungKey(art, uid, zugang), fenster(art));
-  const jeKonto = await _bump(k, _kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+  const jeZugang = await k.drossel.zaehleVersuch(_bestaetigungKey(art, uid, zugang), fenster(art));
+  const jeKonto = await k.drossel.zaehleVersuch(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   return jeZugang === MAX_ATTEMPTS || jeKonto === MAX_BESTAETIGUNG_JE_KONTO;
 }
 export async function bestaetigungGelungen(k: KontoKontext, art: Bremse, uid: number, zugang: string): Promise<void> {
-  await _clear(k, _bestaetigungKey(art, uid, zugang));
+  await k.drossel.vergissZaehler(_bestaetigungKey(art, uid, zugang));
 }
 
 /** Wer das Passwort kennt, riete den Code sonst langsam unter jeder Wartezeit durch;
@@ -406,9 +252,12 @@ export async function bestaetigungGelungen(k: KontoKontext, art: Bremse, uid: nu
 export const MAX_FAKTOR_ANMELDUNG_JE_KONTO = 20;
 const _faktorAnmeldungKey = (uid: number) => `faktor-anmeldung-konto|${uid}`;
 export async function faktorCodeGesperrt(k: KontoKontext, uid: number): Promise<boolean> {
-  return ((await _read(k, _faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+  return (
+    ((await k.drossel.zaehlerStand(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >=
+    MAX_FAKTOR_ANMELDUNG_JE_KONTO
+  );
 }
 /** @returns true, wenn dieser Fehlversuch die Schranke gerade erreicht hat */
 export async function faktorCodeFalsch(k: KontoKontext, uid: number): Promise<boolean> {
-  return (await _bump(k, _faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+  return (await k.drossel.zaehleVersuch(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
 }

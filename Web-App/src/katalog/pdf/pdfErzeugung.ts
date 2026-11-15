@@ -1,15 +1,15 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { bilderAusKatalog as katalogbilder } from '../bildlage';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
-import { getMinifigInfo } from '../quellen';
 import { logAndContinue, meldeFehler } from '../../infra/fehler';
-import { pdfDateiPfad, type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../../auftraege';
+import { type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../../auftraege';
+import { pdfDateiPfad } from './pdfAuftraege';
 import { downloadImage, downloadSetImages } from '../teileAnreicherung';
 import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../../infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../../infra/setNummer';
+import { bilderAusKatalog as bilderAusKatalogLesen } from '../bildlage';
 import type { KatalogKontext } from '../kontext';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
@@ -22,14 +22,14 @@ const cdnAdresse = (url: string) => {
 };
 
 /** Nur geprüfte Bildquellen aus dem Katalog (src/katalog/bildlage.ts). */
-export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => katalogbilder(k, parts, istFigur);
+export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => bilderAusKatalogLesen(k, parts, istFigur);
 
 async function figurenOhneAdresse(k: KatalogKontext, parts: PdfTeil[]) {
   for (const p of parts.filter(
     p => istFigur(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number),
   )) {
     try {
-      const info = await getMinifigInfo(p.part_number);
+      const info = await k.fremdquellen.quellen.getMinifigInfo(p.part_number);
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
       await merkeFigurBildAdresse(k, p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));
@@ -79,6 +79,7 @@ async function erzeugePdf(k: KatalogKontext, n: PdfNutzlast, lauf?: AuftragsLauf
     pruefeAbbruch(lauf);
     const figur = istFigur(p);
     const lokal = await downloadImage(
+      k,
       cdnAdresse(p.image_url!),
       p.part_number,
       figur ? 0 : (p.color_id ?? KEINE_FARBE),

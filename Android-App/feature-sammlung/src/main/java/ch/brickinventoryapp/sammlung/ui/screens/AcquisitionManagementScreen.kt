@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.util.kalendertag
+import java.time.Instant
+import java.time.ZoneOffset
+import androidx.compose.runtime.remember
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -9,7 +14,7 @@ import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -32,7 +37,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
@@ -41,7 +45,7 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
@@ -64,7 +68,7 @@ fun AcquisitionManagementRoute(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
     AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState), vm, type, id, colorId, title, onBack)
 }
 
@@ -104,14 +108,7 @@ internal fun AcquisitionManagementScreen(
     // `stringResource` geht nicht, weil die Zahlen erst in der Antwort entstehen;
     // LocalResources ist die konfigurationsbewusste Form.
     val res = androidx.compose.ui.platform.LocalResources.current
-    val isLoading    = manDetailState.isLoading
-
-    LaunchedEffect(type, id, colorId) {
-        when (type) {
-            Postenart.SET  -> aktionen.loadAcquisitions(id)
-            else   -> aktionen.loadManualAcquisitions(type, id, colorId)
-        }
-    }
+    val isLoading    = manDetailState.kaeufeAbruf.laedt
 
     Scaffold(
         topBar = {
@@ -138,35 +135,9 @@ internal fun AcquisitionManagementScreen(
             contentPadding = PaddingValues(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
-            // Header row
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(stringResource(R.string.common_quantity),
-                        Modifier.width(72.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold)
-                    Text(stringResource(R.string.common_condition),
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center)
-                    Text(stringResource(R.string.detail_purchase_price),
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End)
-                    Spacer(Modifier.width(Abstaende.riesig))
-                }
-                HorizontalDivider(Modifier.padding(top = Abstaende.winzig), thickness = 2.dp)
-            }
-
+            // Keine Spaltenköpfe: Anzahl und Preis stehen nebeneinander, der Zustand darunter;
+            // Köpfe über drei Spalten passten zu keiner der Zeilen. Jedes Feld trägt seine
+            // Beschriftung selbst.
             moveMessage?.let { msg ->
                 item {
                     Text(msg, style = MaterialTheme.typography.bodySmall,
@@ -264,7 +235,7 @@ internal fun AcquisitionManagementScreen(
  * dass Antippen es ändert. Die Form folgt der App-Sprache wie jedes Datum (fmtTag).
  */
 @Composable
-internal fun Kaufdatum(createdAt: String?, onAendern: () -> Unit) {
+internal fun Kaufdatum(createdAt: Instant?, onAendern: () -> Unit) {
     Row(
         // heightIn statt minimumInteractiveComponentSize: Diese vergrössert nur die Tippfläche um den
         // Knopf, die Knopf-Fläche selbst blieb 44 dp (KaufdatumTest).
@@ -342,10 +313,7 @@ private fun AcquisitionManagementRow(
     Kaufdatum(acquisition.createdAt) { showDatePicker = true }
     if (showDatePicker) {
         val initialMillis = remember(acquisition.createdAt) {
-            runCatching {
-                java.time.LocalDate.parse(acquisition.createdAt!!.take(10))
-                    .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-            }.getOrNull()
+            acquisition.createdAt?.kalendertag()?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
         }
         val dpState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
         DatePickerDialog(
@@ -377,12 +345,13 @@ private fun AcquisitionManagementRow(
         OutlinedTextField(
             value = qtyText,
             onValueChange = { qtyText = NumericInput.quantity(it) },
+            label = { Text(stringResource(R.string.common_quantity)) },
             prefix = { Text(stringResource(R.string.common_times), fontWeight = FontWeight.Bold) },
             // onFocusChanged zusätzlich zu onDone: Wer den Wert ändert und zurücktippt, ohne
             // „Fertig“ zu drücken, verlöre die Eingabe. Gespeichert wird beim Fokusverlust
             // nur, wenn sich der Wert geändert hat.
             modifier = Modifier
-                .width(72.dp)
+                .width(ANZAHL_BREITE)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
             keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
@@ -403,6 +372,7 @@ private fun AcquisitionManagementRow(
                 .weight(1f)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
+            label = { Text(stringResource(R.string.detail_purchase_price)) },
             placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.bodySmall) },
             // Ein Marktpreis, den der Server eingesetzt hat, ist kein bezahlter
             // Betrag; das „≈" sagt es, bis jemand den echten Preis einträgt.
@@ -435,3 +405,6 @@ private fun AcquisitionManagementRow(
     )
     }
 }
+
+/** Breite des Anzahlfelds: Platz für „×“, drei Ziffern und die Beschriftung „Anzahl“. */
+private val ANZAHL_BREITE = 96.dp

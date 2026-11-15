@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.anmeldung
 
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.anmeldung.ui.qrAdresseUngueltig
 import ch.brickinventoryapp.anmeldung.ui.qrWechseltServer
 import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
@@ -19,15 +19,14 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import java.util.Collections
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.SpeicherAblage
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
@@ -140,15 +139,15 @@ class QrAdresseTest {
         val ablage = Ablage()
         val abmelden = SitzungsAttrappe()
         val blickfeld = Blickfeld(SpeicherAblage(),
-            HaushaltRepository(t.api, t.cache),
-            TeileRepository(t.api, t.cache))
+            testHaushaltRepository(t.api),
+            testTeileRepository(t.api))
         val vm = t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api, t.cache), ablage, ZertifikatsFrage(), { false }))
+            testKontoRepository(t.api), ablage, ZertifikatsFrage(), { false }))
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), ablage.protokoll.toList())
         assertEquals("Nichts abgemeldet", 0, abmelden.abmeldungen)
         assertTrue("kein qr-login", pfade.anfragenAn("qr-login").isEmpty())
-        assertTrue(vm.anmeldeState.value.loginError != null)
+        assertTrue(vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
     }
 }

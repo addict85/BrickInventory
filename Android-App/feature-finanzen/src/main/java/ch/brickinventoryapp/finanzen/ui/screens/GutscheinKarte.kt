@@ -23,14 +23,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.finanzen.ui.inVierergruppen
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
@@ -92,21 +92,7 @@ internal fun GutscheinKarte(
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            modifier = Modifier.padding(end = Abstaende.mittel)) {
-            Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe.
-            val stand = fmtTag(g.guthabenGeprueftAm)
-            Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                Text(
-                    if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
-                    else stringResource(R.string.vouchers_balance_never),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
-                )
-            }
-        }
+        GutscheinBetrag(g)
         val pin = g.pin
         if (pin != null) Row(verticalAlignment = Alignment.CenterVertically) {
             // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen.
@@ -170,5 +156,25 @@ private fun KopierZeile(
         inhalt()
         // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
         Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Betrag und Stand der letzten Guthabenabfrage. */
+@Composable
+private fun GutscheinBetrag(g: GutscheinAnsicht) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        modifier = Modifier.padding(end = Abstaende.mittel)) {
+        Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe.
+        val stand = fmtTag(g.guthabenGeprueftAm)
+        Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            Text(
+                if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
+                else stringResource(R.string.vouchers_balance_never),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
+            )
+        }
     }
 }

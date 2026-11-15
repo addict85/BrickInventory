@@ -1,4 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { Spalten } from '../../../db/zeilen';
+import type { KatalogLesevertrag } from '../lesevertrag';
 
 export async function katalogBildstand(
   db: DbSchnittstelle,
@@ -46,7 +48,7 @@ export async function inventarFiguren(
   db: DbSchnittstelle,
   inventarId: number,
 ): Promise<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }[]> {
-  return db.all(
+  return db.all<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }>(
     `SELECT ip.part_num AS fig_number, ip.quantity,
             s.name AS fig_name, s.set_img_url AS image_url
      FROM rb_inventory_parts ip
@@ -69,9 +71,11 @@ export async function setsOhneTeilekatalog(db: DbSchnittstelle, grenze = 50): Pr
 
 export async function manuelleFarbteile(
   db: DbSchnittstelle,
+  l: KatalogLesevertrag,
 ): Promise<{ id: number; part_number: string; color_id: number }[]> {
-  return db.all(
-    "SELECT id, part_number, color_id FROM parts WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC",
+  return db.all<Spalten<'parts', 'id' | 'part_number' | 'color_id'>>(
+    `SELECT id, part_number, color_id FROM ${l.teilBestand()} p
+      WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC`,
   );
 }
 

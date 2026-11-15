@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,7 +22,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.AnnotatedString
@@ -34,8 +34,8 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -46,8 +46,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
 import ch.brickinventoryapp.konto.ui.screens.CsvImportRoute
 import ch.brickinventoryapp.konto.ui.screens.HaushaltRoute
@@ -56,8 +54,8 @@ import ch.brickinventoryapp.konto.ui.screens.LagerorteRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsListRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsListScreen
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
@@ -67,9 +65,9 @@ import android.os.Looper
 import java.util.Locale
 import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowDialog
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.SitzungsAttrappe
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 
 /**
  * Die Unterseiten unter „Mehr“ und die Rückfragen vor Aktionen ohne Weg zurück:
@@ -87,9 +85,10 @@ import ch.brickinventoryapp.testing.TeileRepository
  *   lagerort-stern-als-knopf     Stern wieder IconButton ohne Ort → rot „Der Vorgabe-Stern …“
  *   haushalt-entfernen-ohne-name „Entfernen“ ohne Kontonamen → rot „Entfernen nennt …“
  *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
- *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
+ *   konto-ohne-wiederholung      Passwort ändern schickt ohne Prüfung ab → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
  *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
+ *   bauliste-leert-sofort        „Zurücksetzen“ leert ohne Rückfrage → rot „Bauliste nimmt Sets …“
  *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
  *   konto-email-ohne-ausstehend  die beantragte Adresse nicht unter dem Feld → rot „Konto nennt …“
  *   abmelden-mitten-im-konto     Abmelden wieder als letzter Eintrag von „Konto und App“, vor der
@@ -141,8 +140,8 @@ class UnterseitenTest {
     private fun imDialog(text: String) = compose.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-        KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
-        welt.t.alarme(), TeileRepository(welt.t.api, welt.t.cache),
+        testKontoRepository(welt.t.api, welt.t.io), testVerwaltungRepository(welt.t.api),
+        welt.t.alarme(), testTeileRepository(welt.t.api),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
@@ -205,8 +204,8 @@ class UnterseitenTest {
     fun `Haushalt gliedert Einladen und Annehmen und entfernt erst nach Rueckfrage`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
+            testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
 
@@ -267,8 +266,8 @@ class UnterseitenTest {
     fun `Entfernen nennt das Konto im Haushalt`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
+            testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         val entfernen = ctx.getString(R.string.household_remove)
@@ -298,11 +297,11 @@ class UnterseitenTest {
     }
 
     @Test
-    fun `Konto wechselt das Passwort erst mit passender Wiederholung`() {
+    fun `Konto wechselt das Passwort erst mit passender Wiederholung und markiert sie sonst`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -311,15 +310,20 @@ class UnterseitenTest {
         warte("Profil") { konto.kontoState.value.profil != null }
         fun feld(label: Int) = compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(label)))[0]
         val wechseln = compose.onNode(hasText(ctx.getString(R.string.konto_password_button)) and hasClickAction())
+        val gewechselt = { welt.pfade.anfragen.count { "password" in it } }
         feld(R.string.konto_password_current).performTextInput("altes-passwort-1")
         feld(R.string.konto_password_new).performTextInput("neues-passwort-12")
-        feld(R.string.startpasswort_wiederholen).performTextInput("anderes-passwort-1")
+        feld(R.string.register_password_repeat).performTextInput("anderes-passwort-1")
         compose.waitForIdle()
-        wechseln.assertIsNotEnabled()
-        feld(R.string.startpasswort_wiederholen).performTextClearance()
-        feld(R.string.startpasswort_wiederholen).performTextInput("neues-passwort-12")
+        // Antippbar; abgeschickt wird nichts, der Cursor steht in der Wiederholung.
+        wechseln.performScrollTo().assertIsEnabled().performClick()
         compose.waitForIdle()
-        wechseln.assertIsEnabled()
+        assertEquals("Mit falscher Wiederholung abgeschickt", 0, gewechselt())
+        feld(R.string.register_password_repeat).assertIsFocused()
+        feld(R.string.register_password_repeat).performTextClearance()
+        feld(R.string.register_password_repeat).performTextInput("neues-passwort-12")
+        wechseln.performScrollTo().performClick()
+        warte("Passwortwechsel") { gewechselt() == 1 }
     }
 
     /** Eine neue Adresse gilt erst nach dem Link: Das Feld zeigt die geltende, darunter die beantragte. */
@@ -329,7 +333,7 @@ class UnterseitenTest {
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "email_neu":"neu@example.org"}}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -347,7 +351,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -375,8 +379,9 @@ class UnterseitenTest {
         Shadows.shadowOf(Looper.getMainLooper()).idle()
     }
 
+    /** Zurücksetzen wirft Sets und Liste weg und fragt darum erst nach. */
     @Test
-    fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen zurueck`() {
+    fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen erst nach Rueckfrage zurueck`() {
         val vm = welt.bauliste()
         zeige { bauliste(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number)))
@@ -388,6 +393,10 @@ class UnterseitenTest {
         compose.onNode(chip).fetchSemanticsNode("Das Set steht nicht in der Liste")
         compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled()
         compose.onNode(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onNode(chip).fetchSemanticsNode("Zurückgesetzt ohne Rückfrage")
+        compose.onNode(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction() and
+            hasAnyAncestor(isDialog())).performClick()
         compose.waitForIdle()
         compose.onAllNodes(chip).assertCountEquals(0)
         compose.onAllNodes(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertCountEquals(0)

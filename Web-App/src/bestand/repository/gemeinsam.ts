@@ -1,9 +1,10 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
+import { inKontowaehrung, kontowaehrungJoin, teilmengeAus } from '../../../db/bestandsmenge';
+import type { BestandLesevertrag } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
-export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', uids: number[]) {
+export function erfassungsKennzahlen(db: DbSchnittstelle, l: BestandLesevertrag, art: 'part' | 'fig', uids: number[]) {
   return db.all<{
     part_number?: string;
     color_id?: number | null;
@@ -16,18 +17,16 @@ export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', u
       ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
-                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')})::numeric
-                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')}), 0) AS avg_purchase_price
-           FROM part_acquisitions ${kontowaehrungJoin('part_acquisitions')}
-          WHERE part_acquisitions.user_id = ANY($1)
+                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')})::numeric
+                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')}), 0) AS avg_purchase_price
+           FROM ${l.teilErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
           GROUP BY part_number, color_id`
       : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
-                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')})::numeric
-                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')}), 0) AS avg_purchase_price
-           FROM minifig_acquisitions ${kontowaehrungJoin('minifig_acquisitions')}
-          WHERE minifig_acquisitions.user_id = ANY($1)
+                SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')})::numeric
+                  / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')}), 0) AS avg_purchase_price
+           FROM ${l.figurErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
           GROUP BY fig_number`,
     [uids],
   );
@@ -87,6 +86,7 @@ export interface VerwendungsZeile {
 
 export async function setsMitBestandteil(
   db: DbSchnittstelle,
+  l: BestandLesevertrag,
   uids: number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
@@ -116,13 +116,8 @@ export async function setsMitBestandteil(
             c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
-       ${teilmengeJoin('x', ART[tabelle])}
-       -- Zwei JOINs, ausgeschrieben: sets sagt, WELCHES Konto das Set haelt
-       -- (deshalb ueber user_id UND set_number), set_catalog sagt, wie es
-       -- heisst und wie es aussieht (nur ueber set_number — der Name haengt
-       -- nicht am Konto). Keine Gegenstriche: Der Kommentar steht in einem
-       -- Template-Literal, und ein Gegenstrich beendet es.
-       LEFT JOIN sets s ON s.user_id = x.user_id AND s.set_number = x.set_number
+       ${l.teilmengeJoin('x', ART[tabelle])}
+       -- Name und Bild haengen nur an der Setnummer, nicht am Konto.
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
        ${setStammJoin('x.set_number')}
        -- Der Lagerortname aus dem Vorrat (Migration 0031). Steht hier und
@@ -142,9 +137,20 @@ export async function setsMitBestandteil(
 }
 
 /** Mit dem Set gehen seine Teile und Figuren. */
+/** Das Set mit Inhalt und Käufen; manuelle Teile und Figuren tragen keine Setnummer und bleiben. */
 export async function entferneSetInhalt(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+  await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+  await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+}
+
+export async function legeSetAn(tx: DbSchnittstelle, uid: number, sn: string, addedAt?: string): Promise<void> {
+  await tx.run(
+    `INSERT INTO sets (user_id, set_number, added_at) VALUES ($1, $2, COALESCE($3::timestamptz, NOW()))
+     ON CONFLICT (user_id, set_number) DO NOTHING`,
+    [uid, sn, addedAt ?? null],
+  );
 }
 
 /** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
@@ -158,10 +164,12 @@ export async function kopiereSetInhalt(
   const sql = {
     parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
             SELECT $1, set_number, part_number, color_id, source FROM parts
-             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+             WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'
+               AND NOT EXISTS (SELECT 1 FROM parts WHERE user_id = $1 AND set_number = $3)`,
     minifigs: `INSERT INTO minifigs (user_id, set_number, fig_number, source)
                SELECT $1, set_number, fig_number, source FROM minifigs
-                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'`,
+                WHERE user_id = $2 AND set_number = $3 AND COALESCE(source,'set') <> 'manual'
+                  AND NOT EXISTS (SELECT 1 FROM minifigs WHERE user_id = $1 AND set_number = $3)`,
   }[tabelle];
   return (await tx.run(sql, [nach, von, sn])).changes ?? 0;
 }
@@ -174,11 +182,15 @@ export async function legeManuellAn(
   schluessel: (string | number)[],
 ): Promise<void> {
   if (art === 'part')
-    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [
+    await tx.run(
+      `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual') ON CONFLICT DO NOTHING`,
+      [uid, ...schluessel],
+    );
+  else
+    await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual') ON CONFLICT DO NOTHING`, [
       uid,
       ...schluessel,
     ]);
-  else await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
 }
 
 export function loescheTeilZeile(
@@ -196,4 +208,29 @@ export function loescheTeilZeile(
 
 export function loescheFigurZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {
   return dbh.run("DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [ownerId, figNumber]);
+}
+
+export function setzeTeilLagerort(tx: DbSchnittstelle, storageId: number, id: number) {
+  return tx.run('UPDATE parts SET storage_id = $1 WHERE id = $2', [storageId, id]);
+}
+
+export function loescheTeilzeile(tx: DbSchnittstelle, id: number) {
+  return tx.run('DELETE FROM parts WHERE id = $1', [id]);
+}
+
+export function faerbeTeilzeileUm(tx: DbSchnittstelle, colorId: number, id: number) {
+  return tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [colorId, id]);
+}
+
+export function manuelleTeileDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ part_number: string; color_id: number }>(
+    "SELECT part_number, color_id FROM parts WHERE user_id = $1 AND source = 'manual'",
+    [uid],
+  );
+}
+
+export function manuelleFigurenDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ fig_number: string }>("SELECT fig_number FROM minifigs WHERE user_id = $1 AND source = 'manual'", [
+    uid,
+  ]);
 }

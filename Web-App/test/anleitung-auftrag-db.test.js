@@ -30,7 +30,7 @@ Module.prototype.require = function (name, ...rest) {
     ...m,
     anzahlAnleitungen: async () => 0,
     letzterAbrufWarExtern: () => abruf.extern,
-    downloadSetInstructions: async () => {
+    setAnleitungenLaden: async () => {
       abruf.aufrufe++;
       if (abruf.fehler) throw abruf.fehler;
       return 1;
@@ -59,7 +59,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   const pause = () => A.liesPause('anleitung');
   const inSek = async () => {
     const p = await pause();
-    return p ? Math.round((new Date(p.bis) - Date.now()) / 1000) : null;
+    return p ? Math.round((new Date(p.bis).getTime() - Date.now()) / 1000) : null;
   };
   const zuruecksetzen = () => db.run(`DELETE FROM auftrag_pausen WHERE art = 'anleitung'`);
   t.after(async () => {
@@ -94,7 +94,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
       gesehen.slice(0, 4).map(s => Math.round(s / 60)),
       [5, 10, 15, 20],
     );
-    const morgen = Q.naechsterTag();
+    const morgen = Q.naechsterTag(new Date());
     assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre bis morgen');
     abruf.fehler = null;
     abruf.extern = false;
@@ -121,9 +121,10 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
 
   await t.test('ein Set steht nur einmal offen', async () => {
     await db.run(`DELETE FROM auftraege WHERE art = 'anleitung'`);
-    const E = _req('src/auftraege/anleitungsAuftrag.js');
+    const E = _req('src/katalog/anleitungsAuftrag.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
-    assert.equal(await E.offeneAnleitungen(), 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
+    const z = await require('./helpers/sources').testDienste().auftraege.zaehleArt('anleitung');
+    assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

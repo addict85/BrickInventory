@@ -4,7 +4,7 @@
  * sind null. Der Betrag (pnl_betrag/pnl_abs) bleibt der Marktwert. Gilt für
  * Sets, manuelle Teile und Figuren, die Kachel und den Preisverlauf.
  *
- * Vorher stand gegen eine Untergrenze von 0,01 gerechnet „+327.600 %“ da.
+ * Gegen eine Untergrenze von 0,01 gerechnet stünde dort „+327.600 %“.
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in entwicklungProzent() (src/finanzen/setValue.ts) die Bedingung `!(kauf > 0)`
@@ -14,7 +14,7 @@
  *      `purchase_price: base > 0 ? base : null` → rot: „Teil und Figur“
  *      (by_condition.N.purchase_price null statt 0)
  * Gegenprobe (08.11.2026 gemessen):
- *   C  in computePnl grand_total nur aus den Sets (`summeAus(setResults…)`) →
+ *   C  in gewinnUndVerlust grand_total nur aus den Sets (`summeAus(setResults…)`) →
  *      rot: „der Gesamtwert kommt fertig …“ ('240.00')
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -78,8 +78,8 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 0 });
   await haeltFigur(db, uid, FIGUR, { menge: 1, preis: 0 });
 
-  const { computePnl } = _req('src/finanzen/financeCalc.js');
-  const pnl = await computePnl(uid, [uid]);
+  const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
+  const pnl = await gewinnUndVerlust(uid, [uid]);
 
   await t.test('Set', () => {
     const z = pnl.sets.find(s => s.set_number === SET);

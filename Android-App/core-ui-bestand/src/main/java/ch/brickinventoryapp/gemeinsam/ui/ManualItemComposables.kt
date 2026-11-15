@@ -1,14 +1,17 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
+import ch.brickinventoryapp.ui.components.KleinerKnopf
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.KontoAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KontoAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
@@ -70,11 +73,13 @@ fun AcquisitionSummarySection(
                 acquisitions.forEach { acq -> KaufZeile(acq, currency) }
             }
             Spacer(Modifier.height(Abstaende.winzig))
-            OutlinedButton(onClick = onEditPrices,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                modifier = Modifier.heightIn(min = 28.dp),
-                colors = nebenKnopfFarben(),
-                border = nebenKnopfRand()) {
+            // Sichtbar klein unter den Käufen, getippt in 48 dp.
+            KleinerKnopf(onClick = onEditPrices,
+                form = ButtonDefaults.outlinedShape,
+                flaeche = Modifier.heightIn(min = 28.dp),
+                inhaltFarbe = nebenKnopfFarben().contentColor,
+                rand = nebenKnopfRand(),
+                innen = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar)) {
                 Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(14.dp)))
                 Spacer(Modifier.width(Abstaende.winzig))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
@@ -200,8 +205,8 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
 fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Surface(shape = Formen.chip, color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             if (icon != null) Icon(icon, null, Modifier.size(mitSchrift(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
@@ -225,7 +230,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
-fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
+fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
         style = MaterialTheme.typography.bodySmall,
@@ -247,6 +252,8 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
 fun ErfassungsFelder(
     anzahl: String,
     onAnzahl: (String) -> Unit,
+    /** Was gezählt wird („Anzahl gleicher Teile“). */
+    anzahlHinweis: String,
     preis: String,
     onPreis: (String) -> Unit,
     zustand: Zustand,
@@ -259,27 +266,51 @@ fun ErfassungsFelder(
     onLagerort: (String) -> Unit = {},
     lagerorte: List<String> = emptyList(),
 ) {
+    AnzahlFeld(anzahl, onAnzahl, anzahlHinweis)
+    KaufpreisFeld(preis, onPreis, stringResource(R.string.common_unit_price))
+    Zustandszeile(zustand = zustand, onZustand = onZustand)
+    LagerortErfassung(lagerort, lagerorte, onLagerort)
+}
+
+/**
+ * Das Anzahlfeld jeder Erfassung, immer mit Hilfezeile: Ohne sie standen die Felder
+ * ungleich weit auseinander, und ein Dialog liess eine leere Lücke.
+ */
+@Composable
+fun AnzahlFeld(wert: String, onWert: (String) -> Unit, hinweis: String) {
     OutlinedTextField(
-        value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
+        value = wert, onValueChange = { onWert(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
-        isError = NumericInput.mengeUngueltig(anzahl),
-        supportingText = { if (NumericInput.mengeUngueltig(anzahl)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
+        isError = NumericInput.mengeUngueltig(wert),
+        supportingText = {
+            if (NumericInput.mengeUngueltig(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
+            else Text(hinweis)
+        },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
         keyboardOptions = NumericInput.ganzzahlTastatur(),
     )
+}
+
+/**
+ * Das Kaufpreisfeld jeder Erfassung. Der Hinweis steht als Hilfezeile statt als
+ * Platzhalter: Der verschwand mit dem ersten Tippen.
+ */
+@Composable
+fun KaufpreisFeld(wert: String, onWert: (String) -> Unit, beschriftung: String, onFertig: (() -> Unit)? = null) {
     OutlinedTextField(
-        value = preis, onValueChange = { onPreis(NumericInput.price(it)) },
-        label = { Text(stringResource(R.string.common_unit_price)) },
-        placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
-        isError = NumericInput.preisUngueltig(preis),
-        supportingText = { if (NumericInput.preisUngueltig(preis)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
+        value = wert, onValueChange = { onWert(NumericInput.price(it)) },
+        label = { Text(beschriftung) },
+        isError = NumericInput.preisUngueltig(wert),
+        supportingText = {
+            if (NumericInput.preisUngueltig(wert)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+            else Text(stringResource(R.string.common_unit_price_placeholder))
+        },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
         keyboardOptions = NumericInput.preisTastatur(),
+        keyboardActions = if (onFertig != null) KeyboardActions(onDone = { onFertig() }) else KeyboardActions.Default,
     )
-    Zustandszeile(zustand = zustand, onZustand = onZustand)
-    LagerortErfassung(lagerort, lagerorte, onLagerort)
 }
 
 /**
@@ -298,7 +329,7 @@ fun ManuelleKachel(
     zustaende: List<Zustand>,
     zustand: Zustand?,
     besitzer: List<KontoAnsicht>,
-    preis: Double?,
+    preis: Geld?,
     waehrung: Waehrung,
     onEdit: () -> Unit,
     farbe: Color? = null,

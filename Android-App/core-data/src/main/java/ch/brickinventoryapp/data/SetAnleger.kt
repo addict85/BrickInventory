@@ -1,8 +1,9 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Offlineablage
 import kotlinx.coroutines.flow.Flow
@@ -16,18 +17,18 @@ import javax.inject.Inject
  */
 interface SetAnleger {
     fun anlegen(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String? = null,
     ): Flow<SetAnlegenSchritt>
 }
 
-/** Was der Server beim Anlegen meldet; der letzte Schritt ist Fertig oder Fehler. */
+/** Was der Server beim Anlegen meldet; der letzte Schritt ist Fertig, Fehler oder KeineVerbindung. */
 sealed class SetAnlegenSchritt {
     data class Stammdaten(val name: String?) : SetAnlegenSchritt()
     object Bild : SetAnlegenSchritt()
     object FastFertig : SetAnlegenSchritt()
-    data class Fertig(val ergebnis: AddSetResponse) : SetAnlegenSchritt()
-    /** Leere Meldung: Die Verbindung brach ab — ein Netzfehler, kein Satz des Servers. */
+    data class Fertig(val ergebnis: SetErfasst) : SetAnlegenSchritt()
+    /** Der Satz des Servers; leer: Der Strom brach ab, ob das Set angelegt wurde, ist offen. */
     data class Fehler(val meldung: String) : SetAnlegenSchritt()
     /** Keine Verbindung zustande gekommen — die Anfrage hat den Server nie erreicht. */
     object KeineVerbindung : SetAnlegenSchritt()
@@ -42,15 +43,16 @@ internal class AnlegenMitAblage @Inject constructor(
     private val ablage: Offlineablage,
 ) : SetAnleger {
     override fun anlegen(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetAnlegenSchritt> = flow {
         val vorher = ablage.bereich()
         strom.anlegen(setNumber, quantity, purchasePrice, condition, ownerUserId, storage).collect { s ->
             val e = (s as? SetAnlegenSchritt.Fertig)?.ergebnis
-            if (e != null && e.success && e.action != "exists" && vorher != null && ablage.bereich() == vorher) {
-                val nummer = e.setNumber ?: setNumber
-                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(nummer, quantity, purchasePrice, condition, ownerUserId, storage)), vorher)
+            if (e != null && !e.vorhanden && vorher != null && ablage.bereich() == vorher) {
+                val nummer = e.nummer ?: setNumber
+                ablage.wendeAn(Bearbeitung.SetErfassen(Erfassungswunsch(setNumber = nummer, menge = quantity, kaufpreis = purchasePrice,
+                    zustand = condition, besitzer = ownerUserId, lagerort = storage)), vorher)
             }
             emit(s)
         }

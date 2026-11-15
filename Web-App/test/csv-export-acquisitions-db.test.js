@@ -55,16 +55,14 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile', { con
       [uid],
     );
 
-    const csv = await require('./helpers/sources').bereichsSeite('sets').buildSetsCsv(uid);
+    const csv = await require('./helpers/sources').bereichsSeite('sets').setsAlsCsv(uid);
     const r = zeilen(csv);
     const je = sn => r.filter(x => x.set_number === sn);
 
     assert.equal(r.length, 5, `5 Zeilen erwartet (1+2+1+1), bekommen ${r.length}:\n${csv}`);
 
-    // Ohne Erfassung: eine Zeile mit Menge 0, ohne Preis, ohne Datum,
-    // Zustand 'N'. Hier stand quantity '3' — die Menge der Set-Spalte, die es
-    // seit Migration 0036 nicht mehr gibt, und purchase_price '12.5' aus der
-    // Spalte, die Migration 0032 geloescht hat.
+    // Ohne Erfassung: eine Zeile mit Menge 0, ohne Preis, ohne Datum, Zustand 'N';
+    // Menge und Preis kommen nur aus Erfassungen.
     assert.deepEqual(je('0001-1'), [
       { set_number: '0001-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' },
     ]);
@@ -128,7 +126,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets', { conc
       abfragen++;
       return echtesQuery(...args);
     };
-    const csv = await require('./helpers/sources').bereichsSeite('sets').buildSetsCsv(uid);
+    const csv = await require('./helpers/sources').bereichsSeite('sets').setsAlsCsv(uid);
     db.pool.query = echtesQuery;
 
     assert.equal(zeilen(csv).length, 25, 'alle 25 Sets stehen im Export');
@@ -189,18 +187,16 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency:
       abfragen++;
       return echtesQuery(...args);
     };
-    const csv = await _req('src/bestand/bestandExport.js').buildFigsCsv(uid);
+    const csv = await _req('src/bestand/bestandExport.js').figurenCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);
     assert.equal(r.length, 2, `2 Zeilen erwartet, bekommen ${r.length}:\n${csv}`);
 
     const a = r.find(x => x.fig_number === 'fig-a');
-    // Hier stand '2' — die Zahl der Figuren-Zeile. Seit Migration 0038 gibt es
-    // sie dort nicht mehr: Fuer eine MANUELLE Position ist die Stueckzahl die
-    // Summe der Erfassungen, und ohne Erfassung ist das 0. Die Zeile bleibt
-    // trotzdem im Export (sie steht im Bestand) — genau diese Unterscheidung
-    // soll der Fall festhalten. Dieselbe Aenderung wie im Set-Export.
+    // Fuer eine MANUELLE Position ist die Stueckzahl die Summe der Erfassungen,
+    // ohne Erfassung also 0. Die Zeile bleibt trotzdem im Export (sie steht im
+    // Bestand) — genau diese Unterscheidung haelt der Fall fest, wie im Set-Export.
     assert.equal(a.quantity, '0', 'ohne Erfassung ist die Stueckzahl 0 — die Zeile bleibt aber');
     assert.equal(a.acquired_at, '', 'ohne Erfassung kein Datum');
 
@@ -270,7 +266,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, 
       abfragen++;
       return echtesQuery(...args);
     };
-    const csv = await _req('src/bestand/bestandExport.js').buildPartsCsv(uid);
+    const csv = await _req('src/bestand/bestandExport.js').teileCsv(uid);
     db.pool.query = echtesQuery;
 
     const r = zeilen(csv);

@@ -76,6 +76,26 @@
  *   AC die Rechte nur noch für die Laufzeitrolle vergeben → rot: „Laufzeit-
  *      und Systemrolle dürfen …“ und „der Zeilenschutz gilt …“ (permission denied)
  *
+ *   Kontotabellen (14.11.2026, je einzeln):
+ *   AD in 0115 die Schleife über die Rollen gestrichen → rot: „… schon nach der
+ *      Migration“ (SELECT password_hash gelingt der Laufzeitrolle)
+ *   AE in app-rolle.sh den Block für users/user_sessions gestrichen → rot: „… und
+ *      nach jedem Lauf von app-rolle.sh …“ (GRANT ON ALL TABLES gibt beides zurück)
+ *   AF die Policy `lesen` auf account_links für alle Befehle (ohne `FOR SELECT`) →
+ *      rot: beide (das INSERT in den fremden Haushalt gelingt)
+ *   AG in app-rolle.sh die Schleife über vor_migration_* für RLS gestrichen → rot:
+ *      „… Kopien vor Migrationen …“ (die Laufzeitrolle liest den Hash der Kopie)
+ *
+ *   Zugangsdaten schreibt nur die Systemrolle (Migration 0117, 14.11.2026 gemessen, je einzeln):
+ *   AH in 0117 die Schleife über die Rollen leer laufen lassen (`AND false`) → rot: „… schon
+ *      nach der Migration“ (die Laufzeitrolle setzt is_admin, das Protokoll ist löschbar)
+ *   AI in app-rolle.sh das REVOKE auf users gestrichen → rot: „… und nach jedem Lauf …“
+ *      (GRANT ON ALL TABLES gibt INSERT/UPDATE/DELETE zurück)
+ *   AJ verwaltungsprotokoll_aufraeumen() als SECURITY INVOKER → rot: beide (die Systemrolle
+ *      darf selbst nicht löschen, das Aufräumen scheitert)
+ *   AK in app-rolle.sh das REVOKE auf verwaltungsprotokoll nur für die Laufzeitrolle → rot:
+ *      „… und nach jedem Lauf …“ (die Systemrolle löscht Protokollzeilen)
+ *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
  */
@@ -100,6 +120,7 @@ const MIG = `${praefix}_mig`.toLowerCase();
 const LESEN = `${praefix}_lesen`.toLowerCase();
 const BOESE = `${praefix}_boese`.toLowerCase();
 const SYS = `${praefix}_sys`.toLowerCase();
+const SYSWEB = `${praefix}_sysweb`.toLowerCase();
 const SYS_PW = `sys-${process.pid}-geheim`;
 const LESEN_PW = `lesen-${process.pid}-geheim`;
 const PASSWORT = `app-${process.pid}-geheim`;
@@ -132,6 +153,7 @@ function rolleEinrichten(db, mehr = {}) {
       DB_LESEN_USER: LESEN,
       PGWEB_DB_PASSWORD: LESEN_PW,
       DB_SYSTEM_USER: SYS,
+      DB_SYSTEM_WEB_USER: SYSWEB,
       DB_SYSTEM_PASSWORD: SYS_PW,
       ...mehr,
     },
@@ -337,6 +359,180 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.equal((await rechteDerRolle(admin)).rolsuper, false);
   });
 
+  /** Genau diese Schreibrechte (0117): Zugangsdaten, globale Einstellungen und das Protokoll. */
+  const zugangsrechtePruefen = async (db, konto) => {
+    const frage = (rolle, objekt, art, funktion) =>
+      als(db, null, null, c =>
+        c
+          .query(
+            funktion
+              ? 'SELECT has_function_privilege($1, $2, $3) AS ja'
+              : 'SELECT has_table_privilege($1, $2, $3) AS ja',
+            [rolle, objekt, art],
+          )
+          .then(r => r.rows[0].ja),
+      );
+    const ist = {};
+    for (const [rolle, kurz] of [
+      [ROLLE, 'app'],
+      [SYS, 'sys'],
+    ]) {
+      for (const tabelle of ['users', 'global_settings', 'verwaltungsprotokoll'])
+        for (const art of ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'])
+          ist[`${kurz} ${tabelle} ${art}`] = await frage(rolle, `public.${tabelle}`, art);
+      ist[`${kurz} aufraeumen EXECUTE`] = await frage(
+        rolle,
+        'public.verwaltungsprotokoll_aufraeumen()',
+        'EXECUTE',
+        true,
+      );
+    }
+    const soll = {};
+    for (const k of Object.keys(ist)) soll[k] = false;
+    // Tabellenweit (has_table_privilege prüft hier nur ganze Tabellen; SELECT auf users hat die
+    // Laufzeitrolle spaltenweise ohne password_hash, siehe oben).
+    for (const k of [
+      'app global_settings SELECT',
+      'app verwaltungsprotokoll SELECT',
+      'app verwaltungsprotokoll INSERT',
+    ])
+      soll[k] = true;
+    for (const t of ['users', 'global_settings'])
+      for (const a of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) soll[`sys ${t} ${a}`] = true;
+    for (const k of ['sys verwaltungsprotokoll SELECT', 'sys verwaltungsprotokoll INSERT', 'sys aufraeumen EXECUTE'])
+      soll[k] = true;
+    assert.deepEqual(ist, soll);
+    const spalten = (
+      await als(db, null, null, c =>
+        c.query(
+          `SELECT a.attname FROM pg_attribute a WHERE a.attrelid = 'public.users'::regclass AND a.attnum > 0
+              AND NOT a.attisdropped AND has_column_privilege($1, 'public.users', a.attname, 'UPDATE') ORDER BY 1`,
+          [ROLLE],
+        ),
+      )
+    ).rows.map(z => z.attname);
+    assert.deepEqual(spalten, ['first_name', 'last_name'], 'in users schreibt die Laufzeitrolle nur die Namen');
+
+    // Und so, wie eine eingeschleuste Abfrage es versuchte:
+    await als(db, ROLLE, PASSWORT, async app => {
+      for (const sql of [
+        'UPDATE users SET is_admin = true WHERE id = $1',
+        "UPDATE users SET password_hash = 'x' WHERE id = $1",
+        "UPDATE users SET email = 'boese@example.org' WHERE id = $1",
+        'UPDATE users SET sitzungs_version = 0 WHERE id = $1',
+        'DELETE FROM users WHERE id = $1',
+        'DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1',
+        "UPDATE verwaltungsprotokoll SET aktion = 'x' WHERE ziel_id = $1",
+        "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1::text)",
+        'SELECT verwaltungsprotokoll_aufraeumen() WHERE $1::int > 0',
+      ])
+        await assert.rejects(app.query(sql, [konto]), /permission denied/, `Laufzeitrolle: ${sql}`);
+      assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 1);
+      await app.query(`INSERT INTO verwaltungsprotokoll (ziel_id, aktion) VALUES ($1, 'probe')`, [konto]);
+    });
+    await als(db, SYS, SYS_PW, async sys => {
+      await sys.query(
+        `INSERT INTO verwaltungsprotokoll (zeit, ziel_id, aktion) VALUES (NOW() - INTERVAL '400 days', $1, 'alt')`,
+        [konto],
+      );
+      for (const sql of [
+        'DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1',
+        "UPDATE verwaltungsprotokoll SET aktion = 'x' WHERE ziel_id = $1",
+      ])
+        await assert.rejects(sys.query(sql, [konto]), /permission denied/, `Systemrolle: ${sql}`);
+      assert.ok((await sys.query('SELECT verwaltungsprotokoll_aufraeumen() AS n')).rows[0].n >= 1);
+      assert.deepEqual(
+        (await sys.query('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY aktion', [konto])).rows,
+        [{ aktion: 'probe' }],
+        'die feste Frist nimmt nur die alte Zeile',
+      );
+    });
+    await als(db, null, null, c => c.query('DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1', [konto]));
+  };
+
+  /** Was die Laufzeitrolle an Kontotabellen darf; die Systemrolle liest alles. */
+  const kontotabellenPruefen = async db => {
+    await als(db, null, null, async c => {
+      await c.query(`DELETE FROM user_sessions WHERE sid = 'kt-sid'; DELETE FROM users WHERE username LIKE 'kt\\_%'`);
+      const ids = [];
+      for (const n of ['kt_a', 'kt_b', 'kt_c'])
+        ids.push(
+          (await c.query(`INSERT INTO users (username, password_hash) VALUES ($1, '$2b$10$geheim') RETURNING id`, [n]))
+            .rows[0].id,
+        );
+      await c.query('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', ids.slice(0, 2));
+      await c.query(
+        `INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ('kt-einl', $1, NOW() + INTERVAL '1 day')`,
+        [ids[2]],
+      );
+      await c.query(`INSERT INTO user_sessions (sid, sess, expire) VALUES ('kt-sid', '{}', NOW() + INTERVAL '1 day')`);
+    });
+    const [A, B, C] = (
+      await als(db, null, null, c => c.query(`SELECT id FROM users WHERE username LIKE 'kt\\_%' ORDER BY username`))
+    ).rows.map(z => z.id);
+    await als(db, ROLLE, PASSWORT, async app => {
+      for (const sql of ['SELECT password_hash FROM users', 'SELECT * FROM users', 'SELECT sid FROM user_sessions'])
+        await assert.rejects(app.query(sql), /permission denied/, `Laufzeitrolle: ${sql}`);
+      await assert.rejects(app.query(`DELETE FROM user_sessions`), /permission denied/);
+      assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rows[0].username, 'kt_a');
+      await app.query('BEGIN');
+      try {
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
+        // Sich selbst in einen fremden Haushalt eintragen hiesse dessen Zeilen sehen.
+        await assert.rejects(
+          app.query('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [C, A]),
+          /row-level security/,
+        );
+      } finally {
+        await app.query('ROLLBACK');
+      }
+      await app.query('BEGIN');
+      try {
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
+        assert.equal((await app.query('DELETE FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
+        assert.equal((await app.query('SELECT 1 FROM account_links WHERE main_user_id = $1', [A])).rowCount, 1);
+        assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 1, 'eigene Einladung');
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
+        assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 0, 'fremde Einladung');
+        assert.equal((await app.query('DELETE FROM account_links WHERE sub_user_id = $1', [B])).rowCount, 1);
+      } finally {
+        await app.query('ROLLBACK');
+      }
+    });
+    await als(db, SYS, SYS_PW, async sys => {
+      assert.equal(
+        (await sys.query(`SELECT password_hash FROM users WHERE id = $1`, [A])).rows[0].password_hash,
+        '$2b$10$geheim',
+      );
+      assert.equal((await sys.query(`SELECT 1 FROM user_sessions WHERE sid = 'kt-sid'`)).rowCount, 1);
+    });
+    await zugangsrechtePruefen(db, A);
+    await als(db, null, null, c =>
+      c.query(`DELETE FROM user_sessions WHERE sid = 'kt-sid'; DELETE FROM users WHERE username LIKE 'kt\\_%'`),
+    );
+  };
+
+  await t.test('Passwort-Hashes und Sitzungen liest nur die Systemrolle, schon nach der Migration', async () => {
+    // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0115 allein.
+    await kontotabellenPruefen(neu);
+  });
+
+  await t.test('… und nach jedem Lauf von app-rolle.sh; Kopien vor Migrationen nur für die Systemrolle', async () => {
+    await als(neu, MIG, MIG_PW, mig =>
+      mig.query(`CREATE SCHEMA vor_migration_20261114000000000;
+        CREATE TABLE vor_migration_20261114000000000.users AS SELECT 7 AS id, 'x' AS password_hash`),
+    );
+    try {
+      assert.equal(rolleEinrichten(neu).status, 0);
+      await kontotabellenPruefen(neu);
+      const kopie = 'SELECT password_hash FROM vor_migration_20261114000000000.users';
+      assert.equal((await als(neu, ROLLE, PASSWORT, app => app.query(kopie))).rowCount, 0);
+      assert.equal((await als(neu, SYS, SYS_PW, sys => sys.query(kopie))).rowCount, 1);
+    } finally {
+      await als(neu, MIG, MIG_PW, mig => mig.query('DROP SCHEMA vor_migration_20261114000000000 CASCADE'));
+    }
+  });
+
   await t.test('die Migrationsrolle schiebt dem Superuser nichts unter', async () => {
     const app = new Client({ connectionString: url(neu, MIG, MIG_PW) });
     await app.connect();
@@ -412,12 +608,13 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         ])
           await assert.rejects(app.query(sql), /permission denied|must be owner/, `${nutzer} darf: ${sql}`);
         // Zeilen schreiben, Sequenzen weiterzählen, temporär anlegen: alles, was die App braucht.
-        const { id: uid } = (
-          await app.query(`INSERT INTO users (username, password_hash) VALUES ('laufzeitprobe', 'x') RETURNING id`)
+        // (users schreibt die Laufzeitrolle nur teilweise, siehe „Zugangsdaten schreibt nur …“.)
+        const { id: zeile } = (
+          await app.query(`INSERT INTO app_logs (level, message) VALUES ('info', 'laufzeitprobe') RETURNING id`)
         ).rows[0];
-        await app.query(`UPDATE users SET first_name = 'L' WHERE id = $1`, [uid]);
-        assert.equal((await app.query('SELECT first_name FROM users WHERE id = $1', [uid])).rows[0].first_name, 'L');
-        await app.query('DELETE FROM users WHERE id = $1', [uid]);
+        await app.query(`UPDATE app_logs SET message = 'L' WHERE id = $1`, [zeile]);
+        assert.equal((await app.query('SELECT message FROM app_logs WHERE id = $1', [zeile])).rows[0].message, 'L');
+        await app.query('DELETE FROM app_logs WHERE id = $1', [zeile]);
         await app.query('CREATE TEMP TABLE probe (x int)');
       });
   });
@@ -712,6 +909,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         DB_LESEN_USER: LESEN,
         PGWEB_DB_PASSWORD: LESEN_PW,
         DB_SYSTEM_USER: SYS,
+        DB_SYSTEM_WEB_USER: SYSWEB,
         DB_SYSTEM_PASSWORD: SYS_PW,
       },
     });
@@ -766,6 +964,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         DB_MIGRATION_USER: MIG,
         DB_LESEN_USER: LESEN,
         DB_SYSTEM_USER: SYS,
+        DB_SYSTEM_WEB_USER: SYSWEB,
         ...umgebung,
         ...mehr,
       };
@@ -879,6 +1078,7 @@ esac
             DB_MIGRATION_USER: MIG,
             DB_LESEN_USER: LESEN,
             DB_SYSTEM_USER: SYS,
+            DB_SYSTEM_WEB_USER: SYSWEB,
             PGPASSWORD_FILE: path.join(g, 'db_password'),
           },
         });

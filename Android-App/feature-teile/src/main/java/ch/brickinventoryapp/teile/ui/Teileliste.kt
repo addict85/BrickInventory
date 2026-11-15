@@ -2,9 +2,9 @@ package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.model.data.model.BestandTeil
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.Part
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.Teilschluessel
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
@@ -40,19 +40,19 @@ internal class Teileliste @Inject constructor(
             val figsResult  = katalog.getSetMinifigsList(setNumber)
             // Der Name kommt aus dem Katalog (/sets/info), nicht aus dem eigenen
             // Bestand: In die Teileliste trägt man gerade Sets ein, die man nicht hat.
-            val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Success)
-                ?.data?.name?.takeIf { it.isNotBlank() } ?: setNumber
+            val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Erfolg)
+                ?.data?.takeIf { it.isNotBlank() } ?: setNumber
             // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
             // (mitBestand) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
             // oft eine BrickLink-Nummer; nach ihr zusammengefasst galt ein vorhandenes
             // Teil als fehlend. Angezeigt wird weiterhin die BrickLink-Nummer.
             val deduped = mutableMapOf<String, PlPart>()
-            if (partsResult is Ergebnis.Success) {
-                for (p in partsResult.data.parts) fasseZusammen(deduped, "${p.partNumber}|${p.colorId}", teilZeile(p, serverUrl))
+            if (partsResult is Ergebnis.Erfolg) {
+                for (p in partsResult.data) fasseZusammen(deduped, "${p.partNumber}|${p.colorId}", teilZeile(p, serverUrl))
             }
             // Figuren als Ganzes, nicht in ihre Teile zerlegt — wie in der Webapp.
-            if (figsResult is Ergebnis.Success) {
-                for (f in figsResult.data.figs) fasseZusammen(deduped, "fig:${f.figNumber}", figurZeile(f, serverUrl))
+            if (figsResult is Ergebnis.Erfolg) {
+                for (f in figsResult.data) fasseZusammen(deduped, "fig:${f.figNumber}", figurZeile(f, serverUrl))
             }
             Pair(setName, deduped.values.toList())
         }.getOrElse { Pair(setNumber, listOf()) }
@@ -64,7 +64,7 @@ internal class Teileliste @Inject constructor(
         deduped[key] = existing?.copy(quantity = existing.quantity + zeile.quantity) ?: zeile
     }
 
-    private fun teilZeile(p: Part, serverUrl: String): PlPart {
+    private fun teilZeile(p: TeilAnsicht, serverUrl: String): PlPart {
         val blNum = p.blPartNumber ?: p.partNumber
         return PlPart(
             partNumber    = p.partNumber,
@@ -94,7 +94,7 @@ internal class Teileliste @Inject constructor(
         else -> "$serverBase$bild"
     }
 
-    private fun figurZeile(f: Minifig, serverUrl: String) = PlPart(
+    private fun figurZeile(f: FigurAnsicht, serverUrl: String) = PlPart(
         partNumber   = f.figNumber,
         blPartNumber = f.figNumber,  // Figurennummern sind die BrickLink-Nummern
         partName     = f.figName ?: f.figNumber,
@@ -122,13 +122,13 @@ internal class Teileliste @Inject constructor(
         // Gefragt wird in der REBRICKABLE-Schreibweise: Genau die steht auch in
         // der eigenen Teile-Tabelle. Die BrickLink-Nummer daneben ist fuer den
         // Export da und taugt fuer den Abgleich nicht.
-        val anfrage = teile.map { BestandTeil(partNumber = it.partNumber, colorId = it.colorId) }
+        val anfrage = teile.map { Teilschluessel(nummer = it.partNumber, farbe = it.colorId) }
         // Das Blickfeld kommt aus dieser Ansicht, nicht aus dem Kontofilter des
         // Teile-Reiters. `null` heisst „alle Konten“.
         val antwort = teileRepo.getOwnedParts(anfrage, if (mitUnterkonten) null else Kontoauswahl.Eigene)
-        val bestand = (antwort as? Ergebnis.Success)?.data?.takeIf { it.success }?.bestand ?: return null
+        val bestand = (antwort as? Ergebnis.Erfolg)?.data ?: return null
         return teile.map { p ->
-            val eintrag = bestand["${p.partNumber}|${p.colorId}"]
+            val eintrag = bestand[Teilschluessel(p.partNumber, p.colorId)]
             p.copy(vorhanden = if (eintrag == null) 0 else if (nurLose) eintrag.lose else eintrag.gesamt)
         }
     }

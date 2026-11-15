@@ -5,7 +5,7 @@
  * nicht nachbauen.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in blickfeldAus() `parseScopeMode(v.konten)` durch 'all' ersetzt → rot:
+ *   A  in blickfeldAus() `blickfeldArt(v.konten)` durch 'all' ersetzt → rot:
  *      „eine Sicht wählt die Konten im Dienst“
  *   B  in loescheSetFuer() die Kontenwahl übergangen (`gewaehlt = schreibbar`)
  *      → rot: „Löschen folgt der Kontenwahl, im Schreibbereich“
@@ -29,18 +29,22 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const H = { ..._req('src/haushalt/haushalt.js'), ...require('./helpers/sources').testBereich('haushalt') };
-  const { getSets } = require('./helpers/sources').bereichsSeite('sets');
+  const H = {
+    ..._req('src/haushalt/regeln.js'),
+    ..._req('src/haushalt/haushalt.js'),
+    ...require('./helpers/sources').testBereich('haushalt'),
+  };
+  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
   const { loescheSetFuer } = require('./helpers/sources').bereichsSeite('sets');
   const [HAUPT, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, SUB]]);
   const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [HAUPT])).id;
   const sub = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SUB])).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, sub]);
-  H.leereHaushaltCache();
+  H.meldeHaushaltsaenderung();
   await haeltSet(db, haupt, '10179-1');
   await haeltSet(db, sub, '75192-1');
-  const nummern = async sicht => (await getSets(sicht, {})).sets.map(s => s.set_number).sort();
+  const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();
 
   await t.test('eine Sicht wählt die Konten im Dienst', async () => {
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);
@@ -72,6 +76,9 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   await t.test('ein Unterkonto schreibt nicht für sein Hauptkonto', async () => {
     assert.equal(await H.schreibziel(haupt, sub), sub);
     assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
-    await assert.rejects(H.schreibziel(sub, haupt), e => e.code === 'kein_schreibrecht' && e.art === 'verboten');
+    await assert.rejects(
+      H.schreibziel(sub, haupt),
+      (/** @type {any} */ e) => e.code === 'kein_schreibrecht' && e.art === 'verboten',
+    );
   });
 });

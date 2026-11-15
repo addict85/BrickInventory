@@ -1,7 +1,7 @@
 /**
  * Die Portfoliokurve gehört zum GEWÄHLTEN Konto, nicht zum Betrachter.
  *
- * Gegenprobe (durchgeführt): in getPortfolioHistory statt `ids` wieder
+ * Gegenprobe (durchgeführt): in portfolioVerlauf statt `ids` wieder
  * `viewerId` als Blickfeld benutzt → beide Kurven werden gleich.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -59,10 +59,10 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
 
   // Deutlich verschiedene Preise — bei einer Verwechslung fällt es auf.
   await db.run(`DELETE FROM price_history WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
-  for (const [sn, basis] of [
+  for (const [sn, basis] of /** @type {[string, number][]} */ ([
     [SN_H, 1000],
     [SN_S, 5000],
-  ]) {
+  ])) {
     for (let tag = 3; tag >= 0; tag--) {
       await db.run(
         `INSERT INTO price_history (set_number,currency_code,condition,qty_avg_price,avg_price,recorded_at)
@@ -72,11 +72,11 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
     }
   }
 
-  const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
   const { getSetting } = _req('src/einstellungen/settings.js');
   const kurve = async uids => {
     // Betrachter ist IMMER das Hauptkonto — genau darum geht es.
-    const r = await getPortfolioHistory(hauptId, uids, 'week', db, getSetting);
+    const r = await portfolioVerlauf(hauptId, uids, 'week', db, getSetting);
     return (r?.points || []).map(p => p.value);
   };
 

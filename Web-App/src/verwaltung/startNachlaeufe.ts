@@ -1,13 +1,23 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
-import { verschluesseleGutscheinAltbestand } from '../gutscheine';
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import type { VerwaltungKontext } from './kontext';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
-  const n = (await k.konto.verschluesseleAltbestand()) + (await verschluesseleGutscheinAltbestand());
+  const n = (await k.faktoren.verschluesseleAltbestand()) + (await k.gutscheine.verschluesseleAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
+
+/** Die Schritte des Nachlaufs nach dem Start; die Nutzlast der Art 'nachlauf' kennt genau diese. */
+export const NACHLAUF_SCHRITTE = [
+  'geheimnisse',
+  'vorschauen',
+  'katalog',
+  'anleitungen',
+  'set_bilder',
+  'kaufpreise',
+] as const;
+type Nachlauf = (typeof NACHLAUF_SCHRITTE)[number];
 
 /** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */
 const NACHLAEUFE = {
@@ -18,16 +28,15 @@ const NACHLAEUFE = {
   set_bilder: { nachSekunden: 45 },
   kaufpreise: { nachSekunden: 45 },
 } as const satisfies Record<Nachlauf, { nachSekunden: number }>;
-type Nachlauf = Nutzlast<'nachlauf'>['schritt'];
 
 function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> {
   return {
     geheimnisse: () => geheimnisseVerschluesseln(k),
     vorschauen: () => k.katalog.vorschaubilderNachtragen(),
-    katalog: () => k.katalog.syncAllMissing(),
+    katalog: () => k.katalog.gleicheFehlendeAb(),
     anleitungen: () => k.katalog.anleitungenNachtragen(),
     set_bilder: () => k.katalog.setBilderNachladen(),
-    kaufpreise: () => k.bestand.run(),
+    kaufpreise: () => k.bestand.kaufpreiseNachtragen(),
   };
 }
 

@@ -31,11 +31,17 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -45,6 +51,12 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
+import ch.brickinventoryapp.ui.theme.hauptKnopfFarben
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 
 /**
  * Die Rückfrage vor einer Aktion ohne Weg zurück: Symbol, Titel, ein Satz, die
@@ -64,7 +76,9 @@ fun Rueckfrage(
     // Titel als Überschrift und Name des Fensters: TalkBack nennt beim Öffnen, worum es geht.
     AlertDialog(
         onDismissRequest = onAbbrechen,
-        modifier = Modifier.semantics { paneTitle = titel },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fensterRand().semantics { paneTitle = titel },
+        containerColor = fensterFlaeche(),
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
@@ -89,15 +103,31 @@ fun ErfassenDialog(
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
     bestaetigenAn: Boolean = true,
+    /** Ob schon etwas eingegeben ist; dann schliesst kein Fehlgriff den Dialog (siehe [erfassenSchliessbar]). */
+    geaendert: Boolean = false,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
+    var verwerfenFragen by rememberSaveable { mutableStateOf(false) }
+    // Zurück und Danebentippen landen hier; Abbrechen und das Kreuz schliessen weiter ohne Frage.
+    val schliessen: () -> Unit = { if (geaendert) { verwerfenFragen = true } else { onAbbrechen() } }
+    if (verwerfenFragen) {
+        Rueckfrage(
+            titel = stringResource(R.string.erfassen_verwerfen_titel),
+            text = stringResource(R.string.erfassen_verwerfen_text),
+            bestaetigen = stringResource(R.string.erfassen_verwerfen),
+            onBestaetigen = { verwerfenFragen = false; onAbbrechen() },
+            onAbbrechen = { verwerfenFragen = false },
+        )
+    }
     if (vollbildErfassen()) {
-        VollbildErfassen(titel, bestaetigen, onBestaetigen, onAbbrechen, bestaetigenAn, inhalt)
+        VollbildErfassen(titel, bestaetigen, onBestaetigen, onAbbrechen, schliessen, bestaetigenAn, geaendert, inhalt)
         return
     }
     AlertDialog(
-        onDismissRequest = onAbbrechen,
-        modifier = Modifier.semantics { paneTitle = titel },
+        onDismissRequest = schliessen,
+        properties = erfassenSchliessbar(geaendert),
+        modifier = Modifier.fensterRand().semantics { paneTitle = titel },
+        containerColor = fensterFlaeche(),
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
         // Knöpfe bleiben dabei stehen, nur die Felder rollen.
@@ -106,11 +136,55 @@ fun ErfassenDialog(
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) { inhalt() }
         },
         confirmButton = {
-            Button(onClick = onBestaetigen, enabled = bestaetigenAn) { Text(bestaetigen) }
+            Button(onClick = onBestaetigen, enabled = bestaetigenAn, colors = hauptKnopfFarben()) { Text(bestaetigen) }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
+
+/**
+ * Die Knöpfe am Fuss eines Formulars ausserhalb eines AlertDialogs (Blatt, Karte):
+ * Abbrechen links, die Haupthandlung rechts, wie AlertDialog sie ordnet. Bei grosser
+ * Schrift rückt der Hauptknopf rechts in die nächste Zeile statt aus dem Bild.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun Knopfzeile(
+    bestaetigen: String,
+    onBestaetigen: () -> Unit,
+    onAbbrechen: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Während des Speicherns: Kringel davor, der Hauptknopf nimmt keinen zweiten Tipp an. */
+    laeuft: Boolean = false,
+) {
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (laeuft) CircularProgressIndicator(Modifier.size(mitSchrift(18.dp)), strokeWidth = 2.dp)
+        TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
+        Button(onClick = onBestaetigen, enabled = !laeuft, colors = hauptKnopfFarben()) { Text(bestaetigen) }
+    }
+}
+
+/**
+ * Daneben tippen schliesst ein ausgefülltes Formular nicht: Ein Tipp neben das Fenster
+ * verwarf bisher Set, Merkposten oder Lagerort samt allem Getippten. Zurück bleibt an,
+ * fragt dann aber erst nach (ErfassenDialog).
+ */
+fun erfassenSchliessbar(geaendert: Boolean) =
+    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = false)
+
+/**
+ * Der Rand eines schwebenden Dialogs zum Fenster, selbst gesetzt statt der Fensterbreite
+ * der Plattform: Die hing vom Gerät ab, und ohne sie stand der Dialog randlos über der
+ * ganzen Breite. Mittig steht er von selbst; breiter als 560 dp wird er nicht.
+ */
+fun Modifier.fensterRand(): Modifier = padding(horizontal = FENSTER_RAND)
+
+private val FENSTER_RAND = 24.dp
 
 /**
  * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
@@ -133,10 +207,12 @@ private fun VollbildErfassen(
     bestaetigen: String,
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
+    onSchliessen: () -> Unit,
     bestaetigenAn: Boolean,
+    geaendert: Boolean,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onAbbrechen, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onSchliessen, properties = erfassenSchliessbar(geaendert)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxSize().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.klein),
@@ -155,7 +231,7 @@ private fun VollbildErfassen(
                     verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
                 ) { inhalt() }
                 HorizontalDivider()
-                Button(onClick = onBestaetigen, enabled = bestaetigenAn,
+                Button(onClick = onBestaetigen, enabled = bestaetigenAn, colors = hauptKnopfFarben(),
                     modifier = Modifier.fillMaxWidth().padding(Abstaende.gross)) { Text(bestaetigen) }
             }
         }
@@ -208,6 +284,14 @@ fun PasswortRueckfrage(
 ) {
     var passwort by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
+    // Die Absage rollt ins Bild: Mit dem Codefeld darüber lag sie auf kleinen Schirmen unter
+    // dem Rand der Rückfrage, und man sah nur ein neues Feld ohne den Grund dafür.
+    val meldungSichtbar = remember { BringIntoViewRequester() }
+    LaunchedEffect(fehler) {
+        if (fehler == null) return@LaunchedEffect
+        withFrameNanos { }  // erst wenn die Zeile gesetzt ist
+        meldungSichtbar.bringIntoView()
+    }
     ErfassenDialog(
         titel = titel,
         bestaetigen = bestaetigen,
@@ -221,7 +305,7 @@ fun PasswortRueckfrage(
         PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
             Modifier.fillMaxWidth())
         if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-        if (fehler != null) FehlerZeile(fehler)
+        if (fehler != null) FehlerZeile(fehler, Modifier.bringIntoViewRequester(meldungSichtbar))
     }
 }
 

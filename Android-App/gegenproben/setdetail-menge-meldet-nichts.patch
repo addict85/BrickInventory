@@ -6,12 +6,12 @@ Rot: eine geaenderte Menge steht sofort da und in der Ablage
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-@@ -58,7 +58,7 @@
+@@ -44,7 +44,7 @@
  
-     override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
+     override suspend fun setzeMenge(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<Int?> =
          // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
 -        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
 +        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, quantity).takeIf { r.success } }) {
-             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
-         }
+             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
+         }.zugesagt({ it.success }) { it.quantity }
  

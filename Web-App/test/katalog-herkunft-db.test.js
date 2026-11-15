@@ -18,22 +18,17 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben, bevor die Routen die Funktionen herausziehen (wie in
-// test/katalog-vor-rebrickable-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
-const echtRb = require(rbPfad);
+// Rebrickable an der Verdrahtung gestellt (testQuellen); `abrufe` zählt, was gefragt wurde.
 let abrufe = [];
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+testQuellen(null, {
   lookupPart: async nr => {
     abrufe.push(`lookupPart ${nr}`);
     return {
@@ -77,8 +72,8 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   const A = await neu('anna'),
     B = await neu('bruno');
 
-  const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
+  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
   const { katalogTeil } = _req('src/katalog/katalogPflege.js');
   const gemeinsam = nr =>
     db.get(
@@ -99,7 +94,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   await t.test('die Eingabe steht in den eigenen Angaben, nicht im gemeinsamen Katalog', async () => {
     abrufe = [];
-    await addManualPart(A, {
+    await manuellesTeilAnlegen(A, {
       part_number: '3001',
       color_id: 4,
       quantity: 1,
@@ -116,7 +111,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   await t.test('ein anderes Konto fragt trotzdem Rebrickable', async () => {
     abrufe = [];
-    await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
+    await manuellesTeilAnlegen(B, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.deepEqual(abrufe, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
     assert.deepEqual(
       { ...(await gemeinsam('3001')) },
@@ -126,14 +121,14 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   });
 
   await t.test('der geprüfte Wert hat Vorrang, die eigene Angabe bleibt erhalten', async () => {
-    await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
+    await manuellesTeilAnlegen(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
     assert.equal((await katalogTeil('3001', 4, A)).name, 'Brick 2 x 4');
     assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
     assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
   });
 
   await t.test('ein fremder Bild-Host kommt nicht in die eigenen Angaben', async () => {
-    await addManualPart(A, {
+    await manuellesTeilAnlegen(A, {
       part_number: '3002',
       color_id: 4,
       quantity: 1,
@@ -146,9 +141,9 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   });
 
   await t.test('Figuren: die Eingabe bleibt beim Konto, die geprüfte Quelle füllt den Katalog', async () => {
-    await addManualFig(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
+    await manuelleFigurAnlegen(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
     abrufe = [];
-    await addManualFig(B, { fig_number: 'sw0011', quantity: 1 });
+    await manuelleFigurAnlegen(B, { fig_number: 'sw0011', quantity: 1 });
     assert.deepEqual(abrufe, ['getMinifigInfo sw0011']);
     assert.equal(
       (await db.get('SELECT fig_name FROM minifigs_catalog WHERE fig_number = $1', ['sw0011'])).fig_name,

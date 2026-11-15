@@ -3,9 +3,8 @@ package ch.brickinventoryapp.konto
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.DesignWahl
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.ladeEinstellungen
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +18,6 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TestDienste
@@ -61,7 +59,7 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
+    private fun vm() = t.merke(KontoViewModel(testKontoRepository(t.api), t.meldungen, t.sitzung, SitzungsAttrappe()))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {
@@ -104,7 +102,7 @@ class DesignJeKontoTest {
     fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
         pfade.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
         t.sitzung.setzeDesign(Design.NOPPE)
-        runBlocking { t.sitzung.ladeEinstellungen(KontoRepository(t.api, t.cache)) }
+        runBlocking { t.sitzung.ladeEinstellungen(testKontoRepository(t.api)) }
         assertEquals(Waehrung.CHF, t.sitzung.state.value.currency)
         assertEquals(Design.NOPPE, t.sitzung.state.value.appTheme)
     }

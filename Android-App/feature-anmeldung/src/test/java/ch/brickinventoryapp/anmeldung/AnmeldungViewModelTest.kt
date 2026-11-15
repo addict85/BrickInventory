@@ -1,7 +1,10 @@
 package ch.brickinventoryapp.anmeldung
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.anmeldung.ui.PasskeyAbfrage
 import ch.brickinventoryapp.anmeldung.ui.PasskeyErgebnis
@@ -19,9 +22,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.anmeldung.ui.QrKonto
@@ -31,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.SpeicherAblage
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.sicherheit.PinAblage
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
@@ -139,11 +141,11 @@ class AnmeldungViewModelTest {
             override suspend fun allesVergessen() { ablage.protokoll += "filter-leer" }
         }
         val blickfeld = Blickfeld(blickAblage,
-            HaushaltRepository(t.api, t.cache),
-            TeileRepository(t.api, t.cache))
+            testHaushaltRepository(t.api),
+            testTeileRepository(t.api))
         val abmelden = SitzungsAttrappe { ablage.protokoll += "abmelden" }
         return t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api, t.cache), ablage, frage) { it in wurzeln })
+            testKontoRepository(t.api), ablage, frage) { it in wurzeln })
     }
 
     @Before
@@ -173,7 +175,7 @@ class AnmeldungViewModelTest {
         assertEquals(listOf("filter-leer", "token:abc", "name:marco"), ablage.protokoll)
         assertTrue(pfade.koerper.single(), "\"scope\":\"voll\"" in pfade.koerper.single())
         assertTrue(t.sitzung.state.value.isAdmin)
-        assertFalse(vm.anmeldeState.value.loginLaeuft)
+        assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
     }
 
     /**
@@ -200,12 +202,12 @@ class AnmeldungViewModelTest {
         val vm = vm()
         vm.login("marco", "geheim")
         assertTrue("Codefeld", vm.anmeldeState.value.codeNoetig)
-        assertNull("Ohne eingegebenen Code ist das kein Fehler", vm.anmeldeState.value.loginError)
+        assertNull("Ohne eingegebenen Code ist das kein Fehler", vm.anmeldeState.value.anmeldung.fehlerMeldung)
         assertFalse("Ohne `passkey: true` kein Passkey-Knopf", vm.anmeldeState.value.passkeyStattCode)
 
         vm.login("marco", "geheim", code = "123456")
-        assertTrue("Satz des Servers", vm.anmeldeState.value.loginError != null)
-        assertEquals("Code fehlt", vm.anmeldeState.value.loginError)
+        assertTrue("Satz des Servers", vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
+        assertEquals("Code fehlt", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertTrue(ablage.protokoll.none { it.startsWith("token:") })
     }
 
@@ -215,8 +217,8 @@ class AnmeldungViewModelTest {
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://server/", "einmalig")
-        assertTrue("Antwort", pfade.anfragenAn("qr-login").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft)
-        assertNull(vm.anmeldeState.value.loginError)
+        assertTrue("Antwort", pfade.anfragenAn("qr-login").isNotEmpty() && !vm.anmeldeState.value.anmeldung.laeuft)
+        assertNull(vm.anmeldeState.value.anmeldung.fehlerMeldung)
         assertEquals("Derselbe Server: keine Abmeldung", "url:https://server", ablage.protokoll.first())
     }
 
@@ -263,14 +265,14 @@ class AnmeldungViewModelTest {
         erstkontaktBeimErstenQrLogin()
         val vm = vm()
         vm.loginWithQrToken("https://brick.example.org/", "bim:x")
-        assertTrue("Wartet auf den Dialog statt „Keine Verbindung“", vm.anmeldeState.value.loginLaeuft)
-        assertNull(vm.anmeldeState.value.loginError)
+        assertTrue("Wartet auf den Dialog statt „Keine Verbindung“", vm.anmeldeState.value.anmeldung.laeuft)
+        assertNull(vm.anmeldeState.value.anmeldung.fehlerMeldung)
 
         assertTrue(frage.bestaetige(pinsDerAblage))
         assertEquals("Zweiter Versuch", 2, pfade.anfragen.count { it == "POST /api/v1/auth/qr-login" })
         vm.qrKontoEntscheiden(true)
         assertTrue("angemeldet: ${ablage.protokoll}", t.sitzung.state.value.isLoggedIn)
-        assertNull(vm.anmeldeState.value.loginError)
+        assertNull(vm.anmeldeState.value.anmeldung.fehlerMeldung)
     }
 
     @Test
@@ -280,8 +282,8 @@ class AnmeldungViewModelTest {
         vm.loginWithQrToken("https://brick.example.org/", "bim:x")
         frage.verwerfen()
         assertEquals(1, pfade.anfragen.count { it == "POST /api/v1/auth/qr-login" })
-        assertFalse(vm.anmeldeState.value.loginLaeuft)
-        assertNotNull(vm.anmeldeState.value.loginError)
+        assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
+        assertNotNull(vm.anmeldeState.value.anmeldung.fehlerMeldung)
         assertFalse(t.sitzung.state.value.isLoggedIn)
     }
 
@@ -307,7 +309,7 @@ class AnmeldungViewModelTest {
         assertNull("Derselbe ist kein Wechsel", vm.bisherigerPin("https://brick.example.org/", fpAlt))
 
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
-        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertTrue("Ohne Bestätigung nichts: ${ablage.protokoll}", ablage.protokoll.isEmpty())
         assertTrue(pfade.anfragenAn("qr-login").isEmpty())
         assertEquals(fpAlt, ablage.pins["brick.example.org:443"])
@@ -315,13 +317,13 @@ class AnmeldungViewModelTest {
         // Ein Tipp mit falsch abgeschriebenem Wert genügt ebenso wenig.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinWechselEingabe = "09:09:09:09:09:09:09:09:09:09:09:09")
-        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertTrue("Falsch abgeschrieben: nichts", pfade.anfragenAn("qr-login").isEmpty())
 
         // 16 Zeichen (64 Bit) genügen nicht mehr.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinWechselEingabe = "07:07:07:07:07:07:07:07")
-        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
 
         // Die letzten 24 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
@@ -341,7 +343,7 @@ class AnmeldungViewModelTest {
         assertFalse("Ohne Fingerabdruck nichts abzutippen", vm.mussAbtippen("https://brick.example.org/", null))
 
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
-        assertEquals("t${R.string.setup_qr_pin_abtippen_abgelehnt}", vm.anmeldeState.value.loginError)
+        assertEquals("t${R.string.setup_qr_pin_abtippen_abgelehnt}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertTrue("Ein Tipp genügt nicht: ${ablage.protokoll}", ablage.protokoll.isEmpty())
         assertTrue(pfade.anfragenAn("qr-login").isEmpty())
 
@@ -376,9 +378,9 @@ class AnmeldungViewModelTest {
         pfade.antworten["/api/v1/auth/login"] = """{"success":false,"error":"Falsches Passwort"}"""
         val vm = vm()
         vm.login("marco", "falsch")
-        assertTrue("Fehler", vm.anmeldeState.value.loginError != null)
+        assertTrue("Fehler", vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
         t.sitzung.abgemeldet()
-        assertNull(vm.anmeldeState.value.loginError)
+        assertNull(vm.anmeldeState.value.anmeldung.fehlerMeldung)
     }
 
     @Test
@@ -398,7 +400,7 @@ class AnmeldungViewModelTest {
         pfade.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm()
         vm.loginWithQrToken("http://nas:3000", "bim:x")
-        assertEquals("t${R.string.setup_qr_klartext_abgelehnt}", vm.anmeldeState.value.loginError)
+        assertEquals("t${R.string.setup_qr_klartext_abgelehnt}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertTrue("Nichts gespeichert: ${ablage.protokoll}", ablage.protokoll.isEmpty())
         assertTrue("Der Code ging nicht hinaus", pfade.anfragenAn("qr-login").isEmpty())
         assertFalse(t.sitzung.state.value.isLoggedIn)
@@ -458,16 +460,17 @@ class AnmeldungViewModelTest {
             listOf("ziel:https://neu.example", "ziel:null"), ablage.protokoll.toList())
         assertEquals("https://server", ablage.url)
         assertTrue(t.sitzung.state.value.isLoggedIn)
-        assertFalse(vm.anmeldeState.value.loginLaeuft)
+        assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
     }
 
     @Test
     fun `scheitert die Kopplung mit einem anderen Server, steht der Fehler da und die Anmeldung bleibt`() {
-        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen"}"""
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen","code":"qr_abgelaufen"}"""
+        pfade.codes["/api/v1/auth/qr-login"] = 410
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
-        assertEquals("Code abgelaufen", vm.anmeldeState.value.loginError)
+        assertEquals("Fehler des Servers", "Code abgelaufen", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertEquals(listOf("ziel:https://neu.example", "ziel:null"), ablage.protokoll.toList())
         assertTrue(t.sitzung.state.value.isLoggedIn)
     }
@@ -492,7 +495,7 @@ class AnmeldungViewModelTest {
         assertTrue("angemeldet", t.sitzung.state.value.isLoggedIn)
         assertTrue(ablage.protokoll.toString(), ablage.protokoll.containsAll(listOf("token:abc", "name:marco")))
         assertNull(vm.anmeldeState.value.qrKonto)
-        assertFalse(vm.anmeldeState.value.loginLaeuft)
+        assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
     }
 
     @Test
@@ -512,7 +515,7 @@ class AnmeldungViewModelTest {
         assertEquals("vergiss:brick.example.org:443", ablage.protokoll.last())
         assertFalse(t.sitzung.state.value.isLoggedIn)
         assertNull(vm.anmeldeState.value.qrKonto)
-        assertFalse(vm.anmeldeState.value.loginLaeuft)
+        assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
     }
 
     /** Schreibt mit, welche Optionen ankamen, und antwortet mit [ergebnis]. */
@@ -550,8 +553,8 @@ class AnmeldungViewModelTest {
         ablage.url = "https://brick.example.org"
         val vm = vm()
         vm.passkeyAnmelden(FakePasskey(PasskeyErgebnis.Abgebrochen))
-        assertTrue("Optionen geholt", pfade.anfragenAn("optionen").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft)
-        assertNull(vm.anmeldeState.value.loginError)
+        assertTrue("Optionen geholt", pfade.anfragenAn("optionen").isNotEmpty() && !vm.anmeldeState.value.anmeldung.laeuft)
+        assertNull(vm.anmeldeState.value.anmeldung.fehlerMeldung)
         assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it == "POST /api/v1/auth/passkey/anmelden" })
         assertFalse(t.sitzung.state.value.isLoggedIn)
     }
@@ -562,15 +565,15 @@ class AnmeldungViewModelTest {
         ablage.url = "https://brick.example.org"
         val vm = vm()
         vm.passkeyAnmelden(FakePasskey(PasskeyErgebnis.KeinPasskey))
-        assertTrue("Satz", vm.anmeldeState.value.loginError != null)
-        assertEquals("t${R.string.login_passkey_keiner}", vm.anmeldeState.value.loginError)
+        assertTrue("Satz", vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
+        assertEquals("t${R.string.login_passkey_keiner}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
 
         pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = """{"success":false,"error":"Passkeys brauchen eine Domain"}"""
         pfade.codes["/api/v1/auth/passkey/anmelden/optionen"] = 503
         val fake = FakePasskey(passkeyAntwort)
         vm.passkeyAnmelden(fake)
-        // NummernTexte.meldung() gibt „fehler“: Der Satz kommt aus der Fehlerschicht wie beim Passwort.
-        assertTrue("Fehler des Servers", vm.anmeldeState.value.loginError == "fehler")
+        // Der Satz des Servers, aus der Fehlerschicht wie beim Passwort.
+        assertTrue("Fehler des Servers", vm.anmeldeState.value.anmeldung.fehlerMeldung.text == "Passkeys brauchen eine Domain")
         assertTrue("Ohne Optionen wird der Credential Manager nicht gefragt", fake.optionen.isEmpty())
     }
 
@@ -610,10 +613,10 @@ class AnmeldungViewModelTest {
             val fake = fremdeOptionen(fremd)
             val vm = vm()
             vm.passkeyAnmelden(fake)
-            assertTrue("abgelehnt $fremd", vm.anmeldeState.value.loginError != null)
-            assertEquals(fremd, "t${R.string.login_passkey_rpid_fremd}", vm.anmeldeState.value.loginError)
+            assertTrue("abgelehnt $fremd", vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
+            assertEquals(fremd, R.string.login_passkey_rpid_fremd, (vm.anmeldeState.value.anmeldung.fehlerMeldung as Meldung.Ressource).id)
             assertTrue("$fremd erreichte den Credential Manager", fake.optionen.isEmpty())
-            assertFalse(vm.anmeldeState.value.loginLaeuft)
+            assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
         }
         assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it == "POST /api/v1/auth/passkey/anmelden" })
         assertFalse(t.sitzung.state.value.isLoggedIn)
@@ -624,12 +627,12 @@ class AnmeldungViewModelTest {
         val fake = fremdeOptionen(null)
         val vm = vm()
         vm.passkeyAnmelden(fake)
-        assertTrue("abgelehnt", vm.anmeldeState.value.loginError != null)
-        assertEquals("t${R.string.login_passkey_rpid_fehlt}", vm.anmeldeState.value.loginError)
+        assertTrue("abgelehnt", vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
+        assertEquals("t${R.string.login_passkey_rpid_fehlt}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
 
         val zweiter = fremdeOptionen("opfer.example")
         vm.passkeyStattCode("marco", "geheim", zweiter)
-        assertTrue("abgelehnt", vm.anmeldeState.value.loginError == "t${R.string.login_passkey_rpid_fremd}")
+        assertTrue("abgelehnt", (vm.anmeldeState.value.anmeldung.fehlerMeldung as? Meldung.Ressource)?.id == R.string.login_passkey_rpid_fremd)
         assertTrue(fake.optionen.isEmpty() && zweiter.optionen.isEmpty())
         assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it.startsWith("POST /api/v1/auth/login") })
     }
@@ -640,8 +643,8 @@ class AnmeldungViewModelTest {
         val wechsel = PasskeyAbfrage { ablage.url = "https://anders.example"; passkeyAntwort }
         val vm = vm()
         vm.passkeyAnmelden(wechsel)
-        assertTrue("abgelehnt", vm.anmeldeState.value.loginError != null)
-        assertEquals("t${R.string.login_passkey_fehler}", vm.anmeldeState.value.loginError)
+        assertTrue("abgelehnt", vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
+        assertEquals("t${R.string.login_passkey_fehler}", vm.anmeldeState.value.anmeldung.fehlerMeldung.text)
         assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it == "POST /api/v1/auth/passkey/anmelden" })
     }
 }

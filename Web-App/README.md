@@ -71,8 +71,9 @@ Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
 Damit Browser und Telefone dem Zertifikat vertrauen, kommt das
 **Wurzelzertifikat** einmal auf jedes Gerät: Es liegt unter
-`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Über
-HTTP kann es unterwegs ausgetauscht werden; **vor dem Installieren den
+`https://<BRICK_HOST>/ca.crt`, nur über HTTPS: Die Zertifikatswarnung des
+Browsers einmal bestätigen. Weil das Gerät dieser Verbindung noch nicht traut,
+kann die Datei unterwegs ausgetauscht sein; **vor dem Installieren den
 SHA-256-Fingerabdruck auf dem Gerät mit dem auf dem Server vergleichen**
 (`docker compose logs caddy | grep Fingerabdruck` oder die Ausgabe von
 `scripts/ca-einrichten.sh`). Er steht auch in den Einstellungen unter „Sicherheit“; die
@@ -123,7 +124,9 @@ Am sichersten hängt der Proxy mit fester Adresse im Netz `brickinventory-net`
 (`ipv4_address`, wie Caddy) und leitet an `https://caddy:443` weiter. Läuft er
 auf einem anderen Rechner, dessen feste LAN-Adresse. **Nie** das
 Docker-Gateway (`172.x.0.1`) oder ein ganzes Netz eintragen: Über das Gateway
-kommen auch Clients selbst herein und könnten sich jede Adresse geben. Der
+kommen auch Clients selbst herein und könnten sich jede Adresse geben. Netze
+über 8 Adressen (weiter als `/29`, IPv6 `/120`) nimmt Caddy nur mit
+`PROXY_NETZ_BESTAETIGT=1` in `.env`. Der
 Proxy muss `X-Forwarded-For` setzen (bei Nginx Proxy Manager die Vorgabe).
 
 Kommen über eine Stunde und mindestens 300 Anfragen alle mit derselben
@@ -396,7 +399,7 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. Ist sie gesetzt, antwortet die App nur unter diesem Namen (sonst 421; frei bleiben `localhost`, App-Token, `/ca.crt` und die Gesundheitspfade). |
 | `APP_BASE_URL_FEHLT_OK` | Nur `1`: Im Betrieb (`NODE_ENV=production`) startet der Web-Prozess ohne `APP_BASE_URL` sonst nicht, weil der Host-Filter fehlte. `compose.yaml` setzt `APP_BASE_URL` immer. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur bis 8 Adressen (IPv4 ab `/29`, IPv6 ab `/120`), weitere bis `/16` bzw. `/64` nur mit `PROXY_NETZ_BESTAETIGT=1` (gilt auch für `VORGELAGERTER_PROXY`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `VORGELAGERTER_PROXY` | Pflicht mit `compose.yaml`, nur für Caddy: `keiner` (Caddy direkt erreichbar, glaubt keinem `X-Forwarded-For`) oder die Adresse(n) eines Proxys **vor** Caddy (z. B. Nginx Proxy Manager), durch Leerzeichen getrennt. Siehe „Proxy vor Caddy“. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
@@ -412,6 +415,7 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Ohne Ablauf gibt es nur die Wahl „Unbegrenzt“ beim QR-Code, nur über HTTPS und mit Rotation. |
 | `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. `0` schaltet die Frist **nicht** ab. |
 | `SESSION_MAX_HOURS` | Stunden ab der Anmeldung, nach denen eine **Webapp-Sitzung** endet, auch wenn sie benutzt wird (Vorgabe `168`, eine Woche). Anders als `SESSION_IDLE_MINUTES` gleitet diese Frist nicht. Ein ungültiger Wert fällt mit einer Logzeile auf die Vorgabe zurück. |
+| `SESSION_ADMIN_IDLE_MINUTES`, `SESSION_ADMIN_MAX_HOURS` | Kürzere Fristen für **Verwaltersitzungen** im Browser: Leerlauf in Minuten (Vorgabe `30`) und Höchstdauer ab der Anmeldung in Stunden (Vorgabe `12`). Höchstens so lang wie `SESSION_IDLE_MINUTES` bzw. `SESSION_MAX_HOURS`. Jede Anfrage der offenen Seite zählt als Betrieb. |
 
 Siehe `UPGRADE.md` für die Änderungen gegenüber der Vorgängerfassung.
 

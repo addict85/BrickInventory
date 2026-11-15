@@ -1,12 +1,12 @@
 /**
- * Der Dispatcher (js/actions.js) und die Bildfehler in jsdom am Bündel aus
+ * Der Dispatcher (js/aktionen.js) und die Bildfehler in jsdom am Bündel aus
  * main.js, das zusätzlich die Registry auf window legt: Jeder Handlername aus
  * Markup und Vorlagen ist zur Laufzeit angemeldet, ein Klick reicht Argumente,
  * Feldwert und `this` durch, ein Bildfehler wird einmal wiederholt, bevor der
  * Rückfall greift, und das Protokollfenster lädt sein Skript als Datei.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
- *   A  `closePwModal,` aus registerActions() in actions.js gestrichen → rot:
+ *   A  `closePwModal,` aus registerActions() in aktionen.js gestrichen → rot:
  *      „jeder Handler aus Markup und Vorlagen ist angemeldet“
  *   B  in handle() die Schleife über data-arg… nach data-arg2 abgebrochen
  *      (Liste ohne data-arg3) → rot: „ein Klick reicht Argumente …“
@@ -18,7 +18,7 @@
  *   F  der Zweig für data-onerror="keep" entfernt → rot: „der Zoom behält …“
  *   G  in openLogViewer wieder `'<script>' + …` statt logviewer.js → rot:
  *      „das Protokollfenster lädt sein Skript als Datei“
- *   H  `import './actions.js';` aus main.js gestrichen → rot: alle Fälle hier
+ *   H  `import './aktionen.js';` aus main.js gestrichen → rot: alle Fälle hier
  */
 const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');

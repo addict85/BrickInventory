@@ -1,6 +1,6 @@
 /**
  * PDF.js steht unter Abhängigkeitsverwaltung: pdfjs-dist mit exakter Fassung
- * in package.json und Lockfile (sichtbar für npm audit und Renovate);
+ * in package.json und Lockfile (sichtbar für npm audit und Dependabot);
  * public/vendor/pdfjs/ ist eine Kopie, die scripts/pdfjs-kopieren.js beim
  * Bauen schreibt. Läuft die Kopie der Fassung hinterher, wird dieser Test rot.
  *

@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import org.junit.Assert.assertEquals
@@ -32,7 +34,7 @@ class FilterzahlTest {
     @Test
     fun `ohne Abweichung steht keine Zahl`() {
         assertEquals(0, Filterzahl.galerie(haushalt, ScopeFilter.ALL, orte, "", ""))
-        assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.ALLE, "", ""))
+        assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.ALLE, Farbwahl.Alle, Kategoriewahl.Alle))
     }
 
     @Test
@@ -57,7 +59,7 @@ class FilterzahlTest {
 
     @Test
     fun `bei den Teilen zaehlen Ersatzteile, Farbe und Kategorie`() {
-        assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.OHNE, "Red", "Bricks"))
-        assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", Ersatzteilwahl.NUR, "Red", "Bricks"))
+        assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.OHNE, Farbwahl.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
+        assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", Ersatzteilwahl.NUR, Farbwahl.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
     }
 }

@@ -42,7 +42,7 @@ const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPre
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
-  getPriceGuide: async (_k, _sn, cond) => {
+  preisfuehrerAbfrage: async (_k, _sn, cond) => {
     abrufe.push(cond);
     return cond === 'N'
       ? { min_price: '100', avg_price: '111', max_price: '120', qty_avg_price: '110', total_quantity: '7' }
@@ -103,13 +103,13 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
     [SET],
   );
 
-  const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
+  const { bewerteSets } = _req('src/finanzen/financeCalc.js');
   abrufe = [];
-  const vorher = await computeSetsValuation(uid, [uid]);
+  const vorher = await bewerteSets(uid, [uid]);
   assert.deepEqual(abrufe, [], 'die Bewertung ruft selbst BrickLink ab');
   assert.equal(vorher.preise_ausstehend, 1, 'der fehlende Preis steht nicht als Auftrag an');
   assert.ok(await nachladen());
-  const zeile = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
+  const zeile = (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.ok(zeile, 'Set fehlt in der Bewertung');
   assert.equal(
     zeile.avg_price,
@@ -121,7 +121,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
   // Jetzt sind beide frisch — der nächste Aufruf kommt ohne BrickLink aus.
   abrufe = [];
   assert.equal(await nachladen(), false, 'ein frischer Preis stellt keinen Auftrag ein');
-  const zweite = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
+  const zweite = (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(zweite.avg_price, 111);
   assert.deepEqual(abrufe, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch im Cache liegen');
 
@@ -131,7 +131,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
     [SET],
   );
   abrufe = [];
-  const dritte = (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
+  const dritte = (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(await nachladen(), false, 'beide frisch ohne Preis: kein Auftrag');
   assert.equal(dritte.avg_price, 0);
   assert.deepEqual(abrufe, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch ohne Preis sind');
@@ -149,8 +149,8 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   await aufraeumen();
   t.after(aufraeumen);
   const uid = await konto(NAME, SET);
-  const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
-  const bewerte = async () => (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
+  const { bewerteSets } = _req('src/finanzen/financeCalc.js');
+  const bewerte = async () => (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
 
   // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.
   await db.run(

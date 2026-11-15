@@ -6,12 +6,12 @@ Rot: die Jahresverteilung kommt vom Server, mit den Filtern der Liste
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-@@ -168,7 +168,7 @@ class CatalogViewModel @Inject constructor(
+@@ -170,7 +170,7 @@
          viewModelScope.launch {
              val s = _catalogState.value
              val r = katalog.getCatalogYearVerteilung(
 -                q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
 +                q = s.query.ifBlank { null }, themeId = null, sort = s.sort)
              if (gen != catalogGeneration) return@launch
-             if (r is Ergebnis.Success && r.data.success) {
+             if (r is Ergebnis.Erfolg) {
                  // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.

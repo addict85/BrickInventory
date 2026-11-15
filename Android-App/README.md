@@ -200,8 +200,9 @@ https-Adresse eintragen).
 | Weg | Was passiert |
 | --- | --- |
 | QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Ein Code kann von jedem stammen: Ohne Abtippen gilt er nur, wenn er auf eine System-Wurzel zeigt (deren Kette ohnehin öffentlich gültig sein muss) oder dem schon bestätigten Pin entspricht. Sonst verlangt der Dialog die letzten 24 Zeichen aus der Webapp (Einstellungen → Server-Zertifikat), beim ersten Einrichten wie bei einem abweichenden Pin. |
-| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich). |
+| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich); wer will, tippt ihn stattdessen ab („Fingerabdruck stattdessen abtippen“), dann gilt nur eine passende Abschrift. |
 | Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
+| Neuer Serverschlüssel unter öffentlicher CA | Ist eine System-Wurzel gepinnt, merkt sich die App zusätzlich den Schlüssel des Blatts (zweiter Pin, `host:port#blatt`). Zeigt der Server später einen anderen, geht nichts hinaus; der Dialog „Der Server hat einen neuen Schlüssel“ nennt beide, übernommen wird nach bewusster Bestätigung (ohne Abtippen: die Kette hat das System samt CT geprüft) oder still über einen Code mit `fp` vom angemeldeten Bildschirm. Ältere Fassungen ohne zweiten Pin merken ihn beim nächsten Verbindungsaufbau. |
 
 Die Dialoge zum Fingerabdruck erklären in einfachen Worten, was er ist und in
 drei Schritten, wo er in der Webapp steht (Texte `zert_text_*`, `setup_qr_pin_abtippen`).
@@ -209,8 +210,13 @@ drei Schritten, wo er in der Webapp steht (Texte `zert_text_*`, `setup_qr_pin_ab
 Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server
 ausweisen darf (EKU `serverAuth` oder gar keine EKU-Angabe).
 
-Weil die Wurzel gepinnt wird und nicht das Blatt, übersteht der Pin die
-regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
+Weil unter einer eigenen CA die Wurzel gepinnt wird und nicht das Blatt, übersteht
+der Pin die regelmässige Erneuerung des Serverzertifikats durch Caddy (alle paar
+Stunden). Unter einer öffentlichen CA fragt die App bei jedem neuen Serverschlüssel
+(Caddy erneuert ACME-Zertifikate standardmässig mit neuem Schlüssel, etwa alle 60
+Tage). Wechselt die Wurzel innerhalb einer Familie (ISRG Root X1 → X2, GTS R1 → R4
+usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIEN`, nicht im frei
+wählbaren `O=` des Subjekts. Andere Hosts
 (GitHub für die Selbstaktualisierung) prüft nur die System-CA-Liste.
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
@@ -225,12 +231,24 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
 (`sicherheit/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
-Zweck gebunden):
+Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
+mit `setUnlockedDeviceRequired` umhüllt (`EntsperrTresor`, Alias
+`brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
+liest weder Bestand noch Kaufpreise. Ein Schlüssel älterer Fassungen (Alias
+`brickinventory_ablage`, ohne Bedingung) wird beim ersten Zugriff mit entsperrtem Gerät
+umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`AblageEntsperrtTest`);
+danach wird der alte Alias gelöscht, beim Token ebenso `brickinventory_auth_token`.
+Einen fehlenden alten Schlüssel legt die App nie neu an, der Altbestand gilt dann als
+weg (`KeystoreAltbestandTest`). Die Keystore-Geheimtexte tragen eine AAD (`a1:`); ältere
+ohne bleiben lesbar und werden beim ersten Zugriff umgeschlüsselt. Gesperrt meldet eine
+Ablage „gesperrt“ (IOException) statt „unlesbar“, damit niemand ihre Dateien löscht.
+Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und das
+öffnet sich ebenfalls nur entsperrt; ein laufender Prozess hält beide im Speicher.
 
 | Ablage | Wie |
 | --- | --- |
-| Bestand (Room) | SQLCipher |
-| API-Antworten, Widget-Zahlen | `AblageChiffre` |
+| Bestand (Room) samt Kennzahlen und Katalog-Metadaten | SQLCipher |
+| Widget-Zahlen | `AblageChiffre` |
 | Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
 | Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
@@ -248,17 +266,18 @@ steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
 Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
-**Abmelden:** Token, Antwort-Cache, Bestand und Ausgang, Vorschauen, beide
+**Abmelden:** Token, Bestand samt Kennzahlen und Ausgang, Vorschauen, beide
 Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
 weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
 Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
 gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
 prüft das ausgeführt.
 
-**Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
-Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
-`sicherheit/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
-erkennung am Server und die harte Höchstdauer von 180 Tagen.
+**Token und Ablagen unter `setUnlockedDeviceRequired`** (`EntsperrTresor`): Preisalarm,
+Widget und Ausgang arbeiten im Hintergrund nur in einem Prozess, der seit dem letzten
+Entsperren läuft; ein bei gesperrtem Gerät neu gestarteter wartet bis zum Entsperren
+(`liesToken`, Rückzug von WorkManager). Abgefedert ist der Rest durch die Rotation mit
+Wiederverwendungserkennung am Server und die harte Höchstdauer von 180 Tagen.
 
 **Pins und Nutzer-CA-Schalter verschlüsselt:** Sie liegen in `design_spiegel.xml`
 als `Vertrauenschiffre` (AES-GCM, an den Namen des Eintrags gebunden) unter einem
@@ -269,11 +288,13 @@ gilt als „kein Pin“ bzw. „Schalter aus“; der Nutzer bestätigt dann neu.
 gelöscht (`VertrauenVerschluesseltTest`). Wer Code mit der UID der App ausführt,
 kann den Keystore weiterhin benutzen wie die App.
 
-**Update-Angebot nur aus frischer Beschreibung (sec12 H2):** Ist die signierte
-Beschreibung abgelaufen oder älter als eine schon gesehene, bietet die App kein
-Update an; die Einstellungen sagen, warum. Sonst hielte eine wieder
-eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
-Zwischenfassung fest.
+**Update-Angebot nie aus einer zurückgesetzten Beschreibung (sec12 H2):** Ist die
+signierte Beschreibung älter als eine schon gesehene oder als die installierte
+Fassung, bietet die App kein Update an; die Einstellungen sagen, warum. Sonst hielte
+eine wieder eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
+Zwischenfassung fest. Eine nur abgelaufene, aber neuere Beschreibung bietet ihre
+Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFrischeTest`):
+Ohne neues Etikett binnen sieben Tagen bliebe das Gerät sonst auf der alten Fassung.
 
 ## Manipulationsschutz (MASVS-RESILIENCE)
 
@@ -283,13 +304,22 @@ Regel ihr Besitzer. Solche Prüfungen lassen sich mit Frida oder Magisk umgehen
 und sperren Nutzer eigener ROMs aus, ohne die Daten zu schützen. Was sie
 schützen soll, liegt an anderer Stelle: Der Server prüft jeden Zugriff,
 lokale Ablagen sind verschlüsselt, Updates sind signiert und werden vor der
-Installation geprüft.
+Installation geprüft. MASVS-R wird nicht angestrebt; die Geräteintegrität, die
+für heikle Schritte zählt (gesperrter Bootloader, verifizierter Start, echte
+App), prüft der Server über die Key Attestation des Geräteschlüssels
+(`docs/SICHERHEIT.md`, „Android: Resilienz“).
+
+**App-Sperre:** ein Sichtschutz der Oberfläche, keine Verschlüsselung. Sie
+verdeckt die App nach der gewählten Zeit im Hintergrund; Hintergrundarbeit läuft
+weiter, die Daten schützt der Keystore (siehe „Daten auf dem Gerät“). Das
+Widget verdeckt seine Beträge, sobald die Sperre greifen kann
+(`AppSperre.verdecktWidget`).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
 Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
 werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
-`tools/apk-pruefen.py` prüft am fertigen APK, dass `data.model.SetItem` nicht
+`tools/apk-pruefen.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
 mehr unter seinem Namen steht.
 
 **PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
@@ -332,29 +362,31 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.unittests` | JVM-Tests ohne `isReturnDefaultValues` (Android ohne Robolectric wirft), voller Stack im Protokoll, Gruppe `unit-tests` |
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
-| `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
+| `brickinventory.android.feature` | die vier oben, `core-ktx`, Navigation, Robolectric- und Compose-Testbibliotheken samt Testressourcen — ein Bereich |
 | `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-obergrenze.txt`); kommt mit library/application/jvm.library |
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
+`core-model` und `core-vertrag` bleiben reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Server- und UI-Modelle, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/vertrag-kotlin-zuordnung.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
-| `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen; kennt weder Netz noch Repositories |
-| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories, DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags |
+| `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen, alles in Fachtypen; kennt weder Netz noch Repositories noch das Wire-Format |
+| `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags |
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
 | `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
 | `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` und ohne Compose (`Modulkanten.ohneOberflaeche`) |
+| `core-navigation` | `ch.brickinventoryapp.navigation` | `Bereichsumgebung`: was jeder Bereich von der App zum Zeigen seiner Ziele bekommt (NavController, Bilder, Snackbar, Sitzung, Blickfeld, Rollgedächtnis) — einzelne Flüsse und Rückrufe, kein AppViewModel |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
 | `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |
@@ -398,13 +430,13 @@ und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
 ## Abhängigkeiten und Lieferkette
 
-`renovate.json` liegt im Wurzelverzeichnis (nur dort liest Renovate sie) und
-gilt für Gradle, die npm-Pakete der Web-App, die Docker-Images (Digests) und
-die GitHub-Actions (Commit-SHAs). Renovate erzeugt montags früh gesammelte Pull-Requests für kleine
-Sprünge und einzelne für grosse. `graphics-path` steigt nicht automatisch,
-`datastore-preferences` kommt als eigener PR: Ob die Bibliotheken 16-KB-
-ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
-Begründung steht als `description` direkt in der Regel.
+`.github/dependabot.yml` gilt für Gradle, die npm-Pakete der Web-App, die
+Docker-Images (Digests) und die GitHub-Actions (Commit-SHAs). Dependabot erzeugt
+montags früh gesammelte Pull-Requests für kleine Sprünge und einzelne für grosse,
+neue Fassungen frühestens drei Tage nach Erscheinen. `graphics-path` steigt nicht
+automatisch, `datastore-preferences` kommt als eigener PR: Ob die Bibliotheken
+16-KB-ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
+Begründung steht als Kommentar an der Regel.
 
 ### Gradle-Wrapper
 
@@ -507,7 +539,7 @@ der Compose-Testregel auf der JVM und bekommen Verhaltenstests.
 Faustregel: Was sich aufrufen lässt, bekommt einen Verhaltenstest. Die Frage lohnt
 sich auch, wo es schwer scheint: Was schwer prüfbar ist, ist
 meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
-braucht. `fehlerTextId()` und der Ordner-Parameter von `ResponseCache` sind
+braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
 Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —
@@ -701,8 +733,10 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   (7 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
   versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
   abgelaufene Beschreibung meldet sie in den Einstellungen („veraltet oder
-  manipuliert“) statt „aktuell“; ein Zurückhalten, etwa indem eine ältere Release
-  wieder „Latest“ wird, bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 7
+  manipuliert“ bzw. „eine neuere Fassung könnte existieren“) statt „aktuell“; ein
+  Zurückhalten, etwa indem eine ältere Release wieder „Latest“ wird, bleibt so nicht
+  mehr still. Angeboten wird aus einer abgelaufenen Beschreibung trotzdem, wenn sie
+  neuer ist als die installierte Fassung; die Messlatte verschiebt sie nicht. **Auffrischen:** Spätestens alle 7
   Tage ein neues Etikett `android-v…` setzen, notfalls auf denselben Commit von
   `main`. Gleicher versionCode und Commit gelten dabei als Wiederholung, die App
   bietet nichts an und sieht nur die neue Frist.

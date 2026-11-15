@@ -1,25 +1,23 @@
 package ch.brickinventoryapp.verwaltung.ui.viewmodel
 
 /**
- * Was die Verwaltungsseite auslöst. Die suspendierenden Aufrufe liefern das
- * Ergebnis für die Meldung, die der Bildschirm in seiner Sprache formuliert.
+ * Was die Verwaltungsseite auslöst. Nichts davon wartet: Das ViewModel führt aus,
+ * schreibt den Zustand und meldet über den Kanal der App, damit eine Aktion nicht
+ * abbricht, wenn der Bildschirm geht.
  */
 interface MonitoringAktionen {
-    suspend fun ladeJobs()
-    suspend fun ladeWarteschlange()
-    suspend fun ladeProtokoll(minuten: Int)
-    suspend fun wiederholeEintrag(setNummer: String): Boolean
-    suspend fun entferneEintrag(setNummer: String): Boolean
-    suspend fun leseAnleitungenNeuEin(): Int?
-    suspend fun starteCsvAbgleich(): Boolean
-    suspend fun startePreislauf(): Boolean
-    suspend fun ladeFehlendeBilderNach(): Boolean
-    suspend fun reiheKatalogbilderEin(): Boolean
-    suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean
+    fun aktualisiere()
+    fun zeigeWarteschlange()
+    fun waehleProtokoll(minuten: Int)
+    fun wiederhole(setNummer: String)
+    fun entferne(setNummer: String)
+    fun starte(job: Jobstart)
+    fun setzeZeitplan(name: String, zeit: String? = null, minuten: Int? = null)
     fun auftragAbbrechen(id: String)
     fun auftragWiederholen(id: String)
     fun auftragsArtStarten(art: String, name: String)
     fun auftragsArtLeeren(art: String)
-    /** Ein Satz für die Snackbar der App. */
-    fun melde(satz: String)
 }
+
+/** Die Startknöpfe der Job-Karten; jeder ruft genau einen Endpunkt. */
+enum class Jobstart { CSV_ABGLEICH, PREISLAUF, BESTANDSBILDER, KATALOGBILDER, ANLEITUNGEN }

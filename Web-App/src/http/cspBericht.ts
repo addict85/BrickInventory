@@ -4,36 +4,29 @@
  * gedrosselt und ohne Antwortinhalt. */
 import express from 'express';
 import type { Request, Response } from 'express';
-import { fehlerAntwort } from './httpAntwort';
-
-const router = express.Router();
+import { prozessweit } from '../infra/prozessweit';
+import { drosselAdresse } from '../infra/drosselAdresse';
 
 const FENSTER_MS = 60_000;
 const JE_ADRESSE = 10;
 /** Mehr Absender merkt sich die Minute nicht; wer danach kommt, wird verworfen. */
 const HOECHSTENS_ADRESSEN = 1000;
-let _fensterSeit = Date.now();
-let _gedrosselt = 0;
-const _jeAdresse = new Map<string, number>();
+const F = prozessweit('cspBericht', () => ({ seit: Date.now(), gedrosselt: 0, jeAdresse: new Map<string, number>() }));
 
-/** Ohne gemeinsame Quote: Sonst schöpfte ein Fremder sie aus, und echte Berichte
- * gingen in seiner Flut unter. IPv6 je /64, weil ein Anschluss so viele hat. */
-function absender(adresse: string): string {
-  return adresse.includes(':') ? adresse.split(':').slice(0, 4).join(':') : adresse;
-}
-
-function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
-  if (jetzt - _fensterSeit >= FENSTER_MS) {
-    if (_gedrosselt) console.warn(`[csp] ${_gedrosselt} gedrosselt`);
+export function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
+  const _jeAdresse = F.jeAdresse;
+  if (jetzt - F.seit >= FENSTER_MS) {
+    if (F.gedrosselt) console.warn(`[csp] ${F.gedrosselt} gedrosselt`);
     _jeAdresse.clear();
-    _gedrosselt = 0;
-    _fensterSeit = jetzt;
+    F.gedrosselt = 0;
+    F.seit = jetzt;
   }
-  const a = absender(adresse);
+  // Je Absender statt gemeinsam, sonst gingen echte Berichte in fremder Flut unter; IPv6 je /64.
+  const a = drosselAdresse(adresse);
   const n = (_jeAdresse.get(a) ?? 0) + 1;
   const frei = n <= JE_ADRESSE && (_jeAdresse.has(a) || _jeAdresse.size < HOECHSTENS_ADRESSEN);
   if (_jeAdresse.has(a) || _jeAdresse.size < HOECHSTENS_ADRESSEN) _jeAdresse.set(a, n);
-  if (!frei) _gedrosselt++;
+  if (!frei) F.gedrosselt++;
   return frei;
 }
 
@@ -111,29 +104,29 @@ function probe(regel: string, v: unknown): string {
   return v.replace(/[^\x20-\x7e]/g, ' ').slice(0, 80);
 }
 
-router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (req: Request, res: Response) => {
-  res.status(204).end();
-  if (!cspMeldungFrei(req.ip ?? '?')) return;
-  let daten: unknown;
-  try {
-    daten = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '');
-  } catch {
-    return;
-  }
-  for (const v of verstoesse(daten)) {
-    const regel = direktive(v.regel);
-    if (!regel || bildansicht(v.seite)) continue;
-    const p = probe(regel, v.probe);
-    // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
-    console.warn(
-      `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`.replace(
-        /\n|\r/g,
-        '',
-      ),
-    );
-  }
-});
-
-router.use(fehlerAntwort);
-
-export = Object.assign(router, { cspMeldungFrei });
+export function baueCspBerichtRouter() {
+  return express
+    .Router()
+    .post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (req: Request, res: Response) => {
+      res.status(204).end();
+      if (!cspMeldungFrei(req.ip ?? '?')) return;
+      let daten: unknown;
+      try {
+        daten = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '');
+      } catch {
+        return;
+      }
+      for (const v of verstoesse(daten)) {
+        const regel = direktive(v.regel);
+        if (!regel || bildansicht(v.seite)) continue;
+        const p = probe(regel, v.probe);
+        // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
+        console.warn(
+          `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`.replace(
+            /\n|\r/g,
+            '',
+          ),
+        );
+      }
+    });
+}

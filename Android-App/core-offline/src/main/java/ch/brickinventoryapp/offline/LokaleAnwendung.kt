@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.data.model.FigValuationItem
+import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.Stueckaenderung
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.VorratsOrt
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
 
 /**
  * Wie eine Bearbeitung die lokale Liste ändert, bevor der Server sie gesehen
@@ -18,13 +18,13 @@ import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
  */
 internal object LokaleAnwendung {
 
-    fun sets(liste: List<SetItem>, b: Wirkung): List<SetItem> = when (b) {
+    fun sets(liste: List<SetAnsicht>, b: Wirkung): List<SetAnsicht> = when (b) {
         is Bearbeitung.SetMenge -> liste.mapNotNull {
             if (it.setNumber != b.setNumber) it
             else (it.quantity + b.schritt).takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
         }
         is Bearbeitung.SetErfassen -> erfasst(liste, b)
-        is Nachzug.MerkpostenUebernommen -> sets(liste, Bearbeitung.SetErfassen(b.anfrage))
+        is Nachzug.MerkpostenUebernommen -> sets(liste, Bearbeitung.SetErfassen(b.wunsch))
         is Nachzug.SetMengeGesetzt -> liste.mapNotNull {
             if (it.setNumber != b.setNumber) it else b.menge.takeIf { m -> m > 0 }?.let { m -> it.copy(quantity = m) }
         }
@@ -40,32 +40,32 @@ internal object LokaleAnwendung {
         is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
     }
 
-    private fun erfasst(liste: List<SetItem>, b: Bearbeitung.SetErfassen): List<SetItem> {
-        val a = b.anfrage
+    private fun erfasst(liste: List<SetAnsicht>, b: Bearbeitung.SetErfassen): List<SetAnsicht> {
+        val a = b.wunsch
         if (liste.none { it.setNumber == a.setNumber })
-            return listOf(SetItem(setNumber = a.setNumber, quantity = a.quantity, condition = a.condition, storage = a.storage)) + liste
-        return liste.map { if (it.setNumber == a.setNumber) it.copy(quantity = it.quantity + a.quantity) else it }
+            return listOf(SetAnsicht(setNumber = a.setNumber, quantity = a.menge, condition = a.zustand, storage = a.lagerort)) + liste
+        return liste.map { if (it.setNumber == a.setNumber) it.copy(quantity = it.quantity + a.menge) else it }
     }
 
-    /** Was die Zusammenfassung nicht kennt, bleibt wie abgelegt. */
-    private fun zusammengefasst(s: SetItem, b: Nachzug.SetZusammenfassung): SetItem {
+    /** Die Zusammenfassung ist vollständig: Ein Preis null heisst „keiner erfasst“, nicht „unbekannt“;
+     * der abgelegte gälte sonst nach dem Löschen des letzten Kaufs weiter. */
+    private fun zusammengefasst(s: SetAnsicht, b: Nachzug.SetZusammenfassung): SetAnsicht {
         val agg = b.agg
-        return s.copy(condition = agg.condition ?: s.condition, conditions = agg.conditions.ifEmpty { s.conditions },
-            usedCount = agg.usedCount ?: s.usedCount, maxPurchasePrice = agg.maxPurchasePrice ?: s.maxPurchasePrice,
-            avgPurchasePrice = agg.avgPurchasePrice ?: s.avgPurchasePrice)
+        return s.copy(condition = agg.zustand, conditions = agg.zustaende, usedCount = agg.gebraucht,
+            maxPurchasePrice = agg.hoechsterKaufpreis, avgPurchasePrice = agg.kaufpreisSchnitt)
     }
 
     /** Den Namen des neuen Besitzers kennt erst der nächste Abgleich; bis dahin die Nummer ohne Namen. */
-    private fun verschoben(s: SetItem, b: Nachzug.SetVerschoben): SetItem {
+    private fun verschoben(s: SetAnsicht, b: Nachzug.SetVerschoben): SetAnsicht {
         if (s.owners.isEmpty()) return s
         val ohne = if (b.alle) s.owners.filterNot { it.id == b.von } else s.owners
-        return s.copy(owners = if (ohne.any { it.id == b.zu }) ohne else ohne + KontoName(id = b.zu))
+        return s.copy(owners = if (ohne.any { it.id == b.zu }) ohne else ohne + KontoAnsicht(id = b.zu))
     }
 
-    fun merkliste(liste: List<Merkposten>, b: Wirkung): List<Merkposten> = when (b) {
+    fun merkliste(liste: List<MerkpostenAnsicht>, b: Wirkung): List<MerkpostenAnsicht> = when (b) {
         is Bearbeitung.MerkpostenAnlegen -> {
-            val a = b.anfrage
-            val neu = Merkposten(setNumber = a.setNumber, condition = a.condition, userId = a.ownerUserId ?: 0)
+            val a = b.wunsch
+            val neu = MerkpostenAnsicht(setNumber = a.setNumber, condition = a.zustand, userId = a.besitzer ?: 0)
             if (liste.any { merkSchluessel(it) == merkSchluessel(neu) }) liste else listOf(neu) + liste
         }
         is Bearbeitung.MerkpostenLoeschen -> liste.filterNot {
@@ -73,7 +73,7 @@ internal object LokaleAnwendung {
         }
         is Nachzug.MerkpostenUebernommen -> merkliste(liste, Bearbeitung.MerkpostenLoeschen(b.setNumber, b.zustand, b.besitzer))
         is Nachzug.MerkpostenVerschoben -> {
-            val ziel = merkSchluessel(Merkposten(setNumber = b.setNumber, condition = b.zustand, userId = b.zu))
+            val ziel = merkSchluessel(MerkpostenAnsicht(setNumber = b.setNumber, condition = b.zustand, userId = b.zu))
             // Hatte das Ziel den Posten schon, fasst der Server zusammen: Es bleibt einer.
             val vorhanden = liste.any { merkSchluessel(it) == ziel }
             liste.mapNotNull {
@@ -89,11 +89,11 @@ internal object LokaleAnwendung {
         is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
     }
 
-    fun manuelleTeile(liste: List<PartValuationItem>, b: Wirkung): List<PartValuationItem> = when (b) {
+    fun manuelleTeile(liste: List<ManuellesTeilAnsicht>, b: Wirkung): List<ManuellesTeilAnsicht> = when (b) {
         is Bearbeitung.TeilErfassen -> teilErfasst(liste, b)
         is Bearbeitung.TeilAendern -> liste.map {
             if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer))
-                it.copy(quantity = neueMenge(it.quantity, b.anfrage), unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
+                it.copy(quantity = neueMenge(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
             else it
         }
         is Bearbeitung.TeilLoeschen -> liste.filterNot {
@@ -112,18 +112,18 @@ internal object LokaleAnwendung {
         is Nachzug.LagerortGeloescht, is Nachzug.LagerortVorgabe, is Nachzug.AlarmGesetzt, is Nachzug.AlarmEntfernt -> liste
     }
 
-    private fun teilErfasst(liste: List<PartValuationItem>, b: Bearbeitung.TeilErfassen): List<PartValuationItem> {
-        val a = b.anfrage
-        fun gleich(p: PartValuationItem) = p.partNumber == a.partNumber && p.colorId == a.colorId
+    private fun teilErfasst(liste: List<ManuellesTeilAnsicht>, b: Bearbeitung.TeilErfassen): List<ManuellesTeilAnsicht> {
+        val a = b.erfassung
+        fun gleich(p: ManuellesTeilAnsicht) = p.partNumber == a.nummer && p.colorId == a.farbId
         if (liste.none(::gleich))
-            return listOf(PartValuationItem(partNumber = a.partNumber, colorId = a.colorId, colorName = a.colorName,
-                colorHex = a.colorHex, quantity = a.quantity, unitPrice = a.unitPrice, condition = a.condition,
-                userId = a.ownerUserId, storage = a.storage)) + liste
-        return liste.map { if (gleich(it)) it.copy(quantity = it.quantity + a.quantity) else it }
+            return listOf(ManuellesTeilAnsicht(partNumber = a.nummer, colorId = a.farbId, colorName = a.farbname,
+                colorHex = a.farbHex, quantity = a.menge, unitPrice = a.stueckpreis, condition = a.zustand,
+                userId = a.besitzer, storage = a.lagerort)) + liste
+        return liste.map { if (gleich(it)) it.copy(quantity = it.quantity + a.menge) else it }
     }
 
-    private fun umgefaerbt(liste: List<PartValuationItem>, b: Nachzug.TeilFarbe): List<PartValuationItem> {
-        fun gemeint(p: PartValuationItem, farbe: Int) =
+    private fun umgefaerbt(liste: List<ManuellesTeilAnsicht>, b: Nachzug.TeilFarbe): List<ManuellesTeilAnsicht> {
+        fun gemeint(p: ManuellesTeilAnsicht, farbe: Int) =
             p.partNumber == b.partNumber && p.colorId == farbe && (b.besitzer == null || p.userId == b.besitzer)
         val alt = liste.firstOrNull { gemeint(it, b.colorId) } ?: return liste
         val ziel = liste.firstOrNull { gemeint(it, b.neueFarbe) }
@@ -131,17 +131,17 @@ internal object LokaleAnwendung {
         return liste.map { if (it === alt) it.copy(colorId = b.neueFarbe, colorName = b.farbName, colorHex = b.farbHex) else it }
     }
 
-    fun manuelleFiguren(liste: List<FigValuationItem>, b: Wirkung): List<FigValuationItem> = when (b) {
+    fun manuelleFiguren(liste: List<ManuelleFigurAnsicht>, b: Wirkung): List<ManuelleFigurAnsicht> = when (b) {
         is Bearbeitung.FigurErfassen -> {
-            val a = b.anfrage
-            if (liste.any { it.figNumber == a.figNumber })
-                liste.map { if (it.figNumber == a.figNumber) it.copy(quantity = it.quantity + a.quantity) else it }
-            else listOf(FigValuationItem(figNumber = a.figNumber, blFigNumber = a.blFigNumber, quantity = a.quantity,
-                unitPrice = a.unitPrice, condition = a.condition, userId = a.ownerUserId, storage = a.storage)) + liste
+            val a = b.erfassung
+            if (liste.any { it.figNumber == a.nummer })
+                liste.map { if (it.figNumber == a.nummer) it.copy(quantity = it.quantity + a.menge) else it }
+            else listOf(ManuelleFigurAnsicht(figNumber = a.nummer, blFigNumber = a.blNummer, quantity = a.menge,
+                unitPrice = a.stueckpreis, condition = a.zustand, userId = a.besitzer, storage = a.lagerort)) + liste
         }
         is Bearbeitung.FigurAendern -> liste.map {
             if (it.figNumber == b.figNumber && (b.besitzer == null || it.userId == b.besitzer))
-                it.copy(quantity = neueMenge(it.quantity, b.anfrage), unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
+                it.copy(quantity = neueMenge(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
             else it
         }
         is Bearbeitung.FigurLoeschen -> liste.filterNot {
@@ -158,7 +158,7 @@ internal object LokaleAnwendung {
     }
 
     /** Ein gesetzter Alarm ersetzt den des Sets im selben Zustand; neue stehen vorn wie am Server. */
-    fun preisalarme(liste: List<Preisalarm>, b: Wirkung): List<Preisalarm> = when (b) {
+    fun preisalarme(liste: List<PreisalarmAnsicht>, b: Wirkung): List<PreisalarmAnsicht> = when (b) {
         is Nachzug.AlarmGesetzt -> {
             val alt = liste.firstOrNull { it.setNumber == b.alarm.setNumber && it.condition == b.alarm.condition }
             // Die Einzelroute schickt weder Name noch Bild; die der Übersicht bleiben stehen.
@@ -175,9 +175,9 @@ internal object LokaleAnwendung {
     }
 
     /** Der Vorrat folgt Anlegen, Umbenennen, Löschen und dem Stern; höchstens ein Ort trägt ihn. */
-    fun lagerorte(liste: List<VorratsOrt>, b: Wirkung): List<VorratsOrt> = when (b) {
+    fun lagerorte(liste: List<VorratsOrtAnsicht>, b: Wirkung): List<VorratsOrtAnsicht> = when (b) {
         is Nachzug.LagerortAngelegt ->
-            if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrt(b.ort, vorgabe = false)
+            if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrtAnsicht(ort = b.ort, vorgabe = false)
         is Nachzug.LagerortUmbenannt -> liste.map { if (it.ort.id == b.neu.id) it.copy(ort = b.neu) else it }
         is Nachzug.LagerortGeloescht -> liste.filterNot { it.ort.id == b.id }
         is Nachzug.LagerortVorgabe -> liste.map { it.copy(vorgabe = it.ort.id == b.id) }
@@ -191,8 +191,8 @@ internal object LokaleAnwendung {
      * Mit Schritt zählt die Änderung auf das, was die Liste jetzt zeigt — auch
      * wenn eine neuere Serverantwort darunterliegt. Ohne Schritt gilt die Menge.
      */
-    private fun neueMenge(bisher: Int, a: UpdateManualItemRequest) =
-        a.quantityDelta?.let { bisher + it } ?: a.quantity
+    private fun neueMenge(bisher: Int, a: Stueckaenderung) =
+        a.schritt?.let { bisher + it } ?: a.menge
 
-    fun merkSchluessel(m: Merkposten) = "${m.setNumber}|${m.condition.kennung}|${m.userId}"
+    fun merkSchluessel(m: MerkpostenAnsicht) = "${m.setNumber}|${m.condition.kennung}|${m.userId}"
 }

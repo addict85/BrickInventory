@@ -76,7 +76,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
     );
 
     // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
-    await _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
+    await _req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(
       d.hinweise.some(h => /Alles vorhanden/.test(h)),
@@ -107,8 +107,8 @@ test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
   // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
   // endeten alle in einem stummen `return null`. Genau diese Stille hat die
   // Bild-Fehlersuche über fünf Nachträge gestreckt.
-  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
-  const start = src.indexOf('async function downloadSetImage');
+  const src = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
+  const start = src.indexOf('async function setBildHerunterladen');
   const fn = src
     .slice(start, src.indexOf('\n}\n', start))
     .split('\n')
@@ -117,7 +117,7 @@ test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
   const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
   assert.ok(
     meldungen >= 4,
-    `downloadSetImage meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
+    `setBildHerunterladen meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
       'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
   );
 });

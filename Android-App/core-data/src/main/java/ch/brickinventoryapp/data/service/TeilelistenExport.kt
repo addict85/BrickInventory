@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.service
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import kotlinx.coroutines.flow.Flow
@@ -9,7 +9,7 @@ import java.io.File
 /** Warum ein PDF-Export scheiterte; den Satz bildet die Oberfläche. */
 sealed interface PdfFehlschlag {
     /** Ein Abruf scheiterte; die Anzeige formuliert ihn wie jeden anderen Abruf. */
-    data class Abruf(val fehler: Ergebnis.Error) : PdfFehlschlag
+    data class Abruf(val fehler: Ergebnis.Fehler) : PdfFehlschlag
 
     /** Der Server meldet den Auftrag als gescheitert, mit seinem Satz, wenn er einen schickte. */
     data class Auftrag(val satz: String?) : PdfFehlschlag
@@ -25,5 +25,5 @@ sealed interface ExportErgebnis {
 interface TeilelistenExport {
     /** Wo ein laufender Export steht, null ohne Export. */
     val fortschritt: Flow<PdfFortschritt?>
-    suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis
+    suspend fun erzeuge(auftrag: Teilelistenauftrag): ExportErgebnis
 }

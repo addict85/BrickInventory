@@ -37,7 +37,7 @@ umgebung({ DATA_KEY: A });
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const G = _req('src/infra/geheimnis.js');
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const gut = {
   ..._req('src/gutscheine/repository/gutscheine.js'),
   ...require('./helpers/sources').testBereich('gutscheine').gutscheine,

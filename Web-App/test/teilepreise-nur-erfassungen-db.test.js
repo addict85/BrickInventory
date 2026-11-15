@@ -145,14 +145,14 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
   const H = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
 
-  const teile = await H.getManualParts([uid], uid);
+  const teile = await H.manuelleTeileListe([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');
   assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
   assert.equal(Number(teil.unit_price), 2.0, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
   assert.equal(Number(teil.purchase_price), 2.0, 'purchase_price ist der Anzeigewert und darf nicht leer sein');
   assert.equal(teil.condition, 'U', 'Eine gebrauchte Erfassung macht das Teil gebraucht (conditionFromAcquisitions)');
 
-  const figs = await M.getManualMinifigs([uid], uid);
+  const figs = await M.manuelleFigurenAbfrage([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-5');
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
   assert.equal(Number(fig.unit_price), 7.5, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
@@ -174,7 +174,7 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
                 VALUES ($1,'3003',0,1,NULL,'N')`,
     [uid],
   );
-  const teile2 = await H.getManualParts([uid], uid);
+  const teile2 = await H.manuelleTeileListe([uid], uid);
   const ohnePreis = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3003');
   assert.ok(ohnePreis, 'Das Teil ohne Preis fehlt in der Antwort');
   assert.equal(

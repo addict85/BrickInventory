@@ -4,6 +4,7 @@ package ch.brickinventoryapp.model.util
  * Die Mindestlaenge eines Passworts — an einer Stelle.
  * Eine Konstante, weil eine an jeder Stelle neu getippte Zahl auseinanderläuft.
  */
+
 const val PASSWORT_MIN_ZEICHEN = 12
 
 /** Ist dieses Passwort zu kurz? */

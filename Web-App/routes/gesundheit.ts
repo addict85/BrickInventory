@@ -1,14 +1,13 @@
 /** Startzustand und Gesundheit: ohne Anmeldung (compose.yaml) und vor den
  * übrigen /api/v1-Routen eingehängt, gefragt wird schon während des Starts. */
 import express from 'express';
-import { fehlerAntwort } from '../src/http/httpAntwort';
-import { logAndContinue } from '../src/infra/fehler';
+import { versuche, wertOder } from '../src/infra/ergebnis';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
-import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
+import { nutzerIdDerAnfrage, istVerwalter } from '../src/konto/http/anmeldung';
 import { oeffentlicherStartZustand } from '../src/auftraege';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
-export function baueGesundheitRouter(d: Dienste) {
+export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'verwaltung'>) {
   // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
   const router = express.Router({ caseSensitive: true });
 
@@ -16,7 +15,7 @@ export function baueGesundheitRouter(d: Dienste) {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    const angemeldet = !!(await resolveUserId(d.konto, req).catch(logAndContinue('startup-status:anmeldung')));
+    const angemeldet = !!wertOder(await versuche('startup-status:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null);
     res.json(oeffentlicherStartZustand(await d.auftraege.aktuellerStartZustand(), angemeldet));
   });
 
@@ -38,10 +37,8 @@ export function baueGesundheitRouter(d: Dienste) {
   // Überwachung fragt mit einem Token ohne Geräteschlüssel.
   router.get('/health', async (req, res) => {
     const verwalter =
-      !!(await resolveUserId(d.konto, req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
+      !!wertOder(await versuche('health:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null) && istVerwalter(req);
     res.json(await d.verwaltung.gesundheitsBericht(verwalter));
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

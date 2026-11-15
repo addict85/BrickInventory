@@ -30,8 +30,9 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const { portVon } = require('./helpers/server');
 const PASS = 'Verwalter-Passwort-1';
 
 /** Wie server.ts: Eingang vor den Routen; die Sitzung steht fest. */
@@ -39,7 +40,11 @@ function server(t, sitzung, token) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = Object.assign(sitzung, { save: cb => cb?.(), regenerate: cb => cb?.(), destroy: cb => cb?.() });
+    /** @type {any} */ (req).session = Object.assign(sitzung, {
+      save: cb => cb?.(),
+      regenerate: cb => cb?.(),
+      destroy: cb => cb?.(),
+    });
     next();
   });
   app.use(
@@ -49,9 +54,11 @@ function server(t, sitzung, token) {
   );
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  // Wie startup/app.ts: ein Fehlerweg hinter allem, auch hinter dem Eingang.
+  app.use(_req('src/http/httpAntwort.js').fehlerAntwort);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const base = `http://localhost:${srv.address().port}/api/v1`;
+  const base = `http://localhost:${portVon(srv)}/api/v1`;
   return async (methode, weg, body) => {
     const r = await fetch(base + weg, {
       method: methode,
@@ -120,10 +127,10 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
       (await server(t, { userId: nutzer, username: NAMEN[1], isAdmin: false })('GET', '/settings')).status,
       200,
     );
-    const { createToken } = _req('src/konto/geraeteToken.js');
-    const app = server(t, {}, await createToken(chef, 'app', false, null, { scope: 'app' }));
+    const { tokenAnlegen } = _req('src/konto/geraeteToken.js');
+    const app = server(t, {}, await tokenAnlegen(chef, 'app', false, null, { scope: 'app' }));
     assert.equal((await app('GET', '/settings')).status, 200);
-    const voll = server(t, {}, await createToken(chef, 'voll', false, null, { scope: 'voll' }));
+    const voll = server(t, {}, await tokenAnlegen(chef, 'voll', false, null, { scope: 'voll' }));
     assert.equal((await voll('GET', '/settings')).status, 403);
   });
 

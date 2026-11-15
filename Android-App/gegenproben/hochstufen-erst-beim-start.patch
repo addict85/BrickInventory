@@ -6,12 +6,11 @@ Rot: nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -356,7 +356,7 @@
+@@ -405,6 +405,7 @@
       */
      override suspend fun stufeTokenHoch() {
          if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
--        dataStore.edit { umschluesseln(it) }
 +        return
-     }
- 
-     /** Adresse und Name im Klartext älterer Fassungen verschlüsselt ablegen; scheitert es, beim nächsten Start. */
+         var umgeschluesselt = false
+         dataStore.edit { umgeschluesselt = umschluesseln(it) }
+         if (umgeschluesselt) fangeAusserAbbruch { tresor.vergissAltbestand() }

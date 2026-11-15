@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.theme.Formen
@@ -18,7 +23,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
-import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.util.fmtTag
@@ -44,10 +49,10 @@ internal fun GeraeteCard(
             modifier = Modifier.padding(bottom = Abstaende.mittel))
 
         when {
-            zustand.laedt && zustand.geraete.isEmpty() ->
+            zustand.abruf.laedt && zustand.geraete.isEmpty() ->
                 CircularProgressIndicator(Modifier.size(22.dp))
-            zustand.fehler != null ->
-                Text(zustand.fehler, color = MaterialTheme.colorScheme.error,
+            zustand.abruf is Laden.Fehler ->
+                Text(zustand.abruf.meldung.satz(), color = MaterialTheme.colorScheme.error,
                      style = MaterialTheme.typography.bodySmall)
             zustand.geraete.isEmpty() ->
                 Text(stringResource(R.string.tokens_none),
@@ -87,7 +92,7 @@ internal fun GeraeteCard(
                    else stringResource(R.string.tokens_revoke_text,
                        zustand.geraete.firstOrNull { it.tokenId == frage.tokenId }?.bezeichnung ?: "—"),
             bestaetigen = stringResource(R.string.tokens_revoke_confirm),
-            codeNoetig = frage.codeNoetig, fehler = frage.fehler, laeuft = frage.laeuft,
+            codeNoetig = frage.codeNoetig, fehler = frage.vorgang.fehlerMeldung?.satz(), laeuft = frage.vorgang.laeuft,
             onBestaetigen = onBestaetigen,
             onAbbrechen = onAbbrechen,
         )

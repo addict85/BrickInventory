@@ -1,7 +1,7 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
  * Sekunden braucht. */
-import { fehlertext } from '../infra/fehler';
-import { imSystemkontext } from '../infra/kontoKontext';
+import { meldeFehler } from '../infra/fehler';
+import { imSystemkontext, zeilenKontext } from '../infra/kontoKontext';
 import * as repo from './repository/teileZusammenfassung';
 import type { TeileKontext } from './kontext';
 
@@ -24,9 +24,9 @@ export async function rebuild(k: TeileKontext, userId: number, version?: { v: nu
   // Ohne frische Statistik wählt der Planer nach dem Masseneinfügen den falschen
   // Index. Höchstens alle zehn Minuten, weil ANALYZE die Tabelle aller Konten vermisst.
   const z = zustand(k);
-  if (gebaut && Date.now() - z.letzteAnalyse > 10 * 60_000) {
-    z.letzteAnalyse = Date.now();
-    await k.teileZusammenfassung.analysiere().catch((e: Error) => console.warn('[partsSummary] ANALYZE:', e.message));
+  if (gebaut && k.uhr.jetzt() - z.letzteAnalyse > 10 * 60_000) {
+    z.letzteAnalyse = k.uhr.jetzt();
+    await k.teileZusammenfassung.analysiere().catch((e: unknown) => meldeFehler('teile-zusammenfassung:analyse', e));
   }
 }
 
@@ -42,7 +42,7 @@ function rebuildInBackground(k: TeileKontext, userId: number, v: { v: number }) 
   const _rebuilding = zustand(k).neuaufbau;
   if (_rebuilding.has(userId)) return;
   const p = rebuild(k, userId, v)
-    .catch(e => console.error('[partsSummary] Hintergrundaufbau:', e.message))
+    .catch((e: unknown) => meldeFehler('teile-zusammenfassung:hintergrund', e))
     .finally(() => {
       _rebuilding.delete(userId);
     });
@@ -50,7 +50,7 @@ function rebuildInBackground(k: TeileKontext, userId: number, v: { v: number }) 
 }
 
 // Baut nicht im Request auf: Der Neuaufbau kostete den Teile-Reiter Sekunden.
-export async function ensureFresh(
+export async function zusammenfassungFrisch(
   k: TeileKontext,
   userId: number | number[],
   opts?: { strict?: boolean },
@@ -58,7 +58,7 @@ export async function ensureFresh(
   // Frisch ist die Haushaltssicht nur, wenn sie es für JEDES beteiligte Konto ist.
   const ids = Array.isArray(userId) ? userId : [userId];
   if (ids.length > 1) {
-    const results = await Promise.all(ids.map(id => ensureFresh(k, id, opts)));
+    const results = await Promise.all(ids.map(id => zusammenfassungFrisch(k, id, opts)));
     return results.every(Boolean);
   }
   userId = ids[0] ?? 0;
@@ -80,14 +80,19 @@ export async function ensureFresh(
     // gar keinen Stand, muss der Aufrufer live abfragen.
     return state !== null;
   } catch (e) {
-    // Der Aufrufer fällt auf die Live-Abfrage zurück — langsamer, aber nie falsch.
-    console.error('[partsSummary]', fehlertext(e));
+    // Ausnahme: false heisst „nicht frisch“; der Aufrufer fragt live, langsamer, aber nie falsch.
+    meldeFehler('teile-zusammenfassung:frisch', e);
     return false;
   }
 }
 
-/** Ein Nachzug je Zugang: Die Konten eines Haushalts fragen gleichzeitig. */
-function katalogEinmalNachziehen(k: TeileKontext) {
+/** Ein Nachzug je Zugang: Die Konten eines Haushalts fragen gleichzeitig. Eine Anfrage stellt ihn
+ * als Auftrag ein, weil die Web-Systemrolle fremde Bestände nicht erreicht; bis dahin alte BL-Nummern. */
+async function katalogEinmalNachziehen(k: TeileKontext) {
+  if (zeilenKontext().web) {
+    await k.auftraege.stelleAuftragEin('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
+    return { konten: 0, gruppen: 0 };
+  }
   const z = zustand(k);
   z.nachzug ??= zieheKatalogNach(k).finally(() => {
     z.nachzug = null;
@@ -97,11 +102,8 @@ function katalogEinmalNachziehen(k: TeileKontext) {
 
 const KATALOG_EINZELN_BIS = 5000;
 
-/** Je Konto nur die Gruppen mit einer geänderten Nummer — vorher wie nachher,
- * denn eine neue BL-Zuordnung verschiebt ein Teil in eine andere Gruppe. Im
- * Systemrahmen: Die Warteschlange ist global, und wer sie leert, muss die Gruppen
- * aller Konten nachziehen, nicht nur die des Kontos, dessen Anfrage es auslöst.
- * @returns null, wenn ein anderer Prozess gerade nachzieht */
+/** Gruppen mit geänderter BL-Nummer, vorher wie nachher. Im Systemrahmen: Die Warteschlange
+ * ist global, wer sie leert, zieht alle Konten nach. @returns null, wenn ein anderer nachzieht */
 export function zieheKatalogNach(k: TeileKontext): Promise<{ konten: number; gruppen: number } | null> {
   return imSystemkontext('katalog-nachzug', () => zieheKatalogNachImRahmen(k));
 }

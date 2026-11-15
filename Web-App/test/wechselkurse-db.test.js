@@ -30,6 +30,7 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { haeltSet, erfasse, haeltTeil, katalogSet } = require('./helpers/bestand');
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
+const { portVon } = require('./helpers/server');
 
 const NAME = `kurse_${process.pid}`;
 const SET = `7${process.pid}1-1`,
@@ -71,7 +72,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   t.after(() => srv.close());
   const zip = await zipMit('eurofxref-hist.csv', HISTORIE);
   const lokal = url =>
-    fetch(`http://127.0.0.1:${srv.address().port}${new URL(url).pathname}`).then(async r =>
+    fetch(`http://127.0.0.1:${portVon(srv)}${new URL(url).pathname}`).then(async r =>
       Buffer.from(await r.arrayBuffer()),
     );
 
@@ -129,14 +130,14 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   await kauf(1, 900, 'XAU', '2026-01-06T11:00:00Z');
 
   await t.test('Set', async () => {
-    const { computePnl } = _req('src/finanzen/financeCalc.js');
-    const pnl = await computePnl(uid, [uid]);
+    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
+    const pnl = await gewinnUndVerlust(uid, [uid]);
     const z = pnl.sets.find(s => s.set_number === SET);
     assert.equal(z.purchase_price, (92.5 + 38) / 2, 'mengengewichtet über die umgerechneten Preise');
     assert.equal(pnl.totals.kaufpreise_umgerechnet, 2);
     assert.equal(pnl.totals.kaufpreise_fremde_waehrung, 1, 'XAU ohne Kurs bleibt draussen');
-    const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
-    const b = await computeSetsValuation(uid, [uid]);
+    const { bewerteSets } = _req('src/finanzen/financeCalc.js');
+    const b = await bewerteSets(uid, [uid]);
     assert.equal(b.kaufpreise_umgerechnet, 2);
     assert.equal(b.kaufpreise_fremde_waehrung, 1);
   });

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile.ui
 
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 
 // Die Zeilen der temporären Teileliste. Eigene Datei ohne Compose, damit die
 // Auflösung eines Sets (ui/Teileliste.kt) ohne Oberfläche prüfbar ist.

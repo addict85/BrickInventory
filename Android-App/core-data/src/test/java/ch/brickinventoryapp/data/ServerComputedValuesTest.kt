@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.model.data.model.AcquisitionsResponse
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.vertrag.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -53,12 +53,12 @@ class ServerComputedValuesTest {
      */
     @Test
     fun `die Antwort traegt die Summe, mit sicherer Vorgabe`() {
-        val neu = ApiJson.decodeFromString(AcquisitionsResponse.serializer(),
+        val neu = BrickJson.decodeFromString(AcquisitionsResponse.serializer(),
             """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
         assertEquals(3, neu.totals.quantity)
         assertEquals(42.5, neu.totals.amount ?: 0.0, 0.0)
         // Ältere Serverstände schicken keine Summe; die Antwort scheitert daran nicht.
-        val alt = ApiJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
+        val alt = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
         assertEquals(0, alt.totals.quantity)
     }
 

@@ -1,27 +1,21 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.SetsResponse
-import ch.brickinventoryapp.model.data.model.ValuationSet
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.vertrag.MinifigsResponse
+import ch.brickinventoryapp.vertrag.SetsResponse
+import ch.brickinventoryapp.vertrag.ValuationSet
+import ch.brickinventoryapp.vertrag.StatsResponse
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.Minifig
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der Plattenspeicher (data/cache/ResponseCache.kt) legt API-Antworten als JSON
- * ab und liest sie zurück, wenn ein Abruf scheitert. Das trägt nur, solange
- * jede gecachte Antwortklasse verlustfrei durch die Serialisierung geht.
- *
- * Dieser Test braucht kein Android — er prüft genau diese Runde für die vier
- * Klassen, die tatsächlich gecacht werden. Bricht eine Modelländerung die
- * Runde, fällt es hier auf und nicht erst als leerer Bildschirm nach einem
- * Neustart ohne Netz.
+ * Die Antworten des Servers gehen verlustfrei durch die Serialisierung; wie sie in der
+ * Ablage liegen, prüfen AblageformTest und AblageFassungTest mit der eigenen Zeilenform.
  */
 class ResponseCacheContractTest {
 

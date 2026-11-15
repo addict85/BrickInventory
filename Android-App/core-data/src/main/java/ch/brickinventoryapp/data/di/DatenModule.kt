@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.DataStore
 import ch.brickinventoryapp.data.KontoAblage
 import ch.brickinventoryapp.data.TokenAblage
+import ch.brickinventoryapp.sicherheit.Geraetesperre
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,7 +18,7 @@ import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.AnlegenMitAblage
 import ch.brickinventoryapp.data.TokenTausch
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.KontoRepository
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,7 +32,7 @@ internal object DatenModule {
 
     @Provides
     @Singleton
-    fun provideJson(): Json = ApiJson
+    fun provideJson(): Json = BrickJson
 
     /** Ein DataStore je Datei und Prozess; über Hilt statt über eine Erweiterung an Context. */
     @Provides
@@ -59,11 +60,13 @@ internal object DatenModule {
         p: TokenAblage,
         konto: javax.inject.Provider<KontoRepository>,
         @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
+        sperre: Geraetesperre,
     ): TokenTausch = TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },
         rotiere = { konto.get().tokenRotieren(it) },
         hintergrund = bereich,
+        bereit = { !sperre.gesperrt() },
     )
 
     @Provides

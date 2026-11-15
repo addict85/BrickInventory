@@ -3,7 +3,7 @@
  * die Antwort. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { Fachfehler, alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { ohneFehlendeDatei } from '../infra/fehler';
 import type { GutscheinZeile } from './repository/gutscheine';
 import {
@@ -20,43 +20,58 @@ import { verbindeGutscheine } from './gutscheinPdfSchreiben';
 import { stelleTicketAus } from './pdfTicket';
 import { HOECHSTENS_SEITEN, liesImHintergrund } from './pdfLesen';
 import type { GutscheineKontext } from './kontext';
+import { PIN_MASKE, gutscheinNummer, gutscheinPin, gutscheinWaehrung, nummerMaske } from '../infra/gutscheinWerte';
 
 export type { GutscheinZeile } from './repository/gutscheine';
 
-/** Nach aussen nur das Ende: Ein erbeutetes App-Token soll nicht alle Codes samt PIN
- * abgreifen. Den Klartext gibt gutscheinKlartext(), bestätigt und protokolliert. */
-export const PIN_MASKE = '•••';
+export { PIN_MASKE } from '../infra/gutscheinWerte';
+
 export const maskiert = (z: { number: string; pin: string | null }) => ({
-  number: '…' + z.number.slice(-4),
+  number: nummerMaske(z.number),
   pin: z.pin ? PIN_MASKE : null,
 });
 
-type Roh = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
 type Geprueft = { number: string; pin: string | null; amount: number; currency: string | null };
-
-/** Eine Prüfung für Anlegen, Anlegen aus dem PDF und Ändern. */
-export function pruefeWerte(
-  roh: Roh,
-  opt: { nullBetragErlaubt?: boolean } = {},
-): ({ ok: true } & Geprueft) | { ok: false; code: FehlerCode } {
-  const number = String(roh.number ?? '').replace(/[\s-]/g, '');
-  if (!/^\d{4,25}$/.test(number)) return { ok: false, code: 'nummer_ungueltig' };
-  const pinRoh = String(roh.pin ?? '').trim();
-  if (pinRoh && !/^\d{3,10}$/.test(pinRoh)) return { ok: false, code: 'pin_ungueltig' };
-  const amount = Number(roh.amount);
-  // Auch die Null fällt durch: Number('') ist 0, ein vergessenes Feld legte sonst einen Gutschein über nichts an.
-  if (!Number.isFinite(amount) || amount > 1_000_000) return { ok: false, code: 'betrag_ungueltig' };
-  if (opt.nullBetragErlaubt ? amount < 0 : amount <= 0) return { ok: false, code: 'betrag_ungueltig' };
-  // Ohne Angabe setzt die Datenbank die Währung des Kontos (Migration 0073).
-  const currency = roh.currency == null || roh.currency === '' ? null : String(roh.currency).toUpperCase();
-  if (currency !== null && !/^[A-Z]{3}$/.test(currency)) return { ok: false, code: 'waehrung_ungueltig' };
-  return { ok: true, number, pin: pinRoh || null, amount, currency };
+/** Was der Vertrag geprüft hat (src/vertrag/gutscheine.ts): Format von Nummer, PIN und Währung. */
+export interface NeuerGutschein {
+  number: string;
+  pin?: string | null | undefined;
+  amount: number | null | undefined;
+  currency?: string | null | undefined;
 }
 
-function geprueft(roh: Roh, opt?: { nullBetragErlaubt?: boolean }): Geprueft {
-  const w = pruefeWerte(roh, opt);
-  if (!w.ok) fachfehler('ungueltig', w.code);
-  return w;
+/** Der Betrag ist eine Fachregel, kein Format: Eine Null legte sonst einen Gutschein über nichts an. */
+function betrag(roh: number | null | undefined, nullErlaubt = false): number {
+  const amount = roh ?? Number.NaN;
+  if (!Number.isFinite(amount) || amount > 1_000_000 || (nullErlaubt ? amount < 0 : amount <= 0))
+    fachfehler('ungueltig', 'betrag_ungueltig');
+  return amount;
+}
+
+const geprueft = (w: NeuerGutschein, nullErlaubt = false): Geprueft => ({
+  number: w.number,
+  pin: w.pin ?? null,
+  amount: betrag(w.amount, nullErlaubt),
+  currency: w.currency ?? null,
+});
+
+type Roh = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
+
+/** Nur für Werte, die der Server selbst aus einem PDF liest: Eingaben prüft der Vertrag. */
+export function pruefeWerte(roh: Roh): ({ ok: true } & Geprueft) | { ok: false; code: FehlerCode } {
+  try {
+    return {
+      ok: true,
+      number: gutscheinNummer(roh.number == null ? '' : String(roh.number)),
+      pin: gutscheinPin(roh.pin == null ? null : String(roh.pin)),
+      // Number('') ist 0 und fällt am Betrag durch.
+      amount: betrag(Number(roh.amount)),
+      currency: gutscheinWaehrung(roh.currency == null ? null : String(roh.currency)),
+    };
+  } catch (e) {
+    if (e instanceof Fachfehler) return { ok: false, code: e.code };
+    throw e;
+  }
 }
 
 const repo = (k: GutscheineKontext) => k.gutscheine;
@@ -70,8 +85,8 @@ async function vorhanden(k: GutscheineKontext, uid: number, id: number): Promise
 }
 
 /** Keine Zeile heisst „war schon da" — als Erfolg sähe der Nutzer nichts passieren. */
-export async function gutscheinErfassen(k: GutscheineKontext, uid: number, roh: Roh): Promise<GutscheinZeile> {
-  return (await repo(k).gutscheinAnlegen(uid, geprueft(roh))) ?? fachfehler('konflikt', 'gutschein_existiert');
+export async function gutscheinErfassen(k: GutscheineKontext, uid: number, e: NeuerGutschein): Promise<GutscheinZeile> {
+  return (await repo(k).gutscheinAnlegen(uid, geprueft(e))) ?? fachfehler('konflikt', 'gutschein_existiert');
 }
 
 /** Der Stapelfall eines Sammel-PDFs: Was es schon gibt, wird ersetzt. */
@@ -101,10 +116,9 @@ export async function stapelAnlegen(k: GutscheineKontext, uid: number, gefunden:
 export async function gutscheinMitPdfAnlegen(
   k: GutscheineKontext,
   uid: number,
-  roh: Roh,
+  w: Geprueft,
   pdf: Buffer,
 ): Promise<GutscheinZeile> {
-  const w = geprueft(roh);
   const geschrieben: string[] = [];
   try {
     return await k.transaktion(async t => {
@@ -125,9 +139,15 @@ export async function gutscheinMitPdfAnlegen(
 
 export type AusPdf =
   | { art: 'stapel'; bericht: Awaited<ReturnType<typeof stapelAnlegen>> }
-  | { art: 'abgelehnt'; code: FehlerCode; vars?: Record<string, number> }
-  | { art: 'unvollstaendig'; code: FehlerCode; gelesen: GutscheinWerte }
   | { art: 'angelegt'; zeile: GutscheinZeile; gelesen: GutscheinWerte };
+
+/** Die Felder der Formulare: So belegt die Oberfläche sie nach einer Absage vor. */
+export const alsGelesen = (g: GutscheinWerte) => ({
+  number: g.nummer,
+  pin: g.pin,
+  currency: g.waehrung,
+  ...(g.betrag == null ? {} : { amount: g.betrag }),
+});
 
 const NICHTS_GELESEN: GutscheinWerte = { nummer: null, pin: null, betrag: null, waehrung: null };
 
@@ -141,14 +161,14 @@ export async function gutscheinAusPdf(
 ): Promise<AusPdf> {
   const lesung = await liesImHintergrund(pdf);
   if (lesung.art === 'zu_viele_seiten')
-    return { art: 'abgelehnt', code: 'pdf_zu_viele_seiten', vars: { seiten: lesung.seiten, max: HOECHSTENS_SEITEN } };
-  if (lesung.art === 'unlesbar') return { art: 'abgelehnt', code: 'pdf_unlesbar' };
+    fachfehler('nicht_verarbeitbar', 'pdf_zu_viele_seiten', { seiten: lesung.seiten, max: HOECHSTENS_SEITEN });
+  if (lesung.art === 'unlesbar') fachfehler('nicht_verarbeitbar', 'pdf_unlesbar');
   if (lesung.stapel.length >= 2) return { art: 'stapel', bericht: await stapelAnlegen(k, uid, lesung.stapel) };
   // Der Medientyp ist eine Behauptung des Klienten: Geprüft wird die Signatur, denn
   // die Datei geht später als application/pdf hinaus. Eine Entpackbombe gäbe der
   // Export an pdf-lib, das ohne Grenze entpackt.
   if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-' || lesung.einzeln === 'zu_gross')
-    return { art: 'abgelehnt', code: 'pdf_unlesbar' };
+    fachfehler('nicht_verarbeitbar', 'pdf_unlesbar');
   const gelesen = typeof lesung.einzeln === 'object' ? lesung.einzeln : NICHTS_GELESEN;
   const roh = {
     number: getippt.number ?? gelesen.nummer,
@@ -163,7 +183,8 @@ export async function gutscheinAusPdf(
   const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
   const code: FehlerCode =
     lesung.einzeln === 'fehler' ? 'pdf_unlesbar' : nichtsGelesen && nichtsGetippt ? 'kein_gutschein_im_pdf' : w.code;
-  return { art: 'unvollstaendig', code, gelesen };
+  // 422: Die Anfrage war in Ordnung, nur das PDF gab nicht alles her; `gelesen` belegt die Felder vor.
+  throw new Fachfehler('nicht_verarbeitbar', code, undefined, { gelesen: alsGelesen(gelesen) });
 }
 
 export interface GutscheinAenderung {
@@ -188,12 +209,12 @@ export function gutscheinBearbeiten(
       const maske = maskiert(alt);
       const w = geprueft(
         {
-          number: e.number === maske.number ? alt.number : (e.number ?? alt.number),
-          pin: e.pin === PIN_MASKE ? alt.pin : (e.pin ?? alt.pin),
-          amount: e.amount ?? alt.amount,
-          currency: e.currency ?? alt.currency,
+          number: e.number === undefined || e.number === maske.number ? alt.number : e.number,
+          pin: e.pin === PIN_MASKE ? alt.pin : e.pin === '' ? null : (e.pin ?? alt.pin),
+          amount: e.amount ?? Number(alt.amount),
+          currency: e.currency === '' ? null : (e.currency ?? alt.currency),
         },
-        { nullBetragErlaubt: e.amount === undefined },
+        e.amount === undefined,
       );
       return (await repo(t).gutscheinAendern(uid, id, w)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
     })
@@ -210,7 +231,7 @@ export async function gutscheinEntfernen(k: GutscheineKontext, uid: number, id: 
 
 export async function gutscheinKlartext(k: GutscheineKontext, uid: number, id: number): Promise<GutscheinZeile> {
   const z = await vorhanden(k, uid, id);
-  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
+  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
   return z;
 }
 
@@ -218,15 +239,15 @@ export async function gutscheinKlartext(k: GutscheineKontext, uid: number, id: n
 export async function pdfFreigeben(k: GutscheineKontext, uid: number, id: number): Promise<string> {
   const z = await vorhanden(k, uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
-  return stelleTicketAus(uid, String(id));
+  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
+  return stelleTicketAus(k, uid, String(id));
 }
 
-export async function exportFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
+export async function ausfuhrFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
   const n = (await gutscheinListe(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
-  return stelleTicketAus(uid, 'export');
+  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
+  return stelleTicketAus(k, uid, 'export');
 }
 
 export async function gutscheinPdf(k: GutscheineKontext, uid: number, id: number): Promise<Buffer> {
@@ -264,8 +285,8 @@ export async function guthabenAbfragen(k: GutscheineKontext, uid: number, id: nu
   const alt = await vorhanden(k, uid, id);
   if (!alt.pin) fachfehler('ungueltig', 'guthaben_pin_fehlt');
   const land = String(
-    (await k.einstellungen.getGlobalSetting('gutschein_land', '')) ||
-      landFuerWaehrung(await k.einstellungen.getSetting(uid, 'currency', 'EUR')),
+    (await k.einstellungen.globalerWert('gutschein_land', '')) ||
+      landFuerWaehrung(await k.einstellungen.nutzerWert(uid, 'currency', 'EUR')),
   );
   if (!landErlaubt(land)) fachfehler('ungueltig', 'guthaben_land_ungueltig');
   const ergebnis = await frageGuthabenAb(k, uid, alt.number, alt.pin, { locale: land });

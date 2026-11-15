@@ -8,8 +8,8 @@ import { G, setzeHtml } from './dom.js';
 import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { feldFehler } from './formular.js';
-import { CURRENCY, ME, allSets, curSet, set_curSet } from './zustand.js';
-import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './scope.js';
+import { kontoWaehrung, angemeldetesKonto, galerieSets, offenesSet, setzeOffenesSet } from './zustand.js';
+import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './kontofilter.js';
 import { tRaw } from '../i18n.js';
 
 /**
@@ -31,9 +31,9 @@ export async function speichereSetLagerort(sn) {
   }
   // Die Liste im Hintergrund trägt den Ort ebenfalls — ohne Nachziehen zeigte die Kachel den alten, bis
   // jemand neu lädt.
-  const eintrag = (allSets || []).find(x => x.set_number === sn);
-  if (eintrag) eintrag.storage = d.storage;
-  if (curSet && curSet.set_number === sn) curSet.storage = d.storage;
+  const eintrag = (galerieSets || []).find(x => x.set_number === sn);
+  if (eintrag) eintrag.storage = d.storage ?? null;
+  if (offenesSet && offenesSet.set_number === sn) offenesSet.storage = d.storage ?? null;
   meldeAmFeld(el);
   await ladeLagerorte();
 }
@@ -76,9 +76,9 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
         <option value="ueber">${tRaw('detail.alert_above')}</option>
       </select>
       <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${tRaw('detail.alert_preis_ph')}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${CURRENCY})"
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${kontoWaehrung})"
              data-input="alarmGetippt" data-arg="${sn}"
-             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${CURRENCY}</span>
+             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${kontoWaehrung}</span>
       <span id="${p}-alert-state" class="alarm-stand"></span>
       <button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="alarme">${tRaw('detail.alle_alarme')}</button>
     `;
@@ -171,7 +171,7 @@ export function lagerortGewaehlt(id) {
   feld.style.display = 'none';
   feld.value = sel.value;
   // Das change-Ereignis von Hand: Ein programmatisch gesetzter Wert loest keines aus. Ueber die
-  // Ereignis-Delegation (actions.js) landet es bei genau dem Handler, der auch eine Eingabe von Hand
+  // Ereignis-Delegation (aktionen.js) landet es bei genau dem Handler, der auch eine Eingabe von Hand
   // speichert.
   feld.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -204,7 +204,7 @@ function alarmZustand() {
  * @param {string} sn
  */
 export async function ladeAlarm(sn) {
-  const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
+  const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`);
   const dir = G(alarmId('dir')),
     val = G(alarmId('val'));
   if (!dir || !val) return;
@@ -230,6 +230,7 @@ function zeigeAlarmMerker(a) {
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der Unterschied zwischen „der Alarm steht"
   // und „der Alarm hat gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
   st.textContent = !a ? '' : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
+  st.className = a ? `alarm-stand alarm-marke alarm-marke-${a.ausgeloest ? 'aus' : 'an'}` : 'alarm-stand';
 }
 
 /**
@@ -324,8 +325,8 @@ async function sendeAlarm(sn, richtung, roh) {
  * Abfrage der App. Die Marke kommt vom Server (keine eigene Uhr) und gilt je Konto.
  */
 export async function zeigeOffeneAlarme() {
-  if (!ME?.id) return;
-  const schluessel = 'bim_alarm_marke_' + ME.id;
+  if (!angemeldetesKonto?.id) return;
+  const schluessel = 'bim_alarm_marke_' + angemeldetesKonto.id;
   /** @type {string | null} */
   let marke = null;
   try {
@@ -368,7 +369,7 @@ export async function ladeOrtAuswahl(besitzer) {
     .map((/** @type {{ id: number } | number} */ o) => (typeof o === 'number' ? o : (o?.id ?? o)))
     .filter(n => Number.isFinite(Number(n)));
   const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
-  const d = await api('GET', `/v1/storage/locations${frage}`).catch(() => null);
+  const d = await api('GET', `/v1/storage/locations${frage}`);
   if (!d?.success) return;
   setzeHtml(
     dl,
@@ -390,8 +391,8 @@ export async function ladeLagerorte(konten) {
   if (konten) _vorratKonten = konten;
   const frage = _vorratKonten.length > 1 ? '?owner=' + encodeURIComponent(_vorratKonten.join(',')) : '';
   const [vorrat, belegt] = await Promise.all([
-    api('GET', `/v1/storage/locations${frage}`).catch(() => null),
-    api('GET', `/v1/storage${scopeQuery('gallery')}`).catch(() => null),
+    api('GET', `/v1/storage/locations${frage}`),
+    api('GET', `/v1/storage${scopeQuery('gallery')}`),
   ]);
   if (vorrat?.success) {
     const namen = (vorrat.orte || []).map(o => o.name);
@@ -406,11 +407,29 @@ export async function ladeLagerorte(konten) {
   if (belegt?.success) initStorageSelects(belegt.orte || []);
 }
 
+/**
+ * Das Mengenfeld im Set-Detail samt „−“: Bei einem Exemplar wäre „−“ Löschen; der Knopf bleibt erreichbar
+ * und sagt, wo das geht. Hier, weil auch der Kaufpreis-Dialog die Menge nachführt.
+ * @param {number} [menge] neuer Wert; ohne ihn nur den Knopf nach dem Feld richten
+ */
+export function setzeMengenfeld(menge) {
+  const feld = G('m-qty'),
+    minus = G('m-qty-dec');
+  if (!feld) return;
+  if (menge !== undefined) feld.value = String(menge);
+  if (!minus) return;
+  const letztes = (parseInt(feld.value, 10) || 1) <= 1;
+  minus.setAttribute('aria-disabled', String(letztes));
+  minus.title = letztes ? tRaw('detail.qty_letztes') : '';
+  if (letztes) minus.setAttribute('aria-describedby', 'm-qty-letztes');
+  else minus.removeAttribute('aria-describedby');
+}
+
 // Hier und nicht im Set-Detail: Auch der Kaufpreis-Dialog schliesst ihn, und der liegt im Importgraphen
 // darunter.
 export function closeModal() {
   G('set-modal').classList.remove('open');
-  set_curSet(null);
+  setzeOffenesSet(null);
 }
 
 registerActions({

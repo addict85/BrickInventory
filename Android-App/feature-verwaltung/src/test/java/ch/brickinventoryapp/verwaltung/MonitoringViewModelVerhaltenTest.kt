@@ -4,12 +4,8 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.test.runTest
@@ -23,34 +19,16 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.testing.NummernTexte
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 
 /**
- * Das Monitoring-ViewModel, AUSGEFÜHRT statt gelesen.
- *
- * ── Warum dieser Test die Ausnahme ist, und warum das ein Problem war ──────
- * Von 63 Testdateien der App führte genau EINE echtes Verhalten aus
- * (BrickRepositoryErrorMappingTest); die übrigen 62 vergleichen Zeichenketten
- * gegen den Quelltext. Das hat einen guten Grund — ohne Android-SDK ging lange
- * nichts anderes — und zwei schlechte Folgen:
- *
- *   1. Ein Anker veraltet stillschweigend. In dieser Reihe sind vier Tests an
- *      einer Umbenennung oder einer Typannotation zerbrochen, einer davon
- *      OHNE zu melden, dass er nichts mehr fand.
- *
- * Möglich wurde dieser Test durch die Aufteilung: MonitoringViewModel nimmt
- * genau ein BrickRepository entgegen und ist eine gewöhnliche Klasse — keine
- * Compose-Laufzeit, kein Android. Vorher standen dieselben Abläufe in Lambdas
- * innerhalb eines `items {}`-Blocks und liefen ohne Gerät gar nicht erst an.
- *
- * ── Was hier geprüft wird ─────────────────────────────────────────────────
- * Die zwei Zusagen, die beim Umbau als „konnte niemand nachfahren" benannt
- * wurden — beide Male ein vorweggenommener Zustand mit Rücknahme bei
- * Fehlschlag. Genau die Sorte Ablauf, die man beim Lesen für richtig hält.
- *
- * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
- * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
+ * Das Monitoring-ViewModel gegen einen MockWebServer: vorweggenommene Zustände mit
+ * Rücknahme bei Fehlschlag, der Takt, Design und Protokoll. MockWebServer liefert der
+ * Reihe nach, unabhängig vom Pfad; jeder Test legt so viele Antworten hin, wie das
+ * ViewModel Abrufe macht.
  *
  * Gegenproben: in ladeJobs() `zugriffEntzogen` nicht
  * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“;
@@ -78,26 +56,14 @@ class MonitoringViewModelVerhaltenTest {
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ApiJson
+        val json = BrickJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        val cache = ResponseCache { cacheDir }
-        // ── BENANNT und nicht nach Stellung ──────────────────────────────
-        //
-        // Hier standen die sechs Teile positionsweise. Als BrickRepository ein
-        // siebtes bekam (GutscheineRepository, eingefuegt VOR `cache`), rutschte
-        // alles dahinter um eins — und der Uebersetzer meldete „actual type is
-        // 'ResponseCache', but 'GutscheineRepository' was expected". Gefunden
-        // hat das die Action, nicht diese Datei.
-        //
-        // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
-        // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
-        // sofort und an der richtigen Stelle.
-        vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), NummernTexte, MeldungsKanal())
+        vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), MeldungsKanal())
     }
 
     @After
@@ -137,7 +103,7 @@ class MonitoringViewModelVerhaltenTest {
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         vm.ladeWarteschlange()
-        assert(vm.state.value.queue.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
+        assert(vm.state.value.queue.datenOderNull()?.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
 
         // Nur EINE Antwort: Bei Erfolg wird bewusst NICHT neu geladen — der
         // vorweggenommene Zustand ist dann schon der richtige, und ein zweiter
@@ -150,8 +116,8 @@ class MonitoringViewModelVerhaltenTest {
             "Erwartet: Laden + Löschen. Es waren ${server.requestCount} Abrufe — " +
                 "wird bei Erfolg unnötig neu geladen?"
         }
-        assert(vm.state.value.queue.map { it.setNumber } == listOf("10294")) {
-            "Nach dem Löschen steht: ${vm.state.value.queue.map { it.setNumber }}"
+        assert(vm.state.value.queue.datenOderNull()?.map { it.setNumber } == listOf("10294")) {
+            "Nach dem Löschen steht: ${vm.state.value.queue.datenOderNull()?.map { it.setNumber }}"
         }
     }
 
@@ -170,9 +136,9 @@ class MonitoringViewModelVerhaltenTest {
 
         assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
         // DAS ist die Zusage: Der vorweggenommene Zustand wurde zurückgenommen.
-        assert(vm.state.value.queue.map { it.setNumber } == listOf("75192", "10294")) {
+        assert(vm.state.value.queue.datenOderNull()?.map { it.setNumber } == listOf("75192", "10294")) {
             "Der Eintrag bleibt verschwunden, obwohl der Server abgelehnt hat: " +
-                "${vm.state.value.queue.map { it.setNumber }}"
+                "${vm.state.value.queue.datenOderNull()?.map { it.setNumber }}"
         }
     }
 
@@ -188,10 +154,10 @@ class MonitoringViewModelVerhaltenTest {
             {"set_number":"75192","attempts":1},{"set_number":"42100","attempts":1}]}"""))
         vm.entferneEintrag("75192")
 
-        assert(vm.state.value.queue.map { it.setNumber } == listOf("75192", "42100")) {
+        assert(vm.state.value.queue.datenOderNull()?.map { it.setNumber } == listOf("75192", "42100")) {
             "Der zwischenzeitlich hinzugekommene Eintrag fehlt — es wurde eine " +
                 "alte Kopie zurückgeschrieben statt neu geladen: " +
-                "${vm.state.value.queue.map { it.setNumber }}"
+                "${vm.state.value.queue.datenOderNull()?.map { it.setNumber }}"
         }
     }
 
@@ -287,8 +253,8 @@ class MonitoringViewModelVerhaltenTest {
 
     // ── Das Server-Protokoll (aus MainViewModel hierher gezogen) ────────────
     //
-    // Gegenprobe: in ladeProtokoll() den Fehlerzweig ohne `protokollLaden =
-    // false` → „ein Fehler beim Protokoll beendet das Laden" rot.
+    // Gegenprobe: in ladeProtokoll() den Fehlerzweig ohne `abruf =
+    // ladefehler(r)` → „ein Fehler beim Protokoll beendet das Laden" rot.
 
     @Test
     fun `das Protokoll kommt mit dem gewaehlten Zeitraum`() = runTest {
@@ -296,16 +262,16 @@ class MonitoringViewModelVerhaltenTest {
         vm.ladeProtokoll(30)
         val v = vm.verwaltungState.value
         assert(v.protokoll.size == 1 && v.protokoll[0].message == "Probe") { "Protokoll: ${v.protokoll}" }
-        assert(v.protokollMinuten == 30 && !v.protokollLaden)
+        assert(v.protokollMinuten == 30 && !v.abruf.laedt)
         assert(server.takeRequest().path?.contains("30") == true) { "Der Zeitraum ging nicht mit" }
     }
 
     @Test
     fun `ein Fehler beim Protokoll beendet das Laden`() = runTest {
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        vm.ladeProtokoll()
+        vm.ladeProtokoll(15)
         val v = vm.verwaltungState.value
-        assert(!v.protokollLaden) { "Der Kreisel bleibt nach einem Fehler stehen" }
-        assert(v.fehler != null) { "Der Fehler wird nicht gezeigt" }
+        assert(!v.abruf.laedt) { "Der Kreisel bleibt nach einem Fehler stehen" }
+        assert(v.abruf.fehlerMeldung != null) { "Der Fehler wird nicht gezeigt" }
     }
 }

@@ -1,11 +1,18 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import type { KontoHinweis } from '../mail';
+import type { Geloest, KontoHinweis } from '../mail';
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
 
-type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
+type Angaben = {
+  name?: string | undefined;
+  konto?: string | undefined;
+  durch?: string | undefined;
+  was?: string | undefined;
+  bis?: string | undefined;
+  geloest?: Geloest | undefined;
+};
 
 // Läuft auch vor der Anmeldung und für andere Konten (alle Verwalter): Sprache
 // und Haushalt des Empfängers liest es daher im Systemrahmen.
@@ -27,14 +34,17 @@ async function meldeKontoaenderungFuer(
   if (!(await kx.mail.mailEingerichtet())) return false;
   const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
-  const lang = String(await kx.einstellungen.getSetting(uid, 'language', 'de'));
+  const lang = String(await kx.einstellungen.nutzerWert(uid, 'language', 'de'));
   const haushalt = (await kx.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
-  const r = await kx.mail.sendKontoHinweisMail(k.email, k.username, art, {
+  const r = await kx.mail.mailKontoHinweis(k.email, k.username, art, {
     lang,
     haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}),
     konto: angaben.konto,
     durch: angaben.durch,
+    was: angaben.was,
+    bis: angaben.bis,
+    geloest: angaben.geloest,
   });
   return r.success;
 }
@@ -64,14 +74,13 @@ export function verwalterHinweisNebenher(k: KontoKontext, art: KontoHinweis, ang
  * damit die Antwort nicht auf den Mailserver wartet. */
 export async function haushaltBeitreten(k: KontoKontext, uid: number, code: string) {
   const r = await k.haushalt.einladungEinloesen(uid, code);
-  if ('fehler' in r) return r;
   const ich = await k.konten.profilZeile(uid);
   if (ich?.email) {
     const sprache = await k.einstellungen
-      .getSetting(uid, 'language', 'de')
+      .nutzerWert(uid, 'language', 'de')
       .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
     void k.mail
-      .sendHaushaltVerknuepftMail(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
+      .mailHaushaltVerknuepft(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
       .catch(logAndContinue('haushalt:hinweismail'));
   }
   return r;

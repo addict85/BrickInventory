@@ -1,0 +1,18 @@
+Gegenprobe: ein neuer englischer Bezeichner im ViewModel
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: englische Bezeichner auch
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+index 0823fbd..3931ba0 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+@@ -137,6 +137,8 @@ class MerklisteViewModel @Inject constructor(
+         gespeichert = { sn -> if (_merkpostenDetailState.value.setNumber == sn) loadPreisalarme(sn) },
+     )
+ 
++    fun loadMerklisteNeu() = ladeMerkliste()
++
+     override fun ladeMerkliste() {
+         viewModelScope.launch {
+             val f = _merklisteState.value

@@ -169,7 +169,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   const handlers = _req('src/teile/abfragen.js');
 
   // ── Die Beschreibung kommt an ────────────────────────────────────────────
-  const alle = await handlers.getParts(uid, { exclude_manual: '1' });
+  const alle = await handlers.teileAbfrage(uid, { exclude_manual: '1' });
   const nach = nr => alle.parts.find(p => String(p.part_number) === nr);
   assert.equal(alle.parts.length, 2, `Erwartet 2 Teile, bekommen ${alle.parts.length}: ${JSON.stringify(alle.parts)}`);
   assert.equal(nach('3001')?.part_name, 'Brick 2x4', 'Der Teilename kommt nicht aus part_catalog an');
@@ -183,7 +183,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   // ── is_spare aus set_parts_catalog, als echter Wahrheitswert ─────────────
   assert.equal(nach('3001')?.is_spare, false, 'Ein Pflichtteil wird als Ersatzteil gemeldet');
   assert.equal(nach('3002')?.is_spare, true, 'Das Ersatzteilkennzeichen kommt nicht aus set_parts_catalog an');
-  const nurErsatz = await handlers.getParts(uid, { exclude_manual: '1', spare: '1' });
+  const nurErsatz = await handlers.teileAbfrage(uid, { exclude_manual: '1', spare: '1' });
   assert.deepEqual(
     nurErsatz.parts.map(p => String(p.part_number)),
     ['3002'],
@@ -191,7 +191,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   );
 
   // ── Der Farbfilter ───────────────────────────────────────────────────────
-  const nurRot = await handlers.getParts(uid, { exclude_manual: '1', color: 'Red' });
+  const nurRot = await handlers.teileAbfrage(uid, { exclude_manual: '1', color: 'Red' });
   assert.deepEqual(
     nurRot.parts.map(p => String(p.part_number)),
     ['3001'],
@@ -199,7 +199,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   );
 
   // Der Lagerortfilter — und seine ZAEHLUNG
-  const inKiste = await handlers.getParts(uid, { exclude_manual: '1', storage: 'Kiste 3' });
+  const inKiste = await handlers.teileAbfrage(uid, { exclude_manual: '1', storage: 'Kiste 3' });
   assert.deepEqual(
     inKiste.parts.map(p => String(p.part_number)),
     ['3001'],
@@ -214,7 +214,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   assert.equal(inKiste.parts[0].storage, 'Kiste 3', 'Der Lagerortname kommt nicht aus storage_locations an');
 
   // ── Suche über den Katalognamen ──────────────────────────────────────────
-  const gesucht = await handlers.getParts(uid, { exclude_manual: '1', search: 'brick 2x3' });
+  const gesucht = await handlers.teileAbfrage(uid, { exclude_manual: '1', search: 'brick 2x3' });
   assert.deepEqual(
     gesucht.parts.map(p => String(p.part_number)),
     ['3002'],
@@ -244,7 +244,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog', { concurrenc
   await haeltFigur(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
 
   const handlers = _req('src/figuren/abfragen.js');
-  const liste = await handlers.getMinifigs(uid, {});
+  const liste = await handlers.figurenAbfrage(uid, {});
   const figs = liste.minifigs || liste.figs || liste;
   const f = (Array.isArray(figs) ? figs : []).find(x => x.fig_number === 'fig-000123');
   assert.ok(f, `Die Figur fehlt in der Antwort: ${JSON.stringify(liste).slice(0, 400)}`);
@@ -253,7 +253,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog', { concurrenc
   assert.equal(Number(f.total_quantity), 3, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
 
   // Die Suche läuft über den Katalognamen.
-  const gesucht = await handlers.getMinifigs(uid, { search: 'chewb' });
+  const gesucht = await handlers.figurenAbfrage(uid, { search: 'chewb' });
   const gFigs = gesucht.minifigs || gesucht.figs || gesucht;
   assert.equal(
     (Array.isArray(gFigs) ? gFigs : []).length,

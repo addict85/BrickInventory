@@ -1,0 +1,17 @@
+Gegenprobe: Hinzufügen schliesst den Figuren-Dialog wieder auch ohne Erfassung
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.ErfassenDialogTest
+Rot: ohne Figurnummer
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenErfassen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenErfassen.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenErfassen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FigurenErfassen.kt
+@@ -61,7 +61,7 @@
+     ErfassenDialog(
+         titel = stringResource(R.string.minifigs_add_title),
+         bestaetigen = stringResource(R.string.minifigs_add_button),
+-        onBestaetigen = { submit() },
++        onBestaetigen = { submit(); onDismiss() },
+         onAbbrechen = onDismiss,
+         bestaetigenAn = !erfassungUngueltig(quantity, unitPrice),
+         geaendert = figNumber.isNotBlank() || blFigNumber.isNotBlank() || quantity != "1" || unitPrice.isNotEmpty() ||

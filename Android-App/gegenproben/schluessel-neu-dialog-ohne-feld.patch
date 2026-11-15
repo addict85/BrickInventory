@@ -1,0 +1,17 @@
+Gegenprobe: Der Dialog zeigt für einen neuen Serverschlüssel nie ein Feld zum Abtippen
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: ohne CT-Pflicht wird ein neuer Serverschluessel abgetippt
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -66,7 +66,7 @@
+     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+     val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
+     val schluesselNeu = frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+-    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig
++    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig && !schluesselNeu
+     val fenster = stringResource(titel)
+     AlertDialog(
+         containerColor = fensterFlaeche(),

@@ -42,6 +42,10 @@ import java.util.Base64
  *                                    Klartext ab → rot „ohne Schluessel bleibt nichts …“
  *   code-pin-ueber-alte-verbindung   halteVor() ruft die Hörer nicht → rot „ein Pin aus dem
  *                                    Code gilt nur ueber eine neue Verbindung“
+ *   pin-namen-ohne-uebernahme        bereiteVor() ohne uebernimmPinNamen() → rot „ein Pin
+ *                                    frueherer Fassung kommt unter einen Namen …“
+ *   pin-name-mit-host                pinEintrag() hängt wieder Host und Port an → rot „kein
+ *                                    Eintrag nennt den Server“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -84,9 +88,10 @@ class VertrauenVerschluesseltTest {
         start().apply { merkePin(host, fp); setzeNutzerCa(true) }
         assertNull("Fremder Schlüssel: kein Pin", start(testVertrauenschiffre(8)).pin(host))
         assertFalse("Fremder Schlüssel: Schalter aus", start(testVertrauenschiffre(8)).nutzerCaErlaubt())
+        val eintrag = start().pinEintrag(host)!!
         spiegel.edit(commit = true) {
             putString(GeraeteAblage.NUTZER_CA_GEHEIM, kippe(spiegel.getString(GeraeteAblage.NUTZER_CA_GEHEIM, null)!!))
-            putString(GeraeteAblage.PIN_GEHEIM_PRAEFIX + host, "kein-base64-%%%")
+            putString(eintrag, "kein-base64-%%%")
         }
         val g = start()
         assertFalse("ein veraenderter Wert gilt nicht als „an“", g.nutzerCaErlaubt())
@@ -96,10 +101,10 @@ class VertrauenVerschluesseltTest {
     @Test
     fun `ein Geheimtext unter fremdem Namen gilt nicht`() {
         val anderer = "anderer.example.org:443"
-        start().merkePin(anderer, fp)
-        val geheim = spiegel.getString(GeraeteAblage.PIN_GEHEIM_PRAEFIX + anderer, null)!!
+        val g0 = start().apply { merkePin(anderer, fp) }
+        val geheim = spiegel.getString(g0.pinEintrag(anderer)!!, null)!!
         spiegel.edit(commit = true) {
-            putString(GeraeteAblage.PIN_GEHEIM_PRAEFIX + host, geheim)
+            putString(g0.pinEintrag(host)!!, geheim)
             putString(GeraeteAblage.NUTZER_CA_GEHEIM, geheim)
         }
         val g = start()
@@ -153,6 +158,28 @@ class VertrauenVerschluesseltTest {
             listOf("${GeraeteAblage.NUTZER_CA}=true"), klartextAufPlatte())
         assertTrue("Mit Schlüssel wird der liegengebliebene Klartext übernommen", start().nutzerCaErlaubt())
         assertNull("Der ungesicherte Pin überlebt den Neustart nicht", start().pin(host))
+    }
+
+    @Test
+    fun `kein Eintrag nennt den Server`() {
+        start().apply { merkePin(host, fp); merkePin("$host#blatt", fp) }
+        val namen = spiegel.all.keys
+        assertTrue("Pins sind abgelegt: $namen", namen.count { it.startsWith(GeraeteAblage.PIN_NAME_PRAEFIX) } == 2)
+        assertFalse("Ein Name verrät den Server: $namen", namen.any { "example" in it || "443" in it })
+    }
+
+    @Test
+    fun `ein Pin frueherer Fassung kommt unter einen Namen ohne Server und gilt weiter`() {
+        val g0 = start()
+        g0.merkePin(host, fp)
+        val eintrag = g0.pinEintrag(host)!!
+        val geheim = spiegel.getString(eintrag, null)!!
+        // So lag er in früheren Fassungen: derselbe Geheimtext, Host und Port im Namen.
+        spiegel.edit(commit = true) { remove(eintrag); putString(GeraeteAblage.PIN_GEHEIM_PRAEFIX + host, geheim) }
+        val g = start()
+        assertEquals(fp, g.pin(host))
+        assertFalse("Der alte Name ist weg", spiegel.contains(GeraeteAblage.PIN_GEHEIM_PRAEFIX + host))
+        assertEquals(geheim, spiegel.getString(eintrag, null))
     }
 
     /** Ein Bit im Geheimtext umdrehen: Das Base64 bleibt gültig, der GCM-Tag nicht. */

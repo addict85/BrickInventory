@@ -9,7 +9,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import ch.brickinventoryapp.sicherheit.Tresorbefund
 import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
+import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.model.ui.theme.helligkeitGilt
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -49,14 +51,19 @@ class GeraeteAblage @Inject constructor(
         const val NUTZER_CA_AUS_ANGEWANDT = "nutzer_ca_aus_angewandt"
         /** Klartext älterer Fassungen, wie [NUTZER_CA]; zugleich die Bindung des Geheimtexts. */
         const val PIN_PRAEFIX = "pin:"
+        /** Ältere Fassungen: Host und Port im Namen. Gelesen nur bis zur Übernahme ([PIN_NAME_PRAEFIX]). */
         const val PIN_GEHEIM_PRAEFIX = "pin_geheim:"
+        /** Der Name aus Vertrauenschiffre.name(): Wer die Datei liest, erfährt den Server nicht. */
+        const val PIN_NAME_PRAEFIX = "pin_n:"
         /** Gesetzt nach der Übernahme: Klartext, der danach auftaucht, wird nur noch gelöscht. */
         const val VERTRAUEN_UEBERNOMMEN = "vertrauen_uebernommen"
         private const val AN = "an"
         private const val ANGABE = "angabe:"
         const val SYSTEMFARBEN = "systemfarben"
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
+        /** Klartext älterer Fassungen; gelesen und beim nächsten Schreiben übernommen. */
         const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
+        const val ENTWERTUNG_GESCHEITERT_GEHEIM = "entwertung_gescheitert_geheim"
         const val WIDGET_WERTE = "widget_werte"
         const val WIDGET_STAND = "widget_stand"
 
@@ -128,6 +135,7 @@ class GeraeteAblage @Inject constructor(
     fun bereiteVor() {
         uebernimmAltenCaStand()
         uebernimmKlartextVertrauen()
+        uebernimmPinNamen()
         designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
     }
 
@@ -276,19 +284,44 @@ class GeraeteAblage @Inject constructor(
             when {
                 k == NUTZER_CA && v == true -> neu[NUTZER_CA_GEHEIM] = vertrauenschiffre.verschluessle(AN, NUTZER_CA) ?: return null
                 k.startsWith(PIN_PRAEFIX) && v is String ->
-                    neu[PIN_GEHEIM_PRAEFIX + k.removePrefix(PIN_PRAEFIX)] = vertrauenschiffre.verschluessle(v, k) ?: return null
+                    neu[pinEintrag(k.removePrefix(PIN_PRAEFIX)) ?: return null] = vertrauenschiffre.verschluessle(v, k) ?: return null
             }
         }
         return neu
     }
 
     /**
-     * Server-Adresse und Benutzername der TokenAblage: unter dem Schlüssel der Pins, weil er
-     * das Abmelden überlebt (die Adresse bleibt) und auch bei gesperrtem Gerät arbeitet.
-     * null heisst: nicht verschlüsselbar bzw. nicht lesbar; nie ein Rückfall auf Klartext.
+     * Adresse, Name und Herkunft der TokenAblage und Abmeldeaufträge: unter dem Schlüssel, der
+     * nur entsperrt arbeitet und das Abmelden überlebt. null bzw. Gesperrt heisst „jetzt
+     * nicht“; nie ein Rückfall auf Klartext oder auf den Schlüssel der Pins.
      */
-    internal fun verschluessleAngabe(wert: String, name: String): String? = vertrauenschiffre.verschluessle(wert, ANGABE + name)
-    internal fun entschluessleAngabe(geheim: String, name: String): String? = vertrauenschiffre.entschluessle(geheim, ANGABE + name)
+    internal fun verschluessleAngabe(wert: String, name: String): String? = vertrauenschiffre.verschluessleAngabe(wert, name)
+    internal fun oeffneAngabe(geheim: String, name: String): Tresorbefund = vertrauenschiffre.oeffneAngabe(geheim, name)
+
+    /** Nur zur Übernahme: So lagen Adresse und Name in früheren Fassungen (unter dem Schlüssel der Pins). */
+    internal fun entschluessleAlteAngabe(geheim: String, name: String): String? = vertrauenschiffre.entschluessle(geheim, ANGABE + name)
+
+    /** Wo der Pin zu [schluessel] liegt; null, wenn der Schlüssel der Pins gerade nicht arbeitet. */
+    internal fun pinEintrag(schluessel: String): String? =
+        vertrauenschiffre.name(PIN_PRAEFIX + schluessel)?.let { PIN_NAME_PRAEFIX + it }
+
+    /**
+     * Pins älterer Fassungen tragen Host und Port im Namen. Derselbe Geheimtext (seine Bindung
+     * ist der Host, nicht der Name) kommt unter den abgeleiteten Namen; was sich nicht benennen
+     * lässt, bleibt bis zum nächsten Start liegen und gilt bis dahin weiter (gemerkterPin).
+     */
+    @Synchronized
+    private fun uebernimmPinNamen() {
+        val alt = designSpiegel.all.filterKeys { it.startsWith(PIN_GEHEIM_PRAEFIX) }
+        if (alt.isEmpty()) return
+        designSpiegel.edit {
+            for ((k, v) in alt) {
+                val eintrag = pinEintrag(k.removePrefix(PIN_GEHEIM_PRAEFIX)) ?: continue
+                if (v is String && !designSpiegel.contains(eintrag)) putString(eintrag, v)
+                remove(k)
+            }
+        }
+    }
 
     // Pins je Host und Port (util/ServerVertrauen.kt); der vorgehaltene (halteVor) geht vor.
     // Ein unlesbarer Geheimtext ist kein Pin: Die Verbindung gilt als Erstkontakt, der
@@ -298,14 +331,16 @@ class GeraeteAblage @Inject constructor(
     fun gemerkterPin(schluessel: String): String? {
         uebernimmKlartextVertrauen()
         ungesichert[schluessel]?.let { return it }
-        val geheim = designSpiegel.getString(PIN_GEHEIM_PRAEFIX + schluessel, null) ?: return null
+        val geheim = pinEintrag(schluessel)?.let { designSpiegel.getString(it, null) }
+            ?: designSpiegel.getString(PIN_GEHEIM_PRAEFIX + schluessel, null) ?: return null
         return vertrauenschiffre.entschluessle(geheim, PIN_PRAEFIX + schluessel)
     }
     override fun merkePin(schluessel: String, fingerabdruck: String) {
         uebernimmKlartextVertrauen()
+        val eintrag = pinEintrag(schluessel)
         val geheim = vertrauenschiffre.verschluessle(fingerabdruck, PIN_PRAEFIX + schluessel)
-        if (geheim != null) {
-            designSpiegel.edit { putString(PIN_GEHEIM_PRAEFIX + schluessel, geheim) }
+        if (eintrag != null && geheim != null) {
+            designSpiegel.edit { putString(eintrag, geheim); remove(PIN_GEHEIM_PRAEFIX + schluessel) }
             ungesichert.remove(schluessel)
         } else {
             ungesichert[schluessel] = fingerabdruck
@@ -332,12 +367,14 @@ class GeraeteAblage @Inject constructor(
         designSpiegel.edit { putBoolean(WIDGET_WERTE, an) }
     }
 
-    // Verschlüsselt wie Pins und Angaben: Ohne Entsperren soll niemand die Zahlen aus der Datei lesen.
+    // Unter dem Schlüssel der Angaben: Gesperrt liest niemand die Zahlen aus der Datei. Das Widget
+    // zeigt dann „leer“ und zeichnet nach dem Entsperren neu (BrickInventoryApp). Ein Stand unter
+    // dem früheren Schlüssel gilt als leer; der nächste Abruf ersetzt ihn.
     override fun widgetStand(): String? =
-        designSpiegel.getString(WIDGET_STAND, null)?.let { vertrauenschiffre.entschluessle(it, WIDGET_STAND) }
+        designSpiegel.getString(WIDGET_STAND, null)?.let { (oeffneAngabe(it, WIDGET_STAND) as? Tresorbefund.Lesbar)?.klartext }
 
     override fun setzeWidgetStand(text: String) {
-        val geheim = vertrauenschiffre.verschluessle(text, WIDGET_STAND) ?: return
+        val geheim = verschluessleAngabe(text, WIDGET_STAND) ?: return
         designSpiegel.edit { putString(WIDGET_STAND, geheim) }
     }
 
@@ -366,11 +403,22 @@ class GeraeteAblage @Inject constructor(
      * des Arbeiters kann abgeschaltet sein; die App sagt es darum beim nächsten Start
      * noch einmal (AppViewModel), danach ist die Liste leer.
      */
+    // Die Adressen verschlüsselt wie die Angaben; eine Liste früherer Fassungen kommt dabei mit.
+    // Gesperrt geht der Eintrag verloren, die Meldung des Arbeiters steht trotzdem da.
     override fun merkeGescheiterteEntwertung(server: String) {
-        designSpiegel.edit { putStringSet(ENTWERTUNG_GESCHEITERT, gescheiterteEntwertungen() + server) }
+        val alle = (gescheiterteEntwertungen() + server).joinToString("\n")
+        val geheim = verschluessleAngabe(alle, ENTWERTUNG_GESCHEITERT_GEHEIM)
+            ?: return Protokoll.warnung("Abmelden", "Gescheiterte Entwertung bei gesperrtem Gerät nicht gemerkt")
+        designSpiegel.edit { putString(ENTWERTUNG_GESCHEITERT_GEHEIM, geheim); remove(ENTWERTUNG_GESCHEITERT) }
     }
-    fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
+    fun gescheiterteEntwertungen(): Set<String> {
+        val alt = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty()
+        val neu = designSpiegel.getString(ENTWERTUNG_GESCHEITERT_GEHEIM, null)
+            ?.let { (oeffneAngabe(it, ENTWERTUNG_GESCHEITERT_GEHEIM) as? Tresorbefund.Lesbar)?.klartext }
+            ?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+        return alt + neu
+    }
     fun quittiereGescheiterteEntwertungen() {
-        designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
+        designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT); remove(ENTWERTUNG_GESCHEITERT_GEHEIM) }
     }
 }

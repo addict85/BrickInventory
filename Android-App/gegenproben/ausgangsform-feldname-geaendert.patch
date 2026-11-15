@@ -1,0 +1,18 @@
+Gegenprobe: Die Ausgangsform folgt einer Umbenennung (set_number → setNumber); abgelegte Posten werden unlesbar
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.AusgangsformTest
+Rot: liest und schreibt jede eingefrorene Zeile
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ausgangsform.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ausgangsform.kt
+index 41e1940..b91dc8f 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ausgangsform.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ausgangsform.kt
+@@ -118,7 +118,7 @@ internal sealed class PostenF1 {
+ 
+ @Serializable
+ internal data class SetAnfrageF1(
+-    @SerialName("set_number") val setNumber: String,
++    @SerialName("setNumber") val setNumber: String,
+     val quantity: Int = 1,
+     @SerialName("purchase_price") val purchasePrice: Double? = null,
+     val condition: Zustand? = null,

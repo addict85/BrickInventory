@@ -22,6 +22,8 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    // Nur innen: Die Repositories bilden das Wire-Format auf Fach- und Ansichtstypen ab.
+    implementation(project(":core-vertrag"))
     // Wächter und Netzrichtlinie. Wer selbst etwas daraus nennt (NetworkPolicy, Protokoll),
     // bindet core-netz selbst ein; über core-data reicht nichts davon hinaus.
     implementation(project(":core-netz"))

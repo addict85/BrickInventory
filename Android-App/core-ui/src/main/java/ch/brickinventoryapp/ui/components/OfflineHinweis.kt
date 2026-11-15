@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableIntState
@@ -47,9 +48,10 @@ val LocalOfflineHinweise = staticCompositionLocalOf<MutableIntState?> { null }
  * Ein Banner über einer Liste, die nicht vom Server kommt, sondern aus dem
  * Plattenspeicher, samt der Änderungen, die auf die nächste Verbindung warten.
  * Ohne Fläche ging es zwischen Umschalter und Suche unter; bei `null` nichts.
+ * [onErneut] holt die Liste neu: Ohne Knopf blieb nur das Ziehen, und das sieht man nicht.
  */
 @Composable
-fun OfflineHinweis(stand: Long?, modifier: Modifier = Modifier) {
+fun OfflineHinweis(stand: Long?, modifier: Modifier = Modifier, onErneut: (() -> Unit)? = null) {
     if (stand == null) return
     val zaehler = LocalOfflineHinweise.current
     if (zaehler != null) DisposableEffect(zaehler) {
@@ -63,6 +65,7 @@ fun OfflineHinweis(stand: Long?, modifier: Modifier = Modifier) {
             fmtStand(stand, appNumberLocale(), vierundzwanzig = vierundzwanzigStunden())),
         text = if (offen > 0) pluralStringResource(R.plurals.offline_warten, offen, offen) else null,
         modifier = modifier,
+        aktion = onErneut?.let { stringResource(R.string.common_retry) to it },
     )
 }
 
@@ -88,7 +91,13 @@ fun AusgangLeiste(anzahl: Int, modifier: Modifier = Modifier) {
  * ist; Rot bleibt dem verworfenen Abgleich (Snackbar aus dem Ausgangsmelder).
  */
 @Composable
-private fun Hinweisbanner(symbol: ImageVector, titel: String, text: String?, modifier: Modifier = Modifier) {
+private fun Hinweisbanner(
+    symbol: ImageVector,
+    titel: String,
+    text: String?,
+    modifier: Modifier = Modifier,
+    aktion: Pair<String, () -> Unit>? = null,
+) {
     Surface(
         modifier.fillMaxWidth().padding(horizontal = Abstaende.mittel, vertical = Abstaende.winzig).ansagen(),
         shape = Formen.leiste,
@@ -103,11 +112,12 @@ private fun Hinweisbanner(symbol: ImageVector, titel: String, text: String?, mod
         ) {
             Icon(symbol, contentDescription = null, modifier = Modifier.size(mitSchrift(18.dp)),
                 tint = MaterialTheme.colorScheme.primary)
-            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                 Text(titel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 if (text != null) Text(text, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (aktion != null) TextButton(onClick = aktion.second) { Text(aktion.first) }
         }
     }
 }

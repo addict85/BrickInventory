@@ -1,3 +1,4 @@
+import { lagerorte } from '../../../db/bestandSicht';
 import {
   mengeSummeSql,
   erfassungsTagSql,
@@ -10,7 +11,6 @@ import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
-import { marktpreisSql } from '../../../db/geldSql';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { sperreBisZumEnde } from '../../../db/txLock';
 
@@ -25,26 +25,6 @@ export function setImBlickfeld(db: DbSchnittstelle, ids: number[], setNumber: st
       ORDER BY (user_id = $3) DESC
       LIMIT 1`,
     [ids, setNumber, viewerId],
-  );
-}
-
-/** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
-export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<{ marktpreis: string }>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
-     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
-     ORDER BY (condition = $3) DESC LIMIT 1`,
-    [setNumber, currency, zustand],
-  );
-}
-
-/** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
-export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<{ marktpreis: string }>(
-    `SELECT ${marktpreisSql()} AS marktpreis FROM price_history
-        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
-        ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
-    [setNumber, currency, zustand],
   );
 }
 
@@ -71,23 +51,8 @@ export async function setErfassungenAlsJson(dbh: DbSchnittstelle, userId: number
   ).map(r => r.z);
 }
 
-export function loescheSetErfassungNachId(dbh: DbSchnittstelle, id: number) {
-  return dbh.run('DELETE FROM set_acquisitions WHERE id=$1', [id]);
-}
-
-export function kuerzeSetErfassung(dbh: DbSchnittstelle, menge: number, id: number) {
-  return dbh.run('UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2', [menge, id]);
-}
-
 export function setZeileDesKontos(db: DbSchnittstelle, userId: number, setNumber: string) {
   return db.get<{ id: number }>('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, setNumber]);
-}
-
-export function legeSetZeileAn(tx: DbSchnittstelle, userId: number, setNumber: string) {
-  return tx.run('INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT (user_id,set_number) DO NOTHING', [
-    userId,
-    setNumber,
-  ]);
 }
 
 /** Je Setnummer, dann wie jede andere Änderung dieses Bestands (db/txLock.ts); bis zum Ende der Transaktion. */
@@ -103,40 +68,11 @@ export function erfassungenOhnePreisDesSets(db: DbSchnittstelle, userId: number,
   );
 }
 
-/** `feld` ist ein fester Spaltenname, keine Eingabe von aussen. */
-export function schreibeInNeuesteSetErfassung(
-  db: DbSchnittstelle,
-  wert: number | string | null,
-  ownerId: number,
-  setNumber: string,
-  feld: 'purchase_price' | 'condition',
-) {
-  return db.run(
-    `UPDATE set_acquisitions SET ${feld} = $1
-                 WHERE id = (SELECT id FROM set_acquisitions
-                              WHERE user_id=$2 AND set_number=$3
-                              ORDER BY created_at DESC, id DESC LIMIT 1)`,
-    [wert, ownerId, setNumber],
-  );
-}
-
 export function setZeileImSchreibfeld(db: DbSchnittstelle, wids: number[], setNumber: string, uid: number) {
   return db.get<{ id: number; user_id: number }>(
     `SELECT id, user_id FROM sets WHERE user_id = ANY($1) AND set_number=$2
       ORDER BY (user_id = $3) DESC, id ASC LIMIT 1`,
     [wids, setNumber, uid],
-  );
-}
-
-/** Gehörte das Set bisher nur einem anderen Konto, braucht das eigene eine Zeile. */
-export function uebernimmSetZeile(tx: DbSchnittstelle, uid: number, leseFeld: number[], setNumber: string) {
-  return tx.run(
-    `INSERT INTO sets (user_id, set_number)
-           SELECT $1, set_number
-             FROM sets WHERE user_id = ANY($2) AND set_number = $3
-            ORDER BY id ASC LIMIT 1
-           ON CONFLICT DO NOTHING`,
-    [uid, leseFeld, setNumber],
   );
 }
 
@@ -193,8 +129,14 @@ const SET_SORTS = {
   added_desc: 's.added_at DESC',
   added_asc: 's.added_at ASC',
   name_asc: 's.name ASC NULLS LAST',
+  name_desc: 's.name DESC NULLS LAST',
   num_asc: 's.set_number ASC',
+  num_desc: 's.set_number DESC',
   year_desc: 's.year DESC NULLS LAST',
+  year_asc: 's.year ASC NULLS LAST',
+  // Die Tabelle sortiert nach der Spalte „Gekauft“: dem letzten Kauf, wie ihn Kachel und Zeile zeigen.
+  kauf_desc: 'a.letzter_kauf DESC NULLS LAST, s.added_at DESC',
+  kauf_asc: 'a.letzter_kauf ASC NULLS LAST, s.added_at DESC',
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc: 'COALESCE(a.max_purchase_price, 0) ASC',
   // quantity kommt aus der Unterabfrage; added_at ordnet gleiche Mengen fest.
@@ -261,7 +203,7 @@ function setsQuelle(uids: number[]): string {
           -- Liste verschwaende — lieber ohne Namen als unsichtbar.
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
           ${setStammJoin('s.set_number')}
-          LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+          LEFT JOIN ${lagerorte()} lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
@@ -276,7 +218,7 @@ function setsQuelle(uids: number[]): string {
           FROM sets s
           LEFT JOIN set_catalog c ON c.set_number = s.set_number
           ${setStammJoin('s.set_number')}
-          LEFT JOIN storage_locations lo ON lo.id = s.storage_id
+          LEFT JOIN ${lagerorte()} lo ON lo.id = s.storage_id
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
 }
 
@@ -442,9 +384,9 @@ export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: s
               -- liest kein Klient.
               (SELECT NULLIF(string_agg(DISTINCT lo.name, ', '), '')
                  FROM sets d
-                 JOIN storage_locations lo ON lo.id = d.storage_id
+                 JOIN ${lagerorte()} lo ON lo.id = d.storage_id
                 WHERE d.user_id = ANY($1) AND d.set_number = s.set_number) AS storage,
-              -- Besitzer wie in getSets(); besitzerAnhaengen() macht daraus Plaketten.
+              -- Besitzer wie in setsLesen(); besitzerAnhaengen() macht daraus Plaketten.
               (SELECT array_agg(DISTINCT e.user_id ORDER BY e.user_id)
                  FROM sets e WHERE e.user_id = ANY($1) AND e.set_number = s.set_number) AS owner_ids
          FROM sets s
@@ -471,7 +413,6 @@ export function besitzerDesSets(tx: DbSchnittstelle, uids: number[], setNumber: 
   ]);
 }
 
-export async function entferneSetZeilen(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
-  await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
-  await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
+export function setsDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ set_number: string }>('SELECT set_number FROM sets WHERE user_id = $1', [uid]);
 }

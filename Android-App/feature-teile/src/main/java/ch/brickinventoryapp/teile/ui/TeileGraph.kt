@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -31,12 +30,14 @@ import ch.brickinventoryapp.teile.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsListRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsRoute
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
+import ch.brickinventoryapp.teile.ui.viewmodel.MitSetItem
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.ListeUndDetail
 import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.listeUndDetail
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 import coil3.ImageLoader
 
@@ -71,38 +72,24 @@ fun NavGraphBuilder.teileGraph(navigation: TeileNavigation) {
     teilelistenZiel(navigation)
 }
 
-/** Teile: Reiter mit Liste und Detail daneben. */
+/** Teile: Reiter mit Liste und Detail daneben. Liste und Filterwerte lädt das ViewModel beim Beobachten. */
 private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
     composable<TeileZiel.Parts> {
-        val vm = navigation.app
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val partsGridState = remember { LazyGridState() }
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
-        val partsState by teileVm.partsState.collectAsStateWithLifecycle()
-        LaunchedEffect(state.serverUrl) {
-            if (state.serverUrl.isNotBlank()) {
-                teileVm.loadParts()
-                // Farbkatalog fuer den Erfassungsdialog …
-                teileVm.loadPartsColors()
-                // … und die beiden Filterlisten mit ihren Zählwerten. Zwei verschiedene
-                // Adressen, siehe TeileApi.getPartsFilterColors.
-                teileVm.loadPartsFilters()
-            }
-        }
+        val partsState by teileVm.teileState.collectAsStateWithLifecycle()
         navigation.Reiter(stringResource(R.string.nav_parts)) {
             ScrollPositionKeeper(
                 TeileZiel.Parts.rollSchluessel, partsGridState,
-                // Beide Ladevorgänge, nicht nur die Set-Teile. `manualParts != null` heisst
-                // „die Antwort ist zurück“ — auch bei null manuell erfassten Teilen. Mit
-                // `isNotEmpty()` würde die Position bei jemandem ohne eigene Teile nie
-                // wiederhergestellt.
+                // `manualParts != null` heisst „die Antwort ist zurück“, auch bei null manuell
+                // erfassten Teilen; mit `isNotEmpty()` käme die Position dann nie wieder.
                 bereit = partsState.parts.isNotEmpty() && partsState.manualParts != null,
-                speicher = vm.scrollMemory,
+                speicher = navigation.rollgedaechtnis,
                 obenNachziehend = partsState.manualParts?.size ?: 0)
-            // Das Detail eines Teils (aus Sets oder manuell) steht auf dem Tablet neben
-            // der Liste, auf dem Telefon als Blatt bzw. eigene Seite. Hier und nicht im
-            // Bildschirm, weil nur der Graph den NavController kennt.
+            // Das Detail steht auf dem Tablet neben der Liste, auf dem Telefon als Blatt bzw.
+            // eigene Seite; hier, weil nur der Graph den NavController kennt.
             TeileListeUndDetailRoute(teileVm, navigation.bilder, state.serverUrl,
                 navigation::oeffneEinzelstueck, navigation::oeffneSet, navigation::oeffneKaeufe) { oeffneManuell ->
                 PartsRoute(
@@ -124,30 +111,25 @@ private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
 /** Minifiguren, wie die Teile mit Detail daneben. */
 private fun NavGraphBuilder.figurenZiel(navigation: TeileNavigation) {
     composable<TeileZiel.Minifigs> {
-        val vm = navigation.app
         val minifigsGridState = remember { LazyGridState() }
-        val teileVm: TeileViewModel = hiltViewModel()
-        val state by teileVm.state.collectAsStateWithLifecycle()
-        val partsState by teileVm.partsState.collectAsStateWithLifecycle()
-        LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) teileVm.loadMinifigs() } }
+        val figurenVm: FigurenViewModel = hiltViewModel()
+        val state by figurenVm.sitzungsWerte.collectAsStateWithLifecycle()
+        val figuren by figurenVm.figurenZustand.collectAsStateWithLifecycle()
         navigation.Reiter(stringResource(R.string.nav_minifigs)) {
             ScrollPositionKeeper(
                 TeileZiel.Minifigs.rollSchluessel, minifigsGridState,
-                // Auf abgeschlossen statt auf Inhalt prüfen, wie bei den Teilen: Sonst bekäme,
-                // wer keine manuell erfassten Minifiguren hat, nie eine Position
-                // wiederhergestellt.
-                bereit = partsState.minifigs.isNotEmpty() && partsState.manualFigs != null,
-                speicher = vm.scrollMemory,
-                obenNachziehend = partsState.manualFigs?.size ?: 0)
-            // Wie im Teile-Reiter; das Detail unterscheidet Teile und Figuren selbst.
-            TeileListeUndDetailRoute(teileVm, navigation.bilder, state.serverUrl,
+                // Auf abgeschlossen statt auf Inhalt prüfen, wie bei den Teilen.
+                bereit = figuren.minifigs.isNotEmpty() && figuren.manualFigs != null,
+                speicher = navigation.rollgedaechtnis,
+                obenNachziehend = figuren.manualFigs?.size ?: 0)
+            ListeUndDetailRoute(figurenVm, navigation.bilder, state.serverUrl,
                 navigation::oeffneEinzelstueck, navigation::oeffneSet, navigation::oeffneKaeufe) { oeffneManuell ->
                 MinifigsRoute(
-                    vm = teileVm,
+                    vm = figurenVm,
                     imageLoader = navigation.bilder,
                     onOpenDetail = { figNumber ->
                         oeffneManuell(Postenart.FIG, figNumber, 0,
-                            partsState.manualFigs?.find { it.figNumber == figNumber }
+                            figuren.manualFigs?.find { it.figNumber == figNumber }
                                 ?.figName ?: figNumber)
                     },
                     gridState = minifigsGridState
@@ -168,6 +150,7 @@ private fun NavGraphBuilder.einzelstueckZiel(navigation: TeileNavigation) {
         ManualItemDetailRoute(
             vm = hiltViewModel<KaeufeViewModel>(),
             teile = hiltViewModel(),
+            figuren = hiltViewModel(),
             type = ziel.art,
             id = ziel.id,
             colorId = ziel.colorId,
@@ -190,13 +173,12 @@ private fun NavGraphBuilder.einzelstueckZiel(navigation: TeileNavigation) {
 private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
     val navController = navigation.navController
     composable<TeileZiel.PartsList> { eintrag ->
-        val vm = navigation.app
-        val state by vm.state.collectAsStateWithLifecycle()
-        val blick by vm.blickfeld.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
+        val blick by navigation.blickfeld.collectAsStateWithLifecycle()
         val scan = navigation.teilelistenScan(eintrag)
         // Die Liste lebt im ViewModel des Ziels und ist bei der Rückkehr vom Scanner schon da.
         val teilelistenState = remember { LazyListState() }
-        ScrollPositionKeeper(TEILELISTE_ROLLSCHLUESSEL, teilelistenState, bereit = true, speicher = vm.scrollMemory)
+        ScrollPositionKeeper(TEILELISTE_ROLLSCHLUESSEL, teilelistenState, bereit = true, speicher = navigation.rollgedaechtnis)
         navigation.Reiter(stringResource(R.string.nav_partslist)) {
             PartsListRoute(
                 serverUrl = state.serverUrl,
@@ -205,7 +187,7 @@ private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
                 // Erfolgloser Scan → Cursor ins Set-Feld.
                 manuelleErfassungAnfordern = scan.manuellErfassen,
                 onManuelleErfassungQuittiert = scan.manuellQuittiert,
-                // Dieselbe Regel wie in der Webapp (gallery.js): Mehr als
+                // Dieselbe Regel wie in der Webapp (sammlung.js): Mehr als
                 // ein Mitglied im Haushalt heisst „es gibt Unterkonten".
                 hatUnterkonten = blick.householdMembers.size > 1,
                 barcodeSetNumber = scan.setNumber,
@@ -230,16 +212,28 @@ fun TeileListeUndDetailRoute(
     oeffneSet: (String) -> Unit,
     oeffneKaeufe: (Postenart, String, Int, String) -> Unit,
     liste: @Composable (oeffneManuell: (Postenart, String, Int, String) -> Unit) -> Unit,
+) = ListeUndDetailRoute(teileVm, imageLoader, serverUrl, oeffneEinzelstueck, oeffneSet, oeffneKaeufe, liste)
+
+/** Dasselbe für Teile und Figuren; das Detail „in welchen Sets“ kommt vom ViewModel des Reiters. */
+@Composable
+internal fun ListeUndDetailRoute(
+    detailVm: MitSetItem,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    oeffneEinzelstueck: (Postenart, String, Int, String) -> Unit,
+    oeffneSet: (String) -> Unit,
+    oeffneKaeufe: (Postenart, String, Int, String) -> Unit,
+    liste: @Composable (oeffneManuell: (Postenart, String, Int, String) -> Unit) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val nebeneinander = listeUndDetail(maxWidth.value)
-        val setItem by teileVm.setItemState.collectAsStateWithLifecycle()
-        val lager by teileVm.lagerState.collectAsStateWithLifecycle()
+        val setItem by detailVm.setItemState.collectAsStateWithLifecycle()
+        val lager by detailVm.lagerState.collectAsStateWithLifecycle()
         // Typ, Nummer, Farbe, Titel des offenen manuellen Eintrags; Liste, weil sie sich speichern lässt.
         var manuell by rememberSaveable { mutableStateOf<List<String>?>(null) }
         val oeffneManuell: (Postenart, String, Int, String) -> Unit = { typ, id, farbe, titel ->
             if (nebeneinander) {
-                teileVm.schliesseSetItem()
+                detailVm.schliesseSetItem()
                 manuell = listOf(typ.kennung, id, farbe.toString(), titel)
             } else oeffneEinzelstueck(typ, id, farbe, titel)
         }
@@ -258,11 +252,12 @@ fun TeileListeUndDetailRoute(
                 },
                 detail = {
                     if (setItem.offen) {
-                        SetItemDetailBereich(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
+                        SetItemDetailBereich(setItem, lager, detailVm, imageLoader, serverUrl, oeffneSet)
                     } else if (offen != null) key(offen) {
                         ManualItemDetailRoute(
                             vm = hiltViewModel<KaeufeViewModel>(),
-                            teile = teileVm,
+                            teile = detailVm as? TeileViewModel ?: hiltViewModel<TeileViewModel>(),
+                            figuren = detailVm as? FigurenViewModel ?: hiltViewModel<FigurenViewModel>(),
                             type = Postenart.aus(offen[0]),
                             id = offen[1],
                             colorId = offen[2].toInt(),
@@ -276,7 +271,7 @@ fun TeileListeUndDetailRoute(
                 },
             )
         } else liste(oeffneManuell)
-        if (!nebeneinander) SetItemDetailDialog(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
+        if (!nebeneinander) SetItemDetailDialog(setItem, lager, detailVm, imageLoader, serverUrl, oeffneSet)
     }
 }
 

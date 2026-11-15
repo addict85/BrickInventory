@@ -17,7 +17,7 @@ const serverOnly = () =>
   fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 const imgProxy = () =>
-  fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8') +
+  fs.readFileSync(path.join(ROOT, 'src/bilder/http/bildProxy.ts'), 'utf8') +
   '\n' +
   fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
@@ -43,27 +43,6 @@ const finanzQuelle = () => {
     throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finanzen/rechnung/ noch da?`);
   }
   return teile.join('\n');
-};
-
-module.exports = {
-  ROOT,
-  serverOnly,
-  imgProxy,
-  serverAll,
-  finanzQuelle,
-  umgebung,
-  buildAndRequire,
-  testZugang,
-  testDaten,
-  testBildwerk,
-  testQuellen,
-  alsKonto,
-  testDienste,
-  testKontext,
-  testBereich,
-  ersetzeDienste,
-  testNacharbeit,
-  bereichsSeite,
 };
 
 /**
@@ -130,7 +109,6 @@ let _dienstFabrik = null;
 let _gebaut = null;
 /** Ersetzungen (ersetzeDienste), auch vor dem ersten Bau gemerkt. */
 const _ersatz = [];
-const _nacharbeit = {};
 
 /** Die Dienste dieser Testdatei: baueDienste(testZugang()) wie im Server, einmal je Datei. */
 /** @returns {any} */
@@ -171,10 +149,18 @@ function bereichsSeite(bereich) {
   });
 }
 
-/** Die Nacharbeit dieser Testdatei: Ein Test ersetzt eine Methode darin. */
-/** @returns {any} */
-function testNacharbeit() {
-  return _nacharbeit;
+/** Schreibt mit, was die Bilder vormerken (merkeGebraucht, src/bilder/bildbedarf.ts): am Puffer
+ *  selbst, damit jeder Weg dorthin zählt. `ende()` hört wieder auf. */
+/** @param {any} [kontext] @returns {{ notizen: [string, string][], ende: () => void }} */
+function bildNotizen(kontext = testKontext('bilder')) {
+  const puffer = kontext.faecher.fach('bildbedarf:puffer', () => new Map());
+  /** @type {[string, string][]} */
+  const notizen = [];
+  puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
+    notizen.push([url, sn]);
+    return Map.prototype.set.call(puffer, url, sn);
+  };
+  return { notizen, ende: () => delete puffer.set };
 }
 
 /** Wie früher xBereich(): Dienste eines Bereichs, Lesezugriff fällt auf seinen Kontext
@@ -208,12 +194,21 @@ let _datenFabrik = null;
 /** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
 const _bildwerk = {
-  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js')).downloadSetImage(...a),
-  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
+  setBildLaden: (...a) =>
+    require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testKontext('bilder'), ...a),
+  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
 };
 
-/** Die ersetzten Fremdquellen der Dienste (src/katalog/fremdquellen.ts): leer heisst echt. */
+/** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */
 const _quellen = {};
+
+/** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareUhr aus src/infra/uhr.ts): Sie läuft
+ *  mit der Systemzeit, ein Test springt mit vor(ms) über eine Frist, statt sie abzuwarten. */
+let _uhr = null;
+function testUhr() {
+  if (!_uhr) _uhr = require(path.join(ROOT, 'dist', 'src/infra/uhr.js')).stellbareUhr();
+  return _uhr;
+}
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
@@ -223,40 +218,30 @@ function buildAndRequire() {
   process.env.NODE_ENV ??= 'test';
   baueDist();
   const V = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js'));
-  // Ein Objekt für alle Bereiche: Ein Test ersetzt eine Methode darin (testNacharbeit()).
-  // Es reicht an die echte Nacharbeit dieser Dienste weiter, gebaut beim ersten Gebrauch.
-  let echt = null;
-  const nacharbeit = () => (echt ??= V().baueNacharbeit(testDienste));
-  for (const k of [
-    'preisJobAnstossen',
-    'preisFuerSetHolen',
-    'bildVormerken',
-    'setTeileAnreichern',
-    'figurenAnreichern',
-    'setBilderLaden',
-  ])
-    _nacharbeit[k] = (...a) => nacharbeit()[k](...a);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const erststart = () => testDienste().konto.legeStartVerwalterAn();
   const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart }));
   _zugangFabrik = testDb;
   // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch:
-  // Viele Tests stellen Klienten nach diesem Aufruf über require.cache.
+  // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
   _dienstFabrik = () => {
     const kontexte = {};
-    const d = V().baueDienste(testDb(), { nacharbeit: _nacharbeit, bildwerk: _bildwerk, quellen: _quellen, kontexte });
+    // Die Konfiguration, die baueDienste reicht, liest beim Zugriff: Ein Test, der mit
+    // umgebung()/setzeKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
+    const K = require(path.join(ROOT, 'dist', 'src/infra/konfig.js'));
+    const konfig = {};
+    for (const n of Object.keys(K.konfig()))
+      Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
+    const d = V().baueDienste(testDb(), {
+      bildwerk: _bildwerk,
+      quellen: _quellen,
+      kontexte,
+      konfig,
+      uhr: testUhr(),
+    });
     return { d, kontexte };
   };
-  // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten.
-  let klienten = null;
-  const klientenEcht = () => {
-    klienten ??= V().baueKlientenZugang(testDienste);
-    return klienten;
-  };
-  require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
-    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }),
-  );
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
   const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, erststart));
@@ -339,8 +324,12 @@ function mitKontoDerAnfrage(m) {
   const istRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
   if (!istRouter(m)) return m;
   const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const { fehlerAntwort } = require(path.join(ROOT, 'dist', 'src/http/httpAntwort.js'));
+  // Wie startup/app.ts: Den Fehlerweg hängt die App an, nicht der Router.
+  const weiter = (req, res, next) => e =>
+    e && e !== 'route' && e !== 'router' ? fehlerAntwort(e, req, res, next) : next();
   return new Proxy(m, {
-    apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, next)),
+    apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
   });
 }
 
@@ -352,7 +341,6 @@ function routerAus(_req, rel) {
   // Wie startup/app.ts: Der gebaute Router läuft im Konto seiner Anfrage.
   return baue ? mitKontoDerAnfrage(baue[1](testDienste())) : m;
 }
-module.exports.routerAus = routerAus;
 
 /** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
  *  benutzen: für Code unter Test, der als Laufzeitrolle fragen soll wie im Betrieb.
@@ -380,7 +368,7 @@ function alsKonto(uid, f, o = {}) {
   return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
-/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in src/katalog/quellen.ts)
+/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in baueQuellen(), src/fremdquellen/quellen.ts)
  *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
  *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
 function testQuellen(t, ersatz) {
@@ -411,8 +399,6 @@ function umgebung(werte) {
   const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
   if (require.cache[datei]) require(datei).konfigNeuLesen();
 }
-module.exports.baueDist = baueDist;
-module.exports.DIST = path.join(ROOT, 'dist');
 
 /** Beide Sprachdateien zusammen: i18n.js allein liefert ein leeres I18N.
  *  @returns {{de: Record<string,string>, en: Record<string,string>}} */
@@ -433,10 +419,6 @@ const localeSource = lang => fs.readFileSync(path.join(ROOT, 'public', 'locales'
 const i18nAll = () =>
   fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8') + '\n' + localeSource('de') + '\n' + localeSource('en');
 
-module.exports.loadTranslations = loadTranslations;
-module.exports.localeSource = localeSource;
-module.exports.i18nAll = i18nAll;
-
 /**
  * Quelltext ohne Kommentare, damit ein Erklärkommentar mit dem gesuchten Namen
  * eine Prüfung nicht grün hält. Nur Blockkommentare am Zeilenanfang: Ein `/*`
@@ -447,8 +429,6 @@ function ohneKommentare(src) {
     .replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, '')
     .replace(/^[ \t]*\/\/[^\n]*$/gm, '');
 }
-
-module.exports.ohneKommentare = ohneKommentare;
 
 /**
  * Quelltext in einer Zeile, wie ihn der Formatierer bei beliebiger Zeilenbreite
@@ -462,7 +442,6 @@ function kompakt(src) {
     .replace(/,? ([)\]])/g, '$1')
     .replace(/, \}/g, ' }');
 }
-module.exports.kompakt = kompakt;
 
 /** HTML-Kommentare bis zum Fixpunkt: Ein Rest wie „<!<!---->--“ ergäbe sonst einen neuen. */
 function ohneHtmlKommentare(src) {
@@ -473,25 +452,22 @@ function ohneHtmlKommentare(src) {
   }
   return s;
 }
-module.exports.ohneHtmlKommentare = ohneHtmlKommentare;
 
 /** Für `new RegExp`: jedes Sonderzeichen wörtlich. */
 const regexWoertlich = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-module.exports.regexWoertlich = regexWoertlich;
 
-/** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
+/** Der Vorschau-Weg des Bild-Proxys (src/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
   return [
-    'src/katalog/http/bildProxy.ts',
+    'src/bilder/http/bildProxy.ts',
     'routes/imgProxy.ts',
-    'src/katalog/bilder/proxyThumbs.ts',
-    'src/katalog/bilder/imgCacheServe.ts',
-    'src/katalog/http/bildCacheAuslieferung.ts',
+    'src/bilder/proxyThumbs.ts',
+    'src/bilder/imgCacheServe.ts',
+    'src/bilder/http/bildCacheAuslieferung.ts',
   ]
     .map(dienstQuelle)
     .join('\n');
 }
-module.exports.proxyThumbQuelle = proxyThumbQuelle;
 
 /** Die Oberfläche rund um Erfassungen: Set-Detail, Kaufpreis-Modal, Detailfenster
  *  und ihre Bausteine (Lagerort, Preisalarm, Diagramme, Rückfragen). */
@@ -506,7 +482,7 @@ function adminQuelle() {
     'diagramme.js',
     'fadenkreuz.js',
     'rueckfrage.js',
-    'acquisition-modals.js',
+    'kauf-dialoge.js',
     'manuell-detail.js',
     'erfassung-zustand.js',
     'kaufpreis-anzeige.js',
@@ -514,27 +490,28 @@ function adminQuelle() {
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
-module.exports.adminQuelle = adminQuelle;
 
 /** Der Weg, auf dem ein Set entsteht oder sich ändert, samt Katalogarbeit. */
 function setKernQuelle() {
   return [
     ['routes/api_v1/sets.ts'],
+    ['routes/api_v1/setsImport.ts'],
+    ['routes/api_v1/setsAnleitungen.ts'],
+    ['routes/api_v1/setsLager.ts'],
     ['src/sets/dienst.ts'],
     ['src/sets/inhalt.ts'],
     ['src/sets/barcode.ts'],
     ['src/sets/csvImport.ts'],
     ['src/sets/anleitungen.ts'],
     ['src/sets/preise.ts'],
-    ['src/sets/setService.ts'],
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
+    ['src/sets/setInhaltImport.ts'],
   ]
     .map(p => dienstQuelle(p[0]))
     .join('\n');
 }
-module.exports.setKernQuelle = setKernQuelle;
 
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
 const HANDLER_MODULE = [
@@ -549,14 +526,12 @@ const HANDLER_MODULE = [
 function handlerQuelle() {
   return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
 }
-module.exports.handlerQuelle = handlerQuelle;
 
 /** Das gebaute Modul für einen Namen aus den Leseabfragen. */
 function handlerModul(_req) {
   // Die Sets-Dienste dieser Testdatei, mit ihrem Kontext gebunden.
   return Object.assign({}, ...(_req && HANDLER_MODULE.map(m => _req(`${m}.js`))), _req && testDienste().sets);
 }
-module.exports.handlerModul = handlerModul;
 
 /** server.ts samt Start des Job-Prozesses und der Läufe dort: für „läuft X
  *  beim Start an". */
@@ -579,7 +554,6 @@ function startQuelle() {
   }
   return teile.join('\n');
 }
-module.exports.startQuelle = startQuelle;
 
 /** Die Portfolio-Kurve: Orchestrierung, Rekonstruktion und Diagrammdaten. */
 function portfolioQuelle() {
@@ -595,7 +569,6 @@ function portfolioQuelle() {
   }
   return teile.join('\n');
 }
-module.exports.portfolioQuelle = portfolioQuelle;
 
 /** Die Grundausstattung des Frontends samt der ausgelagerten Abschnitte. */
 function coreQuelle() {
@@ -618,14 +591,13 @@ function coreQuelle() {
     'konto.js',
     'fortschritt.js',
     'monitor.js',
-    'scope.js',
-    'scrollbar.js',
+    'kontofilter.js',
+    'rollbalken.js',
     'sitzung.js',
   ]
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
     .join('\n');
 }
-module.exports.coreQuelle = coreQuelle;
 
 /**
  * Der Kopf einer Funktion bis zur schliessenden Klammer der Parameterliste.
@@ -644,7 +616,6 @@ function funktionsKopf(src, name) {
   }
   throw new Error(`Parameterliste von ${name} ist nicht geschlossen`);
 }
-module.exports.funktionsKopf = funktionsKopf;
 
 /**
  * Der RUMPF einer Funktion ohne die umschliessenden Klammern. Gesucht wird
@@ -661,7 +632,6 @@ function funktionsRumpf(src, name) {
   if (zu < 0) throw new Error(`Rumpf von ${name} ist nicht geschlossen`);
   return src.slice(auf + 1, zu);
 }
-module.exports.funktionsRumpf = funktionsRumpf;
 
 /** Unabhängig von Typannotation und Position; mit `mitVorgabeNull` zusätzlich
  *  die Vorgabe null (dann dürfen Aufrufer ihn weglassen). */
@@ -672,7 +642,6 @@ function hatParameter(src, name, param, mitVorgabeNull = false) {
   if (!mitVorgabeNull) return true;
   return new RegExp(`\\b${param}\\b[^,)]*=\\s*null`).test(kopf);
 }
-module.exports.hatParameter = hatParameter;
 
 /**
  * Genau diese Parameter, der Reihe nach, ohne Rücksicht auf Typannotationen,
@@ -693,7 +662,6 @@ function pruefeParameter(src, name, params, hinweis = '') {
     zuletzt = zuletzt + 1 + treffer.index;
   }
 }
-module.exports.pruefeParameter = pruefeParameter;
 
 /**
  * Wo welcher Router hängt — aus server.ts GELESEN, nicht abgeschrieben: Eine
@@ -736,7 +704,6 @@ function routerEinhaengungen(o = {}) {
   }
   return out;
 }
-module.exports.routerEinhaengungen = routerEinhaengungen;
 
 /**
  * Die Adresse an EINER Stelle (startup/app.ts): Ein Prüfstand, der Router von Hand
@@ -749,7 +716,6 @@ function einhaengung(name) {
     throw new Error(`routes/${name}.ts haengt ${treffer.length}-mal in startup/app.ts — erwartet: genau einmal`);
   return treffer[0].mount;
 }
-module.exports.einhaengung = einhaengung;
 
 /**
  * Einen Ausschnitt schneiden — und WERFEN, wenn ein Anker fehlt: `slice(-1)`
@@ -769,8 +735,6 @@ function abschnitt(quelle, ab, bis, wozu = '') {
   if (j < 0) throw new Error(`Endanker nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
   return String(quelle).slice(i, j);
 }
-
-module.exports.abschnitt = abschnitt;
 
 /**
  * Ein Pfad-Literal des Frontends auf seine FORM bringen, einmal für alle
@@ -803,8 +767,6 @@ function pfadForm(roh, marke = ':X') {
   }
   return out.split('?')[0].replace(/'\s*\+.*$/, '');
 }
-
-module.exports.pfadForm = pfadForm;
 
 /**
  * Ein Literal ab `i` mit VERSCHACHTELTEN Template-Ausdrücken: Ein Pfad kann
@@ -848,7 +810,21 @@ function leseLiteral(src, i) {
   return null;
 }
 
-module.exports.leseLiteral = leseLiteral;
+/**
+ * Die Routen einer Router-Datei wie ein Treffer von `router.<verb>('<pfad>'`: [ganz, verb, pfad
+ * relativ zu `mount`]. Vertragsrouter nennen den vollen Pfad im Schlüssel (`endpunkt('GET /api/v1/…'`).
+ * @param {string} src @param {string} mount @returns {string[][]}
+ */
+function routenAusQuelle(src, mount) {
+  const raus = [];
+  for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) raus.push([...m]);
+  for (const m of src.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
+    const voll = m[2];
+    const rel = voll === mount ? '/' : voll.startsWith(`${mount}/`) ? voll.slice(mount.length) : null;
+    if (rel !== null) raus.push([m[0], m[1].toLowerCase(), rel]);
+  }
+  return raus;
+}
 
 /** Die Dateiliste steht hier, damit test/api-eingang-db.test.js keinen
  *  variablen Pfad liest (test/eigenbruecken.test.js zählt sie). */
@@ -858,6 +834,9 @@ function v1Routen() {
     const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
       gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
+    // Vertragsrouter: Der Schlüssel nennt Methode und vollen Pfad.
+    for (const m of s.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
+      gefunden.push([m[1], m[2]]);
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
@@ -867,7 +846,6 @@ function v1Routen() {
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }
-module.exports.v1Routen = v1Routen;
 
 /** Für Prüfungen, die eine Eigenschaft überall verlangen, statt eine
  *  Dateiliste zu führen, die beim nächsten Umzug veraltet. */
@@ -884,7 +862,6 @@ function alleQuellen() {
   lauf('');
   return raus;
 }
-module.exports.alleQuellen = alleQuellen;
 
 /** Prüfungen auf das SQL eines Dienstes meinen seinen Weg zur Datenbank,
  *  nicht die Datei.
@@ -921,7 +898,6 @@ function dienstQuelle(rel) {
   }
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
-module.exports.dienstQuelle = dienstQuelle;
 
 /** Alle Quellen der Oberfläche (public/js ohne Bündel, dazu i18n.js) als EIN
  *  Text: für Prüfungen, die nicht an der Datei hängen sollen, in der eine
@@ -941,7 +917,6 @@ function frontendQuelle() {
     .map(f => fs.readFileSync(f, 'utf8'))
     .join('\n');
 }
-module.exports.frontendQuelle = frontendQuelle;
 
 /** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
 function anmeldeQuelle() {
@@ -954,11 +929,10 @@ function anmeldeQuelle() {
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))
     .join('\n');
 }
-module.exports.anmeldeQuelle = anmeldeQuelle;
 
 /** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
 const ANSICHTEN = {
-  einstellungen: ['settings.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
+  einstellungen: ['einstellungen.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
 };
 
 /** Alle Dateien einer Ansicht (Schlüssel aus ANSICHTEN) als EIN Text. */
@@ -966,4 +940,59 @@ function ansichtQuelle(/** @type {keyof typeof ANSICHTEN} */ name) {
   const js = path.join(ROOT, 'public', 'js');
   return ANSICHTEN[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
 }
-module.exports.ansichtQuelle = ansichtQuelle;
+
+module.exports = {
+  ROOT,
+  serverOnly,
+  imgProxy,
+  serverAll,
+  finanzQuelle,
+  umgebung,
+  buildAndRequire,
+  testZugang,
+  testDaten,
+  testBildwerk,
+  testQuellen,
+  alsKonto,
+  testDienste,
+  testKontext,
+  testBereich,
+  ersetzeDienste,
+  bildNotizen,
+  bereichsSeite,
+  routerAus,
+  baueDist,
+  loadTranslations,
+  localeSource,
+  i18nAll,
+  ohneKommentare,
+  kompakt,
+  ohneHtmlKommentare,
+  regexWoertlich,
+  proxyThumbQuelle,
+  adminQuelle,
+  setKernQuelle,
+  handlerQuelle,
+  handlerModul,
+  startQuelle,
+  portfolioQuelle,
+  coreQuelle,
+  funktionsKopf,
+  funktionsRumpf,
+  hatParameter,
+  pruefeParameter,
+  routerEinhaengungen,
+  einhaengung,
+  abschnitt,
+  pfadForm,
+  leseLiteral,
+  routenAusQuelle,
+  v1Routen,
+  alleQuellen,
+  dienstQuelle,
+  frontendQuelle,
+  anmeldeQuelle,
+  ansichtQuelle,
+  testUhr,
+  DIST: path.join(ROOT, 'dist'),
+};

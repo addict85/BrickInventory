@@ -22,4 +22,14 @@ function vertragZu(_req, methode, pfad) {
   return treffer.length === 1 ? treffer[0][1] : undefined;
 }
 
-module.exports = { vertragZu, gleichfoermig };
+/**
+ * Was die Android-App vom Server braucht (shared/app-schnittstelle.json, erzeugt aus ihrem
+ * Quelltext): Routen mit Abfrage und Rumpffeldern, dazu die Antwortfelder, die sie liest.
+ * @returns {{ routen: { methode: string, pfad: string, typ: string | null, abfrage: { name: string, pflicht: boolean }[], rumpf: string | null, rumpffelder: string[] }[], adressen: string[], antwortfelder: string[], modelle: Record<string, { felder: string[], pflicht: string[] }> }}
+ */
+function appSchnittstelle() {
+  const datei = require('node:path').join(__dirname, '..', '..', '..', 'shared', 'app-schnittstelle.json');
+  return JSON.parse(require('node:fs').readFileSync(datei, 'utf8'));
+}
+
+module.exports = { vertragZu, gleichfoermig, appSchnittstelle };

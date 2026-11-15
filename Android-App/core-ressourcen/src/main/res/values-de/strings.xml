@@ -9,7 +9,7 @@
     <string name="settings_default_condition">Standard-Zustand</string>
     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
     <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
-    <string name="settings_default_condition_global">— Globale Vorgabe —</string>
+    <string name="settings_default_condition_global">Globale Vorgabe</string>
     <string name="monitoring_default_condition">Standard-Zustand</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
     <string name="settings_condition_new">Neuware</string>
@@ -18,7 +18,7 @@
     <string name="settings_logout">Abmelden</string>
     <string name="settings_language">Sprache</string>
     <string name="settings_language_system">System-Sprache</string>
-    <string name="settings_language_en">Englisch</string>
+    <string name="settings_language_en">English</string>
     <string name="settings_language_de">Deutsch</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
@@ -44,6 +44,7 @@
     <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
     <string name="setup_qr_ziel">Der QR-Code führt zu diesem Server:</string>
+    <string name="setup_qr_ziel_bestaetigen">Ja, %1$s ist mein Server</string>
     <string name="setup_qr_hinweis">Die App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">Der Servername enthält Zeichen aus anderen Schriften und steht hier in seiner technischen Form (xn--…). Solche Buchstaben sehen bekannten zum Verwechseln ähnlich: Vergleiche den Namen Zeichen für Zeichen mit deinem Server.</string>
     <string name="setup_qr_anderer_server">Dieser Code führt zu einem anderen Server als dem bisherigen (%1$s). Fährst du fort, wirst du dort abgemeldet, und alles, was du ab jetzt erfasst, geht an den neuen Server.</string>
@@ -61,10 +62,10 @@
     <string name="csv_import_done">Import abgeschlossen</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
-    <string name="chart_portfolio_value">Wertentwicklung Portfolio</string>
+    <string name="chart_portfolio_value">Wertentwicklung der Sammlung</string>
     <string name="chart_no_history">Noch keine Verlaufsdaten</string>
-    <string name="chart_summary">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
-    <string name="chart_summary_no_change">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s</string>
+    <string name="chart_summary">Sammlungswert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
+    <string name="chart_summary_no_change">Sammlungswert, %1$s bis %2$s: von %3$s auf %4$s</string>
     <string name="price_chart_summary">Preisverlauf %1$s, %2$s bis %3$s: von %4$s auf %5$s, tiefster Wert %6$s, höchster %7$s</string>
     <string name="chart_period_week">Woche</string>
     <string name="chart_period_month">Monat</string>
@@ -132,6 +133,7 @@
     <string name="offline_stand">Offline – Stand von %1$s</string>
     <string name="offline_verworfen">Nicht übernommen: %1$s – %2$s</string>
     <string name="offline_verworfen_ohne_grund">der Server hat die Änderung nicht angenommen</string>
+    <string name="offline_verworfen_unlesbar">nach einem Update nicht mehr lesbar, nicht gesendet</string>
     <plurals name="offline_ausgang">
         <item quantity="one">Offline gespeichert – %1$d Änderung wird beim nächsten Verbinden gesendet</item>
         <item quantity="other">Offline gespeichert – %1$d Änderungen werden beim nächsten Verbinden gesendet</item>
@@ -224,8 +226,7 @@
     <string name="detail_price_none_yet">noch kein Preis</string>
     <string name="detail_purchase_none">nicht erfasst</string>
     <string name="detail_storage_none">Kein Lagerort</string>
-    <string name="detail_storage_ph">z. B. Kiste 3</string>
-    <string name="detail_storage_choose">Aus der Liste wählen oder neu eintippen</string>
+    <string name="detail_storage_ph">Wählen oder neu eintippen, z. B. Kiste 3</string>
     <string name="filter_condition_all">Alle</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <plurals name="filter_lagerort_sets">
@@ -289,9 +290,9 @@
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Teile</string>
     <string name="finance_filter_minifigs">Minifiguren</string>
-    <string name="finance_section_sets">SETS</string>
-    <string name="finance_section_parts">TEILE</string>
-    <string name="finance_section_minifigs">MINIFIGUREN</string>
+    <string name="finance_section_sets">Sets</string>
+    <string name="finance_section_parts">Teile</string>
+    <string name="finance_section_minifigs">Minifiguren</string>
     <string name="finance_subtotal_parts">Total Teile</string>
     <string name="finance_subtotal_minifigs">Total Minifiguren</string>
     <string name="finance_total_sets">Sets</string>
@@ -333,6 +334,9 @@
     <string name="parts_color_label">Farbe (optional)</string>
     <string name="parts_color_unknown">Farbe %1$d</string>
     <string name="parts_add_button">Hinzufügen</string>
+    <string name="parts_ordnung_farbe">Nach Farbe</string>
+    <string name="parts_ordnung_name">Nach Name</string>
+    <string name="parts_ordnung_menge">Nach Menge</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Hintergrundarbeiten</string>
@@ -345,7 +349,7 @@
     <string name="monitoring_icon_retry">Erneut versuchen</string>
     <string name="monitoring_hide_error">Fehler ausblenden</string>
     <string name="monitoring_show_error">Letzten Fehler anzeigen</string>
-    <string name="monitoring_price_cache">PREISSPEICHER</string>
+    <string name="monitoring_price_cache">Preisspeicher</string>
     <string name="monitoring_cache_prices">Preise</string>
     <string name="monitoring_cache_stale">Veraltet</string>
     <string name="monitoring_cache_subsets">Teilsets</string>
@@ -357,7 +361,7 @@
     <string name="monitoring_cache_clear_confirm">Leeren</string>
     <string name="monitoring_cache_cleared">Zwischenspeicher geleert</string>
     <string name="monitoring_cache_saved">Speicherdauer gespeichert</string>
-    <string name="monitoring_api_calls">API-AUFRUFE</string>
+    <string name="monitoring_api_calls">API-Aufrufe</string>
     <string name="monitoring_limits_saved">Grenzen gespeichert</string>
     <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
@@ -423,7 +427,7 @@
     <!-- ══════════════ ViewModel messages ══════════════ -->
     <string name="vm_barcode_not_found">Kein Set für „%1$s“ gefunden</string>
 
-    <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
+    <!-- Meldungen der Bildschirme -->
     <string name="parts_search_placeholder">Suchen…</string>
     <string name="parts_spare_tag">Ersatzteil</string>
     <string name="setitem_used_in">Verwendet in</string>
@@ -440,7 +444,7 @@
     <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
     <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
-    <string name="common_unit_price">Kaufpreis/Stk (optional)</string>
+    <string name="common_unit_price">Kaufpreis je Stück (optional)</string>
     <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Lädt…</string>
@@ -628,8 +632,7 @@
     <string name="gallery_sort_qty_asc">Anzahl ↑</string>
     <string name="vm_add_failed">%1$s konnte nicht hinzugefügt werden: %2$s</string>
 
-    <!-- PDF-Betrachter (Nachtrag 115). Die Texte standen bisher als Literale
-         im Code — hier stehen sie in der Sprache, in der sie dort standen. -->
+    <!-- PDF-Betrachter -->
     <string name="monitoring_retry_attempt">Versuch %1$d/30 · nächster: %2$s</string>
     <string name="monitoring_cache_ttl_hours">%1$s Stunden</string>
     <string name="acq_total_quantity">Total ×%1$d</string>
@@ -647,6 +650,7 @@
     <string name="err_server">Serverfehler (%1$d)</string>
     <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
     <string name="err_klartext">Die Serveradresse ist unverschlüsselt (http). Die App verbindet sich nur über https – bitte unter „Server wechseln“ die https-Adresse eintragen oder den QR-Code neu scannen.</string>
+    <string name="err_abgesagt">Der Server hat die Anfrage abgelehnt.</string>
     <string name="err_unknown">Etwas ist schiefgelaufen</string>
     <string name="err_upload_laeuft">Für dieses Konto läuft schon ein Upload dieser Art. Bitte warten, bis er fertig ist.</string>
     <string name="err_zu_viele_verbindungen">Zu viele offene Verbindungen für dieses Konto. Bitte andere Fenster oder Geräte schliessen und es gleich noch einmal versuchen.</string>
@@ -740,7 +744,6 @@
     <string name="konto_password_button">Passwort ändern</string>
     <string name="startpasswort_titel">Startpasswort ersetzen</string>
     <string name="startpasswort_text">Dieses Konto meldet sich noch mit dem Startpasswort an, mit dem es angelegt wurde. Wähle zuerst ein eigenes Passwort. Danach meldest du dich mit dem neuen an.</string>
-    <string name="startpasswort_wiederholen">Wiederholen</string>
     <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
     <string name="design_text_classic">Hell und sachlich, blaue Akzente.</string>
@@ -797,7 +800,7 @@
     <string name="instr_upload_done">Anleitung hinzugefügt</string>
     <string name="instr_delete">Anleitung entfernen</string>
     <!-- Neu einlesen: dieselben zwei Aktionen, die die Web-App im Set-Detail hat
-         (gallery.js: redownloadInstr, reimportParts). -->
+         (sammlung.js: redownloadInstr, reimportParts). -->
 
     <!-- ══════════════ Server-Protokoll ══════════════ -->
     <string name="admin_log_title">Server-Protokoll</string>
@@ -810,7 +813,7 @@
     <string name="common_collapse">Zuklappen</string>
     <string name="common_expand">Aufklappen</string>
 
-    <!-- ══════════════ Meldungen, die bis Nachtrag 130 fest verdrahtet waren ══════════════ -->
+    <!-- ══════════════ Meldungen der ViewModels ══════════════ -->
     <string name="err_set_not_found">Set nicht gefunden</string>
     <string name="pdfexp_server_error">Der Server konnte das PDF nicht erstellen</string>
     <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
@@ -841,14 +844,14 @@
     <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
     <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
     <string name="update_installer_fremd">Die Bestätigung führt nicht zum Installer des Systems. Geöffnet wurde nichts.</string>
-    <string name="update_quelle_abgelaufen">Die Update-Beschreibung ist abgelaufen: Sie wurde nicht rechtzeitig neu signiert. Entweder gab es lange keine Veröffentlichung, oder jemand hält Updates zurück. Deshalb bietet die App gerade kein Update an. Prüfe die Release-Seite des Projekts sowie Datum und Uhrzeit des Geräts.</string>
+    <string name="update_quelle_abgelaufen">Die Update-Beschreibung ist abgelaufen, sie wurde nicht rechtzeitig neu signiert. Eine neuere Version könnte existieren: Entweder gab es lange keine Veröffentlichung, oder jemand hält Updates zurück. Ein angebotenes Update ist trotzdem echt signiert und neuer als die installierte Version. Prüfe die Release-Seite des Projekts sowie Datum und Uhrzeit des Geräts.</string>
     <string name="update_quelle_zurueckgesetzt">Die Update-Beschreibung ist älter als eine, die diese App schon gesehen hat. Die Update-Quelle ist veraltet oder manipuliert, und neuere Fassungen werden dir womöglich vorenthalten. Deshalb bietet die App gerade kein Update an. Prüfe die Release-Seite des Projekts.</string>
 
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
 
 
-    <!-- Merkliste (Nachtrag 179) -->
+    <!-- Merkliste -->
     <string name="nav_wanted">Merkliste</string>
     <string name="wanted_add_title">Set merken</string>
     <string name="wanted_add_submit">Auf die Merkliste</string>
@@ -886,7 +889,6 @@
     <string name="vouchers_edit">Gutschein ändern</string>
     <string name="vouchers_number">Gutscheinnummer</string>
     <string name="vouchers_pin">PIN</string>
-    <string name="vouchers_copy_hint">Nummer oder PIN antippen, um sie zu kopieren</string>
     <string name="vouchers_copied_number">Gutscheinnummer kopiert</string>
     <string name="vouchers_copied_pin">PIN kopiert</string>
     <string name="vouchers_amount">Betrag</string>
@@ -900,6 +902,7 @@
     <string name="schritt_kein_schluessel">Die Gerätesperre lässt sich gerade nicht prüfen. Bitte später erneut versuchen.</string>
     <string name="schritt_ohne_attestation">Dieses Gerät kann nicht belegen, dass sein Schlüssel in der Sicherheitshardware liegt. Heikle Schritte (Gutschein-PIN, Verwaltung) gehen darum nur in der Web-App.</string>
     <string name="schritt_server_fehler">Der Server hat die Bestätigung nicht angenommen. Bitte erneut versuchen.</string>
+    <string name="app_sperre_einrichten">Neu installiert ist sie auf 5 Minuten gestellt, wenn das Telefon eine Displaysperre hat. Sie verdeckt die App und fragt nach Fingerabdruck oder Gerätesperre; ändern lässt sie sich jederzeit in den Einstellungen.</string>
     <string name="app_sperre_titel">App sperren</string>
     <string name="app_sperre_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre. Gilt für dieses Gerät.</string>
     <string name="app_sperre_ohne_displaysperre">Braucht eine Displaysperre auf diesem Gerät.</string>
@@ -918,7 +921,9 @@
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
     <string name="vouchers_deleted">Gutschein gelöscht</string>
-    <string name="vouchers_save_error">Gutschein konnte nicht gespeichert werden</string>
+    <string name="vouchers_number_fehlt">Gutscheinnummer eingeben.</string>
+    <string name="konto_email_fehlt">E-Mail-Adresse eingeben</string>
+    <string name="konto_nichts_geaendert">Nichts geändert – es gibt nichts zu speichern.</string>
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
@@ -994,8 +999,12 @@
     <string name="zert_bisher">Bisher bestätigt</string>
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
+    <string name="zert_titel_schluessel_neu">Der Server hat einen neuen Schlüssel</string>
+    <string name="zert_text_schluessel_neu">%1$s zeigt ein gültiges Zertifikat derselben Zertifizierungsstelle, aber mit einem anderen Schlüssel als bisher. Das ist nach einer Erneuerung des Zertifikats normal – es kann aber auch ein Zertifikat sein, das jemand anderem ausgestellt wurde. Es wurde nichts gesendet. Nur annehmen, wenn das Zertifikat des Servers gerade erneuert wurde.</string>
+    <string name="zert_erstkontakt_abtippen">Fingerabdruck stattdessen abtippen</string>
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
     <string name="zert_geaendert_eingabe">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="zert_schluessel_neu_eingabe">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
     <string name="zert_unbekannt_eingabe">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum Fingerabdruck dieses Servers.</string>
@@ -1066,7 +1075,6 @@
     <string name="art_bild_nachlauf">Bild-Download (CDN)</string>
     <string name="art_aufraeumen">Aufräumen (stündlich)</string>
     <string name="art_aufraeumen_taeglich">Aufräumen (täglich)</string>
-    <string name="hintergrund_titel">Hintergrundarbeiten</string>
     <string name="hintergrund_kein_prozess">Kein Job-Prozess meldet sich — läuft der Dienst „jobs“?</string>
     <string name="hintergrund_pause">%1$s pausiert bis %2$s: %3$s</string>
     <string name="hintergrund_leer">Keine offenen oder gescheiterten Aufträge</string>
@@ -1124,9 +1132,14 @@
     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
     <string name="zf_pflicht_kurz">Verwalterrechte brauchen einen zweiten Faktor.</string>
     <string name="zf_share">Teilen</string>
+    <string name="zf_codes_speichern">Als Datei speichern</string>
     <string name="zf_share_title">Wiederherstellungscodes</string>
-    <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>
+    <string name="parts_nummer_fehlt">Zuerst eine Teilenummer eingeben.</string>
+    <string name="minifigs_nummer_fehlt">Zuerst eine Minifigur-Nummer eingeben.</string>
+    <string name="erfassen_verwerfen_titel">Änderungen verwerfen?</string>
+    <string name="erfassen_verwerfen_text">Was du eingegeben hast, geht verloren.</string>
+    <string name="erfassen_verwerfen">Verwerfen</string>
     <string name="gallery_quantity_hint">Anzahl gleicher Sets</string>
     <string name="erfassen_menge_ungueltig">Eine ganze Anzahl ab 1 eingeben.</string>
     <string name="erfassen_preis_ungueltig">Einen Betrag wie 12,50 oder 1.299,00 eingeben.</string>
@@ -1221,4 +1234,13 @@
     <string name="household_invite_gueltig_bis">Gültig bis %1$s</string>
     <string name="household_redeem_sperrgrund">Code und Passwort eingeben, dann verknüpfen.</string>
     <string name="household_redeem_sperrgrund_faktor">Code, Passwort und Code des zweiten Faktors eingeben, dann verknüpfen.</string>
+    <string name="parts_quantity_hint">Anzahl gleicher Teile</string>
+    <string name="minifigs_quantity_hint">Anzahl gleicher Minifiguren</string>
+    <string name="hintergrund_auftraege">Aufträge</string>
+    <string name="monitoring_darstellung_vorgabe">Darstellung (Vorgabe für alle)</string>
+    <string name="vouchers_menu_cd">Weitere Aktionen für alle Gutscheine</string>
+    <string name="gallery_detail_leer">Ein Set antippen, um es hier zu sehen</string>
+    <string name="partslist_reset_titel">Bauliste zurücksetzen?</string>
+    <string name="partslist_reset_text">Alle Sets und die erstellte Liste werden entfernt.</string>
+    <string name="alerts_schwelle">Schwelle</string>
 </resources>

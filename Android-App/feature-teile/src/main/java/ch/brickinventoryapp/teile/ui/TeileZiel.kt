@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile.ui
 
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ui.Reiterziel
 import kotlinx.serialization.Serializable

@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
 import { anleitungenZusammenlegen } from '../katalog';
-import { findSetInScope } from './erfassen';
+import { findeSetImBlickfeld } from './erfassen';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler, nichtGefunden } from '../infra/fehlerTexte';
 import { imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/setDetail';
 import { versuche, wertOder } from '../infra/ergebnis';
@@ -16,13 +16,11 @@ export async function anleitungMerken(sk: SetsKontext, uid: number, sn: string, 
   await repo.fuegeAnleitungEin(sk.db, uid, sn, pfad, beschreibung, pfad);
 }
 
-/** Die Datei bleibt, solange eine andere Zeile auf sie zeigt.
- * @returns false, wenn es die Zeile nicht gab */
-export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: string): Promise<boolean> {
-  const instr = await repo.anleitungsPfad(sk.db, id, uid);
-  if (!instr) return false;
+/** Die Datei bleibt, solange eine andere Zeile auf sie zeigt. */
+export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: number): Promise<void> {
+  const instr = (await repo.anleitungsPfad(sk.db, id, uid)) ?? nichtGefunden();
   await repo.loescheAnleitung(sk.db, id, uid);
-  if (!instr.local_path?.startsWith('/data/uploads/')) return true;
+  if (!instr.local_path?.startsWith('/data/uploads/')) return;
   // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen. Die
   // Zeile eines anderen Kontos verbirgt der Zeilenschutz; gefragt wird deshalb im Systemrahmen.
   const pfad = instr.local_path;
@@ -38,7 +36,6 @@ export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: string
     await fs.promises
       .unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
       .catch(ohneFehlendeDatei('anleitung:datei-loeschen'));
-  return true;
 }
 
 /** Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
@@ -48,12 +45,12 @@ export async function anleitungenNeuLaden(sk: SetsKontext, uid: number, roh: str
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   if (verwalter) await sk.katalog.loescheAnleitungen(sn);
   else {
-    if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+    if (!(await findeSetImBlickfeld(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
     if ((await sk.katalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
     if (!(await sk.katalog.anleitungNeuLadenErlaubt(sn)))
       fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  const auftrag = await sk.auftraege.anleitungEinreihen(sn, { jetzt: true });
+  const auftrag = await sk.katalog.anleitungEinreihen(sn, { jetzt: true });
   const instructions = anleitungenZusammenlegen(await sk.katalog.anleitungenZuSet(sn), []);
   return { instructions, auftrag };
 }

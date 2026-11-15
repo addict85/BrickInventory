@@ -1,8 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.model.data.model.GutscheinRequest
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.Gutscheinangabe
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Bestaetigung
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -11,10 +12,9 @@ import org.junit.Test
 import ch.brickinventoryapp.data.repository.Ergebnis
 import java.io.File
 import org.json.JSONObject
-import ch.brickinventoryapp.testing.GutscheineRepository
+import ch.brickinventoryapp.testing.testGutscheineRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -74,7 +74,7 @@ class GutscheineContractTest {
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
         val ordner = File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
         try {
-            return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner)
+            return block(pfade, testGutscheineRepository(TestApi.fuer(pfade.server)), ordner)
         } finally {
             pfade.server.shutdown(); ordner.deleteRecursively()
         }
@@ -86,8 +86,8 @@ class GutscheineContractTest {
      */
     @Test
     fun `die App ruft dieselben Adressen wie die Webapp`() = mitServer { pfade, repo, _ ->
-        val g = GutscheinRequest(number = "1234-5678", pin = "9876", amount = 50.0)
-        val b = ZweiterFaktorAnfrage(password = "geheim")
+        val g = Gutscheinangabe(nummer = "1234-5678", pin = "9876", betrag = Geld.aus(50.0)!!, waehrung = Waehrung.CHF)
+        val b = Bestaetigung(passwort = "geheim")
         runBlocking {
             repo.liste()
             repo.anlegen(g)
@@ -106,7 +106,7 @@ class GutscheineContractTest {
     /** Ohne Rumpf antwortet der Server mit 400: Löschen und Klartext verlangen die Bestätigung. */
     @Test
     fun `Loeschen, Klartext und PDF-Freigabe tragen Passwort und Code`() = mitServer { pfade, repo, _ ->
-        val b = ZweiterFaktorAnfrage(password = "geheim", code = "123456")
+        val b = Bestaetigung(passwort = "geheim", code = "123456")
         runBlocking {
             repo.loeschen(5, b)
             repo.klartext(5, b)
@@ -125,8 +125,8 @@ class GutscheineContractTest {
     fun `der Klartext wird nicht zwischengespeichert`() = mitServer { pfade, repo, ordner ->
         pfade.antworten["/api/v1/vouchers/5/klartext"] =
             """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
-        val r = runBlocking { repo.liste(); repo.klartext(5, ZweiterFaktorAnfrage(password = "geheim")) }
-        assertEquals("6000111122223333", (r as Ergebnis.Success).data.number)
+        val r = runBlocking { repo.liste(); repo.klartext(5, Bestaetigung(passwort = "geheim")) }
+        assertEquals("6000111122223333", (r as Ergebnis.Erfolg).data.number)
         val abgelegt = ordner.walkTopDown().filter { it.isFile }
             .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
         assertTrue("Klartext liegt auf der Platte: $abgelegt", abgelegt.isEmpty())
@@ -176,7 +176,7 @@ class GutscheineContractTest {
         }
         assert(repo.contains("422")) {
             "Der 422-Rumpf wird nicht ausgewertet — dann geht `gelesen` verloren, " +
-                "weil safeCall aus einem Fehlerrumpf nur `error` holt."
+                "weil sicherAufrufen aus einem Fehlerrumpf nur `error` holt."
         }
     }
 

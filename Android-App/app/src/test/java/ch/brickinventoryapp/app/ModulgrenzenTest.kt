@@ -55,10 +55,12 @@ import ch.brickinventoryapp.testing.Quellen
  *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-ui ein →
  *      rot „Schichtung der Kernmodule: core-offline hängt an [core-ui]“ (core-data
  *      ginge nicht: Den Zyklus bricht schon Gradle ab, ohne Testbericht)
+ *   W  gegenproben/ablage-kennt-wireformat.patch: core-offline bindet core-vertrag wieder ein →
+ *      rot „core-offline kennt das Wire-Format“ (Schichtung der Kernmodule)
  *   T  gegenproben/bereich-kennt-bereich.patch: feature-teile bindet feature-katalog ein →
  *      rot „feature-teile hängt an feature-katalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
- *      model.ui.model → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
+ *      model.fach → rot „core-ui kennt Fachmodelle“ (Schichtung der Kernmodule)
  *   S  gegenproben/ui-neuer-bildschirm.patch: eine neue Datei in core-ui/ui/screens →
  *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
@@ -71,6 +73,11 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „Schichtung der Kernmodule: core-sitzung hängt an core-ui“
  *   Z  gegenproben/konto-haengt-an-tresor.patch: feature-konto bindet core-sicherheit wieder ein →
  *      rot „feature-konto hängt an core-sicherheit, das unter dem Zustand liegt“ (kein Bereich hängt …)
+ *   AA core-zustand schaltet wieder brickinventory.android.compose ein → rot „core-zustand liegt unter
+ *      der Oberfläche und schaltet Compose ein“ (Schichtung …; mit kotlinc gemessen, in Gradle bricht
+ *      schon AndroidComposeKonvention ab); gegenproben/zustand-darf-oberflaeche.patch → rot „die Kantenregel …“
+ *   AB gegenproben/bereichs-viewmodel-im-zustand.patch: ein ViewModel nur eines Bereichs in core-zustand
+ *      → rot „… liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels“ (Schichtung …)
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -111,9 +118,10 @@ class ModulgrenzenTest {
         // Jedes Modul hat seinen eigenen Paketstamm (Tabelle in README.md): Ein Import
         // verrät so das Modul, und kein Paket verteilt sich auf zwei Module.
         val stamm = mapOf(
-            "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
+            "app" to "app", "core-model" to "model", "core-vertrag" to "vertrag", "core-netz" to "netz", "core-data" to "data",
             "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
+            "core-navigation" to "navigation",
             "core-sitzung" to "sitzung",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
@@ -173,6 +181,15 @@ class ModulgrenzenTest {
         assertTrue("Nur ${alle.size} Modulkanten — Muster veraltet?", alle.size >= 60)
         val verstoesse = Modulkanten.verstoesse(alle)
         assertTrue(verstoesse.joinToString("\n"), verstoesse.isEmpty())
+        val plugin = Regex("""alias\(libs\.plugins\.([\w.]+)\)""")
+        val oberflaeche = module().mapNotNull { (name, bau) -> Modulkanten.oberflaecheVerstoss(name, plugin.findAll(bau).map { it.groupValues[1] }.toList()) }
+        assertTrue(oberflaeche.joinToString("\n"), oberflaeche.isEmpty())
+        val viewModel = Regex("""\bclass\s+(\w+)[^{]*?:\s*ViewModel\(\)""")
+        val zustandsVms = File(projekt, "core-zustand/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .flatMap { f -> viewModel.findAll(Quellen.ohneKommentare(f.readText())).map { it.groupValues[1] } }.toList()
+        assertTrue("Keine ViewModels in core-zustand gefunden — Muster veraltet?", zustandsVms.size >= 3)
+        val vmFalsch = Modulkanten.zustandsViewModelVerstoesse(zustandsVms)
+        assertTrue(vmFalsch.joinToString("\n"), vmFalsch.isEmpty())
         // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
         val netz = kerne.getValue("core-netz")
         val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
@@ -189,15 +206,15 @@ class ModulgrenzenTest {
     }
 
     /**
-     * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer eine Ansicht
-     * (model.ui.model) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
-     * und gehört in den Bereich oder nach core-ui-bestand.
+     * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer einen Fachtyp
+     * (model.fach) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
+     * und gehört in den Bereich oder nach core-ui-bestand; nur Beträge und Währung formatiert es.
      */
     private fun pruefeUiOhneFachwissen() {
         val wurzel = File(projekt, "core-ui/src/main/java")
         val dateien = wurzel.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         assertTrue("Nur ${dateien.size} Dateien in core-ui — Pfad veraltet?", dateien.size >= 40)
-        val fach = Regex("""\bch\.brickinventoryapp\.model\.(data|ui\.model)\b""")
+        val fach = Regex("""\bch\.brickinventoryapp\.model\.(data|fach\.(?!(Waehrung|Geld)\b))""")
         val funde = dateien.filter { fach.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.relativeTo(wurzel).path }
         assertTrue("core-ui kennt Fachmodelle: $funde", funde.isEmpty())
         // Die Kamera-Bausteine heissen noch ui.screens; neue Bildschirme oder Bausteine kommen nicht dorthin.
@@ -206,11 +223,17 @@ class ModulgrenzenTest {
     }
 
     /**
-     * Die Regel selbst, an Kanten, die es im Baum nicht gibt. Gegenproben (mit kotlinc gemessen):
+     * Die Regel selbst, an Kanten, die es im Baum nicht gibt.
+     *
+     * Gegenproben (mit kotlinc gemessen):
      *   gegenproben/kantenregel-ohne-testausnahme.patch: Testkonfigurationen zählen mit → rot hier
      *   die api-Zeile gestrichen → rot hier, „Modulkanten per api …“ fehlt
      *   core-ui in kerne["core-zustand"] eingetragen → rot hier
      *   gegenproben/tiefe-kerne-offen.patch: die Regel zu tiefeKerne gestrichen → rot hier
+ *   gegenproben/wire-format-fuer-alle.patch: die Regel zu wireKenner gestrichen → rot hier
+     *
+     *   in oberflaecheVerstoss `modul in ohneOberflaeche &&` gestrichen → rot hier (core-navigation)
+     *   gegenproben/zustand-darf-oberflaeche.patch: core-zustand fehlt in ohneOberflaeche → rot hier
      */
     @Test
     fun `die Kantenregel verbietet Bereich an Bereich, falsche Schichtung, api und core-testing im Hauptcode`() {
@@ -219,6 +242,13 @@ class ModulgrenzenTest {
         assertEquals(listOf("feature-teile hängt an app"), pruefe("feature-teile", "implementation", "app"))
         assertEquals(listOf("Schichtung der Kernmodule: core-zustand hängt an core-ui"), pruefe("core-zustand", "implementation", "core-ui"))
         assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
+        assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-vertrag"), pruefe("core-data", "api", "core-vertrag"))
+        assertEquals(listOf("feature-teile kennt das Wire-Format: Nur core-data bildet es ab"),
+            pruefe("feature-teile", "implementation", "core-vertrag"))
+        assertEquals(listOf("app kennt das Wire-Format: Nur core-data bildet es ab"), pruefe("app", "implementation", "core-vertrag"))
+        assertEquals(emptyList<String>(), pruefe("feature-teile", "testImplementation", "core-vertrag"))
+        assertEquals(emptyList<String>(), pruefe("core-data", "implementation", "core-vertrag"))
+        assertEquals(listOf("core-offline kennt das Wire-Format: Nur core-data bildet es ab"), pruefe("core-offline", "implementation", "core-vertrag"))
         assertEquals(listOf("feature-konto bindet core-testing nicht nur für Tests ein"), pruefe("feature-konto", "implementation", "core-testing"))
         assertEquals(listOf("feature-konto hängt an core-sicherheit, das unter dem Zustand liegt"),
             pruefe("feature-konto", "implementation", "core-sicherheit"))
@@ -232,6 +262,11 @@ class ModulgrenzenTest {
         assertEquals(emptyList<String>(), pruefe("app", "implementation", "feature-teile"))
         assertEquals(emptyList<String>(), pruefe("core-data", "api", "core-model"))
         assertEquals(emptyList<String>(), pruefe("core-zustand", "implementation", "core-data"))
+        assertEquals("core-zustand liegt unter der Oberfläche und schaltet Compose ein: [brickinventory.android.compose]",
+            Modulkanten.oberflaecheVerstoss("core-zustand", listOf("brickinventory.android.library", "brickinventory.android.compose")))
+        assertEquals(null, Modulkanten.oberflaecheVerstoss("core-navigation", listOf("brickinventory.android.compose")))
+        assertEquals(listOf("MerklisteViewModel liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels"),
+            Modulkanten.zustandsViewModelVerstoesse(Modulkanten.zustandsViewModels.keys + "MerklisteViewModel"))
     }
 
     @Test

@@ -1,0 +1,17 @@
+Gegenprobe: ein gescheiterter Start meldet nichts
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.MonitoringStartknoepfeTest
+Rot: ein gescheiterter Start meldet
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+@@ -266,7 +266,7 @@
+             if (gestartet == null) {
+                 setzeKnopf(job, null)
+                 val satz = if (job == Jobstart.ANLEITUNGEN) R.string.monitoring_reimport_error else R.string.monitoring_start_error
+-                meldungen.zeige(Meldung.Ressource(satz))
++                satz.hashCode()
+                 return@launch
+             }
+             setzeKnopf(job, gestartet)

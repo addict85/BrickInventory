@@ -24,7 +24,10 @@ internal object SicherheitModule {
     @Provides
     @Singleton
     fun provideTokenVerschluesselung(): TokenVerschluesselung =
-        EntsperrTresor(KeystoreTokenTresor(KeystoreTokenTresor.ALIAS_ENTSPERRT, nurEntsperrt = true), KeystoreTokenTresor())
+        EntsperrTresor(
+            KeystoreTokenTresor(KeystoreTokenTresor.ALIAS_ENTSPERRT, nurEntsperrt = true),
+            KeystoreTokenTresor(nurLesen = true),
+        )
 
     /** Gesperrt heisst hier: Der Schlüssel des Tokens gibt gerade nichts frei (EntsperrTresor). */
     @Provides
@@ -34,22 +37,46 @@ internal object SicherheitModule {
         return Geraetesperre { waechter?.isDeviceLocked == true }
     }
 
-    /** Der Schlüssel der lokalen Ablagen; umhüllt unter eigenem Alias, abgelegt ohne Sicherung. */
+    /**
+     * Der Schlüssel der lokalen Ablagen (Bestand, Kaufpreise, Ausgang); umhüllt wie das Token
+     * unter einem Alias, der nur entsperrt arbeitet. Der Ausgang braucht keinen eigenen: Senden
+     * geht ohnehin erst mit dem Token, und das öffnet sich auch nur entsperrt.
+     */
     @Provides
     @Singleton
     fun provideAblageschluessel(@ApplicationContext context: Context): Ablageschluessel =
-        Ablageschluessel(File(context.noBackupFilesDir, "ablage.schluessel"), KeystoreTokenTresor("brickinventory_ablage"))
+        Ablageschluessel(
+            File(context.noBackupFilesDir, "ablage.schluessel"),
+            EntsperrTresor(
+                KeystoreTokenTresor(ALIAS_ABLAGE_ENTSPERRT, nurEntsperrt = true),
+                KeystoreTokenTresor(ALIAS_ABLAGE, nurLesen = true),
+            ),
+        )
 
-    /** Pins und Nutzer-CA-Schalter: eigener Schlüssel, damit das Abmelden sie nicht unlesbar macht. */
+    /**
+     * Zwei Schlüssel, die das Abmelden überleben. Der für Pins und Nutzer-CA-Schalter arbeitet
+     * auch gesperrt: Jede TLS-Verbindung fragt ihn, auch die einer Entwertung im Hintergrund.
+     * Adresse, Name, Widget und Aufträge liegen unter dem zweiten, der nur entsperrt arbeitet;
+     * sie braucht erst, wer das Token öffnet, und das geht ohnehin nur entsperrt.
+     */
     @Provides
     @Singleton
     fun provideVertrauenschiffre(@ApplicationContext context: Context): Vertrauenschiffre {
         val schluessel = Ablageschluessel(
             File(context.noBackupFilesDir, "vertrauen.schluessel"), KeystoreTokenTresor("brickinventory_vertrauen"),
         )
-        return Vertrauenschiffre { schluessel.fuer("vertrauen") }
+        val angaben = Ablageschluessel(
+            File(context.noBackupFilesDir, "angaben.schluessel"),
+            KeystoreTokenTresor(ALIAS_ANGABEN, nurEntsperrt = true),
+        )
+        return Vertrauenschiffre(angaben = { angaben.fuer("angaben") }) { schluessel.fuer("vertrauen") }
     }
 
     @Provides
     fun zertifikatsFrage(z: ZertifikatsRueckfrage): ZertifikatsFrage = z
+
+    private const val ALIAS_ABLAGE = "brickinventory_ablage"
+    private const val ALIAS_ANGABEN = "brickinventory_angaben_entsperrt"
+    /** Eigener Alias: Ein bestehender Schlüssel nimmt die Bedingung nachträglich nicht an. */
+    private const val ALIAS_ABLAGE_ENTSPERRT = "brickinventory_ablage_entsperrt"
 }

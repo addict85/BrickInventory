@@ -1,11 +1,17 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
+import androidx.compose.runtime.remember
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
-import ch.brickinventoryapp.teile.ui.PartsUiState
+import ch.brickinventoryapp.teile.ui.TeileUiState
+import ch.brickinventoryapp.teile.ui.FigurenUiState
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
@@ -17,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
+import ch.brickinventoryapp.ui.components.Rueckfrage
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -36,11 +43,12 @@ import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.MengenKnopf
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
@@ -62,6 +70,7 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 fun ManualItemDetailRoute(
     vm: KaeufeViewModel,
     teile: TeileViewModel,
+    figuren: FigurenViewModel,
     type: Postenart,
     id: String,
     colorId: Int = OHNE_FARBE,
@@ -72,12 +81,14 @@ fun ManualItemDetailRoute(
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val partsState by teile.partsState.collectAsStateWithLifecycle()
-    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    // Nur die Liste des Eintrags beobachten: Sie lädt beim Beobachten, die andere bliebe ungenutzt.
+    val teileZustand = if (type == Postenart.FIG) TeileUiState() else teile.teileState.collectAsStateWithLifecycle().value
+    val figurenZustand = if (type == Postenart.FIG) figuren.figurenZustand.collectAsStateWithLifecycle().value else FigurenUiState()
+    val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     ManualItemDetailScreen(
-        zustand = EinzelstueckZustand(state, partsState, manDetailState, lagerZustand),
-        kaeufe = vm, teile = teile, type = type, id = id, colorId = colorId,
+        zustand = EinzelstueckZustand(state, teileZustand, figurenZustand, manDetailState, lagerZustand),
+        kaeufe = vm, teile = teile, figuren = figuren, type = type, id = id, colorId = colorId,
         fallbackTitle = fallbackTitle, imageLoader = imageLoader, onBack = onBack,
         onNavigateToAcqMgmt = onNavigateToAcqMgmt, onFarbeGeaendert = onFarbeGeaendert,
     )
@@ -86,7 +97,8 @@ fun ManualItemDetailRoute(
 /** Was die Detailansicht eines manuellen Eintrags zeigt. */
 internal data class EinzelstueckZustand(
     val state: AppUiState,
-    val partsState: PartsUiState,
+    val teile: TeileUiState,
+    val figuren: FigurenUiState,
     val manDetailState: ManualItemDetailUiState,
     val lagerZustand: LagerUiState,
 )
@@ -98,6 +110,7 @@ internal fun ManualItemDetailScreen(
     kaeufe: KaeufeAktionen,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
     teile: TeileAktionen,
+    figuren: FigurenAktionen,
     type: Postenart,
     id: String,            // partNumber / figNumber
     colorId: Int = OHNE_FARBE,
@@ -116,31 +129,20 @@ internal fun ManualItemDetailScreen(
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state = zustand.state
-    val partsState = zustand.partsState
+    val teileZustand = zustand.teile
+    val figurenZustand = zustand.figuren
     val manDetailState = zustand.manDetailState
     val lagerZustand = zustand.lagerZustand
 
     val isFig = type == Postenart.FIG
     val currency = state.currency
 
-    LaunchedEffect(type, id, colorId) {
-        kaeufe.loadManualAcquisitions(type, id, colorId)
-        // Die Liste kann fehlen, wenn der Screen aus einem Tiefenlink oder nach einem
-        // Prozessneustart kommt — ohne sie gäbe es weder Name noch Bild. Aus derselben
-        // Quelle wie die Liste (/parts/manual bzw. /minifigs/manual), damit es für
-        // dieselbe Zeile nur eine Quelle gibt und keine Marktpreise für den ganzen Bestand
-        // geholt werden.
-        if (partsState.manualParts == null && partsState.manualFigs == null) {
-            if (isFig) teile.loadMinifigs() else teile.loadParts()
-        }
-        // Die Farbliste fuer die Auswahl weiter unten. Dieselbe Quelle wie im
-        // Erfassungsdialog (/parts/brick-colors) — und nur fuer Teile: Eine
-        // Figur hat keine Farbe.
-        if (!isFig && partsState.partsColors.isEmpty()) teile.loadPartsColors()
-    }
+    // Name und Bild kommen aus derselben Liste wie im Reiter (/parts/manual bzw.
+    // /minifigs/manual); sie, die Farbauswahl und die Käufe laden die ViewModels beim
+    // Beobachten, auch nach einem Tiefenlink oder Prozessneustart.
 
-    val fig  = if (isFig) partsState.manualFigs?.find { it.figNumber == id } else null
-    val part = if (!isFig) partsState.manualParts?.find {
+    val fig  = if (isFig) figurenZustand.manualFigs?.find { it.figNumber == id } else null
+    val part = if (!isFig) teileZustand.manualParts?.find {
         it.partNumber == id && it.colorId == colorId
     } else null
 
@@ -205,7 +207,7 @@ internal fun ManualItemDetailScreen(
 
             // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
             item {
-                fun fmt(v: Double?) = if (v == null) "—"
+                fun fmt(v: Geld?) = if (v == null) "—"
                     else fmtMoney(v, currency)
                 WertKacheln(
                     markt = fmt(fig?.avgPrice ?: part?.avgPrice),
@@ -234,14 +236,14 @@ internal fun ManualItemDetailScreen(
                                 // der manuelle Bereich die Eintraege aller
                                 // Konten; ohne die Angabe schreibt der Server
                                 // in die Zeile des Aufrufers.
-                                if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                                else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                                if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
+                                else teile.updatePart(id, colorId, qty, part?.unitPrice?.alsDouble(), part?.condition, owner = part?.userId)
                             }
                         },
                         onMehr = {
                             qty++
-                            if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                            else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                            if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
+                            else teile.updatePart(id, colorId, qty, part?.unitPrice?.alsDouble(), part?.condition, owner = part?.userId)
                         },
                     )
 
@@ -259,7 +261,7 @@ internal fun ManualItemDetailScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             FarbWahlFeld(
-                                farben = partsState.partsColors,
+                                farben = teileZustand.partsColors,
                                 aktuell = colorId,
                                 aktuellerName = part?.colorName,
                                 aktuellerHex = part?.colorHex,
@@ -315,11 +317,11 @@ internal fun ManualItemDetailScreen(
             //
             // Der Ladezustand gehört in die Bedingung: Sonst erschiene der Abschnitt erst mit
             // der Antwort, und bis dahin wäre „lädt noch“ nicht von „keine Marktpreise“ zu
-            // unterscheiden — wie setPriceLoading in SetDetailSections.kt.
+            // unterscheiden — wie preisAbruf in SetDetailSections.kt.
             val history = manDetailState.priceHistory
             val byCond  = history?.byCondition
             val chart   = history?.chart
-            val laedt   = manDetailState.priceHistoryLoading
+            val laedt   = manDetailState.verlaufAbruf.laedt
             if (byCond?.present()?.isNotEmpty() == true || chart?.values?.isNotEmpty() == true || laedt) {
                 item {
                     SectionCard(title = stringResource(R.string.detail_section_market)) {
@@ -347,7 +349,7 @@ internal fun ManualItemDetailScreen(
                     showDeleteConfirm = false
                     // Auch hier der Besitzer der Karte — sonst loescht der
                     // Server die Zeile des Aufrufers statt der angezeigten.
-                    if (isFig) teile.deleteMinifig(id, fig?.userId)
+                    if (isFig) figuren.deleteMinifig(id, fig?.userId)
                     else teile.deletePart(id, colorId, part?.userId)
                     // Der Eintrag ist weg — dieser Screen zeigte sonst eine
                     // Karteileiche mit Mengenwahl und Kaufpreisen.
@@ -406,18 +408,12 @@ private fun MengenZeile(menge: Int, onWeniger: () -> Unit, onMehr: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
             MitTooltip(stringResource(R.string.cd_qty_decrease)) {
-                FilledTonalIconButton(
-                    onClick = onWeniger,
-                    shape = Formen.etikett
-                ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(mitSchrift(14.dp))) }
+                MengenKnopf(onClick = onWeniger) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(mitSchrift(14.dp))) }
             }
             Text("$menge", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
             MitTooltip(stringResource(R.string.cd_qty_increase)) {
-                FilledTonalIconButton(
-                    onClick = onMehr,
-                    shape = Formen.etikett
-                ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(mitSchrift(14.dp))) }
+                MengenKnopf(onClick = onMehr) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(mitSchrift(14.dp))) }
             }
         }
     }
@@ -426,23 +422,13 @@ private fun MengenZeile(menge: Int, onWeniger: () -> Unit, onMehr: () -> Unit) {
 /** Rückfrage vor dem Löschen des Teils bzw. der Figur. */
 @Composable
 private fun LoeschenFrage(isFig: Boolean, title: String, onSchliessen: () -> Unit, onLoeschen: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onSchliessen,
-        icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text(stringResource(
-            if (isFig) R.string.minifigs_delete_title else R.string.parts_delete_title)) },
-        text = { Text(stringResource(
-            if (isFig) R.string.minifigs_delete_text else R.string.parts_delete_text, title)) },
-        confirmButton = {
-            TextButton(onClick = onLoeschen) {
-                Text(stringResource(R.string.common_delete),
-                    color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onSchliessen) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        }
+    // Die gemeinsame Rückfrage wie beim Set: Titel als Überschrift und Fenstername, Text rollbar.
+    Rueckfrage(
+        titel = stringResource(if (isFig) R.string.minifigs_delete_title else R.string.parts_delete_title),
+        text = stringResource(if (isFig) R.string.minifigs_delete_text else R.string.parts_delete_text, title),
+        bestaetigen = stringResource(R.string.common_delete),
+        onBestaetigen = onLoeschen,
+        onAbbrechen = onSchliessen,
+        symbol = Icons.Default.Delete,
     )
 }

@@ -1,12 +1,14 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
-import { proxyImageUrl, getMinifigInfo, getSetMinifigs, type RbSetTeil, ersteBlNummer } from '../katalog';
-import { findSetInScope } from './erfassen';
+import { proxyImageUrl } from '../bilder';
+import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
+import { findeSetImBlickfeld } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/setDetail';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
+import { importiereTeile } from './setInhaltImport';
 import type { SetsKontext } from './kontext';
 
 /** Ohne Eintrag null. */
@@ -19,7 +21,7 @@ export async function setInfo(sk: SetsKontext, setNumber: string): Promise<SetSt
 export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: string) {
   const n = mitVersion(setNumber);
   const stamm = await setInfo(sk, n);
-  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.katalog.setNummerImBlickfeld(uid, n));
+  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.bilder.setNummerImBlickfeld(uid, n));
   if (!stamm || fremderPlatzhalter) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
   return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };
@@ -46,8 +48,8 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
   if (!teile.length) {
     source = 'api';
     // Ist Rebrickable gestört, sagt die Antwort das; eine leere Liste hiesse „das Set hat keine Teile“.
-    const mit = await versuche('sets:getAllSetParts', sk.katalog.getAllSetParts(n));
-    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', sk.katalog.getAllSetParts(bare));
+    const mit = await versuche('sets:alleTeileDesSets', sk.katalog.alleSetTeile(n));
+    const rb = mit.ok && mit.wert ? mit : await versuche('sets:alleTeileDesSets', sk.katalog.alleSetTeile(bare));
     if (!rb.ok) return { parts: [], source: QUELLE_GESTOERT, error: rb.fehler.grund, ...eineSeite(0) };
     teile = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num,
@@ -151,8 +153,9 @@ export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
     figs = await repo.inventarFigurenDesSets(sk.db, invId);
   }
   if (!figs.length) {
-    const mit = await versuche('sets:getSetMinifigs', getSetMinifigs(n));
-    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', getSetMinifigs(bare));
+    const mit = await versuche('sets:getSetMinifigs', sk.fremdquellen.quellen.getSetMinifigs(n));
+    const rb =
+      mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', sk.fremdquellen.quellen.getSetMinifigs(bare));
     if (!rb.ok) return { figs: [], source: QUELLE_GESTOERT, error: rb.fehler.grund };
     figs = rb.wert || [];
   }
@@ -171,7 +174,9 @@ async function figurenMerken(
   for (const f of figs) {
     let bild = f.image_url || null;
     if (!bild)
-      bild = wertOder(await versuche('sets:minifigur-info', getMinifigInfo(f.fig_number)), null)?.image_url || null;
+      bild =
+        wertOder(await versuche('sets:minifigur-info', k.fremdquellen.quellen.getMinifigInfo(f.fig_number)), null)
+          ?.image_url || null;
     await k.katalog.merkeFigur(f.fig_number, f.fig_name, bild);
     await k.katalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
   }
@@ -179,14 +184,14 @@ async function figurenMerken(
 
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
 export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: string): Promise<number> {
-  const set = await findSetInScope(sk, uid, sn);
+  const set = await findeSetImBlickfeld(sk, uid, sn);
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
   const takt = await sk.konto.zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
-  return sk.katalog.importPartsForSet(set.set_number, set.owner_user_id);
+  return importiereTeile(sk, set.set_number, set.owner_user_id);
 }
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
 export function teilelisteMitNacharbeit(sk: SetsKontext, setNum: string) {
-  return teilelisteDesSets(sk, setNum, sn => sk.nacharbeit.setTeileAnreichern(sn));
+  return teilelisteDesSets(sk, setNum, sn => sk.katalog.reichereSetTeileAn(sn));
 }

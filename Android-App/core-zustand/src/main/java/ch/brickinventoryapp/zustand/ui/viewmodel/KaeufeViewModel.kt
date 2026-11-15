@@ -1,12 +1,15 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.fach.alsGeld
+import java.time.LocalDate
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.model.data.model.UpdateAcquisitionRequest
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.Kaufkorrektur
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -24,7 +27,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
@@ -60,6 +62,12 @@ class KaeufeViewModel @Inject constructor(
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
     val manDetailState: StateFlow<ManualItemDetailUiState> = _manDetailState.asStateFlow()
 
+    /** Die Käufe eines Eintrags, wie seine Seite sie liest: Wer sie zeigt, lädt sie. */
+    fun kaeufeVon(type: Postenart, id: String, colorId: Int): StateFlow<ManualItemDetailUiState> =
+        Beobachtet(manDetailState) {
+            if (type == Postenart.SET) loadAcquisitions(id) else loadManualAcquisitions(type, id, colorId)
+        }
+
     private var lagerJob: Job? = null
 
     // ── Laden ────────────────────────────────────────────────────────────────
@@ -77,7 +85,7 @@ class KaeufeViewModel @Inject constructor(
             _manDetailState.update {
                 // Der Verlauf eines anderen Eintrags darf nicht stehen bleiben.
                 val gleich = it.itemId == id && it.colorId == colorId && it.itemType == type
-                it.copy(isLoading = true, itemType = type, itemId = id, colorId = colorId,
+                it.copy(kaeufeAbruf = Laden.Laedt, itemType = type, itemId = id, colorId = colorId,
                         priceHistory = if (gleich) it.priceHistory else null)
             }
             val r = when (type) {
@@ -86,21 +94,21 @@ class KaeufeViewModel @Inject constructor(
                 else  -> haushalt.getPartAcquisitions(id, colorId)
             }
             when (r) {
-                is Ergebnis.Success -> _manDetailState.update {
-                    it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(), isLoading = false)
+                is Ergebnis.Erfolg -> _manDetailState.update {
+                    it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen, kaeufeAbruf = Laden.Daten(Unit))
                 }
-                is Ergebnis.Error -> _manDetailState.update { it.copy(isLoading = false) }
+                is Ergebnis.Fehler -> _manDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
             }
         }
     }
 
     fun loadManualPriceHistory(type: Postenart, id: String, colorId: Int = KEINE_FARBE) {
         viewModelScope.launch {
-            _manDetailState.update { it.copy(priceHistoryLoading = true) }
+            _manDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
             val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
-                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
-                is Ergebnis.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
+                is Ergebnis.Erfolg -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+                is Ergebnis.Fehler -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
             }
         }
     }
@@ -118,8 +126,8 @@ class KaeufeViewModel @Inject constructor(
                           quantity: Int?, date: String?) {
         viewModelScope.launch {
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
-                is Ergebnis.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Ergebnis.Error -> {
+                is Ergebnis.Erfolg -> setGeaendert(r.data.zusammenfassung)
+                is Ergebnis.Fehler -> {
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                     // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
                     if (date != null) loadAcquisitions(setNumber)
@@ -131,19 +139,15 @@ class KaeufeViewModel @Inject constructor(
     override fun deleteAcquisition(setNumber: String, acqId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
-                is Ergebnis.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Erfolg -> setGeaendert(r.data.zusammenfassung)
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
 
-    /**
-     * Der Server schickt die neue Zusammenfassung des Sets mit; sie geht in die
-     * Ablage, die Kachel folgt ohne neue Liste. Ohne sie holt die Ablage den Stand.
-     */
-    private suspend fun setGeaendert(agg: SetAggregate?) {
-        if (agg != null && agg.setNumber.isNotBlank()) sets.uebernimmZusammenfassung(agg)
-        else { neuLaden(); sets.aktualisiereSets() }
+    /** Hat die Ablage die neue Summe des Sets schon übernommen, folgt die Kachel; sonst wird der Stand geholt. */
+    private suspend fun setGeaendert(uebernommen: Boolean) {
+        if (!uebernommen) { neuLaden(); sets.aktualisiereSets() }
     }
 
     /** Für manuelle Einträge schickt der Server keine Zusammenfassung; die Ablage holt den Stand. */
@@ -156,13 +160,13 @@ class KaeufeViewModel @Inject constructor(
         unitPrice: Double?, condition: Zustand?, quantity: Int?, date: String?,
     ) {
         viewModelScope.launch {
-            val req = UpdateAcquisitionRequest.fuerStueck(preis = unitPrice, condition = condition,
-                                                          quantity = quantity, date = date)
+            val tag = date?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
+            val req = Kaufkorrektur(preis = unitPrice.alsGeld(), zustand = condition, menge = quantity, datum = tag)
             val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
-            if (r is Ergebnis.Success && r.data.success) {
+            if (r is Ergebnis.Erfolg) {
                 manuelleNeu(type)
-            } else if (r is Ergebnis.Error) {
+            } else if (r is Ergebnis.Fehler) {
                 meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 if (date != null) neuLaden()
             }
@@ -174,8 +178,8 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == Postenart.FIG) haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
-                is Ergebnis.Success -> manuelleNeu(type)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> manuelleNeu(type)
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -190,20 +194,19 @@ class KaeufeViewModel @Inject constructor(
         toUserId: Int, onDone: (String?, Int, Int) -> Unit,
     ) {
         viewModelScope.launch {
-            val req = UpdateAcquisitionRequest.fuerStueck(ownerUserId = toUserId)
+            val req = Kaufkorrektur(besitzer = toUserId)
             val r = when (type) {
                 Postenart.SET -> haushalt.updateAcquisition(id, acqId, ownerUserId = toUserId)
                 Postenart.FIG -> haushalt.updateFigAcquisition(id, acqId, req)
                 else  -> haushalt.updatePartAcquisition(id, colorId, acqId, req)
             }
             when (r) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
-                        // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
-                        sets.aktualisiereSets(); teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
-                    } else onDone(r.data.error ?: "", 0, 0)
-                is Ergebnis.Error -> onDone(meldungen.meldung(r), 0, 0)
+                is Ergebnis.Erfolg -> {
+                    onDone(null, r.data.teile, r.data.figuren)
+                    // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
+                    sets.aktualisiereSets(); teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
+                }
+                is Ergebnis.Fehler -> onDone(meldungen.meldung(r), 0, 0)
             }
         }
     }
@@ -215,11 +218,8 @@ class KaeufeViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             val r = if (type == Postenart.FIG) figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
-                is Ergebnis.Success -> {
-                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
-                    filter.eigeneLagerorteNeu()
-                }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> filter.eigeneLagerorteNeu()
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

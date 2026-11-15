@@ -6,11 +6,11 @@ Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-@@ -3,6 +3,7 @@ package ch.brickinventoryapp.sammlung.ui.viewmodel
+@@ -12,6 +12,7 @@
  import ch.brickinventoryapp.model.fach.Zustand
  import ch.brickinventoryapp.sitzung.abgeleitet
  import androidx.lifecycle.SavedStateHandle
 +import ch.brickinventoryapp.data.api.SetsApi
- import ch.brickinventoryapp.model.ui.model.alsAnsicht
  import androidx.lifecycle.viewModelScope
  import ch.brickinventoryapp.ressourcen.R
+ import ch.brickinventoryapp.data.alarm.Alarmeingabe

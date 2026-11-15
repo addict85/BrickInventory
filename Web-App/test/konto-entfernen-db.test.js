@@ -89,10 +89,11 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
   await t.test('gelingt es, sind Konto und Sitzungen weg und protokolliert', async () => {
     const ziel = await neu();
     await sitzung(ziel);
-    assert.equal(await kontoEntfernen(ziel, verw), 'entfernt');
+    await kontoEntfernen(ziel, verw);
     assert.deepEqual(await stand(ziel), { konto: false, sitzungen: 0, protokoll: 1 });
-    assert.equal(await kontoEntfernen(ziel, verw), 'nicht_gefunden');
-    assert.equal(await kontoEntfernen(verw, verw), 'nicht_gefunden', 'das eigene Konto nicht über den Verwalterweg');
+    const NICHT = { code: 'benutzer_nicht_gefunden_oder_eigenes' };
+    await assert.rejects(kontoEntfernen(ziel, verw), NICHT);
+    await assert.rejects(kontoEntfernen(verw, verw), NICHT, 'das eigene Konto nicht über den Verwalterweg');
   });
 
   await t.test('liegen die Dateien fest, übernimmt ein Auftrag', async () => {

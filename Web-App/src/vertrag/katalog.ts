@@ -16,43 +16,41 @@ export const CatalogYearCount = z.looseObject({
 export const CatalogMetaResponse = z.looseObject({
   success: z.boolean(),
   themes: z.array(CatalogTheme),
-  year_min: z.number().int().nullable().optional(),
-  year_max: z.number().int().nullable().optional(),
+  year_min: z.number().int().nullable(),
+  year_max: z.number().int().nullable(),
   year_counts: z.array(CatalogYearCount),
-  error: z.string().nullable().optional(),
 });
 
 export const CatalogSetDetail = z.looseObject({
   set_number: z.string(),
-  name: z.string().nullable().optional(),
-  year: z.number().int().nullable().optional(),
-  theme_id: z.number().int().nullable().optional(),
-  theme_name: z.string().nullable().optional(),
-  num_parts: z.number().int().nullable().optional(),
-  image_url: z.string().nullable().optional(),
+  name: z.string().nullable(),
+  year: z.number().int().nullable(),
+  theme_id: z.number().int().nullable(),
+  theme_name: z.string().nullable(),
+  num_parts: z.number().int().nullable(),
+  image_url: z.string().nullable(),
   image_local: z.string().nullable().optional(),
   minifigs: z.number().int(),
   owned: z.boolean(),
   owned_quantity: z.number().int(),
-  bricklink: BrickLinkRef.nullable().optional(),
-  preisvergleich_url: z.string().nullable().optional(),
+  bricklink: BrickLinkRef.nullable(),
+  preisvergleich_url: z.string().nullable(),
 });
 
 export const CatalogSetDetailResponse = z.looseObject({
   success: z.boolean(),
-  set: CatalogSetDetail.nullable().optional(),
-  error: z.string().nullable().optional(),
+  set: CatalogSetDetail.nullable(),
 });
 
 export const CatalogSetItem = z.looseObject({
   set_number: z.string(),
-  name: z.string().nullable().optional(),
-  year: z.number().int().nullable().optional(),
-  theme_id: z.number().int().nullable().optional(),
-  theme_name: z.string().nullable().optional(),
-  num_parts: z.number().int().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
+  name: z.string().nullable(),
+  year: z.number().int().nullable(),
+  theme_id: z.number().int().nullable(),
+  theme_name: z.string().nullable(),
+  num_parts: z.number().int().nullable(),
+  image_url: z.string().nullable(),
+  image_local: z.string().nullable(),
   owned: z.boolean(),
   owned_quantity: z.number().int(),
 });
@@ -64,11 +62,10 @@ export const CatalogSetsResponse = z.looseObject({
   page_size: z.number().int(),
   pages: z.number().int(),
   sets: z.array(CatalogSetItem),
-  error: z.string().nullable().optional(),
 });
 
 export const JahrAnzahl = z.looseObject({
-  year: z.number().int().nullable().optional(),
+  year: z.number().int().nullable(),
   n: z.number().int(),
 });
 

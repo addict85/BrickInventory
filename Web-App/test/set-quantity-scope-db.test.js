@@ -1,7 +1,7 @@
 /**
  * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
  *
- * Gegenprobe (durchgeführt): schreibbereich in updateSet zurück auf die eigene ID
+ * Gegenprobe (durchgeführt): schreibbereich in setAendern zurück auf die eigene ID
  * → beide Teilschritte enden wieder in 404.
  * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
  * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
@@ -39,7 +39,9 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
   // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
   const web = testServer(_req, { sitzung: { userId: hauptId }, t });
   const app = testServer(_req, { sitzung: {}, t });
-  const token = await _req('src/konto/geraeteToken.js').createToken(hauptId, 'test-app', false, null, { scope: 'app' });
+  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(hauptId, 'test-app', false, null, {
+    scope: 'app',
+  });
   const srv = web.srv;
 
   const aufbauen = async () => {

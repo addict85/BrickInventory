@@ -7,6 +7,8 @@
  *   b) <INVENTORY>-Prüfung entfernt                 → 1 rot
  *   c) BL-Nummer roh übernommen statt abgebildet    → 4 rot
  *   d) BL-Farbe statt der abgebildeten genommen     → 4 rot
+ *   e) (14.11.2026) im Wanted-Anleger für Sets `wennVorhanden: 'aufstocken'`
+ *      weggelassen → 9 rot (aufgestockt 0: das zweite Mal hiess „exists“)
  *
  * Zwei Vorhersagen waren zu eng, und beide sagen etwas über diesen Test:
  *
@@ -37,6 +39,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
+const { katalogSet } = require('./helpers/bestand');
 const db = testDaten();
 const { testServer } = require('./helpers/server');
 
@@ -227,7 +230,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
   });
 
-  // Der Fortschritt (Marcos Wunsch vom 20.10.)
+  // Der Fortschritt
 
   await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
     const { status, typ, zeilen } = await hochladenStrom(srv.base, XML, '?schreiben=1&strom=1');
@@ -262,7 +265,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
   });
 
-  // Derselbe Balken wie beim Set-Import (Marcos Wunsch vom 20.10.)
+  // Derselbe Balken wie beim Set-Import
 
   await t.test('9. ein Import hinterlässt einen abgeschlossenen Auftrag', async () => {
     await db.run('DELETE FROM import_stand WHERE user_id = $1', [HAUPT]);
@@ -373,5 +376,25 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     const body = JSON.parse(roh);
     assert.equal(body.success, true);
     assert.equal(body.gelesen, 3);
+  });
+
+  await t.test('9. ein Set geht durch setErfassen: angelegt, dann aufgestockt, mit Nacharbeit', async () => {
+    const SN = '76001-1';
+    await katalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
+    const datei = liste(item('S', SN, null, 2));
+    const erst = (await hochladen(srv.base, datei, '?schreiben=1')).body;
+    assert.equal(erst.angelegt, 1, JSON.stringify(erst));
+    const dann = (await hochladen(srv.base, datei, '?schreiben=1')).body;
+    assert.equal(dann.aufgestockt, 1, JSON.stringify(dann));
+    const menge = await db.get(
+      'SELECT SUM(quantity)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
+      [HAUPT, SN],
+    );
+    assert.equal(menge.n, 4);
+    const nacharbeit = await db.all(
+      "SELECT 1 FROM auftraege WHERE art = 'nacharbeit' AND nutzlast->>'set_number' = $1",
+      [SN],
+    );
+    assert.ok(nacharbeit.length >= 1, 'ohne Nacharbeit bliebe das Set ohne Katalog');
   });
 });

@@ -1,7 +1,13 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -16,6 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import ch.brickinventoryapp.ui.components.Knopfzeile
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -39,9 +48,33 @@ import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.SettingsCard
 
+/** Der vorgeschlagene Name; den Ort wählt der Nutzer im Speicherdialog des Systems. */
+internal const val CODES_DATEI = "brickinventory-wiederherstellungscodes.txt"
+
+/** false, wenn der gewählte Ort nicht beschreibbar war; dann bleibt „Teilen“. */
+internal fun schreibeCodes(resolver: ContentResolver, ziel: Uri, codes: List<String>): Boolean = runCatching {
+    resolver.openOutputStream(ziel, "wt")?.use { it.write((codes.joinToString("\n") + "\n").toByteArray()) } != null
+}.getOrDefault(false)
+
+/**
+ * Die Codes als Datei an einen Ort der Wahl (ACTION_CREATE_DOCUMENT): Beim Teilen läse die
+ * Ziel-App mit, und manche legen den Text in ihren Verlauf oder in eine Cloud. [onGesichert]
+ * hakt „gesichert“ an, sobald die Datei geschrieben ist.
+ */
+@Composable
+internal fun rememberCodesSichern(codes: List<String>, onGesichert: () -> Unit): () -> Unit {
+    val resolver = LocalContext.current.contentResolver
+    val aktuell by rememberUpdatedState(codes)
+    val waehlen = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { ziel ->
+        if (ziel != null && schreibeCodes(resolver, ziel, aktuell)) onGesichert()
+    }
+    return { runCatching { waehlen.launch(CODES_DATEI) } }
+}
+
 /**
  * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
  * über die Auswahl des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
+ * Zweite Wahl nach [rememberCodesSichern], für Geräte ohne Dokumentanbieter.
  */
 internal fun teileCodes(ctx: Context, titel: String, codes: List<String>) {
     val senden = Intent(Intent.ACTION_SEND).apply {
@@ -88,6 +121,9 @@ internal fun ZweiterFaktorCard(
     var zfCode     by remember { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
     var gesichert  by rememberSaveable(zfZustand.codes) { mutableStateOf(false) }
+    // Bestätigen bleibt antippbar; ohne Code markiert es das Feld und setzt den Cursor hinein.
+    var codeFehlt  by rememberSaveable { mutableStateOf(false) }
+    val codeFokus = remember { FocusRequester() }
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val kontext = LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
@@ -106,8 +142,8 @@ internal fun ZweiterFaktorCard(
     SettingsCard(title = stringResource(R.string.zf_title), icon = Icons.Default.Security) {
         Text(stringResource(R.string.zf_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (zfZustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (zfZustand.fehler != null) FehlerZeile(zfZustand.fehler)
+        if (zfZustand.abruf.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
+        zfZustand.abruf.fehlerMeldung?.let { FehlerZeile(it) }
 
         val passwortFeld: @Composable () -> Unit = {
             PasswortFeld(zfPasswort, { zfPasswort = it }, stringResource(R.string.konto_password_current),
@@ -115,9 +151,11 @@ internal fun ZweiterFaktorCard(
         }
         val codeFeld: @Composable (String) -> Unit = { beschriftung ->
             OutlinedTextField(
-                value = zfCode, onValueChange = { zfCode = it.take(24) },
+                value = zfCode, onValueChange = { zfCode = it.take(24); codeFehlt = false },
                 label = { Text(beschriftung) },
-                modifier = Modifier.fillMaxWidth(),
+                isError = codeFehlt,
+                supportingText = if (codeFehlt) { { Text(stringResource(R.string.login_code_fehlt), Modifier.ansagen()) } } else null,
+                modifier = Modifier.fillMaxWidth().focusRequester(codeFokus),
                 singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
         }
@@ -132,6 +170,8 @@ internal fun ZweiterFaktorCard(
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.vorgelesenAls(zfZustand.codes.joinToString(", ") { zeichenweise(it) }))
+                val sichern = rememberCodesSichern(zfZustand.codes) { gesichert = true }
+                Button(onClick = sichern) { Text(stringResource(R.string.zf_codes_speichern)) }
                 OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, zfZustand.codes) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_share)) }
                 CodesGesichert(gesichert) { gesichert = it }
                 Button(onClick = onZurueck, enabled = gesichert) { Text(stringResource(R.string.zf_codes_done)) }
@@ -159,10 +199,14 @@ internal fun ZweiterFaktorCard(
                     }
                 }
                 codeFeld(stringResource(R.string.zf_confirm_code))
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_confirm)) }
-                    OutlinedButton(onClick = onZurueck, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.common_cancel)) }
-                }
+                Knopfzeile(
+                    bestaetigen = stringResource(R.string.zf_confirm),
+                    onBestaetigen = {
+                        if (zfCode.isBlank()) { codeFehlt = true; codeFokus.requestFocus() } else onBestaetigen(zfCode)
+                    },
+                    onAbbrechen = onZurueck,
+                    laeuft = zfZustand.abruf.laedt,
+                )
             }
             // 3. Aktiv: neue Codes oder abschalten.
             zfZustand.aktiv == true -> {
@@ -171,17 +215,17 @@ internal fun ZweiterFaktorCard(
                 passwortFeld()
                 codeFeld(stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt, colors = nebenKnopfFarben(), border = nebenKnopfRand(zfCode.isNotBlank() && !zfZustand.laedt)) { Text(stringResource(R.string.zf_new_codes)) }
+                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.abruf.laedt, colors = nebenKnopfFarben(), border = nebenKnopfRand(zfCode.isNotBlank() && !zfZustand.abruf.laedt)) { Text(stringResource(R.string.zf_new_codes)) }
                     OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
-                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
+                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.abruf.laedt,
                         colors = nebenKnopfFarben(),
-                        border = nebenKnopfRand(zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt)) { Text(stringResource(R.string.zf_disable)) }
+                        border = nebenKnopfRand(zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.abruf.laedt)) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
             // 4. Nicht eingerichtet.
             zfZustand.aktiv == false -> {
                 passwortFeld()
-                Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
+                Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.abruf.laedt,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }

@@ -5,31 +5,23 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
-import ch.brickinventoryapp.model.data.model.AndereBeendet
-import ch.brickinventoryapp.model.data.model.AppThemeResponse
-import ch.brickinventoryapp.model.data.model.DefaultConditionResponse
-import ch.brickinventoryapp.model.data.model.ForgotPasswordResponse
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.LoginResponse
-import ch.brickinventoryapp.model.data.model.MeResponse
-import ch.brickinventoryapp.model.data.model.PasskeyOptionen
-import ch.brickinventoryapp.model.data.model.ProfilAenderung
-import ch.brickinventoryapp.model.data.model.ProfilGespeichert
-import ch.brickinventoryapp.model.data.model.ProfilResponse
-import ch.brickinventoryapp.model.data.model.QrAbholung
-import ch.brickinventoryapp.model.data.model.QrMeldung
-import ch.brickinventoryapp.model.data.model.RegisterRequest
-import ch.brickinventoryapp.model.data.model.RegisterResponse
-import ch.brickinventoryapp.model.data.model.RegistrationStatusResponse
-import ch.brickinventoryapp.model.data.model.SettingsResponse
-import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.data.model.TokenWiderruf
-import ch.brickinventoryapp.model.data.model.TokensResponse
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorCodes
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorEinrichtung
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorStand
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.fach.Anmeldung
+import ch.brickinventoryapp.model.fach.Bestaetigung
+import ch.brickinventoryapp.model.fach.Designstand
+import ch.brickinventoryapp.model.fach.Kontoanlage
+import ch.brickinventoryapp.model.fach.Kontoeinstellungen
+import ch.brickinventoryapp.model.fach.Kontoinhaber
+import ch.brickinventoryapp.model.fach.ProfilGespeichert
+import ch.brickinventoryapp.model.fach.Profilaenderung
+import ch.brickinventoryapp.model.fach.QrAbholstand
+import ch.brickinventoryapp.model.fach.QrKopplung
+import ch.brickinventoryapp.model.fach.Registrierung
+import ch.brickinventoryapp.model.fach.Registrierungsstand
+import ch.brickinventoryapp.model.fach.ZweiterFaktorEinrichtung
+import ch.brickinventoryapp.model.fach.ZweiterFaktorStand
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -41,45 +33,47 @@ interface KontoRepository {
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
                       scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Ergebnis<Anmeldeantwort>
 
-    suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen>
+    suspend fun passkeyOptionen(zweck: String): Ergebnis<JsonObject>
 
-    suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<LoginResponse>
+    suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<Anmeldung>
 
-    suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung>
+    suspend fun qrLogin(token: String, label: String): Ergebnis<QrKopplung>
     /** [vorschau]: nach der Bestätigung im Browser nur das Konto, noch kein Token. */
-    suspend fun qrAbholen(abholung: String, vorschau: Boolean = false): Ergebnis<QrAbholung>
+    suspend fun qrAbholen(abholung: String, vorschau: Boolean = false): Ergebnis<QrAbholstand>
     /** Das Nein nach der Vorschau: Die Kopplung ist danach abgelehnt. */
-    suspend fun qrVerwerfen(abholung: String): Ergebnis<GenericResponse>
+    suspend fun qrVerwerfen(abholung: String): Ergebnis<Unit>
 
-    suspend fun getMe(): Ergebnis<MeResponse>
+    suspend fun getMe(): Ergebnis<Kontoinhaber?>
 
-    suspend fun getRegistrationStatus(): Ergebnis<RegistrationStatusResponse>
+    suspend fun getRegistrationStatus(): Ergebnis<Registrierungsstand>
 
-    suspend fun register(request: RegisterRequest): Ergebnis<RegisterResponse>
+    suspend fun register(anlage: Kontoanlage): Ergebnis<Registrierung>
 
-    suspend fun forgotPassword(email: String): Ergebnis<ForgotPasswordResponse>
+    suspend fun forgotPassword(email: String): Ergebnis<String?>
 
-    suspend fun getProfil(): Ergebnis<ProfilResponse>
+    suspend fun getProfil(): Ergebnis<ProfilAnsicht>
 
     suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand>
 
     suspend fun zweiterFaktorEinrichten(passwort: String): Ergebnis<ZweiterFaktorEinrichtung>
 
-    suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<ZweiterFaktorCodes>
+    suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<List<String>>
 
-    suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<GenericResponse>
+    suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<Unit>
 
-    suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<ZweiterFaktorCodes>
+    suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<List<String>>
 
-    suspend fun updateProfil(aenderung: ProfilAenderung): Ergebnis<ProfilGespeichert>
+    suspend fun updateProfil(aenderung: Profilaenderung): Ergebnis<ProfilGespeichert>
 
-    suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Ergebnis<GenericResponse>
+    suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Ergebnis<Unit>
 
-    suspend fun getTokens(): Ergebnis<TokensResponse>
+    suspend fun getTokens(): Ergebnis<List<GeraetAnsicht>>
 
-    suspend fun revokeToken(tokenId: String, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<TokenWiderruf>
+    /** Wie viele Token entwertet wurden; 0, wenn er schon weg war. */
+    suspend fun revokeToken(tokenId: String, bestaetigung: Bestaetigung): Ergebnis<Int>
 
-    suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet>
+    /** Wie viele Zugänge beendet wurden. */
+    suspend fun andereBeenden(bestaetigung: Bestaetigung): Ergebnis<Int>
 
     suspend fun tokenRotieren(alterToken: String): Ergebnis<GetauschterToken>
 
@@ -87,16 +81,16 @@ interface KontoRepository {
 
     suspend fun entwertenAmServer(grenzeMs: Long = 3_000): Entwertungsergebnis
 
-    suspend fun getSettings(): Ergebnis<SettingsResponse>
+    suspend fun getSettings(): Ergebnis<Kontoeinstellungen>
 
-    suspend fun getAppTheme(): Ergebnis<AppThemeResponse>
+    suspend fun getAppTheme(): Ergebnis<Designstand>
 
-    suspend fun setzeEigenesDesign(theme: Design?): Ergebnis<AppThemeResponse>
+    suspend fun setzeEigenesDesign(theme: Design?): Ergebnis<Designstand>
 
-    suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<GenericResponse>
+    suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<Unit>
 
-    suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse>
+    suspend fun getDefaultCondition(): Ergebnis<Zustand>
 
     /** null: zurück auf die Vorgabe des Servers. */
-    suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<GenericAdminResponse>
+    suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<Unit>
 }

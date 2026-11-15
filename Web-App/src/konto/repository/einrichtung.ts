@@ -10,8 +10,3 @@ export async function kontenStand(db: DbSchnittstelle): Promise<{ vorhanden: boo
   );
   return { vorhanden: Number(r?.anzahl) > 0, startpasswort: Number(r?.startpasswort) > 0 };
 }
-
-/** Trägt die Datenbank? Wirft, wenn nicht — der Aufrufer macht daraus „fehlt“. */
-export function datenbankErreichbar(db: DbSchnittstelle): Promise<{ ok: number } | undefined> {
-  return db.get<{ ok: number }>('SELECT 1 AS ok');
-}

@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*

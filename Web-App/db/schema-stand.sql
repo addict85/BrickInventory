@@ -18,6 +18,8 @@ CREATE TABLE account_link_invites (
 );
 CREATE INDEX idx_account_link_invites_main ON account_link_invites USING btree (main_user_id, expires_at);
 CREATE INDEX idx_invite_used_by ON account_link_invites USING btree (used_by);
+ALTER TABLE account_link_invites ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON account_link_invites USING ((main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE account_links (
   main_user_id integer NOT NULL,
@@ -29,6 +31,9 @@ CREATE TABLE account_links (
   CONSTRAINT account_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
+ALTER TABLE account_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY lesen ON account_links FOR SELECT USING (true);
+CREATE POLICY loesen ON account_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
 CREATE TABLE api_aufrufe (
   tag date NOT NULL,
@@ -70,7 +75,7 @@ CREATE INDEX idx_api_tokens_hard ON api_tokens USING btree (hard_expires_at) WHE
 CREATE INDEX idx_api_tokens_idle ON api_tokens USING btree (last_used) WHERE (expires_at IS NULL);
 CREATE INDEX idx_api_tokens_user_created ON api_tokens USING btree (user_id, created_at DESC);
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON api_tokens USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON api_tokens USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE api_tokens_verbraucht (
   token text NOT NULL,
@@ -82,7 +87,7 @@ CREATE TABLE api_tokens_verbraucht (
 );
 CREATE INDEX idx_api_tokens_verbraucht_familie ON api_tokens_verbraucht USING btree (user_id, familie);
 ALTER TABLE api_tokens_verbraucht ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON api_tokens_verbraucht USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON api_tokens_verbraucht USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE app_logs (
   id bigint NOT NULL DEFAULT nextval('app_logs_id_seq'::regclass),
@@ -210,7 +215,7 @@ CREATE TABLE geraete_nonces (
 );
 CREATE INDEX idx_geraete_nonces_familie ON geraete_nonces USING btree (user_id, familie);
 ALTER TABLE geraete_nonces ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON geraete_nonces USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON geraete_nonces USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE geraete_schluessel (
   user_id integer NOT NULL,
@@ -222,7 +227,7 @@ CREATE TABLE geraete_schluessel (
   CONSTRAINT geraete_schluessel_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 ALTER TABLE geraete_schluessel ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON geraete_schluessel USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON geraete_schluessel USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE global_settings (
   key text NOT NULL,
@@ -251,6 +256,9 @@ CREATE TABLE household_former_links (
 );
 CREATE INDEX idx_household_former_sub ON household_former_links USING btree (sub_user_id);
 CREATE INDEX idx_household_former_via ON household_former_links USING btree (via_user_id);
+ALTER TABLE household_former_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY loesen ON household_former_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
+CREATE POLICY zeilenschutz ON household_former_links FOR SELECT USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
 CREATE TABLE idempotenz (
   user_id integer NOT NULL,
@@ -266,7 +274,7 @@ CREATE TABLE idempotenz (
 );
 CREATE INDEX idx_idempotenz_angelegt ON idempotenz USING btree (angelegt);
 ALTER TABLE idempotenz ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON idempotenz USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON idempotenz USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE image_misses (
   cache_key text NOT NULL,
@@ -633,7 +641,7 @@ CREATE TABLE passkeys (
 );
 CREATE INDEX idx_passkeys_konto ON passkeys USING btree (user_id);
 ALTER TABLE passkeys ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON passkeys USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON passkeys USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE price_alerts (
   user_id integer NOT NULL,
@@ -725,7 +733,7 @@ CREATE INDEX idx_qr_login_expires ON qr_login_tokens USING btree (expires_at);
 CREATE UNIQUE INDEX idx_qr_login_id ON qr_login_tokens USING btree (id);
 CREATE INDEX idx_qr_login_user ON qr_login_tokens USING btree (user_id);
 ALTER TABLE qr_login_tokens ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON qr_login_tokens USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON qr_login_tokens USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE rate_limit_attempts (
   key text NOT NULL,
@@ -835,7 +843,7 @@ CREATE TABLE schritt_challenges (
 );
 CREATE INDEX idx_schritt_challenges_familie ON schritt_challenges USING btree (user_id, familie);
 ALTER TABLE schritt_challenges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON schritt_challenges USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON schritt_challenges USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE schritt_freigaben (
   user_id integer NOT NULL,
@@ -848,7 +856,7 @@ CREATE TABLE schritt_freigaben (
   CONSTRAINT schritt_freigaben_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 ALTER TABLE schritt_freigaben ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON schritt_freigaben USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON schritt_freigaben USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE set_acquisitions (
   id integer NOT NULL DEFAULT nextval('set_acquisitions_id_seq'::regclass),
@@ -1054,6 +1062,22 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX users_email_lower ON users USING btree (lower(email));
 CREATE UNIQUE INDEX users_username_lower ON users USING btree (lower(username));
 
+CREATE TABLE verwalter_uebernahmen (
+  ziel_id integer NOT NULL,
+  art text NOT NULL,
+  durch_id integer NOT NULL,
+  passwort_hash text,
+  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
+  wirksam_ab timestamp with time zone NOT NULL,
+  CONSTRAINT verwalter_uebernahmen_art_check CHECK ((art = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT verwalter_uebernahmen_check CHECK (((art = 'passwort'::text) = (passwort_hash IS NOT NULL))),
+  CONSTRAINT verwalter_uebernahmen_durch_id_fkey FOREIGN KEY (durch_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT verwalter_uebernahmen_pkey PRIMARY KEY (ziel_id, art),
+  CONSTRAINT verwalter_uebernahmen_ziel_id_fkey FOREIGN KEY (ziel_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_verwalter_uebernahmen_durch ON verwalter_uebernahmen USING btree (durch_id);
+ALTER TABLE verwalter_uebernahmen ENABLE ROW LEVEL SECURITY;
+
 CREATE TABLE verwaltungsprotokoll (
   id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),
   zeit timestamp with time zone NOT NULL DEFAULT now(),
@@ -1089,7 +1113,7 @@ CREATE TABLE vouchers (
 );
 CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON vouchers USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON vouchers USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE wanted (
   id integer NOT NULL DEFAULT nextval('wanted_id_seq'::regclass),
@@ -1120,7 +1144,7 @@ CREATE TABLE webauthn_challenges (
 CREATE INDEX idx_webauthn_challenges_frist ON webauthn_challenges USING btree (expires_at);
 CREATE INDEX idx_webauthn_challenges_konto ON webauthn_challenges USING btree (user_id);
 ALTER TABLE webauthn_challenges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON webauthn_challenges USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON webauthn_challenges USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE wechselkurse (
   tag date NOT NULL,
@@ -1141,7 +1165,7 @@ CREATE TABLE zweiter_faktor (
   CONSTRAINT zweiter_faktor_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 ALTER TABLE zweiter_faktor ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON zweiter_faktor USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON zweiter_faktor USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE zweiter_faktor_codes (
   id integer NOT NULL DEFAULT nextval('zweiter_faktor_codes_id_seq'::regclass),
@@ -1153,7 +1177,7 @@ CREATE TABLE zweiter_faktor_codes (
 );
 CREATE INDEX idx_zweiter_faktor_codes_konto ON zweiter_faktor_codes USING btree (user_id);
 ALTER TABLE zweiter_faktor_codes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON zweiter_faktor_codes USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON zweiter_faktor_codes USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE OR REPLACE FUNCTION auftrag_exklusiv_belegen()
  RETURNS trigger
@@ -1275,6 +1299,47 @@ AS $function$
               ELSE round(betrag / kurs_je_eur(von, t) * kurs_je_eur(nach, t), 4) END
 $function$;
 
+CREATE OR REPLACE FUNCTION konten_mit_set(sn text)
+ RETURNS integer
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$ SELECT count(DISTINCT user_id)::integer FROM sets WHERE set_number = sn $function$;
+
+CREATE OR REPLACE FUNCTION konto_aus_sicherungen_loeschen(uid integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$
+DECLARE
+  z record;
+  n integer := 0;
+  k integer;
+BEGIN
+  FOR z IN
+    WITH fk AS (
+      SELECT r.relname, a.attname FROM pg_constraint c
+        JOIN pg_class r ON r.oid = c.conrelid
+        JOIN pg_namespace ns ON ns.oid = r.relnamespace AND ns.nspname = 'public'
+        JOIN pg_attribute a ON a.attrelid = r.oid AND a.attnum = ANY (c.conkey)
+       WHERE c.contype = 'f' AND c.confrelid = 'users'::regclass)
+    SELECT ns.nspname AS schema, c.relname AS tabelle, a.attname AS spalte
+      FROM pg_namespace ns
+      JOIN pg_class c ON c.relnamespace = ns.oid AND c.relkind = 'r'
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+     WHERE ns.nspname ~ '^vor_migration_[0-9]+$'
+       AND (a.attname ~ '(^|_)user_id$' OR (c.relname = 'users' AND a.attname = 'id')
+            OR (c.relname, a.attname) IN (SELECT relname, attname FROM fk))
+       AND format_type(a.atttypid, a.atttypmod) IN ('integer', 'bigint')
+  LOOP
+    EXECUTE format('DELETE FROM %I.%I WHERE %I = $1', z.schema, z.tabelle, z.spalte) USING uid;
+    GET DIAGNOSTICS k = ROW_COUNT;
+    n := n + k;
+  END LOOP;
+  RETURN n;
+END $function$;
+
 CREATE OR REPLACE FUNCTION konto_waehrung(uid integer)
  RETURNS text
  LANGUAGE sql
@@ -1368,6 +1433,24 @@ BEGIN
   RETURN NEW;
 END $function$;
 
+CREATE OR REPLACE FUNCTION verwaltungsprotokoll_aufraeumen()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$
+DECLARE
+  alt integer;
+  namen integer;
+BEGIN
+  DELETE FROM verwaltungsprotokoll WHERE zeit < now() - interval '365 days';
+  GET DIAGNOSTICS alt = ROW_COUNT;
+  UPDATE verwaltungsprotokoll p SET ziel_name = NULL
+   WHERE ziel_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = p.ziel_id);
+  GET DIAGNOSTICS namen = ROW_COUNT;
+  RETURN alt + namen;
+END $function$;
+
 CREATE OR REPLACE FUNCTION zeilenschutz_konten()
  RETURNS integer[]
  LANGUAGE sql
@@ -1378,3 +1461,10 @@ AS $function$
               ELSE k.id || ARRAY(SELECT l.sub_user_id FROM account_links l WHERE l.main_user_id = k.id) END
     FROM (SELECT NULLIF(current_setting('app.konto', true), '')::integer AS id) k
 $function$;
+
+CREATE OR REPLACE FUNCTION zeilenschutz_konto()
+ RETURNS integer
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$ SELECT NULLIF(current_setting('app.konto', true), '')::integer $function$;

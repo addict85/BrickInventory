@@ -13,6 +13,8 @@
  *   F  adresse() durch das frühere ohneAnfrageteil() ersetzt (Freitext bis
  *      160 Zeichen) → rot: „nur Direktiven und Adressen …“
  *   G  bildansicht() immer false → rot: „die Bildansicht des Browsers …“
+ *   H  in cspMeldungFrei() das frühere split(':').slice(0, 4) statt
+ *      drosselAdresse() → rot: „verkürzte IPv6-Adressen …“ (20 statt 10 frei)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +25,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('CSP-Berichte', async t => {
   const app = express();
   app.set('trust proxy', true);
-  app.use(_req('src/http/cspBericht.js'));
+  app.use(_req('src/http/cspBericht.js').baueCspBerichtRouter());
   const srv = app.listen(0);
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/csp-bericht`;
@@ -123,6 +125,21 @@ test('CSP-Berichte', async t => {
     assert.equal(frei.filter(Boolean).length, 10);
     assert.equal(cspMeldungFrei('10.1.1.1', morgen + 60_000), true);
     assert.deepEqual(log, ['[csp] 3 gedrosselt']);
+  });
+
+  await t.test('verkürzte IPv6-Adressen aus einem /64 zählen als ein Absender', () => {
+    const { cspMeldungFrei } = _req('src/http/cspBericht.js');
+    const tag = Date.now() + 2 * 86_400_000;
+    cspMeldungFrei('10.1.1.3', tag);
+    const frei = [
+      ...Array.from({ length: 10 }, () => cspMeldungFrei('2001:db8::1', tag)),
+      ...Array.from({ length: 10 }, () => cspMeldungFrei('2001:db8::2', tag)),
+    ];
+    assert.equal(frei.filter(Boolean).length, 10);
+    // Ein anderes /64 hat seine eigene Quote.
+    assert.equal(cspMeldungFrei('2001:db8:0:1::1', tag), true);
+    cspMeldungFrei('10.1.1.3', tag + 60_000);
+    log.length = 0;
   });
 
   await t.test('nur Direktiven und Adressen kommen ins Protokoll, kein Freitext', async () => {

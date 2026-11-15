@@ -1,16 +1,12 @@
-/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
- * Parameter; erzeugeKatalog bindet ihn einmal für alle. Wer eine eigene
- * Sperrverbindung hält, ruft das Repository direkt damit auf. */
-import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). Wer eine eigene Sperrverbindung hält, ruft das Repository direkt damit auf. */
+import type { Db } from '../../db/database';
+import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import * as anleitungLaden from './anleitungLaden';
-import * as apiKontingentDienst from './apiKontingent';
 import * as bildlageDienst from './bildlage';
 import * as blZuordnungDienst from './blZuordnung';
 import * as bricklinkLink from './bricklinkLink';
 import * as bricklinkPreise from './bricklinkPreise';
 import * as bricksetNachlauf from './bricksetNachlauf';
-import * as csvAbgleich from './csvAbgleich';
 import * as dienst from './dienst';
 import * as farben from './farben';
 import * as instructions from './instructions';
@@ -21,119 +17,104 @@ import * as partsImport from './partsImport';
 import * as rbInventar from './rbInventar';
 import * as rebrickableKatalog from './rebrickableKatalog';
 import * as teileAnreicherungDienst from './teileAnreicherung';
-import * as bildbedarfDienst from './bilder/bildbedarf';
-import * as bildbedarfLauf from './bilder/bildbedarfLauf';
-import * as imageMisses from './bilder/imageMisses';
-import * as rateLimiter from './rateLimiter';
-import * as apiTaktRepo from './repository/apiTakt';
-import * as bildNachlauf from './bildNachlauf';
-import * as pdfErzeugung from './pdf/pdfErzeugung';
-import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
-import * as bildNachschlagen from './bilder/bildNachschlagen';
-import * as proxyThumbs from './bilder/proxyThumbs';
-import * as imgCacheServe from './bilder/imgCacheServe';
-import { downloadSetImage } from './bilder/setImages';
-import { generateThumb } from './bilder/thumbs';
-import { zugang, type Bildwerk, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
+import { ConcurrentRateLimiter } from '../fremdquellen';
+import * as pdfAuftraege from './pdf/pdfAuftraege';
+import * as anleitungsAuftrag from './anleitungsAuftrag';
+import * as setStamm from './setStamm';
+import { katalogAuftragsarten } from './auftragsarten';
+import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
-export type { Bildwerk, KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
+export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
 
-/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts baueDienste). */
 export function erzeugeKatalog(
-  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk' | 'drossel'> & { bildwerk?: Bildwerk | undefined },
+  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'cdnDrossel'>,
   einblick?: Einblick<KatalogKontext>,
 ) {
-  const bildwerk = a.bildwerk ?? { setBildLaden: downloadSetImage, vorschauErzeugen: generateThumb };
-  const drossel = rateLimiter.rebrickableDrosseln(bindeZugang(a.db, apiTaktRepo));
-  const k: KatalogKontext = baueKontext({ ...a, bildwerk, drossel, faecher: new Faecher() }, zugang);
-  einblick?.(k);
+  const cdnDrossel = new ConcurrentRateLimiter(2, 1000, a.uhr);
+  const d = baueBereich(
+    { ...a, cdnDrossel, faecher: new Faecher() },
+    (db: Db) => zugang(db, a.lesevertrag),
+    katalogDienste,
+    einblick,
+  );
+  return d;
+}
+
+function bildDienste(k: KatalogKontext) {
   return {
-    ...bindeZugang(k, anleitungLaden, ['anleitungLaden']),
-    ...bindeZugang(k, apiKontingentDienst, [
-      'checkAndIncrementRateLimit',
-      'getRateLimitStatus',
-      'kontingentFrei',
-      'setzeKontingentZurueck',
-      'getLimitForApi',
-    ]),
-    ...bindeZugang(k, bildlageDienst, [
-      'fuelleAusBrickset',
-      'anleitungenNachtragen',
-      'setBilderNachladen',
-      'vorschaubilderNachtragen',
-      'setBildLokalEintragen',
-    ]),
-    ...bindeZugang(k, blZuordnungDienst, [
-      'merkeBlNummer',
-      'merkeEigeneBlNummer',
-      'blNummerVon',
-      'blAbrufNummer',
-      'blAbrufNummern',
-      'merkeBlFarbnummer',
-    ]),
-    ...bindeZugang(k, bricklinkLink, ['resolveMany', 'resolveOne']),
-    ...bindeZugang(k, bricklinkPreise, [
-      'setBekanntImKatalog',
-      'katalogEintrag',
-      'clearSubsetsCache',
-      'clearCatalogCache',
-      'getCacheStats',
-      'getPriceGuide',
-    ]),
-    ...bindeZugang(k, bricksetNachlauf, ['bricksetNachlauf']),
-    ...bindeZugang(k, csvAbgleich, ['csvAbgleich']),
-    ...bindeZugang(k, dienst, ['katalogMeta', 'jahrVerteilung', 'katalogSeite', 'katalogGeladen', 'katalogSet']),
-    ...bindeZugang(k, farben, ['farbliste']),
-    ...bindeZugang(k, instructions, [
-      'anzahlAnleitungen',
-      'anleitungenZuSet',
-      'anleitungNeuLadenErlaubt',
-      'loescheAnleitungen',
-      'downloadSetInstructions',
-    ]),
-    ...bindeZugang(k, katalogAbgleich, ['syncAllMissing', 'teilfarbenbilderNachtragen']),
-    ...bindeZugang(k, katalogPflege, [
-      'merkeTeil',
-      'merkeTeilFarbe',
-      'merkeFigur',
-      'merkeSetFiguren',
-      'katalogTeil',
-      'katalogFigur',
-    ]),
-    ...bindeZugang(k, minifigsImport, ['figurenAusKatalog', 'importiereFiguren']),
-    ...bindeZugang(k, partsImport, ['importiereTeile', 'fetchMissingBlIds', 'importPartsForSet']),
-    ...bindeZugang(k, rbInventar, ['inventarFuerKandidaten', 'neuestesInventar']),
-    ...bindeZugang(k, rebrickableKatalog, ['getSetInfo', 'getAllSetParts', 'getMinifigParts']),
-    ...bindeZugang(k, teileAnreicherungDienst, [
-      'enrichSetParts',
-      'downloadSetImages',
-      'enrichSetMinifigs',
-      'redownloadMissingImages',
-    ]),
-    ...bindeZugang(k, bildbedarfDienst, [
-      'loescheVerfallene',
-      'katalogBilderVormerken',
-      'offenerBildbedarf',
-      'leereBildbedarf',
-      'bildbedarfAnstossen',
-    ]),
-    ...bindeZugang(k, bildbedarfLauf, ['bildbedarfAbarbeiten', 'initImageQueue', 'stoppeBildbedarf']),
-    merkeGebraucht: bildbedarfDienst.merkeGebraucht,
-    // Über die Nacharbeit, damit ein Test sie an einer Stelle ersetzt.
-    bildVormerken: (url: string, setNummer: string) => k.nacharbeit.bildVormerken(url, setNummer),
-    // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
-    setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
-    vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
-    /** Dieselben Drosseln wie im Katalog: Klienten und Abgleich teilen den Takt. */
-    drossel: k.drossel,
-    ...bindeZugang(k, imageMisses, ['vergissFehlend', 'initImageMisses', 'stoppeFehlanzeige']),
-    ...bindeZugang(k, rateLimiter, ['rebrickableDailyStatus']),
-    ...bindeZugang(k, bildNachlauf, ['bildNachlauf']),
-    ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),
-    ...bindeZugang(k, bildBlickfeldDienst, ['anleitungFreigegeben', 'setNummerImBlickfeld']),
-    ...bindeZugang(k, bildNachschlagen, ['cdnFuerFehlendesBild']),
-    ...bindeZugang(k, proxyThumbs, ['queueThumb']),
-    ...bindeZugang(k, imgCacheServe, ['cacheTreffer']),
+    fuelleAusBrickset: mit(k)(bildlageDienst.fuelleAusBrickset),
+    anleitungenNachtragen: mit(k)(bildlageDienst.anleitungenNachtragen),
+    setBilderNachladen: mit(k)(bildlageDienst.setBilderNachladen),
+    vorschaubilderNachtragen: mit(k)(bildlageDienst.vorschaubilderNachtragen),
+    setBildLokalEintragen: mit(k)(bildlageDienst.setBildLokalEintragen),
+  };
+}
+
+function katalogDienste(k: KatalogKontext) {
+  return {
+    ...bildDienste(k),
+    merkeBlNummer: mit(k)(blZuordnungDienst.merkeBlNummer),
+    merkeEigeneBlNummer: mit(k)(blZuordnungDienst.merkeEigeneBlNummer),
+    blNummerVon: mit(k)(blZuordnungDienst.blNummerVon),
+    blAbrufNummer: mit(k)(blZuordnungDienst.blAbrufNummer),
+    blAbrufNummern: mit(k)(blZuordnungDienst.blAbrufNummern),
+    merkeBlFarbnummer: mit(k)(blZuordnungDienst.merkeBlFarbnummer),
+    blLinksAufloesen: mit(k)(bricklinkLink.vieleAufloesen),
+    blLinkAufloesen: mit(k)(bricklinkLink.einesAufloesen),
+    setBekanntImKatalog: mit(k)(bricklinkPreise.setBekanntImKatalog),
+    katalogEintrag: mit(k)(bricklinkPreise.katalogEintrag),
+    leereTeilmengenCache: mit(k)(bricklinkPreise.teilmengenCacheLeeren),
+    leereKatalogCache: mit(k)(bricklinkPreise.katalogCacheLeeren),
+    cacheStand: mit(k)(bricklinkPreise.getCacheStats),
+    preisfuehrer: mit(k)(bricklinkPreise.preisfuehrerAbfrage),
+    bricksetListe: mit(k)(bricksetNachlauf.bricksetListe),
+    anleitungEinreihen: mit(k)(anleitungsAuftrag.anleitungEinreihen),
+    katalogMeta: mit(k)(dienst.katalogMeta),
+    jahrVerteilung: mit(k)(dienst.jahrVerteilung),
+    katalogSeite: mit(k)(dienst.katalogSeite),
+    katalogGeladen: mit(k)(dienst.katalogGeladen),
+    katalogSet: mit(k)(dienst.katalogSet),
+    farbliste: mit(k)(farben.farbliste),
+    anzahlAnleitungen: mit(k)(instructions.anzahlAnleitungen),
+    anleitungenZuSet: mit(k)(instructions.anleitungenZuSet),
+    anleitungNeuLadenErlaubt: mit(k)(instructions.anleitungNeuLadenErlaubt),
+    loescheAnleitungen: mit(k)(instructions.loescheAnleitungen),
+    ladeSetAnleitungen: mit(k)(instructions.setAnleitungenLaden),
+    gleicheFehlendeAb: mit(k)(katalogAbgleich.syncAllMissing),
+    teilfarbenbilderNachtragen: mit(k)(katalogAbgleich.teilfarbenbilderNachtragen),
+    merkeTeil: mit(k)(katalogPflege.merkeTeil),
+    merkeTeilFarbe: mit(k)(katalogPflege.merkeTeilFarbe),
+    merkeFigur: mit(k)(katalogPflege.merkeFigur),
+    merkeSetFiguren: mit(k)(katalogPflege.merkeSetFiguren),
+    katalogTeil: mit(k)(katalogPflege.katalogTeil),
+    katalogFigur: mit(k)(katalogPflege.katalogFigur),
+    figurenAusKatalog: mit(k)(minifigsImport.figurenAusKatalog),
+    setFigurenLaden: mit(k)(minifigsImport.setFigurenLaden),
+    setFigurenMerken: mit(k)(minifigsImport.setFigurenMerken),
+    setTeileLaden: mit(k)(partsImport.setTeileLaden),
+    setTeileMerken: mit(k)(partsImport.setTeileMerken),
+    setTeilBilderEinreihen: mit(k)(partsImport.setTeilBilderEinreihen),
+    blNummernNachladen: mit(k)(partsImport.blNummernNachladen),
+    inventarFuerKandidaten: mit(k)(rbInventar.inventarFuerKandidaten),
+    neuestesInventar: mit(k)(rbInventar.neuestesInventar),
+    setInfo: mit(k)(rebrickableKatalog.setAngaben),
+    alleSetTeile: mit(k)(rebrickableKatalog.alleTeileDesSets),
+    figurTeile: mit(k)(rebrickableKatalog.figurTeileAbfrage),
+    reichereSetTeileAn: mit(k)(teileAnreicherungDienst.enrichSetParts),
+    ladeSetBilder: mit(k)(teileAnreicherungDienst.downloadSetImages),
+    reichereSetFigurenAn: mit(k)(teileAnreicherungDienst.enrichSetMinifigs),
+    /** PDF-Aufträge eines Kontos: anstossen, verfolgen, verwerfen; das Aufräumen über alle. */
+    pdf: {
+      starten: mit(k)(pdfAuftraege.pdfAuftragStarten),
+      lies: mit(k)(pdfAuftraege.liesAuftrag),
+      fertigeDatei: mit(k)(pdfAuftraege.fertigeDatei),
+      loesche: mit(k)(pdfAuftraege.loescheAuftrag),
+      raeumeAuf: mit(k)(pdfAuftraege.cleanOldPdfJobs),
+    },
+    katalogStand: mit(k.db, setStamm.katalogStand),
+    merkeKatalogPlatzhalter: mit(k.db, setStamm.merkeKatalogPlatzhalter),
+    merkeSetKatalog: mit(k.db, setStamm.merkeSetKatalog),
+    auftragsarten: (importProzess: string) => katalogAuftragsarten(k, importProzess),
   };
 }
 

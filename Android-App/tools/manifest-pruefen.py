@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prueft das zusammengefuehrte Manifest des fertigen Release-APK (sec16 N7).
+"""Prueft das zusammengefuehrte Manifest des fertigen Release-APK.
 
 Gelesen wird die Ausgabe von `aapt2 dump xmltree --file AndroidManifest.xml <apk>`:
 Bibliotheken bringen eigene Komponenten mit (WorkManager, Profileinstaller, Glance),
@@ -10,7 +10,7 @@ Rot (Rueckgabe 1), wenn
   - eine exportierte Komponente nicht in tools/manifest-exportiert.txt steht oder
     dort eine andere Berechtigung verlangt als im APK,
   - das APK eine Berechtigung verlangt, die nicht in tools/manifest-berechtigungen.txt
-    steht (sec17 B-N12: etwa READ_PHONE_STATE aus einer neuen Bibliotheksfassung).
+    steht (etwa READ_PHONE_STATE aus einer neuen Bibliotheksfassung).
 
 Aufruf: manifest-pruefen.py <xmltree.txt> <positivliste.txt> <berechtigungen.txt>
 """

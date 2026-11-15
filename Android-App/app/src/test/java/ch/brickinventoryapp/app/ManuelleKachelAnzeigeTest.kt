@@ -98,7 +98,7 @@ class ManuelleKachelAnzeigeTest {
         welt.pfade.antworten["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1","color_id":1,$felder}]}"""
         val vm = welt.teile().also { it.loadParts() }
-        warte("Teile") { !vm.partsState.value.manualParts.isNullOrEmpty() }
+        warte("Teile") { !vm.teileState.value.manualParts.isNullOrEmpty() }
         zeige { PartsRoute(vm = vm, imageLoader = bilder) }
         compose.onNodeWithText("Brick 1 x 1", useUnmergedTree = true).fetchSemanticsNode()
         zeigtAlles("Teil")
@@ -108,8 +108,8 @@ class ManuelleKachelAnzeigeTest {
     fun `die manuelle Figur zeigt Zustaende, Besitzer und den gemittelten Kaufpreis`() {
         welt.pfade.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia",$felder}]}"""
-        val vm = welt.teile().also { it.loadMinifigs() }
-        warte("Figuren") { !vm.partsState.value.manualFigs.isNullOrEmpty() }
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        warte("Figuren") { !vm.figurenZustand.value.manualFigs.isNullOrEmpty() }
         zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
         zeigtAlles("Figur")
@@ -121,8 +121,8 @@ class ManuelleKachelAnzeigeTest {
         welt.pfade.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
         welt.pfade.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia","quantity":1}]}"""
-        val vm = welt.teile().also { it.loadMinifigs() }
-        warte("Figuren") { vm.partsState.value.let { !it.manualFigs.isNullOrEmpty() && it.minifigStats.types > 0 } }
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        warte("Figuren") { vm.figurenZustand.value.let { !it.manualFigs.isNullOrEmpty() && it.minifigStats.types > 0 } }
         zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
         compose.onNodeWithText("Prinzessin Leia", useUnmergedTree = true).fetchSemanticsNode()
         val typen = ctx.resources.getQuantityString(R.plurals.minifigs_stat_types, 2, "2")

@@ -55,7 +55,6 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
       // Der Betriebsfall: Der Nachtrag-Job hat nachgesehen. Eine Zeile mit
       // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
       // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.
-      // Vorher stand dafuer bl_part_num = part_num in rb_bl_mapping.
       await db.run(
         "INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = NULL",
         [NR(i)],
@@ -80,7 +79,7 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
 
     gesehen.length = 0;
     zaehlen = true;
-    const ergebnis = await fc.computePartsValuation(UID, [UID]);
+    const ergebnis = await fc.bewerteTeile(UID, [UID]);
     zaehlen = false;
 
     assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');

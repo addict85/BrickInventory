@@ -80,7 +80,7 @@ function naechsteJobAbfrage(ms) {
 export async function triggerCsvSync(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('monitor.starting');
-  const d = await api('POST', '/v1/admin/trigger-csv-sync').catch(() => null);
+  const d = await api('POST', '/v1/admin/trigger-csv-sync');
   if (d?.success) {
     toast(tRaw('monitor.sync_started'), 'success');
     btn.textContent = tRaw('monitor.started');
@@ -106,7 +106,7 @@ export async function queueCatalogImages(btn) {
   // Die Zahlen nennt der Vertrag nicht (GenericAdminResponse); so liefert sie der Dienst.
   const d =
     /** @type {{ success?: boolean, error?: string, pending?: number, skipped?: number, verworfen?: number, dauer_minuten?: number } | null} */ (
-      await api('POST', '/v1/admin/catalog-images').catch(() => null)
+      await api('POST', '/v1/admin/catalog-images')
     );
   if (d?.success) {
     // Beide Zahlen nennen: was ansteht UND was schon fertig war. Ohne die zweite sähe ein „0 Bilder in der
@@ -141,7 +141,7 @@ export async function queueCatalogImages(btn) {
 export async function redownloadMissingImages(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('monitor.starting');
-  const d = await api('POST', '/v1/admin/redownload-missing-images').catch(() => null);
+  const d = await api('POST', '/v1/admin/redownload-missing-images');
   if (d?.success) {
     toast(tRaw('monitor.redownload_started'), 'success');
     setzeHtml(btn, ico('ok'));
@@ -160,7 +160,7 @@ export async function redownloadMissingImages(btn) {
 export async function reimportMissingInstructions(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('common.loading');
-  const d = await api('POST', '/v1/admin/reimport-instructions').catch(() => null);
+  const d = await api('POST', '/v1/admin/reimport-instructions');
   if (d?.success) {
     toast(tRaw('monitor.enqueued', { n: d.enqueued }), 'success');
     btn.textContent = tRaw('monitor.enqueued_short', { n: d.enqueued });
@@ -200,7 +200,7 @@ export async function toggleBricksetQueue(btn) {
 export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
   if (!panel) return;
-  const d = await api('GET', '/v1/admin/brickset-queue').catch(() => null);
+  const d = await api('GET', '/v1/admin/brickset-queue');
   if (!d?.success) {
     setzeHtml(panel, html`<div data-stil="color:var(--r500)">${tRaw('monitor.load_error')}</div>`);
     panel.style.display = 'block';
@@ -246,14 +246,14 @@ export async function loadBricksetQueue() {
 }
 
 /**
- * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/actions.js) den Knopf zuerst
+ * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/aktionen.js) den Knopf zuerst
  * ab. Verdreht ging der Knopf als Setnummer in die Adresse, und der Server fand nie einen Eintrag.
  */
 /** @param {HTMLButtonElement} btn @param {string} setNumber */
 async function retryBricksetQueueEntry(btn, setNumber) {
   btn.disabled = true;
   setzeHtml(btn, ico('uhr'));
-  const d = await api('POST', `/v1/admin/brickset-queue/${setNumber}/retry`).catch(() => null);
+  const d = await api('POST', `/v1/admin/brickset-queue/${setNumber}/retry`);
   if (d?.success) {
     setzeHtml(btn, ico('ok'));
     toast(tRaw('monitor.retrying', { set: setNumber }), 'success');
@@ -279,7 +279,7 @@ async function deleteBricksetQueueEntry(btn, setNumber) {
   if (row) row.style.opacity = '0.4';
   btn.disabled = true;
   setzeHtml(btn, ico('uhr'));
-  const d = await api('DELETE', `/v1/admin/brickset-queue/${setNumber}`).catch(() => null);
+  const d = await api('DELETE', `/v1/admin/brickset-queue/${setNumber}`);
   if (d?.success) {
     if (row) row.remove();
     toast(tRaw('monitor.removed_fallback', { set: setNumber }), 'success');

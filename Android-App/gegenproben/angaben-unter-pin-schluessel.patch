@@ -1,0 +1,18 @@
+Gegenprobe: Die Angaben liegen wieder unter dem Schlüssel der Pins, der auch gesperrt arbeitet
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.VertrauenschiffreTest
+Rot: gesperrt ist eine Angabe spaeter lesbar
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
+index 25f2ada..cad01ca 100644
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
+@@ -23,7 +23,7 @@ class Vertrauenschiffre(
+ ) {
+     private val chiffre = AblageChiffre(schluessel)
+     private val vertrauen = schluessel
+-    private val angaben: () -> ByteArray = angaben ?: schluessel
++    private val angaben: () -> ByteArray = schluessel
+ 
+     fun verschluessle(wert: String, bindung: String): String? = runCatching {
+         Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK + bindung))

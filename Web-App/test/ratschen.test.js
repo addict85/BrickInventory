@@ -67,9 +67,8 @@ test('die Suche findet die Quellen ueberhaupt', () => {
   assert.ok(n >= 80, `Nur ${n} TypeScript-Quellen gefunden — greift die Suche noch?`);
 });
 
-test('stille Faenge werden weniger, nie mehr', () => {
-  // Gemessen 0 am 11.11.2026: Die beiden letzten (Rebrickable-Teilezuordnung)
-  // fangen nur noch 404, das rbGet() selbst als null liefert.
+test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie mehr', () => {
+  // Die Rebrickable-Teilezuordnung fängt nur 404, das rbGet() selbst als null liefert.
   const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
@@ -90,22 +89,35 @@ test('stille Faenge werden weniger, nie mehr', () => {
   if (ist < SCHRANKE) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+  nurGemeldeteFaenge();
+  stilleFaengeDerOberflaeche();
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
-  // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
-  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter; Schreibwege
-  // (Preis samt Verlauf, Bildverweis) lassen ihn durch (139 am 13.11.2026, vorher 144);
-  // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
-  // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
-  // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
-  const SCHRANKEN = { logAndContinue: 139, meldeUndLiefere: 7 };
+  // Die Regel steht in docs/architektur.md („Fehler“): Schreibpfade werfen, Lesepfade nehmen
+  // versuche()/Abstriche, logAndContinue nur für Nebenwirkungen ohne Folgen; ein Ersatzwert
+  // (meldeUndLiefere) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/katalog eigene Schranke.
+  // Gegenproben: in src/katalog/farben.ts wieder `.catch(meldeUndLiefere('x', []))` → rot (8, Schranke 7);
+  // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (86 von 85),
+  // mit Gesamtschranke 200 → rot „ausserhalb src/katalog“ (40 von 39).
+  // (15.11.2026) Katalog-Schreibwege werfen (Auftrag wiederholt); in teileAnreicherung.ts wieder
+  // `.catch(logAndContinue('x'))` an merkeTeil → rot (68 von 67).
+  const SCHRANKEN = { logAndContinue: 67, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
+  const AUSSERHALB_KATALOG = { logAndContinue: 37 };
+  const imKatalog = (/** @type {string} */ f) => /[\\/]src[\\/]katalog[\\/]/.test(f);
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
-    const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
+    const muster = [new RegExp(`\\b${name}\\(`, 'g')];
+    const ist = zaehle(muster);
     assert.ok(ist > MINDESTENS[name], `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
     assert.ok(ist <= schranke, `${ist}-mal ${name}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${name}: ${ist} (Schranke ${schranke}) — Schranke nachziehen`);
+    const aussen = AUSSERHALB_KATALOG[name];
+    if (aussen === undefined) continue;
+    const n = zaehle(muster, f => !imKatalog(f));
+    assert.ok(n > 0 && n < ist, `ausserhalb src/katalog ${n} von ${ist} — greift die Trennung noch?`);
+    assert.ok(n <= aussen, `${n}-mal ${name} ausserhalb src/katalog, erlaubt sind ${aussen}`);
+    if (n < aussen) console.log(`  ℹ ${name} ausserhalb src/katalog: ${n} (Schranke ${aussen}) — Schranke nachziehen`);
   }
   const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/;
   const sets = quellen().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));
@@ -116,6 +128,73 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
     [],
   );
 });
+
+/** Fänge, die nur melden und weiterlaufen, werden weniger, nie mehr. */
+function nurGemeldeteFaenge() {
+  // Jede Form ohne throw: `catch (e) { meldeFehler(…) }`, mit `return x`/`continue` danach, und
+  // `.catch(e => console.warn(…))`. Sie verschweigen den Fehler dem Aufrufer wie meldeUndLiefere,
+  // nur ohne dessen Namen. Wer direkt in die Konsole schreibt statt meldeFehler, nennt sein
+  // Warum als „Ausnahme:“ im Fang. Nur src/: Routen fangen nicht, Jobs und db/ haben eigene Regeln.
+  // Gegenproben (14.11.2026): in src/sets/dienst.ts den Zustandswechsel wieder in
+  // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
+  // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
+  // (15.11.2026) Kaufpreis-Nachtrag sammelt und wirft, Anleitungen eintragen wirft; in
+  // instructions.ts das Eintragen wieder in try/catch mit meldeFehler → rot (57 von 56).
+  const { faenge, nurGemeldet } = require('./helpers/faenge');
+  const SCHRANKE = 56;
+  const probe = (/** @type {string} */ q) => faenge(q).filter(nurGemeldet).length;
+  assert.equal(
+    probe('try { a(); } catch (e) { meldeFehler("x", e); }') +
+      probe('try { a(); } catch { console.error("x"); return null; }') +
+      probe('x.catch(e => console.warn(e.message));') +
+      probe('for (;;) { try { a(); } catch (e) { log(`${e}`); continue; } }'),
+    4,
+  );
+  assert.equal(
+    probe('try { a(); } catch (e) { meldeFehler("x", e); throw e; }') +
+      probe('try { a(); } catch (e) { meldeFehler("x", e); await nochmal(); }') +
+      probe('x.catch(logAndContinue("x"));') +
+      probe('// catch (e) { console.error(e) }'),
+    0,
+  );
+  const src = quellen().filter(f => /^src[\\/]/.test(path.relative(WEB, f)));
+  const treffer = src.flatMap(f =>
+    faenge(fs.readFileSync(f, 'utf8'))
+      .filter(nurGemeldet)
+      .map(x => ({ ...x, wo: `${path.relative(WEB, f)}:${x.zeile}` })),
+  );
+  assert.ok(treffer.length > 20, `nur ${treffer.length} gemeldete Fänge gefunden — greift die Suche noch?`);
+  assert.ok(
+    treffer.length <= SCHRANKE,
+    `${treffer.length} Fänge melden nur und laufen weiter, erlaubt sind ${SCHRANKE}`,
+  );
+  if (treffer.length < SCHRANKE)
+    console.log(`  ℹ nur gemeldete Fänge: ${treffer.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  assert.deepEqual(
+    treffer.filter(x => /\bconsole\./.test(x.rumpf) && !/Ausnahme:/.test(x.roh)).map(x => x.wo),
+    [],
+    'ohne Ausnahme: direkt in die Konsole statt meldeFehler',
+  );
+}
+
+/** Stille Fänge der Oberfläche werden weniger, nie mehr. */
+function stilleFaengeDerOberflaeche() {
+  // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
+  // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
+  // (localStorage, abgebrochene Ströme); neue braucht es nicht.
+  // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
+  // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
+  const { faenge, stillImBrowser } = require('./helpers/faenge');
+  const SCHRANKE = 84;
+  const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
+  assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
+  assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
+  const ist = oberflaeche().reduce((n, f) => n + faenge(fs.readFileSync(f, 'utf8')).filter(stillImBrowser).length, 0);
+  assert.ok(ist > 30, `nur ${ist} stille Fänge in public/js — greift die Suche noch?`);
+  assert.ok(ist <= SCHRANKE, `${ist} stille Fänge in public/js, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE)
+    console.log(`  ℹ stille Fänge der Oberfläche: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
 
 /** Die Fabrik (erzeugeDb, dbKonfigAusUmgebung) und Typen sind kein Prozesszugang. */
 const PROZESSZUGANG = new Set([
@@ -154,7 +233,6 @@ function nimmtProzesszugang(f) {
 test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
   // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot (09.11.2026);
   // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
   // `import * as _probe from './database'` in db/txLock.ts → rot mit 1 (11.11.2026).
@@ -172,10 +250,12 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
   // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
-  // Gemessen 13.11.2026: 44 let + 28 Sammlungen = 72 vorher, 39 + 20 = 59 danach.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
-  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
-  const ZUSTAND_SCHRANKE = 59;
+  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
+  // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
+  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
+  // reist mit der Transaktion im Aufrufrahmen; übrig sind die Sicherungspunkte in db/.
+  const ZUSTAND_SCHRANKE = 1;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
@@ -188,23 +268,24 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   );
   const zustand = quellen().reduce((n, f) => n + zaehleZustand(fs.readFileSync(f, 'utf8')), 0);
   assert.ok(
-    zustand > 20 && zustand <= ZUSTAND_SCHRANKE,
+    zustand > 0 && zustand <= ZUSTAND_SCHRANKE,
     `${zustand}-mal modulweiter Zustand, erlaubt sind ${ZUSTAND_SCHRANKE}`,
   );
   if (zustand < ZUSTAND_SCHRANKE)
     console.log(`  ℹ modulweiter Zustand: ${zustand} (Schranke ${ZUSTAND_SCHRANKE}) — Schranke nachziehen`);
   wegeAnDenKontextenVorbei();
+  bindungOhneNamenUndProxy();
+  konfigNurAmStart();
 });
 
 /** Wege an den Kontexten vorbei sind verboten (früher eine Ratsche). */
 function wegeAnDenKontextenVorbei() {
   // Ein Dienst bekommt seine Abhängigkeiten über den Kontext (src/<bereich>/kontext.ts);
   // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
-  // gibt es nicht mehr. Gemessen am 13.11.2026: 35 Holer-Aufrufe und 67 Fassaden-Importe,
-  // am 14.11.2026: 0 und 0.
+  // gibt es nicht mehr.
   // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsDienste>('sets');` in
-  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { getSets } from '../sets'` in
-  // src/sammlung/loeschen.ts (mit `export const getSets = …` in src/sets/index.ts) → rot (1 Fassade).
+  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { setsLesen } from '../sets'` in
+  // src/sammlung/loeschen.ts (mit `export const setsLesen = …` in src/sets/index.ts) → rot (1 Fassade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
   const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
@@ -221,13 +302,11 @@ function wegeAnDenKontextenVorbei() {
     bereiche.map(b => {
       const s = fs.readFileSync(path.join(src, b, 'bereich.ts'), 'utf8');
       const n = new Set();
-      for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
-        for (const x of m[1].match(/\w+/g) || []) n.add(x);
-      for (const m of s.matchAll(/^ {4}(\w+): /gm)) n.add(m[1]);
+      for (const m of s.matchAll(/^ {4,8}(\w+): /gm)) n.add(m[1]);
       return [b, n];
     }),
   );
-  assert.ok(dienste.get('sets').has('getSets'), 'die Dienste der Bereiche werden nicht mehr gefunden');
+  assert.ok(dienste.get('sets').has('setsLesen'), 'die Dienste der Bereiche werden nicht mehr gefunden');
   const fassaden = [];
   for (const f of quellen()) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
@@ -242,8 +321,60 @@ function wegeAnDenKontextenVorbei() {
   assert.deepEqual(fassaden, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
 }
 
+/** konfig() liest der Start; Fachbereiche, Routen und Jobs bekommen die Konfiguration gereicht. */
+function konfigNurAmStart() {
+  // baueDienste reicht sie als k.konfig, der Start als Parameter. Übrig sind Helfer des Prozesses
+  // (src/infra, src/http, db/) und der beim Laden gebaute bcrypt-Pool; ihre Zahl sinkt nur.
+  // Gegenproben (14.11.2026): `const _k = konfig();` in src/sets/lesen.ts → rot (Fachbereich);
+  // dasselbe in src/http/csvAntwort.ts → rot (14 von 13).
+  const SCHRANKE = 13;
+  const AUSNAHME = ['src/konto/bcryptSchranke.ts'];
+  const ohne = require('./helpers/sources').ohneKommentare;
+  const rel = f => path.relative(WEB, f).split(path.sep).join('/');
+  const lesend = quellen()
+    .map(rel)
+    .filter(r => !/^(startup\/|server\.ts$|src\/infra\/konfig\.ts$)/.test(r))
+    .filter(r => /\bkonfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
+  assert.ok(lesend.length > 0, 'keine Leser von konfig() gefunden — greift die Suche noch?');
+  const fach = lesend.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !AUSNAHME.includes(r));
+  assert.deepEqual(fach, [], 'Fachbereiche, Routen und Jobs nehmen k.konfig oder einen Parameter');
+  assert.ok(lesend.length <= SCHRANKE, `${lesend.length} Dateien lesen konfig(), erlaubt sind ${SCHRANKE}`);
+  if (lesend.length < SCHRANKE)
+    console.log(`  ℹ konfig()-Leser: ${lesend.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
+
+/** Bereiche binden ohne Namen und Proxy; AsyncLocalStorage nur im Aufrufrahmen. */
+function bindungOhneNamenUndProxy() {
+  // Ein Bereich ist eine Fabrik mit Closure über k (src/infra/bereich.ts, mit()); die Transaktion
+  // reist über `t` (tx.db), nicht über einen Proxy oder eine Freigabe im Aufrufpfad.
+  // Gegenproben (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/lesen.ts → rot (Proxy);
+  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/bereich.ts → rot (Namensbindung);
+  // `new AsyncLocalStorage()` in db/transaktion.ts → rot (zweiter Kanal).
+  const ohne = require('./helpers/sources').ohneKommentare;
+  const rel = f => path.relative(WEB, f).split(path.sep).join('/');
+  const text = f => ohne(fs.readFileSync(f, 'utf8'));
+  assert.deepEqual(
+    quellen()
+      .filter(f => /\bnew Proxy\b/.test(text(f)))
+      .map(rel),
+    [],
+    'kein Proxy im Server',
+  );
+  const NAMEN = /\bbinde\w*\(|\[\s*'\w+'(?:\s*,\s*'\w+')+\s*,?\s*\]/;
+  assert.ok(NAMEN.test("bindeZugang(k, m, ['a', 'b'])") && NAMEN.test("x(k, ['a', 'b'])"), 'Selbstbeweis Namensliste');
+  const fabriken = quellen().filter(f => /[\\/]src[\\/]\w+[\\/](bereich|kontext)\.ts$/.test(f));
+  assert.ok(fabriken.length >= 30, `nur ${fabriken.length} Fabriken und Kontexte gefunden — greift die Suche noch?`);
+  assert.deepEqual(fabriken.filter(f => NAMEN.test(text(f))).map(rel), [], 'Bindung über Namen statt mit()');
+  assert.deepEqual(
+    quellen()
+      .filter(f => /\bAsyncLocalStorage\b/.test(text(f)))
+      .map(rel),
+    ['src/infra/kontoKontext.ts'],
+    'Ein Kanal über den Aufrufpfad: der Aufrufrahmen (docs/architektur.md)',
+  );
+}
+
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 1 am 12.11.2026 (die Lint-Korrekturen ersetzten die übrigen).
   const SCHRANKE = 1;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(
@@ -259,7 +390,7 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen, unknown-Parameter und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 8 am 12.11.2026.
+  // nur `as any` und `: any`.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
   const SCHRANKE = 8;
   const ist = zaehle([/\bany\b/g]);
@@ -267,8 +398,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Dieselbe Art Zählung: Die Hülle der Antwort setzt die Route, ein Dienst
-  // liefert das Fachobjekt. Gemessen 7 am 11.11.2026 (vorher 35): Zeilenstatus in
-  // Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
+  // liefert das Fachobjekt. Übrig sind Zeilenstatus in Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
   // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
   const SUCCESS_SCHRANKE = 7;
   const success = zaehle([/\bsuccess:\s*true\b/g], f =>
@@ -280,11 +410,22 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   );
   if (success < SUCCESS_SCHRANKE)
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
+  // Routen geben ihr Ergebnis zurück, die Hülle setzt der Vertragsrouter (endpunkt). Übrig sind
+  // Ströme, Rückrufe nach dem Abmelden und ganze Antworten der Anmeldung.
+  // Gegenprobe (14.11.2026): in routes/api_v1/sets.ts `return { set }` als `res.json({ success: true, set })` → rot (11).
+  const ROUTEN_SCHRANKE = 10;
+  const inRouten = zaehle([/\bsuccess:\s*true\b/g], f => /^routes[\\/]/.test(path.relative(WEB, f)));
+  assert.ok(
+    inRouten > 0 && inRouten <= ROUTEN_SCHRANKE,
+    `${inRouten}-mal success: true in routes/, erlaubt sind ${ROUTEN_SCHRANKE}`,
+  );
+  if (inRouten < ROUTEN_SCHRANKE)
+    console.log(`  ℹ success in Routen: ${inRouten} (Schranke ${ROUTEN_SCHRANKE}) — Schranke nachziehen`);
   // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
-  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 74 am 11.11.2026.
+  // (src/vertrag, src/infra, src/http) und Fehlerparameter.
   // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
-  const SCHRANKE_UNKNOWN = 74;
+  const SCHRANKE_UNKNOWN = 63;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
     ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
@@ -302,6 +443,23 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   );
   if (unbekannt < SCHRANKE_UNKNOWN)
     console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
+});
+
+test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
+  // Die Zeit kommt über k.uhr (src/infra/uhr.ts): Ein Test stellt sie, statt zu warten.
+  // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
+  // Zeitstempel ohne Kontext.
+  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/dienst.ts → rot.
+  // (15.11.2026) Drosseln, Attestation, Portfolio nehmen k.uhr; `Date.now()` zurück in
+  // rateLimiter.ts (_schedule) → rot (21 von 20).
+  const SCHRANKE = 20;
+  const UHR = /\bDate\.now\(\)|\bnew Date\(\)/g;
+  assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(UHR)?.length, 2, 'Selbstbeweis');
+  const fach = (/** @type {string} */ f) =>
+    /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
+  const ist = zaehle([UHR], fach);
+  assert.ok(ist <= SCHRANKE, `${ist} direkte Uhr-Aufrufe in Fachbereichen und Jobs, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('keine Testdatei prüft REQUIRE_DB selbst', () => {
@@ -333,9 +491,10 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument. Gemessen 62 am 12.11.2026.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
-  const SCHRANKE = 62;
+  // Übersetzer ohnehin ein Typargument.
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/zeilen.ts ans Schema.
+  // (15.11.2026) in auftraege.ts schreibeFortschritt wieder `db.get(` ohne Typ → rot (4 von 3).
+  const SCHRANKE = 3;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -344,7 +503,7 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
 test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
   // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
   // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
-  // Vertrag) und routes/auth/registrierung.ts. Gemessen 4 am 05.11.2026.
+  // Vertrag) und routes/auth/registrierung.ts.
   // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
   const SCHRANKE = 4;
   let ist = 0;
@@ -361,7 +520,7 @@ test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
 
 test('Schreibziele in Routen werden weniger, nie mehr', () => {
   // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
-  // Dienst den Wunsch selbst entgegen. Gemessen 13 am 09.11.2026.
+  // Dienst den Wunsch selbst entgegen.
   // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
   const SCHRANKE = 13;
   let ist = 0;
@@ -396,9 +555,61 @@ function reineQuelltextTests() {
     });
 }
 
+test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
+  // Ansichten melden einander über ereignisse.js; was mehrere teilen, ist Baustein (BAUSTEINE).
+  // Gegenprobe (15.11.2026): `import { loadGallery } from './sammlung.js';` zurück in lagerorte.js
+  // → rot (51 statt 50).
+  const { KERN, BAUSTEINE } = require('../scripts/build-frontend');
+  const SCHRANKE = 50;
+  const JS = path.join(WEB, 'public', 'js');
+  const schicht = new Set([...KERN, ...BAUSTEINE]);
+  const ansichten = fs.readdirSync(JS).filter(n => istAppModul(n) && !schicht.has(n));
+  assert.ok(ansichten.length > 30, `nur ${ansichten.length} Ansichten — greift die Suche noch?`);
+  const kanten = ansichten.flatMap(n =>
+    [...fs.readFileSync(path.join(JS, n), 'utf8').matchAll(/^\s*import\s[^;]*?from\s+'\.\/([\w-]+\.js)'/gms)]
+      .map(m => m[1])
+      .filter(z => ansichten.includes(z))
+      .map(z => `${n} → ${z}`),
+  );
+  assert.ok(kanten.length <= SCHRANKE, `${kanten.length} Importkanten zwischen Ansichten, erlaubt ${SCHRANKE}`);
+  if (kanten.length < SCHRANKE)
+    console.log(`  ℹ Kanten zwischen Ansichten: ${kanten.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
+  // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“); übrig sind Begriffe der
+  // Technik (api, dom, router …). Gezählt wird ein englisches Wort im Dateinamen.
+  // Gegenprobe (15.11.2026): public/js/sammlung.js zurück auf gallery.js → rot (22 statt 21).
+  const ENGLISCH =
+    /^(?:.*-)?(?:gallery|catalog|parts|finance|settings|actions|scope|scrollbar|acquisition|modals?|admin|init|main|mobile|monitor|registry|router|boot|viewer|logviewer|pdfviewer|detail|import|wanted|sets|api|dom|format|passkeys|minifigs|theme)(?:-.*)?\.js$/;
+  const SCHRANKE = 21;
+  assert.ok(ENGLISCH.test('set-detail.js') && ENGLISCH.test('gallery.js') && !ENGLISCH.test('sammlung.js'));
+  const englisch = fs
+    .readdirSync(path.join(WEB, 'public', 'js'))
+    .filter(n => istAppModul(n) || ['main.js', 'logviewer.js', 'pdfjs-boot.js'].includes(n))
+    .filter(n => ENGLISCH.test(n));
+  assert.ok(
+    englisch.length <= SCHRANKE,
+    `${englisch.length} englische Dateinamen in public/js: ${englisch.join(', ')}`,
+  );
+  if (englisch.length < SCHRANKE)
+    console.log(`  ℹ englische Dateinamen: ${englisch.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () => {
+  // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
+  // Gegenprobe (15.11.2026): sicherheit-server-grenzen-db.test.js zurück auf
+  // sicherheit-runde11-db.test.js → rot mit diesem Namen.
+  const RUNDE = /runde\d|runde-|kleinbefunde|-befunde-/;
+  assert.ok(RUNDE.test('oberflaeche-runde25b-browser.test.js') && !RUNDE.test('admin-hash-runden-db.test.js'));
+  assert.deepEqual(
+    fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && RUNDE.test(n)),
+    [],
+  );
+});
+
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 37 am 10.11.2026.
-  const SCHRANKE = 37;
+  const SCHRANKE = 34;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -420,7 +631,7 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
  */
 const FALL_FUEHRT_AUS =
-  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich|Nacharbeit)\(|\b(?:bereichsSeite|ersetzeDienste)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
+  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich)\(|\bbildNotizen\(|\b(?:bereichsSeite|ersetzeDienste)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 /** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
 const SOURCES_FUEHRT_AUS = new Set([
@@ -432,7 +643,7 @@ const SOURCES_FUEHRT_AUS = new Set([
   'testDienste',
   'testKontext',
   'testBereich',
-  'testNacharbeit',
+  'bildNotizen',
   'bereichsSeite',
   'ersetzeDienste',
 ]);
@@ -547,8 +758,7 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 428 am 12.11.2026 mit der strukturellen Erkennung (die Zählung mit
-  // `await ` als Ausführung ergab 336 und hielt reine Lesefälle für ausführend).
+  // Strukturelle Erkennung: `await ` allein hielte reine Lesefälle für ausführend.
   // Gegenprobe (12.11.2026): `await ` wieder in FALL_FUEHRT_AUS → rot „Selbstbeweis“.
   const probe = [
     "const _req = require('./helpers/sources').buildAndRequire();",
@@ -583,7 +793,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const SCHRANKE = 428;
+  const SCHRANKE = 382;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -602,7 +812,7 @@ const NUTZT_FASSADE =
   /(?<!\}\s*=\s*)(?:_req\w*|buildAndRequire\(\))\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
 /** Ersatzwege, die nur sinken dürfen. Wer Module beim Laden umbiegt, prüft einen Aufbau, den es
  * im Betrieb nicht gibt, und greift still ins Leere, sobald sich ein Importpfad ändert; ersetzt
- * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
+ * wird an der Verdrahtung (testBildwerk(), testQuellen(), ersetzeDienste()). routerServer steckt
  * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
 const ERSATZWEGE = {
   'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 11 },
@@ -610,9 +820,8 @@ const ERSATZWEGE = {
 };
 
 test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
-  // Fassade: 387 Dateien am 12.11.2026, 0 seit testDaten()/testZugang() (13.11.2026).
-  // Umgebogen: 26 Testdateien am 13.11.2026, 14 nach Bildwerk und toten Abfängen.
-  // routerServer: 124 Dateien bauten am 13.11.2026 eigene Router, 13 tun es noch.
+  // Die DB-Fassade ist durch testDaten()/testZugang() ersetzt; umgebogene require und
+  // eigene Router (routerServer) werden weniger.
   // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
   // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
   // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
@@ -642,37 +851,29 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
 });
 
 /**
- * Web-Tests, die Android-Quellen lesen, sind Abgleich-Dateien: `abgleich-*.test.js` oder eine
- * der vier, deren Namen Web-Code nennt. Nur für sie schliesst der paths-Filter von web-ci
- * Android-App/ ein; was nur die App betrifft, prüft die Android-Suite.
+ * Web-Tests lesen keinen Android-Quelltext: Was die App vom Server braucht, steht in
+ * shared/app-schnittstelle.json (im Android-Lauf aus ihrem Quelltext erzeugt und geprüft);
+ * was nur die App betrifft, prüft die Android-Suite. Gezählt werden auch die Helfer.
  */
-const LIEST_ANDROID =
-  /require\(['"]\.\/helpers\/android['"]\)|kotlin-vertrag|check-(antwortfelder|doppelte-operanden)|generate-design-tokens|['"`]Android-App['"`/]|\.kt['"`]/;
-const ABGLEICH_OHNE_PRAEFIX = [
-  'theme.test.js',
-  'passwortlaenge.test.js',
-  'vertrag-kotlin.test.js',
-  'vertrag-lesen-db.test.js',
-];
+const LIEST_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App['"`/]|\.kt['"`]/;
 
-test('Web-Tests, die Android-Quellen lesen, sind Abgleich-Dateien und werden weniger', () => {
-  // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot „ausserhalb des Abgleichs: a11y.test.js“.
-  const SCHRANKE = 38;
-  const lesend = fs
-    .readdirSync(__dirname)
-    .filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js')
-    .filter(n => LIEST_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
-  assert.ok(lesend.length >= 10, `Nur ${lesend.length} Treffer — greift das Muster noch?`);
-  const fremd = lesend.filter(n => !n.startsWith('abgleich-') && !ABGLEICH_OHNE_PRAEFIX.includes(n));
-  assert.deepEqual(
-    fremd,
-    [],
-    `ausserhalb des Abgleichs: ${fremd.join(', ')}. ` +
-      'Was nur die App betrifft, gehört in die Android-Suite; ein Abgleich heisst abgleich-*.test.js.',
+test('Web-Tests lesen keinen Android-Quelltext', () => {
+  // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot (nennt a11y.test.js); dasselbe in
+  // test/helpers/vertrag.js → rot (nennt helpers/vertrag.js).
+  const SCHRANKE = 0;
+  for (const probe of ["path.join(ROOT, '..', 'Android-App', 'x')", "'Theme.kt'", "require('./helpers/android')"])
+    assert.ok(LIEST_ANDROID.test(probe), `das Muster greift nicht mehr: ${probe}`);
+  const dateien = [
+    ...fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js'),
+    ...fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n)),
+  ];
+  assert.ok(dateien.length > 500, `nur ${dateien.length} Dateien — greift die Suche noch?`);
+  const lesend = dateien.filter(n => LIEST_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
+  assert.ok(
+    lesend.length <= SCHRANKE,
+    `${lesend.length} Web-Testdateien lesen Android-Quellen, erlaubt sind ${SCHRANKE}: ${lesend.join(', ')}. ` +
+      'Den Server gegen shared/app-schnittstelle.json prüfen; was nur die App betrifft, gehört in die Android-Suite.',
   );
-  assert.ok(lesend.length <= SCHRANKE, `${lesend.length} Abgleich-Dateien, erlaubt sind ${SCHRANKE}.`);
-  if (lesend.length < SCHRANKE)
-    console.log(`  ℹ Abgleich-Dateien: ${lesend.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -728,7 +929,7 @@ function festeWartezeiten(/** @type {string} */ text) {
 test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
   // eine Bedingung (helpers/zeit.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
-  // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt. Gemessen 40 am 12.11.2026.
+  // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt.
   // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot.
   const SCHRANKE = 40;
   assert.equal(
@@ -761,8 +962,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
-  // Gemessen 35 am 06.11.2026.
-  const SCHRANKE = 35;
+  const SCHRANKE = 33;
   const html = require('./helpers/sources').ohneHtmlKommentare(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
   );
@@ -782,7 +982,7 @@ test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
   // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
   // Gegenproben: eine Nachtragsnummer in src/konto/geraeteToken.ts → rot; dasselbe in
-  // test/abgleich-tab-layout.test.js und in public/index.html → rot (05.11.2026).
+  // test/tab-layout.test.js und in public/index.html → rot (05.11.2026).
   const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
   const treffer = [];
   let dateien = 0;
@@ -826,7 +1026,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // Gezählt in server.ts, routes/, src/ und jobs/. Gemessen 9,7 % am 12.11.2026 (Biome-Format).
+  // Gezählt in server.ts, routes/, src/ und jobs/, im Biome-Format.
   const SCHRANKE = 9.7;
   let zeilen = 0,
     kommentar = 0;
@@ -862,7 +1062,7 @@ function oberflaeche() {
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
-  // Ohne Typzeilen gezählt. Gemessen 14,1 % am 12.11.2026 (Biome-Format).
+  // Ohne Typzeilen gezählt, im Biome-Format.
   // Gegenprobe: 300 Kommentarzeilen an dom.js → rot.
   const SCHRANKE = 14.1;
   let zeilen = 0,
@@ -897,7 +1097,7 @@ test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
 
 test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
   // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
-  // (@param, @returns …) zählen nicht mit. Gemessen 0 am 10.11.2026.
+  // (@param, @returns …) zählen nicht mit.
   // Gegenprobe: ein //-Block mit sechs Zeilen in dom.js → rot mit Fundstelle.
   const lang = [];
   let bloecke = 0;
@@ -942,18 +1142,16 @@ function funktionsLaengen(dateien = oberflaeche()) {
 }
 
 test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
-  // Gemessen im Biome-Format am 12.11.2026: die acht unten über 100, 22 über 80. Gegenprobe: loadFinance
-  // wieder in einem Stück (vor dem Aufteilen) → rot mit „finance.js loadFinance“.
-  const SCHRANKE_80 = 21;
+  // Im Biome-Format. Gegenprobe: loadFinance
+  // wieder in einem Stück (vor dem Aufteilen) → rot mit „finanzen.js loadFinance“.
+  const SCHRANKE_80 = 20;
   const BEKANNT_100 = [
-    'public/js/acquisition-modals.js acqSave',
+    'public/js/kauf-dialoge.js acqSave',
     'public/js/diagramme.js priceChartSVG',
     'public/js/diagramme.js portfolioChartSVG',
-    'public/js/gallery.js doAddSet',
     'public/js/init.js plGenerate',
     'public/js/init.js plExportPdf',
     'public/js/minifigs.js renderFigs',
-    'public/js/set-csv-import.js startSetCsvImport',
   ];
   const alle = funktionsLaengen();
   assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
@@ -990,7 +1188,7 @@ function oberflaechenCode() {
 
 test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
   // Nur die beiden Helfer in dom.js schreiben Markup; das Protokollfenster (monitor.js) baut ein eigenes
-  // Dokument per document.write. Gegenprobe: in gallery.js `grid.innerHTML = ''` → rot mit Fundort.
+  // Dokument per document.write. Gegenprobe: in sammlung.js `grid.innerHTML = ''` → rot mit Fundort.
   const ERLAUBT = ['dom.js', 'dom.js', 'monitor.js'];
   const roh = oberflaechenCode().filter(x =>
     /\.(innerHTML|outerHTML)\s*\+?=(?!=)|insertAdjacentHTML\(|document\.write\(/.test(x.z),
@@ -1022,7 +1220,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
-  const SCHRANKE = 87;
+  const SCHRANKE = 83;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
@@ -1058,10 +1256,10 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 });
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
-  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen im Biome-Format am 12.11.2026:
-  // grösste 792, zwölf über 600. Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
-  const SCHRANKE_GROESSTE = 792,
-    SCHRANKE_UEBER_600 = 12;
+  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
+  // Gegenprobe (09.11.2026): an finanzen.js Leerzeilen gehängt → rot.
+  const SCHRANKE_GROESSTE = 761,
+    SCHRANKE_UEBER_600 = 11;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),
     n: fs.readFileSync(f, 'utf8').split('\n').length,
@@ -1103,14 +1301,35 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
   return raus;
 }
 
-test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {
-  // Gemessen im Biome-Format am 13.11.2026: 22 über 80, eine über 150 (erzeugeDb in db/database.ts).
-  // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen: erzeugeDb und runPriceRefresh.
-  // Gegenproben: computePnl wieder in einem Stück → rot (über 150, 05.11.2026); buildPdf in
-  // src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026).
-  const SCHRANKE_80 = 22,
-    SCHRANKE_150 = 1,
-    BEKANNT_100 = ['db/database.ts erzeugeDb'];
+/** Englische Namen exportierter Funktionen in src/ werden weniger, nie mehr. */
+function englischeExportnamen() {
+  // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
+  // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
+  // Gegenprobe (15.11.2026): in src/bestand/acquisitions.ts `kaufAmTagErfassen` wieder `recordAcquisitionForDay` → rot (50 von 49).
+  const { englischerName } = require('./helpers/namen');
+  const SCHRANKE = 36;
+  assert.deepEqual(
+    ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
+      englischerName,
+    ),
+    [true, true, true, true, false, false, false],
+  );
+  const namen = quellen()
+    .filter(f => /^src[\\/]/.test(path.relative(WEB, f)))
+    .flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]));
+  assert.ok(namen.length > 1000, `nur ${namen.length} exportierte Funktionen in src/ — greift die Suche noch?`);
+  const ist = namen.filter(englischerName).length;
+  assert.ok(ist <= SCHRANKE, `${ist} englische Exportnamen in src/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ englische Exportnamen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
+
+test('Funktionen im Server (über 80/150 Zeilen, englische Exportnamen) werden weniger, nie mehr', () => {
+  // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
+  // Gegenproben: buildPdf in src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
+  // erzeugeDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
+  const SCHRANKE_80 = 17,
+    SCHRANKE_150 = 0,
+    BEKANNT_100 = [];
   const dateien = quellen().filter(
     f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );
@@ -1138,12 +1357,13 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   assert.ok(ueber(80).length <= SCHRANKE_80, `${ueber(80).length} über 80 Zeilen, erlaubt sind ${SCHRANKE_80}`);
   if (ueber(80).length < SCHRANKE_80)
     console.log(`  ℹ Server-Funktionen über 80 Zeilen: ${ueber(80).length} — Schranke nachziehen`);
+  englischeExportnamen();
 });
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
-  // Je Ordner eine Schranke, gemessen im Biome-Format am 12.11.2026.
+  // Je Ordner eine Schranke, im Biome-Format.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 20.6, clients: 13.9, scripts: 22.2 };
+  const SCHRANKE = { db: 15, clients: 12.3, scripts: 19.2 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0,
@@ -1178,12 +1398,13 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 50 am 11.11.2026.
+  // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 50;
+  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (4 von 3).
+  const SCHRANKE = 3;
 
   const MARKE =
-    /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
+    /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
     ...fs
       .readdirSync(__dirname)
@@ -1209,7 +1430,7 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gezählt in test/*.js und test/helpers/. Gemessen 17 % am 12.11.2026 (Biome-Format).
+  // den Commit. Gezählt in test/*.js und test/helpers/, im Biome-Format.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
   const SCHRANKE = 17;
   const dateien = [
@@ -1263,8 +1484,7 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
 
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
-  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // 20,4 % am 12.11.2026. Das Caddyfile zählt nicht mit:
+  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
   const SCHRANKE = 20.4;
@@ -1330,9 +1550,8 @@ function langeBloecke(/** @type {string} */ text) {
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
   // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
   // Gegenprobenlisten zählen nicht.
-  // Gemessen am 12.11.2026: Tests 58 Blöcke, scripts 0, index.html 162 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 58, scripts: 0, indexHtml: 162 };
+  const SCHRANKE = { tests: 49, scripts: 0, indexHtml: 162 };
   const js = (/** @type {string} */ d) =>
     fs
       .readdirSync(d)
@@ -1360,9 +1579,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 72 am 11.11.2026.
+  // werden beim Anfassen nachgetragen.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 72;
+  const SCHRANKE = 70;
   const ohne = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.test.js'))
@@ -1376,7 +1595,8 @@ test('in Testkommentaren genannte Pfade gibt es', () => {
   // Eine Gegenprobe, die eine verschwundene Datei nennt, lässt sich nicht wiederholen. Geprüft wird jede
   // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
   // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der
-  // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle.
+  // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle. Gegenprobe (14.11.2026): ohne gebautes
+  // Bündel und ohne ERZEUGNISSE → rot (buendel-gebaut.test.js); derselbe Pfad mit `app.bundle2.js` → rot.
   const REPO = path.join(WEB, '..');
   const ordner = [WEB, REPO]
     .flatMap(w =>
@@ -1391,7 +1611,10 @@ test('in Testkommentaren genannte Pfade gibt es', () => {
       '(?:ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt))\\b',
     'g',
   );
+  // Das Bündel entsteht erst mit `npm run build`; ein frischer Checkout hat es nicht.
+  const ERZEUGNISSE = new Set([`public/${require('../scripts/build-frontend').OUT_REL}`]);
   const gibt = (/** @type {string} */ p) =>
+    ERZEUGNISSE.has(p) ||
     [WEB, REPO].some(
       w => fs.existsSync(path.join(w, p)) || (p.endsWith('.js') && fs.existsSync(path.join(w, `${p.slice(0, -3)}.ts`))),
     );

@@ -9,13 +9,12 @@
  *      „ein servergesetzter Wert gilt …“ (Abruf trotz Serverwert)
  *   C  konto.js: applyTheme() gibt null zurück statt __bimApplyTheme →
  *      rot „applyTheme läuft über den Boot-Helfer“
- *   D  routes/api_v1/settings.ts: invalidateTheme() im Admin-Speichern
+ *   D  routes/api_v1/settings.ts: vergissDesign() im Admin-Speichern
  *      entfernt → rot „der Server setzt data-theme selbst …“ (brick statt noppe)
  *   Gestrichen „GET /api/settings/theme ist ohne Login erreichbar“: deckt
  *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
  *   „ohne Anmeldung: die Vorgabe“.
  */
-// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -176,33 +175,14 @@ test('fuenf Listen nennen dieselben Designs', () => {
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/,
     'src/vertrag/globaleRegeln.ts',
   );
-  const app = liste(
-    fs.readFileSync(
-      path.join(
-        __dirname,
-        '..',
-        '..',
-        'Android-App',
-        'core-model',
-        'src',
-        'main',
-        'java',
-        'ch',
-        'brickinventoryapp',
-        'model',
-        'ui',
-        'theme',
-        'Design.kt',
-      ),
-      'utf8',
-    ),
-    /enum class Design\(val kennung: String\) \{([^;]*);/,
-    'Design.kt',
-  );
+  // Die gemeinsame Quelle, aus der auch die App ihre Design-Tokens erzeugt.
+  const geteilt = Object.keys(
+    JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'shared', 'design-tokens.json'), 'utf8')).designs,
+  ).sort();
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
-  assert.deepEqual(app, erwartet, 'Design (App) weicht von den Dateien ab');
+  assert.deepEqual(geteilt, erwartet, 'shared/design-tokens.json weicht von den Dateien ab');
 });
 
 test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () => {
@@ -226,9 +206,9 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
-  const { invalidateTheme } = _req('src/konto/indexHtml.js');
+  const { vergissDesign } = _req('src/profil/indexHtml.js');
   const sendeStartseite = (...a) =>
-    _req('src/konto/http/startseite.js').sendeStartseite(require('./helpers/sources').testDienste().konto, ...a);
+    _req('src/profil/http/startseite.js').sendeStartseite(require('./helpers/sources').testDienste().profil, ...a);
   const name = `theme_admin_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const admin = (
@@ -243,11 +223,11 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
     await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});
     if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
     else await setGlobalSetting('app_theme', vorher);
-    invalidateTheme();
+    vergissDesign();
     await db.pool.end().catch(() => {});
   });
   await setGlobalSetting('app_theme', 'brick');
-  invalidateTheme();
+  vergissDesign();
 
   const startseite = async () => {
     let gesendet = '';

@@ -1,0 +1,17 @@
+Gegenprobe: Der Offline-Hinweis bietet keine Handlung an
+Modul: app
+Test: ch.brickinventoryapp.app.GeruestUndFormularTest
+Rot: Offline-Hinweis bietet an
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
+@@ -65,7 +65,7 @@
+             fmtStand(stand, appNumberLocale(), vierundzwanzig = vierundzwanzigStunden())),
+         text = if (offen > 0) pluralStringResource(R.plurals.offline_warten, offen, offen) else null,
+         modifier = modifier,
+-        aktion = onErneut?.let { stringResource(R.string.common_retry) to it },
++
+     )
+ }
+ 

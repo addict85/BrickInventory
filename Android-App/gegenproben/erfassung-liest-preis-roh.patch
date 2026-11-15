@@ -1,4 +1,4 @@
-Gegenprobe: erfassungsWerte liest den Preis wieder mit replace und toDoubleOrNull
+Gegenprobe: erfassungsWerte liest den Preis wieder mit replace statt nach der Sprache
 Modul: core-ui-bestand
 Test: ch.brickinventoryapp.gemeinsam.ErfassungswerteTest
 Rot: die Erfassung liest den Preis
@@ -6,12 +6,12 @@ Rot: die Erfassung liest den Preis
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
 --- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
 +++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
-@@ -29,7 +29,7 @@ fun erfassungsWerte(
+@@ -31,7 +31,7 @@
      haushalt: List<MitgliedAnsicht>,
  ): ErfassungsWerte = ErfassungsWerte(
      anzahl = anzahl.toIntOrNull() ?: 1,
--    preis = NumericInput.leseBetrag(preis),
-+    preis = preis.replace(',', '.').toDoubleOrNull(),
+-    preis = NumericInput.leseGeld(preis),
++    preis = Geld.ausText(preis.replace(',', '.')),
      zustand = zustand,
      besitzer = if (haushalt.size > 1) besitzer else null,
  )

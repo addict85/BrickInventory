@@ -1,13 +1,13 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
 import { waechterFuer } from './api_v1/middleware';
-import { fehlerAntwort, pfadSegmente } from '../src/http/httpAntwort';
+import { pfadSegmente } from '../src/http/httpAntwort';
 import express, { type Request, type Response } from 'express';
 import path from 'node:path';
 import { liefereDatei, FREMDE_DATEI_CSP } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
 import { angemeldeteNutzerId } from '../src/konto/http/anmeldung';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 
@@ -18,7 +18,7 @@ function alsAnhang(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-export function baueDatenDateienRouter(d: Dienste) {
+export function baueDatenDateienRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'bilder'>) {
   const { eingangsSperre, requireLoginOrToken } = waechterFuer(d.konto);
   const router = express.Router();
 
@@ -53,13 +53,11 @@ export function baueDatenDateienRouter(d: Dienste) {
     async (req: WildcardRequest, res: Response) => {
       const segmente = pfadSegmente(req, 'pfad');
       const filePath = safeDataPath('instructions', segmente);
-      if (!filePath || !(await d.katalog.anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
+      if (!filePath || !(await d.bilder.anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
         return res.status(404).send('Datei nicht gefunden');
       alsAnhang(res, filePath);
       liefereDatei(res, filePath);
     },
   );
-
-  router.use(fehlerAntwort);
   return router;
 }

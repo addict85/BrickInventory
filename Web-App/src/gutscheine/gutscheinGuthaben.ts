@@ -1,7 +1,7 @@
 // Guthaben einer LEGO-Geschenkkarte; greift der Bot-Schutz, folgt kein weiterer Aufruf.
 import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
-import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog';
+import { ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../fremdquellen';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
@@ -12,15 +12,15 @@ export const LAENDER = ['de-CH', 'de-DE', 'de-AT', 'fr-FR', 'it-IT', 'nl-NL', 'e
 
 export const LAND_STANDARD = 'de-CH';
 
-/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung — dieselbe Regel wie in settings.js. */
-export function landFuerWaehrung(waehrung: unknown): string {
+/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung — dieselbe Regel wie in einstellungen.js. */
+export function landFuerWaehrung(waehrung: string | null | undefined): string {
   return (
     ({ CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' } as Record<string, string>)[String(waehrung)] ??
     LAND_STANDARD
   );
 }
 
-export function landErlaubt(land: unknown): boolean {
+export function landErlaubt(land: string | null | undefined): boolean {
   return typeof land === 'string' && (LAENDER as readonly string[]).includes(land);
 }
 
@@ -51,6 +51,9 @@ export class NichtAngemeldet extends Error {}
  * fragt eine Weile gar nicht mehr. */
 export class BotSchutz extends Error {}
 
+/** Die Anmeldung nannte ihre Fehler im Rumpf; anders als ein unlesbarer Rumpf geht das weiter. */
+export class LoginAbgelehnt extends Error {}
+
 export interface Guthaben {
   betrag: number;
   waehrung: string;
@@ -80,8 +83,9 @@ interface Sitzung {
   ablauf: number;
 }
 
-/** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto. */
-const sitzungen = new Map<string, Sitzung>();
+/** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto. Je Land eine
+ * Sitzung; der Vorrat liegt im Fach der Gutschein-Dienste (gutscheinGuthabenSchranke.ts). */
+export type Sitzungsvorrat = Map<string, Sitzung>;
 
 /** 0, wenn er sich nicht lesen lässt. */
 function jwtAblauf(token: string): number {
@@ -177,10 +181,10 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
         token = aus;
         topf.set('gqauth', aus);
       } else if (rumpf?.errors?.length) {
-        throw new Error('Login: ' + rumpf.errors.map(e => e.message ?? '?').join('; '));
+        throw new LoginAbgelehnt('Login: ' + rumpf.errors.map(e => e.message ?? '?').join('; '));
       }
     } catch (e) {
-      if (e instanceof Error && e.message.startsWith('Login:')) throw e;
+      if (e instanceof LoginAbgelehnt) throw e;
     }
   }
   if (!token) {
@@ -189,23 +193,13 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
   return { token, kekse: topf, ablauf: jwtAblauf(token) };
 }
 
-async function sitzung(abruf: Abruf, locale: string, frisch = false): Promise<Sitzung> {
-  const da = sitzungen.get(locale);
+async function sitzung(vorrat: Sitzungsvorrat, abruf: Abruf, locale: string, frisch = false): Promise<Sitzung> {
+  const da = vorrat.get(locale);
   // Fünf Minuten Puffer vor dem Ablauf.
   if (!frisch && da && da.ablauf - Date.now() > 5 * 60_000) return da;
   const neu = await baueSitzung(abruf, locale);
-  sitzungen.set(locale, neu);
+  vorrat.set(locale, neu);
   return neu;
-}
-
-export function vergesseSitzungen(): void {
-  sitzungen.clear();
-}
-
-/** Für Tests der Route, die keinen Abruf durchreichen kann. */
-let ersatz: Abruf | null = null;
-export function _ersetzeAbruf(a: Abruf | null): void {
-  ersatz = a;
 }
 
 async function frageAb(abruf: Abruf, nummer: string, pin: string, locale: string, s: Sitzung): Promise<Guthaben> {
@@ -272,28 +266,29 @@ async function frageAb(abruf: Abruf, nummer: string, pin: string, locale: string
 
 /** Ein Neuversuch nur bei 401 mit Token aus dem Vorrat — der kann abgelaufen sein. */
 export async function holeGuthaben(
+  vorrat: Sitzungsvorrat,
   nummer: string,
   pin: string,
-  opt: { locale?: string; abruf?: Abruf } = {},
+  opt: { locale?: string; abruf: Abruf },
 ): Promise<Guthaben> {
   const locale = opt.locale || LAND_STANDARD;
-  const abruf = opt.abruf ?? ersatz ?? legoAbruf;
+  const abruf = opt.abruf;
 
-  const warImVorrat = sitzungen.has(locale);
+  const warImVorrat = vorrat.has(locale);
   try {
-    const s = await sitzung(abruf, locale);
+    const s = await sitzung(vorrat, abruf, locale);
     try {
       return await frageAb(abruf, nummer, pin, locale, s);
     } catch (e) {
       if (!(e instanceof NichtAngemeldet) || !warImVorrat) throw e;
       console.warn(`[guthaben] Token abgelaufen, neue Sitzung für ${kurz(nummer)}`);
-      const frisch = await sitzung(abruf, locale, true);
+      const frisch = await sitzung(vorrat, abruf, locale, true);
       return await frageAb(abruf, nummer, pin, locale, frisch);
     }
   } catch (e) {
     // Zwei Ebenen: Auch der Aufbau der Sitzung kann 403 vom Bot-Schutz geben.
     if (e instanceof BotSchutz) {
-      sitzungen.delete(locale);
+      vorrat.delete(locale);
       console.warn(
         `[guthaben] Bot-Schutz — Sitzung für ${locale} verworfen, ` +
           'der nächste Versuch beginnt mit frischem Seitenaufruf',

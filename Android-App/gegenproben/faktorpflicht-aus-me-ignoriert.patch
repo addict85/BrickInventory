@@ -6,10 +6,10 @@ Rot: auth me mit Pflicht
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
 --- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
 +++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
-@@ -145,7 +145,7 @@ suspend fun Sitzung.kontoUebernehmen(
-     if (me !is Ergebnis.Success) return
-     val nutzer = me.data.user
-     verwalterGeaendert(nutzer?.isAdmin == true)
+@@ -158,7 +158,7 @@
+     if (me !is Ergebnis.Erfolg) return
+     val nutzer = me.data
+     verwalterGeaendert(nutzer?.verwalter == true)
 -    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
 +    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.erledigt()
  }

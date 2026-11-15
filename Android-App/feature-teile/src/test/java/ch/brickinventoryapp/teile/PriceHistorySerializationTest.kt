@@ -1,17 +1,18 @@
 package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.PartsValuationResponse
-import ch.brickinventoryapp.model.data.model.SetsResponse
-import ch.brickinventoryapp.model.data.model.ValuationResponse
+import ch.brickinventoryapp.vertrag.PriceHistoryResponse
+import ch.brickinventoryapp.vertrag.MinifigsResponse
+import ch.brickinventoryapp.vertrag.PartsValuationResponse
+import ch.brickinventoryapp.vertrag.SetsResponse
+import ch.brickinventoryapp.vertrag.ValuationResponse
+import ch.brickinventoryapp.vertrag.present
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-seitiger API-Vertrag für den Preisverlauf und die Bewertung.
@@ -28,7 +29,7 @@ import ch.brickinventoryapp.data.api.ApiJson
 class PriceHistorySerializationTest {
 
     // Gleiche Konfiguration wie AppModule.provideJson()
-    private val json = ApiJson
+    private val json = BrickJson
 
     private val payload = """{
         "success": true,

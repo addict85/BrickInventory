@@ -1,0 +1,18 @@
+Gegenprobe: Die Anmeldung setzt den Lagerortfilter nicht zurück (resetAll lässt die lager_-Schlüssel stehen)
+Modul: core-data
+Test: ch.brickinventoryapp.data.ScopeFilterSpeicherTest
+Rot: die Anmeldung setzt auch den Lagerortfilter zurueck
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/ScopeFilterSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/ScopeFilterSpeicher.kt
+index ddea58b..d45d326 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/ScopeFilterSpeicher.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/ScopeFilterSpeicher.kt
+@@ -34,7 +34,7 @@ class ScopeFilterSpeicher @Inject constructor() {
+      * Sammlung verschwunden. Der Lagerortfilter gleich mit, aus demselben Grund.
+      */
+     fun resetAll() {
+-        werte.value = emptyMap()
++        werte.update { m -> m.filterKeys { it.startsWith("lager_") } }
+     }
+ 
+     // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/kontofilter.js) ═══

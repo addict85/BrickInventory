@@ -3,18 +3,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import type { Pool } from 'pg';
+import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../../db/database';
+import { datenbankVerbindung, systemVerbindung } from '../infra/konfig';
 import { istJa } from '../infra/validate';
 import { logAndContinue } from '../infra/fehler';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvTausch';
+import type { KatalogLesevertrag } from './lesevertrag';
 
 export type Meldung = { type: 'progress'; total: number; pct: number; filename: string };
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
 // Verdoppeltes " bleibt ein Zeichen.
-export function parseCsvLine(line: string): string[] {
+export function csvZeile(line: string): string[] {
   const result: string[] = [];
   let cur = '',
     inQuotes = false;
@@ -59,7 +61,7 @@ async function streamInsert(
   });
   for await (const line of rl) {
     if (!line.trim()) continue;
-    const cols = parseCsvLine(line);
+    const cols = csvZeile(line);
     if (!headers) {
       headers = cols;
       continue;
@@ -81,7 +83,7 @@ async function streamInsert(
 }
 
 interface Tausch {
-  tabelle: string;
+  tabelle: repo.CsvTabelle;
   filename: string;
   tmp: string;
   cols: string[];
@@ -93,7 +95,7 @@ interface Tausch {
 }
 
 // Über eine Schattentabelle: Leser sehen bis zum Tausch die alte, nie eine leere Tabelle.
-async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: Tausch): Promise<number> {
+async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) => void, t: Tausch): Promise<number> {
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();
   try {
@@ -123,7 +125,25 @@ async function importiereMitTausch(pool: Pool, melde: (m: Meldung) => void, t: T
   }
 }
 
-export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
+/** Der Zugang des Importprozesses, ohne die Fristen des Servers: Der Tausch einer grossen
+ * Katalogtabelle dauert länger als eine Anfrage. Der Systemzugang ist auch ohne Systemrolle ein
+ * eigener Pool ohne Pipeline, wie zuvor der rohe Pool dieses Prozesses. */
+export function erzeugeImportZugang(): Db {
+  return erzeugeDb({
+    ...dbKonfigAusUmgebung(),
+    pool: { max: 2 },
+    system: systemVerbindung() ?? datenbankVerbindung(),
+  });
+}
+
+export function erzeugeKatalogImporte(
+  db: Pick<Db, 'systemPool'>,
+  melde: (m: Meldung) => void,
+  l: Pick<KatalogLesevertrag, 'setZaehlt'>,
+) {
+  // Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen, also
+  // als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
+  const pool = db.systemPool;
   const tausch = (t: Tausch) => () => importiereMitTausch(pool, melde, t);
   return {
     colors: tausch({
@@ -158,7 +178,7 @@ export function katalogImporte(pool: Pool, melde: (m: Meldung) => void) {
       tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
       konflikt: ['set_num'],
-      abgleich: (c, _tabelle, schatten, cols) => repo.gleicheSetsAb(c, schatten, cols),
+      abgleich: (c, _tabelle, schatten, cols) => repo.gleicheSetsAb(c, l, schatten, cols),
       mapRow: c => [
         sp(c, 0),
         sp(c, 1),

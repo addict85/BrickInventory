@@ -94,9 +94,9 @@ export const MAIL_THEMES = {
 };
 
 /** Bei jedem Zweifel `classic`: Eine Mail soll nie am Design scheitern. */
-export async function getMailTheme(k: MailKontext) {
+export async function mailDesign(k: MailKontext) {
   try {
-    const gespeichert = await k.einstellungen.getGlobalSetting('app_theme');
+    const gespeichert = await k.einstellungen.globalerWert('app_theme');
     // ausTabelle: Ein Wert aus der Datenbank wie 'constructor' fände sonst ein
     // geerbtes Mitglied, und der Rückfall griffe nie.
     return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);

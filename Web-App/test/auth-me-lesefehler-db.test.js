@@ -32,7 +32,7 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
       [NAME],
     )
   ).id;
-  const token = await auth.createToken(uid, 'Lesefehler', false, null, { scope: 'app' });
+  const token = await auth.tokenAnlegen(uid, 'Lesefehler', false, null, { scope: 'app' });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -46,9 +46,9 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
   /** Jede Abfrage scheitert, solange `arbeit` läuft. */
   const mitFehler = async arbeit => {
     // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege,
-    // in beiden Pools der App (Laufzeit- und Systemrolle).
+    // in allen Pools der App (Laufzeit-, System- und Web-Systemrolle).
     const zugang = require('./helpers/sources').testZugang();
-    const pools = [...new Set([zugang.pool, zugang.systemPool])];
+    const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
     const echt = pools.map(p => ({ query: p.query, connect: p.connect }));
     const fehler = async () => {
       throw new Error('Verbindung zur Datenbank verloren');

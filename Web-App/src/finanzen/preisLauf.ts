@@ -1,13 +1,15 @@
-import { speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './financeCalc';
+import { speicherePreis, cacheVerwendbar, preisAusCache, parallelLimit } from './financeCalc';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege';
 import { ohneBricklinkPreis } from '../infra/setNummer';
-import { BricklinkNichtErreichbar, hatPreis } from '../katalog';
+import { hatPreis } from '../katalog';
+import { BricklinkNichtErreichbar } from '../fremdquellen';
 import { belegeSitzungsSperre } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { versuche } from '../infra/ergebnis';
 import { zustand } from '../infra/validate';
 import type { FinanzenKontext } from './kontext';
+import { pruefeSet } from './preisalarm';
 
 /** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
@@ -23,8 +25,7 @@ async function acquireRunLock(k: FinanzenKontext): Promise<(() => Promise<void>)
   try {
     freigabe = await belegeSitzungsSperre(k.db, PRICE_JOB_LOCK);
   } catch (e) {
-    // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht aktualisieren; im eigenen Prozess
-    // schützt die Exklusivität der Art.
+    // Ausnahme: Lieber ohne Sperre laufen als gar nicht; im Prozess schützt die Exklusivität der Art.
     log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
@@ -54,15 +55,15 @@ async function fetchAndCachePrice(
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
   // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach sechs Stunden erneut versucht.
   const vorhanden = await preisAusCache(k, setNumber, condition, currency, ttl);
-  if (cacheUsable(vorhanden, ttl)) return 'skipped';
+  if (cacheVerwendbar(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
-  const rl = await k.katalog.kontingentFrei('bricklink');
+  const rl = await k.fremdquellen.kontingentFrei('bricklink');
   if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
-  let g: Awaited<ReturnType<typeof k.katalog.getPriceGuide>>;
+  let g: Awaited<ReturnType<typeof k.katalog.preisfuehrer>>;
   try {
-    g = await k.katalog.getPriceGuide(setNumber, condition, guideType, currency);
+    g = await k.katalog.preisfuehrer(setNumber, condition, guideType, currency);
   } catch (e) {
     if (e instanceof BricklinkNichtErreichbar) return 'nicht_erreichbar';
     log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0, 60)}`);
@@ -74,10 +75,10 @@ async function fetchAndCachePrice(
   const p = await speicherePreis(k, setNumber, condition, currency, g);
 
   if (!hatPreis({ avg_price: p.avg, qty_avg_price: p.qavg })) {
-    const rl2 = await k.katalog.kontingentFrei('bricklink');
+    const rl2 = await k.fremdquellen.kontingentFrei('bricklink');
     if (rl2.allowed) {
       try {
-        const g2 = await k.katalog.getPriceGuide(setNumber, fallback, guideType, currency);
+        const g2 = await k.katalog.preisfuehrer(setNumber, fallback, guideType, currency);
         await speicherePreis(k, setNumber, fallback, currency, g2);
       } catch (e) {
         meldeFehler('preis-job:rueckfall-zustand', e);
@@ -158,8 +159,8 @@ async function aktualisiereKonto(
   st: Laufstand,
   k?: AuftragsKontext,
 ) {
-  const currency = await kx.einstellungen.getSetting(userId, 'currency', 'EUR');
-  const ttlHours = (await kx.einstellungen.getGlobalSetting('price_cache_ttl', '24')) || '24';
+  const currency = await kx.einstellungen.nutzerWert(userId, 'currency', 'EUR');
+  const ttlHours = (await kx.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
   // Drei Abfragen je Konto statt je Set.
   const zustaende = await zustaendeJeSet(kx, userId, valid);
@@ -177,22 +178,19 @@ async function aktualisiereKonto(
   await parallelLimit(tasks, 5);
 }
 
-/** Tagespunkt und Preisalarme einmal je Lauf: Je Abruf liefe die Prüfung tausendfach und meldete doppelt. */
-async function nachDemLauf(k: FinanzenKontext) {
+/** Einmal je Lauf, nicht je Abruf; ein Fehlschlag steht im Stand, ihn zu werfen wiederholte den ganzen Lauf. */
+async function nachDemLauf(k: FinanzenKontext, auftrag?: AuftragsKontext) {
   log('Writing daily price_history snapshot from price_cache...');
-  try {
-    log(`Daily snapshot: ${await k.preisLauf.schreibeTagesstand()} price history entries inserted`);
-  } catch (e) {
-    log(`Daily snapshot error: ${fehlertext(e)}`);
-  }
-  try {
+  const stand = await versuche('preis-job:tagesstand', k.preisLauf.schreibeTagesstand());
+  if (stand.ok) log(`Daily snapshot: ${stand.wert} price history entries inserted`);
+  const alarme = await versuche('preis-job:preisalarme', async () => {
     const wartende = await k.preisLauf.setsMitAlarm();
     let gemeldet = 0;
-    for (const sn of wartende) gemeldet += await k.preisalarm.pruefeSet(sn, k.mail);
+    for (const sn of wartende) gemeldet += await pruefeSet(k, sn, k.mail);
     if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
-  } catch (e) {
-    log(`Preisalarm error: ${fehlertext(e)}`);
-  }
+  });
+  const ohne = [stand.ok ? null : 'tagesstand', alarme.ok ? null : 'preisalarme'].filter(x => x !== null);
+  if (ohne.length) await auftrag?.fortschritt({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
 async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?: AuftragsKontext) {
@@ -201,7 +199,7 @@ async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?
     `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.ausgelassen ? `, ${st.ausgelassen} wegen ${grund} ausgelassen` : ''} — ${(dur / 1000).toFixed(1)}s`,
   );
   await merkeStand(kx, {
-    lastRun: new Date().toISOString(),
+    lastRun: kx.uhr.datum().toISOString(),
     lastDuration: dur,
     lastUpdated: st.updated,
     lastErrors: st.errors,
@@ -215,15 +213,15 @@ async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?
 
 /** Hält ein anderer Prozess die Sperre, wird der Auftrag eine Minute später neu versucht. */
 async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
-  if (!(await kx.einstellungen.getGlobalSetting('bricklink_consumer_key', ''))) {
+  if (!(await kx.einstellungen.globalerWert('bricklink_consumer_key', ''))) {
     log('BrickLink credentials not configured, skipping');
     await merkeStand(kx, {});
     return;
   }
   const releaseLock = await acquireRunLock(kx);
   if (!releaseLock)
-    throw new AuftragVerschieben(new Date(Date.now() + 60_000), 'Läuft bereits in einem anderen Prozess');
-  const t0 = Date.now();
+    throw new AuftragVerschieben(new Date(kx.uhr.jetzt() + 60_000), 'Läuft bereits in einem anderen Prozess');
+  const t0 = kx.uhr.jetzt();
   const st: Laufstand = { updated: 0, skipped: 0, errors: 0, ausgelassen: 0, current: 0, total: 0 };
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
@@ -231,14 +229,14 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
     st.total = [...jeKonto.values()].reduce((n, l) => n + l.length, 0);
     if (!st.total) {
       log('No sets, nothing to do');
-      await merkeStand(kx, { lastRun: new Date().toISOString() });
+      await merkeStand(kx, { lastRun: kx.uhr.datum().toISOString() });
       return;
     }
     log(`Starting: ${st.total} set-slots`);
     await k?.fortschritt({ erledigt: 0, gesamt: st.total, text: `0/${st.total} Sets` });
     for (const [userId, setNumbers] of jeKonto) await aktualisiereKonto(kx, userId, setNumbers, st, k);
-    await meldeErgebnis(kx, st, Date.now() - t0, k);
-    await nachDemLauf(kx);
+    await meldeErgebnis(kx, st, kx.uhr.jetzt() - t0, k);
+    await nachDemLauf(kx, k);
   } catch (e) {
     log(`Fatal: ${fehlertext(e)}`);
     await merkeStand(kx, {});
@@ -248,10 +246,8 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
   }
 }
 
-/** Gemischte Sets brauchen beide Preise, reine nur einen — eine Fassung für
- * den Nachtlauf und das Erfassen.
- * @param hintCondition Zustand einer Erfassung, die es noch nicht GIBT
- * @returns Map mit einem Eintrag je übergebenem Set, nie leer je Eintrag */
+/** Gemischte Sets brauchen beide Preise, reine einen; eine Fassung für Nachtlauf und Erfassen.
+ * @param hintCondition Zustand einer Erfassung, die es noch nicht gibt */
 async function zustaendeJeSet(
   k: FinanzenKontext,
   userId: number,
@@ -299,7 +295,7 @@ async function conditionsNeededFor(
   return (await zustaendeJeSet(k, userId, [setNumber], hintCondition)).get(setNumber) ?? ['N'];
 }
 
-async function refreshPriceForSet(
+async function preisFuerSetHolen(
   k: FinanzenKontext,
   setNumber: string,
   userId: number,
@@ -309,10 +305,10 @@ async function refreshPriceForSet(
     log(`Skipping invalid: ${setNumber}`);
     return;
   }
-  const ck = await k.einstellungen.getGlobalSetting('bricklink_consumer_key', '');
+  const ck = await k.einstellungen.globalerWert('bricklink_consumer_key', '');
   if (!ck) return;
   try {
-    const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
+    const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
     const guideType = 'sold';
     // Alle Zustände, die das Set führt — sonst fehlt bei gemischten Sets eine Hälfte.
     const conditions = await conditionsNeededFor(k, setNumber, userId, hintCondition);
@@ -345,4 +341,4 @@ async function merkeStand(k: FinanzenKontext, neu: Record<string, unknown>): Pro
     .catch(logAndContinue('preis-job:stand'));
 }
 
-export { runPriceRefresh, refreshPriceForSet, fetchAndCachePrice, zustaendeJeSet, conditionsNeededFor };
+export { runPriceRefresh, preisFuerSetHolen, fetchAndCachePrice, zustaendeJeSet, conditionsNeededFor };

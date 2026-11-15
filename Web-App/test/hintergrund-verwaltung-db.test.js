@@ -174,7 +174,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   await t.test('ein neues Intervall verschiebt den offenen Termin', async () => {
     const r = await rufe('POST', '/admin/job-schedule', { name: 'priceJob', minutes: 600 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const in_min = (new Date((await plan('preise')).faellig_ab) - Date.now()) / 60_000;
+    const in_min = (new Date((await plan('preise')).faellig_ab).getTime() - Date.now()) / 60_000;
     assert.ok(in_min > 590 && in_min <= 600, `Termin in ${Math.round(in_min)} min statt 600`);
     const stand = await rufe('GET', '/admin/job-status');
     assert.equal(stand.body.job.running, false);
@@ -183,7 +183,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Brickset-Liste behält ihre Felder', async () => {
-    await _req('src/auftraege/bricksetAuftrag.js').bricksetVormerken('33333-1', 'Quota exceeded');
+    await _req('src/fremdquellen/bricksetWiedervorlage.js').bricksetVormerken('33333-1', 'Quota exceeded');
     const r = await rufe('GET', '/admin/brickset-queue');
     const e = r.body.entries.find(x => x.set_number === '33333-1');
     assert.ok(e, JSON.stringify(r.body));

@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.BarcodeAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.model.data.model.BarcodeResponse
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.PartsResponse
-import ch.brickinventoryapp.model.data.model.SetDetailResponse
-import ch.brickinventoryapp.model.data.model.SetExistsResponse
-import ch.brickinventoryapp.model.data.model.SetInfoResponse
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,32 +16,41 @@ import javax.inject.Singleton
  * Ablage — es sind Fragen an den Server, keine Listen des Kontos.
  */
 interface SetKatalogRepository {
-    /** Steht das Set schon im Blickfeld? Die Regel (Normalisierung, Haushalt) liegt beim Server. */
-    suspend fun getSetExists(setNumber: String): Ergebnis<SetExistsResponse>
+    /**
+     * Steht das Set schon im Blickfeld? Die Nummer, unter der es steht, sonst null; die
+     * Regel (Normalisierung, Haushalt) liegt beim Server.
+     */
+    suspend fun getSetExists(setNumber: String): Ergebnis<String?>
 
-    suspend fun getSetDetail(setNumber: String): Ergebnis<SetDetailResponse>
+    suspend fun getSetDetail(setNumber: String): Ergebnis<SetAnsicht?>
 
     /** Setname aus dem gemeinsamen Katalog, auch für fremde Sets. */
-    suspend fun getSetInfo(setNumber: String): Ergebnis<SetInfoResponse>
+    suspend fun getSetInfo(setNumber: String): Ergebnis<String?>
 
-    suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse>
+    /** Die Teile eines Sets aus dem Katalog, je Teil und Farbe eine Zeile. */
+    suspend fun getSetPartsList(setNumber: String): Ergebnis<List<TeilAnsicht>>
 
-    suspend fun getSetMinifigsList(setNumber: String): Ergebnis<MinifigsResponse>
+    suspend fun getSetMinifigsList(setNumber: String): Ergebnis<List<FigurAnsicht>>
 
-    suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeResponse>
+    suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeAnsicht>
 }
 
 @Singleton
 class SetKatalogRepositoryImpl @Inject constructor(private val api: SetsApi) : SetKatalogRepository {
-    override suspend fun getSetExists(setNumber: String) = sicherAufrufen { api.getSetExists(setNumber) }
+    override suspend fun getSetExists(setNumber: String) =
+        sicherAufrufen { api.getSetExists(setNumber) }.abgebildet { r -> r.setNumber.takeIf { r.exists } }
 
-    override suspend fun getSetDetail(setNumber: String) = sicherAufrufen { api.getSetDetail(setNumber) }
+    override suspend fun getSetDetail(setNumber: String) = sicherAufrufen { api.getSetDetail(setNumber) }.abgebildet { it.set?.alsAnsicht() }
 
-    override suspend fun getSetInfo(setNumber: String) = sicherAufrufen { api.getSetInfo(setNumber) }
+    override suspend fun getSetInfo(setNumber: String) = sicherAufrufen { api.getSetInfo(setNumber) }.abgebildet { it.name }
 
     override suspend fun getSetPartsList(setNumber: String) = sicherAufrufen { api.getSetPartsList(setNumber) }
+        .zugesagt({ it.success }, { it.error }) { r -> r.parts.map { it.alsAnsicht() } }
 
     override suspend fun getSetMinifigsList(setNumber: String) = sicherAufrufen { api.getSetMinifigsList(setNumber) }
+        .zugesagt({ it.success }, { it.error }) { r -> r.figs.map { it.alsAnsicht() } }
 
-    override suspend fun resolveBarcode(barcode: String) = sicherAufrufen { api.getBarcodeSet(barcode) }
+    override suspend fun resolveBarcode(barcode: String) = sicherAufrufen { api.getBarcodeSet(barcode) }.abgebildet {
+        BarcodeAnsicht(it.setNumber, it.name, it.year, it.pieces, it.theme, it.minifigs, it.imageUrl, it.imageLocal, it.unsicher)
+    }
 }

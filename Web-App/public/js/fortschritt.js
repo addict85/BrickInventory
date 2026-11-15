@@ -2,13 +2,13 @@
 // gibZuruecksetzen(), der Rest ist Innenleben.
 import { html } from './escapen.js';
 import { registerActions } from './registry.js';
-import { apiRoh, api, apiDaten } from './api.js';
+import { apiRoh, api, apiDaten, strom } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtPct } from './format.js';
 import { toast } from './meldungen.js';
 import { melde } from './ereignisse.js';
 import { LANG, tRaw } from '../i18n.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
@@ -19,8 +19,8 @@ let _gibTimer = null; // Polling-Fallback-Timer (nur wenn SSE scheitert)
  * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportErgebnis
  * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportErgebnis[] }} ImportStand
  */
-/** @type {EventSource | null} */
-let _gibSse = null; // aktive EventSource (SSE), falls verfügbar
+/** @type {{ schliesse: () => void } | null} */
+let _gibSse = null; // aktiver Strom (SSE), falls verfügbar
 let _gibLastCount = 0;
 
 // Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
@@ -131,7 +131,7 @@ async function gibPoll() {
 }
 
 function gibToggle() {
-  if (!ME) return;
+  if (!angemeldetesKonto) return;
   const overlay = G('progress-overlay');
   if (overlay?.classList.contains('open')) {
     // Already open — minimize back to header bar
@@ -221,31 +221,20 @@ export function gibStart() {
 
   // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein ?token=
   // stünde im Proxy-Protokoll und im Verlauf.
-  const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
-
-  if (typeof EventSource !== 'undefined') {
-    try {
-      const es = new EventSource(url, { withCredentials: true });
-      _gibSse = es;
-      es.onmessage = e => {
-        try {
-          gibApplyStatus(JSON.parse(e.data));
-        } catch (_) {}
-      };
-      es.onerror = () => {
-        // Verbindung verloren/abgelehnt → auf Polling zurückfallen, aber nur solange noch kein Fallback
-        // läuft.
-        es.close();
-        if (_gibSse === es) _gibSse = null;
-        if (!_gibTimer) {
-          _gibTimer = setInterval(gibPoll, 1500);
-          gibPoll();
-        }
-      };
-      return;
-    } catch (_) {
-      /* fällt unten auf Polling zurück */
-    }
+  const s = strom(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
+    ereignis: gibApplyStatus,
+    // Verbindung verloren/abgelehnt → auf Polling zurückfallen, solange noch kein Rückfall läuft.
+    fehler: () => {
+      if (_gibSse === s) _gibSse = null;
+      if (!_gibTimer) {
+        _gibTimer = setInterval(gibPoll, 1500);
+        gibPoll();
+      }
+    },
+  });
+  if (s) {
+    _gibSse = s;
+    return;
   }
   // Kein EventSource verfügbar → Polling
   _gibTimer = setInterval(gibPoll, 1500);
@@ -254,9 +243,7 @@ export function gibStart() {
 
 function gibStop() {
   if (_gibSse) {
-    try {
-      _gibSse.close();
-    } catch (_) {}
+    _gibSse.schliesse();
     _gibSse = null;
   }
   if (_gibTimer) {
@@ -277,7 +264,7 @@ export async function gibCheckOnLoad() {
       return;
     }
     // Ohne Anmeldung gibt es nichts zu prüfen; im verborgenen Tab zählte jede Abfrage gegen das Budget.
-    if (!ME || document.hidden) return;
+    if (!angemeldetesKonto || document.hidden) return;
     try {
       const r = await apiRoh('GET', '/v1/sets/import/csv/status');
 
@@ -408,7 +395,7 @@ export function hideProgress() {
   G('progress-overlay').classList.remove('open');
   G('prog-steps').style.display = '';
   // Beim Minimieren die Kopfleiste zeigen, wenn ein Import läuft
-  if ((_gibTimer || _gibSse) && ME) {
+  if ((_gibTimer || _gibSse) && angemeldetesKonto) {
     G('global-import-bar').style.display = 'flex';
   }
 }
@@ -510,7 +497,7 @@ function cancelImport() {
   _csvPollActive = false;
   _activeAbort?.abort();
   _activeAbort = null;
-  api('POST', '/v1/sets/import/csv/cancel').catch(() => {});
+  api('POST', '/v1/sets/import/csv/cancel');
   G('btn-cancel-import').style.display = 'none';
   hideProgress();
   toast(tRaw('csv.cancelled'), 'info');

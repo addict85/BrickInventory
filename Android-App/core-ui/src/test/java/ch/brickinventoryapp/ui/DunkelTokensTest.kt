@@ -21,10 +21,8 @@ import java.awt.Color
  * Die dunkle Fassung je Design kommt aus denselben Tokens wie im Web
  * (shared/design-tokens.json, Abschnitt `dunkel`), und ihre Rollen sind lesbar.
  *
- * Dass DunkelTokens.kt die Quelle wiedergibt, prüft seit dem 30.10. der
- * Generator selbst: Web-App/test/abgleich-design-abschrift.test.js vergleicht die Datei
- * mit baueKotlinDunkel() („erzeugt = Quelle“). Der Wert-für-Wert-Vergleich, der
- * hier für die Abschrift stand, ist damit entfallen.
+ * Dass DunkelTokens.kt die Quelle wiedergibt, prüft der Generator selbst
+ * (`generate-design-tokens.js --pruefen` im Android-Lauf, Job vertrag).
  *
  * Gegenproben:
  *   B  den Eintrag "farbfaecher" umbenannt → rot „jedes Design der Quelle hat

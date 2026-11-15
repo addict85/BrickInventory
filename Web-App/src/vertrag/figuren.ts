@@ -4,33 +4,33 @@ import { eingabe } from '../infra/validate';
 import {
   CsvImportErgebnis,
   DEGRADIERT,
-  FigValuationItem,
-  GenericResponse,
+  ManuelleFigur,
+  StueckGeaendert,
   MinifigsResponse,
   VerwendendeSetsResponse,
   InDenPapierkorb,
 } from './gemeinsam';
 
+export { ManuelleFigur, StueckGeaendert };
+
 export const AddMinifigResponse = z.looseObject({
   success: z.boolean(),
-  action: z.string().nullable().optional(),
-  fig_number: z.string().nullable().optional(),
+  action: z.string(),
+  fig_number: z.string(),
   fig_name: z.string().nullable().optional(),
   price_from_condition: z.string().nullable().optional(),
-  error: z.string().nullable().optional(),
 });
 
 export const ManualFigsResponse = z.looseObject({
   success: z.boolean(),
   ...SEITEN_ANGABE,
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
-  figs: z.array(FigValuationItem.extend({ acquisitions: FigValuationItem.shape.acquisitions.optional() })),
-  error: z.string().nullable().optional(),
+  figs: z.array(ManuelleFigur),
   degradiert: DEGRADIERT,
 });
 
 export const MinifigStats = z.looseObject({
-  unique_figs: z.number().int().nullable().optional(),
+  unique_figs: z.number().int(),
   types: z.number().int(),
   total_quantity: z.number().int(),
   manual: z.number().int(),
@@ -94,7 +94,7 @@ export const routen = {
       condition: ZUSTAND.nullable().optional(),
       bl_fig_number: TEXT(40).nullable().optional(),
     }),
-    antwort: GenericResponse,
+    antwort: StueckGeaendert,
   },
   'DELETE /api/v1/minifigs/:figNumber': {
     eingabe: OHNE_RUMPF,

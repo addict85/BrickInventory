@@ -5,6 +5,7 @@ package ch.brickinventoryapp.model.ui
  * „Farbe Rot“ stand sonst „Kategorie Bricks“. Unbekannte Wörter bleiben englisch
  * stehen; die Daten selbst bleiben englisch (Filter und Server arbeiten damit).
  */
+
 object KategorieDeutsch {
     private val woerter: Map<String, String> = mapOf(
         "bricks" to "Steine", "brick" to "Stein", "plates" to "Platten", "plate" to "Platte", "tiles" to "Fliesen",

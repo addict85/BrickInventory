@@ -1,0 +1,18 @@
+Gegenprobe: Beim Erstkontakt gibt es keinen Weg mehr zum Abtippen
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: beim Erstkontakt laesst sich stattdessen abtippen
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -73,9 +73,6 @@
+             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                 Text(stringResource(text, host))
+                 FingerabdruckAnzeige(frage, abschreiben, geaendert)
+-                if (erstkontakt && !abtippenGewaehlt) {
+-                    TextButton(onClick = { abtippenGewaehlt = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
+-                }
+                 if (abschreiben) {
+                     Fingerabdruckfeld(
+                         eingabe = eingabe,

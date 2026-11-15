@@ -1,0 +1,17 @@
+Gegenprobe: uebernimm() räumt die Fächer früherer Konten nicht
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheBereichTest
+Rot: wer schreibt, raeumt die Faecher frueherer Konten
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+index 0c9232a..a231f87 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -286,7 +286,6 @@ class Offlineablage(
+     /** Die ganze Liste des Servers übernehmen; noch Wartendes liegt danach wieder darüber. */
+     suspend fun <T : Any> uebernimm(fach: Fach<T>, liste: List<T>, bereich: String? = null) {
+         val b = bereich ?: bereich() ?: return
+-        bestand.raeumeAndere(b)
+         // Unter der Sperre: Ein puffere() zwischen dem Lesen des Ausgangs und dem
+         // Schreiben ginge sonst mit der Serverliste verloren.
+         sperre(b, fach.art).withLock {

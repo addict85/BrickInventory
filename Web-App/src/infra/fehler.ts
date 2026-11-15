@@ -1,15 +1,18 @@
 // Fachfrei und ohne Express: db/, clients/ und jeder Dienst melden hierüber.
 // Wie ein Fehler zur HTTP-Antwort wird, steht in httpAntwort.ts.
 import { FEHLER, fehlerText, antwortSprache, type FehlerCode } from './fehlerTexte';
+import { transaktionDesPfads } from './kontoKontext';
 
 /** Ersatz für `.catch(() => {})`: Der Schritt soll die Anfrage nicht scheitern
  * lassen, aber eine Spur hinterlassen.
  * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
-  return (e: unknown) => {
-    pruefeErsatzInTransaktion(kontext, e);
-    protokolliereWarnung(kontext, e);
-  };
+  return (e: unknown) => weiterTrotzFehler(kontext, e);
+}
+
+function weiterTrotzFehler(kontext: string, e: unknown) {
+  pruefeErsatzInTransaktion(kontext, e);
+  protokolliereWarnung(kontext, e);
 }
 
 function protokolliereWarnung(kontext: string, e: unknown) {
@@ -20,22 +23,9 @@ function protokolliereWarnung(kontext: string, e: unknown) {
 /** Mit Ersatzwert, wo der Aufrufer weiterrechnet. */
 export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
   return (e: unknown): T => {
-    logAndContinue(kontext)(e);
+    weiterTrotzFehler(kontext, e);
     return ersatz;
   };
-}
-
-/** Was db/ über die laufende Transaktion weiss; fachfrei, damit infra/ nicht von db/ abhängt. */
-export interface TransaktionsWaechter {
-  /** Läuft eine Transaktion, und lässt dieser Fehler sie verdorben zurück? Ein
-   * Sicherungspunkt, der ihn aufgefangen hat, macht sie wieder benutzbar. */
-  verdirbt(e: unknown): boolean;
-  /** In Tests wirft auch ein Fehler ausserhalb der Datenbank, damit die Regel greift. */
-  streng(): boolean;
-}
-let _waechter: TransaktionsWaechter | null = null;
-export function setzeTransaktionsWaechter(w: TransaktionsWaechter | null): void {
-  _waechter = w;
 }
 
 /** PostgreSQL nimmt nach einem Fehler in der Transaktion keinen Befehl mehr an
@@ -43,10 +33,10 @@ export function setzeTransaktionsWaechter(w: TransaktionsWaechter | null): void 
  * Datenbankfehler geht deshalb immer weiter, ein anderer nur in Tests; im
  * Betrieb wird er laut gemeldet, weil der Rumpf mit dem Ersatz weiterrechnet. */
 export function pruefeErsatzInTransaktion(kontext: string, e: unknown): void {
-  if (!_waechter?.verdirbt(e)) return;
+  const tx = transaktionDesPfads();
+  if (!tx?.verdirbt(e)) return;
   if (istDatenbankFehler(e)) throw e;
-  if (_waechter.streng())
-    throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
+  if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
   console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
@@ -61,7 +51,7 @@ export function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
 export function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
 export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
   return (e: unknown): T | undefined => {
-    if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e);
+    if (fehlerCode(e) !== 'ENOENT') weiterTrotzFehler(kontext, e);
     return ersatz;
   };
 }

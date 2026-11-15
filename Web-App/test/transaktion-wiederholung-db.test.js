@@ -10,13 +10,16 @@
  *      „der abgebrochene Anlauf hinterlässt nichts“, dazu die drei Aufrufer
  *   B  40001 aus TX_KONFLIKT entfernt → rot: „Serialisierungsfehler …“ und
  *      „der abgebrochene Anlauf hinterlässt nichts“
- *   C  die Option aus verschiebeSet() entfernt → rot: „verschiebeSet
+ *   C  die Option aus verschiebeSet() entfernt → rot: „setVerschieben
  *      wiederholt bei Konflikt“; aus setzeGeschaetztenPreis() → rot:
  *      „setzeGeschaetztenPreis wiederholt bei Konflikt“
  *      (Der Verschiebeweg in erfassungAendern() braucht ein Haushaltskonto und
- *      ist hier nicht abgedeckt; er teilt mitInventarSperre mit verschiebeSet.)
+ *      ist hier nicht abgedeckt; er teilt k.transaktion mit Sperren mit verschiebeSet.)
  *   D  mitInventarSperre() reicht die Option nicht an transaction() → rot:
- *      „mitInventarSperre reicht die Option weiter“, „verschiebeSet …“
+ *      „mitInventarSperre reicht die Option weiter“, „setVerschieben …“
+ *      (14.11.2026, jetzt k.transaktion mit `sperren`: in baueKontext() die Optionen
+ *      nicht an transaction() gereicht → rot: „k.transaktion mit Sperren …“,
+ *      „setVerschieben …“, „setzeGeschaetztenPreis …“)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -26,7 +29,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -182,40 +185,44 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await db.run('DELETE FROM users WHERE id = ANY($1)', [konten]).catch(() => {});
   });
 
-  await t.test('mitInventarSperre reicht die Option weiter', async () => {
-    const { mitInventarSperre } = _req('db/txLock.js');
+  await t.test('k.transaktion mit Sperren reicht die Option weiter', async () => {
+    const k = testKontext('bestand');
+    const sperren = [{ konto: 1, schluessel: 'x' }];
     let n = 0;
-    const r = await mitInventarSperre(
-      testZugang(),
-      1,
-      'x',
+    const r = await k.transaktion(
       async () => {
         if (++n < 2) throw pgFehler('40P01');
         return 'fertig';
       },
-      MIT,
+      { ...MIT, sperren },
     );
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
     await assert.rejects(
-      mitInventarSperre(testZugang(), 1, 'x', async () => {
-        m++;
-        throw pgFehler('40P01');
-      }),
+      k.transaktion(
+        async () => {
+          m++;
+          throw pgFehler('40P01');
+        },
+        { sperren },
+      ),
       { code: '40P01' },
     );
     assert.equal(m, 1);
   });
 
-  await t.test('verschiebeSet wiederholt bei Konflikt', async () => {
-    const { verschiebeSet } = require('./helpers/sources').bereichsSeite('sets');
+  await t.test('setVerschieben wiederholt bei Konflikt', async () => {
+    const { setVerschieben } = require('./helpers/sources').bereichsSeite('sets');
     const { haeltSet, mengeVon } = require('./helpers/bestand');
     const von = await konto('wv_von');
     const nach = await konto('wv_nach');
     await haeltSet(db, von, '10179-1', 2);
+    // Verschoben wird nur im Haushalt: nach ist Unterkonto von von.
+    await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [von, nach]);
     const probe = await einmalFehler('sets', 'INSERT', `NEW.user_id = ${nach}`);
     try {
-      const r = await verschiebeSet('10179-1', von, nach, []);
+      const ids = (await db.all('SELECT id FROM set_acquisitions WHERE user_id = $1', [von])).map(z => z.id);
+      const r = await setVerschieben(von, '10179-1', von, nach, ids);
       assert.equal(r.quantity, 2);
       assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
       assert.equal(await mengeVon(db, nach, '10179-1'), 2);

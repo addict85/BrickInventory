@@ -1,3 +1,4 @@
+import { lagerorte } from '../../../db/bestandSicht';
 import type { DbSchnittstelle } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
@@ -47,7 +48,7 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
         ${mengeJoin('p', 'sm', '= $1')}
         ${teilmengeJoin('p', 'part', 'tm', '= $1')}
         ${blJoin('p.part_number', 'part', 'p.user_id')}
-        LEFT JOIN storage_locations lo ON lo.id = p.storage_id
+        LEFT JOIN ${lagerorte()} lo ON lo.id = p.storage_id
         ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${
          nurGruppen
@@ -66,7 +67,7 @@ export async function sperreKonto(tx: DbSchnittstelle, userId: number): Promise<
 
 /** Dieselbe Sperre, aber wartend: Ein laufender Neuaufbau wird abgewartet. */
 export async function warteAufKonto(tx: DbSchnittstelle, userId: number): Promise<void> {
-  await tx.get('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, userId]);
+  await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, userId]);
 }
 
 export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {

@@ -29,10 +29,11 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { warte } = require('./helpers/zeit');
+const { portVon } = require('./helpers/server');
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });
@@ -53,7 +54,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, '3001id', 5, 2)`,
       [id],
     );
-    return { id, token: await _req('src/konto/geraeteToken.js').createToken(id, 'Idempotenz-Probe') };
+    return { id, token: await _req('src/konto/geraeteToken.js').tokenAnlegen(id, 'Idempotenz-Probe') };
   };
   const a = await konto(`idem_a_${process.pid}`),
     b = await konto(`idem_b_${process.pid}`);

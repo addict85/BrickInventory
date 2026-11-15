@@ -3,10 +3,10 @@
 import { stelleZielBereit } from './ziele.js';
 import { registerActions } from './registry.js';
 import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
-import { ME, _lastImportAt } from './zustand.js';
+import { angemeldetesKonto, letzterImport } from './zustand.js';
 import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
-import { initCatalog, katalogZuruecksetzen } from './catalog.js';
+import { initCatalog, katalogZuruecksetzen } from './katalog.js';
 import { pollJobStatus, stoppeJobAbfrage } from './admin.js';
 import { ladeAlarmUebersicht } from './alarme.js';
 import { ladeLagerortVerwaltung } from './lagerorte.js';
@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadRateLimitStats,
   loadSettings,
-} from './settings.js';
+} from './einstellungen.js';
 import { ladeTls, loadTokens } from './zugaenge.js';
 import { loadHousehold } from './haushalt.js';
 import { ladeGutscheine } from './gutscheine.js';
@@ -25,16 +25,14 @@ import { ladeMerkliste, merklisteZuruecksetzen } from './merkliste.js';
 import { ladePapierkorb } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';
-import { loadFinance } from './finance.js';
-import { loadGallery, loadStats, renderGallery } from './gallery.js';
-import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './parts.js';
+import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
 import { meldeAnsicht, meldeFilter } from './router.js';
-import { setLagerModus, setScopeMode } from './scope.js';
+import { setLagerModus, setScopeMode } from './kontofilter.js';
 import { sammlungUntertitel } from './konten-orte.js';
-import { setScrollLabel } from './scrollbar.js';
+import { setScrollLabel } from './rollbalken.js';
 import { tRaw } from '../i18n.js';
-import { abonniere } from './ereignisse.js';
+import { abonniere, melde } from './ereignisse.js';
 import { esc } from './escapen.js';
 
 // Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit oben derselbe Icon wie im Nav-Tab
@@ -100,10 +98,10 @@ export function filterUmschalten() {
 function zeigeEinstellungsZugriff() {
   const f = G('einst-kein-zugriff');
   if (!f) return;
-  f.hidden = !!ME?.isAdmin;
+  f.hidden = !!angemeldetesKonto?.isAdmin;
   setzeHtml(
     f,
-    ME?.isAdmin
+    angemeldetesKonto?.isAdmin
       ? ''
       : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
   );
@@ -163,10 +161,8 @@ export function bindTabs() {
       // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne dieses Abmelden lieferte die dort
       // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
       if (tab !== 'catalog') setScrollLabel(null);
-      if (tab === 'gallery') {
-        loadGallery();
-        loadStats();
-      }
+      // loadGallery() lädt die Kennzahlen selbst; ein zweiter Aufruf kostete doppelt am Budget (apiDrossel.ts).
+      if (tab === 'gallery') melde('sammlungLaden');
       if (tab === 'catalog') {
         initCatalog();
       }
@@ -178,7 +174,7 @@ export function bindTabs() {
         loadManualParts();
         loadBrickColors();
         // War der Import eben erst, nach dem Hintergrundauftrag noch einmal laden
-        if (Date.now() - _lastImportAt < 30000)
+        if (Date.now() - letzterImport < 30000)
           setTimeout(() => {
             loadParts();
             loadManualParts();
@@ -186,10 +182,10 @@ export function bindTabs() {
       }
       if (tab === 'minifigs') {
         loadMinifigs();
-        if (Date.now() - _lastImportAt < 30000) setTimeout(loadMinifigs, 5000);
+        if (Date.now() - letzterImport < 30000) setTimeout(loadMinifigs, 5000);
       }
       if (tab === 'finance') {
-        loadFinance();
+        melde('finanzenLaden');
       } // loadFinance already fetches parts+minifigs valuation in parallel
       if (tab === 'partslist') {
         /* session-only, no server load needed */
@@ -200,7 +196,7 @@ export function bindTabs() {
       if (tab === 'settings') {
         zeigeEinstellungsZugriff();
         loadSettings();
-        if (ME?.isAdmin) {
+        if (angemeldetesKonto?.isAdmin) {
           loadApiLimits();
           loadCacheTtl();
           ladeZeitplaene();
@@ -298,8 +294,35 @@ function zeigeSeitenname(flaeche, imKopf) {
   beobachteTitel(flaeche);
 }
 
+/** @type {MutationObserver | null} */
+let _setDetailBeobachter = null;
+/**
+ * Offenes Set-Detail: Der Fenstertitel nennt das Set, nach dem Schliessen wieder die Seite. Beobachtet
+ * statt an jedem Schliessweg gesetzt: Knopf, Esc, Hintergrund und der Kaufpreis-Dialog schliessen ihn.
+ */
+function beobachteSetDetail() {
+  const dialog = G('set-modal'),
+    titel = G('m-tit');
+  if (_setDetailBeobachter || !dialog || !titel || typeof MutationObserver !== 'function') return;
+  let offen = false;
+  const richte = () => {
+    const name = (titel.textContent || '').trim();
+    if (dialog.classList.contains('open') && name) {
+      offen = true;
+      document.title = `${name} – BrickInventory`;
+    } else if (offen) {
+      offen = false;
+      seitennameAktualisieren();
+    }
+  };
+  _setDetailBeobachter = new MutationObserver(richte);
+  _setDetailBeobachter.observe(dialog, { attributes: true, attributeFilter: ['class'] });
+  _setDetailBeobachter.observe(titel, { childList: true, characterData: true, subtree: true });
+}
+
 /** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
 export function seitennameAktualisieren() {
+  beobachteSetDetail();
   const flaeche = document.querySelector('.tab.active');
   const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
   zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
@@ -455,7 +478,7 @@ function filterZuruecksetzen(ansicht) {
     G('gtheme').value = '';
     setLagerModus('gallery', '');
     if (G('storage-gallery')) G('storage-gallery').value = '';
-    loadGallery();
+    melde('sammlungLaden');
   } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
   else if (ansicht === 'catalog') katalogZuruecksetzen();
   else if (ansicht === 'parts') teileFilterZuruecksetzen();
@@ -475,7 +498,7 @@ export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
   setLagerModus(view, el.value);
-  if (view === 'gallery') loadGallery();
+  if (view === 'gallery') melde('sammlungLaden');
   if (view === 'parts') {
     loadParts();
     loadManualParts();
@@ -494,10 +517,7 @@ export function onScopeChange(view) {
   if (!el) return;
   setScopeMode(view, el.value);
   sammlungUntertitel(view);
-  if (view === 'gallery') {
-    loadGallery();
-    loadStats();
-  }
+  if (view === 'gallery') melde('sammlungLaden');
   // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
   // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
   // Endpunkt.
@@ -513,7 +533,7 @@ export function onScopeChange(view) {
     loadMinifigs();
     loadManualFigsTable();
   }
-  if (view === 'finance') loadFinance();
+  if (view === 'finance') melde('finanzenLaden');
   // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders als die Galerie, wo loadStats()
   // mitmuss.
   if (view === 'merkliste') ladeMerkliste();
@@ -529,7 +549,7 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadManualParts();
   }
   if (aktiv === 'minifigs') loadMinifigs();
-  if (aktiv === 'finance') loadFinance();
+  if (aktiv === 'finance') melde('finanzenLaden');
   if (aktiv === 'settings') {
     loadSettings();
     loadProfile();
@@ -538,7 +558,7 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadMonitor();
     loadCacheStats();
   }
-  if (aktiv === 'gallery') renderGallery();
+  if (aktiv === 'gallery') melde('sammlungZeichnen');
 });
 
 /**

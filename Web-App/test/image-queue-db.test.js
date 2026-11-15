@@ -39,8 +39,8 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
 
-  const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
-  await IQ.initImageQueue();
+  const IQ = _req('src/bilder/bildbedarfLauf.js');
+  await IQ.bildbedarfEinrichten();
   const PRAEFIX = `TQ${process.pid}`;
   const weg = async () => db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%']).catch(() => {});
   await weg();
@@ -91,7 +91,6 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
 });
 
 test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { concurrency: 1 }, async t => {
-  // Marcos Wunsch
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -130,10 +129,10 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
     // „running" heisst jetzt: hat kürzlich etwas getan
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgredl_status'`);
-    await _req('src/auftraege/jobMonitor.js')
+    await _req('src/verwaltung/kacheln.js')
       .imgDlReset()
       .catch(() => {});
-    _req('src/katalog/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
+    _req('src/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
     const ohneLauf = await kachel();
     assert.equal(ohneLauf.status, 'idle', 'Ohne Durchgang darf die Kachel keinen Betrieb melden');
     assert.match(
@@ -144,7 +143,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
 
     // Und nach einem Durchgang meldet sie Betrieb. Gemeint ist der TAKT —
     // dort wird der Stand für die anderen Arbeitsprozesse abgelegt.
-    await _req('src/katalog/bilder/bildbedarfLauf.js')._taktDurchgang();
+    await _req('src/bilder/bildbedarfLauf.js')._taktDurchgang();
     const nachLauf = await kachel();
     assert.equal(nachLauf.status, 'running', 'Nach einem Durchgang muss die Kachel Betrieb melden');
     assert.ok(nachLauf.queueLastRun, 'Der Zeitpunkt des letzten Durchgangs fehlt');
@@ -153,8 +152,8 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
 
     // Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb
     await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
-    _req('src/katalog/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
-    await _req('src/auftraege/jobMonitor.js')
+    _req('src/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
+    await _req('src/verwaltung/kacheln.js')
       .imgDlReset()
       .catch(() => {});
     assert.notEqual(
@@ -194,7 +193,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
 
 test('der Job meldet auch reine Übersprünge', () => {
   // Marcos Befund
-  const { meldung } = _req('src/katalog/bilder/bildbedarfLauf.js');
+  const { meldung } = _req('src/bilder/bildbedarfLauf.js');
   const nurUebersprungen = {
     geholt: 0,
     vorschau: 0,
@@ -217,7 +216,7 @@ test('der Job meldet auch reine Übersprünge', () => {
 
   // Und der Takt darf sie nicht verschweigen: Die Bedingung vor der Ausgabe
   // darf an keiner Zahl hängen, die bei reinen Übersprüngen null ist.
-  const q = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarfLauf.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarfLauf.ts'), 'utf8');
   const i = q.indexOf('async function bildbedarfAbarbeiten');
   assert.ok(i > 0, 'Kein Takt');
   const fn = q.slice(i, q.indexOf('\n}\n', i)).replace(/\/\/[^\n]*/g, '');
@@ -242,7 +241,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
 
   // Und NICHT mehr anderswo — zwei Stellen, die dasselbe anlegen, laufen
   // irgendwann auseinander.
-  for (const datei of ['db/database.ts', 'src/katalog/bilder/imageMisses.ts', 'src/katalog/bilder/bildbedarfLauf.ts']) {
+  for (const datei of ['db/database.ts', 'src/bilder/imageMisses.ts', 'src/bilder/bildbedarfLauf.ts']) {
     const src = fs
       .readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n')
@@ -261,35 +260,35 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   const vorbereitung = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   const schema = vorbereitung.indexOf('await db.initSchemaOnce()');
   assert.ok(
-    schema > 0 && vorbereitung.indexOf('await d.katalog.initImageMisses()') > schema,
-    'initImageMisses() läuft vor den Migrationen — dann fehlt die Tabelle noch',
+    schema > 0 && vorbereitung.indexOf('await d.bilder.starteFehlanzeige()') > schema,
+    'bildFehlstellenEinrichten() läuft vor den Migrationen — dann fehlt die Tabelle noch',
   );
 });
 
 test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // Marcos Befund
-  const q = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarf.ts'), 'utf8');
+  const q = fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarf.ts'), 'utf8');
   const init = q.slice(
-    q.indexOf('export async function initImageQueue'),
+    q.indexOf('export async function bildbedarfEinrichten'),
     q.indexOf('export async function loescheVerfallene'),
   );
   assert.match(
     init,
     /setInterval\([\s\S]{0,80}schreibePuffer/,
-    'Das Wegschreiben steht nicht in initImageQueue() — dann läuft es nur dort, ' +
+    'Das Wegschreiben steht nicht in bildbedarfEinrichten() — dann läuft es nur dort, ' +
       'wo start() aufgerufen wird, also nur im Primärprozess',
   );
 
-  // Und initImageQueue() muss tatsächlich überall laufen.
+  // Und bildbedarfEinrichten() muss tatsächlich überall laufen.
   const dbInit = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   // UMFORMULIERT in — aus demselben Grund wie zwoelf Zeilen
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
-  // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also
+  // Sie verlangte die Schreibweise `jobs/imageQueue').bildbedarfEinrichten()`, also
   // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde …
   assert.match(
     dbInit,
-    /\bd\.katalog\.initImageQueue\(\)/,
-    'initImageQueue() wird nicht beim Aufbau der Datenbank aufgerufen',
+    /\bd\.bilder\.starteBildbedarf\(\)/,
+    'starteBildbedarf() wird nicht beim Aufbau der Datenbank aufgerufen',
   );
 
   // Abgearbeitet wird nur im Job-Prozess: test/web-und-jobs-db.test.js prüft das am echten Server.
@@ -308,11 +307,7 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
   // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.
-  assert.match(
-    px,
-    /const setAusUrl = \(\) => setNummerAusBildAdresse\(/,
-    'Die Setnummer wird nicht aus der Adresse gelesen',
-  );
+  assert.match(px, /const setNummer = setNummerAusBildAdresse\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
   assert.equal(
     _req('routes/imgProxy.js').setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
     '10294-1',

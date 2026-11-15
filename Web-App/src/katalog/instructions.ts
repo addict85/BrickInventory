@@ -3,8 +3,7 @@ import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
-import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './quellen';
-import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
+import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import { versuche } from '../infra/ergebnis';
@@ -15,10 +14,10 @@ const PDF_ANFANG = Buffer.from('%PDF-');
 /** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
  * ein PDF. */
 
-/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet. */
-let _letzterAbrufWarExtern = false;
-export function letzterAbrufWarExtern(): boolean {
-  return _letzterAbrufWarExtern;
+/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet; je Satz Dienste. */
+const abruf = (k: KatalogKontext) => k.faecher.fach('anleitungen:abruf', () => ({ extern: false }));
+export function letzterAbrufWarExtern(k: KatalogKontext): boolean {
+  return abruf(k).extern;
 }
 
 // Zählen, lesen, löschen an einer Stelle statt verstreut.
@@ -40,8 +39,7 @@ export function anleitungenZusammenlegen<A extends object, B extends object>(get
 /** Einmal je Set und Tag für alle: Neuladen löscht für alle und kostet
  * Kontingent. In EINER Anweisung, damit zwei Anfragen nicht beide durchkommen. */
 export async function anleitungNeuLadenErlaubt(k: KatalogKontext, setNumber: string): Promise<boolean> {
-  const z = await k.anleitungen.zaehleQuellenAufruf(`anleitung-neu|${mitVersion(setNumber)}`);
-  return !!z;
+  return k.drossel.einmalJeTag(`anleitung-neu|${mitVersion(setNumber)}`);
 }
 
 export async function loescheAnleitungen(k: KatalogKontext, setNumber: string) {
@@ -49,13 +47,13 @@ export async function loescheAnleitungen(k: KatalogKontext, setNumber: string) {
 }
 
 // Ein Fund für Anlegen und Suchen.
-async function brickinstructionsFund(n: string) {
+async function brickinstructionsFund(k: KatalogKontext, n: string) {
   const baseNum = pfadSegment(ohneVersion(n));
   const folder = String(Math.floor(parseInt(baseNum, 10) / 1000) * 1000).padStart(5, '0');
   const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
   const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
   const hdrs = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', Referer: pageUrl };
-  const probe = await httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
+  const probe = await k.fremdquellen.quellen.httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
   if (probe.status !== 200 || !probe.buffer || probe.buffer.length <= 500) return null;
   return { baseUrl, pageUrl, hdrs, erstesBild: probe.buffer };
 }
@@ -67,7 +65,7 @@ export async function scrapeInstructionsFromFallback(k: KatalogKontext, setNumbe
   const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
   if (biAlreadyTried) return 0;
   try {
-    const fund = await brickinstructionsFund(n);
+    const fund = await brickinstructionsFund(k, n);
     if (fund) {
       const { baseUrl, pageUrl, hdrs } = fund;
       const instrDir = INSTRUCTIONS_DIR;
@@ -77,7 +75,7 @@ export async function scrapeInstructionsFromFallback(k: KatalogKontext, setNumbe
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
       const desc = `Anleitung ${n} (BrickInstructions)`;
-      await k.anleitungen.merkeAnleitung(n, pageUrl, desc, null).catch(logAndContinue('anleitung:desc'));
+      await k.anleitungen.merkeAnleitung(n, pageUrl, desc, null);
       setImmediate(() => {
         void collectAndBuildPDF(k, baseUrl, hdrs, fund.erstesBild, pdfDest, relPath, n).catch(
           logAndContinue('anleitung:collectAndBuildPDF'),
@@ -87,9 +85,8 @@ export async function scrapeInstructionsFromFallback(k: KatalogKontext, setNumbe
       return 1;
     }
   } catch (e) {
-    console.log(
-      `[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    // Ausnahme: BrickInstructions ist die letzte Quelle; ohne sie bleibt das Set ohne Anleitung (0).
+    meldeFehler(`anleitung:brickinstructions ${n}`, e);
   }
   return 0;
 }
@@ -104,26 +101,26 @@ type AnleitungsQuelle = {
 
 /** @param eigenerTakt Der Aufrufer hält selbst Abstand zwischen zwei Sets;
  *   dann entfallen die Pausen am Ende. */
-export async function downloadSetInstructions(k: KatalogKontext, setNumber: string, eigenerTakt = false) {
+export async function setAnleitungenLaden(k: KatalogKontext, setNumber: string, eigenerTakt = false) {
   const n = mitVersion(setNumber);
 
   // Merken, ob ein fremder Server befragt wurde: Der Takt soll nicht an Sets
   // hängen, die längst eine Anleitung haben.
-  _letzterAbrufWarExtern = false;
+  abruf(k).extern = false;
 
   const existing = await anzahlAnleitungen(k, n);
   if (existing > 0) {
     return existing;
   }
 
-  _letzterAbrufWarExtern = true; // ab hier wird wirklich gefragt
-  const { instrList, bricksetSucceededEmpty } = await anleitungsQuellen(n);
+  abruf(k).extern = true; // ab hier wird wirklich gefragt
+  const { instrList, bricksetSucceededEmpty } = await anleitungsQuellen(k, n);
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpRueckfall(k, n, eigenerTakt))) return 1;
 
   const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
-    const bi = await brickinstructionsQuelle(n);
+    const bi = await brickinstructionsQuelle(k, n);
     if (bi) instrList.push(bi);
   }
 
@@ -135,16 +132,16 @@ export async function downloadSetInstructions(k: KatalogKontext, setNumber: stri
 
 /** Erst die Rebrickable-Seite, dann Brickset. `bricksetSucceededEmpty`: Brickset hat
  * geantwortet, ohne Anleitung — nur dann lohnen die weiteren Rückfälle. */
-async function anleitungsQuellen(n: string) {
+async function anleitungsQuellen(k: KatalogKontext, n: string) {
   let instrList: AnleitungsQuelle[] = [];
   let bricksetSucceededEmpty = false;
   try {
-    instrList = await scrapeInstructions(n);
+    instrList = await k.fremdquellen.quellen.scrapeInstructions(n);
   } catch (e) {
     meldeFehler('anleitungen:auslesen', e);
   }
   if (!instrList.length) {
-    const bs = await versuche('anleitungen:brickset', brickset.getInstructions(n));
+    const bs = await versuche('anleitungen:brickset', k.fremdquellen.quellen.brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback false heisst Kontingent erschöpft. Ein Fehler ist keine Antwort —
     // beides bleibt in der Warteschlange.
@@ -164,25 +161,24 @@ async function bdpRueckfall(k: KatalogKontext, n: string, eigenerTakt: boolean):
     fs.mkdirSync(instrDir, { recursive: true });
     const pdfDest = path.join(instrDir, pdfName);
     const relPath = `/data/instructions/${pdfName}`;
-    const ok = await downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
+    const ok = await k.fremdquellen.quellen.downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
     if (ok) {
       console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
-      await k.anleitungen
-        .merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath)
-        .catch(logAndContinue('anleitung:ok'));
+      await k.anleitungen.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath);
       if (!eigenerTakt) await warte(5000);
       return true;
     }
   } catch (e) {
-    console.log(`[instr] BDP failed: ${fehlertext(e)}`);
+    // Ausnahme: Der BDP-Rückfall ist eine von mehreren Quellen; false lässt die nächste fragen.
+    meldeFehler(`anleitung:bdp ${n}`, e);
   }
   if (!eigenerTakt) await warte(5000);
   return false;
 }
 
-async function brickinstructionsQuelle(n: string): Promise<AnleitungsQuelle | null> {
+async function brickinstructionsQuelle(k: KatalogKontext, n: string): Promise<AnleitungsQuelle | null> {
   try {
-    const fund = await brickinstructionsFund(n);
+    const fund = await brickinstructionsFund(k, n);
     if (!fund) return null;
     const { baseUrl, pageUrl, hdrs } = fund;
     return {
@@ -193,7 +189,8 @@ async function brickinstructionsQuelle(n: string): Promise<AnleitungsQuelle | nu
       brickinstructions_first: fund.erstesBild,
     };
   } catch (e) {
-    console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    // Ausnahme: Die Suche zeigt dann die übrigen Quellen; null heisst hier „keine Vorschau“.
+    meldeFehler(`anleitung:brickinstructions-probe ${n}`, e);
     return null;
   }
 }
@@ -211,12 +208,8 @@ async function speichereAnleitungen(k: KatalogKontext, n: string, instrList: Anl
       const pdfName = `${safeBase}_brickinstructions.pdf`;
       const pdfDest = path.join(instrDir, pdfName);
       const relPath = `/data/instructions/${pdfName}`;
-      try {
-        await k.anleitungen.merkeAnleitung(n, instr.url, instr.description ?? null, null);
-        saved++;
-      } catch (e) {
-        meldeFehler('anleitungen:pdf-eintragen', e);
-      }
+      await k.anleitungen.merkeAnleitung(n, instr.url, instr.description ?? null, null);
+      saved++;
       const { brickinstructions_base: basis, brickinstructions_hdrs: kopf, brickinstructions_first: erstes } = instr;
       setImmediate(() => {
         void collectAndBuildPDF(k, basis, kopf, erstes, pdfDest, relPath, n).catch(
@@ -228,13 +221,9 @@ async function speichereAnleitungen(k: KatalogKontext, n: string, instrList: Anl
     const safeName = `${safeBase}_${i + 1}.pdf`;
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
-    const ok = await downloadFile(instr.url, dest, undefined, PDF_ANFANG);
-    try {
-      await k.anleitungen.merkeAnleitung(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
-      saved++;
-    } catch (e) {
-      meldeFehler('anleitungen:datei-eintragen', e);
-    }
+    const ok = await k.fremdquellen.quellen.downloadFile(instr.url, dest, undefined, PDF_ANFANG);
+    await k.anleitungen.merkeAnleitung(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
+    saved++;
     if (i < instrList.length - 1) await warte(200);
   }
 
@@ -250,27 +239,23 @@ async function collectAndBuildPDF(
   relPath: string,
   setNumber: string,
 ) {
-  try {
-    const imageBuffers = [firstPageBuf];
-    for (let p = 2; p <= 99; p++) {
-      await warte(500);
-      try {
-        const r = await httpsGetRobust(`${baseUrl}/${String(p).padStart(3, '0')}.jpg`, hdrs, 8000);
-        if (r.status !== 200 || !r.buffer || r.buffer.length < 500) break;
-        imageBuffers.push(r.buffer);
-      } catch (_) {
-        break;
-      }
+  const imageBuffers = [firstPageBuf];
+  for (let p = 2; p <= 99; p++) {
+    await warte(500);
+    try {
+      const r = await k.fremdquellen.quellen.httpsGetRobust(`${baseUrl}/${String(p).padStart(3, '0')}.jpg`, hdrs, 8000);
+      if (r.status !== 200 || !r.buffer || r.buffer.length < 500) break;
+      imageBuffers.push(r.buffer);
+    } catch (_) {
+      break;
     }
-    console.log(`  Building PDF for ${setNumber}: ${imageBuffers.length} pages`);
-    await warte(100);
-    const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
-    if (ok) {
-      await k.anleitungen.setzeAnleitungsdatei(relPath, setNumber);
-      console.log(`  ✅ PDF ready for ${setNumber}`);
-    }
-  } catch (e) {
-    console.log(`  PDF build failed for ${setNumber}: ${fehlertext(e)}`);
+  }
+  console.log(`  Building PDF for ${setNumber}: ${imageBuffers.length} pages`);
+  await warte(100);
+  const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
+  if (ok) {
+    await k.anleitungen.setzeAnleitungsdatei(relPath, setNumber);
+    console.log(`  ✅ PDF ready for ${setNumber}`);
   }
 }
 

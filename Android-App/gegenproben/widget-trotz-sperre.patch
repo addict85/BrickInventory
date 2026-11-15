@@ -1,0 +1,16 @@
+Gegenprobe: Das Widget verdeckt seine Beträge erst, wenn die App beim Öffnen gesperrt wurde
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppSperreTest
+Rot: das Widget verdeckt seine Betraege
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+@@ -75,6 +75,6 @@
+          * darauf, stünden die Beträge bis zum nächsten Lauf offen auf dem Startbildschirm.
+          */
+         fun verdecktWidget(ablage: Ablage): Boolean =
+-            ablage.gesperrt() || ablage.minuten() > 0 && ablage.hintergrundSeit() != null
++            ablage.gesperrt()
+     }
+ }

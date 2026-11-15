@@ -1,6 +1,5 @@
 /** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
  * Käufe eines Tages werden zusammengezählt. */
-import type { DbSchnittstelle } from '../../db/database';
 import { preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
 import { zustand } from '../infra/validate';
@@ -28,15 +27,13 @@ const num = (v: unknown): number | null => {
 };
 
 /** @param keyValues Schlüsselwerte in der Reihenfolge von SHAPES[kind].keys
- * @param dbh       Transaktions-Handle, falls der Aufrufer eines hat
  * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde */
-export async function recordAcquisitionForDay(
+export async function kaufAmTagErfassen(
   k: BestandKontext,
   kind: AcquisitionKind,
   userId: number,
   keyValues: (string | number)[],
   input: AcquisitionInput,
-  dbh: DbSchnittstelle = k.db,
 ): Promise<{ merged: boolean }> {
   const qty = Math.max(1, parseInt(String(input.quantity), 10) || 1);
   const price = num(input.price);
@@ -45,7 +42,7 @@ export async function recordAcquisitionForDay(
 
   // Eine Anweisung statt Lesen-Rechnen-Schreiben: Gleichzeitige Erfassungen
   // addieren sich. Zusammengelegt nur bei gleichem Preis, Herkunft und Währung.
-  const merged = await repo.fuegeErfassungHinzu(dbh, kind, userId, keyValues, {
+  const merged = await repo.fuegeErfassungHinzu(k.db, kind, userId, keyValues, {
     menge: qty,
     preis: price,
     zustand: cond,
@@ -59,7 +56,7 @@ export async function recordAcquisitionForDay(
 /** Damit eine Bearbeitung nicht am eindeutigen Tagesindex scheitert.
  * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
  * @returns die kollidierende id, oder null */
-export async function findSameDayAcquisition(
+export async function kaufAmSelbenTag(
   k: BestandKontext,
   kind: AcquisitionKind,
   userId: number,
@@ -67,11 +64,10 @@ export async function findSameDayAcquisition(
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  dbh: DbSchnittstelle = k.db,
   merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {},
 ): Promise<number | null> {
   const cond = zustand(condition);
-  return repo.gleicheErfassungAmTag(dbh, kind, userId, keyValues, day, excludeId ?? -1, {
+  return repo.gleicheErfassungAmTag(k.db, kind, userId, keyValues, day, excludeId ?? -1, {
     zustand: cond,
     preis: num(merkmale.preis),
     geschaetzt: !!merkmale.geschaetzt,
@@ -157,8 +153,8 @@ export async function setzeGeschaetztenPreis(
     async t => {
       const z = await repo.erfassungSperren(t.db, kind, id);
       if (!z || z[preisSpalte(kind)] != null) return false;
-      const keys = schluesselSpalten(kind).map(k => z[k]);
-      const ziel = await findSameDayAcquisition(t, kind, z.user_id, keys, z.tag, id, z.condition, t.db, {
+      const keys = schluesselSpalten(kind).map(s => z[s]);
+      const ziel = await kaufAmSelbenTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
         preis,
         geschaetzt: true,
         waehrung: z.currency,

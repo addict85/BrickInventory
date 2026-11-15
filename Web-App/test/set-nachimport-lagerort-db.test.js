@@ -31,8 +31,7 @@ const db = testDaten();
 test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
 
-  const { importiereFiguren } = _req('src/katalog/minifigsImport.js');
-  const { importiereTeile } = _req('src/katalog/partsImport.js');
+  const { importiereFiguren, importiereTeile } = _req('src/sets/setInhaltImport.js');
   const NAME = `nachimport-${process.pid}`;
   const SN = `8${process.pid % 10000}-1`;
   const INV = 900000000 + (process.pid % 100000);

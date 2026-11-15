@@ -1,10 +1,9 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.model.data.model.LoginResponse
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.vertrag.LoginResponse
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.kontoUebernehmen
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -31,7 +30,7 @@ class ZweiterFaktorUebernahmeTest {
 
     private val pfade = PfadServer()
     private val t = TestDienste(pfade.server)
-    private val konto = KontoRepository(t.api, t.cache)
+    private val konto = testKontoRepository(t.api)
 
     @After
     fun zu() { t.aufraeumen(); pfade.server.shutdown() }
@@ -63,17 +62,17 @@ class ZweiterFaktorUebernahmeTest {
 
     @Test
     fun `Anmeldung und auth me lesen das Feld zweiterFaktorPflicht`() = runBlocking {
-        val anmeldung = ApiJson.decodeFromString(LoginResponse.serializer(),
+        val anmeldung = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}""")
         assertTrue("aus der Anmeldung", anmeldung.user?.zweiterFaktorPflicht == true)
-        val ohne = ApiJson.decodeFromString(LoginResponse.serializer(),
+        val ohne = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco"}}""")
         assertFalse("ein älterer Server nennt es nicht", ohne.user?.zweiterFaktorPflicht == true)
 
         pfade.antworten["/api/v1/auth/me"] =
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val me = konto.getMe()
-        assertTrue("aus /auth/me", me is Ergebnis.Success &&
-            me.data.user?.zweiterFaktorPflicht == true)
+        assertTrue("aus /auth/me", me is Ergebnis.Erfolg &&
+            me.data?.zweiterFaktorPflicht == true)
     }
 }

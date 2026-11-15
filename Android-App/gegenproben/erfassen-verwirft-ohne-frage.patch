@@ -1,0 +1,17 @@
+Gegenprobe: Zurück verwirft ein ausgefülltes Formular ohne Rückfrage
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.ErfassenDialogTest
+Rot: Zurueck fragt
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+@@ -96,7 +96,7 @@
+ ) {
+     var verwerfenFragen by rememberSaveable { mutableStateOf(false) }
+     // Zurück und Danebentippen landen hier; Abbrechen und das Kreuz schliessen weiter ohne Frage.
+-    val schliessen: () -> Unit = { if (geaendert) { verwerfenFragen = true } else { onAbbrechen() } }
++    val schliessen: () -> Unit = { onAbbrechen() }
+     if (verwerfenFragen) {
+         Rueckfrage(
+             titel = stringResource(R.string.erfassen_verwerfen_titel),

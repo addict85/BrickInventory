@@ -1,4 +1,4 @@
-Gegenprobe: Kachel nur so hoch wie ihr Inhalt (Name einzeilig, wenn er kurz ist)
+Gegenprobe: Kachel nur so hoch wie ihr Inhalt (die fehlende Namenszeile wird nicht ausgeglichen)
 Modul: feature-sammlung
 Test: ch.brickinventoryapp.sammlung.SetKachelTest
 Rot: Kacheln einer Reihe
@@ -6,12 +6,11 @@ Rot: Kacheln einer Reihe
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
-@@ -263,7 +263,7 @@
-     Box(modifier) {
-         Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
--                maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-+                maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                 lineHeight = 16.sp)
-             Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
-                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+@@ -295,7 +295,6 @@
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+             }
+             KachelBetragZeilen(set, zeile, preis, betrag, waehrung)
+-            if (!zeile) KachelAusgleich(2 - namensZeilen)
+         }
+         // Ohne Fläche: nur die Ansage der Bildplaketten, nach dem Preis.
+         val plaketten = ansagen.takeIf { !zeile && it.isNotEmpty() }

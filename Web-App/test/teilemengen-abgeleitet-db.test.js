@@ -13,7 +13,7 @@
  *   5. Jede Lesestelle wird AUSGEFÜHRT. Das ist kein Beiwerk: teilmengeAus()
  *      liest den Alias `tm_e`, den erst teilmengeJoin() anhängt. Fehlt der
  *      JOIN, ist das kein stiller Fehler, sondern „missing FROM-clause entry
- *      for table tm_e" — GEMESSEN in getMinifigStats(), wo genau das passiert
+ *      for table tm_e" — GEMESSEN in figurenKennzahlenLesen(), wo genau das passiert
  *      war. Ein Muster über den Quelltext hat diesen Fall NICHT gefunden
  *      (zwei seiner drei Treffer waren Fehlmeldungen: ein Bruchstück wird in
  *      eine Abfrage eingesetzt, die den JOIN trägt). Ausführen findet ihn.
@@ -193,6 +193,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
 
   // Nur parts und minifigs. Die Katalog- und Erfassungstabellen schreiben ihre
   // quantity natuerlich fort — sie sind die Wahrheit, nicht die Abschrift.
+  /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts', /UPDATE\s+parts\s+SET\s+[^;`']*\bquantity\s*=/i],
     ['setzt minifigs', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bquantity\s*=/i],
@@ -372,7 +373,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   assert.equal(Number(st2.total_minifigs), 5, `Haushalt: 2 + 2 + 1 = 5, bekam ${st2.total_minifigs}`);
 
   // ── Die Listen ───────────────────────────────────────────────────────────
-  const liste = await P.getParts([haupt], { page_size: 60 });
+  const liste = await P.teileAbfrage([haupt], { page_size: 60 });
   const zeileVon = (l, nr) => (l.parts || []).find(x => x.part_number === nr);
   assert.equal(
     Number(zeileVon(liste, '3001').total_quantity),
@@ -393,7 +394,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'total_quantity muss eine Zahl sein, keine Zeichenkette',
   );
 
-  const figListe = await M.getMinifigs([haupt], { page_size: 60 });
+  const figListe = await M.figurenAbfrage([haupt], { page_size: 60 });
   const figVon = (l, nr) => (l.figs || []).find(x => x.fig_number === nr);
   assert.equal(
     Number(figVon(figListe, 'sw0001').total_quantity),
@@ -406,32 +407,38 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'Die Figurenliste liest die manuelle Figur nicht aus den Erfassungen',
   );
 
-  assert.equal(Number((await M.getMinifigStats([haupt])).total_quantity), 4, 'Die Figuren-Kennzahl rechnet nicht mit');
-  // getPartsStats zaehlt ABSICHTLICH nur Set-Teile — manuell erfasste haben in
+  assert.equal(
+    Number((await M.figurenKennzahlenLesen([haupt])).total_quantity),
+    4,
+    'Die Figuren-Kennzahl rechnet nicht mit',
+  );
+  // teileKennzahlenLesen zaehlt ABSICHTLICH nur Set-Teile — manuell erfasste haben in
   // der Oberflaeche ihren eigenen Bereich (der Filter steht in
   // src/teile/partsSummary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
   // Zahl ist hier kein Nebenbefund: Stuende 17, zaehlte die Kennzahl die …
   assert.equal(
-    Number((await P.getPartsStats([haupt])).total_parts),
+    Number((await P.teileKennzahlenLesen([haupt])).total_parts),
     12,
     'Die Teile-Kennzahl zaehlt nur Set-Teile: 6 × 2 Exemplare = 12',
   );
 
   // ── Die Listen der MANUELLEN Positionen ─────────────────────────────────
-  const man = await P.getManualParts([haupt], haupt, { page_size: 60 });
+  const man = await P.manuelleTeileListe([haupt], haupt, { page_size: 60 });
   const manZeile = man.find(x => x.part_number === '3070b');
   assert.ok(manZeile, 'Die manuelle Position fehlt in der Liste');
   assert.equal(Number(manZeile.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manZeile.quantity}`);
-  const manFig = (await M.getManualMinifigs([haupt], haupt, { page_size: 60 })).find(x => x.fig_number === 'fig-m');
+  const manFig = (await M.manuelleFigurenAbfrage([haupt], haupt, { page_size: 60 })).find(
+    x => x.fig_number === 'fig-m',
+  );
   assert.ok(manFig, 'Die manuelle Figur fehlt in der Liste');
   assert.equal(Number(manFig.quantity), 2, `Manuelle Figurenliste: 2, bekam ${manFig.quantity}`);
 
   // ── „Kann ich das bauen?" ───────────────────────────────────────────────
   //
-  // getOwnedQuantities trennt GESAMT von LOSE: Ein Teil, das in einem Set
+  // besesseneMengenAbfrage trennt GESAMT von LOSE: Ein Teil, das in einem Set
   // steckt, ist vorhanden, aber nicht greifbar. Genau diese Trennung braucht
   // die Fallunterscheidung an zwei Stellen in EINER Abfrage.
-  const besitz = await P.getOwnedQuantities(
+  const besitz = await P.besesseneMengenAbfrage(
     [haupt],
     [
       { part_number: '3001', color_id: 4 },
@@ -455,14 +462,14 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   }
 
   // ── Farben und Zusammenfassung ──────────────────────────────────────────
-  const farben = await P.getPartsColors([haupt]);
+  const farben = await P.teileFarbenAbfrage([haupt]);
   assert.ok(
     Array.isArray(farben) && farben.length > 0,
     'Die Farbliste ist leer — sie zaehlt mit teilmengeAus() und muesste zwei Farben haben',
   );
 
   // rebuildNow() und nicht rebuild(): Die Listenaufrufe darueber haben ueber
-  // ensureFresh() schon einen HINTERGRUNDaufbau angestossen, und der haelt
+  // zusammenfassungFrisch() schon einen HINTERGRUNDaufbau angestossen, und der haelt
   // die Sperre pg_try_advisory_xact_lock. rebuild() direkt gerufen sieht die
   // Sperre, kehrt stillschweigend zurueck („ein anderer baut gerade") und baut …
   const { rebuildNow } = _req('src/teile/partsSummary.js');
@@ -473,7 +480,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   // Bewertung und CSV
   const B = _req('src/finanzen/rechnung/bewertung.js');
-  const bewP = await B.computePartsValuation(haupt, [haupt]);
+  const bewP = await B.bewerteTeile(haupt, [haupt]);
   const bewZeile = (bewP.parts || []).find(x => x.part_number === '3070b');
   assert.ok(bewZeile, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(bewP).slice(0, 200)}`);
   assert.equal(Number(bewZeile.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${bewZeile.quantity}`);
@@ -482,14 +489,14 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'Das Set-Teil steht in der Teile-Bewertung — dann wird es zweimal bewertet, ' +
       'einmal hier und einmal ueber sein Set',
   );
-  const bewM = await B.computeMinifigsValuation(haupt, [haupt]);
+  const bewM = await B.bewerteFiguren(haupt, [haupt]);
   const bewFig = (bewM.figs || []).find(x => x.fig_number === 'fig-m');
   assert.ok(bewFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(bewM).slice(0, 200)}`);
   assert.equal(Number(bewFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);
 
-  const csvP = await _req('src/bestand/bestandExport.js').buildPartsCsv(haupt);
+  const csvP = await _req('src/bestand/bestandExport.js').teileCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
-  const csvM = await _req('src/bestand/bestandExport.js').buildFigsCsv(haupt);
+  const csvM = await _req('src/bestand/bestandExport.js').figurenCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
 
   // ── GEGENPROBE 1: die KATALOGZAHL ändern ────────────────────────────────
@@ -515,7 +522,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'Das Kind muss der GEMEINSAMEN Katalogzahl ebenso folgen: 9 × 1 = 9',
   );
   assert.equal(
-    Number(zeileVon(await P.getParts([haupt], { page_size: 60 }), '3001').total_quantity),
+    Number(zeileVon(await P.teileAbfrage([haupt], { page_size: 60 }), '3001').total_quantity),
     18,
     'Die Liste folgt der Katalogzahl nicht: 9 × 2 = 18',
   );
@@ -532,7 +539,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
   await db.run(`UPDATE part_acquisitions SET quantity = 7 WHERE id=$1`, [eine.id]);
   assert.equal(
-    Number(zeileVon(await P.getParts([haupt], { page_size: 60 }), '3070b').total_quantity),
+    Number(zeileVon(await P.teileAbfrage([haupt], { page_size: 60 }), '3070b').total_quantity),
     10,
     'Nach 2 → 7 muss die manuelle Position 10 sein (7 + 3) — dann liest die Liste ' + 'sie nicht aus part_acquisitions',
   );
@@ -544,7 +551,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // nicht LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet
   // dann null Stueck, nicht eines.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`, [haupt]);
-  const leer = zeileVon(await P.getParts([haupt], { page_size: 60 }), '3070b');
+  const leer = zeileVon(await P.teileAbfrage([haupt], { page_size: 60 }), '3070b');
   assert.ok(
     leer,
     'Die Zeile ohne Erfassung ist aus der Liste verschwunden — ein ' +

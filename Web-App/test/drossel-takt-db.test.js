@@ -28,7 +28,7 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
-  const { RateLimiter } = _req('src/katalog/rateLimiter.js');
+  const { RateLimiter } = _req('src/fremdquellen/rateLimiter.js');
   const API = `test-${process.pid}`;
   const ABSTAND = 250;
   await db.run('DELETE FROM api_takt WHERE api = $1', [API]);
@@ -36,9 +36,9 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
   await t.test('zwei Drosseln teilen sich den Takt', async () => {
     // Die eigene Drossel lässt sofort durch (Fenster 0) — jeder Abstand, der
     // sich zeigt, kommt aus dem gemeinsamen Takt.
-    const apiTakt = require('./helpers/sources').testKontext('katalog').apiTakt;
-    const a = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND, apiTakt });
-    const b = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND, apiTakt });
+    const apiTakt = require('./helpers/sources').testKontext('fremdquellen').apiTakt;
+    const a = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND, apiTakt, gestoertBis: 0 });
+    const b = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND, apiTakt, gestoertBis: 0 });
     const zeiten = [];
     const start = Date.now();
     await Promise.all([a, b, a, b, a, b].map(d => d.waitForSlot().then(() => zeiten.push(Date.now() - start))));

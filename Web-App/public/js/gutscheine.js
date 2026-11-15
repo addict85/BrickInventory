@@ -6,7 +6,7 @@ import { fmtDatum, fmtN, betragFuerFeld } from './format.js';
 import { antwortFehler, betragAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { openPdfViewer } from './pdfviewer.js';
-import { CURRENCY, _settingsCache } from './zustand.js';
+import { kontoWaehrung, einstellungsStand } from './zustand.js';
 import { html, verbinde } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 
@@ -26,7 +26,7 @@ let _bearbeitet = null;
 /** @param {string} id */
 const el = (/** @type {string} */ id) => /** @type {Feld} */ (document.getElementById(id));
 
-// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der Verteiler in actions.js reicht
+// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der Verteiler in aktionen.js reicht
 // `data-arg`, `data-arg2` … in dieser Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)`
 // waere also still verdreht — die id landete in `ev`.
 
@@ -92,8 +92,8 @@ const LAND_WAEHRUNG = {
 /** @type {Record<string, string>} */
 export const LAND_ZUR_WAEHRUNG = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
 export function landWaehrung() {
-  const land = G('gutschein-land')?.value || _settingsCache?.gutschein_land || '';
-  return LAND_WAEHRUNG[land] || CURRENCY;
+  const land = G('gutschein-land')?.value || einstellungsStand?.gutschein_land || '';
+  return LAND_WAEHRUNG[land] || kontoWaehrung;
 }
 
 /** Vorschlag im Formular und der Satz darunter, wenn die gewählte Währung abweicht. */
@@ -175,7 +175,7 @@ export async function ladeGutscheine() {
   }
   _gutscheine = d.vouchers || [];
   const landFeld = G('gutschein-land');
-  if (landFeld) landFeld.value = _settingsCache?.gutschein_land || LAND_ZUR_WAEHRUNG[CURRENCY] || 'de-CH';
+  if (landFeld) landFeld.value = einstellungsStand?.gutschein_land || LAND_ZUR_WAEHRUNG[kontoWaehrung] || 'de-CH';
   zeigeLandWaehrung();
   const cur = G('v-currency');
   if (cur && !_bearbeitet && !G('v-amount')?.value) cur.value = landWaehrung();
@@ -563,7 +563,7 @@ export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
   if (!feld) return;
   const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
-  if (d?.success && _settingsCache) _settingsCache.gutschein_land = G('gutschein-land')?.value;
+  if (d?.success && einstellungsStand) einstellungsStand.gutschein_land = G('gutschein-land')?.value;
   if (!_bearbeitet) {
     const cur = G('v-currency');
     if (cur) cur.value = landWaehrung();

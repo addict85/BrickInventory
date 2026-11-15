@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.provider.Settings
 import androidx.core.content.edit
@@ -10,9 +11,22 @@ import ch.brickinventoryapp.ui.components.AppSperre
  * abhängt. Kein Konto steckt darin: Abmelden lässt sie stehen.
  */
 internal class AppSperreAblage(kontext: Context) : AppSperre.Ablage {
-    private val prefs = kontext.applicationContext.getSharedPreferences(DATEI, Context.MODE_PRIVATE)
+    private val app = kontext.applicationContext
+    private val prefs = app.getSharedPreferences(DATEI, Context.MODE_PRIVATE)
 
-    override fun minuten(): Int = prefs.getInt(MINUTEN, 0)
+    /** Beim ersten Lesen einmal festgelegt (AppSperre.vorgabe), damit ein späteres Update nichts umstellt. */
+    override fun minuten(): Int {
+        if (!prefs.contains(MINUTEN)) prefs.edit { putInt(MINUTEN, AppSperre.vorgabe(neuInstalliert(), gesichert())) }
+        return prefs.getInt(MINUTEN, 0)
+    }
+
+    // Gleiche Zeiten heissen: nie aktualisiert, also diese Installation ist die erste.
+    private fun neuInstalliert(): Boolean = runCatching {
+        app.packageManager.getPackageInfo(app.packageName, 0).let { it.firstInstallTime == it.lastUpdateTime }
+    }.getOrDefault(false)
+
+    private fun gesichert(): Boolean = app.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
     override fun setzeMinuten(minuten: Int) = prefs.edit { putInt(MINUTEN, minuten) }
     override fun hintergrundSeit(): Long? = prefs.getLong(SEIT, -1L).takeIf { it >= 0 }
     override fun merkeHintergrund(seit: Long?) = prefs.edit { if (seit == null) remove(SEIT) else putLong(SEIT, seit) }

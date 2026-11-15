@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { BestandLesevertrag } from '../lesevertrag';
 
 const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
 export type LagerTabelle = keyof typeof TABELLEN;
@@ -93,9 +94,9 @@ export function schreibeOrtNamen(db: DbSchnittstelle, id: number, userId: number
   return db.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2', [id, userId, name]);
 }
 
-export function ortBelegung(db: DbSchnittstelle, userId: number, id: number) {
+export function ortBelegung(db: DbSchnittstelle, l: BestandLesevertrag, userId: number, id: number) {
   return db.get<{ n: string }>(
-    `SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
+    `SELECT (SELECT COUNT(*) FROM ${l.setBestand('= $1')} s WHERE storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`,
     [userId, id],
@@ -106,7 +107,7 @@ export function entferneOrt(db: DbSchnittstelle, id: number, userId: number) {
   return db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
-export function orteMitBestand(db: DbSchnittstelle, uids: number[]) {
+export function orteMitBestand(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[]) {
   return db.all<{ ort: string; sets: number; teile: number; figuren: number }>(
     `SELECT ort,
             SUM(sets)::int    AS sets,
@@ -114,7 +115,7 @@ export function orteMitBestand(db: DbSchnittstelle, uids: number[]) {
             SUM(figuren)::int AS figuren
        FROM (
          SELECT l.name AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
-           FROM sets s JOIN storage_locations l ON l.id = s.storage_id
+           FROM ${l.setBestand('= ANY($1)')} s JOIN storage_locations l ON l.id = s.storage_id
           WHERE s.user_id = ANY($1)
           GROUP BY l.name
          UNION ALL
@@ -131,18 +132,6 @@ export function orteMitBestand(db: DbSchnittstelle, uids: number[]) {
       GROUP BY ort
       ORDER BY ort`,
     [uids],
-  );
-}
-
-/** Sofern es den Ort noch gibt. */
-export function vorgabeOrt(db: DbSchnittstelle, userId: number, schluessel: string) {
-  return db.get<{ id: number; user_id: number; name: string }>(
-    `SELECT l.id, l.user_id, l.name
-       FROM user_settings e
-       JOIN storage_locations l
-         ON l.id = NULLIF(btrim(e.value), '')::int AND l.user_id = e.user_id
-      WHERE e.user_id = $1 AND e.key = $2`,
-    [userId, schluessel],
   );
 }
 

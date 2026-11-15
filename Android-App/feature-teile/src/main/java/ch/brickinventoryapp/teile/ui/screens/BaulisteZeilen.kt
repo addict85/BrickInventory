@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.teile.ui.PlPart
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.ui.semantics.contentDescription
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.layout.*
@@ -9,10 +10,15 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.runtime.*
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -37,21 +43,27 @@ import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 /** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
 @Composable
-internal fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
+internal fun PdfKnopf(exportLaeuft: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
     if (pdfError != null) {
+        val titel = stringResource(R.string.partslist_pdf_error_title)
         androidx.compose.material3.AlertDialog(
+            containerColor = fensterFlaeche(),
             onDismissRequest = onFehlerGesehen,
+            modifier = Modifier.semantics { paneTitle = titel },
             confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.common_ok)) } },
-            title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
+            title = { Text(titel, Modifier.semantics { heading() }) },
             text = { Text(pdfError) }
         )
     }
-    FilledTonalButton(
+    // Umrandet wie jede Nebenaktion: Die getönte Fläche lag im hellen Design kaum über dem Grund.
+    OutlinedButton(
         onClick = onExport,
-        enabled = !isExporting,
+        enabled = !exportLaeuft,
+        colors = nebenKnopfFarben(),
+        border = nebenKnopfRand(!exportLaeuft),
     ) {
         // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
-        if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
+        if (exportLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
             strokeWidth = 2.dp)
         else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
         Spacer(Modifier.width(Abstaende.winzig))

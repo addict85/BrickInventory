@@ -1,0 +1,17 @@
+Gegenprobe: die Abbildung eines Kaufs verliert den Zeitpunkt
+Modul: core-vertrag
+Test: ch.brickinventoryapp.vertrag.UiModellAbbildungTest
+Rot: Betraege kommen als Geld
+
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/HaushaltAbbildungen.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/HaushaltAbbildungen.kt
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/HaushaltAbbildungen.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/HaushaltAbbildungen.kt
+@@ -32,7 +32,7 @@
+     purchasePrice = purchasePrice.alsGeld(),
+     unitPrice = unitPrice.alsGeld(),
+     condition = condition,
+-    createdAt = zeitpunkt(createdAt),
++    createdAt = null,
+     ownerUserId = ownerUserId,
+     priceEstimated = priceEstimated,
+     currency = currency,

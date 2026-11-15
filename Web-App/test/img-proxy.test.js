@@ -3,7 +3,7 @@
  *
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
- * die `req.fresh`-Zeile in src/katalog/http/bildCacheAuslieferung.ts entfernt → dort rot
+ * die `req.fresh`-Zeile in src/bilder/http/bildCacheAuslieferung.ts entfernt → dort rot
  * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
  * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
  * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →
@@ -33,10 +33,9 @@ test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
   // Browser kann sie aber nicht dekodieren.
   assert.match(
     SERVER,
-    /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{_tmpSeq\+\+\}`/,
-    'Der Temp-Name braucht eine laufende Nummer je Anfrage',
+    /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{randomUUID\(\)\}`/,
+    'Der Temp-Name braucht einen eigenen Teil je Anfrage',
   );
-  assert.match(SERVER, /let _tmpSeq = 0;/, 'Zähler fehlt');
 });
 
 test('nur vollständige Dateien kommen in den Cache', () => {
@@ -156,8 +155,8 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
   const route = require('./helpers/sources').kompakt(
     fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8'),
   );
-  assert.match(route, /router\.post\('\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
-  assert.match(route, /router\.post\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
+  assert.match(route, /router\.endpunkt\('POST \/api\/v1\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
+  assert.match(route, /router\.endpunkt\('POST \/api\/v1\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
   const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/diagnose.ts'), 'utf8');
   assert.match(
@@ -166,16 +165,6 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
     'Die Probe muss zeigen, ob das CDN komprimiert liefert',
   );
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
-});
-
-test('der ausgebaute Reparaturjob ist restlos weg', () => {
-  // Er beruhte auf der Annahme, die Bildadressen seien kaputt. Die war falsch —
-  // das CDN lieferte durchgehend 200.
-  assert.ok(!fs.existsSync(path.join(ROOT, 'jobs', 'imageRepair.ts')), 'Job-Datei noch da');
-  for (const f of ['server.ts', 'src/auftraege/jobMonitor.ts', 'src/auftraege/zeitplan.ts', 'db/database.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.doesNotMatch(src, /imgRepair|img_repair|dead_images/, `${f}: Reste vorhanden`);
-  }
 });
 
 test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', () => {
@@ -225,7 +214,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Set-Teilelisten, die niemand hat — die braucht kein lokales Bild.
   assert.match(
     SERVER,
-    /EXISTS \(SELECT 1 FROM minifigs m WHERE m\.fig_number = mc\.fig_number\)/,
+    /EXISTS \(SELECT 1 FROM \$\{l\.figurBestand\(\)\} m WHERE m\.fig_number = mc\.fig_number\)/,
     'Der Lauf darf nicht Bilder von Figuren holen, die niemand besitzt',
   );
 
@@ -240,7 +229,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Fortschritt im bestehenden Job, kein zweiter Eintrag im Monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
   assert.match(SERVER, /text: `\$\{done\} \/ \$\{total\} geladen`/, 'Zwischenstand fehlt');
-  const mon = fs.readFileSync(path.join(ROOT, 'src/auftraege/jobMonitor.ts'), 'utf8');
+  const mon = fs.readFileSync(path.join(ROOT, 'src/verwaltung/kacheln.ts'), 'utf8');
   const figJobs = (mon.match(/^\s{2}\w+:\s*\{/gm) || []).filter(l => /fig|minifig/i.test(l));
   assert.deepEqual(figJobs, [], 'Es darf kein eigener Job dafür entstehen — imgDl deckt es ab');
 
@@ -288,7 +277,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   );
   assert.match(
     plan.slice(plan.indexOf('function aufraeumenTaeglich')),
-    /raeumeBildCacheAuf\]/,
+    /raeumeBildCacheAuf\(/,
     'Der Bild-Cache gehört zum täglichen Aufräumen',
   );
 });

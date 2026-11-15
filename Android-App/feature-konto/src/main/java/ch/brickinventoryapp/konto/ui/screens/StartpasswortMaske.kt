@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,24 +23,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.ui.components.AnmeldeKarte
 import ch.brickinventoryapp.ui.components.AnmeldeTitel
 import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.MarkenKopf
-import ch.brickinventoryapp.ui.components.PasswortArt
-import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
-import ch.brickinventoryapp.model.util.PASSWORT_MIN_ZEICHEN
-import ch.brickinventoryapp.model.util.passwortZuKurz
-import ch.brickinventoryapp.ui.components.SperrGrund
+import ch.brickinventoryapp.ui.components.PasswortWechselFelder
+import ch.brickinventoryapp.ui.components.rememberPasswortWechselPruefung
+import ch.brickinventoryapp.ui.theme.hauptKnopfFarben
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 
 /**
@@ -60,8 +58,7 @@ fun StartpasswortMaske(
     var pwNeu by remember { mutableStateOf("") }
     var pwWiederholt by remember { mutableStateOf("") }
     var faktorCode by remember { mutableStateOf("") }
-    val zuKurz = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)
-    val verschieden = pwWiederholt.isNotEmpty() && pwWiederholt != pwNeu
+    val pruefung = rememberPasswortWechselPruefung()
     val fokus = LocalFocusManager.current
     val weiter = KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) })
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -77,25 +74,18 @@ fun StartpasswortMaske(
             AnmeldeKarte {
                 AnmeldeTitel(stringResource(R.string.startpasswort_titel))
                 Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
-                PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
-                    Modifier.fillMaxWidth(), imeAction = ImeAction.Next, keyboardActions = weiter)
-                // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler.
-                PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
-                    art = PasswortArt.NEU,
-                    hinweis = if (zuKurz) stringResource(R.string.register_password_short)
-                              else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
-                    fehlerhaft = zuKurz, imeAction = ImeAction.Next, keyboardActions = weiter)
-                PasswortFeld(pwWiederholt, { pwWiederholt = it }, stringResource(R.string.startpasswort_wiederholen),
-                    Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
-                    hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
-                    fehlerhaft = verschieden)
-                kontoZustand.fehler?.let { FehlerZeile(it) }
+                PasswortWechselFelder(pwAktuell, { pwAktuell = it }, pwNeu, { pwNeu = it },
+                    pwWiederholt, { pwWiederholt = it }, pruefung, weiter)
+                kontoZustand.speichern.fehlerMeldung?.let { FehlerZeile(it) }
                 if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
-                if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
-                    SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                 Button(
-                    onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                    enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),
+                    onClick = {
+                        pruefung.absenden(pwAktuell, pwNeu, pwWiederholt) {
+                            onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
+                        }
+                    },
+                    enabled = !kontoZustand.speichern.laeuft,
+                    colors = hauptKnopfFarben(),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.konto_password_button)) }
             }
@@ -104,7 +94,3 @@ fun StartpasswortMaske(
         }
     }
 }
-
-/** Erst wenn alle drei Felder stehen, das neue Passwort lang genug ist und zweimal gleich. */
-private fun ersetzenMoeglich(speichert: Boolean, aktuell: String, neu: String, wiederholt: String, zuKurz: Boolean) =
-    !speichert && aktuell.isNotEmpty() && neu.isNotEmpty() && !zuKurz && wiederholt == neu

@@ -112,9 +112,12 @@
     const mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
     if (nav.dataset.mehr !== mehr) nav.dataset.mehr = mehr;
   }
-  const einstNav = /** @type {HTMLElement | null} */ (document.querySelector('.einst-nav'));
-  if (einstNav) {
+  for (const einstNav of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.einst-nav, .konto-nav'))) {
     einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
+    // Chrome rollt einen nur angeschnittenen Link beim Fokus nicht; er läge halb ausserhalb des Fensters.
+    einstNav.addEventListener('focusin', e => {
+      if (e.target instanceof HTMLElement) e.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
     if (typeof ResizeObserver === 'function')
       new ResizeObserver(() => requestAnimationFrame(() => randHinweis(einstNav))).observe(einstNav);
   }
@@ -148,15 +151,14 @@
     const nav = /** @type {HTMLElement|null} */ (document.querySelector('nav:not(.einst-nav)')),
       band = document.getElementById('offline-band');
     const navUnten = !!nav && getComputedStyle(nav).position === 'fixed';
-    const oben =
-      (kopf?.offsetHeight || 0) +
-      (nav && !navUnten ? nav.offsetHeight : 0) +
-      (band && !band.hidden ? band.offsetHeight : 0);
+    const leisten = (kopf?.offsetHeight || 0) + (nav && !navUnten ? nav.offsetHeight : 0);
+    const oben = leisten + (band && !band.hidden ? band.offsetHeight : 0);
     const unten = navUnten ? nav.offsetHeight : 0;
     // Nur Änderungen schreiben: Jeder Schreibzugriff löst Layout aus, und der Beobachter unten sähe sich selbst.
     for (const [name, wert] of [
       ['--leiste-oben', `${Math.round(oben)}px`],
       ['--leiste-unten', `${Math.round(unten)}px`],
+      ['--band-oben', `${Math.round(leisten)}px`],
     ])
       if (wurzel.style.getPropertyValue(name) !== wert) wurzel.style.setProperty(name, wert);
   }

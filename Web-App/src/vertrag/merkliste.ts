@@ -23,43 +23,40 @@ export const MerkpostenAlarm = z.looseObject({
 });
 
 export const Merkposten = z.looseObject({
-  theme_id: z.number().int().nullable().optional(),
+  theme_id: z.number().int().nullable(),
   set_number: z.string(),
   condition: z.string(),
-  created_at: zeit.nullable().optional(),
+  created_at: zeit,
   user_id: z.number().int(),
-  name: z.string().nullable().optional(),
-  year: z.number().int().nullable().optional(),
-  num_parts: z.number().int().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
-  marktpreis: z.number().nullable().optional(),
+  name: z.string().nullable(),
+  year: z.number().int().nullable(),
+  num_parts: z.number().int().nullable(),
+  image_url: z.string().nullable(),
+  image_local: z.string().nullable(),
+  marktpreis: z.number().nullable(),
   waehrung: z.string(),
   owned: z.boolean(),
-  alarm: MerkpostenAlarm.nullable().optional(),
-  preisvergleich_url: z.string().nullable().optional(),
+  alarm: MerkpostenAlarm.nullable(),
+  preisvergleich_url: z.string().nullable(),
 });
 
 export const MerklisteResponse = z.looseObject({
   success: z.boolean(),
   ...SEITEN_ANGABE,
   merkposten: z.array(Merkposten),
-  error: z.string().nullable().optional(),
 });
 
 export const MerkpostenAntwort = z.looseObject({
-  success: z.boolean().optional(),
-  war_neu: z.boolean().optional(),
-  merkposten: Merkposten.nullable().optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  war_neu: z.boolean(),
+  merkposten: Merkposten.nullable(),
 });
 
 export const MerkpostenInhaberAntwort = z.looseObject({
-  success: z.boolean().optional(),
-  verschoben: z.boolean().optional(),
-  zusammengefuehrt: z.boolean().optional(),
-  owner_user_id: z.number().int().nullable().optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  verschoben: z.boolean(),
+  zusammengefuehrt: z.boolean(),
+  owner_user_id: z.number().int().nullable(),
 });
 
 export const MerkpostenPreiseResponse = z.looseObject({
@@ -67,17 +64,15 @@ export const MerkpostenPreiseResponse = z.looseObject({
   set_number: z.string(),
   currency: z.string(),
   current: CurrentByCondition,
-  error: z.string().nullable().optional(),
   degradiert: DEGRADIERT,
 });
 
 export const MerkpostenUebernahmeResponse = z.looseObject({
   katalog_offen: z.boolean().optional(),
   name: z.string().nullable().optional(),
-  success: z.boolean().optional(),
-  action: z.string().nullable().optional(),
-  set_number: z.string().nullable().optional(),
-  error: z.string().nullable().optional(),
+  success: z.boolean(),
+  action: z.string().nullable(),
+  set_number: z.string().nullable(),
 });
 
 /** Einlesen einer BrickLink-Wanted-List; mit `vorschau` ohne zu speichern. */

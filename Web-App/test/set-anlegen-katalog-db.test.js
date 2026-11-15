@@ -3,15 +3,15 @@
  * Eingabe, die keine Setnummer sein kann, wird nicht angelegt.
  *
  * Fehlerbild: „Titanic" hiess nach erneutem Erfassen „Set 10294-1". Die
- * BrickLink-Typprüfung legt eine catalog_cache-Zeile an; getSetInfo() muss den
+ * BrickLink-Typprüfung legt eine catalog_cache-Zeile an; setAngaben() muss den
  * Namen trotzdem aus dem Katalog (rb_sets) nennen.
  *
  * Gegenproben (A am 11.11.2026, B und C am 28.10.2026 gemessen):
  *   A  in katalogSetZu() `rs.name` durch `NULL::text AS name` ersetzt → rot:
- *      „getSetInfo nennt den Katalognamen, keinen Platzhalter“
- *   B  in addSetIntern wieder `name = EXCLUDED.name` → rot: „erneutes
+ *      „setAngaben nennt den Katalognamen, keinen Platzhalter“
+ *   B  beim Anlegen (damals addSetIntern) wieder `name = EXCLUDED.name` → rot: „erneutes
  *      Erfassen ohne Quellen lässt den Katalognamen stehen"
- *   C  die Prüfung moeglicheSetNummer() in addSetIntern entfernt → rot:
+ *   C  die Prüfung moeglicheSetNummer() beim Anlegen entfernt → rot:
  *      „eine Eingabe ohne Ziffer wird nicht als Set angelegt" ("abc-1" im Bestand)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel, damit
@@ -46,17 +46,17 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
   );
 
   try {
-    await t.test('getSetInfo nennt den Katalognamen, keinen Platzhalter', async () => {
+    await t.test('setAngaben nennt den Katalognamen, keinen Platzhalter', async () => {
       // Der Abrufstand in catalog_cache trägt seit 0108 keinen Namen mehr, der den Katalog verdecken könnte.
-      const info = await _req('src/katalog/rebrickableKatalog.js').getSetInfo(SN);
+      const info = await _req('src/katalog/rebrickableKatalog.js').setAngaben(SN);
       assert.equal(info?.name, 'Titanic');
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
-      const r = await require('./helpers/sources').bereichsSeite('sets').addSet({
+      const r = await require('./helpers/sources').bereichsSeite('sets').setErfassen({
+        anfragender: uid,
         setNumber: SN,
         menge: 1,
-        konto: uid,
         kaufpreis: 10,
         zustand: 'N',
       });
@@ -67,10 +67,10 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
-      const { addSet } = require('./helpers/sources').bereichsSeite('sets');
+      const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
       await assert.rejects(
-        addSet({ setNumber: 'abc', menge: 1, konto: uid, zustand: 'N' }),
-        e => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
+        setErfassen({ anfragender: uid, setNumber: 'abc', menge: 1, zustand: 'N', wennVorhanden: 'aufstocken' }),
+        (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
       const { moeglicheSetNummer } = _req('src/infra/setNummer.js');

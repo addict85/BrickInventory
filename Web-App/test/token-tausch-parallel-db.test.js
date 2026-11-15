@@ -61,7 +61,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
   };
 
   await t.test('sechs gleichzeitige Tausche: einer neu, die anderen 409', async () => {
-    const alt = await auth.createToken(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
+    const alt = await auth.tokenAnlegen(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
     const antworten = await Promise.all(Array.from({ length: 6 }, () => ruf('/auth/token-rotieren', alt, 'POST')));
     const stand = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
     const neu = antworten.filter(a => a.status === 200);
@@ -75,15 +75,15 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein zweiter Tausch aus einem anderen Netz beendet die Familie', async () => {
-    const alt = await auth.createToken(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
+    const alt = await auth.tokenAnlegen(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
     const erster = await auth.rotiereToken(alt, '10.1.2.77');
     assert.ok(erster && typeof erster === 'object', 'Vorbedingung: der erste Tausch gelingt');
     await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
-      auth.hashToken(erster.token),
+      auth.tokenAbdruck(erster.token),
     ]);
     assert.equal(await auth.rotiereToken(alt, '192.0.2.5'), null);
     tokenCache.leereTokenCache();
-    assert.equal(await auth.validateToken(erster.token), null, 'der Nachfolger ist weg');
-    assert.equal(await auth.validateToken(alt), null, 'der alte ist weg');
+    assert.equal(await auth.nutzerZumToken(erster.token), null, 'der Nachfolger ist weg');
+    assert.equal(await auth.nutzerZumToken(alt), null, 'der alte ist weg');
   });
 });

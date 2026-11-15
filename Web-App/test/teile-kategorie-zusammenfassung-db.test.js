@@ -8,7 +8,7 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in tryPartsSummary wieder `if (o.category) return null;` → rot: „der
  *      Kategoriefilter liest aus der Zusammenfassung“ (source db)
- *   B  in getPartsCategories (Zusammenfassung) rb_parts nicht befragt → rot:
+ *   B  in teileKategorienAbfrage (Zusammenfassung) rb_parts nicht befragt → rot:
  *      „die Kategorienliste ist auf beiden Wegen gleich“ (kz2 unter „Unbekannt“)
  *   C  in teileFilter die Bedingung für spare=1 (tm_k.is_spare, vorher der
  *      Join auf set_parts_catalog) entfernt → rot: „der Ersatzteilfilter ist
@@ -66,26 +66,26 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
     // Ohne exclude_manual antwortet immer die Live-Abfrage; die Teile hier
     // sind alle Set-Teile, das Ergebnis also dasselbe. Die Kategorienliste
     // zuerst, solange es keine Zusammenfassung gibt.
-    const liveKat = await H.getPartsCategories(U);
-    const live = await H.getParts(U, { page: 1, page_size: 50, category: '98701' });
-    const liveSpare = await H.getParts(U, { page: 1, page_size: 50, spare: '1' });
+    const liveKat = await H.teileKategorienAbfrage(U);
+    const live = await H.teileAbfrage(U, { page: 1, page_size: 50, category: '98701' });
+    const liveSpare = await H.teileAbfrage(U, { page: 1, page_size: 50, spare: '1' });
     assert.equal(live.source, 'db');
     assert.equal(liveSpare.source, 'db');
     assert.deepEqual(zeilen(live), ['kz1|5|8', 'kz2|5|4'], 'Testdaten: beide Teile der Kategorie, mit Setmenge');
     await PS.rebuildNow(U);
 
     await t.test('der Kategoriefilter liest aus der Zusammenfassung', async () => {
-      const zsf = await H.getParts(U, { ...abfrage, category: '98701' });
+      const zsf = await H.teileAbfrage(U, { ...abfrage, category: '98701' });
       assert.equal(zsf.source, 'summary');
       assert.deepEqual(zeilen(zsf), zeilen(live));
     });
     await t.test('der Ersatzteilfilter ist auf beiden Wegen gleich', async () => {
       assert.deepEqual(zeilen(liveSpare), ['kz2|5|4']);
-      assert.deepEqual(zeilen(await H.getParts(U, { ...abfrage, spare: '1' })), zeilen(liveSpare));
+      assert.deepEqual(zeilen(await H.teileAbfrage(U, { ...abfrage, spare: '1' })), zeilen(liveSpare));
     });
     await t.test('die Kategorienliste ist auf beiden Wegen gleich', async () => {
       assert.deepEqual(kategorien(liveKat), ['98701|Steine|12', '98702|Platten|6']);
-      assert.deepEqual(kategorien(await H.getPartsCategories(U)), kategorien(liveKat));
+      assert.deepEqual(kategorien(await H.teileKategorienAbfrage(U)), kategorien(liveKat));
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [U]);

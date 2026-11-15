@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 
 export interface PreisPlatz {
@@ -6,24 +7,25 @@ export interface PreisPlatz {
   set_number: string;
 }
 
-export async function bestandsPlaetze(db: DbSchnittstelle): Promise<PreisPlatz[]> {
-  return db.all<PreisPlatz>('SELECT DISTINCT user_id, set_number FROM sets');
+export async function bestandsPlaetze(db: DbSchnittstelle, l: FinanzenLesevertrag): Promise<PreisPlatz[]> {
+  return db.all<PreisPlatz>(`SELECT DISTINCT user_id, set_number FROM ${l.setBestand()} s`);
 }
 
-export async function merklistenPlaetze(db: DbSchnittstelle): Promise<PreisPlatz[]> {
-  return db.all<PreisPlatz>('SELECT DISTINCT user_id, set_number FROM wanted');
+export async function merklistenPlaetze(db: DbSchnittstelle, l: FinanzenLesevertrag): Promise<PreisPlatz[]> {
+  return db.all<PreisPlatz>(`SELECT DISTINCT user_id, set_number FROM ${l.merkliste()} w`);
 }
 
 type ZustandsZeile = { set_number: string; c: string | null };
 
 export async function erfassteZustaende(
   db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
   userId: number,
   setNumbers: string[],
 ): Promise<ZustandsZeile[]> {
   return db.all<ZustandsZeile>(
     `SELECT set_number, COALESCE(condition,'N') AS c
-       FROM set_acquisitions WHERE user_id=$1 AND set_number = ANY($2)
+       FROM ${l.setErfassungen('= $1')} e WHERE set_number = ANY($2)
       GROUP BY set_number, COALESCE(condition,'N')`,
     [userId, setNumbers],
   );
@@ -31,12 +33,13 @@ export async function erfassteZustaende(
 
 export async function gewuenschteZustaende(
   db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
   userId: number,
   setNumbers: string[],
 ): Promise<ZustandsZeile[]> {
   return db.all<ZustandsZeile>(
     `SELECT DISTINCT set_number, COALESCE(condition,'N') AS c
-       FROM wanted WHERE user_id=$1 AND set_number = ANY($2)`,
+       FROM ${l.merkliste('= $1')} w WHERE set_number = ANY($2)`,
     [userId, setNumbers],
   );
 }

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from './appPaths';
+import { prozessweit } from './prozessweit';
 
 /** Ein Abzug der Datenbank oder von data/ allein gibt die Geheimnisse nicht
  * preis: Der Schlüssel liegt in DATA_KEY oder in einer eigenen Datei
@@ -10,7 +11,13 @@ import { APP_ROOT, DATA_DIR } from './appPaths';
 /** v2: AES-256-GCM mit Kontext (AAD); v1 ohne, nur noch zum Umschlüsseln lesbar. */
 const V1 = 'v1:',
   V2 = 'v2:';
-let geladen: Buffer | null = null;
+/** Die Schlüssel, einmal gelesen und abgeleitet. */
+const S = prozessweit('datenSchluessel', () => ({
+  geladen: null as Buffer | null,
+  alt: undefined as Buffer | null | undefined,
+  altV2: null as Buffer | null,
+  v2: null as Buffer | null,
+}));
 
 export function schluesselDatei(): string {
   return konfig().datenSchluesselDatei || path.join(APP_ROOT, 'schluessel', 'datenschluessel');
@@ -46,12 +53,12 @@ function warneAlterOrt(alt: string, neu: string): void {
 /** Reihenfolge: DATA_KEY, die eigene Datei, die alte Datei im Datenordner
  * (mit Warnung); fehlt alles, wird die eigene Datei angelegt. */
 export function datenSchluessel(): Buffer {
-  if (geladen) return geladen;
+  if (S.geladen) return S.geladen;
   const env = konfig().datenSchluessel;
   if (env) {
     const k = Buffer.from(env, 'base64');
     if (k.length !== 32) throw new Error('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
-    geladen = k;
+    S.geladen = k;
     return k;
   }
   const datei = schluesselDatei(),
@@ -67,12 +74,12 @@ export function datenSchluessel(): Buffer {
       console.warn(
         `⚠️  [geheimnis] ${alt} ist eine Kopie von ${datei} und liegt in jeder Sicherung von data/ — bitte löschen.`,
       );
-    geladen = k;
+    S.geladen = k;
     return k;
   }
   if (altK) {
     warneAlterOrt(alt, datei);
-    geladen = altK;
+    S.geladen = altK;
     return altK;
   }
   const neu = crypto.randomBytes(32);
@@ -89,15 +96,14 @@ export function datenSchluessel(): Buffer {
   } finally {
     fs.rmSync(tmp, { force: true });
   }
-  geladen = ergebnis;
+  S.geladen = ergebnis;
   return ergebnis;
 }
 
 /** Der vorige Schlüssel eines Wechsels: Was nur er öffnet, bleibt lesbar, bis der Start
  * es neu schreibt (scripts/datenschluessel-wechseln.sh). Fehlende Datei: kein Wechsel. */
-let alt: Buffer | null | undefined;
 export function altSchluessel(): Buffer | null {
-  if (alt !== undefined) return alt;
+  if (S.alt !== undefined) return S.alt;
   const k = konfig();
   const roh = k.datenSchluesselAlt
     ? Buffer.from(k.datenSchluesselAlt, 'base64')
@@ -106,19 +112,18 @@ export function altSchluessel(): Buffer | null {
       : null;
   if (roh?.equals(datenSchluessel())) {
     console.warn('⚠️ [geheimnis] DATA_KEY_ALT ist derselbe Schlüssel wie der aktuelle — kein Wechsel.');
-    alt = null;
+    S.alt = null;
     return null;
   }
-  alt = roh;
+  S.alt = roh;
   return roh;
 }
 
-let altV2: Buffer | null = null;
 function altV2Schluessel(): Buffer | null {
   const a = altSchluessel();
   if (!a) return null;
-  altV2 ??= Buffer.from(crypto.hkdfSync('sha256', a, Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
-  return altV2;
+  S.altV2 ??= Buffer.from(crypto.hkdfSync('sha256', a, Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
+  return S.altV2;
 }
 
 /** Wofür und für welche Zeile ein Geheimtext gilt (AAD in AES-GCM): In eine andere
@@ -129,10 +134,11 @@ export function kontext(zweck: string, ...bezug: (string | number)[]): Kontext {
 }
 
 /** Eigener Teilschlüssel für v2: Derselbe Rohschlüssel dient sonst auch v1 und suchwert(). */
-let v2: Buffer | null = null;
 function v2Schluessel(): Buffer {
-  v2 ??= Buffer.from(crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
-  return v2;
+  S.v2 ??= Buffer.from(
+    crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32),
+  );
+  return S.v2;
 }
 
 function versiegle(schluessel: Buffer, daten: Buffer, aad: Kontext | null): Buffer {
@@ -269,8 +275,8 @@ export function altenPufferLesen(daten: Buffer, k: Kontext): Buffer | null {
 }
 
 export function _vergissSchluessel() {
-  geladen = null;
-  v2 = null;
-  alt = undefined;
-  altV2 = null;
+  S.geladen = null;
+  S.v2 = null;
+  S.alt = undefined;
+  S.altV2 = null;
 }

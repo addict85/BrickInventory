@@ -3,12 +3,12 @@
  * src/auftraege/repository/laufzustand.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
  *
  * Gegenproben (durchgeführt):
- *   a) `if (keys.length === 0) return;` in deleteGlobalSetting entfernt und den
+ *   a) `if (keys.length === 0) return;` in globaleWerteLoeschen entfernt und den
  *      Parameter auf `[keys]` gelassen → Teilschritt 4 blieb grün (ANY('{}')
  *      trifft nichts). Erst mit `WHERE key = ANY($1) OR $1 IS NULL` wurde er
  *      rot — die Probe misst also wirklich den Tabelleninhalt.
  *   b) entfällt mit setzeAusloeser (30.10.2026): Anstösse sind Aufträge.
- *   c) In deleteGlobalSetting nur den ERSTEN Schlüssel gelöscht
+ *   c) In globaleWerteLoeschen nur den ERSTEN Schlüssel gelöscht
  *      (`WHERE key = $1`, `[keys[0]]`) → Teilschritt 3 rot.
  *
  *   d) (05.11.2026) setGlobalSetting ohne Prüfung gegen GLOBALE_REGELN → rot:
@@ -25,7 +25,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { getGlobalSetting, setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');
+const { getGlobalSetting, setGlobalSetting, globaleWerteLoeschen } = _req('src/einstellungen/settings.js');
 const { setzeZustand, liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async t => {
@@ -69,7 +69,7 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
 
     // 3. Mehrere Schlüssel in EINEM Aufruf — der Grund für `key = ANY($1)`.
     await setGlobalSetting(B, 'x');
-    await deleteGlobalSetting(A, B);
+    await globaleWerteLoeschen(A, B);
     assert.equal(await getGlobalSetting(A), null, 'A muss weg sein');
     assert.equal(await getGlobalSetting(B), null, 'B muss weg sein');
     assert.ok(await getGlobalSetting(T), 'T war nicht genannt und muss stehen bleiben');
@@ -79,9 +79,9 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     //    ein versehentliches Leeren wäre nicht rückholbar.
     const zahl = await bestand();
     assert.ok(zahl > 0, 'für diese Probe muss die Tabelle etwas enthalten');
-    await deleteGlobalSetting();
+    await globaleWerteLoeschen();
     assert.equal(await bestand(), zahl, 'ein Aufruf ohne Schlüssel darf NICHTS löschen');
-    await deleteGlobalSetting(...[]);
+    await globaleWerteLoeschen(...[]);
     assert.equal(await bestand(), zahl, 'auch ein leeres Array darf NICHTS löschen');
   } finally {
     await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});

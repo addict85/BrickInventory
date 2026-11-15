@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
@@ -7,9 +9,8 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
-import ch.brickinventoryapp.model.data.model.AddSetResponse
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.model.fach.SetErfasst
+import ch.brickinventoryapp.testing.testKatalogRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.sammlung.ui.Pruefphase
@@ -48,10 +49,10 @@ import ch.brickinventoryapp.testing.text
  *      zeigt die Schritte des Servers …“
  *   D  einen leeren Fehler als Satz des Servers gewertet → rot „ein
  *      abgebrochener Ereignisstrom ist ein Netzfehler …“
- *   E  in confirmAddBarcode() die Sperre `if (stand.adding) return` entfernt →
+ *   E  in confirmAddBarcode() die Sperre `if (stand.hinzufuegen.laeuft) return` entfernt →
  *      rot „ein zweiter Klick auf Bestätigen …“; ebenso, wenn der Dialog erst
  *      nach der Antwort schliesst oder der Eigentümer nicht mitgeht
- *   F  `adding = false` nach der Antwort entfernt → rot „ein Fehlschlag beim
+ *   F  `hinzufuegen = Vorgang.Fertig` nach der Antwort entfernt → rot „ein Fehlschlag beim
  *      Bestätigen …“ und „ein zweiter Klick …“
  *   G  im Teilelisten-Zweig das `return` entfernt → rot „aus der Teileliste
  *      wird nichts angelegt …“
@@ -87,7 +88,7 @@ class ErfassungViewModelTest {
     private object TexteMitArgumenten : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id" + args.joinToString("") { "|$it" }
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-        override fun meldung(fehler: Ergebnis.Error) = "fehler"
+        override fun meldung(fehler: Ergebnis.Fehler) = "fehler"
         override fun angemeldet() = true
     }
 
@@ -95,7 +96,7 @@ class ErfassungViewModelTest {
     private class Anleger(val schritte: List<SetAnlegenSchritt>) : SetAnleger {
         var vm: ErfassungViewModel? = null
         val gesehen = mutableListOf<Pruefphase?>()
-        override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+        override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                              ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = flow {
             for (s in schritte) {
                 emit(s)
@@ -105,7 +106,7 @@ class ErfassungViewModelTest {
     }
 
     private fun vm(anleger: Anleger = Anleger(emptyList())) = t.merke(
-        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.merkliste(), KatalogRepository(t.api, t.cache), anleger)
+        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.merkliste(), testKatalogRepository(t.api), anleger)
     ).also { anleger.vm = it }
 
     @Before
@@ -160,7 +161,7 @@ class ErfassungViewModelTest {
     fun `das Anlegen zeigt die Schritte des Servers und meldet das neue Set`() {
         val anleger = Anleger(listOf(
             SetAnlegenSchritt.Stammdaten("Falke"), SetAnlegenSchritt.Bild, SetAnlegenSchritt.FastFertig,
-            SetAnlegenSchritt.Fertig(AddSetResponse(action = "added", setNumber = "75192-1")),
+            SetAnlegenSchritt.Fertig(SetErfasst(nummer = "75192-1", angelegt = true)),
         ))
         val vm = vm(anleger)
         vm.addSet(Erfassungswunsch("75192"))
@@ -179,7 +180,7 @@ class ErfassungViewModelTest {
     @Test
     fun `ohne Katalog meldet das Anlegen gespeichert, nicht hinzugefuegt`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(
-            AddSetResponse(action = "added", setNumber = "99999-1", katalogOffen = true)))))
+            SetErfasst(nummer = "99999-1", angelegt = true, katalogOffen = true)))))
         vm.addSet(Erfassungswunsch("99999"))
         bis("Meldung") { t.meldungen.text != null }
         assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.text)
@@ -187,7 +188,7 @@ class ErfassungViewModelTest {
 
     @Test
     fun `ein vorhandenes Set beim Anlegen oeffnet die Detailansicht und meldet nichts`() {
-        val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(AddSetResponse(action = "exists", setNumber = "75192-1")))))
+        val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(SetErfasst(nummer = "75192-1", vorhanden = true)))))
         vm.addSet(Erfassungswunsch("75192-1"))
         bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
         assertTrue("nichts angelegt, nichts nachzuziehen", pfade.anfragenAn("GET /api/v1/sets?").isEmpty())
@@ -233,11 +234,11 @@ class ErfassungViewModelTest {
         vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
         // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
         assertNull(vm.barcodeState.value.result)
-        assertTrue(vm.barcodeState.value.adding)
+        assertTrue(vm.barcodeState.value.hinzufuegen.laeuft)
         assertNull(vm.erfassungState.value.pruefung)
         vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
         pfade.freigeben()
-        bis("fertig") { !vm.barcodeState.value.adding }
+        bis("fertig") { !vm.barcodeState.value.hinzufuegen.laeuft }
         assertEquals(1, pfade.anfragenAn("POST /api/v1/sets").size)
         val rumpf = pfade.koerper[pfade.anfragen.indexOf("POST /api/v1/sets")]
         assertTrue(rumpf, "\"owner_user_id\":2" in rumpf)
@@ -250,7 +251,7 @@ class ErfassungViewModelTest {
         vm.confirmAddBarcode(Erfassungswunsch("75192-1"))
         bis("gemeldet") { t.meldungen.text?.startsWith("t${R.string.vm_add_failed}") == true }
         assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.text)
-        bis("frei") { !vm.barcodeState.value.adding }
+        bis("frei") { !vm.barcodeState.value.hinzufuegen.laeuft }
     }
 
     @Test

@@ -40,12 +40,6 @@ internal open class KeystoreSchluessel(private val alias: String) : Entsperrschl
 
     override fun verwerfe() = speicher().deleteEntry(alias)
 
-    /** X.509 für den Server. Über [signatur], damit ein ungültig gewordener Schlüssel vorher ersetzt ist. */
-    override fun oeffentlichFuerServer(): ByteArray {
-        signatur()
-        return oeffentlich().encoded
-    }
-
     /** Immer ein neuer Schlüssel: Die Challenge steht in seinem Zertifikat, der alte trägt eine verbrauchte. */
     override fun erzeugeMitAttestation(challenge: ByteArray): List<ByteArray> {
         val ks = speicher()
@@ -54,7 +48,7 @@ internal open class KeystoreSchluessel(private val alias: String) : Entsperrschl
         return ks.getCertificateChain(alias)?.map { it.encoded }.orEmpty()
     }
 
-    private fun erzeuge(challenge: ByteArray? = null): PrivateKey {
+    private fun erzeuge(challenge: ByteArray? = null): PrivateKey = strongBoxZuerst { strongBox ->
         val gen = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, KEYSTORE)
         gen.initialize(
             KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
@@ -62,10 +56,11 @@ internal open class KeystoreSchluessel(private val alias: String) : Entsperrschl
                 .setDigests(KeyProperties.DIGEST_SHA256)
                 .setUserAuthenticationRequired(true)
                 .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL)
+                .setIsStrongBoxBacked(strongBox)
                 .apply { if (challenge != null) setAttestationChallenge(challenge) }
                 .build()
         )
-        return gen.generateKeyPair().private
+        gen.generateKeyPair().private
     }
 
     private companion object {

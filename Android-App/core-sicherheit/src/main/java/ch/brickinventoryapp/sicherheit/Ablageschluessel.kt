@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sicherheit
 
+import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.netz.util.Protokoll
 import java.util.concurrent.CopyOnWriteArrayList
 import java.io.File
 import java.io.IOException
@@ -26,21 +28,45 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
     fun hole(): ByteArray {
         bekannt?.let { return it }
         if (datei.isFile) {
-            when (val befund = tresor.oeffne(datei.readText().trim())) {
-                is Tresorbefund.Lesbar -> hexZuBytes(befund.klartext)?.takeIf { it.size == LAENGE }?.let { bekannt = it; return it }
+            val umhuellt = datei.readText().trim()
+            when (val befund = tresor.oeffne(umhuellt)) {
+                is Tresorbefund.Lesbar -> hexZuBytes(befund.klartext)?.takeIf { it.size == LAENGE }?.let {
+                    if (tresor.veraltet(umhuellt)) umhuelleNeu(befund.klartext)
+                    bekannt = it
+                    return it
+                }
                 // Nicht neu anlegen: Das risse die verschlüsselte Datenbank samt Ausgang mit.
                 Tresorbefund.Gesperrt -> throw IOException("Keystore gerade nicht bereit")
                 Tresorbefund.Weg -> Unit
             }
         }
         val neu = ByteArray(LAENGE).also(SecureRandom()::nextBytes)
-        datei.parentFile?.mkdirs()
-        val tmp = File(datei.parentFile, datei.name + ".tmp")
-        tmp.writeText(tresor.verschluessle(neu.joinToString("") { "%02x".format(it) }))
-        if (!tmp.renameTo(datei)) throw IOException("Ablageschlüssel nicht geschrieben")
+        // Wie beim Lesen: Ein Keystore, der gesperrt nicht verschlüsselt, heisst „später“.
+        val umhuellt = fangeAusserAbbruch { tresor.verschluessle(neu.joinToString("") { "%02x".format(it) }) }
+            .getOrElse { throw IOException("Keystore gerade nicht bereit", it) }
+        schreibe(umhuellt)
         neuAngelegt = true
         bekannt = neu
         return neu
+    }
+
+    private fun schreibe(umhuellt: String) {
+        datei.parentFile?.mkdirs()
+        val tmp = File(datei.parentFile, datei.name + ".tmp")
+        tmp.writeText(umhuellt)
+        if (!tmp.renameTo(datei)) throw IOException("Ablageschlüssel nicht geschrieben")
+    }
+
+    /**
+     * Ein Schlüssel unter dem schwächeren Tresor früherer Fassungen kommt beim ersten
+     * lesbaren Zugriff unter den, der nur entsperrt arbeitet. Derselbe Schlüssel, nur anders
+     * umhüllt: Die Ablagen bleiben lesbar. Scheitert es (gesperrt), beim nächsten Zugriff.
+     * Erst wenn die neue Hülle auf der Platte steht, geht der alte Alias.
+     */
+    private fun umhuelleNeu(hex: String) {
+        fangeAusserAbbruch { schreibe(tresor.verschluessle(hex)) }
+            .onSuccess { fangeAusserAbbruch { tresor.vergissAltbestand() } }
+            .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
     }
 
     /** Zählt die Erneuerungen; wer einen abgeleiteten Schlüssel hält, merkt so, dass er veraltet ist. */
@@ -64,7 +90,9 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
         runCatching { tresor.vergiss() }
         bekannt = null
         stand++
-        hole()
+        // Gesperrt entsteht der neue erst beim nächsten Zugriff: Ein Abmelden im Hintergrund
+        // soll nicht scheitern, nur weil das Gerät gerade nichts verschlüsseln lässt.
+        fangeAusserAbbruch { hole() }
     }
 
     /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */
@@ -106,11 +134,14 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
      */
     fun entschluessleUngebunden(daten: ByteArray): ByteArray? = oeffne(daten, KENNUNG_UNGEBUNDEN, null)
 
+    // Der Schlüssel ausserhalb von runCatching: Ein gesperrter Keystore (IOException) ist kein
+    // unlesbarer Geheimtext; als null gelesen, löschten Aufrufer die Datei.
     private fun oeffne(daten: ByteArray, kennung: ByteArray, bindung: String?): ByteArray? {
         if (daten.size <= kennung.size + IV_LAENGE || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
+        val k = SecretKeySpec(schluessel(), "AES")
         return runCatching {
             val c = Cipher.getInstance(VERFAHREN)
-            c.init(Cipher.DECRYPT_MODE, SecretKeySpec(schluessel(), "AES"),
+            c.init(Cipher.DECRYPT_MODE, k,
                 GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LAENGE))
             if (bindung != null) c.updateAAD(bindung.toByteArray(Charsets.UTF_8))
             c.doFinal(daten, kennung.size + IV_LAENGE, daten.size - kennung.size - IV_LAENGE)

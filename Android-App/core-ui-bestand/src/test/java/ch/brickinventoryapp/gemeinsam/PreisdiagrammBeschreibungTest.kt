@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
@@ -8,9 +9,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
+import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
+import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -50,7 +51,7 @@ class PreisdiagrammBeschreibungTest {
     @Test
     fun `das Preisdiagramm beschreibt seine Linie in Worten`() {
         val verlauf = PreisDiagrammAnsicht(values = listOf(PreisReiheAnsicht("N",
-            listOf(PreisPunktAnsicht("2026-01-01", 710.0), PreisPunktAnsicht("2026-02-01", 690.0), PreisPunktAnsicht("2026-03-01", 730.0)))))
+            listOf(PreisPunktAnsicht("2026-01-01", Geld.aus(710.0)!!), PreisPunktAnsicht("2026-02-01", Geld.aus(690.0)!!), PreisPunktAnsicht("2026-03-01", Geld.aus(730.0)!!)))))
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 Surface(color = MaterialTheme.colorScheme.background) { PriceChart(verlauf, Waehrung("CHF")) }

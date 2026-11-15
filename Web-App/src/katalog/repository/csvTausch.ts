@@ -1,10 +1,30 @@
 import type { PoolClient } from 'pg';
 import { pflegeTabelle } from '../../../db/tabellePflegen';
+import type { KatalogLesevertrag } from '../lesevertrag';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { logAndContinue } from '../../infra/fehler';
 
 /** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */
+
+/** Nur diese Tabellen tauscht das Repository; ein anderer Name wirft, statt eine fremde zu leeren. */
+export const CSV_TABELLEN = [
+  'rb_colors',
+  'rb_part_categories',
+  'rb_parts',
+  'rb_sets',
+  'rb_inventories',
+  'rb_themes',
+  'rb_inventory_minifigs',
+  'rb_inventory_parts',
+] as const;
+export type CsvTabelle = (typeof CSV_TABELLEN)[number];
+
+function nurCsvTabelle(tabelle: string): CsvTabelle {
+  const t = CSV_TABELLEN.find(x => x === tabelle);
+  if (!t) throw new Error(`keine CSV-Tabelle: ${tabelle}`);
+  return t;
+}
 
 function sperrschluessel(tabelle: string): number {
   let h = 0;
@@ -23,14 +43,11 @@ export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<vo
   await c.query('RESET lock_timeout');
 }
 
-/** Mit Schlüsseln und Indizes: ON CONFLICT in den Blöcken braucht sie. Ohne
- * CHECKs: Die Trigger der Zieltabelle (etwa die Versionsendung der Set-Nummer)
- * kommen nicht mit; geprüft wird erst beim Tausch, nach den Triggern. Temporär:
- * Die Laufzeitrolle darf in public nichts anlegen, und der Schatten gehört
- * ohnehin nur dieser einen Verbindung. */
-export async function legeSchattenAn(c: PoolClient, tabelle: string, schatten: string): Promise<void> {
+/** Mit Schlüsseln (ON CONFLICT braucht sie), ohne CHECKs (geprüft wird beim Tausch, nach den
+ * Triggern der Zieltabelle), temporär (die Laufzeitrolle darf in public nichts anlegen). */
+export async function legeSchattenAn(c: PoolClient, tabelle: CsvTabelle, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
-  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${tabelle} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
+  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${nurCsvTabelle(tabelle)} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */
@@ -70,22 +87,26 @@ async function imSchritt(c: PoolClient, schritte: () => Promise<void>): Promise<
   }
 }
 
-export function tausche(c: PoolClient, tabelle: string, schatten: string, spalten: string[]): Promise<void> {
+export function tausche(c: PoolClient, tabelle: CsvTabelle, schatten: string, spalten: string[]): Promise<void> {
+  const ziel = nurCsvTabelle(tabelle);
   return imSchritt(c, async () => {
-    await c.query(`DELETE FROM ${tabelle}`);
-    await c.query(`INSERT INTO ${tabelle} (${spalten.join(',')}) SELECT ${spalten.join(',')} FROM ${schatten}`);
+    await c.query(`DELETE FROM ${ziel}`);
+    await c.query(`INSERT INTO ${ziel} (${spalten.join(',')}) SELECT ${spalten.join(',')} FROM ${schatten}`);
   });
 }
 
 /** rb_sets bildet den Dump nach: einfügen, ändern, entfernen. Nur ein Set, an dem
  * Bestand, Merkliste oder Preisalarm hängt, bleibt als 'api'-Zeile, sonst verlöre
  * ein Konto Name und Bild. Danach hat jede Zeile ihren set_catalog-Eintrag (0105). */
-export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: string[]): Promise<void> {
+export async function gleicheSetsAb(
+  c: PoolClient,
+  l: Pick<KatalogLesevertrag, 'setZaehlt'>,
+  schatten: string,
+  spalten: string[],
+): Promise<void> {
   const neu = spalten.filter(s => s !== 'set_num');
   const verschwunden = `NOT EXISTS (SELECT 1 FROM ${schatten} n WHERE n.set_num = rb_sets.set_num)`;
-  const bezug = `(EXISTS (SELECT 1 FROM sets s WHERE s.set_number = rb_sets.set_num)
-               OR EXISTS (SELECT 1 FROM wanted w WHERE w.set_number = rb_sets.set_num)
-               OR EXISTS (SELECT 1 FROM price_alerts a WHERE a.set_number = rb_sets.set_num))`;
+  const bezug = l.setZaehlt('rb_sets.set_num');
   await imSchritt(c, async () => {
     await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, herkunft) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
                    ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, herkunft='csv'

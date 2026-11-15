@@ -57,15 +57,12 @@ export async function leereKatalogCache(db: DbSchnittstelle, nummer: string | nu
   else await db.run('DELETE FROM catalog_cache');
 }
 
-export async function cacheZahlen(db: DbSchnittstelle): Promise<{ subsets: number; catalog: number; prices: number }> {
-  const zaehle = async (tabelle: 'subsets_cache' | 'catalog_cache' | 'price_cache') =>
+/** Nur die eigenen Zwischenspeicher; die Preise zählt die Finanz (price_cache gehört ihr). */
+export async function cacheZahlen(db: DbSchnittstelle): Promise<{ subsets: number; catalog: number }> {
+  const zaehle = async (tabelle: 'subsets_cache' | 'catalog_cache') =>
     parseInt(String((await db.get<{ c: string }>(`SELECT COUNT(*) AS c FROM ${tabelle}`))?.c ?? 0), 10);
-  const [subsets, catalog, prices] = await Promise.all([
-    zaehle('subsets_cache'),
-    zaehle('catalog_cache'),
-    zaehle('price_cache'),
-  ]);
-  return { subsets, catalog, prices };
+  const [subsets, catalog] = await Promise.all([zaehle('subsets_cache'), zaehle('catalog_cache')]);
+  return { subsets, catalog };
 }
 
 export function blTypenDerSets(db: DbSchnittstelle, setNummern: string[]) {

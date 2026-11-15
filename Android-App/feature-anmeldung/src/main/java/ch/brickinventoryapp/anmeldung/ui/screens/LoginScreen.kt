@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.anmeldung.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.foundation.verticalScroll
 import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -188,9 +191,12 @@ fun LoginScreen(
  */
 @Composable
 internal fun QrKontoFrage(konto: QrKonto, onQrKonto: (uebernehmen: Boolean) -> Unit) {
+    val titel = stringResource(R.string.login_qr_konto_titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = { onQrKonto(false) },
-        title = { Text(stringResource(R.string.login_qr_konto_titel)) },
+        modifier = Modifier.semantics { paneTitle = titel },
+        title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
             Text(stringResource(R.string.login_qr_konto_text, konto.benutzer, konto.server))

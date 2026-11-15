@@ -1,29 +1,13 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
 import { meldeFehler, fehlertext } from '../infra/fehler';
-import { blickfeldIds } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { MailDienste } from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
 import { versuche } from '../infra/ergebnis';
-import type { DbSchnittstelle } from '../../db/database';
-
-/** Ausgeschrieben statt `any`: Betrag, Richtung und Mailadresse stehen
- * nebeneinander, ein Vertauschen wäre sonst nirgends sichtbar. */
-interface AlarmZeile {
-  user_id: number;
-  set_number: string;
-  condition: string;
-  richtung: Richtung;
-  schwelle: string | number;
-  currency_code: string;
-  ausgeloest: boolean;
-  email: string | null;
-  username: string;
-  sprache: string;
-}
+import type { FinanzenKontext } from './kontext';
 
 export type Richtung = 'unter' | 'ueber';
 
@@ -42,65 +26,66 @@ export interface Preisalarm {
 
 const ZUSTAENDE = new Set(['N', 'U']);
 
-function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown) {
+/** Die Zeile wie gelesen (db/zeilen.ts); `richtung` hält ein CHECK auf zwei Werte, der Zeitpunkt
+ * geht als ISO-Text hinaus wie in JSON. */
+function alsAlarm<Z extends repo.AlarmZeile>(z: Z): Omit<Z, 'richtung' | 'zuletzt_am'> & Preisalarm {
+  return { ...z, richtung: z.richtung as Richtung, zuletzt_am: z.zuletzt_am?.toISOString() ?? null };
+}
+
+export interface AlarmEingabe {
+  richtung: string;
+  schwelle: number | string | null | undefined;
+  condition?: string | undefined;
+}
+
+function pruefeEingabe(richtung: string, schwelle: AlarmEingabe['schwelle'], condition: string | undefined) {
   const r = String(richtung ?? '');
   if (r !== 'unter' && r !== 'ueber') fachfehler('ungueltig', 'alarm_richtung_ungueltig');
   const s = Number(schwelle);
   // Number.isFinite fängt auch NaN aus einer leeren Eingabe; `> 0` allein
   // meldete zwei verschiedene Fehler gleich.
   if (!Number.isFinite(s) || s <= 0) fachfehler('ungueltig', 'alarm_schwelle_ungueltig');
-  const c = String(condition ?? 'N').toUpperCase();
+  const c = (condition ?? 'N').toUpperCase();
   if (!ZUSTAENDE.has(c)) fachfehler('ungueltig', 'alarm_zustand_ungueltig');
   return { richtung: r as Richtung, schwelle: s, condition: c };
 }
 
 /** Höchstens EIN Alarm je Set und Zustand (Primärschlüssel). */
 export async function setzeAlarm(
-  db: DbSchnittstelle,
+  k: FinanzenKontext,
   userId: number,
   setNumber: string,
   waehrung: string,
-  eingabe: { richtung?: unknown; schwelle?: unknown; condition?: unknown },
+  eingabe: AlarmEingabe,
 ): Promise<Preisalarm> {
   const { richtung, schwelle, condition } = pruefeEingabe(eingabe.richtung, eingabe.schwelle, eingabe.condition);
-  await repo.schreibeAlarm(db, userId, setNumber, condition, richtung, schwelle, waehrung);
-  const alarme = await alarmeFuer(db, userId, setNumber);
+  await repo.schreibeAlarm(k.db, userId, setNumber, condition, richtung, schwelle, waehrung);
+  const alarme = await alarmeFuer(k, userId, setNumber);
   return alarme.find(a => a.condition === condition)!;
 }
 
 /** Der Alarm wandert mit einer Vormerkung ins andere Konto (src/merkliste). */
 export async function alarmUebertragen(
-  db: DbSchnittstelle,
+  k: FinanzenKontext,
   zuId: number,
   vonId: number,
   setNumber: string,
   condition: string,
 ): Promise<void> {
-  await repo.uebertrageAlarm(db, zuId, vonId, setNumber, condition);
+  await repo.uebertrageAlarm(k.db, zuId, vonId, setNumber, condition);
 }
 
 /** Kein Fehler, wenn es keinen gab — der Wunsch ist erfüllt. */
-export async function loescheAlarm(db: DbSchnittstelle, userId: number, setNumber: string, condition: string) {
+export async function loescheAlarm(k: FinanzenKontext, userId: number, setNumber: string, condition: string) {
   const c = String(condition ?? 'N').toUpperCase();
-  const r = await repo.entferneAlarm(db, userId, setNumber, c);
+  const r = await repo.entferneAlarm(k.db, userId, setNumber, c);
   return r.changes ?? 0;
 }
 
-export async function alarmeFuer(db: DbSchnittstelle, userId: number, setNumber: string): Promise<Preisalarm[]> {
-  const rows = await repo.alarmeDesSets(db, userId, setNumber, await blickfeldIds(db, userId)).catch(e => {
-    meldeFehler('preisalarm:lesen', e);
-    return [];
-  });
-  type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> & {
-    schwelle: string | number;
-    zuletzt_preis: string | number | null;
-  };
-  return ((rows as Zeile[]) || []).map(r => ({
-    ...r,
-    // numeric kommt als Zeichenkette aus dem Treiber.
-    schwelle: parseFloat(String(r.schwelle)),
-    zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
-  }));
+export async function alarmeFuer(k: FinanzenKontext, userId: number, setNumber: string): Promise<Preisalarm[]> {
+  // Ohne Fang: Eine leere Liste hiesse „kein Alarm“, und setzeAlarm() lieferte nichts.
+  const rows = await repo.alarmeDesSets(k.db, k.lesevertrag, userId, setNumber, await k.haushalt.blickfeldIds(userId));
+  return rows.map(alsAlarm);
 }
 
 /** Damit man Alarme findet, ohne das Set zu kennen. */
@@ -115,32 +100,19 @@ export interface AlarmMitName extends Preisalarm {
   besitzt: boolean;
 }
 
-export async function alleAlarme(db: DbSchnittstelle, userId: number): Promise<AlarmMitName[]> {
+export async function alleAlarme(k: FinanzenKontext, userId: number): Promise<AlarmMitName[]> {
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
-  const blickfeld = await blickfeldIds(db, userId);
-  const rows = await repo.alarmeImBlickfeld(db, userId, blickfeld).catch(e => {
-    meldeFehler('preisalarm:alle', e);
-    return [];
-  });
-  type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> & {
-    schwelle: string | number;
-    zuletzt_preis: string | number | null;
-  };
-  return ((rows as Zeile[]) || []).map(r => ({
-    ...r,
-    // numeric kommt als Zeichenkette aus dem Treiber.
-    schwelle: parseFloat(String(r.schwelle)),
-    zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
-  }));
+  const blickfeld = await k.haushalt.blickfeldIds(userId);
+  return (await repo.alarmeImBlickfeld(k.db, k.lesevertrag, userId, blickfeld)).map(alsAlarm);
 }
 
 /** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server. */
-export async function ausgeloesteSeit(db: DbSchnittstelle, userId: number, seit: unknown) {
+export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: Date | string | null | undefined) {
   // Die Zeit der Datenbank: Postgres speichert Mikro-, JavaScript nur
   // Millisekunden; mit der JS-Uhr käme eine Meldung zweimal.
-  const jetztRow = await repo.datenbankJetzt(db);
-  const jetzt = jetztRow?.jetzt ?? new Date();
+  const jetztRow = await repo.datenbankJetzt(k.db);
+  const jetzt = jetztRow?.jetzt ?? k.uhr.datum();
 
   // `instanceof Date` ZUERST: String(date) verliert die Millisekunden, und eine
   // Meldung aus derselben Sekunde käme ein zweites Mal.
@@ -153,30 +125,9 @@ export async function ausgeloesteSeit(db: DbSchnittstelle, userId: number, seit:
   // Unlesbar wie fehlend, NICHT „seit Anbeginn": Ein Tippfehler darf keine Flut auslösen.
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
-  const rows = await repo.alarmeDesKontos(db, userId, marke, await blickfeldIds(db, userId)).catch(e => {
-    meldeFehler('preisalarm:abholen', e);
-    return [];
-  });
-
-  type Zeile = {
-    set_number: string;
-    condition: string;
-    richtung: Richtung;
-    schwelle: string | number;
-    currency_code: string;
-    ausgeloest: boolean;
-    besitzt: boolean;
-    zuletzt_am: string;
-    zuletzt_preis: string | number | null;
-  };
-  return {
-    alerts: ((rows as Zeile[]) || []).map(r => ({
-      ...r,
-      schwelle: parseFloat(String(r.schwelle)),
-      zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
-    })),
-    now: jetzt,
-  };
+  // Ohne Fang: Die App rückte sonst ihre Marke vor und verlöre die Meldungen dazwischen.
+  const rows = await repo.alarmeDesKontos(k.db, k.lesevertrag, userId, marke, await k.haushalt.blickfeldIds(userId));
+  return { alerts: rows.map(alsAlarm), now: jetzt };
 }
 
 /** Eigene Funktion: die einzige Stelle, an der „unter" und „über" etwas
@@ -187,36 +138,28 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
 
 /** Gemeldet wird der ÜBERGANG, nicht der Zustand. Der Versand kommt als Parameter,
  * damit ein Test ihn ersetzen kann, ohne das Modul umzubiegen. */
-export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendMail'>;
+export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendeMail'>;
 
-export async function pruefeSet(db: DbSchnittstelle, setNumber: string, post: AlarmPost): Promise<number> {
-  const alarme = await repo
-    .alleAktivenAlarme(db, setNumber)
-    // Gemeldet, nicht verschluckt: Sonst sähe man nur, dass keine Mails kommen,
-    // und suchte den Fehler beim SMTP-Server.
-    .catch(e => {
-      meldeFehler('preisalarm:alarme-lesen', e);
-      return [];
-    });
+export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: AlarmPost): Promise<number> {
+  const alarme = await repo.alleAktivenAlarme(k.db, setNumber);
   if (!alarme?.length) return 0;
   let verschickt = 0;
-  for (const a of alarme as AlarmZeile[]) {
-    const preisZeile = await repo.cachePreisFuerAlarm(db, a.set_number, a.condition, a.currency_code).catch(e => {
+  for (const a of alarme) {
+    const preisZeile = await repo.cachePreisFuerAlarm(k.db, a.set_number, a.condition, a.currency_code).catch(e => {
       meldeFehler('preisalarm:preis-lesen', e);
       return null;
     });
-    const preis = preisZeile?.marktpreis == null ? null : parseFloat(String(preisZeile.marktpreis));
+    const preis = preisZeile?.marktpreis ?? null;
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
     if (preis == null || !(preis > 0)) continue;
 
-    const schwelle = parseFloat(String(a.schwelle));
-    const jetzt = reisst(a.richtung, preis, schwelle);
+    const jetzt = reisst(a.richtung as Richtung, preis, a.schwelle);
 
     if (!jetzt) {
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
       if (a.ausgeloest) {
         await repo
-          .setzeAlarmZurueck(db, a.user_id, a.set_number, a.condition)
+          .setzeAlarmZurueck(k.db, a.user_id, a.set_number, a.condition)
           .catch(e => meldeFehler('preisalarm:merker-loeschen', e));
       }
       continue;
@@ -225,7 +168,7 @@ export async function pruefeSet(db: DbSchnittstelle, setNumber: string, post: Al
 
     if (a.email) {
       try {
-        await verschicke(db, post, a, preis, schwelle);
+        await verschicke(k, post, a, preis, a.schwelle);
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
@@ -234,7 +177,7 @@ export async function pruefeSet(db: DbSchnittstelle, setNumber: string, post: Al
       }
     }
     await repo
-      .loeseAlarmAus(db, a.user_id, a.set_number, a.condition, preis)
+      .loeseAlarmAus(k.db, a.user_id, a.set_number, a.condition, preis)
       // Ungesetzt meldet der nächste Lauf dieselbe Schwelle noch einmal — lästig,
       // aber besser als stumm.
       .catch(e => meldeFehler('preisalarm:merker-setzen', e));
@@ -243,27 +186,28 @@ export async function pruefeSet(db: DbSchnittstelle, setNumber: string, post: Al
 }
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
-async function verschicke(db: DbSchnittstelle, post: AlarmPost, a: AlarmZeile, preis: number, schwelle: number) {
+type AktiverAlarm = Awaited<ReturnType<typeof repo.alleAktivenAlarme>>[number];
+async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AktiverAlarm, preis: number, schwelle: number) {
   // Der Alarm geht auch ohne Namen hinaus; die Mail nennt dann nur die Setnummer.
-  const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(db, a.set_number));
+  const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(k.db, a.set_number));
   const name = gelesen.ok ? gelesen.wert : null;
   const mail = await post.baueAlarmMail({
     username: a.username,
-    lang: String(a.sprache),
+    lang: a.sprache,
     setNumber: a.set_number,
     setName: name?.name ?? null,
     condition: a.condition,
-    richtung: a.richtung,
+    richtung: a.richtung as Richtung,
     schwelle,
     preis,
     waehrung: a.currency_code,
   });
-  await post.sendMail({ to: a.email!, ...mail });
+  await post.sendeMail({ to: a.email!, ...mail });
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */
-export async function buildPreisalarmeCsv(db: DbSchnittstelle, uid: number): Promise<string> {
-  const rows = await repo.alarmeFuerExport(db, uid);
+export async function preisalarmeAlsCsv(k: FinanzenKontext, uid: number): Promise<string> {
+  const rows = await repo.alarmeFuerExport(k.db, uid);
 
   return toCsv(
     ['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
@@ -274,7 +218,7 @@ export async function buildPreisalarmeCsv(db: DbSchnittstelle, uid: number): Pro
 
 /** Schwellen gelten in der Kontowährung; eine andere in der Datei wird
  * genannt statt still umgerechnet — Kurse gibt es keine. */
-export async function alarmeAusCsv(db: DbSchnittstelle, uid: number, waehrung: string, text: string) {
+export async function alarmeAusCsv(k: FinanzenKontext, uid: number, waehrung: string, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0,
     updated = 0,
@@ -286,13 +230,13 @@ export async function alarmeAusCsv(db: DbSchnittstelle, uid: number, waehrung: s
     if (!roh) continue;
     const sn = normalisiereSetNummer(roh);
     // Vor dem Schreiben fragen: setzeAlarm() legt an oder ändert, ohne es zu sagen.
-    const schon = await alarmeFuer(db, uid, sn);
+    const schon = await alarmeFuer(k, uid, sn);
     const dateiWaehrung = String(row.currency_code || row.waehrung || '')
       .trim()
       .toUpperCase();
     const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
     try {
-      const alarm = await setzeAlarm(db, uid, sn, waehrung, {
+      const alarm = await setzeAlarm(k, uid, sn, waehrung, {
         richtung: String(row.richtung || row.Richtung || '')
           .trim()
           .toLowerCase(),

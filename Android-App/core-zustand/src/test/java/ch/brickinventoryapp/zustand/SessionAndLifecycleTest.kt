@@ -1,17 +1,14 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -44,16 +41,16 @@ class SessionAndLifecycleTest {
      * Gegenprobe: in sicherAufrufen() 401 als Server statt Abgewiesen → rot.
      */
     @Test
-    fun `safeCall meldet 401 als abgewiesen`() {
+    fun `sicherAufrufen meldet 401 als abgewiesen`() {
         val pfade = PfadServer()
         pfade.codes["/api/v1/stats"] = 401
         pfade.codes["/api/v1/finance/pnl"] = 500
         try {
-            val finanzen = FinanzenRepository(TestApi.fuer(pfade.server), ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-401") })
-            val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Error
-            val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Error
-            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen is Ergebnis.Error.Abgewiesen)
-            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt is Ergebnis.Error.Abgewiesen)
+            val finanzen = testFinanzenRepository(TestApi.fuer(pfade.server))
+            val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Fehler
+            val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Fehler
+            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen is Ergebnis.Fehler.Abgewiesen)
+            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt is Ergebnis.Fehler.Abgewiesen)
         } finally {
             pfade.server.shutdown()
         }

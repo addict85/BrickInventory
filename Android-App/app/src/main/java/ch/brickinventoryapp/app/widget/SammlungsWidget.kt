@@ -32,7 +32,9 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import ch.brickinventoryapp.app.AppSperreAblage
 import ch.brickinventoryapp.app.MainActivity
+import ch.brickinventoryapp.ui.components.AppSperre
 import ch.brickinventoryapp.ressourcen.R
 import androidx.hilt.work.HiltWorker
 import ch.brickinventoryapp.data.Darstellungsablage
@@ -40,7 +42,7 @@ import ch.brickinventoryapp.data.Widgetablage
 import ch.brickinventoryapp.data.Zugangsdaten
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.EntryPoint
@@ -49,6 +51,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.ui.theme.Abstaende
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
  * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
@@ -61,7 +64,7 @@ internal object WidgetAblage {
     private fun ablage(ctx: Context) = EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).widgetablage()
 
     fun lies(ctx: Context): WidgetZahlen? = runCatching {
-        ablage(ctx).widgetStand()?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it) }
+        ablage(ctx).widgetStand()?.let { BrickJson.decodeFromString(WidgetZahlen.serializer(), it) }
     }.getOrNull()
 
     fun leeren(ctx: Context) {
@@ -69,7 +72,7 @@ internal object WidgetAblage {
         ctx.deleteSharedPreferences(ALTE_DATEI)
     }
 
-    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setzeWidgetStand(ApiJson.encodeToString(WidgetZahlen.serializer(), z))
+    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setzeWidgetStand(BrickJson.encodeToString(WidgetZahlen.serializer(), z))
 }
 
 /**
@@ -110,8 +113,8 @@ class WidgetArbeiter @AssistedInject constructor(
             SammlungsWidget().updateAll(ctx)
             return true
         }
-        val pnl = (finanzen.getPnl() as? Ergebnis.Success)?.data
-        val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Success)?.data
+        val pnl = (finanzen.getPnl() as? Ergebnis.Erfolg)?.data
+        val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Erfolg)?.data
         widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
         SammlungsWidget().updateAll(ctx)
         return true
@@ -136,8 +139,9 @@ class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val zugang = runCatching { EntryPointAccessors.fromApplication(context, WidgetZugang::class.java) }.getOrNull()
         val angemeldet = fangeAusserAbbruch { zugang?.zugangsdaten()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
-        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt.
-        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true
+        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt und die App-Sperre nicht greift.
+        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true &&
+            !AppSperre.verdecktWidget(AppSperreAblage(context))
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
@@ -158,7 +162,7 @@ class SammlungsWidget : GlanceAppWidget() {
     private fun Inhalt(titel: String, zeilen: List<Pair<String, String>>?, leer: String) {
         Column(
             GlanceModifier.fillMaxSize().background(GlanceTheme.colors.widgetBackground)
-                .cornerRadius(16.dp).padding(12.dp).clickable(actionStartActivity<MainActivity>()),
+                .cornerRadius(16.dp).padding(Abstaende.mittel).clickable(actionStartActivity<MainActivity>()),
         ) {
             Text(titel, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GlanceTheme.colors.onSurface))
             Spacer(GlanceModifier.height(6.dp))

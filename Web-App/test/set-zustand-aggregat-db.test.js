@@ -3,20 +3,20 @@
  * vorher als Muster im Quelltext suchte, hier an Ergebnissen.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  getSetConditionAggregate ohne max_purchase_price → rot „getSet liefert
+ *   A  zustandsAggregat ohne max_purchase_price → rot „setLesen liefert
  *      dieselben Aggregatfelder …“
- *   B  erfassungAendern gibt die nackte Antwort ohne withSetAggregate zurück →
+ *   B  erfassungAendern gibt die nackte Antwort ohne mitSetAggregat zurück →
  *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
  *      dessen Teil aufbaut)
- *   C  POST /api/v1/sets reicht `null` statt des Zustands an addSet → rot
+ *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot
  *      „der im Formular gewählte Zustand kommt beim Anlegen an“
- *   D  getCurrentMarketPrice: `if (!condition)` → `if (true)` → rot „ein
+ *   D  aktuellerMarktpreis: `if (!condition)` → `if (true)` → rot „ein
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
  *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
- *      „getSet …“ und „manuelle Teile und Minifiguren …“
+ *      „setLesen …“ und „manuelle Teile und Minifiguren …“
  *   F  probeErfassungen sortiert nach `added_at` → rot „die Preis-Probe …“;
  *      ohne `price_cache: cacheRows` in der Antwort ebenso
- *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „computePnl
+ *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „gewinnUndVerlust
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
  *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
  *   H  (09.11.2026) Route und Vertrag der Preis-Probe wieder als GET → rot
@@ -31,7 +31,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der Nachzug nach dem Erfassen läuft sonst nach dem Test gegen einen
-// geschlossenen Pool; addSet lässt sich für die Route stellen.
+// geschlossenen Pool; setErfassen lässt sich für die Route stellen.
 /** @type {null | ((...a: unknown[]) => Promise<unknown>)} */
 let gestellteAddSet = null;
 const Module = require('node:module');
@@ -40,7 +40,9 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
-      get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? (_sk, ...a) => gestellteAddSet?.(...a) : t[k]),
+      // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
+      get: (t, k) =>
+        k === 'setErfassen' ? (sk, ...a) => (gestellteAddSet ? gestellteAddSet(...a) : t[k](sk, ...a)) : t[k],
     });
   return m;
 };
@@ -50,6 +52,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { katalogSet } = require('./helpers/bestand');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
@@ -63,6 +66,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.run('DELETE FROM sets WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
   };
   await weg();
   t.after(async () => {
@@ -105,22 +110,31 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const { getSets, getSet } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsLesen, setLesen } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
-    const { getCurrentMarketPrice } = _req('src/finanzen/marketPrice.js');
-    assert.equal(await getCurrentMarketPrice(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
+    const { aktuellerMarktpreis } = _req('src/finanzen/marketPrice.js');
+    assert.equal(await aktuellerMarktpreis(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
     assert.equal(
-      await getCurrentMarketPrice(SN, uid, 'U'),
+      await aktuellerMarktpreis(SN, uid, 'U'),
       33,
       'Der angefragte Zustand wurde von der Bewertung der Erfassungen überstimmt',
     );
   });
 
   await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
-    const { addSet } = require('./helpers/sources').bereichsSeite('sets');
-    const r = await addSet({ setNumber: SN, menge: 1, konto: uid, zustand: 'U' });
+    const { setErfassen, setErgaenzen } = require('./helpers/sources').bereichsSeite('sets');
+    const r = await setErfassen({
+      anfragender: uid,
+      setNumber: SN,
+      menge: 1,
+      zustand: 'U',
+      wennVorhanden: 'aufstocken',
+    });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
+    // Den geschätzten Preis trägt die Nacharbeit nach; mit Katalog fragt sie kein Netz.
+    await katalogSet(db, SN, { name: 'Zustand', image_local: `/images/sets/${SN}.jpg` });
+    await setErgaenzen(SN, uid);
     const neu = await db.get(
       `SELECT condition, purchase_price::float AS preis FROM set_acquisitions
         WHERE user_id = $1 AND set_number = $2 AND id <> $3`,
@@ -129,16 +143,16 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.deepEqual(neu, { condition: 'U', preis: 33 }, 'Gebraucht erfasst, aber der Neupreis eingetragen');
   });
 
-  await t.test('getSet liefert dieselben Aggregatfelder wie getSets', async () => {
-    const liste = (await getSets([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
-    const einzeln = await getSet([uid], SN);
+  await t.test('setLesen liefert dieselben Aggregatfelder wie setsLesen', async () => {
+    const liste = (await setsLesen([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
+    const einzeln = await setLesen([uid], SN);
     assert.ok(liste && einzeln, 'Das Set fehlt in einer der beiden Antworten');
     for (const feld of ['condition', 'acq_count', 'used_count', 'max_purchase_price']) {
-      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `getSet() ohne ${feld}`);
+      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `setLesen() ohne ${feld}`);
       assert.equal(
         String(einzeln[feld]),
         String(liste[feld]),
-        `${feld}: getSet ${einzeln[feld]}, getSets ${liste[feld]}`,
+        `${feld}: setLesen ${einzeln[feld]}, setsLesen ${liste[feld]}`,
       );
     }
     assert.equal(einzeln.condition, 'U', 'eine gebrauchte Erfassung macht das Set gebraucht');
@@ -180,17 +194,17 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
                   VALUES ($1,$2,1,1,'N'), ($1,$2,1,1,'U')`,
       [uid, FN],
     );
-    const { getManualParts } = _req('src/teile/abfragen.js');
-    const { getManualMinifigs } = _req('src/figuren/abfragen.js');
-    const teil = (await getManualParts([uid], uid, {})).find((/** @type {any} */ p) => p.part_number === PN);
-    const figur = (await getManualMinifigs([uid], uid, {})).find((/** @type {any} */ f) => f.fig_number === FN);
+    const { manuelleTeileListe } = _req('src/teile/abfragen.js');
+    const { manuelleFigurenAbfrage } = _req('src/figuren/abfragen.js');
+    const teil = (await manuelleTeileListe([uid], uid, {})).find((/** @type {any} */ p) => p.part_number === PN);
+    const figur = (await manuelleFigurenAbfrage([uid], uid, {})).find((/** @type {any} */ f) => f.fig_number === FN);
     assert.equal(teil?.condition, 'U', 'Teil mit gebrauchter Erfassung steht als neu da');
     assert.equal(figur?.condition, 'U', 'Figur mit gebrauchter Erfassung steht als neu da');
   });
 
-  await t.test('computePnl bewertet nach dem Zustand der Erfassungen', async () => {
-    const { computePnl } = _req('src/finanzen/financeCalc.js');
-    const pnl = await computePnl(uid, [uid]);
+  await t.test('gewinnUndVerlust bewertet nach dem Zustand der Erfassungen', async () => {
+    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
+    const pnl = await gewinnUndVerlust(uid, [uid]);
     const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');
     assert.equal(

@@ -1,8 +1,9 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
@@ -76,7 +77,7 @@ class AddPathOwnerTest {
         val allein = listOf(MitgliedAnsicht(id = 1, username = "ich", isSelf = true))
         val haushalt = allein + MitgliedAnsicht(id = 7, username = "lea")
         assertEquals("ohne Haushalt überschriebe die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat",
-            ErfassungsWerte(anzahl = 1, preis = 2.5, zustand = Zustand.GEBRAUCHT, besitzer = null),
+            ErfassungsWerte(anzahl = 1, preis = Geld.aus(2.5), zustand = Zustand.GEBRAUCHT, besitzer = null),
             erfassungsWerte(anzahl = "", preis = "2,50", zustand = Zustand.GEBRAUCHT, besitzer = 7, haushalt = allein))
         assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = Zustand.NEU, besitzer = 7),
             erfassungsWerte(anzahl = "3", preis = "", zustand = Zustand.NEU, besitzer = 7, haushalt = haushalt))

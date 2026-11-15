@@ -1,13 +1,13 @@
 /**
- * Vorschaubilder entstehen ATOMAR: Beide Erzeuger (generateThumb für eigene
- * Bilder, makeProxyThumb für den Bild-Proxy) schreiben auf einen temporären
+ * Vorschaubilder entstehen ATOMAR: Beide Erzeuger (vorschauErzeugenAus für eigene
+ * Bilder, proxyVorschauErzeugen für den Bild-Proxy) schreiben auf einen temporären
  * Namen und benennen erst die fertige Datei um. Eine unbrauchbar kleine
  * Vorschau im Cache wird verworfen, ausgeliefert wird das Original.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut):
  *   A  in thumbs.ts direkt auf thumbFs geschrieben (rename entfernt) → rot:
- *      „generateThumb schreibt …“
- *   B  dasselbe in proxyThumbs.ts → rot: „makeProxyThumb schreibt …“
+ *      „vorschauErzeugenAus schreibt …“
+ *   B  dasselbe in proxyThumbs.ts → rot: „proxyVorschauErzeugen schreibt …“
  *   C  in imgCacheServe.ts `tst.size < 200` → `< 20` → rot: „eine
  *      unbrauchbar kleine Vorschau …“
  */
@@ -68,7 +68,7 @@ function pruefeAtomar(spur, ziel) {
   );
 }
 
-test('generateThumb schreibt über eine temporäre Datei', async () => {
+test('vorschauErzeugenAus schreibt über eine temporäre Datei', async () => {
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
@@ -80,7 +80,7 @@ test('generateThumb schreibt über eine temporäre Datei', async () => {
     .toFile(original);
   try {
     const { ergebnis, spur } = await mitRenameSpur(() =>
-      _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${name}.jpg`),
+      _req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${name}.jpg`),
     );
     assert.equal(ergebnis, `/images/sets/${name}_thumb.jpg`);
     pruefeAtomar(spur, vorschau);
@@ -90,7 +90,7 @@ test('generateThumb schreibt über eine temporäre Datei', async () => {
   }
 });
 
-test('makeProxyThumb schreibt über eine temporäre Datei', async t => {
+test('proxyVorschauErzeugen schreibt über eine temporäre Datei', async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
@@ -101,17 +101,18 @@ test('makeProxyThumb schreibt über eine temporäre Datei', async t => {
     .toFile(quelle + '.jpg');
   fs.renameSync(quelle + '.jpg', quelle);
   const { ergebnis, spur } = await mitRenameSpur(() =>
-    _req('src/katalog/bilder/proxyThumbs.js').makeProxyThumb(quelle, ziel),
+    _req('src/bilder/proxyThumbs.js').proxyVorschauErzeugen(quelle, ziel),
   );
   assert.equal(ergebnis, true);
   pruefeAtomar(spur, ziel);
-  assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 200]);
+  // 400 × 300 eingepasst, nicht zugeschnitten (UX-Prüfung 25, B1).
+  assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 150]);
 });
 
 test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async t => {
   const liefereAusCache = (...a) =>
-    _req('src/katalog/http/bildCacheAuslieferung.js').liefereAusCache(
-      require('./helpers/sources').testDienste().katalog,
+    _req('src/bilder/http/bildCacheAuslieferung.js').liefereAusCache(
+      require('./helpers/sources').testDienste().bilder,
       ...a,
     );
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'cachevorschau-'));

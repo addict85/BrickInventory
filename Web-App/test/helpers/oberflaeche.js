@@ -16,7 +16,7 @@ const BUNDLE_PFAD = process.env.TEST_BUENDEL || BUENDEL;
 const BUNDLE = fs.readFileSync(BUNDLE_PFAD, 'utf8');
 
 const ANMELDUNG = {
-  '/v1/startup-status': { ready: true, progress: 0, total: 0 },
+  '/v1/startup-status': { ready: true, progress: 0, total: 0, step: null, sub: null },
   '/v1/auth/me': {
     success: true,
     loggedIn: true,
@@ -32,17 +32,20 @@ const ANMELDUNG = {
       total_parts: 0,
       total_minifigs: 0,
       total_instructions: 0,
+      currency: 'EUR',
+      default_condition: 'N',
+      user_default_condition: null,
     },
   },
   '/v1/sets': { success: true, sets: [], count: 0, total: 0, themes: [] },
-  '/v1/parts': { success: true, parts: [], total: 0, page: 1, page_size: 50 },
+  '/v1/parts': { success: true, parts: [], total: 0, page: 1, page_size: 50, source: 'db' },
   '/v1/parts/stats': { success: true, stats: { unique_parts: 0, unique_colors: 0, total_parts: 0 } },
   '/v1/parts/colors': { success: true, colors: [] },
   '/v1/parts/categories': { success: true, categories: [] },
   '/v1/parts/manual': { success: true, parts: [], total: 0, page: 1, page_size: 0 },
   '/v1/parts/brick-colors': { success: true, colors: [] },
   '/v1/minifigs': { success: true, figs: [], total: 0 },
-  '/v1/minifigs/stats': { success: true, stats: { types: 0, total_quantity: 0, manual: 0 } },
+  '/v1/minifigs/stats': { success: true, stats: { types: 0, total_quantity: 0, manual: 0, unique_figs: 0 } },
   '/v1/minifigs/manual': { success: true, figs: [], total: 0, page: 1, page_size: 0 },
   '/v1/finance/valuation': {
     success: true,
@@ -50,6 +53,11 @@ const ANMELDUNG = {
     total_value: '0',
     condition: 'N',
     kaufpreise_fremde_waehrung: 0,
+    kaufpreise_umgerechnet: 0,
+    preise_ausstehend: 0,
+    guide_type: 'sold',
+    ttl_hours: 24,
+    ttl_stunden: 24,
     sets: [],
     totals: { min: '0', avg: '0', max: '0', qty_avg: '0' },
     wert_gesamt: 0,
@@ -63,6 +71,8 @@ const ANMELDUNG = {
     parts: [],
     total_value: '0',
     kaufpreise_fremde_waehrung: 0,
+    kaufpreise_umgerechnet: 0,
+    preise_ausstehend: 0,
     wert_gesamt: 0,
     total: 0,
     page: 1,
@@ -74,6 +84,8 @@ const ANMELDUNG = {
     figs: [],
     total_value: '0',
     kaufpreise_fremde_waehrung: 0,
+    kaufpreise_umgerechnet: 0,
+    preise_ausstehend: 0,
     wert_gesamt: 0,
     total: 0,
     page: 1,
@@ -83,12 +95,32 @@ const ANMELDUNG = {
     success: true,
     currency: 'EUR',
     sets: [],
-    totals: { purchase: '0', current: '0', kaufpreise_fremde_waehrung: 0 },
+    totals: {
+      purchase: '0',
+      current: '0',
+      kaufpreise_fremde_waehrung: 0,
+      kaufpreise_umgerechnet: 0,
+      pnl_current: '0',
+      pnl_purchase: '0',
+      pnl_prozent: null,
+      sets_purchase: '0',
+      parts_purchase: '0',
+      figs_purchase: '0',
+      grand_total: '0',
+    },
     total: 0,
     page: 1,
     page_size: 0,
   },
-  '/v1/finance/portfolio-history': { success: true, currency: 'EUR', period: '1y', points: [], y_axis: [] },
+  '/v1/finance/portfolio-history': {
+    success: true,
+    currency: 'EUR',
+    period: '1y',
+    points: [],
+    y_axis: [],
+    messpunkte: 0,
+    period_change_pct: null,
+  },
   '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
   '/v1/auth/users': {
     success: true,
@@ -99,6 +131,7 @@ const ANMELDUNG = {
         is_admin: true,
         is_active: true,
         zweiter_faktor: false,
+        wartet_auf_bestaetigung: false,
         created_at: '2026-10-01T00:00:00Z',
       },
     ],
@@ -191,7 +224,8 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
- * @param {object} [opt]        { angemeldet = true, sprache = 'de', browserSprache, vorher(w) }
+ * @param {{ angemeldet?: boolean, sprache?: string, browserSprache?: string, vorher?: (w: any) => void, url?: string }} [opt]
+ *   url: Adresse der Seite (Vorgabe http://localhost/), etwa https:// für eine Seite mit TLS.
  */
 async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
@@ -202,7 +236,11 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
       success: true,
       settings: { ...ANMELDUNG['/v1/settings/raw'].settings, language: opt.sprache },
     };
-  const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/', pretendToBeVisual: true });
+  const dom = new jsdom.JSDOM(HTML, {
+    runScripts: 'outside-only',
+    url: opt.url || 'http://localhost/',
+    pretendToBeVisual: true,
+  });
   const w = dom.window;
   const aufrufe = [];
   try {

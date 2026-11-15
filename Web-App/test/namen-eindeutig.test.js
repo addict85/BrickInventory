@@ -20,7 +20,7 @@ const ERLAUBT = new Map([
   ],
   ['log', 'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
   [
-    'getSetInfo',
+    'setAngaben',
     'clients/brickset und src/katalog/rebrickableKatalog — dieselbe Frage an ZWEI ' +
       'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.',
   ],
@@ -29,10 +29,7 @@ const ERLAUBT = new Map([
     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
       'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).',
   ],
-  [
-    'schreibePuffer',
-    'src/katalog/bilder/bildbedarfLauf und src/katalog/bilder/imageMisses — jeder schreibt SEINEN Puffer.',
-  ],
+  ['schreibePuffer', 'src/bilder/bildbedarfLauf und src/bilder/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
 test('ein Funktionsname bedeutet eine Sache', () => {

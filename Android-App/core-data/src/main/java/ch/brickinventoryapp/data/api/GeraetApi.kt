@@ -1,13 +1,12 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.GeraeteKettenAnfrage
-import ch.brickinventoryapp.model.data.model.GeraeteSchluesselAnfrage
-import ch.brickinventoryapp.model.data.model.GeraeteSchluesselAntwort
-import ch.brickinventoryapp.model.data.model.SchluesselNonce
-import ch.brickinventoryapp.model.data.model.SchrittChallenge
-import ch.brickinventoryapp.model.data.model.SchrittChallengeAnfrage
-import ch.brickinventoryapp.model.data.model.SchrittFreigabe
-import ch.brickinventoryapp.model.data.model.SchrittFreigabeAnfrage
+import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
+import ch.brickinventoryapp.vertrag.Erledigt
+import ch.brickinventoryapp.vertrag.SchluesselNonce
+import ch.brickinventoryapp.vertrag.SchrittChallenge
+import ch.brickinventoryapp.vertrag.SchrittChallengeAnfrage
+import ch.brickinventoryapp.vertrag.SchrittFreigabe
+import ch.brickinventoryapp.vertrag.SchrittFreigabeAnfrage
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -16,10 +15,7 @@ import retrofit2.http.POST
 internal interface GeraetApi {
 
     @POST("api/v1/geraet/schluessel")
-    suspend fun hinterlegeSchluessel(@Body anfrage: GeraeteSchluesselAnfrage): Response<GeraeteSchluesselAntwort>
-
-    @POST("api/v1/geraet/schluessel")
-    suspend fun hinterlegeKette(@Body anfrage: GeraeteKettenAnfrage): Response<GeraeteSchluesselAntwort>
+    suspend fun hinterlegeKette(@Body anfrage: GeraeteSchluesselAnfrage): Response<Erledigt>
 
     @POST("api/v1/geraet/schluessel/nonce")
     suspend fun schluesselNonce(): Response<SchluesselNonce>

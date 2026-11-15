@@ -7,7 +7,7 @@
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in leereTokenCache() `_tokenCache.clear()` entfernt → rot: „die
  *      Token-Verwaltung leert den Cache“ und „ein Passwortwechsel …“
- *   B  in invalidateToken() `_tokenCache.delete(token)` entfernt → rot:
+ *   B  in tokenVergessen() `_tokenCache.delete(token)` entfernt → rot:
  *      „Abmelden wirkt sofort“
  *   C  (08.11.) TOKEN_TTL_MS wieder 60 s → rot: „ohne Benachrichtigung gilt
  *      ein widerrufener Token höchstens die Cache-Frist“ (Token gilt nach 6 s noch)
@@ -58,30 +58,30 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
   assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   /** Ein Token, der im Cache steht; danach ist seine Zeile still gelöscht. */
   const imCacheOhneZeile = async () => {
-    const token = await auth.createToken(uid, 'Test');
-    assert.ok(await auth.validateToken(token), 'Vorbedingung: der Token gilt');
+    const token = await auth.tokenAnlegen(uid, 'Test');
+    assert.ok(await auth.nutzerZumToken(token), 'Vorbedingung: der Token gilt');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
-    assert.ok(await auth.validateToken(token), 'Gegenprobe: der Cache bedient ihn noch');
+    assert.ok(await auth.nutzerZumToken(token), 'Gegenprobe: der Cache bedient ihn noch');
     return token;
   };
 
   await t.test('Abmelden wirkt sofort', async () => {
     const token = await imCacheOhneZeile();
-    tokenCache.invalidateToken(token);
-    assert.equal(await auth.validateToken(token), null);
+    tokenCache.tokenVergessen(token);
+    assert.equal(await auth.nutzerZumToken(token), null);
   });
 
   await t.test('die Token-Verwaltung leert den Cache', async () => {
     const token = await imCacheOhneZeile();
     tokenCache.leereTokenCache();
-    assert.equal(await auth.validateToken(token), null);
+    assert.equal(await auth.nutzerZumToken(token), null);
   });
 
   await t.test('ein Passwortwechsel widerruft auch zwischengespeicherte Tokens', async () => {
-    const token = await auth.createToken(uid, 'Test');
-    assert.ok(await auth.validateToken(token));
-    await auth.revokeAllTokens(uid);
-    assert.equal(await auth.validateToken(token), null);
+    const token = await auth.tokenAnlegen(uid, 'Test');
+    assert.ok(await auth.nutzerZumToken(token));
+    await auth.alleTokensWiderrufen(uid);
+    assert.equal(await auth.nutzerZumToken(token), null);
   });
 
   await t.test('ohne Benachrichtigung gilt ein widerrufener Token höchstens die Cache-Frist', async t2 => {
@@ -89,7 +89,7 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
     const token = await imCacheOhneZeile();
     t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     t2.mock.timers.tick(tokenCache.TOKEN_TTL_MS + 1000);
-    assert.equal(await auth.validateToken(token), null);
+    assert.equal(await auth.nutzerZumToken(token), null);
   });
 
   await t.test('ohne Horch-Verbindung gilt der Cache nicht', async () => {
@@ -99,7 +99,7 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
     await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
       WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE 'LISTEN "token_widerrufen"%'`);
     assert.ok(await bis(() => !pgNotify.hoertZu('token_widerrufen'), 2000), 'der Abriss kam nicht an');
-    assert.equal(await auth.validateToken(token), null);
+    assert.equal(await auth.nutzerZumToken(token), null);
     assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen'), 5000), 'die Verbindung kam nicht wieder');
   });
 });

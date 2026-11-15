@@ -1,7 +1,6 @@
 // Was ein Klient von der Anwendung braucht, ohne sie zu kennen: Schlüssel,
-// Kontingent, Drossel und die Brickset-Wiedervorlage. startup/verdrahtung.ts
-// setzt es beim Start ein; fehlt das, wirft jeder Abruf, statt still ohne
-// Schlüssel und ohne Kontingent zu laufen.
+// Kontingent, Drossel und die Brickset-Wiedervorlage. Jeder Klient bekommt es
+// bei seiner Erzeugung (src/fremdquellen); einen Zugang des Prozesses gibt es nicht.
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 export type SchluesselName =
@@ -30,15 +29,4 @@ export interface KlientenZugang {
     bald: boolean,
   ): Promise<{ versuch: number; vorgemerkt: boolean; hoechstens: number }>;
   bricksetVergessen(setNumber: string): Promise<void>;
-}
-
-let _zugang: KlientenZugang | null = null;
-
-export function verdrahteKlienten(z: KlientenZugang): void {
-  _zugang = z;
-}
-
-export function zugang(): KlientenZugang {
-  if (!_zugang) throw new Error('Klienten nicht verdrahtet: startup/verdrahtung.ts verdrahte() fehlt beim Start');
-  return _zugang;
 }

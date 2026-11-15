@@ -1,19 +1,17 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +29,8 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 
 /**
  * Einstellungen und Haushalt, ausgeführt gegen einen PfadServer ohne Netz.
@@ -69,8 +69,8 @@ class EinstellungenViewModelTest {
 
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
-    private fun vm() = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, KontoRepository(t.api, t.cache),
-        VerwaltungRepository(t.api, t.cache), t.alarme(), t.teile(),
+    private fun vm() = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, testKontoRepository(t.api),
+        testVerwaltungRepository(t.api), t.alarme(), t.teile(),
         keinLeser))
 
     @Before
@@ -99,7 +99,7 @@ class EinstellungenViewModelTest {
     @Test
     fun `eine Schwelle von null geht nicht hinaus`() {
         val vm = vm()
-        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, 0.0)
+        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, Geld.NULL)
         assertEquals("t${R.string.alerts_bad_value}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("/alert").isEmpty())
     }
@@ -109,7 +109,7 @@ class EinstellungenViewModelTest {
         val vm = vm()
         vm.ladeAlarmUebersicht()
         assertTrue("Übersicht", vm.alarmUebersicht.value.geladen)
-        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, 450.0)
+        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, Geld.aus(450.0)!!)
         assertEquals("neu geladen", 2, pfade.anfragenAn("GET /api/v1/alerts").size)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
     }
@@ -163,7 +163,7 @@ class EinstellungenViewModelTest {
 
     @Test
     fun `eine eingeloeste Einladung laedt Status und Haushaltskonten`() {
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.abgleich, testHaushaltRepository(t.api), testKontoRepository(t.api)))
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
         assertTrue("Konten da", t.blickfeld.konten.value.householdMembers.size == 2)
         assertTrue("Status da", vm.householdState.value.status?.isSub == true)
@@ -178,18 +178,18 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"aktuelles_passwort_falsch","error":"Aktuelles Passwort falsch"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 400
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.abgleich, testHaushaltRepository(t.api), testKontoRepository(t.api)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("Antwort", !vm.householdState.value.isLoading && vm.householdState.value.message != null)
+        assertTrue("Antwort", vm.householdState.value.abruf is Laden.Fehler)
         assertTrue(vm.householdState.value.passwortFalsch)
-        assertEquals("t${R.string.household_redeem_password_wrong}", vm.householdState.value.message)
+        assertEquals("t${R.string.household_redeem_password_wrong}", vm.householdState.value.abruf.fehlerMeldung.text)
         assertEquals(0, vm.householdState.value.eingeloest)
     }
 
     @Test
     fun `bei aktivem zweitem Faktor geht dessen Code beim Einloesen mit`() {
         pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.abgleich, testHaushaltRepository(t.api), testKontoRepository(t.api)))
         vm.ladeHaushalt()
         assertTrue("Codefeld", vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
@@ -203,14 +203,14 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zweiter_faktor_falsch","error":"Code falsch"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 400
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.abgleich, testHaushaltRepository(t.api), testKontoRepository(t.api)))
         assertFalse(vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234")
-        assertTrue("Antwort", vm.householdState.value.message != null)
+        assertTrue("Antwort", vm.householdState.value.abruf is Laden.Fehler)
         assertTrue(vm.householdState.value.faktorNoetig)
         assertTrue(vm.householdState.value.faktorFalsch)
         assertFalse(vm.householdState.value.passwortFalsch)
-        assertEquals("t${R.string.household_redeem_code_wrong}", vm.householdState.value.message)
+        assertEquals("t${R.string.household_redeem_code_wrong}", vm.householdState.value.abruf.fehlerMeldung.text)
     }
 
     @Test
@@ -218,14 +218,14 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zu_viele_fehlversuche","error":"Bitte in 5 Min. erneut"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 429
-        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.abgleich, testHaushaltRepository(t.api), testKontoRepository(t.api)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("Antwort", vm.householdState.value.message != null)
-        assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.message)
+        assertTrue("Antwort", vm.householdState.value.abruf is Laden.Fehler)
+        assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.abruf.fehlerMeldung.text)
         assertFalse(vm.householdState.value.passwortFalsch)
 
         pfade.antworten["/api/v1/settings/household/redeem"] = """{"success":false}"""
         vm.redeemHouseholdInvite("ABC123", "falsch")
-        assertTrue("zweite Antwort", vm.householdState.value.message == "t${R.string.household_redeem_locked}")
+        assertTrue("zweite Antwort", vm.householdState.value.abruf.fehlerMeldung.text == "t${R.string.household_redeem_locked}")
     }
 }

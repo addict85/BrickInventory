@@ -1,15 +1,16 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
 import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.KontoName
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
@@ -64,13 +65,13 @@ class NachzugTest {
 
     @Before
     fun auf() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1, storage = "Kiste 1",
-            owners = listOf(KontoName(1, "anna"), KontoName(2, "ben")))))
-        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten("20001-1", Zustand.NEU, userId = 1),
-            Merkposten("20002-1", Zustand.NEU, userId = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1, storage = "Kiste 1",
+            owners = listOf(KontoName(id = 1, username = "anna"), KontoName(id = 2, username = "ben")))).map { it.alsAnsicht() })
+        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 1),
+            Merkposten(setNumber = "20002-1", condition = Zustand.NEU, userId = 1)).map { it.alsAnsicht() })
         ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 2, storage = "Kiste 1"),
-            PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)))
-        ablage.uebernimm(Faecher.MANUELLE_FIGUREN, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")))
+            PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)).map { it.alsAnsicht() })
+        ablage.uebernimm(Faecher.MANUELLE_FIGUREN, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")).map { it.alsAnsicht() })
     }
 
     @After
@@ -80,7 +81,7 @@ class NachzugTest {
 
     @Test
     fun `Menge, Lagerort und Besitzer eines Sets stehen nach der Antwort in der Ablage`() = runBlocking {
-        sets.updateQuantity("10001-1", 5)
+        sets.setzeMenge("10001-1", 5)
         assertEquals("die Zahl des Servers, nicht die gewünschte", 3, set().quantity)
         sets.setSetStorage("10001-1", "kiste 2")
         assertEquals("der Ort, wie der Server ihn schreibt", "Kiste 2", set().storage)
@@ -123,10 +124,10 @@ class NachzugTest {
         // Das Gerät hält nur ein Konto; das neue lädt sein Set, während die alte Antwort unterwegs ist.
         pfade.vorrang = { _, _ ->
             bereich = "b"
-            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1))) }
+            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() }) }
             null
         }
-        sets.updateQuantity("10001-1", 5)
+        sets.setzeMenge("10001-1", 5)
         assertEquals("die Ablage des neuen Kontos", 1, set().quantity)
     }
 

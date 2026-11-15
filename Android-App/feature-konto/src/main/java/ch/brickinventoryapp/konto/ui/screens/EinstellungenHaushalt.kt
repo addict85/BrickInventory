@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import androidx.compose.ui.platform.LocalContext
 import ch.brickinventoryapp.model.util.DatumJahr
 import ch.brickinventoryapp.model.util.fmtStand
@@ -144,7 +147,7 @@ internal fun HouseholdCard(
         Text(stringResource(R.string.household_invite_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = onCreateInvite, enabled = !state.isLoading, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onCreateInvite, enabled = !state.abruf.laedt, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_invite_create))
         }
         state.inviteCode?.let { c ->
@@ -210,8 +213,8 @@ internal fun HouseholdCard(
         }
         // Meldung des Servers (Währung weicht ab, schon verknüpft) direkt über dem Knopf,
         // nicht am Seitenende unter allen Abschnitten.
-        state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
-            Text(it, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
+        state.abruf.fehlerMeldung?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
+            Text(it.satz(), Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
         val bereit = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank())
@@ -219,7 +222,7 @@ internal fun HouseholdCard(
         if (!bereit) SperrGrund(stringResource(if (state.faktorNoetig) R.string.household_redeem_sperrgrund_faktor
                                               else R.string.household_redeem_sperrgrund))
         Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
-               enabled = bereit && !state.isLoading, modifier = Modifier.fillMaxWidth()) {
+               enabled = bereit && !state.abruf.laedt, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_redeem_submit))
         }
     }

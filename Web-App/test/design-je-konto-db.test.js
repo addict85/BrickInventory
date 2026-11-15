@@ -5,7 +5,7 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in designFuer `eigenes` immer null → rot: „Konto mit eigenem Design“
  *      (noppe statt werkbank) und „index.html“
- *   B  GET /theme wieder ohne resolveUserId → rot: „App mit Token“
+ *   B  GET /theme wieder ohne nutzerIdDerAnfrage → rot: „App mit Token“
  *   C  setzeEigenesDesign schreibt ungeprüft, auch '' → rot: „leer heisst
  *      Vorgabe“ (/settings/raw: app_theme ''), „unbekanntes Design abgewiesen“
  *   D  in indexHtml wieder ALLOWED = ['classic', 'brick'] → rot: „index.html“
@@ -42,7 +42,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
-  _req('src/konto/indexHtml.js').invalidateTheme();
+  _req('src/profil/indexHtml.js').vergissDesign();
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
@@ -86,7 +86,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
 
   await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
     als(null);
-    const token = await _req('src/konto/geraeteToken.js').createToken(ids[0], 'Prüfung', true);
+    const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(ids[0], 'Prüfung', true);
     const mitToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', mitToken)).theme, 'werkbank');
     assert.equal((await hole('', mitToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
@@ -100,11 +100,11 @@ test('Design je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('index.html: Design des Kontos, ohne Konto die Vorgabe', async () => {
-    const { renderIndexHtml } = _req('src/konto/indexHtml.js');
+    const { startseiteHtml } = _req('src/profil/indexHtml.js');
     const designVon = html => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
-    assert.equal(designVon(await renderIndexHtml(ids[0])), 'werkbank');
-    assert.equal(designVon(await renderIndexHtml(ids[1])), 'noppe');
-    assert.equal(designVon(await renderIndexHtml()), 'noppe');
+    assert.equal(designVon(await startseiteHtml(ids[0])), 'werkbank');
+    assert.equal(designVon(await startseiteHtml(ids[1])), 'noppe');
+    assert.equal(designVon(await startseiteHtml()), 'noppe');
   });
 
   await t.test('leer heisst Vorgabe — auch nach einem Wechsel des Verwalters', async () => {

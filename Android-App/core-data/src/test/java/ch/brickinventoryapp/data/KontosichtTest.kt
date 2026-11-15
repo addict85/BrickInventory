@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.Kontosicht
@@ -10,7 +11,6 @@ import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.SpeicherAusgang
 import ch.brickinventoryapp.offline.SpeicherBestand
-import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.testing.PfadServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -100,7 +100,7 @@ class KontosichtTest {
         gesehen.await()
         repeat(50) { yield() }
         // Was ein Repository anwendet, ändert die Ablage — die Kontosicht fragt neu.
-        ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest("12-1")))
+        ablage.wendeAn(Bearbeitung.SetErfassen(Erfassungswunsch(setNumber = "12-1")))
         // Die neue Anfrage läuft über den Testserver, also auf einem fremden Faden.
         withTimeoutOrNull(5_000) { while (pfade.anfragenAn("GET /api/v1/sets?").size <= vorher) delay(10) }
         beobachter.cancel()
@@ -118,11 +118,11 @@ class KontosichtTest {
 
     @Test
     fun `die volle Sicht steht in der Ablage und traegt bei Netzausfall`() = runBlocking {
-        assertTrue(sets.aktualisiereSets() is Ergebnis.Success)
+        assertTrue(sets.aktualisiereSets() is Ergebnis.Erfolg)
         val abruf = pfade.anfragenAn("GET /api/v1/sets?").single()
         assertTrue("ungefiltert: $abruf", "search=" !in abruf && "accounts=" !in abruf)
         pfade.codes["/api/v1/sets"] = 500
-        assertTrue(sets.aktualisiereSets() is Ergebnis.Error)
+        assertTrue(sets.aktualisiereSets() is Ergebnis.Fehler)
         val abgelegt = sets.beobachteSets(thema = null).first()
         assertTrue("mit Stand", abgelegt.stand != null)
         assertEquals("ein Fehler leert die Ablage nicht", listOf("10-1", "11-1"), abgelegt.liste.map { it.setNumber })

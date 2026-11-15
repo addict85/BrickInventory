@@ -20,19 +20,17 @@ const path = require('node:path');
 // Ein Abruf beim CDN je Minute: Die Probe über der Drossel braucht so kein Netz.
 process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
+// Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
+require('./helpers/sources').ersetzeDienste('bilder', { setNummerImBlickfeld: async () => true });
 
 test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const express = require('express');
   const bildDurchreichen = (...a) =>
-    _req('src/katalog/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-  // Ein Objekt für alle Bereiche (test/helpers/sources.js): die Methode darin ersetzen.
-  const nacharbeit = require('./helpers/sources').testNacharbeit();
-  const { proxyAdresse, proxyCacheSchluessel } = _req('src/katalog/bilder/images.js');
+    _req('src/bilder/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
+  const { proxyAdresse, proxyCacheSchluessel } = _req('src/bilder/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-  const vorher = nacharbeit.bildVormerken;
-  const notizen = [];
-  nacharbeit.bildVormerken = (url, sn) => notizen.push([url, sn]);
+  const { notizen, ende } = require('./helpers/sources').bildNotizen();
 
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -57,7 +55,7 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const server = app.listen(0);
   t.after(() => {
     server.close();
-    nacharbeit.bildVormerken = vorher;
+    ende();
     for (const f of angelegt) fs.rmSync(f, { force: true });
   });
   const hole = async url => {

@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { BestandLesevertrag } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
@@ -115,35 +116,42 @@ export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) 
   }>('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
-/** Nur Spalten, die es noch gibt und die nicht berechnet sind; eine seither
- * gelöschte Spalte fällt so still weg. */
+/** Tabellen aus TABELLEN, nur Spalten, die es noch gibt und nicht berechnet sind (eine gelöschte fällt weg). */
 export async function schreibeZurueck(
   tx: DbSchnittstelle,
-  tabelle: string,
-  zeilen: Record<string, unknown>[],
+  art: PapierArt,
+  zeilen: Record<string, Record<string, unknown>[] | undefined>,
 ): Promise<void> {
-  const erste = zeilen[0];
-  if (!erste) return;
-  const spalten = (
-    await tx.all<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns
-      WHERE table_schema = current_schema() AND table_name = $1
-        AND is_generated = 'NEVER'`,
-      [tabelle],
+  for (const { tabelle } of TABELLEN[art]) {
+    const liste = zeilen[tabelle] ?? [];
+    const erste = liste[0];
+    if (!erste) continue;
+    const spalten = (
+      await tx.all<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = $1
+          AND is_generated = 'NEVER'`,
+        [tabelle],
+      )
     )
-  )
-    .map(s => s.column_name)
-    .filter(s => s in erste);
-  const liste = spalten.map(s => `"${s}"`).join(', ');
-  await tx.run(
-    `INSERT INTO ${tabelle} (${liste})
-     SELECT ${liste} FROM jsonb_populate_recordset(NULL::${tabelle}, $1::jsonb)`,
-    [JSON.stringify(zeilen)],
-  );
+      .map(s => s.column_name)
+      .filter(s => s in erste);
+    const namen = spalten.map(s => `"${s}"`).join(', ');
+    await tx.run(
+      `INSERT INTO ${tabelle} (${namen})
+       SELECT ${namen} FROM jsonb_populate_recordset(NULL::${tabelle}, $1::jsonb)`,
+      [JSON.stringify(liste)],
+    );
+  }
 }
 
-export async function hatSetZeile(tx: DbSchnittstelle, userId: number, nummer: string): Promise<boolean> {
-  return !!(await tx.get<{ da: number }>('SELECT 1 AS da FROM sets WHERE user_id = $1 AND set_number = $2', [
+export async function hatSetZeile(
+  tx: DbSchnittstelle,
+  l: BestandLesevertrag,
+  userId: number,
+  nummer: string,
+): Promise<boolean> {
+  return !!(await tx.get<{ da: number }>(`SELECT 1 AS da FROM ${l.setBestand('= $1')} s WHERE set_number = $2`, [
     userId,
     nummer,
   ]));

@@ -1,23 +1,22 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.fehlerArt
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testGutscheineRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
+import ch.brickinventoryapp.testing.testTeileRepository
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
@@ -92,64 +91,66 @@ class FehlerZustandTest {
     @Test
     fun `die Merkliste meldet den Fehler und vergisst ihn beim Neuladen`() {
         val vm = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
-            KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+            testKatalogRepository(t.api), testFinanzenRepository(t.api), SavedStateHandle()))
         vm.ladeMerkliste()
-        assertTrue("Fehler", vm.merklisteState.value.fehler != null)
-        assertEquals("fehler", vm.merklisteState.value.fehler)
-        assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.fehlerKlasse)
+        assertTrue("Fehler", vm.merklisteState.value.abruf.fehlerMeldung != null)
+        // Kein fertiger Satz im Zustand: die Ressource zur Art samt HTTP-Status.
+        assertEquals(Meldung.Ressource(R.string.err_server, listOf(404)), vm.merklisteState.value.abruf.fehlerMeldung)
+        assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.abruf.fehlerArt)
 
         pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.ladeMerkliste()
         assertTrue("Inhalt", vm.merklisteState.value.merkposten.isNotEmpty())
-        assertNull(vm.merklisteState.value.fehler)
+        assertNull(vm.merklisteState.value.abruf.fehlerMeldung)
     }
 
     @Test
     fun `die Bewertung meldet den Fehler und vergisst ihn beim Neuladen`() {
-        val vm = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
+        val vm = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFinanzenRepository(t.api), SavedStateHandle()))
         vm.loadValuation()
-        assertTrue("Fehler", vm.financeState.value.valuationFehler != null)
-        assertEquals(Fehlerklasse.SERVER, vm.financeState.value.valuationFehlerKlasse)
+        assertTrue("Fehler", vm.financeState.value.bewertung is Laden.Fehler)
+        assertEquals(Fehlerklasse.SERVER, vm.financeState.value.bewertung.fehlerArt)
 
         pfade.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
         assertTrue("Bewertung", vm.financeState.value.valuation != null)
-        assertNull(vm.financeState.value.valuationFehler)
+        assertNull(vm.financeState.value.bewertung.fehlerMeldung)
     }
 
     @Test
     fun `Teile und Figuren melden den Fehler je fuer sich`() {
-        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
+        val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht, SavedStateHandle()))
         vm.loadParts()
-        assertTrue("Teilefehler", vm.partsState.value.partsFehler != null)
-        vm.loadMinifigs()
-        assertTrue("Figurenfehler", vm.partsState.value.minifigsFehler != null)
-        assertEquals("fehler", vm.partsState.value.partsFehler)
-        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.partsFehlerKlasse)
-        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.minifigsFehlerKlasse)
+        assertTrue("Teilefehler", vm.teileState.value.teileAbruf is Laden.Fehler)
+        val fig = t.merke(FigurenViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+        fig.loadMinifigs()
+        assertTrue("Figurenfehler", fig.figurenZustand.value.figurenAbruf is Laden.Fehler)
+        assertTrue(vm.teileState.value.teileAbruf.fehlerMeldung != null)
+        assertEquals(Fehlerklasse.SERVER, vm.teileState.value.teileAbruf.fehlerArt)
+        assertEquals(Fehlerklasse.SERVER, fig.figurenZustand.value.figurenAbruf.fehlerArt)
     }
 
     @Test
     fun `das Set-Detail meldet den Fehler statt ewig zu laden`() {
         val leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
         val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
-            FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), leser,
+            testFinanzenRepository(t.api), testHaushaltRepository(t.api), leser,
             SavedStateHandle(mapOf("setNumber" to "75192-1"))))
-        assertTrue("Fehler", vm.setDetailState.value.setDetailFehler != null)
-        assertEquals(false, vm.setDetailState.value.setDetailLoading)
-        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.setDetailFehlerKlasse)
+        assertTrue("Fehler", vm.setDetailState.value.detailAbruf is Laden.Fehler)
+        assertEquals(false, vm.setDetailState.value.detailAbruf.laedt)
+        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.detailAbruf.fehlerArt)
     }
 
     @Test
     fun `die Gutscheine melden den Fehler`() {
         val vm = GutscheinViewModel(
-            repo = GutscheineRepository(t.api, ResponseCache { t.cacheDir }),
+            repo = testGutscheineRepository(t.api),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = t.meldungen,
         )
         vm.ladeGutscheine()
-        assertTrue("Fehler", vm.state.value.fehler != null)
-        assertEquals("fehler", vm.state.value.fehler)
+        assertTrue("Fehler", vm.state.value.abruf is Laden.Fehler)
+        assertEquals(Fehlerklasse.SERVER, vm.state.value.abruf.fehlerArt)
     }
 }

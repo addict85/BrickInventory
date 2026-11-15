@@ -31,7 +31,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import java.lang.reflect.Method
 import ch.brickinventoryapp.testing.TestApi
 
@@ -97,7 +97,7 @@ class ApiBereicheTest {
         server.start()
         try {
             val sets = Retrofit.Builder().baseUrl(server.url("/"))
-                .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+                .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
                 .build().create(SetsApi::class.java)
             runBlocking { sets.getParts(page = 1, pageSize = 5, setNumber = "75192-1") }
             val pfad = server.takeRequest().path.orEmpty()

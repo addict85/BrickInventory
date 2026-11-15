@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -23,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.sammlung.ui.screens.SetCard
@@ -32,6 +33,7 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,11 +44,15 @@ import java.util.Locale
 
 /**
  * Die Setkachel der Galerie: Bei 200 % Schrift bricht weder Betrag noch Prozent um,
- * und Kacheln einer Reihe sind gleich hoch, wie lang ihr Name auch ist.
+ * und Kacheln einer Reihe sind gleich hoch, wie lang ihr Name auch ist; ein kurzer Name
+ * lässt dafür keine Leerzeile unter sich.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   grosse-schrift-kachel-row       Prozent wieder neben dem Betrag in einer Row → rot „Kachel …“
- *   kachel-hoehe-nach-inhalt        Name ohne zwei feste Zeilen → rot „Kacheln einer Reihe …“
+ *   kachel-hoehe-nach-inhalt        die fehlende Namenszeile ohne Ausgleich → rot „Kacheln einer Reihe …“
+ *   kachel-ausgleich-nur-bei-bedarf Ausgleich nur bei fehlender Zeile, kostet dann einen Spaltenabstand
+ *                                   mehr → rot „Kacheln einer Reihe …“ (1 dp)
+ *   kachel-name-zwei-feste-zeilen   wieder minLines = 2 am Namen → rot „ein kurzer Name …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -89,7 +95,7 @@ class SetKachelTest {
             Box(Modifier.width(188.dp)) {
                 SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
                     serverUrl = "", imageLoader = bilder, onClick = {},
-                    preis = KachelPreis(812.5, 16.1), waehrung = Waehrung.CHF)
+                    preis = KachelPreis(Geld.aus(812.5), 16.1), waehrung = Waehrung.CHF)
             }
         }
         assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
@@ -105,7 +111,7 @@ class SetKachelTest {
         zeige {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
-                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = Waehrung.CHF)
+                    SetCard(voll, "", bilder, {}, preis = KachelPreis(Geld.aus(449.95), 12.5), waehrung = Waehrung.CHF)
                 }
                 Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = Waehrung.CHF) }
             }
@@ -113,5 +119,21 @@ class SetKachelTest {
         val a = compose.onNode(hasText("10294-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val b = compose.onNode(hasText("1-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
         assertEquals("Kacheln einer Reihe gleich hoch", a.height, b.height, 1f)
+    }
+
+    @Test
+    fun `ein kurzer Name laesst keine Leerzeile unter sich`() {
+        val bilder = coil3.ImageLoader.Builder(ctx).build()
+        zeige {
+            Box(Modifier.width(188.dp)) {
+                SetCard(SetAnsicht(setNumber = "1-1", name = "Box"), "", bilder, {}, waehrung = Waehrung.CHF)
+            }
+        }
+        val knoten = compose.onNodeWithText("Box", useUnmergedTree = true)
+        val ergebnis = mutableListOf<TextLayoutResult>()
+        knoten.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+        val zeile = ergebnis.single().let { it.getLineBottom(0) - it.getLineTop(0) }
+        val hoehe = knoten.fetchSemanticsNode().boundsInRoot.height
+        assertTrue("Der Name ist $hoehe px hoch, eine Zeile $zeile px", hoehe < zeile * 1.5f)
     }
 }

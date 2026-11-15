@@ -65,11 +65,11 @@ test('zwei Zugänge, zwei Transaktionen', async t => {
   assert.notEqual(a.pool, b.pool);
   const SCHL = `fabrik-${process.pid}`;
   await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
-  await a.transaction(async () => {
+  await a.transaction(async tx => {
     assert.equal(a.inTransaktion(), true);
     assert.equal(b.inTransaktion(), false, 'die Transaktion von a gilt nicht für b');
-    await a.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SCHL, 'x']);
-    assert.ok(await a.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'a sieht die eigene Zeile');
+    await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SCHL, 'x']);
+    assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'a sieht die eigene Zeile');
     assert.equal(
       await b.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]),
       undefined,

@@ -80,8 +80,9 @@ test('ein untätiger Arbeiter hält den Prozess nicht am Leben', () => {
   assert.equal(r.stdout.trim(), '60', r.stderr);
 });
 
-test('die Anmeldung prüft über den Pool', async () => {
-  const { passwortPasst, bcryptPool } = _req('src/konto/bcryptSchranke.js');
+test('die Anmeldung prüft alte bcrypt-Hashes über den Pool', async () => {
+  const { bcryptPool } = _req('src/konto/bcryptSchranke.js');
+  const { passwortPasst } = _req('src/konto/passwortHash.js');
   assert.equal(await passwortPasst('Geheim-2026', bcrypt.hashSync('Geheim-2026', 4)), true);
   assert.ok(bcryptPool.stand().arbeiter >= 1 && !bcryptPool.stand().hauptthread, JSON.stringify(bcryptPool.stand()));
   await bcryptPool.beende();

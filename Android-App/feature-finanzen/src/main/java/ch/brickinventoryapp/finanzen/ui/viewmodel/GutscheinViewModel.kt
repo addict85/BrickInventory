@@ -1,18 +1,23 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.model.data.model.GutscheinAntwort
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.data.model.GutscheinRequest
+import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.Bestaetigung
+import ch.brickinventoryapp.model.fach.Gutscheinangabe
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.finanzen.ui.GuthabenLauf
@@ -30,9 +35,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.Gelesen
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
@@ -63,11 +68,11 @@ class GutscheinViewModel @Inject constructor(
     }
 
     private suspend fun lade() {
-        _state.update { it.copy(laedt = true, fehler = null) }
+        _state.update { it.copy(abruf = Laden.Laedt) }
         when (val r = repo.liste()) {
-            is Ergebnis.Success -> _state.update { it.copy(gutscheine = r.data.vouchers.map { v -> v.alsAnsicht() }, laedt = false) }
-            is Ergebnis.Error -> {
-                _state.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+            is Ergebnis.Erfolg -> _state.update { it.copy(gutscheine = r.data, abruf = Laden.Daten(Unit)) }
+            is Ergebnis.Fehler -> {
+                _state.update { it.copy(abruf = ladefehler(r)) }
                 meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
@@ -119,53 +124,52 @@ class GutscheinViewModel @Inject constructor(
      */
     fun bestaetige(passwort: String, code: String?) {
         val b = _state.value.bestaetigung ?: return
-        if (b.laeuft) return
-        _state.update { it.copy(bestaetigung = b.copy(laeuft = true, fehler = null)) }
-        val anfrage = ZweiterFaktorAnfrage(password = passwort, code = code?.trim()?.ifEmpty { null })
+        if (b.vorgang.laeuft) return
+        _state.update { it.copy(bestaetigung = b.copy(vorgang = Vorgang.Laeuft)) }
+        val anfrage = Bestaetigung(passwort = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
             val fehler = fuehreSchrittAus(b, anfrage)
             if (fehler != null) _state.update {
                 it.copy(bestaetigung = it.bestaetigung?.copy(
-                    laeuft = false,
                     codeNoetig = it.bestaetigung.codeNoetig || fehler.code in FAKTOR_CODES,
                     // Offline gibt es kein Löschen auf Vorrat: Das Passwort bliebe sonst liegen.
-                    fehler = if (fehler.transient && b.schritt == GutscheinSchritt.LOESCHEN)
-                        texte.text(R.string.vouchers_delete_offline) else texte.meldung(fehler)))
+                    vorgang = Vorgang.Fehlgeschlagen(if (fehler.transient && b.schritt == GutscheinSchritt.LOESCHEN)
+                        Meldung.Ressource(R.string.vouchers_delete_offline) else fehlerMeldung(fehler))))
             }
         }
     }
 
     /** Der Schritt der Rückfrage an seiner Route; null heisst erledigt (oder ohne Karte nichts zu tun). */
-    private suspend fun fuehreSchrittAus(b: GutscheinBestaetigung, anfrage: ZweiterFaktorAnfrage): Ergebnis.Error? =
+    private suspend fun fuehreSchrittAus(b: GutscheinBestaetigung, anfrage: Bestaetigung): Ergebnis.Fehler? =
         when (b.schritt) {
             GutscheinSchritt.PDF, GutscheinSchritt.EXPORT -> when (val r = repo.pdfFreigabe(b.id, anfrage)) {
-                is Ergebnis.Success -> {
-                    if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data.ticket)) }
+                is Ergebnis.Erfolg -> {
+                    if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data)) }
                     null
                 }
-                is Ergebnis.Error -> r
+                is Ergebnis.Fehler -> r
             }
             GutscheinSchritt.LOESCHEN -> when (val r = repo.loeschen(b.id ?: return null, anfrage)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     _state.update { it.copy(bestaetigung = null, klartext = it.klartext - b.id,
                         pinSichtbar = it.pinSichtbar - b.id) }
                     melde(R.string.vouchers_deleted)
                     lade()
                     null
                 }
-                is Ergebnis.Error -> r
+                is Ergebnis.Fehler -> r
             }
             GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN ->
                 when (val r = repo.klartext(b.id ?: return null, anfrage)) {
-                    is Ergebnis.Success -> {
+                    is Ergebnis.Erfolg -> {
                         // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
                         if (nochOffen(b)) {
-                            _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
-                            fuehreAus(b.schritt, r.data.alsAnsicht())
+                            _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data)) }
+                            fuehreAus(b.schritt, r.data)
                         }
                         null
                     }
-                    is Ergebnis.Error -> r
+                    is Ergebnis.Fehler -> r
                 }
         }
 
@@ -236,15 +240,15 @@ class GutscheinViewModel @Inject constructor(
     internal fun speichere(datei: (suspend () -> Pair<String?, ByteArray>?)?) {
         viewModelScope.launch {
             val s = _state.value
-            _state.update { it.copy(speichert = true) }
+            _state.update { it.copy(speichern = Vorgang.Laeuft) }
             try {
                 val bearbeitet = s.bearbeitet
                 if (bearbeitet != null) {
-                    val betrag = s.betrag.replace(',', '.').toDoubleOrNull()
+                    val betrag = Geld.ausText(s.betrag.replace(',', '.'))
                         ?: return@launch melde(R.string.vouchers_amount_invalid)
-                    behandleAntwort(repo.aendern(bearbeitet, GutscheinRequest(
-                        number = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
-                        amount = betrag, currency = Waehrung(s.waehrung.trim()))))
+                    behandleAntwort(repo.aendern(bearbeitet, Gutscheinangabe(
+                        nummer = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
+                        betrag = betrag, waehrung = Waehrung(s.waehrung.trim()))))
                     return@launch
                 }
 
@@ -260,16 +264,16 @@ class GutscheinViewModel @Inject constructor(
                         nummer = s.nummer, pin = s.pin, betrag = s.betrag.replace(',', '.'),
                         waehrung = s.waehrung,
                     )
-                    if (r is Ergebnis.Success && !r.data.success) {
+                    val g = (r as? Ergebnis.Erfolg)?.data as? Gutscheinspeicherung.Unvollstaendig
+                    if (g != null) {
                         // 422: Was der Server lesen konnte, kommt ins Formular —
                         // der Nutzer ergänzt den Rest und schickt dieselbe Datei.
-                        val g = r.data.gelesen
                         _state.update {
                             it.copy(
-                                nummer = it.nummer.ifEmpty { g?.number.orEmpty() },
-                                pin = it.pin.ifEmpty { g?.pin.orEmpty() },
-                                betrag = it.betrag.ifEmpty { g?.amount?.let(::betragAlsText).orEmpty() },
-                                waehrung = g?.currency?.code ?: it.waehrung,
+                                nummer = it.nummer.ifEmpty { g.nummer.orEmpty() },
+                                pin = it.pin.ifEmpty { g.pin.orEmpty() },
+                                betrag = it.betrag.ifEmpty { g.betrag?.let(::betragAlsText).orEmpty() },
+                                waehrung = g.waehrung?.code ?: it.waehrung,
                             )
                         }
                         return@launch melde(R.string.vouchers_pdf_incomplete)
@@ -278,35 +282,31 @@ class GutscheinViewModel @Inject constructor(
                     return@launch
                 }
 
-                val betrag = s.betrag.replace(',', '.').toDoubleOrNull()
+                val betrag = Geld.ausText(s.betrag.replace(',', '.'))
                     ?: return@launch melde(R.string.vouchers_amount_invalid)
-                behandleAntwort(repo.anlegen(GutscheinRequest(
-                    number = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
-                    amount = betrag, currency = Waehrung(s.waehrung.trim()))))
+                behandleAntwort(repo.anlegen(Gutscheinangabe(
+                    nummer = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
+                    betrag = betrag, waehrung = Waehrung(s.waehrung.trim()))))
             } finally {
-                _state.update { it.copy(speichert = false) }
+                _state.update { it.copy(speichern = Vorgang.Fertig) }
             }
         }
     }
 
-    private suspend fun behandleAntwort(r: Ergebnis<GutscheinAntwort>) {
+    private suspend fun behandleAntwort(r: Ergebnis<Gutscheinspeicherung>) {
         when (r) {
-            is Ergebnis.Success -> {
-                if (!r.data.success) {
-                    meldungen.zeige(r.data.error ?: texte.text(R.string.vouchers_save_error))
-                    return
-                }
-                val stapel = r.data.mehrere
+            is Ergebnis.Erfolg -> {
+                val stapel = (r.data as? Gutscheinspeicherung.Gespeichert)?.takeIf { it.neu != null }
                 // Zwei Mengenformen statt „%1$d angelegt": Lint meldet sonst
                 // PluralsCandidate, und der Baum zählt die Lint-Befunde.
                 meldungen.zeige(if (stapel == null) texte.text(R.string.vouchers_saved)
                 else texte.text(R.string.vouchers_import_done,
-                    texte.menge(R.plurals.csv_upload_new, stapel.added, stapel.added),
-                    texte.menge(R.plurals.csv_upload_updated, stapel.updated, stapel.updated)))
+                    texte.menge(R.plurals.csv_upload_new, stapel.neu ?: 0, stapel.neu ?: 0),
+                    texte.menge(R.plurals.csv_upload_updated, stapel.geaendert ?: 0, stapel.geaendert ?: 0)))
                 leereGutscheinFormular()
                 lade()
             }
-            is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+            is Ergebnis.Fehler -> meldungen.zeige(texte.meldungFuerSnackbar(r))
         }
     }
 
@@ -321,11 +321,11 @@ class GutscheinViewModel @Inject constructor(
             _state.update { it.copy(guthabenLaeuft = id) }
             try {
                 when (val r = repo.guthaben(id)) {
-                    is Ergebnis.Success -> {
+                    is Ergebnis.Erfolg -> {
                         val d = r.data
-                        val v = d.voucher
-                        if (!d.success || v == null) {
-                            meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
+                        val v = d.gutschein
+                        if (!d.erfolg || v == null) {
+                            meldungen.zeige(d.fehler ?: texte.text(R.string.err_generic))
                             return@launch
                         }
                         val betrag = d.angezeigt ?: fmtMoney(v.amount, v.currency)
@@ -335,7 +335,7 @@ class GutscheinViewModel @Inject constructor(
                         meldungen.zeige(satz)
                         lade()
                     }
-                    is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+                    is Ergebnis.Fehler -> meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             } finally {
                 _state.update { it.copy(guthabenLaeuft = null) }
@@ -386,20 +386,20 @@ class GutscheinViewModel @Inject constructor(
                     nummer = g.number, wartenSek = 0))
             }
             when (val r = repo.guthaben(g.id)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     val d = r.data
-                    if (d.success) return Guthabenabfrage.FERTIG
+                    if (d.erfolg) return Guthabenabfrage.FERTIG
                     if (d.grund == "abstand" && (d.wartenSek ?: 0) > 0) {
                         warteSichtbar(d.wartenSek ?: 0, g.number)
                     } else {
-                        meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
+                        meldungen.zeige(d.fehler ?: texte.text(R.string.err_generic))
                         // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
                         // Weitere Karten liefen in dieselbe Absage.
                         val alle = d.grund == "botschutz" || d.grund == "konto"
                         return if (alle) Guthabenabfrage.ABBRUCH else Guthabenabfrage.FEHLER
                     }
                 }
-                is Ergebnis.Error -> {
+                is Ergebnis.Fehler -> {
                     meldungen.zeige(texte.meldungFuerSnackbar(r))
                     return Guthabenabfrage.FEHLER
                 }
@@ -447,8 +447,7 @@ private val FAKTOR_CODES = setOf(Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.ZW
 private const val ABSTAND_VERSUCHE = 4
 
 /** Ganze Beträge ohne „.0": Der Gutschein lautet auf 400, nicht auf 400.0. */
-internal fun betragAlsText(betrag: Double): String =
-    if (betrag % 1.0 == 0.0) betrag.toLong().toString() else betrag.toString()
+internal fun betragAlsText(betrag: Geld): String = betrag.alsBigDecimal().stripTrailingZeros().toPlainString()
 
 /**
  * Eine Eingabe in ein Feld, das die Maske des Servers trägt: Die Maske ist ein

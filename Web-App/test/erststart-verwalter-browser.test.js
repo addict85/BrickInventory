@@ -6,7 +6,7 @@
  * einen Namen und ein falscher Code steht am Feld statt als Toast.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in actions.js den Enter-Hörer für Formulare mit `data-submit`
+ *   A  in aktionen.js den Enter-Hörer für Formulare mit `data-submit`
  *      entfernt → rot: „Enter im Passwortfeld bestätigt“
  *   B  in zeigePflichtwechsel das Übernehmen aus #lp entfernt → rot:
  *      „das Startpasswort reist mit“
@@ -82,8 +82,13 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [sid]).catch(() => {}));
 
   await t.test('das Startpasswort reist mit', async () => {
-    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-    await bis(offen('login-screen'), 'Anmeldemaske');
+    // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
+    await b.tab('Network.setUserAgentOverride', {
+      userAgent: await b.auswerten('navigator.userAgent'),
+      acceptLanguage: 'de-DE',
+    });
+    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await bis(`!window.__alt && ${offen('login-screen')}`, 'Anmeldemaske');
     await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
       document.getElementById('lp').value = ${JSON.stringify(START)};
       document.getElementById('btn-login').click(); true`);
@@ -133,7 +138,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
 
   await t.test('richtiger Code zeigt die Wiederherstellungscodes', async () => {
     const _req = require('./helpers/sources').buildAndRequire();
-    const zf = _req('src/konto/zweiterFaktor.js');
+    const zf = _req('src/faktoren/zweiterFaktor.js');
     await b.auswerten(
       `document.getElementById('zf-code').value = ''; document.getElementById('zf-code').focus(); true`,
     );

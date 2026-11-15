@@ -82,6 +82,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
   };
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -180,7 +181,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     // „Kiste 3" hat ein Set UND zwei Teilezeilen — ein Ort, nicht zwei
     // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
     // sie selbst zusammenführt, und zwar jede für sich.
-    // `figuren` kam am 24.09. dazu (Migration 0024): Eine Minifigur traegt …
+    // `figuren`: Auch eine Minifigur traegt einen Lagerort (Migration 0024).
     assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
     assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
     // Alphabetisch — die Auswahlliste soll nicht bei jedem Aufruf anders sein.

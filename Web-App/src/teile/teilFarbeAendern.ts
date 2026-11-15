@@ -1,4 +1,3 @@
-import { lookupPart } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
@@ -28,7 +27,7 @@ async function bildNachtragen(k: TeileKontext, partNumber: string, farbe: number
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
   // Die Änderung steht schon; ein gescheiterter Abruf lässt nur das Bild weg.
-  const info = await versuche('teilfarbe:lookupPart', () => lookupPart(partNumber, farbe));
+  const info = await versuche('teilfarbe:lookupPart', () => k.fremdquellen.quellen.lookupPart(partNumber, farbe));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
     await k.katalog.merkeTeilFarbe(partNumber, farbe, null, null, info.wert.image_url, null);
@@ -73,30 +72,14 @@ export async function aendereTeilFarbe(
 
     const ziel = await repo.manuelleTeilzeileSperren(t.db, uid, partNumber, neu);
 
-    // Erst addieren, dann umziehen: Sonst liefe das UPDATE in
-    // `idx_part_acq_erfassungstag` — nur wenn beide Farben am gleichen Tag erfasst
-    // wurden, ein Fehler, der von der Uhr abhängt.
-    const vereint = await repo.stockeGleicheErfassungenAuf(t.db, uid, partNumber, alt, neu);
-    // Die addierten Quellzeilen müssen weg, sonst stünde die Stückzahl doppelt da.
-    await repo.loescheAufgestockteErfassungen(t.db, uid, partNumber, alt, neu);
-    const verschoben = await repo.faerbeErfassungenUm(t.db, uid, partNumber, alt, neu);
-
-    if (ziel) {
-      // Die Zielzeile bleibt. Ihren Lagerort übernimmt sie nur, wenn sie keinen hat:
-      // „Kiste 3" soll durch eine Farbkorrektur nicht verschwinden.
-      if (quelle.storage_id && !ziel.storage_id) {
-        await repo.setzeTeilLagerort(t.db, quelle.storage_id, ziel.id);
-      }
-      await repo.loescheTeilzeile(t.db, quelle.id);
-    } else {
-      await repo.faerbeTeilzeileUm(t.db, neu, quelle.id);
-    }
-
-    return {
-      zusammengelegt: !!ziel,
-      verschoben: verschoben.changes ?? 0,
-      vereint: vereint.changes ?? 0,
-    };
+    const { vereint, verschoben } = await t.bestand.manuell.teilzeileUmfaerben(
+      uid,
+      partNumber,
+      { ...quelle, farbe: alt },
+      ziel ?? null,
+      neu,
+    );
+    return { zusammengelegt: !!ziel, verschoben, vereint };
   });
 
   // Auch bei alt === neu: Eine Ausnahme wäre ein zweiter Weg, der nur manchmal

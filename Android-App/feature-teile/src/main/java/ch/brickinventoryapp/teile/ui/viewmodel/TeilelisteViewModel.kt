@@ -1,8 +1,13 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragTeil
-import ch.brickinventoryapp.model.data.model.PdfAuftragSet
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.ohneFehler
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -71,8 +76,8 @@ class TeilelisteViewModel @Inject constructor(
         val nummer = normalisiert(nr)
         // Die Zahl nennt die Kopfzeile über den Sets; der Status bleibt für Fehler und Ergebnis.
         setzeListe { z ->
-            if (z.sets.any { it.setNumber == nummer }) z.copy(status = meldungen.text(R.string.partslist_set_already_added))
-            else z.copy(sets = z.sets + PlSet(nummer, nummer), status = "")
+            if (z.sets.any { it.setNumber == nummer }) z.copy(status = Meldung.Ressource(R.string.partslist_set_already_added))
+            else z.copy(sets = z.sets + PlSet(nummer, nummer), status = null)
         }
     }
 
@@ -81,7 +86,7 @@ class TeilelisteViewModel @Inject constructor(
     }
 
     /** „Zurücksetzen“ an der Liste: Sets und Teile weg, die Wahl der Schalter bleibt. */
-    fun leere() = setzeListe { it.copy(sets = emptyList(), parts = emptyList(), status = "", generated = false) }
+    fun leere() = setzeListe { it.copy(sets = emptyList(), parts = emptyList(), status = null, generated = false) }
 
     private fun zuruecksetzen() {
         _zustand.value = TeilelisteUiState()
@@ -98,14 +103,14 @@ class TeilelisteViewModel @Inject constructor(
     fun erstelle(eingabe: String) {
         if (eingabe.isNotBlank()) fuegeHinzu(eingabe)
         val start = _zustand.value
-        if (start.sets.isEmpty() || start.isLoading) return
-        setzeListe { it.copy(isLoading = true, generated = false, parts = emptyList()) }
+        if (start.sets.isEmpty() || start.erzeugen.laedt) return
+        setzeListe { it.copy(erzeugen = Laden.Laedt, generated = false, parts = emptyList()) }
         viewModelScope.launch {
             val server = sitzung.state.value.serverUrl
             val combined = linkedMapOf<String, PlPart>()
             val sets = start.sets
             sets.forEachIndexed { i, s ->
-                _zustand.update { it.copy(status = meldungen.text(R.string.partslist_loading_set, s.setNumber, i + 1, sets.size)) }
+                _zustand.update { it.copy(status = Meldung.Ressource(R.string.partslist_loading_set, listOf(s.setNumber, i + 1, sets.size))) }
                 try {
                     val (name, neu) = quelle.loeseSetAuf(s.setNumber, server)
                     setzeListe { z -> z.copy(sets = z.sets.map { if (it.setNumber == s.setNumber) it.copy(name = name) else it }) }
@@ -116,53 +121,53 @@ class TeilelisteViewModel @Inject constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    _zustand.update { it.copy(status = meldungen.text(R.string.partslist_error_for_set, s.setNumber)) }
+                    _zustand.update { it.copy(status = Meldung.Ressource(R.string.partslist_error_for_set, listOf(s.setNumber))) }
                 }
             }
             val parts = quelle.sortiert(combined.values)
             // Zwei Zahlen, zwei Übereinstimmungen: ein <plurals> stimmt nur mit EINER
             // überein, darum zwei Bruchstücke und ein Rahmen.
             val stueck = parts.sumOf { it.quantity }
-            val status = meldungen.text(R.string.partslist_summary,
-                meldungen.menge(R.plurals.partslist_summary_types, parts.size, parts.size),
-                meldungen.menge(R.plurals.partslist_summary_parts, stueck, stueck))
-            _zustand.update { it.copy(parts = parts, status = status, isLoading = false, generated = true) }
+            val status = Meldung.Ressource(R.string.partslist_summary, listOf(
+                Meldung.Menge(R.plurals.partslist_summary_types, parts.size),
+                Meldung.Menge(R.plurals.partslist_summary_parts, stueck)))
+            _zustand.update { it.copy(parts = parts, status = status, erzeugen = Laden.Daten(Unit), generated = true) }
         }
     }
 
     /** „Kann ich das bauen?“ — trägt den eigenen Bestand in die fertige Liste ein. */
     fun ladeBestand() {
         val z = _zustand.value
-        if (z.bestandLaeuft || z.parts.isEmpty()) return
-        _zustand.update { it.copy(bestandLaeuft = true) }
+        if (z.bestand.laeuft || z.parts.isEmpty()) return
+        _zustand.update { it.copy(bestand = Vorgang.Laeuft) }
         viewModelScope.launch {
             val neu = quelle.mitBestand(z.parts, z.nurLose, z.mitUnterkonten)
             if (neu == null) {
-                _zustand.update { it.copy(bestandLaeuft = false, status = meldungen.text(R.string.partslist_owned_error)) }
+                _zustand.update { it.copy(bestand = Vorgang.Fertig, status = Meldung.Ressource(R.string.partslist_owned_error)) }
                 return@launch
             }
             val fehlen = neu.filter { (it.vorhanden ?: 0) < it.quantity }
             val fehlendeStueck = fehlen.sumOf { it.quantity - (it.vorhanden ?: 0) }
             // Die Einzahlform lässt die Klammer weg: Fehlt genau EIN Teil, ist auch die
             // Zahl der verschiedenen eins.
-            val status = if (fehlen.isEmpty()) meldungen.text(R.string.partslist_owned_complete)
-            else meldungen.menge(R.plurals.partslist_owned_missing, fehlendeStueck, fehlendeStueck,
-                meldungen.menge(R.plurals.partslist_owned_missing_distinct, fehlen.size, fehlen.size))
-            _zustand.update { it.copy(parts = neu, bestandLaeuft = false, status = status) }
+            val status = if (fehlen.isEmpty()) Meldung.Ressource(R.string.partslist_owned_complete)
+            else Meldung.Menge(R.plurals.partslist_owned_missing, fehlendeStueck,
+                listOf(fehlendeStueck, Meldung.Menge(R.plurals.partslist_owned_missing_distinct, fehlen.size)))
+            _zustand.update { it.copy(parts = neu, bestand = Vorgang.Fertig, status = status) }
         }
     }
 
     /** Startet den Export als Dienst; das fertige PDF bietet der Bildschirm zum Öffnen an. */
     fun exportiere() {
         val z = _zustand.value
-        if (z.isExporting || z.parts.isEmpty()) return
-        _zustand.update { it.copy(isExporting = true, pdfError = null) }
+        if (z.pdf.laeuft || z.parts.isEmpty()) return
+        _zustand.update { it.copy(pdf = Vorgang.Laeuft) }
         viewModelScope.launch {
             val ergebnis = export.erzeuge(exportAuftrag(z.sets, z.parts))
             _zustand.update {
                 when (ergebnis) {
-                    is ExportErgebnis.Datei -> it.copy(isExporting = false, pdfDatei = ergebnis.datei)
-                    is ExportErgebnis.Fehler -> it.copy(isExporting = false, pdfError = fehlerText(ergebnis.grund))
+                    is ExportErgebnis.Datei -> it.copy(pdf = Vorgang.Fertig, pdfDatei = ergebnis.datei)
+                    is ExportErgebnis.Fehler -> it.copy(pdf = Vorgang.Fehlgeschlagen(fehlerText(ergebnis.grund)))
                 }
             }
         }
@@ -178,24 +183,25 @@ class TeilelisteViewModel @Inject constructor(
     }
 
     /** Nie leer: Ein Abruf spricht wie jeder Abruf, ein gescheiterter Auftrag mit dem Satz des Servers. */
-    private fun fehlerText(grund: PdfFehlschlag): String = when (grund) {
-        is PdfFehlschlag.Abruf -> meldungen.meldung(grund.fehler)
-        is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: meldungen.text(R.string.pdfexp_server_error)
+    private fun fehlerText(grund: PdfFehlschlag): Meldung = when (grund) {
+        is PdfFehlschlag.Abruf -> fehlerMeldung(grund.fehler)
+        is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() }?.let(Meldung::Text)
+            ?: Meldung.Ressource(R.string.pdfexp_server_error)
     }
 
     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }
-    fun pdfFehlerGesehen() = _zustand.update { it.copy(pdfError = null) }
+    fun pdfFehlerGesehen() = _zustand.update { it.copy(pdf = it.pdf.ohneFehler()) }
 
-    private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): PdfAuftragAnfrage {
+    private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): Teilelistenauftrag {
         val serverUrl = sitzung.state.value.serverUrl.trimEnd('/')
-        return PdfAuftragAnfrage(
-            sets = sets.map { PdfAuftragSet(it.setNumber, it.name) },
-            parts = parts.map { p ->
+        return Teilelistenauftrag(
+            sets = sets.map { Teilelistenauftrag.Set(nummer = it.setNumber, name = it.name) },
+            zeilen = parts.map { p ->
                 val imgUrl = p.imageUrl ?: ""
-                PdfAuftragTeil(partNumber = p.partNumber, blPartNumber = p.blPartNumber ?: p.partNumber, partName = p.partName,
-                    colorName = p.colorName, colorHex = p.colorHex ?: "", colorId = p.colorId, quantity = p.quantity,
-                    imageLocal = p.imageLocal ?: "",
-                    imageUrl = if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl, isFig = p.isFig)
+                Teilelistenauftrag.Zeile(nummer = p.partNumber, blNummer = p.blPartNumber ?: p.partNumber, name = p.partName,
+                    farbname = p.colorName, farbHex = p.colorHex ?: "", farbId = p.colorId, menge = p.quantity,
+                    bildLokal = p.imageLocal ?: "",
+                    bild = if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl, figur = p.isFig)
             },
         )
     }

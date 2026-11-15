@@ -1,8 +1,8 @@
 /** CSV-Import der Sets: Zeilen lesen, Auftrag starten, Stand melden. */
 import { vorDem, fehlertext, oeffentlicherFehler } from '../infra/fehler';
-import { buildJobStatus, csvImportBus } from '../auftraege';
-import { normalizeSetNumber } from './erfassen';
-import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
+import { buildJobStatus } from '../auftraege';
+import { normalisiereSetNummer } from '../infra/setNummer';
+import { csvEinlesen, entschaerfungRueckgaengig, csvDatum, zeilenListe } from '../infra/csvExport';
 import { fachfehler, type Sprache } from '../infra/fehlerTexte';
 import { randomUUID } from 'node:crypto';
 import * as repo from './repository/setDetail';
@@ -75,7 +75,7 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
       purchasePrice: preis !== null && !Number.isNaN(preis) ? preis : null,
       condition: ['N', 'U'].includes(zustand) ? zustand : null,
       // 05.03.2026 ist der 5. März, nicht der 3. Mai.
-      acquiredAt: parseCsvDate(row.acquired_at || row.erfassungsdatum || row.datum),
+      acquiredAt: csvDatum(row.acquired_at || row.erfassungsdatum || row.datum),
     });
   }
   return { rows, uebersprungen: gelesen.uebersprungen };
@@ -86,7 +86,7 @@ async function schonVorhanden(sk: SetsKontext, userId: number, rows: ImportZeile
   const da = new Set((await repo.setsMitMenge(sk.db, userId)).map(s => s.set_number));
   const treffer = rows
     .filter(r => !r.fehler)
-    .map(r => normalizeSetNumber(r.sn))
+    .map(r => normalisiereSetNummer(r.sn))
     .filter(sn => da.has(sn));
   return [...new Set(treffer)];
 }
@@ -121,14 +121,14 @@ export async function setCsvImportStarten(sk: SetsKontext, userId: number, text:
     );
     throw e;
   }
-  await sk.auftraege.emitJobStatus(userId);
+  await sk.auftraege.meldeJobStand(userId);
   return { total: rows.length, uebersprungen, vorhanden, gestartet: true };
 }
 
 export async function setCsvImportAbbrechen(k: SetsKontext, userId: number) {
   // Ohne Fang: Schlägt das Vermerken fehl, liefe der Import weiter, während die Antwort „abgebrochen“ sagte.
   await k.auftraege.jobUpdate(userId, { status: 'cancelled' });
-  await k.auftraege.emitJobStatus(userId);
+  await k.auftraege.meldeJobStand(userId);
 }
 
 type Kopf = { headers?: Record<string, unknown> };
@@ -144,13 +144,7 @@ export async function csvImportStandFuerStrom(k: SetsKontext, uid: number, req: 
 
 /** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */
 export function csvImportStandAbonnieren(k: SetsKontext, uid: number, melde: () => void): () => void {
-  const lokal = () => melde();
-  csvImportBus.on(`progress:${uid}`, lokal);
-  const abmelden = k.auftraege.beiImportStand(konto => {
+  return k.auftraege.beiImportStand(konto => {
     if (String(konto) === String(uid)) melde();
   });
-  return () => {
-    csvImportBus.off(`progress:${uid}`, lokal);
-    abmelden();
-  };
 }

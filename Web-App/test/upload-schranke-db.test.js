@@ -120,7 +120,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     const Echt = wt.Worker;
     let gestartet = 0;
     wt.Worker = class extends Echt {
-      constructor(...a) {
+      constructor(/** @type {ConstructorParameters<typeof Echt>} */ ...a) {
         super(...a);
         gestartet++;
       }

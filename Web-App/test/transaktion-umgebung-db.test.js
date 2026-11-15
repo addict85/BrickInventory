@@ -1,8 +1,9 @@
 /**
- * Eine Transaktion gilt für den ganzen Aufrufpfad (db/database.ts,
- * AsyncLocalStorage): Auch Repositories ohne tx-Parameter lesen und schreiben
- * über ihre Verbindung, eine innere Transaktion ist ein Sicherungspunkt, und
- * wer nach COMMIT noch fragt, bekommt den Pool.
+ * Eine Transaktion wird ausdrücklich gereicht: Ein Satz Dienste über ihrem Zugang
+ * (`ueber(tx.db)`, wie ihn der Kontext `t` baut) liest und schreibt über ihre
+ * Verbindung; derselbe Dienst über dem ungebundenen Zugang wirft in ihr
+ * (UngebundeneAbfrage). Eine innere Transaktion ist ein Sicherungspunkt, und wer
+ * nach COMMIT noch fragt, bekommt den Pool.
  *
  * Gegenproben (05.11.2026 gemessen):
  *   A  in all() die Abfrage von txClient() gestrichen → rot: „ein Dienst ohne
@@ -14,6 +15,13 @@
  *      Zeile der inneren bleibt stehen
  *   C  `stand.offen = false` nach COMMIT gestrichen → rot: „wer nach COMMIT
  *      fragt, bekommt den Pool“
+ *   D  (14.11.2026) in txStand() die Freigabe nicht geprüft → rot: „ein Dienst ohne
+ *      tx-Parameter … ohne Freigabe wirft er“
+ *   Seit der Kontext `t` über tx.db gebaut wird (14.11.2026, w5-vertrag), gemessen:
+ *   E  in database.ts wache() geleert → rot: „… über dem ungebundenen Zugang wirft er“
+ *   F  in umbau() (src/infra/bereich.ts) den Zugang nicht ersetzt (`aus.db = db` gestrichen)
+ *      → rot: dieselbe Prüfung und „eine gescheiterte innere Transaktion …“ (der Satz über
+ *      tx.db fragt über den ungebundenen Zugang)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -28,33 +36,45 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
   const db = await zugangOderSkip(t, _req);
   if (!db) return;
   const S = `tx_umgebung_${process.pid}`;
+  // global_settings schreibt nur die Systemrolle (0117): Die Transaktionen laufen in ihrem Rahmen.
+  const { imSystemkontext } = _req('src/infra/kontoKontext.js');
+  const transaktion = fn => imSystemkontext('test', () => db.transaction(fn));
   t.after(async () => {
-    await db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`]).catch(() => {});
+    await imSystemkontext('test', () => db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`])).catch(
+      () => {},
+    );
     await db.pool.end().catch(() => {});
   });
   const { getGlobalSetting } = _req('src/einstellungen/settings.js');
+  const einstellungen = require('./helpers/sources').testDienste().einstellungen;
+  /** Die Einstellungen über dem Zugang einer Transaktion, wie sie in `t` stehen. */
+  const in_ = tx => einstellungen.ueber(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
 
-  await t.test('ein Dienst ohne tx-Parameter sieht, was die Transaktion geschrieben hat', async () => {
-    let gesehen;
-    await assert.rejects(
-      db.transaction(async tx => {
-        await schreibe(tx, 'a', 'eins');
-        gesehen = await getGlobalSetting(`${S}a`);
-        throw new Error('zurück');
-      }),
-      /zurück/,
-    );
-    assert.equal(gesehen, 'eins');
-    assert.equal(await getGlobalSetting(`${S}a`), null, 'mit der Transaktion zurückgerollt');
-  });
+  await t.test(
+    'ein Dienst über tx.db sieht, was die Transaktion geschrieben hat; über dem ungebundenen Zugang wirft er',
+    async () => {
+      let gesehen;
+      await assert.rejects(
+        transaktion(async tx => {
+          await schreibe(tx, 'a', 'eins');
+          await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
+          gesehen = await in_(tx).globalerWert(`${S}a`);
+          throw new Error('zurück');
+        }),
+        /zurück/,
+      );
+      assert.equal(gesehen, 'eins');
+      assert.equal(await getGlobalSetting(`${S}a`), null, 'mit der Transaktion zurückgerollt');
+    },
+  );
 
   await t.test('eine gescheiterte innere Transaktion lässt die äussere weiterlaufen', async () => {
-    await db.transaction(async tx => {
+    await transaktion(async tx => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
-        db.transaction(async inner => {
-          assert.equal(await getGlobalSetting(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
+        tx.db.transaction(async inner => {
+          assert.equal(await in_(inner).globalerWert(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
           await schreibe(inner, 'c', 'innen');
           throw new Error('innen kaputt');
         }),
@@ -70,7 +90,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
 
   await t.test('wer nach COMMIT fragt, bekommt den Pool', async () => {
     let spaeter, drinnen;
-    await db.transaction(async tx => {
+    await transaktion(async tx => {
       await schreibe(tx, 'e', 'fest');
       drinnen = db.inTransaktion();
       spaeter = new Promise(r => setTimeout(r, 50)).then(async () => [

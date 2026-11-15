@@ -16,13 +16,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { pruefeParameter } = require('./helpers/sources');
-const kompakt = require('./helpers/sources').kompakt;
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /function getSetConditionAggregate/, 'Der gemeinsame Helfer fehlt');
-  // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
+  assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
+  // Weder setsLesen()/setLesen() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
   // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
   // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
@@ -75,12 +74,17 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
     fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(ROOT, 'src/teile/manuelleTeile.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function addManualPart'), src.indexOf('async function updateManualPart'));
+  const fn = src.slice(
+    src.indexOf('async function manuellesTeilAnlegen'),
+    src.indexOf('async function manuellesTeilAendern'),
+  );
 
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".
   const ohneZustand = [
-    ...src.matchAll(/getCurrentPartMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g),
+    ...src.matchAll(
+      /(?:aktuellerTeilMarktpreis|aktuellerTeilMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g,
+    ),
   ]
     .filter(m => !m[1].includes('function')) // die Definition selbst nicht
     .filter(m => m[1].split(',').length < 4);
@@ -93,19 +97,25 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
       'als gebraucht erfasstes Teil bekommt den Neupreis.',
   );
   // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts.
-  const alleAufrufe = [...src.matchAll(/getCurrentPartMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g)];
+  const alleAufrufe = [
+    ...src.matchAll(
+      /(?:aktuellerTeilMarktpreis|aktuellerTeilMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
+    ),
+  ];
   assert.ok(
     alleAufrufe.length >= 4,
-    `Nur ${alleAufrufe.length} Vorkommen von getCurrentPartMarketPrice( — Muster veraltet?`,
+    `Nur ${alleAufrufe.length} Vorkommen von aktuellerTeilMarktpreis( — Muster veraltet?`,
   );
   // Zwei Pfade: neu angelegt und erneut erfasst — BEIDE brauchen eine
   // Erfassung. Der zweite endete früher mit `return { action: 'updated' }`,
   // ohne eine anzulegen; ein abweichendes Erfassungsdatum ging dabei verloren.
   //
-  // Geschrieben wird seit hardened-93 über recordAcquisitionForDay(), das die
+  // Geschrieben wird seit hardened-93 über kaufAmTagErfassen(), das die
   // Zeile des Tages im selben Zustand aufstockt statt eine zweite anzulegen.
   const writes = [
-    ...fn.matchAll(/recordAcquisitionForDay\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g),
+    ...fn.matchAll(
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
+    ),
   ];
   assert.equal(
     writes.length,
@@ -138,12 +148,12 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
   const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   // Der Abruf heisst seit einer früheren Runde figMarktpreisMitHerkunft: Er liefert
-  // neben dem Preis den Zustand, aus dem dieser stammt. getCurrentFigMarketPrice
+  // neben dem Preis den Zustand, aus dem dieser stammt. aktuellerFigurMarktpreis
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
   // wird hier der Abruf selbst, nicht die Huelle.
   const fn = src.slice(
     src.indexOf('async function figMarktpreisMitHerkunft'),
-    src.indexOf('async function resolveManualFigPurchase'),
+    src.indexOf('async function manuellerFigurenkauf'),
   );
   assert.ok(fn.length > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
 
@@ -172,7 +182,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
 
   const est = src.slice(
     src.indexOf('async function estimateFigPriceFromParts'),
-    src.indexOf('async function getCurrentFigMarketPrice'),
+    src.indexOf('async function aktuellerFigurMarktpreis'),
   );
   assert.match(
     est,
@@ -209,7 +219,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
     fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
   const est = src.slice(
     src.indexOf('async function estimateFigPriceFromParts'),
-    src.indexOf('async function getCurrentFigMarketPrice'),
+    src.indexOf('async function aktuellerFigurMarktpreis'),
   );
 
   // Cache und Verlauf je Zustand prüft test/figurenschaetzung-ablage-db.test.js.
@@ -222,7 +232,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
   const erfassungen = [
     ...ohneKommentar.matchAll(
-      /recordAcquisitionForDay\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
     ),
   ];
   assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
@@ -233,10 +243,15 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
   const src = fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('async function addManualFig'), src.indexOf('async function addManualFig') + 6000);
+  const fn = src.slice(
+    src.indexOf('async function manuelleFigurAnlegen'),
+    src.indexOf('async function manuelleFigurAnlegen') + 6000,
+  );
 
   const writes = [
-    ...fn.matchAll(/recordAcquisitionForDay\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g),
+    ...fn.matchAll(
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
+    ),
   ];
   assert.equal(
     writes.length,
@@ -247,7 +262,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Die Zweiterfassung muss den Preis über dieselbe Funktion ermitteln
   assert.match(
     fn,
-    /const re = await resolveManualFigPurchase\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
+    /const re = await manuellerFigurenkauf\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
     'Die Zweiterfassung darf die Preislogik nicht neu ausformulieren',
   );
 });
@@ -269,30 +284,29 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Unabhängig von der Set-Zeile: backfillSets() sieht nur Sets mit NULL-Preis
   assert.match(
     job,
-    /FROM set_acquisitions\s+WHERE purchase_price IS NULL/,
+    /FROM \$\{l\.setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
     'Der Nachtrag muss alle preislosen Erfassungen finden',
   );
   // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
   assert.match(
     job,
-    /getCurrentMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
+    /(?:aktuellerMarktpreis|aktuellerMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
   );
-  // Hier stand eine Regel auf die Spiegelung
+  // Keine Spiegelung in die sets-Zeile
   assert.doesNotMatch(
     job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /UPDATE sets SET/,
     'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
       'Migration 0032 weder Kaufpreis noch Zustand',
   );
-  assert.match(
-    job,
-    /await backfillAcquisitions\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?\)/,
-    'Der Durchlauf ist nicht eingehängt',
-  );
+  assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
-  const sets = require('./helpers/sources').setKernQuelle();
+  // Den Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen (Besitzer von price_history).
+  const sets =
+    require('./helpers/sources').setKernQuelle() +
+    fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisCache.ts'), 'utf8');
   assert.match(
     sets,
     /FROM price_history[\s\S]{0,200}ORDER BY \(condition = \$3\) DESC, recorded_at DESC/,
@@ -314,124 +328,38 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
     'Der Hinweis muss in die Liste der zu holenden Zustände einfliessen',
   );
   assert.ok(
-    hatParameter(job, 'refreshPriceForSet', 'hintCondition', true),
-    'refreshPriceForSet muss den Hinweis annehmen',
+    hatParameter(job, 'preisFuerSetHolen', 'hintCondition', true),
+    'preisFuerSetHolen muss den Hinweis annehmen',
   );
   assert.match(
     job,
     /conditionsNeededFor\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?setNumber, userId, hintCondition\)/,
-    'refreshPriceForSet muss den Hinweis weiterreichen',
+    'preisFuerSetHolen muss den Hinweis weiterreichen',
   );
 
-  // Und getCurrentMarketPrice muss ihn beim Anlegen mitgeben — genau an der
+  // Und aktuellerMarktpreis muss ihn beim Anlegen mitgeben — genau an der
   // Stelle, wo die Zeile noch nicht existiert.
   const preis = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
   assert.match(
     preis,
-    /preisFuerSetHolen\(setNumber, userId, condition\)/,
-    'getCurrentMarketPrice muss den angefragten Zustand als Hinweis übergeben',
+    /preisFuerSetHolen\(k, setNumber, userId, condition\)/,
+    'aktuellerMarktpreis muss den angefragten Zustand als Hinweis übergeben',
   );
 });
 
-test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen Standard', () => {
-  // Gemeldet: Kaufpreis und Marktpreis stimmen überein (0.0% Entwicklung),
-  // der Graph zeigt trotzdem einen Abfall am selben Tag. Ursache:
-  // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
-  // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
-  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
-  assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
-  const fn = src.slice(i, i + 1200);
-
-  assert.doesNotMatch(
-    fn,
-    /const condition = DEFAULT_PRICE_CONDITION;/,
-    'Der globale Standard darf nicht mehr direkt als Zustand des Sets gelten',
-  );
-  assert.match(
-    fn,
-    /sets\.setPreisVerlauf\(req\.apiUser\.user_id, sichtVon\(req\), sn\)/,
-    'Die Route muss den gemeinsamen Helfer benutzen — mit Blickfeld',
-  );
-  assert.doesNotMatch(
-    fn,
-    /FROM price_history/,
-    'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route',
-  );
-
-  assert.match(
-    kompakt(fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8')),
-    /sk\.finanzen\.preisverlaufSet\(sicht, sn, await waehrungVon\(sk, uid\)\)/,
-    'Der Dienst nutzt den gemeinsamen Helfer',
-  );
-  const helper = kompakt(fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8'));
-  assert.match(
-    helper,
-    /const condition = await resolveSetCondition\(k, uids, setNumber\);/,
-    'Der Helfer muss den Zustand über resolveSetCondition() auflösen',
-  );
-});
-
-test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen Standard', () => {
-  // Gemeldet per Screenshot: Android zeigte Marktpreis 110.48 CHF (Gebraucht)
-  // für ein als „Neu" geführtes Set mit Kaufpreis 162.42 CHF — „-32.0%
-  // Entwicklung", obwohl sich der Preis nie bewegt hatte. Ursache identisch zur
-  // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
-  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
-  const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const priceRoute = dienst.slice(
-    dienst.indexOf('export async function setPreis'),
-    dienst.indexOf('export async function waehrungVon'),
-  );
-  assert.ok(priceRoute.length > 0, 'setPreis() nicht gefunden');
-  assert.doesNotMatch(
-    priceRoute,
-    /fetchPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?sn, DEFAULT_PRICE_CONDITION/,
-    'Der globale Standard darf nicht mehr direkt an fetchPrice gehen',
-  );
-  // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
-  assert.match(
-    priceRoute,
-    /sk\.finanzen\.fetchPrice\(\s*sn,\s*await sk\.finanzen\.resolveSetCondition\(blickfeld, sn, undefined\),/,
-    'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
-  );
-
-  const historyRoute = src.slice(
-    src.indexOf("router.get('/sets/:setNumber/price-history'"),
-    src.indexOf("router.get('/sets/:setNumber'", src.indexOf('price-history')),
-  );
-  assert.doesNotMatch(
-    historyRoute,
-    /const condition = DEFAULT_PRICE_CONDITION;/,
-    'Auch der Verlauf darf nicht mehr den globalen Standard nehmen',
-  );
-  // Seit der Zusammenführung teilt sich diese Route src/finanzen/priceHistory.ts mit
-  // der Webapp — die rund fünfzig Zeilen, die dort standen, waren eine Kopie.
-  assert.match(
-    historyRoute,
-    /sets\.setPreisVerlauf\(req\.apiUser\.user_id, sichtVon\(req\), sn\)/,
-    'Der Verlauf muss den gemeinsamen Helfer benutzen',
-  );
-  assert.doesNotMatch(
-    historyRoute,
-    /FROM price_history/,
-    'Die Abfrage gehört in src/finanzen/priceHistory.ts, nicht in die Route',
-  );
-});
-
-test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', () => {
-  // Fünfter Fundort desselben Fehlers in dieser Sitzung: computeSetsValuation,
-  // getCurrentMarketPrice, computePnl, die Webapp-Verlaufsroute und jetzt die
+// Preis- und Verlaufsroute im Zustand des Sets prüft test/preis-zustand-des-sets-db.test.js am Server.
+test('genau EINE Zustandsauflösung für Einzelsets — setZustand', () => {
+  // Fünfter Fundort desselben Fehlers in dieser Sitzung: bewerteSets,
+  // aktuellerMarktpreis, gewinnUndVerlust, die Webapp-Verlaufsroute und jetzt die
   // Android-API hatten je eine eigene Fassung. Ab jetzt genau eine Funktion für
   // Aufrufer ohne bereits geladene acq_count/used_count-Felder.
   const fc = require('./helpers/sources').finanzQuelle();
   // Nimmt seit der Haushaltssicht auch eine Liste von Konten entgegen — der
   // Hauptaccount fragt den Zustand eines Sets ab, das einem Unterkonto gehört.
-  pruefeParameter(fc, 'resolveSetCondition', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
+  pruefeParameter(fc, 'setZustand', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
   assert.match(
     fc,
-    /export async function resolveSetCondition\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
+    /export async function setZustand\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
     'Der Helfer muss exportiert sein',
   );
 
@@ -443,17 +371,17 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // UMFORMULIERT in: Geprüft wurde die Importzeile WÖRTLICH.
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
-  //     import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } … …
+  //     import { setZustand, resolveBlColorId, resolveBlPartNumber } … …
   assert.match(
     helper,
-    /import \{[^}]*\bresolveSetCondition\b[^}]*\} from '\.\/financeCalc';/,
+    /import \{[^}]*\bsetZustand\b[^}]*\} from '\.\/financeCalc';/,
     'src/finanzen/priceHistory.ts muss den gemeinsamen Helfer benutzen',
   );
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finanzen\.resolveSetCondition\(blickfeld, sn, undefined\)/g) || []).length;
+  const uses = (apiV1.match(/sk\.finanzen\.setZustand\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
@@ -463,10 +391,10 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
   // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
   // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
-  const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
+  const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await hole(?:Https|Bild)\(url, \{/,
+    /await (?:k\.fremdquellen\.quellen\s*\.)?hole(?:Https|Bild)\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
   );
 });
@@ -501,7 +429,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   // Gemeldet: manuell erfasste Teile (und dasselbe Muster traf auch auf
   // Minifiguren zu) bekamen nie eine Vorschau. Ursache: Der stündliche
   // Hintergrund-Job lud das Bild herunter und aktualisierte image_local,
-  // rief aber nie generateThumb() auf — anders als bei Sets (dieselbe …
+  // rief aber nie vorschauErzeugenAus() auf — anders als bei Sets (dieselbe …
   const src = require('./helpers/sources').serverAll();
 
   const partsLoop = src.slice(
@@ -509,14 +437,14 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
     src.indexOf('for (const f of figsToFetch) {'),
   );
   // UMFORMULIERT in: Geprüft wurde der WORTLAUT der Zeile
-  //     const { generateThumb } = require('./src/katalog/bilder/thumbs');
+  //     const { vorschauErzeugenAus } = require('./src/bilder/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
-  assert.match(src, /generateThumb/, 'generateThumb ist in server.ts nicht mehr verfügbar');
+  assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
-    /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
-    'Die Teile-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
+    /(?:vorschauErzeugenAus|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    'Die Teile-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 
   const figsLoop = src.slice(
@@ -525,8 +453,8 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   );
   assert.match(
     figsLoop,
-    /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
-    'Die Minifiguren-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
+    /(?:vorschauErzeugenAus|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    'Die Minifiguren-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 });
 
@@ -552,8 +480,7 @@ test('nur ein Zustand ergibt eine Plakette', () => {
 });
 
 test('ohne Erfassungen gilt „Neu"', () => {
-  // Hier stand „ohne Erfassungen zählt der gespeicherte Wert" mit einem
-  // dritten Parameter. Den gibt es seit Migration 0035 nicht mehr: Fuer
+  // Ohne Erfassungen gibt es keinen gespeicherten Wert, der zählte: Fuer
   // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
   // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set …
   assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
@@ -571,10 +498,9 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
-  // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
-  // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
+  // Eine Plakette, keine Kopien mit fest eingetragenen Farben statt der CSS-Klassen:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finance.js']) {
+  for (const f of ['public/js/teile.js', 'public/js/minifigs.js', 'public/js/finanzen.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
     assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
@@ -585,7 +511,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
   // MAX(purchase_price) zeigte bei 2x100 und 1x160 den Wert 160.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sammlung.js'), 'utf8');
   assert.match(
     gal,
     /s\.avg_purchase_price \?\? s\.max_purchase_price/,
@@ -597,17 +523,17 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
 const authModul = buildAndRequire()('src/konto/namensRegeln.js');
-const { isValidLoginIdentifier, USERNAME_RE, EMAIL_RE } = authModul;
+const { anmeldenameGueltig, USERNAME_RE, EMAIL_RE } = authModul;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
   // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
   // beiden Spalten — davor stand aber ein Wächter, der nur das
   // Benutzernamen-Muster zuliess. Das @ fiel durch, und die Meldung sprach von
   // erlaubten Zeichen im Benutzernamen.
-  assert.ok(isValidLoginIdentifier('marco@example.com'));
-  assert.ok(isValidLoginIdentifier('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(isValidLoginIdentifier('marco'), 'Benutzername muss weiterhin gehen');
-  assert.ok(isValidLoginIdentifier('mar_co.1-x'));
+  assert.ok(anmeldenameGueltig('marco@example.com'));
+  assert.ok(anmeldenameGueltig('marco.meier+lego@sub.example.co.uk'));
+  assert.ok(anmeldenameGueltig('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(anmeldenameGueltig('mar_co.1-x'));
 });
 
 test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
@@ -622,7 +548,7 @@ test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(isValidLoginIdentifier(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(anmeldenameGueltig(bad), false, `\`${bad}\` sollte abgelehnt werden`);
   }
 });
 

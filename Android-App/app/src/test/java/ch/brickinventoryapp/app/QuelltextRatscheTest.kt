@@ -20,6 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
  *                              eines Werkzeugs …“ und „Testfunktionen, die Quelltext lesen …“
  *   geschichte-im-testkopf     Nachtragsnummer und Melder im Kopf von TabOpensAtTopTest → rot „lange
  *                              Kommentare im Workflow und in Tests …“
+ *   kuerzel-im-bau             ein Prüfkürzel wieder im Kommentar von settings.gradle.kts → rot, derselbe Test
  *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
  *   verweis-aufs-archiv        ein „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → rot „kein Verweis
@@ -27,7 +28,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   kdoc-doppelt               ein verwaister KDoc-Block vor Alarmabholung → rot, derselbe Test
  *   detekt-baseline-waechst    Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
- *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
+ *   start-schluckt-abbruch     macht „kein breiter Fang …“ rot
  *   runcatching-um-suspend     BrickInventoryApp übernimmt das alte Token wieder in runCatching
  *                              → rot „kein runCatching verschluckt …“
  *   runcatching-um-suspend-lambda  Offlineablage ruft die suspend-Quelle (ein Feld vom Typ
@@ -40,9 +41,22 @@ import ch.brickinventoryapp.testing.Quellen
  *   erfassung-an-der-activity  ErfassungViewModel wieder per `by viewModels()` in MainActivity
  *                              → rot „die Activity haelt nicht mehr ViewModels …“
  *   padding-feste-zahl         DetailRow2 wieder `padding(vertical = 5.dp)` → rot „feste Zahlen in padding …“
+ *   abstand-zwischen-feste-zahl  Lagerorte wieder `Spacer(Modifier.width(8.dp))` → rot, derselbe Test
+ *   dialog-ohne-fenstername    UpdateDialog ohne paneTitle → rot „kein AlertDialog ohne Fenstername …“
+ *   dialog-graue-flaeche       UpdateDialog ohne fensterFlaeche() → rot „jeder AlertDialog liegt auf der Fensterflaeche“
+ *   gutschein-eigene-knopfreihe  Gutschein-Formular wieder mit eigener Reihe Speichern | Abbrechen
+ *                              → rot „Abbrechen und Hauptknopf stehen nur in der Knopfzeile …“
  *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
  *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
  *                              → rot „Bildschirme stossen das Laden nicht …“
+ *   merkliste-laedt-wieder     MerklisteUiState wieder mit einem Feld `nochLaedt: Boolean` → rot
+ *                              „Bildschirme stossen das Laden nicht …, Zustaende tragen Laden …“
+ *   merkliste-fehler-als-text  MerklisteUiState mit `fehlerText: String?` → rot, derselbe Test
+ *   konto-speichert-wieder     KontoUiState wieder mit `speichert: Boolean` → rot, derselbe Test
+ *   galerie-fehler-als-text    GalleryUiState mit `galleryFehlerSatz: String?` → rot, derselbe Test
+ *   englischer-bezeichner      `fun loadMerklisteNeu()` in MerklisteViewModel → rot „… englische Bezeichner auch“
+ *   fachtyp-preis-als-double   `val betragAlt: Double?` in KaufSummenAnsicht → rot „Beträge als Double …“
+ *   fachtyp-datum-als-text     `val geaendertAm: String?` in KaufAnsicht → rot „Daten als String …“
  */
 class QuelltextRatscheTest {
 
@@ -82,8 +96,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 212
-        val NUR_QUELLTEXT = 35
+        val FUNKTIONEN = 211
+        val NUR_QUELLTEXT = 33
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
         val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }
@@ -253,6 +267,13 @@ class QuelltextRatscheTest {
             geschichte.take(20).joinToString("\n  "))
         ratsche("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", GESCHICHTE, erzaehlt.size,
             erzaehlt.take(20).joinToString("\n  "))
+        // Im Code und in Build-Dateien nennt ein Kommentar das Warum, nicht die Prüfung, die es fand.
+        val kuerzel = Regex("""\((?:sec|arch|ux|perf)[0-9]+[^)]*\)|\((?:[HMN][0-9]{1,2})\)|\bNachtrag [0-9]+""")
+        val gekuerzt = (produktivDateien() + baudateien()).flatMap { f ->
+            f.readLines().filter { z -> z.trim().let { istKommentar(it) || it.startsWith("#") } && kuerzel.containsMatchIn(z) }
+                .map { "${f.name}: ${it.trim()}" }
+        }
+        ratsche("Prüfungskürzel in Kommentaren von Code und Bau", 0, gekuerzt.size, gekuerzt.take(20).joinToString("\n  "))
     }
 
     /** Zeilennummern der Kommentar-Absätze über fünf Prosazeilen, die nicht mit „Gegenprobe“ beginnen. */
@@ -463,8 +484,9 @@ class QuelltextRatscheTest {
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
-        val GRENZE = 223
-        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-sitzung", "core-testing")
+        val GRENZE = 222
+        val andere = setOf("core-model", "core-vertrag", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-navigation", "core-sitzung",
+            "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich(module, 100),
@@ -475,7 +497,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
-        val GRENZE = 148
+        val GRENZE = 142
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
@@ -491,10 +513,16 @@ class QuelltextRatscheTest {
     fun `feste Zahlen in padding werden nicht mehr`() {
         // Abstände haben Namen (ui/theme/Abstaende); ein blankes `padding(… 14.dp)` hält sich
         // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
-        val GRENZE = 57
+        val GRENZE = 46
+        // Ebenso die Abstände zwischen Geschwistern: spacedBy und Spacer.
+        val ZWISCHEN = 40
         val fest = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
-        val zahl = hauptcode().sumOf { (_, text) -> fest.findAll(text).count() }
-        ratsche("padding mit fester dp-Zahl", GRENZE, zahl, "Einen Abstand aus Abstaende nehmen.")
+        val zwischen = Regex("""\bspacedBy\(\d+(?:\.\d+)?\.dp\)|\bSpacer\(Modifier\.(?:height|width)\(\d+(?:\.\d+)?\.dp\)\)""")
+        val code = hauptcode()
+        ratsche("padding mit fester dp-Zahl", GRENZE, code.sumOf { (_, text) -> fest.findAll(text).count() },
+            "Einen Abstand aus Abstaende nehmen.")
+        ratsche("spacedBy und Spacer mit fester dp-Zahl", ZWISCHEN, code.sumOf { (_, text) -> zwischen.findAll(text).count() },
+            "Einen Abstand aus Abstaende nehmen.")
     }
 
     @Test
@@ -504,6 +532,89 @@ class QuelltextRatscheTest {
         val ohne = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
         val stellen = hauptcode().filter { (_, text) -> ohne.containsMatchIn(text) }.map { it.first.name }
         assertEquals("String.format ohne Locale in $stellen", emptyList<String>(), stellen)
+    }
+
+    /** Die Argumente eines Aufrufs bis zur passenden Klammer; [auf] zeigt auf die öffnende. */
+    private fun argumente(text: String, auf: Int): String {
+        var tiefe = 0
+        var i = auf
+        while (i < text.length) {
+            if (text[i] == '(') tiefe++ else if (text[i] == ')' && --tiefe == 0) break
+            i++
+        }
+        return text.substring(auf, minOf(i + 1, text.length))
+    }
+
+    @Test
+    fun `kein AlertDialog ohne Fenstername und Ueberschrift`() {
+        // Ohne paneTitle sagt TalkBack beim Öffnen nur „Dialog“, ohne heading() findet die
+        // Überschriften-Navigation den Titel nicht. Rueckfrage und ErfassenDialog setzen beides.
+        val aufruf = Regex("""\bAlertDialog\(""")
+        var gesehen = 0
+        val ohne = hauptcode().flatMap { (f, text) ->
+            aufruf.findAll(text).mapNotNull { m ->
+                gesehen++
+                val args = argumente(text, m.range.last)
+                val fehlt = listOf("paneTitle", "heading()").filter { it !in args }
+                val zeile = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if (fehlt.isEmpty()) null else "${f.name}:$zeile ohne ${fehlt.joinToString()}"
+            }.toList()
+        }
+        assertTrue("Nur $gesehen AlertDialogs gefunden — greift die Suche noch?", gesehen >= 8)
+        assertEquals("AlertDialogs ohne Fenstername oder Überschrift", emptyList<String>(), ohne)
+    }
+
+    @Test
+    fun `jeder AlertDialog liegt auf der Fensterflaeche`() {
+        // Materials surfaceContainerHigh stand im Hellen grau auf dem abgedunkelten Grund;
+        // fensterFlaeche() nimmt dort surface (Kontrast belegt GesperrtKontrastTest).
+        val aufruf = Regex("""\bAlertDialog\(""")
+        var gesehen = 0
+        val ohne = hauptcode().flatMap { (f, text) ->
+            aufruf.findAll(text).mapNotNull { m ->
+                gesehen++
+                val zeile = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if ("containerColor = fensterFlaeche()" in argumente(text, m.range.last)) null else "${f.name}:$zeile"
+            }.toList()
+        }
+        assertTrue("Nur $gesehen AlertDialogs gefunden — greift die Suche noch?", gesehen >= 8)
+        assertEquals("AlertDialogs ohne fensterFlaeche()", emptyList<String>(), ohne)
+    }
+
+    /** Aufruf samt nachgestelltem Block: `Row(…) { … }` oder `Row { … }`; [auf] zeigt auf `(` bzw. `{`. */
+    private fun aufrufMitBlock(text: String, auf: Int): String {
+        val args = if (text[auf] == '(') argumente(text, auf) else ""
+        var i = auf + args.length
+        while (i < text.length && text[i].isWhitespace()) i++
+        if (i >= text.length || text[i] != '{') return args
+        var tiefe = 0
+        var j = i
+        while (j < text.length) {
+            if (text[j] == '{') tiefe++ else if (text[j] == '}' && --tiefe == 0) break
+            j++
+        }
+        return args + text.substring(i, minOf(j + 1, text.length))
+    }
+
+    @Test
+    fun `Abbrechen und Hauptknopf stehen nur in der Knopfzeile beisammen`() {
+        // Im Gutschein-Formular stand Speichern links und Abbrechen rechts, überall sonst
+        // umgekehrt. AlertDialog ordnet selbst; jede andere Knopfreihe nimmt Knopfzeile. Ein
+        // Schliessen-Kreuz neben „OK“ beim Bearbeiten in der Zeile ist kein Abbrechen-Knopf.
+        val reihe = Regex("""\b(?:Row|FlowRow)\s*[({]""")
+        val haupt = Regex("""(?<![\w.])(?:Button|FilledTonalButton)\(""")
+        var gesehen = 0
+        val eigene = hauptcode().filter { (f, _) -> f.name != "Dialoge.kt" }.flatMap { (f, text) ->
+            reihe.findAll(text).mapNotNull { m ->
+                gesehen++
+                val inhalt = aufrufMitBlock(text, m.range.last)
+                val zeile = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if ("Text(stringResource(R.string.common_cancel))" in inhalt && haupt.containsMatchIn(inhalt)) "${f.name}:$zeile" else null
+            }.toList()
+        }
+        assertTrue("Nur $gesehen Zeilen gefunden — greift die Suche noch?", gesehen >= 100)
+        assertEquals("Eigene Knopfreihe mit Abbrechen und Hauptknopf; Knopfzeile nehmen",
+            emptyList<String>(), eigene)
     }
 
     @Test
@@ -534,9 +645,9 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
+    fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 207
+        val HAUPT = 187
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
@@ -549,13 +660,30 @@ class QuelltextRatscheTest {
         assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", haupt + tests > 0)
         ratsche("voll qualifizierte Namen im Hauptcode", HAUPT, haupt)
         ratsche("voll qualifizierte Namen in Tests", TESTS, tests)
+        // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
+        // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
+        // core-vertrag, dessen Namen dem Wire-Format folgen.
+        val GRENZE = 961
+        val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
+        val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
+        val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",
+            "save", "search", "refresh", "state", "error", "response", "request", "item", "items", "screen", "button", "dialog",
+            "card", "image", "color", "price", "user", "owner", "value", "count", "list", "open", "close", "select",
+            "selected", "current", "handle", "on", "is", "has", "to", "from", "with", "new")
+        val funde = zeilenJeModul().filter { (modul, _) -> modul != "core-vertrag" }.sumOf { (_, zeilen) ->
+            zeilen.count { z ->
+                "override" !in z && dekl.find(z)?.groupValues?.get(1)
+                    ?.let { name -> teil.findAll(name).any { it.value.lowercase() in englisch } } == true
+            }
+        }
+        ratsche("englische Bezeichner", GRENZE, funde, "Neue und angefasste Namen deutsch wie im Rest.")
     }
 
     @Test
-    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an`() {
+    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
         // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
-        val LADEND = 17
+        val LADEND = 0
         val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
         val funde = produktivDateien().flatMap { f ->
@@ -564,5 +692,70 @@ class QuelltextRatscheTest {
         assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
             produktivDateien().any { "LaunchedEffect(" in it.readText() })
         ratsche("LaunchedEffect, die laden", LADEND, funde.size, funde.joinToString())
+        // Ein Bildschirmzustand trägt Laden<T> (Abruf) oder Vorgang (Handlung) statt eines Paars
+        // aus `laeuft: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
+        // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
+        val ALT = 0
+        val TEXT = 0
+        val laden = Regex("""(?i)^(laedt\w*|laden|\w*loading|\w*laedt|\w*laeuft|speichert|sendet|prueft|\w*ing)$""")
+        val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
+        val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")
+        var alt = 0
+        var zustaende = 0
+        var texte = 0
+        for ((modul, zeilen) in zeilenJeModul()) {
+            if (praesentation.none { modul.startsWith(it) }) continue
+            val istZustand = zustand.containsMatchIn(zeilen.joinToString("\n"))
+            if (istZustand) zustaende++
+            for (z in zeilen) {
+                val m = eigenschaft.find(z) ?: continue
+                val (name, typ) = m.destructured
+                if (typ == "Boolean" && laden.matches(name)) alt++
+                if (istZustand && typ != "Boolean" && text.containsMatchIn(name)) texte++
+            }
+        }
+        // Beide Zahlen stehen auf 0; dass das Muster noch greift, zeigt eine alte Form.
+        val unerkannt = listOf("galleryLoading", "bestandLaeuft", "isExporting", "speichert", "laedtPruefung")
+            .filterNot { erkannt(laden, it) }
+        assertTrue("Das Muster erkennt $unerkannt nicht mehr", unerkannt.isEmpty())
+        assertTrue("Nur $zustaende Zustandsdateien — greift die Suche noch?", zustaende >= 10)
+        ratsche("alte Ladeformen (Boolean laedt/…laeuft/speichert/…ing)", ALT, alt,
+            "Laden<T> (model/ui/Laden.kt) für Abrufe, Vorgang (model/ui/Vorgang.kt) für Handlungen nehmen.")
+        ratsche("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texte,
+            "Meldung (model/ui/Meldung.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
     }
+
+    @Test
+    fun `Fachtypen tragen Betraege als Geld und Zeitpunkte als Instant, nicht als Double und String`() {
+        // Ziel 0, beide erreicht: Gezählt werden Eigenschaften in core-model, deren Name einen Betrag
+        // oder ein Datum nennt. Prozente sind keine Beträge.
+        val BETRAEGE = 0
+        val DATEN = 0
+        val eigenschaftTyp = Regex("""\bva[lr]\s+(\w+)\s*:\s*(Double|String)\b""")
+        val betrag = Regex("""(?i)(price|preis|betrag|amount|wert|schwelle|value|kosten)""")
+        val anteil = Regex("""(?i)(prozent|pct|frac)""")
+        val datum = Regex("""(At|Am|Datum|Date)$|^(datum|date|tag)$""")
+        fun zaehle(zeilen: List<String>): Pair<List<String>, List<String>> {
+            val treffer = zeilen.flatMap { z -> eigenschaftTyp.findAll(z).map { it.groupValues[1] to it.groupValues[2] }.toList() }
+            return treffer.filter { (n, t) -> t == "Double" && betrag.containsMatchIn(n) && !anteil.containsMatchIn(n) }.map { it.first } to
+                treffer.filter { (n, t) -> t == "String" && datum.containsMatchIn(n) }.map { it.first }
+        }
+        val probe = zaehle(listOf("    val avgPrice: Double? = null,", "    val createdAt: String? = null,", "    val pnlProzent: Double? = null,"))
+        assertEquals("Das Muster erkennt die alten Formen nicht mehr", listOf("avgPrice") to listOf("createdAt"), probe)
+        val (geld, tage) = zaehle(zeilenJeModul().filter { it.first == "core-model" }.flatMap { it.second })
+        ratsche("Beträge als Double in core-model", BETRAEGE, geld.size, "Geld nehmen (model/fach/Geld.kt): $geld")
+        ratsche("Daten als String in core-model", DATEN, tage.size, "Instant nehmen, gelesen mit zeitpunkt(): $tage")
+    }
+    /** Ob [muster] eine Boolean-Eigenschaft dieses Namens als alte Ladeform zählt. */
+    private fun erkannt(muster: Regex, name: String): Boolean =
+        eigenschaft.find("    val $name: Boolean = false,")?.destructured?.component1()?.let(muster::matches) == true
+
+    /** Die Hauptquellen eines Moduls, Zeile für Zeile; die Regeln unten lesen nur Zeilenanfänge. */
+    private fun zeilenJeModul(): List<Pair<String, List<String>>> = Quellen.module.flatMap { m ->
+        File(m, "src/main/java").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .map { m.name to it.readText().split("\n") }.toList()
+    }
+
+    private val eigenschaft = Regex("""^\s*(?:(?:private|internal|public|override)\s+)*(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(Boolean|String\?|String)(?![A-Za-z0-9_<?])""")
+    private val praesentation = listOf("feature-", "core-zustand", "core-sitzung", "app")
 }

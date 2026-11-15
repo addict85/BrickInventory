@@ -20,6 +20,8 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
+    // Der Diagrammtest baut seine Punkte aus Serverantworten; nur der Test kennt den Vertrag.
+    testImplementation(project(":core-vertrag"))
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

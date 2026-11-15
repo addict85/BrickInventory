@@ -6,13 +6,13 @@ Rot: ein Geheimtext ohne Praefix bleibt
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
-@@ -44,8 +44,7 @@
+@@ -49,8 +49,7 @@
      override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
  
      override fun oeffne(gespeichert: String): Tresorbefund =
 -        if (gespeichert.startsWith(ENTSPERRT_PRAEFIX)) nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
--        else immer.oeffne(gespeichert)
+-        else altbestand.oeffne(gespeichert)
 +        nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
  
-     override fun veraltet(gespeichert: String): Boolean = !gespeichert.startsWith(ENTSPERRT_PRAEFIX)
- 
+     override fun veraltet(gespeichert: String): Boolean =
+         !gespeichert.startsWith(ENTSPERRT_PRAEFIX) || nurEntsperrt.veraltet(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))

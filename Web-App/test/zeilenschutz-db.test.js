@@ -24,6 +24,19 @@
  *   Q  nur imNamenDesAuftrags() mit imNamenVon statt alsAnfrage → rot: dasselbe
  *      (Konto [A,B,C]: der Systemrahmen des Aufrufers bleibt)
  *
+ * Gegenproben Systemrahmen je Funktion (14.11.2026 gemessen, je einzeln):
+ *   R  in src/konto/kontext.ts passkeys.desKontos und konten.zugaengeDesKontos wieder
+ *      in die Liste des Systemrahmens → rot: „ein Konto liest seine Passkeys und
+ *      Tokens …“ (Konto A sah den Passkey und den Token von C)
+ *   S  pdfAuftraege wieder ganz mit bindeImSystemrahmen und ohne `AND user_id = $2`
+ *      in pdfAuftragZeile → rot: „ein PDF-Auftrag eines fremden Kontos …“
+ *
+ * Gegenprobe Zugangsdaten nur des eigenen Kontos (Migration 0114, 14.11.2026 gemessen):
+ *   T  in 0114 wieder `user_id = ANY (zeilenschutz_konten())` statt `= zeilenschutz_konto()`
+ *      → rot: „Zugangsdaten des Unterkontos bleiben …“ (A sah den Passkey von B)
+ *   U  (Migration 0118) in 0118 `vouchers` aus der Liste gestrichen → rot: „Gutscheine und
+ *      Idempotenzeinträge des Unterkontos …“ (A sah den Gutschein von B); ebenso mit `idempotenz`
+ *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
  *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
@@ -61,18 +74,17 @@ const _req = q.buildAndRequire();
 const { zugangOderSkip, fehltVoraussetzung } = require('./helpers/db');
 const { testName, raeumeReste, id } = require('./helpers/testnamen');
 const { erzeugeDb, dbKonfigAusUmgebung } = require(path.join(q.DIST, 'db', 'database.js'));
-const { imNamenVon, imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
+const { imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
 
 const ROLLE = testName('zeilen');
 const SYSTEM = testName('zeilsys');
-const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
+const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
 /** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut, samt ihren Kontexten. */
 const bauMit = z => {
   const kontexte = {};
   const d = _req('startup/verdrahtung.js').baueDienste(z, {
-    nacharbeit: _req('src/auftraege/nacharbeit.js').OHNE_NACHARBEIT,
     kontexte,
   });
   return { d, kontexte };
@@ -260,13 +272,14 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
             () => 'lief neben der Transaktion',
             e => e.constructor.name,
           );
+          // Über den Zugang der Transaktion (tx.db), sonst UngebundeneAbfrage.
           await als(A, () =>
-            app.transaction(async inner => {
+            tx.db.transaction(async inner => {
               await n(inner);
               throw new Error('zurück');
             }),
           ).catch(() => {});
-          return [vorher, neben, await als(A, () => n(app)), await n(tx)];
+          return [vorher, neben, await als(A, () => n(tx.db)), await n(tx)];
         }),
       );
       assert.deepEqual(stand, [1, 'NebenDerTransaktion', 2, 1]);
@@ -295,15 +308,20 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
     await su.run(`UPDATE user_settings SET value = 'USD' WHERE user_id = $1 AND key = 'currency'`, [A]);
     const { code } = await als(A, () => haushalt.einladungAnlegen(A));
-    const r = await als(D, () => haushalt.einladungEinloesen(D, code));
-    assert.deepEqual(r, { fehler: 'waehrung_ungleich', vars: { haupt: 'USD', unter: 'EUR' } });
+    await assert.rejects(
+      als(D, () => haushalt.einladungEinloesen(D, code)),
+      {
+        code: 'waehrung_ungleich',
+        vars: { haupt: 'USD', unter: 'EUR' },
+      },
+    );
   });
 
   await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {
-    const kontoDienste = dienstMit(app).konto;
+    const einstellungen = dienstMit(app).einstellungen;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
-    await als(A, () => kontoDienste.setUserSetting(A, 'currency', 'CHF'));
+    await als(A, () => einstellungen.nutzerEinstellungSetzen(A, 'currency', 'CHF'));
     const w = await su.all(`SELECT user_id, value FROM user_settings WHERE key = 'currency' AND user_id = ANY($1)`, [
       [A, B, E],
     ]);
@@ -346,11 +364,127 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const K = _req('src/konto/index.js');
     const token = `zeilen-token-${process.pid}`;
     await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
-      K.hashToken(token),
+      K.tokenAbdruck(token),
       C,
     ]);
-    assert.equal((await d.konto.validateToken(token))?.user_id, C);
-    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(kontexte.konto, C);
+    assert.equal((await d.konto.nutzerZumToken(token))?.user_id, C);
+    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).alleTokensWiderrufen(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
+  });
+
+  await t.test('ein Konto liest seine Passkeys und Tokens unter Zeilenschutz, fremde nicht', async st => {
+    const d = dienstMit(app);
+    await su.run(
+      `INSERT INTO passkeys (user_id, credential_id, public_key, name) VALUES ($1, $2, '\\x00', 'eigen'), ($3, $4, '\\x00', 'fremd')`,
+      [A, `pk-a-${process.pid}`, C, `pk-c-${process.pid}`],
+    );
+    await su.run(
+      `INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1, $2, 'eigen', NOW() + INTERVAL '1 day'),
+              ($3, $4, 'fremd', NOW() + INTERVAL '1 day')`,
+      [`zt-a-${process.pid}`, A, `zt-c-${process.pid}`, C],
+    );
+    st.after(() => su.run('DELETE FROM passkeys WHERE user_id = ANY($1)', [[A, C]]));
+    st.after(() => su.run('DELETE FROM api_tokens WHERE user_id = ANY($1)', [[A, C]]));
+    const anfrage = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
+    // Das eigene Konto: sichtbar, ohne Systemrahmen.
+    assert.deepEqual(
+      (await anfrage(A, () => d.faktoren.passkeysDesKontos(A))).map(p => p.name),
+      ['eigen'],
+    );
+    assert.deepEqual(
+      (await anfrage(A, () => d.konto.sitzungen.zugaengeListe(A))).map(z => z.label),
+      ['eigen'],
+    );
+    // Ein fremdes Konto, auch mit dessen ID gefragt: nichts, und nichts zu löschen.
+    assert.deepEqual(await anfrage(A, () => d.faktoren.passkeysDesKontos(C)), []);
+    assert.deepEqual(await anfrage(A, () => d.konto.sitzungen.zugaengeListe(C)), []);
+    const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
+    assert.equal(await anfrage(A, () => d.faktoren.loeschePasskey(C, pkC.id)), false);
+    assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
+  });
+
+  await t.test('Zugangsdaten des Unterkontos bleiben dem Hauptkonto verborgen, lesend und schreibend', async st => {
+    const d = dienstMit(app);
+    const pid = process.pid;
+    await su.run(`INSERT INTO passkeys (user_id, credential_id, public_key, name) VALUES ($1, $2, '\\x00', 'unter')`, [
+      B,
+      `pk-b-${pid}`,
+    ]);
+    await su.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'geheim', true)`, [B]);
+    await su.run(
+      `INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1, $2, 'unter', NOW() + INTERVAL '1 day')`,
+      [`zt-b-${pid}`, B],
+    );
+    st.after(async () => {
+      for (const tab of ['passkeys', 'zweiter_faktor', 'api_tokens'])
+        await su.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[A, B]]);
+    });
+    // Ohne Filter und mit der ID des Unterkontos: nichts. Der Bestand des Unterkontos bleibt sichtbar.
+    for (const sql of [
+      'SELECT user_id FROM passkeys',
+      'SELECT user_id FROM zweiter_faktor',
+      'SELECT user_id FROM api_tokens',
+    ])
+      assert.deepEqual(await als(A, () => app.all(`${sql} WHERE user_id = $1`, [B])), [], sql);
+    assert.deepEqual(ids(await als(A, alleSets)), [A, B]);
+    const anfrage = f => alsAnfrage({ apiUser: { user_id: A } }, f);
+    assert.deepEqual(await anfrage(() => d.faktoren.passkeysDesKontos(B)), []);
+    assert.deepEqual(await anfrage(() => d.konto.sitzungen.zugaengeListe(B)), []);
+    // Anlegen für das Unterkonto: abgewiesen, auch wo der Zeilenschutz der Bestände es erlaubt.
+    const rls = /row-level security/;
+    for (const sql of [
+      `INSERT INTO passkeys (user_id, credential_id, public_key) VALUES ($1, 'pk-fremd-${pid}', '\\x00')`,
+      `INSERT INTO zweiter_faktor (user_id, geheimnis) VALUES ($1, 'x') ON CONFLICT DO NOTHING`,
+      `INSERT INTO api_tokens (token, user_id) VALUES ('zt-fremd-${pid}', $1)`,
+      `INSERT INTO zweiter_faktor_codes (user_id, code_hash) VALUES ($1, 'h')`,
+    ])
+      await assert.rejects(
+        als(A, () => app.run(sql, [B])),
+        rls,
+        sql,
+      );
+    assert.equal((await als(A, () => app.run('DELETE FROM api_tokens WHERE user_id = $1', [B]))).changes, 0);
+    // Das Unterkonto selbst sieht und ändert seine Zugangsdaten weiter.
+    assert.deepEqual(ids(await als(B, () => app.all('SELECT user_id FROM passkeys'))), [B]);
+    await als(B, () => app.run(`INSERT INTO api_tokens (token, user_id) VALUES ($1, $2)`, [`zt-b2-${pid}`, B]));
+  });
+
+  await t.test('Gutscheine und Idempotenzeinträge des Unterkontos sieht das Hauptkonto nicht', async st => {
+    const pid = process.pid;
+    await su.run(
+      `INSERT INTO vouchers (user_id, number, nummer_suche, amount, currency) VALUES ($1, 'v2:x', $2, 10, 'EUR')`,
+      [B, `zs-gs-${pid}`],
+    );
+    await su.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, $2, 'POST /x')`, [B, `zs-${pid}`]);
+    st.after(async () => {
+      for (const tab of ['vouchers', 'idempotenz'])
+        await su.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[A, B]]);
+    });
+    for (const tab of ['vouchers', 'idempotenz']) {
+      assert.deepEqual(await als(A, () => app.all(`SELECT user_id FROM ${tab} WHERE user_id = $1`, [B])), [], tab);
+      assert.equal((await als(A, () => app.run(`DELETE FROM ${tab} WHERE user_id = $1`, [B]))).changes, 0, tab);
+      assert.deepEqual(ids(await als(B, () => app.all(`SELECT user_id FROM ${tab}`))), [B], `${tab}: das Konto selbst`);
+    }
+    await assert.rejects(
+      als(A, () => app.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, 'fremd', 'x')`, [B])),
+      /row-level security/,
+    );
+  });
+
+  await t.test('ein PDF-Auftrag eines fremden Kontos ist für die Anfrage keiner', async st => {
+    const d = dienstMit(app);
+    const kennung = `zs${process.pid}`;
+    await su.run(
+      `INSERT INTO auftraege (art, nutzlast, user_id, schluessel, status) VALUES ('pdf', '{}', $1, $2, 'offen')`,
+      [C, `pdf:${kennung}`],
+    );
+    st.after(() => su.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`]));
+    const anfrage = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
+    assert.equal((await anfrage(C, () => d.katalog.pdf.lies(kennung, C)))?.user_id, C);
+    // Mit der eigenen ID gefragt (wie die Route): keiner; mit der fremden: der Zeilenschutz verbirgt ihn.
+    assert.equal(await anfrage(A, () => d.katalog.pdf.lies(kennung, A)), null);
+    assert.equal(await anfrage(A, () => d.katalog.pdf.lies(kennung, C)), null);
+    await anfrage(A, () => d.katalog.pdf.loesche(kennung, C));
+    assert.equal((await su.all('SELECT 1 FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`])).length, 1);
   });
 });

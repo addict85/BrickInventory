@@ -1,9 +1,13 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import java.time.Instant
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -29,6 +33,8 @@ import ch.brickinventoryapp.model.util.resolveFullUrl
 import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.LadeKreis
@@ -39,7 +45,7 @@ import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ANLEITUNG_TYPEN
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 
 /** Das Set-Detail am Navigationsziel: sammelt die Flüsse und reicht sie an [SetDetailScreen]. */
 @Composable
@@ -112,12 +118,12 @@ internal fun SetDetailScreen(
 
     val acquisitions = detailState.acquisitions
 
-    fun fmtPrice(v: Double?) = if (v == null) "—"
+    fun fmtPrice(v: Geld?) = if (v == null) "—"
         else fmtMoney(v, currency)
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
     // MinifigsScreen in einer zweiten, abweichenden Fassung.
-    fun fmtDate(iso: String?) = fmtTag(iso) ?: iso ?: "—"
+    fun fmtDate(zeit: Instant?) = fmtTag(zeit) ?: "—"
 
     val akzent = LocalAkzentflaechen.current
     // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
@@ -157,11 +163,10 @@ internal fun SetDetailScreen(
 
         if (set == null) {
             // Ohne Detail und ohne Vorschau: laden oder gescheitert — nie ein Kringel ohne Ende.
-            val fehler = detailState.setDetailFehler
-            if (fehler != null && !detailState.setDetailLoading) {
+            val fehler = detailState.detailAbruf as? Laden.Fehler
+            if (fehler != null) {
                 ZustandsHinweis(Modifier.padding(padding)) {
-                    FehlerHinweis(fehler, aktionen::aktualisiere,
-                        detailState.setDetailFehlerKlasse)
+                    FehlerHinweis(fehler.meldung.satz(), aktionen::aktualisiere, fehler.art)
                 }
             } else LadeKreis(Modifier.padding(padding))
             return@Scaffold
@@ -220,7 +225,15 @@ internal fun SetDetailScreen(
                     }
                 }
             } else {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = rand) { kopf(); preise(); angaben(); anleitungen() }
+                // Eine Spalte mit einer Höchstbreite für alle Karten: Auf dem Tablet hochkant stand
+                // der Preisverlauf (SectionCard, Lesebreite) schmaler als die Kacheln darüber.
+                val seitlich = ((maxWidth - DETAIL_SPALTE) / 2).coerceAtLeast(0.dp)
+                CompositionLocalProvider(LocalSpaltenkarte provides true) {
+                    LazyColumn(Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = seitlich, end = seitlich, bottom = Abstaende.sehrGross)) {
+                        kopf(); preise(); angaben(); anleitungen()
+                    }
+                }
             }
         }
 
@@ -251,3 +264,6 @@ internal fun SetDetailScreen(
         }
     }
 }
+
+/** Höchstbreite der einspaltigen Detailseite: die Lesebreite samt dem Rand der Karten. */
+private val DETAIL_SPALTE = Lesebreite.formular + Abstaende.gross * 2

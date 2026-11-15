@@ -21,7 +21,7 @@ const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const bd = _req('src/katalog/bilder/bildDatei.js');
+const bd = _req('src/bilder/bildDatei.js');
 const { downloadImage } = _req('src/katalog/teileAnreicherung.js');
 const { PART_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
@@ -32,13 +32,13 @@ const NUMMER = `bildtest${process.pid}`;
 function stelleNach(t, { status = 200, typ = 'image/png', body = Buffer.from('PNGDATEN') } = {}) {
   const aufrufe = [];
   const echt = https.get;
-  https.get = (adresse, _o, cb) => {
+  /** @type {any} */ (https).get = (adresse, _o, cb) => {
     aufrufe.push(String(adresse));
-    const req = new EventEmitter();
+    const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
     setImmediate(() => {
-      const r = Readable.from(Array.isArray(body) ? body : [body]);
+      const r = /** @type {any} */ (Readable.from(Array.isArray(body) ? body : [body]));
       r.statusCode = status;
       r.headers = { 'content-type': typ };
       cb(r);
@@ -128,7 +128,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
   await t.test('zu gross: abgebrochen, nichts liegen gelassen', async tt => {
     aufraeumen();
     const block = Buffer.alloc(1024 * 1024, 1);
-    stelleNach(tt, { body: Array(bd.BILD_MAX_BYTES / block.length + 2).fill(block) });
+    stelleNach(tt, { body: /** @type {any} */ (Array(bd.BILD_MAX_BYTES / block.length + 2).fill(block)) });
     assert.equal(await downloadImage(`${CDN}/x.png`, NUMMER, 0, 'part'), null, 'übergrosses Bild gespeichert');
     assert.deepEqual(
       fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)),

@@ -11,8 +11,8 @@ index 31fb616..f6dd34b 100644
                  .getOrElse { Fehlerrumpf(null, null) }
              val text = rumpf.text ?: ""
              val code = Fehlercode.aus(rumpf.code)
--            if (response.code() == 401) Ergebnis.Error.Abgewiesen(text, code)
-+            if (response.code() == 401 && rumpf.text != null) Ergebnis.Error.Abgewiesen(text, code)
-             else Ergebnis.Error.Server(response.code(), text, code)
+-            if (response.code() == 401) Ergebnis.Fehler.Abgewiesen(text, code)
++            if (response.code() == 401 && rumpf.text != null) Ergebnis.Fehler.Abgewiesen(text, code)
+             else Ergebnis.Fehler.Server(response.code(), text, code)
          }
      } catch (e: kotlinx.coroutines.CancellationException) {

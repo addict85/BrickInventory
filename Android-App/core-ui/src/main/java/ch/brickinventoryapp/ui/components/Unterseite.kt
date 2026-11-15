@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.mittigBis
@@ -24,6 +25,10 @@ fun Unterseite(
     onZurueck: () -> Unit,
     /** Formulare schmaler als Listen: Ein Eingabefeld über 800 dp liest sich nicht mehr als eines. */
     breite: androidx.compose.ui.unit.Dp = Lesebreite.liste,
+    /** Aktionen der ganzen Seite oben rechts, etwa ein Überlaufmenü. */
+    aktionen: @Composable RowScope.() -> Unit = {},
+    /** Die Hauptaktion als schwebender Knopf; der Inhalt hält unten Platz für ihn frei. */
+    hauptaktion: (@Composable () -> Unit)? = null,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
@@ -35,7 +40,8 @@ fun Unterseite(
         // CHF“ und jede Absage der Guthaben-Abfrage still verloren.
         snackbarHost = { SnackbarHost(snackbarHostState) },
         // Der Kopf der Detailseiten: Überschrift, bei grosser Schrift zweizeilig statt abgeschnitten.
-        topBar = { DetailTopAppBar(titel, onZurueck, schliessen = false) },
+        topBar = { DetailTopAppBar(titel, onZurueck, schliessen = false, actions = aktionen) },
+        floatingActionButton = { hauptaktion?.invoke() },
     ) { innen ->
         Column(
             Modifier
@@ -47,6 +53,13 @@ fun Unterseite(
                 .mittigBis(breite)
                 .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
-        ) { inhalt() }
+        ) {
+            inhalt()
+            // Der schwebende Knopf deckt sonst die letzte Zeile zu.
+            if (hauptaktion != null) Spacer(Modifier.height(HAUPTAKTION_PLATZ))
+        }
     }
 }
+
+/** Höhe eines schwebenden Knopfs samt seinem Abstand zum Rand. */
+private val HAUPTAKTION_PLATZ = 72.dp

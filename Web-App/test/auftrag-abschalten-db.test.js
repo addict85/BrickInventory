@@ -30,12 +30,14 @@ test('Abschalten während einer Belegung', async t => {
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
-  _req('src/auftraege/nutzlasten.js').NUTZLASTEN[ART] = require('zod').looseObject({});
+  require('./helpers/sources')
+    .testDienste()
+    .auftraege.meldeArtAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
   await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
   const haengt = new Promise(r => {
-    loslassen = r;
+    loslassen = () => r(null);
   });
   t.after(async () => {
     loslassen();

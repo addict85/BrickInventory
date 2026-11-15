@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.vertrag.PnlResponse
+import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.app.widget.OhneToken
 import ch.brickinventoryapp.app.widget.WIDGET_VERDECKT
 import ch.brickinventoryapp.app.widget.ohneToken
@@ -39,10 +40,10 @@ import org.junit.Test
  */
 class WidgetZahlenTest {
 
-    private val pnl = ApiJson.decodeFromString(PnlResponse.serializer(),
-        """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_prozent":25.05}}""")
-    private val verlauf = ApiJson.decodeFromString(PortfolioHistoryResponse.serializer(),
-        """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""")
+    private val pnl = BrickJson.decodeFromString(PnlResponse.serializer(),
+        """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_prozent":25.05}}""").alsAnsicht()
+    private val verlauf = BrickJson.decodeFromString(PortfolioHistoryResponse.serializer(),
+        """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""").alsAnsicht()
 
     @Test
     fun `abgemeldet zeigt das Widget keine Zahlen`() {
@@ -103,11 +104,11 @@ class WidgetZahlenTest {
     /** Die Prozentzahl rechnet der Server auf der Basis; der Betrag daneben muss es auch. */
     @Test
     fun `mit Basis stehen Wert und G&V wie in der Finanzkarte`() {
-        val basis = ApiJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{
+        val basis = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{
             "purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,"positionen":3,"positionen_bewertet":2,
             "positionen_ohne_marktpreis":1,"positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00",
             "basis_marktwert":"1712.40","basis_guv_betrag":"212.40","ohne_marktpreis_einstand":"180.00",
-            "ohne_kaufpreis_marktwert":"0.00"}}""")
+            "ohne_kaufpreis_marktwert":"0.00"}}""").alsAnsicht()
         val z = widgetZahlen(basis, verlauf, jetzt = 7)!!
         assertEquals(1712.4, z.wert!!, 1e-9)
         assertEquals(212.4, z.gesamt!!, 1e-9)
@@ -117,7 +118,7 @@ class WidgetZahlenTest {
     @Test
     fun `die Ablage liest zurueck, was sie schrieb`() {
         val z = widgetZahlen(pnl, verlauf, 42)!!
-        val text = ApiJson.encodeToString(WidgetZahlen.serializer(), z)
-        assertEquals(z, ApiJson.decodeFromString(WidgetZahlen.serializer(), text))
+        val text = BrickJson.encodeToString(WidgetZahlen.serializer(), z)
+        assertEquals(z, BrickJson.decodeFromString(WidgetZahlen.serializer(), text))
     }
 }

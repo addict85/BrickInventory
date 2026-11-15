@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import ch.brickinventoryapp.model.ui.fehlerArt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -16,7 +21,7 @@ import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteAktionen
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
@@ -26,6 +31,7 @@ import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
+import ch.brickinventoryapp.ui.satz
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -47,7 +53,7 @@ import ch.brickinventoryapp.ui.components.FabPlatz
 import ch.brickinventoryapp.ui.components.KnopfStapel
 import ch.brickinventoryapp.ui.components.ListeUndDetail
 import ch.brickinventoryapp.ui.components.ScanKnopf
-import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterZeile
@@ -121,7 +127,7 @@ internal fun MerkpostenDetailRoute(
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val liste by vm.merklisteState.collectAsStateWithLifecycle()
-    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val detail by remember(setNumber) { vm.merkpostenDetailVon(setNumber) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
     MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
@@ -152,8 +158,6 @@ internal fun MerklisteScreen(
     // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { aktionen.ladeMerkliste() }
-
     // ── Der Filter ──
     //
     // Dieselben Bausteine in derselben Reihenfolge wie in der Galerie: Kontofilter,
@@ -171,7 +175,8 @@ internal fun MerklisteScreen(
     val gefiltert = zustand.query.isNotBlank() ||
         zustand.zustandFilter != null ||
         scopeModus != ScopeFilter.ALL
-    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
+    val fehler = zustand.abruf.fehlerMeldung?.satz()
+    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.abruf.laedt, fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
@@ -207,12 +212,9 @@ internal fun MerklisteScreen(
                 ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
             }
 
-            // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
-            // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
-            if (mitKopf) SegmentWahl(
-                optionen = listOf(null to stringResource(R.string.filter_condition_all),
-                                  Zustand.NEU to stringResource(R.string.condition_new),
-                                  Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
+            // Der Zustand schränkt die Liste ein: ein Filter, also Chips wie in Galerie und
+            // Finanzen; Segmente stehen nur für Ansichten (Sets | Teile | Minifiguren).
+            if (mitKopf) ZustandFilterChips(
                 gewaehlt = zustand.zustandFilter,
                 onWahl = { aktionen.setzeMerklisteZustand(it) },
                 modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
@@ -221,7 +223,7 @@ internal fun MerklisteScreen(
             Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {
                 Ladezustand(
                     anzeige = anzeige,
-                    fehler = zustand.fehler,
+                    fehler = fehler,
                     onErneut = { aktionen.ladeMerkliste() },
                     // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
                     // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
@@ -242,7 +244,7 @@ internal fun MerklisteScreen(
                         }
                     },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
-                    fehlerKlasse = zustand.fehlerKlasse,
+                    fehlerKlasse = zustand.abruf.fehlerArt,
                 ) {
                     BoxWithConstraints {
                     val mehrspaltig = maxWidth >= MERKLISTE_SPALTE * 2
@@ -315,10 +317,24 @@ internal fun MerklisteUndDetail(
             detail = {
                 // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
                 androidx.compose.runtime.key(auswahl) {
-                    MerkpostenDetailScreen(ansicht = ansicht, aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
+                    val detail by remember { aktionen.merkpostenDetailVon(auswahl.first) }.collectAsStateWithLifecycle()
+                    MerkpostenDetailScreen(ansicht = ansicht.copy(detail = detail), aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
                         imageLoader = imageLoader, onBack = { offen = null })
                 }
             },
         )
     } else liste()
+}
+
+/** Alle | Neu | Gebraucht als Filterchips; bei grosser Schrift brechen sie um statt abzuschneiden. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ZustandFilterChips(gewaehlt: Zustand?, onWahl: (Zustand?) -> Unit, modifier: Modifier = Modifier) {
+    val optionen = listOf(null to R.string.filter_condition_all, Zustand.NEU to R.string.condition_new,
+        Zustand.GEBRAUCHT to R.string.condition_used)
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        optionen.forEach { (wert, text) ->
+            AuswahlChip(selected = wert == gewaehlt, onClick = { onWahl(wert) }, label = { Text(stringResource(text)) })
+        }
+    }
 }

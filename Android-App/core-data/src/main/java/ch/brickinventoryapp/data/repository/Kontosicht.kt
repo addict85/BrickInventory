@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.FigurenApi
@@ -8,12 +14,10 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.api.alsAbfrage
 import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -33,7 +37,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Seitengrösse der Galerie, wie in der Webapp (public/js/gallery.js): Zwei
+ * Seitengrösse der Galerie, wie in der Webapp (public/js/sammlung.js): Zwei
  * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
  */
 internal const val GALLERY_PAGE_SIZE = 60
@@ -79,13 +83,13 @@ class Kontosicht @Inject constructor(
         }
 
         suspend fun aktualisiere(abfrage: A): Ergebnis<Unit> {
-            val vorher = ablage.bereich() ?: return Ergebnis.Success(Unit)
+            val vorher = ablage.bereich() ?: return Ergebnis.Erfolg(Unit)
             return when (val r = hole(abfrage)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     if (ablage.bereich() == vorher) zuletzt.value = Eintrag(vorher, abfrage, Lokal(r.data, uhr()))
-                    Ergebnis.Success(Unit)
+                    Ergebnis.Erfolg(Unit)
                 }
-                is Ergebnis.Error -> r
+                is Ergebnis.Fehler -> r
             }
         }
     }
@@ -93,48 +97,45 @@ class Kontosicht @Inject constructor(
     data class SetsAbfrage(val konten: Kontoauswahl?, val suche: String?, val thema: String?,
                            val sort: Setsortierung?, val lagerort: String?)
     data class MerkAbfrage(val konten: Kontoauswahl, val suche: String?, val zustand: Zustand?, val sort: Merksortierung?)
-    data class TeileAbfrage(val konten: Kontoauswahl?, val suche: String?, val farbe: String?, val kategorie: String?,
+    data class TeileAbfrage(val konten: Kontoauswahl?, val suche: String?, val farbe: Farbwahl, val kategorie: Kategoriewahl,
                             val ersatzteile: Ersatzteilwahl, val mitSets: Boolean, val lagerort: String?)
     data class ManuelleAbfrage(val konten: Kontoauswahl?, val suche: String?, val lagerort: String?)
     data class FigurenAbfrage(val konten: Kontoauswahl, val suche: String?)
 
-    val galerie = Serversicht<SetsAbfrage, SetItem>(ablage, arrayOf(Faecher.SETS)) { a ->
+    val galerie = Serversicht<SetsAbfrage, SetAnsicht>(ablage, arrayOf(Faecher.SETS)) { a ->
         alleSeiten({ it.sets }, { it.setNumber }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { sets.getSets(a.konten?.anfrage, a.suche, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
-        }
+        }.abgebildet { l -> l.map { it.alsAnsicht() } }
     }
 
-    val merkliste = Serversicht<MerkAbfrage, Merkposten>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
+    val merkliste = Serversicht<MerkAbfrage, MerkpostenAnsicht>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
         wiederholung.wiederhole {
             sicherAufrufen { sets.getMerkliste(a.suche, a.zustand?.kennung, a.sort?.kennung, a.konten.anfrage) }
-        }.map { it.merkposten }
+        }.abgebildet { r -> r.merkposten.map { it.alsAnsicht() } }
     }
 
-    val teileliste = Serversicht<TeileAbfrage, Part>(ablage, arrayOf(Faecher.TEILE)) { a ->
+    val teileliste = Serversicht<TeileAbfrage, TeilAnsicht>(ablage, arrayOf(Faecher.TEILE)) { a ->
         alleSeiten({ it.parts }, { "${it.partNumber}|${it.colorId}|${it.isSpare}" }, { it.total }, wiederholung) { seite ->
             sicherAufrufen {
-                teile.getParts(search = a.suche, color = a.farbe, category = a.kategorie, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten?.anfrage,
+                teile.getParts(search = a.suche, color = a.farbe.wert, category = a.kategorie.wert, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten?.anfrage,
                     spare = a.ersatzteile.alsAbfrage(), withSets = mitSetsAlsAbfrage(a.mitSets), storage = a.lagerort)
             }
-        }
+        }.abgebildet { l -> l.map { it.alsAnsicht() } }
     }
 
-    val manuelleTeile = Serversicht<ManuelleAbfrage, PartValuationItem>(ablage, arrayOf(Faecher.MANUELLE_TEILE)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }.map { it.parts }
+    val manuelleTeile = Serversicht<ManuelleAbfrage, ManuellesTeilAnsicht>(ablage, arrayOf(Faecher.MANUELLE_TEILE)) { a ->
+        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }
+            .abgebildet { r -> r.parts.map { it.alsAnsicht() } }
     }
 
-    val figurenliste = Serversicht<FigurenAbfrage, Minifig>(ablage, arrayOf(Faecher.FIGUREN)) { a ->
+    val figurenliste = Serversicht<FigurenAbfrage, FigurAnsicht>(ablage, arrayOf(Faecher.FIGUREN)) { a ->
         wiederholung.wiederhole {
             sicherAufrufen { figuren.getMinifigs(source = "set", accounts = a.konten.anfrage, search = a.suche) }
-        }.map { it.figs }
+        }.abgebildet { r -> r.figs.map { it.alsAnsicht() } }
     }
 
-    val manuelleFiguren = Serversicht<FigurenAbfrage, FigValuationItem>(ablage, arrayOf(Faecher.MANUELLE_FIGUREN)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }.map { it.figs }
+    val manuelleFiguren = Serversicht<FigurenAbfrage, ManuelleFigurAnsicht>(ablage, arrayOf(Faecher.MANUELLE_FIGUREN)) { a ->
+        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }
+            .abgebildet { r -> r.figs.map { it.alsAnsicht() } }
     }
-}
-
-private inline fun <T, R> Ergebnis<T>.map(f: (T) -> R): Ergebnis<R> = when (this) {
-    is Ergebnis.Success -> Ergebnis.Success(f(data), stand, gepuffert)
-    is Ergebnis.Error -> this
 }

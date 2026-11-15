@@ -34,9 +34,11 @@ import java.util.Base64
  *   C  in pruefeFrische() den Stand auch ohne AKTUELL fortgeschrieben → rot
  *      „eine abgelaufene oder fristlose …“ (eine abgelaufene setzte die Messlatte)
  *   D  in anzubietendeFassung() die Bedingung
- *      `frische == UpdateFrische.AKTUELL &&` gestrichen → rot „aus einer
- *      zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten“;
+ *      `frische != UpdateFrische.ZURUECKGESETZT &&` gestrichen → rot „aus einer
+ *      zurueckgesetzten Beschreibung wird nichts angeboten“;
  *      gegenproben/update-angebot-trotz-zuruecksetzen.patch
+ *   E  anzubietendeFassung() verlangt wieder AKTUELL → rot „eine abgelaufene, neuere
+ *      Beschreibung wird mit Hinweis angeboten“; gegenproben/update-abgelaufen-ohne-angebot.patch
  */
 class UpdateFrischeTest {
 
@@ -84,7 +86,7 @@ class UpdateFrischeTest {
         val ablage = Ablage()
         assertEquals("Nach gueltigBis", UpdateFrische.ABGELAUFEN,
             pruefe(ablage, beschreibung(120, ausgestellt = jetzt - 31 * tag)))
-        assertEquals("Ohne Frist (Beschreibung vor sec10)", UpdateFrische.ABGELAUFEN,
+        assertEquals("Ohne Frist (ältere Beschreibung)", UpdateFrische.ABGELAUFEN,
             pruefe(ablage, beschreibung(120, ausgestellt = 0)))
         assertNull("Eine abgelaufene setzt keine Messlatte", ablage.stand)
         assertTrue(quelleVeraltet(UpdateFrische.ABGELAUFEN))
@@ -92,7 +94,7 @@ class UpdateFrischeTest {
 
     /** Sonst hielte eine ältere, echt signierte Beschreibung auf einer verwundbaren Zwischenfassung fest. */
     @Test
-    fun `aus einer zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten`() {
+    fun `aus einer zurueckgesetzten Beschreibung wird nichts angeboten`() {
         val neu = beschreibung(120)
         assertEquals(neu, anzubietendeFassung(neu, pruefe(Ablage(), neu), laufend = 100))
         assertNull("Nicht neuer als die laufende", anzubietendeFassung(beschreibung(100), UpdateFrische.AKTUELL, 100))
@@ -101,9 +103,22 @@ class UpdateFrischeTest {
         val zurueck = Ablage(UpdateStand(130, jetzt - tag))
         val alt = beschreibung(120, ausgestellt = jetzt - 5 * tag)
         assertNull("Zurückgesetzt", anzubietendeFassung(alt, pruefe(zurueck, alt), laufend = 100))
+        // Auch abgelaufen bleibt eine Beschreibung unter dem Gesehenen zurückgesetzt.
+        val altUndAbgelaufen = beschreibung(120, ausgestellt = jetzt - 40 * tag)
+        assertNull("Abgelaufen und älter", anzubietendeFassung(altUndAbgelaufen, pruefe(zurueck, altUndAbgelaufen), laufend = 100))
+    }
 
+    /** Nach sieben Tagen ohne neues Etikett bliebe das Gerät sonst auf der alten Fassung stehen. */
+    @Test
+    fun `eine abgelaufene, neuere Beschreibung wird mit Hinweis angeboten`() {
+        val ablage = Ablage(UpdateStand(110, jetzt - 40 * tag))
         val abgelaufen = beschreibung(120, ausgestellt = jetzt - 31 * tag)
-        assertNull("Abgelaufen", anzubietendeFassung(abgelaufen, pruefe(Ablage(), abgelaufen), laufend = 100))
+        val frische = pruefe(ablage, abgelaufen)
+        assertEquals(UpdateFrische.ABGELAUFEN, frische)
+        assertEquals(abgelaufen, anzubietendeFassung(abgelaufen, frische, laufend = 100))
+        assertTrue("Der Hinweis „könnte Neueres geben“ bleibt", quelleVeraltet(frische))
+        assertEquals("Die Messlatte bleibt", UpdateStand(110, jetzt - 40 * tag), ablage.stand)
+        assertNull("Nicht neuer als die laufende", anzubietendeFassung(abgelaufen, frische, laufend = 120))
     }
 
     @Test

@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui
 
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.data.model.PnlSetZeile
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.GewinnZeileAnsicht
+import ch.brickinventoryapp.model.fach.Geld
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -9,7 +10,7 @@ import java.math.RoundingMode
  * Betrag und G&V eines Sets für die Galeriekachel. [quelle] ist kachel_quelle des
  * Servers ("markt"/"kauf"): Ohne Marktpreis liefert er den Kaufpreis als Betrag.
  */
-data class KachelPreis(val betrag: Double?, val pnlPct: Double?, val quelle: String? = null)
+data class KachelPreis(val betrag: Geld?, val pnlPct: Double?, val quelle: String? = null)
 
 /** Was der Betrag der Kachel ist — die Beschriftung darüber nennt es wie im Web. */
 internal enum class KachelQuelle { MARKT, KAUF }
@@ -18,7 +19,7 @@ internal enum class KachelQuelle { MARKT, KAUF }
  * Je Set eine Angabe aus /finance/pnl. Betrag und G&V rechnet der Server
  * (kachel_preis, kachel_pnl_pct) — dieselbe Zahl wie im Web, auch im Haushalt.
  */
-internal fun kachelPreise(zeilen: List<PnlSetZeile>): Map<String, KachelPreis> =
+internal fun kachelPreise(zeilen: List<GewinnZeileAnsicht>): Map<String, KachelPreis> =
     zeilen.groupBy { it.setNumber }.mapValues { (_, z) ->
         val e = z[0]
         if (e.kachelPreis != null || e.kachelPnlPct != null) KachelPreis(e.kachelPreis, e.kachelPnlPct, e.kachelQuelle)
@@ -30,7 +31,7 @@ internal fun kachelPreise(zeilen: List<PnlSetZeile>): Map<String, KachelPreis> =
  * Liefert ein neuer Server beide Felder als null (kein Preis), ergibt sie
  * ebenfalls null. Entfällt, sobald kein älterer Server mehr im Einsatz ist.
  */
-private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
+private fun kachelPreisVorServer(z: List<GewinnZeileAnsicht>): KachelPreis {
     if (z.size == 1) {
         val e = z[0]
         return KachelPreis(e.currentPrice, (e.baselinePnlPct ?: e.pnlPct)?.toDoubleOrNull())
@@ -39,9 +40,9 @@ private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
     val mitBasis = z.filter { it.baselinePrice != null }
     val menge = mitBasis.sumOf { it.quantity.coerceAtLeast(1) }
     val basis = if (menge > 0) mitBasis.fold(BigDecimal.ZERO) { s, zeile ->
-        s + BigDecimal.valueOf(zeile.baselinePrice!!) * BigDecimal(zeile.quantity.coerceAtLeast(1))
+        s + zeile.baselinePrice!!.alsBigDecimal() * BigDecimal(zeile.quantity.coerceAtLeast(1))
     }.divide(BigDecimal(menge), 10, RoundingMode.HALF_UP) else null
-    val markt = BigDecimal.valueOf(z[0].currentPrice ?: 0.0)
+    val markt = (z[0].currentPrice ?: Geld.NULL).alsBigDecimal()
     // 0.01 wie PNL_EPS auf dem Server: Ein Kaufpreis von 0 teilt sonst durch null.
     val pct = if (basis != null && markt.signum() > 0)
         (markt - basis).multiply(BigDecimal(100)).divide(basis.max(BigDecimal("0.01")), 1, RoundingMode.HALF_UP)
@@ -50,8 +51,8 @@ private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
 }
 
 /** Der Betrag auf der Kachel: der des Servers, sonst der mengengewichtete Kaufpreis des Sets. */
-internal fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Double? =
-    preis?.betrag?.takeIf { it > 0 } ?: set.avgPurchasePrice ?: set.maxPurchasePrice
+internal fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Geld? =
+    preis?.betrag?.takeIf { it.positiv } ?: set.avgPurchasePrice ?: set.maxPurchasePrice
 
 /**
  * Woher [kachelBetrag] stammt. Ein Betrag des Servers ist Marktpreis, ausser er
@@ -60,7 +61,7 @@ internal fun kachelBetrag(set: SetAnsicht, preis: KachelPreis?): Double? =
  */
 internal fun kachelQuelle(set: SetAnsicht, preis: KachelPreis?): KachelQuelle? {
     val betrag = preis?.betrag
-    if (preis != null && betrag != null && betrag > 0)
+    if (preis != null && betrag != null && betrag.positiv)
         return if (preis.quelle == "kauf") KachelQuelle.KAUF else KachelQuelle.MARKT
     return if (set.avgPurchasePrice != null || set.maxPurchasePrice != null) KachelQuelle.KAUF else null
 }

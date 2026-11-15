@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.katalog
 
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import ch.brickinventoryapp.katalog.ui.CatalogYearMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -23,9 +23,9 @@ import org.junit.Test
  * man deshalb IMMER NOCH im neuesten Jahrgang — linear gerechnet käme dort der
  * älteste heraus.
  *
- * Dieselbe Rechnung steht in der Webapp (js/catalog.js → _jahrAnPosition).
+ * Dieselbe Rechnung steht in der Webapp (js/katalog.js → _jahrAnPosition).
  * Dass beide sie haben und keine von beiden linear schätzt, prüft
- * Web-App/test/abgleich-catalog-frontend.test.js über beide Quellbäume.
+ * Web-App/test/catalog-frontend.test.js über beide Quellbäume.
  */
 class CatalogYearMathTest {
 

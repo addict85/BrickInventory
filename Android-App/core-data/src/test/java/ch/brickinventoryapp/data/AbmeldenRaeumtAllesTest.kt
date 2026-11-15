@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.Manifest
@@ -11,13 +13,11 @@ import androidx.core.app.NotificationCompat
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.testing.Testablage
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.data.repository.KontoDatenLoeschung
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.Abmeldehaken
 import ch.brickinventoryapp.zustand.ui.Abmelden
 import ch.brickinventoryapp.zustand.ui.Blickfeld
@@ -53,10 +53,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.SpeicherAblage
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -127,12 +127,10 @@ class AbmeldenRaeumtAllesTest {
 
         val ablage = Ablageschluessel(File(ctx.noBackupFilesDir, "test.schluessel"), Klartresor)
         val geheim = AblageChiffre { ablage.fuer("x") }.verschluessle("Sammlung von marco".toByteArray(), "x/1")
-        val antwortOrdner = File(ctx.cacheDir, "antworten-test")
-        val cache = ResponseCache(chiffre = AblageChiffre { ablage.fuer("antworten") }) { antwortOrdner }
-        cache.put("test", "sets", SetItem.serializer(), SetItem(setNumber = "10294-1"))
         val api = TestApi.fuer(server)
         val offline = Testablage()
-        offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")))
+        offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")).map { it.alsAnsicht() })
+        offline.uebernimm(Faecher.KENNZAHLEN, listOf(KennzahlenAnsicht(totalSets = 1, totalQuantity = 1, totalInstructions = 0, totalParts = 0, totalMinifigs = 0)))
         offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", Zustand.NEU, 1))
         val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }) { ablage.fuer("namen") }
         vorschau.schreibe("$adresse/images/sets/10294-1_thumb.jpg", "vorschaubild".toByteArray())
@@ -150,20 +148,21 @@ class AbmeldenRaeumtAllesTest {
         val sitzung = Sitzung().apply { angemeldet(admin = false) }
         val alterSchluessel = ablage.hole().copyOf()
 
-        val bereinigung = GeraeteBereinigung(ctx, prefs, KontoDatenLoeschung(cache, offline), PasswortPflicht(),
+        val bereinigung = GeraeteBereinigung(ctx, prefs, KontoDatenLoeschung(offline), PasswortPflicht(),
             ZweiterFaktorPflicht(), bildClient, vorschau, loader, Dispatchers.IO, ablage)
         // Der echte Haken (AppModule) leert die Widget-Zahlen; er liegt in der App.
         val widget = Abmeldehaken { ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().clear().commit() }
         val abmelden = Abmelden(bereinigung, widget, sitzung,
-            Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache)),
-            Abmeldung(KontoRepository(api, cache), prefs) { })
+            Blickfeld(SpeicherAblage(), testHaushaltRepository(api), testTeileRepository(api)),
+            Abmeldung(testKontoRepository(api), prefs) { })
         assertEquals(Abmeldeweg.SOFORT, abmelden.ausfuehren())
 
         val platte = store.data.first()
         assertEquals("Token", "", prefs.tokenJetzt())
-        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap() || TokenAblage.USERNAME_ENC in platte.asMap())
+        assertFalse("Benutzername", listOf(TokenAblage.USERNAME, TokenAblage.USERNAME_ENC, TokenAblage.USERNAME_GEHEIM)
+            .any { it in platte.asMap() })
         assertFalse("Marke des Preisalarms", GeraeteAblage.ALARM_MARKE in platte.asMap())
-        assertTrue("Antwort-Cache", antwortOrdner.walkTopDown().none { it.isFile })
+        assertNull("Kennzahlen", offline.lies(Faecher.KENNZAHLEN)?.liste?.takeIf { it.isNotEmpty() })
         assertNull("Bestand", offline.lies(Faecher.SETS)?.liste?.takeIf { it.isNotEmpty() })
         assertFalse("Ausgang", offline.wartet())
         // Auf die Platte gesehen: Die Namen hängen am Ablageschlüssel, und der ist danach ein anderer.

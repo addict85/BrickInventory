@@ -5,7 +5,6 @@ import { rotationFaellig, type TokenPruefung } from '../geraeteToken';
 import type { AnmeldeErgebnis } from '../anmeldepruefung';
 import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'node:crypto';
-import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../vertrag';
 import { fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/fehler';
@@ -15,13 +14,11 @@ import { STATUS_DER_ART } from '../../http/fehlerArt';
 import { versuche } from '../../infra/ergebnis';
 import type { KontoDienste } from '../bereich';
 
-/** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
- * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
- * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
+/** Bis zur Einrichtung des Faktors geht nur diese (anmeldungAmEingang); die Regel steht in faktorPflichtOffen. */
 export async function zweiterFaktorPflicht(konto: KontoDienste, req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && verwalter && !(await konto.istAktiv(uid));
+  return uid !== null && (await konto.faktorPflichtOffen(uid, verwalter));
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
@@ -56,8 +53,8 @@ export async function establishSession(
 ): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
   const sitzungsVersion =
-    (await konto
-      .sitzungsVersionAusDb(data.userId)
+    (await konto.sitzungen
+      .versionAusDb(data.userId)
       .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0))) ?? 0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
@@ -75,7 +72,7 @@ export async function establishSession(
       req.session.save((e2?: Error) =>
         e2
           ? reject(e2)
-          : versuche('anmeldung:sitzungen-begrenzen', konto.begrenzeSitzungen(data.userId, req.sessionID)).then(() =>
+          : versuche('anmeldung:sitzungen-begrenzen', konto.sitzungen.begrenze(data.userId, req.sessionID)).then(() =>
               resolve(undefined),
             ),
       );
@@ -99,14 +96,14 @@ export function gnadenfristVerbrauchen(req: Request): boolean {
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
  * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header. */
-export async function resolveUserId(konto: KontoDienste, req: Request): Promise<number | null> {
+export async function nutzerIdDerAnfrage(konto: KontoDienste, req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
   const pruefung = await konto
     .pruefeToken(token, { ip: req.ip })
-    .catch(meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }));
+    .catch(meldeUndLiefere<TokenPruefung>('auth:nutzerZumToken', { nutzer: null }));
   const user = pruefung.nutzer;
   if (pruefung.grund) req.tokenAbsage = pruefung.grund;
   // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
@@ -117,8 +114,8 @@ export async function resolveUserId(konto: KontoDienste, req: Request): Promise<
 
 /** 429 statt 401: Bei 401 darf die App den Zugang verwerfen, und der gilt vielleicht. */
 export function sendeTokenAbsage(req: Request, res: Response): void {
-  if (req.tokenAbsage === 'zu_viele_anfragen') sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: 1 });
-  else sendeFehler(req, res, 401, req.tokenAbsage ?? 'nicht_angemeldet');
+  if (req.tokenAbsage === 'zu_viele_anfragen') sendeFehler(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: 1 });
+  else sendeFehler(req, res, 'nicht_angemeldet', req.tokenAbsage ?? 'nicht_angemeldet');
 }
 
 /** @param opts.timeoutMs Antwortet nach dieser Zeit mit 503: Der Fortschritts-
@@ -128,12 +125,12 @@ export function loginOrTokenGuard(konto: KontoDienste, opts: { timeoutMs?: numbe
     if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
       ? setTimeout(() => {
-          if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
+          if (!res.headersSent) sendeFehler(req, res, 'nicht_verfuegbar', 'server_ausgelastet');
         }, opts.timeoutMs)
       : null;
     let uid: number | null = null;
     try {
-      uid = await resolveUserId(konto, req);
+      uid = await nutzerIdDerAnfrage(konto, req);
     } catch (_) {
       uid = null;
     }
@@ -169,7 +166,7 @@ export function istVerwalter(req: Request): boolean {
 export function ipThrottle(konto: KontoDienste, bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const st = await konto.zaehleAnfrage(bucket, adresse(req), windowMs);
-    if (st.count > max) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
+    if (st.count > max) return sendeFehler(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: st.waitMin });
     next();
   };
 }
@@ -189,7 +186,7 @@ export function zugangVon(req: Request): string {
 function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void {
   const status = STATUS_DER_ART[absage.art];
   if (!absage.passkey) {
-    sendeFehler(req, res, status, absage.code, absage.vars);
+    sendeFehler(req, res, absage.art, absage.code, absage.vars);
     return;
   }
   res.status(status).json({
@@ -210,8 +207,10 @@ export async function bestaetigeMitFaktor(
   passwort: string | null | undefined,
   codeFeld = 'code',
 ): Promise<boolean> {
-  const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
-  if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
+  // Der Schlüssel, unter dem der Vertragsrouter die Route registriert hat; ein Fehler der
+  // Verdrahtung, kein Fall der Anfrage, darum auch im Betrieb laut.
+  const schluessel = String(res.locals.vertragsSchluessel ?? '');
+  if (routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
     throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
   // Der geprüfte Rumpf (eingabePruefen): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
   const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};

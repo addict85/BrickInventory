@@ -2,7 +2,7 @@
  * Vorschaubilder entstehen WIRKLICH — und fehlende heilen sich selbst.
  *
  * Gegenprobe (durchgeführt): temporären Namen zurück auf `.tmp` gedreht →
- * der erste Teilschritt wird rot (keine Datei, generateThumb liefert null).
+ * der erste Teilschritt wird rot (keine Datei, vorschauErzeugenAus liefert null).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
+test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () => {
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
@@ -28,12 +28,12 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
   await bild.write(original);
 
   try {
-    const { generateThumb } = _req('src/katalog/bilder/thumbs.js');
-    const web = await generateThumb(`/images/sets/${name}.jpg`);
+    const { vorschauErzeugenAus } = _req('src/bilder/thumbs.js');
+    const web = await vorschauErzeugenAus(`/images/sets/${name}.jpg`);
 
     assert.ok(
       web,
-      'generateThumb lieferte null — der Fehler wird im catch verschluckt, ' +
+      'vorschauErzeugenAus lieferte null — der Fehler wird im catch verschluckt, ' +
         'typischerweise weil der temporäre Dateiname keine Bildendung trägt',
     );
     assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
@@ -54,8 +54,8 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
 test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   // Die Quelltextregel zum Verhaltenstest oben: Jimp entscheidet über die
   // Endung, deshalb muss der temporäre Name auf .jpg enden.
-  // Fundort seit einer früheren Runde: src/katalog/bilder/proxyThumbs.ts.
-  for (const datei of ['src/katalog/bilder/thumbs.ts', 'src/katalog/bilder/proxyThumbs.ts']) {
+  // Fundort seit einer früheren Runde: src/bilder/proxyThumbs.ts.
+  for (const datei of ['src/bilder/thumbs.ts', 'src/bilder/proxyThumbs.ts']) {
     const src = fs
       .readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n')
@@ -73,10 +73,10 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // ohneKommentare() statt eines //-Filters: Der Filter liess
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
-  // Die Bildroute (routes/seiten.ts) liefert über src/katalog/http/bildAuslieferung.ts;
+  // Die Bildroute (routes/seiten.ts) liefert über src/bilder/http/bildAuslieferung.ts;
   // die Vorschau stösst originalStattVorschau() dort an.
   const src = require('./helpers/sources').ohneKommentare(
-    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/katalog/http/bildAuslieferung.ts'), 'utf8'),
+    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/bilder/http/bildAuslieferung.ts'), 'utf8'),
   );
   const start = src.indexOf('function originalStattVorschau(');
   assert.ok(
@@ -85,7 +85,7 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   );
   const block = src.slice(start, start + 4000);
   assert.ok(
-    /generateThumb/.test(block),
+    /vorschauErzeugenAus/.test(block),
     'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +
       'der Bilder-Nachlauf deckt sets nicht ab',
   );

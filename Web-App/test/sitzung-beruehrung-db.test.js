@@ -127,7 +127,7 @@ test('Sitzung: gelesen wird immer, geschrieben nur alle paar Minuten', async t =
     const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
     assert.match(
       quelle,
-      /drossleBeruehren\(sitzungsSpeicher\)/,
+      /drossleBeruehren\(sitzungsSpeicher[,)]/,
       'startup/app.ts drosselt seinen Sitzungsspeicher nicht — dann zahlt die Webapp weiter zwei Abfragen je Anfrage',
     );
   } finally {

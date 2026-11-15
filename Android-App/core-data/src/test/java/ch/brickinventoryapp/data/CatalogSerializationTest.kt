@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetDetail
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
+import ch.brickinventoryapp.vertrag.CatalogMetaResponse
+import ch.brickinventoryapp.vertrag.CatalogSetDetail
+import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
+import ch.brickinventoryapp.vertrag.CatalogSetsResponse
 import ch.brickinventoryapp.data.util.BrickLinkUrls
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-seitiger API-Vertrag: Die Katalog-Modelle müssen echte
@@ -23,7 +23,7 @@ import ch.brickinventoryapp.data.api.ApiJson
 class CatalogSerializationTest {
 
     // Gleiche Konfiguration wie AppModule.provideJson()
-    private val json = ApiJson
+    private val json = BrickJson
 
     @Test
     fun `meta-Antwort wird geparst`() {
@@ -111,7 +111,6 @@ class CatalogSerializationTest {
         )
         assertEquals(false, r.success)
         assertNull(r.set)
-        assertEquals("Set nicht im Katalog gefunden", r.error)
     }
 }
 

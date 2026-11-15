@@ -1,15 +1,16 @@
 package ch.brickinventoryapp.finanzen.ui
 
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
-import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.DiagrammAchse
-import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
-import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.DiagrammPunkt
+import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.fach.GewinnAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.ui.Laden
 
 /**
  * Finanzen: Bewertung, Gewinn/Verlust und Portfolio-Verlauf — eigener Fluss, weil
@@ -22,14 +23,11 @@ data class FinanceUiState(
     val figsValuation: FigurenBewertungAnsicht? = null,
     val pnl: GewinnAnsicht? = null,
     /**
-     * Die Bewertung wird geholt — ein eigenes Feld statt eines geteilten `isLoading`,
-     * das fremde Ladeanzeigen beendete.
+     * Der Abruf der Bewertung, getrennt vom Verlauf: Ein geteilter Ladezustand beendete
+     * fremde Anzeigen. Ohne den Fehler zeigte der Reiter „keine Preisdaten“.
      */
-    val valuationLoading: Boolean = false,
-    /** Warum die Bewertung nicht kam; ohne sie zeigte der Reiter „keine Preisdaten“. */
-    val valuationFehler: String? = null,
-    val valuationFehlerKlasse: Fehlerklasse? = null,
-    val historyLoading: Boolean = false,
+    val bewertung: Laden<Unit> = Laden.Daten(Unit),
+    val verlauf: Laden<Unit> = Laden.Daten(Unit),
     val historyPeriodChangePct: Double? = null,
     /**
      * Punkte und Achse, wie der Server sie schickt. Übersetzt werden sie erst beim
@@ -71,9 +69,8 @@ data class FinanceUiState(
  */
 data class GutscheinUiState(
     val gutscheine: List<GutscheinAnsicht> = emptyList(),
-    val laedt: Boolean = false,
-    /** Warum die Liste nicht kam; sonst stünde „keine Gutscheine“ da. */
-    val fehler: String? = null,
+    /** Ein Fehler steht statt „keine Gutscheine“, solange die Liste leer ist. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     /** ids, deren PIN gerade im Klartext steht. */
     val pinSichtbar: Set<Int> = emptySet(),
     /** Der Gutschein, der gerade bearbeitet wird; null = neuer Eintrag. */
@@ -103,7 +100,7 @@ data class GutscheinUiState(
     val klartext: Map<Int, KlartextAnsicht> = emptyMap(),
     /** Was die Oberfläche in die Zwischenablage legen soll; sie quittiert. */
     val zuKopieren: Kopierauftrag? = null,
-    val speichert: Boolean = false,
+    val speichern: Vorgang = Vorgang.Fertig,
     /**
      * Die id der Karte, deren Guthaben gerade abgefragt wird, oder null. Eine id statt
      * eines Booleans, damit sich nur der gedrückte Knopf rührt — es läuft immer nur
@@ -126,7 +123,7 @@ data class GutscheinUiState(
  */
 internal fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
-    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
+    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + g.amount.alsBigDecimal() }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung
 }
 
@@ -159,8 +156,7 @@ data class GutscheinBestaetigung(
     val id: Int?,
     /** Der Server hat den Code des zweiten Faktors verlangt. */
     val codeNoetig: Boolean = false,
-    val fehler: String? = null,
-    val laeuft: Boolean = false,
+    val vorgang: Vorgang = Vorgang.Fertig,
 )
 
 data class Kopierauftrag(val wert: String, val istNummer: Boolean)

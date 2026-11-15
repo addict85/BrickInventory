@@ -5,7 +5,7 @@
  * die Bestätigung von Passwort und Code in einer laufenden Sitzung.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  checkLoginAllowed wieder mit _read statt _reserviere (Adresse und
+ *   A  anmeldungErlaubt wieder mit _read statt _reserviere (Adresse und
  *      Konto) → rot: „20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen“
  *   B  bestaetigungGesperrt wieder mit _read → rot: „Bestätigung: …“
  *

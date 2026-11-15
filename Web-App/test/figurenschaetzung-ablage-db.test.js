@@ -11,7 +11,7 @@
  *      `cond` → Teil 1 rot (beide Zustände 2 × 3 = 6, nicht 4 und 6).
  *   c) merkeGeschaetztenFigurenverlauf() nicht aufgerufen → Teil 1 rot (Verlauf leer).
  *   d) in setPreisAusCache() `ORDER BY (condition = $2) DESC` → `ASC` → Teil 2 rot.
- *   e) in getCurrentMarketPrice() die Wache `if (!condition)` entfernt → Teil 2 rot
+ *   e) in aktuellerMarktpreis() die Wache `if (!condition)` entfernt → Teil 2 rot
  *      (die Erfassung „Neu“ überstimmt den angefragten Zustand: 10 statt 20).
  */
 const test = require('node:test');
@@ -89,11 +89,11 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
                     VALUES ($1, $2, 1, 'N', 'EUR')`,
         [u.id, SN],
       );
-      assert.equal(await mf.getCurrentMarketPrice(SN, u.id), 10);
-      assert.equal(await mf.getCurrentMarketPrice(SN, u.id, 'U'), 20);
-      assert.equal(await mf.getCurrentMarketPrice(SN, u.id, 'N'), 10);
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id), 10);
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 20);
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'N'), 10);
       await db.run(`DELETE FROM price_cache WHERE set_number = $1 AND condition = 'U'`, [SN]);
-      assert.equal(await mf.getCurrentMarketPrice(SN, u.id, 'U'), 10, 'ohne Preis im Wunschzustand der andere');
+      assert.equal(await mf.aktuellerMarktpreis(SN, u.id, 'U'), 10, 'ohne Preis im Wunschzustand der andere');
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = $1', [u.id]);

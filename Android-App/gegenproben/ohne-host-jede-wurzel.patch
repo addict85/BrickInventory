@@ -6,7 +6,7 @@ Rot: ohne Host gilt ein oeffentlicher Pin nur fuer seine Wurzel
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -288,12 +288,8 @@
+@@ -321,14 +321,8 @@
       */
      private fun ohneHost(chain: Array<X509Certificate>, system: () -> Unit) {
          val pin = eigenerServer()?.let(pins::pin)
@@ -14,7 +14,9 @@ diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sich
 -        if (pin in systemWurzeln) {
 -            system()
 -            val wurzel = spkiFingerabdruck(anker(chain, fremdeHosts.acceptedIssuers) ?: chain.last())
--            if (wurzel == pin || gleicherBetreiber(pin, wurzel)) return
+-            val blatt = eigenerServer()?.let { pins.pin(blattPinSchluessel(it)) }
+-            val blattPasst = blatt == null || chain.firstOrNull()?.let(::spkiFingerabdruck) == blatt
+-            if ((wurzel == pin || gleicherBetreiber(pin, wurzel)) && blattPasst) return
 -        } else if (passtZumPin(chain, pin)) return
 +        if (pin == null || pin in systemWurzeln) return system()
 +        if (passtZumPin(chain, pin)) return

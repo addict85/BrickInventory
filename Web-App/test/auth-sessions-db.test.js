@@ -123,14 +123,14 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     });
 
     await t.test('Bearer-Token des Kontos verfallen mit', async () => {
-      const { hashToken, validateToken } = _req('src/konto/geraeteToken.js');
+      const { tokenAbdruck, nutzerZumToken } = _req('src/konto/geraeteToken.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
       await db.run("INSERT INTO api_tokens (token,user_id,label,expires_at) VALUES ($1,$2,'app',NULL)", [
-        hashToken(tok),
+        tokenAbdruck(tok),
         opferId,
       ]);
-      assert.ok(await validateToken(tok), 'Vorbedingung: Token gilt');
+      assert.ok(await nutzerZumToken(tok), 'Vorbedingung: Token gilt');
 
       // 'nochNeuer1234' — der Subtest davor hat es geändert.
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
@@ -143,7 +143,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       });
       assert.equal(r.status, 200, await r.text());
       assert.equal(
-        await validateToken(tok),
+        await nutzerZumToken(tok),
         null,
         'Ein Token auf einem fremden Gerät darf den Passwortwechsel nicht überleben',
       );
@@ -152,13 +152,13 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     // Gegenprobe (11.11.2026 gemessen): in setzePasswortZurueck (src/konto/konten.ts)
     // `await zugaengeBeenden(uid)` gestrichen → rot hier (Sitzung und Token bleiben).
     await t.test('das Zurücksetzen per Link beendet Sitzungen und Token', async () => {
-      const { hashToken, createToken, validateToken } = _req('src/konto/geraeteToken.js');
+      const { tokenAbdruck, tokenAnlegen, nutzerZumToken } = _req('src/konto/geraeteToken.js');
       const fenster = await anmelden('pw_opfer', 'wiederNeu123');
-      const tok = await createToken(opferId, 'Fremdgerät', true);
+      const tok = await tokenAnlegen(opferId, 'Fremdgerät', true);
       const roh = 'd'.repeat(64);
       await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
         opferId,
-        hashToken(roh),
+        tokenAbdruck(roh),
       ]);
       await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
       const r = await fetch(`${basis}${AUTH}/reset-password`, {
@@ -169,7 +169,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       assert.equal(r.status, 200, await r.text());
       assert.equal(await sitzungen(opferId), 0, 'Sitzungen des Kontos müssen enden');
       assert.equal(await angemeldet(fenster.cookie), false);
-      assert.equal(await validateToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
+      assert.equal(await nutzerZumToken(tok), null, 'Der Token darf das Zurücksetzen nicht überleben');
     });
 
     // Gegenprobe (11.11.2026 gemessen): in PUT /users/:id/password die Prüfung
@@ -194,7 +194,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
       assert.match(await setze(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
       assert.ok(
-        await bcrypt.compare(
+        await _req('src/konto/passwortHash.js').passwortPasst(
           'nochNeuer1234',
           (await db.get('SELECT password_hash FROM users WHERE id = $1', [chefId])).password_hash,
         ),

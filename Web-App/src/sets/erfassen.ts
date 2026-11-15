@@ -1,11 +1,6 @@
-/** Sets erfassen: Web, App, CSV und Merkliste gehen durch dieselben Regeln für
- * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
- * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
-import type { DbSchnittstelle } from '../../db/database';
-import { blickfeldIds, schreibziel } from '../haushalt';
-import { ortFuerNeuerfassung } from '../bestand';
-import { mitInventarSperre } from '../../db/txLock';
-import { rebrickableSetBild, brickset, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
+/** Sets erfassen: Web, App, CSV, Wanted-XML und Merkliste unter denselben Regeln. Was das
+ * Netz braucht (Katalog, Bild, Marktpreis), hält die Anfrage nicht auf, es läuft als Auftrag. */
+import { rebrickableSetBild } from '../bilder';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -25,28 +20,18 @@ export interface Erfassung {
   erfasstAm?: string | null;
 }
 
-export async function recordAcquisition(sk: SetsKontext, e: Erfassung, dbh: DbSchnittstelle = sk.db) {
+/** In einer Transaktion mit deren Kontext (`t`) rufen. */
+export async function erfassungBuchen(sk: SetsKontext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
-  await sk.bestand.recordAcquisitionForDay(
-    'set',
-    e.konto,
-    [e.setNumber],
-    {
-      quantity: e.menge,
-      price: pp,
-      condition: cond,
-      geschaetzt: !!e.geschaetzt,
-      currency: e.waehrung ?? null,
-      createdAt: e.erfasstAm ?? null,
-    },
-    dbh,
-  );
-}
-
-// Dieselbe Regel wie beim Schreiben, sonst prüfte die Suche eine andere Nummer.
-export function normalizeSetNumber(input: string): string {
-  return normalisiereSetNummer(input);
+  await sk.bestand.bucheTageserfassung('set', e.konto, [e.setNumber], {
+    quantity: e.menge,
+    price: pp,
+    condition: cond,
+    geschaetzt: !!e.geschaetzt,
+    currency: e.waehrung ?? null,
+    createdAt: e.erfasstAm ?? null,
+  });
 }
 
 export interface VorhandenesSet {
@@ -58,16 +43,25 @@ export interface VorhandenesSet {
 
 /** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
  * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“. */
-export async function findSetInScope(
+export async function findeSetImBlickfeld(
   sk: SetsKontext,
   viewerId: number,
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
-  const sn = normalizeSetNumber(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await blickfeldIds(sk.db, viewerId), sn, viewerId);
+  const sn = normalisiereSetNummer(setNumber);
+  const row = await repo.setImBlickfeld(sk.db, await sk.haushalt.blickfeldIds(viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
+
+/** Für „gibt es das schon?“: ohne Treffer die Nummer so, wie sie angelegt würde. */
+export async function setVorhanden(sk: SetsKontext, viewerId: number, setNumber: string) {
+  const treffer = await findeSetImBlickfeld(sk, viewerId, setNumber);
+  return { exists: !!treffer, ...(treffer ?? { set_number: normalisiereSetNummer(setNumber) }) };
+}
+
+/** ergaenzen (= neu): angelegt; zweit: ein vorhandenes Set aufgestockt; csv: aus dem CSV-Import. */
+export type NacharbeitArt = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
 /** Getippt wird eine Nummer, kein Satz: Die nachsichtige Normalisierung (für CSV) machte aus Text ein Set. */
 const GETIPPTE_NUMMER = /^[A-Za-z0-9]{1,20}(-\d{1,3})?$/;
@@ -87,10 +81,15 @@ export interface NeuesSet {
   streng?: boolean;
   /** Bis der Auftrag beginnt; der Strom ergänzt selbst und braucht ihn nur als Rückfall. */
   ergaenzenNachSekunden?: number;
+  /** Ein Import bucht die Datei eines Kontos und stockt auf; getippt heisst „im Blickfeld“ exists. */
+  wennVorhanden?: 'melden' | 'aufstocken';
+  /** Der CSV-Import fragt Brickset erst in der Nacharbeit ('csv'). */
+  nacharbeit?: NacharbeitArt;
 }
 
 export type SetErfasst =
   | ({ action: 'exists' } & VorhandenesSet)
+  | { action: 'updated'; set_number: string; besitzer: number }
   | {
       action: 'added';
       set_number: string;
@@ -100,57 +99,63 @@ export type SetErfasst =
       besitzer: number;
     };
 
-/** Anlegen ohne Netz: „schon im Blickfeld?“ und Anlegen unter einer Sperre je
- * Setnummer, sonst legten zwei gleichzeitige Anfragen (auch zweier Konten im
- * Haushalt) das Set zweimal an. Katalog, Bild und Marktpreis holt der Auftrag. */
+/** Der eine Weg zum Erfassen, ohne Netz und unter der Sperre je Setnummer: Sonst legten zwei
+ * Anfragen (auch zweier Konten im Haushalt) das Set zweimal an. Den Katalog holt der Auftrag. */
 export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfasst> {
   const roh = String(e.setNumber ?? '').trim();
   if (!roh) fachfehler('ungueltig', 'set_number_erforderlich');
   if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const sn = normalizeSetNumber(roh);
+  const sn = normalisiereSetNummer(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const besitzer = await schreibziel(sk.db, e.anfragender, e.besitzerWunsch);
+  const besitzer = await sk.haushalt.schreibziel(e.anfragender, e.besitzerWunsch);
   const zustand = await sk.einstellungen.zustandFuerPreis(e.zustand ?? null, null, besitzer);
-  const ort = await ortFuerNeuerfassung(sk.db, besitzer, e.lagerort ?? null);
+  const ort = await sk.bestand.lagerortDienst.ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
+  const erfassung = {
+    konto: besitzer,
+    setNumber: sn,
+    menge: e.menge ?? 1,
+    kaufpreis,
+    zustand,
+    waehrung: kaufpreis === null ? null : (e.waehrung ?? null),
+    erfasstAm: e.erfasstAm ?? null,
+  };
 
   return sk.transaktion(async t => {
     await repo.sperreSetErfassen(t.db, sn, besitzer);
-    const vorhanden = await findSetInScope(t, e.anfragender, sn);
-    if (vorhanden) return { action: 'exists' as const, ...vorhanden };
-    const katalog = await merkeKatalogPlatzhalter(t.db, sn);
-    await repo.legeSetZeileAn(t.db, besitzer, sn);
-    await recordAcquisition(
-      t,
-      {
-        konto: besitzer,
-        setNumber: sn,
-        menge: e.menge ?? 1,
-        kaufpreis,
-        zustand,
-        waehrung: kaufpreis === null ? null : (e.waehrung ?? null),
-        erfasstAm: e.erfasstAm ?? null,
-      },
-      t.db,
-    );
+    const nacharbeit = (art: NacharbeitArt) =>
+      // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
+      t.auftraege.stelleEigenenAuftragEin(
+        'nacharbeit',
+        { set_number: sn, user_id: besitzer, art: e.nacharbeit ?? art },
+        {
+          userId: besitzer,
+          schluessel: `nacharbeit:${besitzer}:${sn}`,
+          maxVersuche: 5,
+          nachSekunden: e.ergaenzenNachSekunden ?? 0,
+        },
+      );
+    if (e.wennVorhanden === 'aufstocken' && (await repo.setZeileDesKontos(t.db, besitzer, sn))) {
+      await erfassungBuchen(t, erfassung);
+      // Nur ein genannter Ort: Die Vorgabe des Kontos verschöbe sonst ein einsortiertes Set.
+      if (ort && e.lagerort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
+      await nacharbeit('zweit');
+      return { action: 'updated' as const, set_number: sn, besitzer };
+    }
+    if (e.wennVorhanden !== 'aufstocken') {
+      const vorhanden = await findeSetImBlickfeld(t, e.anfragender, sn);
+      if (vorhanden) return { action: 'exists' as const, ...vorhanden };
+    }
+    const katalog = await t.katalog.merkeKatalogPlatzhalter(sn);
+    await t.bestand.legeSetAn(besitzer, sn);
+    await erfassungBuchen(t, erfassung);
     if (ort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
-    // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
-    await t.auftraege.stelleAuftragEin(
-      'nacharbeit',
-      { set_number: sn, user_id: besitzer, art: 'ergaenzen' },
-      {
-        userId: besitzer,
-        schluessel: `nacharbeit:${besitzer}:${sn}`,
-        maxVersuche: 5,
-        nachSekunden: e.ergaenzenNachSekunden ?? 0,
-      },
-    );
-    const offen = !katalog || katalog.platzhalter;
+    await nacharbeit('ergaenzen');
     return {
       action: 'added' as const,
       set_number: sn,
       name: katalog?.name ?? `Set ${sn}`,
-      katalog_offen: offen,
+      katalog_offen: !katalog || katalog.platzhalter,
       ergaenzung: 'ausstehend' as const,
       besitzer,
     };
@@ -169,7 +174,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.getSetInfo(sn));
+  const rbErgebnis = await versuche('set-service:setAngaben', sk.katalog.setInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
     name = rb.name;
@@ -180,7 +185,10 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
-    const bs = wertOder(await versuche('set-anlegen:brickset-info', brickset.getSetInfo(sn)), null);
+    const bs = wertOder(
+      await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.setAngaben(sn)),
+      null,
+    );
     if (bs) {
       name ??= bs.name;
       year ??= bs.year;
@@ -192,11 +200,11 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.katalog.setBildLaden(imageUrl, sn), frist]));
+  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.bilder.setBildLaden(imageUrl, sn), frist]));
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.vorschauErzeugen(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.bilder.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
+  await sk.katalog.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
 }
 
@@ -207,146 +215,18 @@ export async function setErgaenzen(
   sn: string,
   konto: number,
   sendProgress: Fortschritt | null = null,
+  mitBrickset = true,
 ): Promise<{ name: string | null }> {
-  const stand = await katalogStand(sk.db, sn);
+  const stand = await sk.katalog.katalogStand(sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
-    const k = await katalogHolen(sk, sn, true, sendProgress);
+    const k = await katalogHolen(sk, sn, mitBrickset, sendProgress);
     if (k.gestoert && !k.name) throw new Error(`Katalog für ${sn} nicht erreichbar`);
     name = k.name ?? name;
   }
   for (const z of await repo.erfassungenOhnePreisDesSets(sk.db, konto, sn)) {
-    const preis = await sk.finanzen.getCurrentMarketPrice(sn, konto, z.condition || null);
+    const preis = await sk.finanzen.aktuellerMarktpreis(sn, konto, z.condition || null);
     if (preis) await sk.bestand.setzeGeschaetztenPreis('set', z.id, preis);
   }
   return { name };
-}
-
-/** `massenimport`: kein Brickset-Abruf und keine Nacharbeit je Set — die
- * Importschleife stellt sie selbst ein und schont so Pool und Tageskontingent. */
-export interface SetHinzufuegen {
-  setNumber: string;
-  menge: number;
-  konto: number;
-  kaufpreis?: number | null;
-  zustand?: string | null;
-  lagerort?: string | null;
-  erfasstAm?: string | null;
-  waehrung?: string | null;
-  massenimport?: boolean;
-  fortschritt?: Fortschritt | null;
-}
-
-/** Steht das Set schon im eigenen Konto, kommt eine Erfassung dazu (CSV, Merkliste). */
-export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
-  // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
-  const ort = await ortFuerNeuerfassung(sk.db, s.konto, s.lagerort ?? null);
-  const ergebnis = await addSetIntern(sk, s);
-  if (ort && ergebnis?.set_number)
-    await sk.bestand.lagerortDienst.setzeLagerort('set', [s.konto], [ergebnis.set_number], ort);
-  return ergebnis;
-}
-
-// Das Datum geht in DIESELBE Erfassung — ein nachträgliches UPDATE datierte einen fremden Kauf desselben Tages um.
-export async function addSetWithDate(
-  sk: SetsKontext,
-  setNumber: string,
-  menge: number,
-  konto: number,
-  kaufpreis: number | null,
-  zustand: string | null,
-  erfasstAm: string | null,
-) {
-  return addSet(sk, { setNumber, menge, konto, kaufpreis, zustand, erfasstAm, massenimport: true });
-}
-
-/** Nie Voraussetzung für die Antwort: Scheitert das Einstellen, ist das Set
- * trotzdem erfasst, und der Fehler steht im Protokoll. */
-export async function nacharbeitEinstellen(
-  sk: SetsKontext,
-  setNumber: string,
-  userId: number,
-  art: 'zweit' | 'neu' | 'csv',
-) {
-  await versuche(
-    `set-anlegen:nacharbeit ${setNumber}`,
-    sk.auftraege.stelleAuftragEin(
-      'nacharbeit',
-      { set_number: setNumber, user_id: userId, art },
-      { userId, schluessel: `nacharbeit:${userId}:${setNumber}`, maxVersuche: 3 },
-    ),
-  );
-}
-
-async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
-  const { konto: userId, menge, fortschritt } = s;
-  const massenimport = s.massenimport === true;
-  const normalized = normalizeSetNumber(s.setNumber);
-  if (!moeglicheSetNummer(normalized)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  fortschritt?.({ step: 'meta', set: normalized });
-  // Einmal für beide Zweige, damit Neuanlage und Aufstocken nicht verschieden rechnen.
-  const zustand = await sk.einstellungen.zustandFuerPreis(s.zustand ?? null, null, userId);
-  const kaufpreis = s.kaufpreis ?? null;
-  // Ohne Angabe gilt der Marktpreis des gewählten Zustands, geholt VOR der Sperre:
-  // Ein Netzaufruf in der Sperre blockierte jeden anderen Schreiber.
-  const geschaetzt = kaufpreis === null || Number.isNaN(kaufpreis);
-  const marktpreis = async () =>
-    geschaetzt
-      ? wertOder(
-          await versuche(
-            'set-service:getCurrentMarketPrice',
-            sk.finanzen.getCurrentMarketPrice(normalized, userId, zustand),
-          ),
-          null,
-        )
-      : kaufpreis;
-
-  if (await repo.setZeileDesKontos(sk.db, userId, normalized)) {
-    const preis = await marktpreis();
-    // Gesperrt, weil recordAcquisitionForDay() erst liest und dann schreibt.
-    await mitInventarSperre(sk.db, userId, normalized, async tx => {
-      await recordAcquisition(
-        sk,
-        {
-          konto: userId,
-          setNumber: normalized,
-          menge,
-          kaufpreis: preis,
-          zustand,
-          geschaetzt,
-          waehrung: geschaetzt ? null : (s.waehrung ?? null),
-          erfasstAm: s.erfasstAm ?? null,
-        },
-        tx,
-      );
-    });
-    if (!massenimport) await nacharbeitEinstellen(sk, normalized, userId, 'zweit');
-    return { action: 'updated', set_number: normalized };
-  }
-
-  const { name } = await katalogHolen(sk, normalized, !massenimport, fortschritt ?? null);
-  const preis = await marktpreis();
-  // Gesperrt: Zwei gleichzeitige Erst-Erfassungen überschrieben sich sonst.
-  await mitInventarSperre(sk.db, userId, normalized, async tx => {
-    await repo.legeSetZeileAn(tx, userId, normalized);
-    // Nur ein bezahlter Betrag trägt die gewählte Währung; ein Marktpreis steht in der des Kontos.
-    await recordAcquisition(
-      sk,
-      {
-        konto: userId,
-        setNumber: normalized,
-        menge,
-        kaufpreis: preis,
-        zustand,
-        geschaetzt,
-        waehrung: geschaetzt ? null : (s.waehrung ?? null),
-        erfasstAm: s.erfasstAm ?? null,
-      },
-      tx,
-    );
-  });
-  fortschritt?.({ step: 'done_meta', set: normalized });
-  if (!massenimport) await nacharbeitEinstellen(sk, normalized, userId, 'neu');
-  // katalog_offen: Keine Quelle hat geantwortet; die Oberfläche soll das sagen statt eines schlichten „hinzugefügt“.
-  return { action: 'added', set_number: normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }

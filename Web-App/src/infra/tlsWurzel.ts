@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { konfig } from './konfig';
+import { prozessweit } from './prozessweit';
 
 export interface TlsStand {
   /** Das Format des QR-Codes. */
@@ -14,7 +15,7 @@ export interface TlsStand {
   pem: string;
 }
 
-let _zwischen: { pfad: string; mtimeMs: number; stand: TlsStand } | null = null;
+const Z = prozessweit('tlsStand', () => ({ v: null as { pfad: string; mtimeMs: number; stand: TlsStand } | null }));
 
 export function tlsStandAus(pem: string): TlsStand {
   const zert = new crypto.X509Certificate(pem);
@@ -40,9 +41,9 @@ export async function tlsStand(): Promise<TlsStand | null> {
     const datei = await fs.promises.open(pfad, 'r');
     try {
       const st = await datei.stat();
-      if (_zwischen?.pfad === pfad && _zwischen.mtimeMs === st.mtimeMs) return _zwischen.stand;
+      if (Z.v?.pfad === pfad && Z.v.mtimeMs === st.mtimeMs) return Z.v.stand;
       const stand = tlsStandAus(await datei.readFile('utf8'));
-      _zwischen = { pfad, mtimeMs: st.mtimeMs, stand };
+      Z.v = { pfad, mtimeMs: st.mtimeMs, stand };
       return stand;
     } finally {
       await datei.close();

@@ -6,10 +6,9 @@
  *   A  in mobile.css die Regel `.erfassen-raster > .fg:has(> .preis-mit-waehrung)` entfernt
  *      → rot: „Set hinzufügen: Kaufpreis-Platzhalter ganz sichtbar“ („Platzhalter braucht 65 px,
  *      das Feld hat 58 px“)
- *   B  in mobile.css den Block `#tab-catalog .filterzeile { display: grid … }` entfernt
+ *   B  (14.11.2026, Runde 24: Filter hinter dem Knopf) in mobile.css die Regel
+ *      `#tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to)` entfernt
  *      → rot: „Katalog: Filter in vier Zeilen, nichts abgeschnitten“ („stehen in 5 Zeilen“)
- *   E  (12.11.2026) Katalog am Telefon einspaltig (grid-template-columns: minmax(0, 1fr))
- *      → rot: „Katalog: Filter in vier Zeilen …“ (die Jahre nicht nebeneinander)
  *   C  in styles.css die Pfeil-Regeln der Abschnittsleiste (`.einst-nav[data-mehr*="r"]::after`)
  *      auf das alte Zeichen ohne Knopf (width:2rem, border:0) zurückgesetzt
  *      → rot: „Einstellungen: Pfeil als Knopf, solange rechts Abschnitte liegen“
@@ -74,16 +73,19 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
 
   await t.test('Katalog: Filter in vier Zeilen, nichts abgeschnitten', async () => {
     await reiter('catalog');
+    // Seit Runde 24 hinter dem Trichterknopf wie in der Sammlung; aufgeklappt gilt dieselbe Ordnung.
+    await b.auswerten(`(() => { const k = document.querySelector('#tab-catalog .filter-knopf');
+      if (k.getAttribute('aria-expanded') !== 'true') k.click(); return true; })()`);
     const m = await b.auswerten(`(() => { const breite = ${TEXTBREITE};
       const ids = ['cat-theme', 'cat-year-from', 'cat-year-to', 'cat-sort'], f = id => document.getElementById(id);
       const r = id => f(id).getBoundingClientRect();
       const zeilen = new Set(['cat-search', ...ids].map(id => Math.round(r(id).top)));
       return { zeilen: zeilen.size, felder: ids.map(id => breite(f(id), [...f(id).options].map(o => o.text))),
                jahreGleich: Math.abs(r('cat-year-to').top - r('cat-year-from').top) < 2,
-               themaVoll: Math.abs(r('cat-theme').width - r('cat-search').width) < 2, seite: document.documentElement.scrollWidth }; })()`);
+               themaVoll: Math.abs(r('cat-theme').width - f('cat-theme').parentElement.clientWidth) < 2, seite: document.documentElement.scrollWidth }; })()`);
     assert.equal(m.zeilen, 4, `Suche, Thema, die Jahre und die Sortierung stehen in ${m.zeilen} Zeilen`);
     assert.equal(m.jahreGleich, true, 'Jahr ab und Jahr bis stehen nicht in einer Zeile');
-    assert.equal(m.themaVoll, true, 'Thema ist nicht so breit wie die Suche');
+    assert.equal(m.themaVoll, true, 'Thema ist nicht so breit wie die Filterleiste');
     assert.deepEqual(
       m.felder.filter(x => !x.passt),
       [],

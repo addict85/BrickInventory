@@ -71,13 +71,13 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     for (const roh of ['', '   ', null, undefined]) {
       await assert.rejects(
         () => L.legeOrtAn(U.opa, roh),
-        e => String(e.code) === 'lagerort_leer',
+        (/** @type {any} */ e) => String(e.code) === 'lagerort_leer',
         `${JSON.stringify(roh)} wurde angenommen`,
       );
     }
     await assert.rejects(
       () => L.legeOrtAn(U.opa, 'x'.repeat(61)),
-      e => String(e.code) === 'lagerort_zu_lang',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_zu_lang',
     );
     // Genau auf der Grenze ist erlaubt — sonst wäre die Zahl in der
     // Fehlermeldung („höchstens 60") gelogen.
@@ -149,7 +149,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'Kiste 3');
     await assert.rejects(
       () => L.benenneOrtUm(U.enkel, ort.id, 'kinderzimmer'),
-      e => String(e.code) === 'lagerort_doppelt',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_doppelt',
       'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste',
     );
     // Der eigene Name auf sich selbst ist dagegen in Ordnung — sonst liesse
@@ -162,11 +162,11 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
       () => L.benenneOrtUm(U.opa, ort.id, 'Opas Keller'),
-      e => String(e.code) === 'lagerort_unbekannt',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
     );
     await assert.rejects(
       () => L.loescheOrt(U.opa, ort.id),
-      e => String(e.code) === 'lagerort_unbekannt',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
     );
   });
 
@@ -174,7 +174,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     const belegt = (await L.orteVon([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
       () => L.loescheOrt(U.enkel, belegt.id),
-      e => String(e.code) === 'lagerort_in_benutzung',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
       'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg',
     );
 
@@ -193,7 +193,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     const frei = (await db.get('SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
     await assert.rejects(
       () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2', [frei, '10179-1']),
-      e => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
+      (/** @type {any} */ e) => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
       'Ein Set liess sich auf einen Ort setzen, den es im Vorrat nicht gibt',
     );
   });

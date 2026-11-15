@@ -33,7 +33,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testZugang, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -52,7 +52,9 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
   // … und eine Zeile in auftrags_arten (0109).
   for (const art of [ART, `${ART}-ex`]) {
-    _req('src/auftraege/nutzlasten.js').NUTZLASTEN[art] = require('zod').looseObject({});
+    require('./helpers/sources')
+      .testDienste()
+      .auftraege.meldeArtAn({ art: art, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [art]);
   }
   const leeren = () => db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
@@ -234,10 +236,10 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       let laeuft = () => {},
         abgebrochen = () => {};
       const gestartet = new Promise(r => {
-        laeuft = r;
+        laeuft = () => r(null);
       });
       const nachAbbruch = new Promise(r => {
-        abgebrochen = r;
+        abgebrochen = () => r(null);
       });
       const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
@@ -300,9 +302,9 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const NAME = `auftrag-pdf-${process.pid}`;
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-      const pdfA = _req('src/auftraege/pdfAuftraege.js');
-      const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId();
-      _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
+      const pdfA = _req('src/katalog/pdf/pdfAuftraege.js');
+      const jobId = _req('src/katalog/pdf/pdfAuftraege.js').neueJobId(Date.now());
+      const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
         arten: ['pdf'],
         taktMs: 50,
       });
@@ -319,7 +321,8 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
         );
         let stand;
         for (let i = 0; i < 200; i++) {
-          stand = await pdfA.liesAuftrag(jobId);
+          // Wie die Route: im Konto der Anfrage, unter Zeilenschutz.
+          stand = await alsKonto(uid, () => pdfA.liesAuftrag(jobId, uid));
           if (stand?.status !== 'running') break;
           await warte(25);
         }
@@ -328,7 +331,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
         assert.equal(require('node:fs').readFileSync(datei).subarray(0, 5).toString(), '%PDF-');
         require('node:fs').rmSync(datei, { force: true });
       } finally {
-        await _req('jobs/auftraegeStarten.js').stoppeAuftragsWorker();
+        await worker.stoppe();
         await db.run('DELETE FROM users WHERE id=$1', [uid]);
       }
     });

@@ -11,11 +11,6 @@ interface Window {
   __bimDunkelWert: (() => 'server' | 'system' | 'immer') | undefined;
   __bimNurDunkel: (theme: string) => boolean;
   __bimLabelTables: ((tabelle: Element | null) => void) | undefined;
-  _finGrandTotal: number;
-  _finPartsExtra: number;
-  _imgObserver: IntersectionObserver | null;
-  _partsScrollBound: boolean;
-  _plServerUrl: string;
   pdfjsLib: PdfJs | undefined;
 }
 
@@ -36,7 +31,7 @@ type Feld = HTMLInputElement &
   Pick<HTMLSelectElement, 'options' | 'selectedIndex' | 'selectedOptions'> &
   Pick<HTMLAnchorElement, 'href' | 'download'>;
 
-// Einträge der manuellen Teile- und Figurenlisten: von parts.js, minifigs.js und acquisition-modals.js
+// Einträge der manuellen Teile- und Figurenlisten: von teile.js, minifigs.js und kauf-dialoge.js
 // geteilt. Als globale Typen, damit keine Datei der anderen wegen importiert (kein Typkreis).
 type ManuellesTeil = import('./vertrag').ManualPartsResponse['parts'][number];
 type ManuelleFigur = import('./vertrag').ManualFigsResponse['figs'][number];

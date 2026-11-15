@@ -1,24 +1,26 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
-import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.transformWhile
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,71 +28,53 @@ import javax.inject.Singleton
 /**
  * Ein Set anlegen — mit Fortschritt, wie die Webapp über /api/v1/sets/add-stream
  * (Stammdaten holen, Bild laden, fertig), damit man bei einem grossen Set sieht,
- * was passiert.
+ * was passiert. Über [sseStrom] wie CSV-Import und PDF-Auftrag: ein Leser für alle Ströme.
  */
 @Singleton
 internal class SetAnlegenSseClient @Inject constructor(
     @SseClient private val client: OkHttpClient,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val json: Json = BrickJson,
 ) : SetAnleger {
-    private val json = Json { ignoreUnknownKeys = true }
-
-    // Die Schritte stehen als SetAnlegenSchritt in SetAnleger.kt.
 
     /**
-     * Anlegen und dabei zuhoeren.
-     *
-     * Kalter Fluss: Die Anfrage geht erst beim Sammeln los. Ein Abbruch des
-     * Sammelns schliesst die Verbindung — ANLEGEN tut das nicht rueckgaengig,
-     * der Server schreibt weiter. Genau deshalb bietet die Oberflaeche hier
-     * auch keinen Abbrechen-Knopf an (siehe GalleryFeature.addSet).
+     * Kalter Fluss: Die Anfrage geht erst beim Sammeln los. Ein Abbruch des Sammelns
+     * schliesst die Verbindung, das Anlegen am Server läuft weiter — deshalb gibt es
+     * keinen Abbrechen-Knopf. Der letzte Schritt ist immer Fertig, Fehler oder KeineVerbindung.
      */
     override fun anlegen(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
-    ): Flow<SetAnlegenSchritt> = callbackFlow {
+    ): Flow<SetAnlegenSchritt> {
         // Adresse und Token setzt der Wächter des Clients, wie bei jedem Abruf.
-        val rumpf = anlegeRumpf(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
         val anfrage = Request.Builder()
             .url("${PLATZHALTER_BASIS}api/v1/sets/add-stream")
             .header("Accept", "text/event-stream")
-            .post(rumpf)
+            .post(anlegeRumpf(setNumber, quantity, purchasePrice, condition, ownerUserId, storage))
             .build()
+        return sseStrom(client, anfrage) { json.parseToJsonElement(it).jsonObject }.transformWhile { e ->
+            val schritt = when (e) {
+                is SseEreignis.Daten -> schritt(e.wert)
+                // Ein unlesbares Ereignis könnte das „done“ sein; ein Ende ohne es lässt offen,
+                // ob das Set angelegt wurde. Beides ist ein Abbruch, kein Satz des Servers.
+                is SseEreignis.Unlesbar, SseEreignis.Beendet -> SetAnlegenSchritt.Fehler("")
+                is SseEreignis.Gescheitert -> ohneStrom(e)
+            }
+            if (schritt != null) emit(schritt)
+            !schritt.istLetzter()
+        }.flowOn(io)
+    }
 
-        val aufruf = client.newCall(anfrage)
-        fun scheitert(e: Exception) {
-            trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
-            close()
-        }
-        try {
-            aufruf.execute().use { antwort -> leseAntwort(antwort) { trySend(it) } }
-            close()
-        } catch (_: java.net.UnknownHostException) {
-            trySend(SetAnlegenSchritt.KeineVerbindung); close()
-        } catch (_: java.net.ConnectException) {
-            // Nur diese beiden: Die Anfrage kam nie an, ein zweiter Versuch über den
-            // Ausgang kann nichts doppelt anlegen. Ein Abbruch mitten im Strom schon.
-            trySend(SetAnlegenSchritt.KeineVerbindung); close()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: java.io.IOException) {
-            scheitert(e)
-        } catch (e: IllegalArgumentException) {
-            // Auch eine unlesbare Antwort (SerializationException).
-            scheitert(e)
-        } catch (e: IllegalStateException) {
-            scheitert(e)
-        }
-        awaitClose { aufruf.cancel() }
-    }.flowOn(io)
+    private fun SetAnlegenSchritt?.istLetzter() =
+        this is SetAnlegenSchritt.Fertig || this is SetAnlegenSchritt.Fehler || this == SetAnlegenSchritt.KeineVerbindung
 
     /**
-     * Von Hand gebaut statt ueber eine Datenklasse: Die Felder, die NICHT
-     * gesetzt sind, sollen auch nicht im Rumpf stehen — der Server
-     * unterscheidet „kein Kaufpreis" von „Kaufpreis null" (utils/validate).
+     * Von Hand gebaut statt über eine Datenklasse: Felder, die nicht gesetzt sind, fehlen
+     * im Rumpf — der Server unterscheidet „kein Kaufpreis“ von „Kaufpreis null“. Freier
+     * Text geht durch den Serialisierer, sonst zerbräche ein Anführungszeichen den Rumpf.
      */
     private fun anlegeRumpf(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): RequestBody {
         val felder = buildList {
@@ -99,10 +83,6 @@ internal class SetAnlegenSseClient @Inject constructor(
             if (purchasePrice != null) add("\"purchase_price\":$purchasePrice")
             if (condition != null) add("\"condition\":\"${condition.kennung}\"")
             if (ownerUserId != null) add("\"owner_user_id\":$ownerUserId")
-            // Der Lagerort ist freier Text und muss deshalb ueber den
-            // Serialisierer, nicht in die Zeichenkette gesetzt: Ein
-            // Anfuehrungszeichen im Namen („Regal \"A\"") zerbraeche den Rumpf
-            // sonst. Dieselbe Vorsicht wie eine Zeile hoeher bei set_number.
             if (!storage.isNullOrBlank())
                 add("\"storage\":${json.encodeToString(kotlinx.serialization.serializer(), storage)}")
         }
@@ -110,69 +90,57 @@ internal class SetAnlegenSseClient @Inject constructor(
             .toRequestBody("application/json; charset=utf-8".toMediaType())
     }
 
-    /** Die Antwort lesen: Absage, die JSON-Form oder der Ereignisstrom. */
-    private fun leseAntwort(antwort: Response, sende: (SetAnlegenSchritt) -> Unit) {
-        // `antwort.body` ist seit OkHttp 5 nicht nullbar.
-        val koerper = antwort.body
-        if (!antwort.isSuccessful) {
-            sende(SetAnlegenSchritt.Fehler(fehlertextAus(koerper.string())))
-            return
-        }
-        // Die JSON-Form: Das Set stand schon im Blickfeld.
-        if (antwort.header("Content-Type")?.contains("application/json") == true) {
-            val text = koerper.string()
-            sende(SetAnlegenSchritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), text)))
-            return
-        }
-        // Die Stromform: `data: {…}` je Zeile, Leerzeilen trennen.
-        koerper.source().use { quelle ->
-            while (!quelle.exhausted()) {
-                val zeile = quelle.readUtf8LineStrict()
-                if (!zeile.startsWith("data:")) continue
-                val nutzlast = zeile.removePrefix("data:").trim()
-                if (nutzlast.isEmpty()) continue
-                if (verarbeite(nutzlast, sende)) break
-            }
-        }
+    /**
+     * Ein Ereignis des Stroms; null für Unbekanntes. Dieselben Schrittnamen wie in der
+     * Webapp (public/js/sammlung.js): ein Protokoll zwischen zwei Programmen.
+     */
+    private fun schritt(obj: JsonObject): SetAnlegenSchritt? = when (obj["step"]?.jsonPrimitive?.content) {
+        "meta" -> SetAnlegenSchritt.Stammdaten(obj["set"]?.jsonPrimitive?.content)
+        "image" -> SetAnlegenSchritt.Bild
+        "done_meta" -> SetAnlegenSchritt.FastFertig
+        "done" -> fertig(obj.toString())
+        "error" -> SetAnlegenSchritt.Fehler(obj["error"]?.jsonPrimitive?.content.orEmpty())
+        else -> null
     }
 
     /**
-     * Ein Ereignis auswerten.
-     *
-     * @return true, wenn der Vorgang damit beendet ist (fertig oder Fehler).
+     * Ohne Ereignisstrom: Die Anfrage kam nie an, der Server lehnte ab, oder er antwortete
+     * in der JSON-Form (das Set stand schon im Blickfeld). Nur „nie angekommen“ darf über
+     * den Ausgang wiederholt werden; ein Abbruch mitten im Strom könnte doppelt anlegen.
      */
-    private fun verarbeite(nutzlast: String, sende: (SetAnlegenSchritt) -> Unit): Boolean {
-        // Ein unlesbares Ereignis ist ein Fehler, kein Rauschen: Es könnte das „done“ sein,
-        // und ohne Abschluss sähe der Nutzer nie, ob das Set angelegt wurde.
-        val obj = try {
-            json.parseToJsonElement(nutzlast).jsonObject
-        } catch (_: IllegalArgumentException) {
-            sende(SetAnlegenSchritt.Fehler(""))
-            return true
+    private fun ohneStrom(e: SseEreignis.Gescheitert): SetAnlegenSchritt {
+        val code = e.code
+        return when {
+            code == null -> if (e.keineVerbindung) SetAnlegenSchritt.KeineVerbindung else SetAnlegenSchritt.Fehler("")
+            code in HTTP_ERFOLG && e.rumpf != null -> fertig(e.rumpf)
+            else -> SetAnlegenSchritt.Fehler(fehlertextAus(e.rumpf))
         }
-        // Dieselben Schrittnamen wie in der Webapp (public/js/gallery.js →
-        // handleSseEvent). Sie stehen hier ein zweites Mal, weil es ein
-        // Protokoll zwischen zwei Programmen ist — aber in derselben
-        // Reihenfolge und mit derselben Bedeutung.
-        return when (obj["step"]?.jsonPrimitive?.content) {
-            "meta"      -> { sende(SetAnlegenSchritt.Stammdaten(obj["set"]?.jsonPrimitive?.content)); false }
-            "image"     -> { sende(SetAnlegenSchritt.Bild); false }
-            "done_meta" -> { sende(SetAnlegenSchritt.FastFertig); false }
-            "done"      -> {
-                sende(SetAnlegenSchritt.Fertig(json.decodeFromString(AddSetResponse.serializer(), nutzlast)))
-                true
-            }
-            "error"     -> {
-                sende(SetAnlegenSchritt.Fehler(obj["error"]?.jsonPrimitive?.content.orEmpty()))
-                true
-            }
-            else -> false
-        }
+    }
+
+    private fun fertig(text: String): SetAnlegenSchritt = try {
+        val r = json.decodeFromString(AddSetResponse.serializer(), text)
+        if (r.success) SetAnlegenSchritt.Fertig(r.alsErfasst()) else SetAnlegenSchritt.Fehler(fehlertextAus(text))
+    } catch (_: IllegalArgumentException) {
+        SetAnlegenSchritt.Fehler("")
     }
 
     /** Aus einer Fehlerantwort den Satz holen, den der Server geschickt hat. */
     private fun fehlertextAus(koerper: String?): String =
         try {
             json.parseToJsonElement(koerper.orEmpty()).jsonObject["error"]?.jsonPrimitive?.content.orEmpty()
-        } catch (_: Exception) { "" }
+        } catch (_: IllegalArgumentException) { "" }
+
+    private companion object {
+        val HTTP_ERFOLG = 200..299
+    }
 }
+
+/** Die Antwort auf ein angelegtes Set als Fachwert; „gepuffert“ ist weder angelegt noch vorhanden. */
+internal fun AddSetResponse.alsErfasst() = SetErfasst(
+    nummer = setNumber,
+    name = name,
+    angelegt = action == "added",
+    vorhanden = action == "exists",
+    katalogOffen = katalogOffen,
+    ergaenzungAusstehend = ergaenzung == "ausstehend",
+)

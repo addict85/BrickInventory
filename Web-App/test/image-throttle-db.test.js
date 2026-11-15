@@ -47,8 +47,8 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
   const P = `WB${process.pid}`;
   const datei = path.join(SET_IMAGES_DIR, `${P}_1.jpg`);
   fsm.writeFileSync(datei, 'x'); // Bild liegt, Vorschau unmöglich
-  const IM = _req('src/katalog/bilder/imageMisses.js');
-  const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+  const IM = _req('src/bilder/imageMisses.js');
+  const IQ = _req('src/bilder/bildbedarfLauf.js');
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%']);
 
   try {
@@ -110,7 +110,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       antwort = 403;
       versuche = 0;
       await fuellen();
-      const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+      const IQ = _req('src/bilder/bildbedarfLauf.js');
       const e = await IQ._arbeiteStapel();
       assert.equal(versuche, 1, `${versuche} Versuche — nach der ersten Drosselung muss der Stapel abbrechen`);
 
@@ -144,7 +144,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
 
     await t.test('die Pause hält den nächsten Lauf zurück', async () => {
       const vorher = versuche;
-      const n = (await _req('src/katalog/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
+      const n = (await _req('src/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
       assert.equal(n, 0);
       assert.equal(
         versuche,
@@ -156,12 +156,12 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
     await t.test('404 wird dagegen gemerkt', async () => {
       // Die Pause aus dem vorigen Teilschritt steht in der Datenbank und gilt sonst weiter.
       await db.run(`DELETE FROM auftrag_pausen WHERE art = 'bildbedarf'`);
-      const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+      const IQ = _req('src/bilder/bildbedarfLauf.js');
       antwort = 404;
       versuche = 0;
       await fuellen();
       await IQ._arbeiteStapel();
-      await _req('src/katalog/bilder/imageMisses.js')._schreibePuffer();
+      await _req('src/bilder/imageMisses.js')._schreibePuffer();
       assert.equal(versuche, 10, `${versuche} Versuche — bei 404 läuft der Stapel durch`);
       assert.equal(await gemerkt(), 10, 'Fehlende Bilder werden nicht gemerkt — dann fragt der Job sie ewig neu');
     });

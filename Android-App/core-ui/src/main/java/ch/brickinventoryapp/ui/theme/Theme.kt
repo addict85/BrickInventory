@@ -135,31 +135,31 @@ data class ChartColors(
 // samt der Begruendung, warum die Gebraucht-Linie im Stein-Design Sand ist.
 
 // Werkbank (dunkel): darkColorScheme, weil einige Bausteine (Textfeld-Rahmen,
-// Rippel) ihre Helligkeit daran ablesen. Werte wie themes/werkbank.css; dieselbe
-// Zuordnung nutzen die dunklen Fassungen der übrigen Designs (DunkelTokens.kt).
+// Rippel) ihre Helligkeit daran ablesen. Werte wie themes/werkbank.css: warmes Graphit
+// und Messing statt Anthrazit mit Blau, sonst glich es „Klassisch dunkel“ (DunkelTokens.kt).
 private val WerkbankColors = darkColorScheme(
     primary              = WerkbankAzur,
-    onPrimary            = Color(0xFF0E1620),
+    onPrimary            = Color(0xFF1E1608),
     primaryContainer     = WerkbankAzurDunkel,
     onPrimaryContainer   = WerkbankAzurHell,
-    secondary            = WerkbankAzurHell,
-    onSecondary          = Color(0xFF0E1620),
+    secondary            = Color(0xFFC9963F),
+    onSecondary          = Color(0xFF1E1608),
     secondaryContainer   = Color(0xFF2A2418),
     onSecondaryContainer = Color(0xFFD9A84E),
     tertiary             = Color(0xFFD9A84E),
     onTertiary           = Color(0xFF241C0C),
     tertiaryContainer    = Color(0xFF2A2418),
     onTertiaryContainer  = Color(0xFFD9A84E),
-    background           = Color(0xFF14181D),
-    surface              = Color(0xFF191E25),
+    background           = Color(0xFF17140F),
+    surface              = Color(0xFF211C16),
     // Muss sich von surface unterscheiden — dieselbe Ueberlegung wie im
     // Grunddesign: Flaechen, die mit surfaceVariant AUF surface liegen,
     // verschwaenden sonst.
-    surfaceVariant       = Color(0xFF232A33),
-    onSurface            = Color(0xFFE6E9ED),
-    onSurfaceVariant     = Color(0xFF8D96A3),
-    outline              = Color(0xFF788292),
-    outlineVariant       = Color(0xFF262D36),
+    surfaceVariant       = Color(0xFF2C261E),
+    onSurface            = Color(0xFFECE4D8),
+    onSurfaceVariant     = Color(0xFFA89C8B),
+    outline              = Color(0xFFA89C8B),
+    outlineVariant       = Color(0xFF3A3127),
     error                = Color(0xFFE07A72),
 )
 
@@ -499,7 +499,7 @@ internal fun diagrammFarben(theme: Design, dunkel: Boolean, s: ColorScheme): Cha
         // Auf dunklem Grund muss das Raster HELLER als der Grund sein, nicht
         // dunkler — sonst verschwindet es.
         Design.WERKBANK -> ChartColors(ChartNewWerkbank, ChartUsedWerkbank,
-            linie = ChartNewWerkbank, raster = Color(0xFF262D36), gedaempft = gedaempft)
+            linie = ChartNewWerkbank, raster = Color(0xFF2C261E), gedaempft = gedaempft)
         // Fächer und Noppe färben Themen bzw. Kacheln, NICHT Zustände: Neu bleibt
         // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
         Design.FARBFAECHER -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)

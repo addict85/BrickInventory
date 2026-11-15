@@ -4,7 +4,9 @@ import ch.brickinventoryapp.data.SseEreignis
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.sseStrom
-import ch.brickinventoryapp.model.data.model.PdfAuftragStand
+import ch.brickinventoryapp.vertrag.PdfAuftragStand
+import ch.brickinventoryapp.model.fach.PdfAuftragsstand
+import ch.brickinventoryapp.data.repository.alsStand
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import ch.brickinventoryapp.netz.util.Protokoll
@@ -27,13 +29,13 @@ class PdfAuftragsStrom @Inject internal constructor(
     private val json: Json,
 ) {
     sealed interface Ereignis {
-        data class Stand(val stand: PdfAuftragStand) : Ereignis
+        data class Stand(val stand: PdfAuftragsstand) : Ereignis
 
         /** Kein Strom: alter Server (404), Abriss, Ende oder ein unlesbares Ereignis. */
         data object Weg : Ereignis
 
         /** Der Server weist den Strom ab; [fehler] wie bei jedem Abruf, mit seinem Satz und Code. */
-        data class Abgelehnt(val fehler: Ergebnis.Error) : Ereignis
+        data class Abgelehnt(val fehler: Ergebnis.Fehler) : Ereignis
     }
 
     fun beobachte(jobId: String): Flow<Ereignis> {
@@ -43,7 +45,7 @@ class PdfAuftragsStrom @Inject internal constructor(
             .build()
         return sseStrom(client, anfrage) { json.decodeFromString(PdfAuftragStand.serializer(), it) }.map { e ->
             when (e) {
-                is SseEreignis.Daten -> Ereignis.Stand(e.wert)
+                is SseEreignis.Daten -> Ereignis.Stand(e.wert.alsStand())
                 is SseEreignis.Unlesbar -> {
                     Protokoll.warnung("PdfExport", "Unlesbares SSE-Ereignis: ${e.technisch}")
                     Ereignis.Weg
@@ -55,12 +57,12 @@ class PdfAuftragsStrom @Inject internal constructor(
     }
 
     /** Ohne Antwort oder mit 404 gibt es keinen Strom; jeder andere Status ist eine Absage. */
-    private fun abgelehnt(e: SseEreignis.Gescheitert): Ergebnis.Error? {
+    private fun abgelehnt(e: SseEreignis.Gescheitert): Ergebnis.Fehler? {
         val code = e.code
         if (code == null || code == 0 || code == HTTP_NICHT_GEFUNDEN) return null
         val rumpf = Fehlerrumpf.lies(e.rumpf)
-        return if (code == HTTP_ABGEWIESEN) Ergebnis.Error.Abgewiesen(rumpf.text.orEmpty(), rumpf.fehlercode)
-        else Ergebnis.Error.Server(code, rumpf.text.orEmpty(), rumpf.fehlercode)
+        return if (code == HTTP_ABGEWIESEN) Ergebnis.Fehler.Abgewiesen(rumpf.text.orEmpty(), rumpf.fehlercode)
+        else Ergebnis.Fehler.Server(code, rumpf.text.orEmpty(), rumpf.fehlercode)
     }
 
     private companion object {

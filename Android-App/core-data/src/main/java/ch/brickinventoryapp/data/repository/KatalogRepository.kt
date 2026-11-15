@@ -1,10 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.KatalogMetaAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSeiteAnsicht
+
 import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
-import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers.
@@ -12,18 +13,18 @@ import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
  * Retrofit und Ablage hängen (KatalogRepositoryImpl).
  */
 interface KatalogRepository {
-    suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse>
+    suspend fun getCatalogMeta(): Ergebnis<KatalogMetaAnsicht>
 
     suspend fun getCatalogSets(
         q: String? = null, themeId: Int? = null, yearFrom: Int? = null, yearTo: Int? = null,
         sort: Katalogsortierung = Katalogsortierung.VORGABE, page: Int = 1, limit: Int = CATALOG_PAGE_SIZE
-    ): Ergebnis<CatalogSetsResponse>
+    ): Ergebnis<KatalogSeiteAnsicht>
 
-    suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse>
+    suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<KatalogDetailAnsicht?>
 
     suspend fun getCatalogYearVerteilung(
         q: String? = null, themeId: Int? = null, sort: Katalogsortierung = Katalogsortierung.VORGABE
-    ): Ergebnis<CatalogYearVerteilungResponse>
+    ): Ergebnis<List<JahrAnzahlAnsicht>>
 }
 
 /**

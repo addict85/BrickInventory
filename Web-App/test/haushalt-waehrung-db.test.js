@@ -57,7 +57,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     await db.pool.end().catch(() => {});
   });
-  const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
+  const { nutzerEinstellungSetzen: setUserSetting } = _req('src/einstellungen/nutzerEinstellung.js');
   const waehrungen = async () =>
     (
       await db.all(
@@ -82,7 +82,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     for (const unter of [ids[1], ids[2]]) {
       await assert.rejects(
         setUserSetting(unter, 'currency', 'USD'),
-        e => e.code === 'waehrung_nur_hauptkonto' && e.art === 'verboten',
+        (/** @type {any} */ e) => e.code === 'waehrung_nur_hauptkonto' && e.art === 'verboten',
       );
     }
     await setUserSetting(ids[1], 'currency', 'CHF');
@@ -103,7 +103,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     // Dora mitziehen hiesse eriks Haushalt zwei Währungen geben: abgelehnt.
     await assert.rejects(
       setUserSetting(ids[4], 'currency', 'CHF'),
-      e => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt',
+      (/** @type {any} */ e) => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt',
     );
     assert.deepEqual((await waehrungen()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
     await setUserSetting(ids[6], 'currency', 'EUR');
@@ -122,7 +122,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
     await assert.rejects(
       setUserSetting(ids[3], 'currency', 'NOK'),
-      e => e.code === 'zu_viele_anfragen' && e.art === 'zu_viele',
+      (/** @type {any} */ e) => e.code === 'zu_viele_anfragen' && e.art === 'zu_viele',
     );
     await setUserSetting(ids[3], 'currency', 'SEK');
     assert.equal((await waehrungen())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');

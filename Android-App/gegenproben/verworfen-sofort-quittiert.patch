@@ -4,11 +4,12 @@ Test: ch.brickinventoryapp.zustand.AusgangsmelderTest
 Rot: ein Verworfenes bleibt, bis sein Hinweis weggeraeumt ist
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+index d0af378..97acbd6 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
-@@ -76,8 +76,6 @@
-         val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel,
-             v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)))
+@@ -77,8 +77,6 @@ class AusgangsBeobachter @Inject constructor(
+             else v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)
+         val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel, grund))
          meldungen.zeige(hinweis)
 -        meldungen.meldung.first { it == hinweis }
 -        meldungen.meldung.first { it != hinweis }

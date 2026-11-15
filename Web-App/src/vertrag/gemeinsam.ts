@@ -46,219 +46,233 @@ export const ImportZeile = z.looseObject({
 });
 
 export const CsvImportErgebnis = z.looseObject({
-  results: z.array(ImportZeile).optional(),
-  waehrung_hinweis: z.string().nullable().optional(),
   success: z.boolean(),
+  total: z.number().int(),
+  added: z.number().int(),
+  updated: z.number().int(),
+  errors: z.number().int(),
+  results: z.array(ImportZeile),
   skipped: z.number().int().optional(),
   skipped_hint: z.string().optional(),
-  total: z.number().int().optional(),
-  added: z.number().int().optional(),
-  imported: z.number().int().optional(),
-  updated: z.number().int().optional(),
-  errors: z.number().int().optional(),
-  error: z.string().nullable().optional(),
-  /** Nur beim Set-CSV: ob der Import lief (ohne `pruefen`) und wie viele Sets das Konto schon hat. */
-  gestartet: z.boolean().optional(),
-  vorhanden: z.number().int().optional(),
-  vorhanden_nummern: z.array(z.string()).optional(),
+  waehrung_hinweis: z.string().nullable().optional(),
 });
 
 export const ValuationAcquisition = z.looseObject({
   id: z.number().int(),
   condition: z.string(),
   quantity: z.number().int(),
-  purchase_price: z.number().nullable().optional(),
-  avg_price: z.number().nullable().optional(),
-  total_avg: z.string().nullable().optional(),
-  wert_gesamt: z.number().nullable().optional(),
+  purchase_price: z.number().nullable(),
+  avg_price: z.number().nullable(),
+  total_avg: z.string().nullable(),
+  wert_gesamt: z.number().nullable(),
   pnl_pct: PROZENT_TEXT,
-  pnl_prozent: z.number().nullable().optional(),
-  created_at: zeit.nullable().optional(),
-  owner_user_id: z.number().int().nullable().optional(),
+  pnl_prozent: z.number().nullable(),
+  created_at: zeit.nullable(),
   kaufpreis_original: z.number().optional(),
   kaufpreis_waehrung: z.string().optional(),
   price_estimated: z.boolean().optional(),
 });
 
-export const FigValuationItem = z.looseObject({
+const STUECK = {
+  id: z.number().int().nullable(),
+  quantity: z.number().int(),
+  image_url: z.string().nullable(),
+  image_local: z.string().nullable(),
+  purchase_price: z.number().nullable(),
+  avg_price: z.number().nullable(),
+  condition: z.string().nullable(),
+  conditions: z.array(z.string()),
+  user_id: z.number().int().nullable(),
+  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
+  owners: z.array(KontoName).optional(),
+};
+const BEWERTET = {
+  /** Die Preisangaben fehlen ohne Erfassung (kein Zustand zu bewerten); ausstehend nur, solange einer fehlt. */
   ausstehend: z.boolean().optional(),
   from_cache: z.boolean().optional(),
   max_price: z.number().nullable().optional(),
   min_price: z.number().nullable().optional(),
-  set_number: z.string().nullable().optional(),
-  source: z.string().nullable().optional(),
-  storage_id: z.number().int().nullable().optional(),
-  acq_count: z.number().int().nullable().optional(),
-  used_count: z.number().int().nullable().optional(),
-  id: z.number().int().nullable().optional(),
-  fig_number: z.string(),
-  bl_fig_number: z.string().nullable().optional(),
-  fig_name: z.string().nullable().optional(),
-  quantity: z.number().int(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
-  unit_price: z.number().nullable().optional(),
-  purchase_price: z.number().nullable().optional(),
-  avg_purchase_price: z.number().nullable().optional(),
-  qty_avg_price: veraltet(z.number().nullable().optional(), 'avg_price'),
-  avg_price: z.number().nullable().optional(),
+  qty_avg_price: veraltet(z.number().nullable(), 'avg_price'),
   pnl_pct: PROZENT_TEXT,
-  pnl_prozent: z.number().nullable().optional(),
-  display_value: veraltet(z.string().nullable().optional(), 'wert_gesamt'),
-  total_value: veraltet(z.string().optional(), 'wert_gesamt'),
-  wert_gesamt: z.number().nullable().optional(),
-  condition: z.string().nullable().optional(),
-  conditions: z.array(z.string()),
-  user_id: z.number().int().nullable().optional(),
-  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
-  owners: z.array(KontoName).optional(),
+  pnl_prozent: z.number().nullable(),
+  display_value: veraltet(z.string().nullable(), 'wert_gesamt'),
+  total_value: veraltet(z.string(), 'wert_gesamt'),
+  wert_gesamt: z.number().nullable(),
   acquisitions: z.array(ValuationAcquisition),
-  storage: z.string().nullable().optional(),
+};
+/** Der Bestand (manuelle Listen): Zähler, Lagerort; die Käufe lädt das Detail über /acquisitions. */
+const IM_BESTAND = {
+  acq_count: z.number().int().nullable(),
+  used_count: z.number().int().nullable(),
+  avg_purchase_price: z.number().nullable(),
+  storage: z.string().nullable(),
+};
+const FIGUR = {
+  fig_number: z.string(),
+  bl_fig_number: z.string().nullable(),
+  fig_name: z.string().nullable(),
+  set_number: z.string().nullable(),
+  source: z.string().nullable(),
+  storage_id: z.number().int().nullable(),
+};
+const TEIL = {
+  part_number: z.string(),
+  bl_part_number: z.string().nullable(),
+  part_name: z.string().nullable(),
+  color_id: z.number().int(),
+  color_name: z.string().nullable(),
+  color_hex: z.string().nullable(),
+  unit_price: z.number().nullable(),
+};
+
+export const FigValuationItem = z.looseObject({ ...STUECK, ...FIGUR, ...BEWERTET });
+export const ManuelleFigur = z.looseObject({
+  ...STUECK,
+  ...FIGUR,
+  ...IM_BESTAND,
+  unit_price: z.number().nullable(),
 });
 
-export const GenericAdminResponse = z.looseObject({
-  dauer_minuten: z.number().int().nullable().optional(),
-  pending: z.number().int().nullable().optional(),
-  queued: z.number().int().nullable().optional(),
-  skipped: z.number().int().nullable().optional(),
-  verworfen: z.number().int().nullable().optional(),
-  success: z.boolean(),
-  error: z.string().nullable().optional(),
-  enqueued: z.number().int().optional(),
-});
+export const GenericAdminResponse = z.looseObject({ success: z.boolean() });
 
 export const SetAggregate = z.looseObject({
-  set_number: z.string().optional(),
-  condition: z.string().nullable().optional(),
-  acq_count: z.number().int().nullable().optional(),
-  used_count: z.number().int().nullable().optional(),
-  conditions: z.array(z.string()).optional(),
-  max_purchase_price: z.number().nullable().optional(),
-  avg_purchase_price: z.number().nullable().optional(),
+  set_number: z.string(),
+  condition: z.string(),
+  acq_count: z.number().int(),
+  used_count: z.number().int(),
+  conditions: z.array(z.string()),
+  max_purchase_price: z.number().nullable(),
+  avg_purchase_price: z.number().nullable(),
 });
 
 /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/ergebnis.ts). */
 export const DEGRADIERT = z.array(z.string()).optional();
 
-export const GenericResponse = z.looseObject({
-  new_quantity: z.number().int().nullable().optional(),
-  from_user_id: z.number().int().nullable().optional(),
-  to_user_id: z.number().int().nullable().optional(),
+/** Die schlichte Bestätigung; wer mehr sagt, erweitert sie (sonst wurde jedes Feld jeder Route überall freiwillig). */
+export const GenericResponse = z.looseObject({ success: z.boolean() });
+
+/** Eine geänderte oder gelöschte Erfassung. Welche Felder kommen, hängt vom Weg ab (anderes Konto,
+ * Menge, Löschen; beim Set das Zustands-Aggregat), deshalb sind sie freiwillig. */
+export const Erfassungsantwort = GenericResponse.extend({
+  new_quantity: z.number().int().optional(),
+  from_user_id: z.number().int().optional(),
+  to_user_id: z.number().int().optional(),
   merged: z.boolean().optional(),
   unchanged: z.boolean().optional(),
-  acquisitions: z.number().int().nullable().optional(),
-  instructions: z.number().int().nullable().optional(),
-  papierkorb: z.union([z.number().int(), z.array(z.number().int())]).optional(),
-  removed: z.number().int().nullable().optional(),
-  linked_to: KontoName.nullable().optional(),
-  success: z.boolean(),
-  error: z.string().nullable().optional(),
+  acquisitions: z.number().int().optional(),
+  instructions: z.number().int().optional(),
   set: SetAggregate.nullable().optional(),
-  parts: z.number().int().nullable().optional(),
-  minifigs: z.number().int().nullable().optional(),
+  parts: z.number().int().optional(),
+  minifigs: z.number().int().optional(),
   source_emptied: z.boolean().optional(),
   quantity: z.number().int().nullable().optional(),
   /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (etwa `kaufpreis`). */
   degradiert: z.array(z.string()).optional(),
 });
 
+export const StueckGeaendert = GenericResponse.extend({ quantity: z.number().int().optional() });
+
 export const Minifig = z.looseObject({
-  id: z.number().int().nullable().optional(),
-  in_sets: z.string().nullable().optional(),
-  owner_ids: z.array(z.number().int()).optional(),
-  set_number: z.string().nullable().optional(),
-  storage: z.string().nullable().optional(),
-  unit_price: z.number().nullable().optional(),
+  id: z.number().int().nullable(),
+  in_sets: z.string().nullable(),
+  set_number: z.string().nullable(),
+  storage: z.string().nullable(),
+  unit_price: z.number().nullable(),
   fig_number: z.string(),
-  condition: z.string().nullable().optional(),
+  condition: z.string().nullable(),
   conditions: z.array(z.string()),
   /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
+  owner_ids: z.array(z.number().int()).optional(),
   avg_purchase_price: z.number().nullable().optional(),
-  fig_name: z.string().nullable().optional(),
+  fig_name: z.string().nullable(),
   quantity: z.number().int(),
-  total_quantity: z.number().int().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
+  total_quantity: z.number().int().nullable(),
+  image_url: z.string().nullable(),
+  image_local: z.string().nullable(),
   source: z.string(),
-  set_added_at: zeit.nullable().optional(),
+  set_added_at: zeit.nullable(),
+});
+
+/** Eine Figur aus dem Inhalt eines Sets (figurenlisteDesSets): dieselbe Form ohne Bestand. */
+export const SetFigur = z.looseObject({
+  fig_number: z.string(),
+  fig_name: z.string(),
+  quantity: z.number().int(),
+  total_quantity: z.number().int(),
+  image_url: z.string().nullable(),
+  source: z.string(),
+  conditions: z.array(z.string()),
+  owners: z.array(KontoName),
 });
 
 export const MinifigsResponse = z.looseObject({
   success: z.boolean(),
-  /** Gesamtzahl bei /minifigs, Herkunft der Liste bei den Figuren eines Sets. */
-  total: z.number().int().optional(),
-  source: z.string().optional(),
+  total: z.number().int(),
   figs: z.array(Minifig),
-  error: z.string().nullable().optional(),
 });
+
+/** `source` nennt die Herkunft der Liste; `error`, warum die Quelle gestört war. */
+export const SetFigurenResponse = z.looseObject({
+  success: z.boolean(),
+  source: z.string(),
+  figs: z.array(SetFigur),
+  error: z.string().optional(),
+});
+
+const TEIL_IN_LISTE = {
+  part_number: z.string(),
+  bl_part_number: z.string().nullable(),
+  part_name: z.string().nullable(),
+  color_id: z.number().int(),
+  color_name: z.string().nullable(),
+  color_hex: z.string().nullable(),
+  image_url: z.string().nullable(),
+  total_quantity: z.number().int(),
+  is_spare: z.boolean(),
+};
 
 export const Part = z.looseObject({
+  ...TEIL_IN_LISTE,
+  /** Fehlen nur im Rückfall auf Rebrickable (Teile eines Sets, das niemand erfasst hat). */
   condition: z.string().nullable().optional(),
   storage: z.string().nullable().optional(),
-  part_number: z.string(),
-  bl_part_number: z.string().nullable().optional(),
-  part_name: z.string().nullable().optional(),
-  color_id: z.number().int(),
-  bl_color_id: z.number().int().nullable().optional(),
-  color_name: z.string().nullable().optional(),
-  color_hex: z.string().nullable().optional(),
-  category_name: z.string().nullable().optional(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
-  total_quantity: z.number().int(),
+  category_name: z.string().nullable(),
+  image_local: z.string().nullable(),
+  /** Nur mit Setfilter: die Sets, aus denen das Teil stammt. */
   in_sets: z.string().nullable().optional(),
-  is_spare: z.boolean(),
 });
 
-export const PartValuationItem = z.looseObject({
-  ausstehend: z.boolean().optional(),
-  from_cache: z.boolean().optional(),
-  max_price: z.number().nullable().optional(),
-  min_price: z.number().nullable().optional(),
-  acq_count: z.number().int().nullable().optional(),
-  used_count: z.number().int().nullable().optional(),
-  category_name: z.string().nullable().optional(),
-  created_at: zeit.nullable().optional(),
-  source: z.string().nullable().optional(),
-  id: z.number().int().nullable().optional(),
-  part_number: z.string(),
-  bl_part_number: z.string().nullable().optional(),
-  part_name: z.string().nullable().optional(),
-  color_id: z.number().int(),
-  color_name: z.string().nullable().optional(),
-  color_hex: z.string().nullable().optional(),
-  quantity: z.number().int(),
-  image_url: z.string().nullable().optional(),
-  image_local: z.string().nullable().optional(),
-  unit_price: z.number().nullable().optional(),
-  purchase_price: z.number().nullable().optional(),
-  avg_purchase_price: z.number().nullable().optional(),
-  qty_avg_price: veraltet(z.number().nullable().optional(), 'avg_price'),
-  avg_price: z.number().nullable().optional(),
-  pnl_pct: PROZENT_TEXT,
-  pnl_prozent: z.number().nullable().optional(),
-  display_value: veraltet(z.string().nullable().optional(), 'wert_gesamt'),
-  total_value: veraltet(z.string().optional(), 'wert_gesamt'),
-  wert_gesamt: z.number().nullable().optional(),
-  condition: z.string().nullable().optional(),
-  conditions: z.array(z.string()),
-  user_id: z.number().int().nullable().optional(),
-  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
-  owners: z.array(KontoName).optional(),
-  acquisitions: z.array(ValuationAcquisition),
-  storage: z.string().nullable().optional(),
+export const SetTeil = z.looseObject({ ...TEIL_IN_LISTE, bl_color_id: z.number().int().nullable() });
+
+export const PartValuationItem = z.looseObject({ ...STUECK, ...TEIL, ...BEWERTET });
+export const ManuellesTeil = z.looseObject({
+  ...STUECK,
+  ...TEIL,
+  ...IM_BESTAND,
+  category_name: z.string().nullable(),
+  created_at: zeit.nullable(),
+  source: z.string().nullable(),
 });
 
 export const PartsResponse = z.looseObject({
-  source: z.string().nullable().optional(),
+  source: z.string().nullable(),
   success: z.boolean(),
   total: z.number().int(),
   page: z.number().int(),
   page_size: z.number().int(),
   parts: z.array(Part),
-  error: z.string().nullable().optional(),
   degradiert: DEGRADIERT,
+});
+
+export const SetTeileResponse = z.looseObject({
+  source: z.string().nullable(),
+  success: z.boolean(),
+  total: z.number().int(),
+  page: z.number().int(),
+  page_size: z.number().int(),
+  parts: z.array(SetTeil),
+  error: z.string().optional(),
 });
 
 export const VerwendendesSet = z.looseObject({
@@ -274,7 +288,6 @@ export const VerwendendeSetsResponse = z.looseObject({
   success: z.boolean(),
   item: BestandteilKopf.nullable().optional(),
   sets: z.array(VerwendendesSet),
-  error: z.string().nullable().optional(),
 });
 
 /** Löschen legt in den Papierkorb; die Kennungen holen es zurück. */

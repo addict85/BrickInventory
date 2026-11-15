@@ -1,0 +1,17 @@
+Gegenprobe: ein Fehler der Warteschlange erscheint als leere Liste
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.MonitoringStartknoepfeTest
+Rot: eine gescheiterte Warteschlange
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+@@ -212,7 +212,7 @@
+     internal suspend fun ladeWarteschlange() {
+         _state.update { it.copy(queue = Laden.Laedt) }
+         val r = verwaltung.getBricksetQueue()
+-        _state.update { it.copy(queue = r.alsLaden()) }
++        _state.update { it.copy(queue = Laden.Daten((r as? Ergebnis.Erfolg)?.data.orEmpty())) }
+     }
+ 
+     override fun wiederhole(setNummer: String) = meldeNach(

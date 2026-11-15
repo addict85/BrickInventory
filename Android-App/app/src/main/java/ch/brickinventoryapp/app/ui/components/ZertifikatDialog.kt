@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -57,28 +59,39 @@ private fun ZertifikatFrageDialog(
 ) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var befund by remember(frage.fingerabdruck) { mutableStateOf<Abschrift?>(null) }
+    // Beim Erstkontakt freiwillig: Wer abtippt, sieht wie sonst nur den Anfang.
+    var abtippenGewaehlt by rememberSaveable(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
     val (titel, text) = titelUndText(frage.art)
-    val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
-    val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
+    val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+    val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
+    val schluesselNeu = frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig
+    val fenster = stringResource(titel)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = onAbbrechen,
         properties = schliessbar(eingabe),
-        title = { Text(stringResource(titel), modifier = Modifier.semantics { heading() }) },
+        modifier = Modifier.semantics { paneTitle = fenster },
+        title = { Text(fenster, modifier = Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
                 FingerabdruckAnzeige(frage, abschreiben, geaendert)
+                if (erstkontakt && !abtippenGewaehlt) {
+                    TextButton(onClick = { abtippenGewaehlt = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
+                }
                 if (abschreiben) {
                     Fingerabdruckfeld(
                         eingabe = eingabe,
                         onEingabe = { eingabe = it; befund = null },
                         noetig = Abschrift.NOETIG,
-                        hilfe = stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
+                        hilfe = stringResource(eingabeHilfe(frage.art)),
                         fehler = { gezaehlt -> abschriftFehler(befund, gezaehlt) },
                     )
-                    Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
+                    // Unter einer öffentlichen CA trägt der Code keinen Fingerabdruck; dort hilft er nicht.
+                    if (!schluesselNeu) Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
                 }
                 // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
                 // mit Erklärung. Danach fragt der Dialog erneut (NUTZER_CA), wieder zum Abtippen.
@@ -129,9 +142,12 @@ private fun FingerabdruckAnzeige(frage: ZertifikatUngeklaert, abschreiben: Boole
  */
 @Composable
 private fun CodeAbweichungDialog(frage: ZertifikatUngeklaert, onSchliessen: () -> Unit) {
+    val titel = stringResource(R.string.zert_titel_code_abweichung)
     AlertDialog(
+        containerColor = fensterFlaeche(),
         onDismissRequest = onSchliessen,
-        title = { Text(stringResource(R.string.zert_titel_code_abweichung), modifier = Modifier.semantics { heading() }) },
+        modifier = Modifier.semantics { paneTitle = titel },
+        title = { Text(titel, modifier = Modifier.semantics { heading() }) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(R.string.zert_text_code_abweichung, frage.schluessel.substringBeforeLast(':')))
@@ -163,6 +179,13 @@ private fun abschriftFehler(befund: Abschrift?, gezaehlt: Int): String? = when (
     Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
 }
 
+/** Woher die Abschrift kommt: Den neuen Serverschlüssel einer öffentlichen CA kennt die Webapp nicht. */
+private fun eingabeHilfe(art: ZertifikatUngeklaert.Art): Int = when (art) {
+    ZertifikatUngeklaert.Art.SCHLUESSEL_NEU -> R.string.zert_schluessel_neu_eingabe
+    ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_geaendert_eingabe
+    else -> R.string.zert_unbekannt_eingabe
+}
+
 /** Überschrift und Erklärung je Art der Frage. */
 private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (art) {
     ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
@@ -170,4 +193,5 @@ private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (
     ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
     ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
     ZertifikatUngeklaert.Art.CODE_ABWEICHUNG -> R.string.zert_titel_code_abweichung to R.string.zert_text_code_abweichung
+    ZertifikatUngeklaert.Art.SCHLUESSEL_NEU -> R.string.zert_titel_schluessel_neu to R.string.zert_text_schluessel_neu
 }

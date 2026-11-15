@@ -9,11 +9,17 @@ export const STATUS_DER_ART: Readonly<Record<FehlerArt, number>> = {
   konflikt: 409,
   zu_gross: 413,
   falscher_typ: 415,
+  zu_langsam: 408,
+  nicht_mehr_da: 410,
+  nicht_verarbeitbar: 422,
   zu_viele: 429,
+  speicher_voll: 507,
   intern: 500,
   fremddienst: 502,
   nicht_verfuegbar: 503,
   zeitueberschreitung: 504,
+  falscher_host: 421,
+  zu_alt: 426,
 };
 
 /** Status eines geworfenen Fehlers: Fachfehler nach Art, Fehler von Express

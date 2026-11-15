@@ -1,7 +1,7 @@
 /**
  * Kaufpreis ändern → die Kachel zieht mit, auf BEIDEN Wegen.
  *
- * Gegenprobe (durchgeführt): in getSetConditionAggregate() avg_purchase_price
+ * Gegenprobe (durchgeführt): in zustandsAggregat() avg_purchase_price
  * auf `MAX(purchase_price)` umgestellt → „Gegenrichtung" wird rot
  * (erwartet 125, bekommen 200). Danach zurückgesetzt.
  *
@@ -49,17 +49,16 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
     );
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;
   };
-  // Was die Kachel zeigt: das Aggregat aus den Erfassungen. Hier stand
-  // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
-  // Migration 0032 nicht mehr gibt.
+  // Was die Kachel zeigt: das Aggregat aus den Erfassungen, keine gespiegelte Spalte.
   const kachel = async () =>
-    (await require('./helpers/sources').bereichsSeite('sets').getSetConditionAggregate([uid], SN)).avg_purchase_price;
+    (await _req('src/sets/lesen.js').zustandsAggregat(require('./helpers/sources').testKontext('sets'), [uid], SN))
+      .avg_purchase_price;
 
   try {
-    for (const [name, pfad] of [
+    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
       ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
       ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-    ]) {
+    ])) {
       const id = await aufbauen();
       const r = await fetch(`${base}${pfad(id)}`, {
         method: 'PUT',

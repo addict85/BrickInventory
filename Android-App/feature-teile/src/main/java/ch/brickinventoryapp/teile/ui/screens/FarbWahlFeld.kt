@@ -25,8 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.model.ui.farbName
 import ch.brickinventoryapp.model.ui.ohneKeineFarbe
 import ch.brickinventoryapp.ui.theme.Abstaende

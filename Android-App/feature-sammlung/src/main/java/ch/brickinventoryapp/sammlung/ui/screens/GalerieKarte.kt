@@ -1,8 +1,9 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.background
@@ -28,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.ui.components.KachelAusgleich
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
@@ -255,16 +256,19 @@ private fun KachelTexte(
     guv: (@Composable () -> Unit)?,
     menge: (@Composable () -> Unit)?,
     preis: KachelPreis?,
-    betrag: Double?,
+    betrag: Geld?,
     waehrung: Waehrung,
     /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
     ansagen: List<String>,
 ) {
+    // Ein einzeiliger Name lässt keine Leerzeile unter sich; damit die Rasterreihe gleich hoch
+    // bleibt, steht die fehlende Zeile am Fuss der Kachel (KachelAusgleich).
+    var namensZeilen by remember { mutableIntStateOf(2) }
     Box(modifier) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 16.sp)
+                maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                onTextLayout = { namensZeilen = it.lineCount })
             Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.padding(vertical = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
@@ -292,6 +296,7 @@ private fun KachelTexte(
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             KachelBetragZeilen(set, zeile, preis, betrag, waehrung)
+            if (!zeile) KachelAusgleich(2 - namensZeilen)
         }
         // Ohne Fläche: nur die Ansage der Bildplaketten, nach dem Preis.
         val plaketten = ansagen.takeIf { !zeile && it.isNotEmpty() }
@@ -302,7 +307,7 @@ private fun KachelTexte(
 /** Woher der Betrag kommt, darunter der Betrag und, bei mehreren Stück, „je Stück“. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Double?, waehrung: Waehrung) {
+private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Geld?, waehrung: Waehrung) {
     // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
     // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
     // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben; in der

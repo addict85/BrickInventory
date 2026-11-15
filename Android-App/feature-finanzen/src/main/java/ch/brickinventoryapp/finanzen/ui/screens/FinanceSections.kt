@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.finanzen.ui.FinanzZeile
+import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ui.components.AuswahlChip
 
@@ -10,10 +13,10 @@ import ch.brickinventoryapp.ui.components.AuswahlChip
  * eintragen.
  */
 
-import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.fach.GewinnAnsicht
+import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.lazy.LazyListScope
 import coil3.ImageLoader
@@ -48,7 +51,7 @@ import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
 import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
 import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
@@ -96,7 +99,7 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
 }
 
 /** Manuell erfasste Minifiguren, einzeln aufgelistet. */
-internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
+internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Minifiguren — einzeln auflisten, analog zu den Sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
@@ -134,7 +137,7 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
 }
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
-internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
+internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Teile — einzeln auflisten, analog zu den Sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
@@ -175,8 +178,32 @@ internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht
     }
 }
 
+/** Name, Nummer, Menge und Zustand einer Set-Zeile der Finanzen. */
+@Composable
+private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZeile) {
+    val rowQty = zeile.menge
+    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+            maxLines = 2, style = MaterialTheme.typography.bodyMedium)
+        Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary)
+        if (rowQty > 1)
+            Text(mengeManuell(rowQty),
+                Modifier.vorgelesenAls(stueckzahl(rowQty)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Zustand dieser Erfassung — bei mehreren Karten
+        // desselben Sets das einzige Unterscheidungsmerkmal.
+        zeile.zustand?.let {
+            Box(Modifier.padding(top = Abstaende.haar)) {
+                ConditionBadges(listOf(it))
+            }
+        }
+    }
+}
+
 /** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
-internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Double?) -> String, onSetClick: (String) -> Unit) {
+internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Geld?) -> String, onSetClick: (String) -> Unit) {
     // Section header
     if (showSets) {
     item {
@@ -203,24 +230,7 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
             Row(Modifier.padding(Abstaende.mittel), verticalAlignment = Alignment.CenterVertically) {
                 FinanzBild(imageUrl, imageLoader, set.name)
                 Spacer(Modifier.width(Abstaende.mittel))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                    Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary)
-                    if (rowQty > 1)
-                        Text(mengeManuell(rowQty),
-                            Modifier.vorgelesenAls(stueckzahl(rowQty)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Zustand dieser Erfassung — bei mehreren Karten
-                    // desselben Sets das einzige Unterscheidungsmerkmal.
-                    zeile.zustand?.let {
-                        Box(Modifier.padding(top = Abstaende.haar)) {
-                            ConditionBadges(listOf(it))
-                        }
-                    }
-                }
+                FinanzSetAngaben(set, zeile)
                 Spacer(Modifier.width(Abstaende.klein))
                 // Kaufpreis und Marktpreis untereinander, wie in der Webapp. Bei mehreren
                 // Erfassungen steht hier nichts: Die Zahlen stehen dann je Kaufpreis darunter,

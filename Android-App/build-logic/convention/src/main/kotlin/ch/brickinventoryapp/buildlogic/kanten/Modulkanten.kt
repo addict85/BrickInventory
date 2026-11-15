@@ -14,12 +14,14 @@ data class Modulkante(val von: String, val konfiguration: String, val nach: Stri
 object Modulkanten {
     val kerne: Map<String, Set<String>> = mapOf(
         "core-model" to emptySet(),
+        // Das Wire-Format kennt Fach- und Anzeigetypen, nicht umgekehrt.
+        "core-vertrag" to setOf("core-model"),
         "core-ressourcen" to emptySet(),
         "core-netz" to setOf("core-model"),
         // Tresor und TLS-Vertrauen liegen unter Room und Offlineablage.
         "core-sicherheit" to setOf("core-model", "core-netz"),
         "core-offline" to setOf("core-model", "core-sicherheit"),
-        "core-data" to setOf("core-model", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
+        "core-data" to setOf("core-model", "core-vertrag", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
         // Sie hängen an core-data, nie umgekehrt und nie aneinander.
         "core-update" to setOf("core-ressourcen", "core-data"),
         "core-dienste" to setOf("core-ressourcen", "core-data"),
@@ -30,6 +32,8 @@ object Modulkanten {
         "core-sitzung" to setOf("core-model", "core-ressourcen", "core-netz", "core-data"),
         // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
         "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-sitzung"),
+        // Die Umgebung der Bereiche (NavController, Bilder, Snackbar) über dem Zustand.
+        "core-navigation" to setOf("core-model", "core-sitzung", "core-zustand"),
         "core-testing" to setOf("core-zustand", "core-sitzung", "core-data", "core-sicherheit", "core-offline"),
     )
 
@@ -43,13 +47,53 @@ object Modulkanten {
         "core-offline" to emptySet(),
     )
 
+    /**
+     * Kernmodule ohne Compose: Zustand, Daten und alles darunter. Ein Compose-Typ dort zöge
+     * Oberfläche unter den Zustand, und über ihn erreichte ein Bereich, was er nicht kennen soll.
+     */
+    val ohneOberflaeche: Set<String> = setOf(
+        "core-model", "core-vertrag", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
+        "core-sitzung", "core-zustand",
+    )
+
+    /** Wer core-vertrag einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */
+    val wireKenner: Set<String> = setOf("core-data")
+
+    private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
+
+    /** Der Verstoss, wenn [modul] mit [plugins] (Katalognamen wie im Modulskript) Compose einschaltet. */
+    fun oberflaecheVerstoss(modul: String, plugins: Collection<String>): String? =
+        (plugins.toSet() intersect oberflaechenPlugins).takeIf { modul in ohneOberflaeche && it.isNotEmpty() }
+            ?.let { "$modul liegt unter der Oberfläche und schaltet Compose ein: ${it.sorted()}" }
+
+    /**
+     * Die ViewModels, die in core-zustand liegen dürfen, je mit Grund. Ein ViewModel, das nur ein
+     * Bereich braucht, gehört in diesen Bereich; hier liegt nur, was die Activity oder mehrere
+     * Bereiche teilen, die einander nicht kennen dürfen.
+     */
+    val zustandsViewModels: Map<String, String> = mapOf(
+        "AppViewModel" to "Sitzung, Snackbar und Pflichtmasken der Activity; Bereiche sehen ihn nur über die Bereichsumgebung",
+        "KaeufeViewModel" to "Käufe eines Eintrags: Sets (feature-sammlung) und eigene Teile/Figuren (feature-teile) " +
+            "zeigen sie; ein eigener Bereich bräuchte die Bildschirme beider",
+        "DarstellungViewModel" to "Design und Sprache: die Activity wendet sie an, Einstellungen (feature-konto) ändert sie",
+        "VertrauenViewModel" to "Zertifikatsfrage über jedem Ziel (Activity) und in den Einstellungen (feature-konto)",
+        "GeraeteEinstellungenViewModel" to "Geräteschalter in feature-konto und feature-verwaltung",
+    )
+
+    /** Was zwischen den ViewModels in core-zustand ([gefunden]) und [zustandsViewModels] nicht stimmt. */
+    fun zustandsViewModelVerstoesse(gefunden: Collection<String>): List<String> =
+        (gefunden.toSet() - zustandsViewModels.keys).map { "$it liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels" } +
+            (zustandsViewModels.keys - gefunden.toSet()).map { "$it steht in Modulkanten.zustandsViewModels, liegt aber nicht in core-zustand" }
+
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
     fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {
-            // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
+            // api reicht ein Modul an jeden weiter, der dieses kennt; nur core-model ist gemeinsame Sprache.
             k.konfiguration == "api" && k.nach != "core-model" ->
                 "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
             k.nurTest -> null
+            k.nach == "core-vertrag" && k.von !in wireKenner ->
+                "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
             k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->

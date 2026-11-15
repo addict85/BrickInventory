@@ -2,25 +2,19 @@
  * damit die Routen keine Schichten überspringen. */
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import { naechsteUhrzeit, DAILY_JOBS } from '../auftraege';
+import { DAILY_JOBS } from './tageszeiten';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
+import { fehlertext, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
-import {
-  anfragenJeMinute,
-  alsAbrufFehler,
-  pruefeBricklinkZugang,
-  ausRetryWarteschlange,
-  pruefeBricksetZugang,
-  pruefeRebrickableZugang,
-} from '../katalog';
+import { anfragenJeMinute } from '../bilder';
+import { alsAbrufFehler } from '../fremdquellen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import type { VerwaltungKontext } from './kontext';
 
-const QUELLEN: Record<string, () => Promise<void>> = {
-  rebrickable: pruefeRebrickableZugang,
-  brickset: pruefeBricksetZugang,
-  bricklink: pruefeBricklinkZugang,
+const QUELLEN: Record<string, (q: VerwaltungKontext['fremdquellen']['quellen']) => Promise<void>> = {
+  rebrickable: q => q.pruefeRebrickableZugang(),
+  brickset: q => q.pruefeBricksetZugang(),
+  bricklink: q => q.pruefeBricklinkZugang(),
 };
 
 const QUELLEN_NAME: Record<string, string> = {
@@ -46,12 +40,13 @@ function quellenAbsage(e: unknown): FehlerCode {
 
 /** null, wenn der Zugang antwortet; sonst Code, Name und roher Grund. Wirft nur bei unbekannter Quelle. */
 export async function quellePruefen(
+  k: VerwaltungKontext,
   quelle: string,
 ): Promise<{ code: FehlerCode; quelle: string; grund: string } | null> {
   const pruefe = Object.hasOwn(QUELLEN, quelle) ? QUELLEN[quelle] : undefined;
   if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
   try {
-    await pruefe();
+    await pruefe(k.fremdquellen.quellen);
     return null;
   } catch (e) {
     return { code: quellenAbsage(e), quelle: QUELLEN_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) };
@@ -62,11 +57,15 @@ export async function cacheStatistik(k: VerwaltungKontext) {
   const leer = { count: 0, limit: 0, remaining: 0 };
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    ab.oder('cache', k.katalog.getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
+    ab.oder(
+      'cache',
+      Promise.all([k.katalog.cacheStand(), k.verwaltung.preiseImCache()]).then(([c, prices]) => ({ ...c, prices })),
+      { prices: 0, subsets: 0, catalog: 0 },
+    ),
     ab.oder('veraltete_preise', k.verwaltung.veraltetePreise(), 0),
-    ab.oder('kontingent_bricklink', k.katalog.getRateLimitStatus('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', k.katalog.getRateLimitStatus('rebrickable'), leer),
-    ab.oder('kontingent_brickset', k.katalog.getRateLimitStatus('brickset'), leer),
+    ab.oder('kontingent_bricklink', k.fremdquellen.kontingentStand('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.fremdquellen.kontingentStand('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.fremdquellen.kontingentStand('brickset'), leer),
   ]);
   return {
     ...stats,
@@ -80,8 +79,8 @@ export async function cacheStatistik(k: VerwaltungKontext) {
 export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
   await k.finanzen.leerePreisCache();
   if (alle) {
-    await k.katalog.clearSubsetsCache();
-    await k.katalog.clearCatalogCache();
+    await k.katalog.leereTeilmengenCache();
+    await k.katalog.leereKatalogCache();
   }
 }
 
@@ -89,19 +88,19 @@ export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
 export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('verwaltung:getRateLimitStatus', k.katalog.getRateLimitStatus('brickset'));
+  const rl = await versuche('verwaltung:kontingentUebersicht', k.fremdquellen.kontingentStand('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  await k.auftraege.bricksetJetzt();
+  await k.fremdquellen.brickset.jetzt();
 }
 
 export async function anleitungenNeuEinreihen(k: VerwaltungKontext) {
   const fehlend = await k.verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
-    await k.katalog.loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
-    await k.auftraege.anleitungEinreihen(set_number);
+    await k.katalog.loescheAnleitungen(set_number);
+    await k.katalog.anleitungEinreihen(set_number);
   }
   return fehlend.length;
 }
@@ -139,42 +138,46 @@ export async function preisJobStand(k: VerwaltungKontext) {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { job, rate_limit: await k.katalog.getRateLimitStatus('bricklink') };
+  return { job, rate_limit: await k.fremdquellen.kontingentStand('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
 export const preisJobJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('preise');
-export const fehlendeBilderNachladen = (k: VerwaltungKontext) => {
-  void k.auftraege
-    .stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
-    .catch(logAndContinue('verwaltung:bilder nachladen'));
-};
+/** Stellt nur den Auftrag ein; scheitert das, erfährt es der Verwalter statt des Protokolls. */
+export async function fehlendeBilderNachladen(k: VerwaltungKontext): Promise<void> {
+  await k.auftraege.stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 });
+}
 
 export const katalogAbgleichJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('csv_sync');
 
 /** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {
-  await k.katalog.setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
-  await k.auftraege.bricksetJetzt(sn);
+  await k.fremdquellen.setzeKontingentZurueck('brickset');
+  await k.fremdquellen.brickset.jetzt(sn);
 }
 
 export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
-  await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
-  await k.auftraege.anleitungEinreihen(sn, { nurAusweichquelle: true });
+  await k.fremdquellen.quellen.ausRetryWarteschlange(sn);
+  await k.katalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
 /** Der offene geplante Auftrag bekommt sofort den neuen Termin. */
-export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, time: unknown, minutes: unknown) {
+export async function jobZeitplanSetzen(
+  k: VerwaltungKontext,
+  name: string,
+  time: string | null | undefined,
+  minutes: number | string | null | undefined,
+) {
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
     if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
-    await k.einstellungen.setGlobalSetting(
+    await k.einstellungen.setzeGlobalenWert(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
     );
   } else if (name === 'priceJob') {
-    await k.einstellungen.setGlobalSetting(
+    await k.einstellungen.setzeGlobalenWert(
       'price_job_interval_minutes',
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
@@ -187,15 +190,14 @@ export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, tim
 export async function zeitplanNeuPlanen(k: VerwaltungKontext) {
   await k.auftraege.zeitplanGeaendert('csv_sync');
   await k.auftraege.zeitplanGeaendert('preise');
-  const bis = naechsteUhrzeit(await k.auftraege.taeglicheUhrzeit('brickset_retry'));
-  await k.auftraege.bricksetTermineVorziehen(bis);
+  await k.fremdquellen.brickset.vorziehen(await k.fremdquellen.brickset.faelligAb(false));
 }
 
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen
  * werden mitgezählt. */
 export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: boolean) {
   const zuVergessen = await (alleErneut ? kx.verwaltung.setFehlanzeigen() : kx.verwaltung.setFehlanzeigenOhne404());
-  const verworfen = zuVergessen.length ? await kx.katalog.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
+  const verworfen = zuVergessen.length ? await kx.bilder.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   const vorhanden: Set<string> = new Set();
   try {
@@ -214,7 +216,7 @@ export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: 
 
   const kandidaten = await kx.verwaltung.katalogBildKandidaten();
 
-  // Dieselbe Namensregel wie downloadSetImage(), sonst fände der Vergleich nichts.
+  // Dieselbe Namensregel wie setBildHerunterladen(), sonst fände der Vergleich nichts.
   const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
   const offenSets: string[] = [];
   const offenUrls: string[] = [];
@@ -226,8 +228,8 @@ export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: 
 
   let neuEingereiht = 0;
   if (offenUrls.length) {
-    neuEingereiht = await kx.katalog.katalogBilderVormerken(offenUrls, offenSets);
-    await kx.katalog.bildbedarfAnstossen();
+    neuEingereiht = await kx.bilder.katalogBilderVormerken(offenUrls, offenSets);
+    await kx.bilder.bildbedarfAnstossen();
   }
   const offen = await kx.verwaltung.offeneBildauftraege();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
@@ -251,7 +253,7 @@ export async function bildFehlanzeigenVergessen(
   const v = k.verwaltung;
   const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setFehlanzeigen()).map(r => r.cache_key);
   if (vorschauen) schluessel.push(...(await v.vorschauFehlanzeigen()).map(r => r.cache_key));
-  return schluessel.length ? k.katalog.vergissFehlend(schluessel) : 0;
+  return schluessel.length ? k.bilder.vergissFehlend(schluessel) : 0;
 }
 
 export function serverProtokollSeit(k: VerwaltungKontext, minuten: number) {

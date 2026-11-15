@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.data.TokenTresorTest
 Rot: ein Klartext-Token aelterer Fassungen gilt nie und wird beim Start entfernt
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..9407f5c 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -178,7 +178,7 @@
-         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
-         // die nicht über die save-Funktionen kamen (Umschlüsseln beim Start).
-         spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
+@@ -235,7 +235,7 @@ class TokenAblage @Inject constructor(
+         spiegle<List<String?>, String>({ roh(it, ADRESSE) }, _serverUrlState) { r, melde ->
+             liesGeduldig({ oeffne(r, ADRESSE) }, null, melde = { melde(schemaKlein(it)) }, sperre = sperre)
+         }
 -        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
 +        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] ?: it[AUTH_TOKEN]?.let(tresor::verschluessle) }, _authTokenState) { geheim, melde ->
              liesToken(tresor, geheim, null, melde, sperre = sperre)
          }
-         spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
+         spiegle<List<String?>, String?>({ roh(it, HERKUNFT) }, _tokenHerkunftState) { r, melde ->

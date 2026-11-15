@@ -31,11 +31,11 @@ function abfangen(t, antwort) {
   const abgerufen = [];
   const fang = (url, _opt, cb) => {
     abgerufen.push(String(url));
-    const req = new EventEmitter();
+    const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
     const a = antwort(String(url));
-    const res = new PassThrough();
+    const res = /** @type {any} */ (new PassThrough());
     res.statusCode = a.status;
     res.headers = a.kopf || {};
     setImmediate(() => {
@@ -51,8 +51,8 @@ function abfangen(t, antwort) {
     });
     return req;
   };
-  https.get = fang;
-  http.get = fang;
+  /** @type {any} */ (https).get = fang;
+  /** @type {any} */ (http).get = fang;
   t.after(() => {
     https.get = echt.https;
     http.get = echt.http;

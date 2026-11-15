@@ -30,9 +30,12 @@ import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.anmeldung.ui.QrLoginPayload
 import ch.brickinventoryapp.anmeldung.ui.parseQrPayload
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.LocalAppSperre
+import ch.brickinventoryapp.ui.components.AppSperreWahl
 import ch.brickinventoryapp.ui.components.MarkenKopf
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.Lesebreite
@@ -180,14 +183,10 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.gross))
 
-        // Die Karte auf surface mit Rand: Der graue Vorgabeton lag grau auf dem grauen
-        // Hintergrund und verschwamm mit ihm.
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        ) {
-            Column(Modifier.padding(20.dp)) {
+        // Die gemeinsame Karte (AppKarte) statt einer eigenen: surface mit Erhebung wie jede
+        // Karte der App, Innenabstand aus der Skala.
+        AppKarte {
+            Column(Modifier.padding(Abstaende.gross)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(Abstaende.klein))
@@ -226,6 +225,18 @@ fun SetupScreen(
                     onClick = ::save, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     enabled = adresseBereit,
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
+            }
+        }
+        // Hier angeboten, weil kaum jemand nach der Einrichtung die Einstellungen durchsucht.
+        // Ohne Anbieter (Vorschau, Test) fehlt die Karte, wie in den Einstellungen.
+        LocalAppSperre.current?.let { sperre ->
+            Spacer(Modifier.height(Abstaende.gross))
+            AppKarte {
+                Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    AppSperreWahl(sperre)
+                    Text(stringResource(R.string.app_sperre_einrichten), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build

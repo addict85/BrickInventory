@@ -2,7 +2,6 @@ package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
@@ -18,11 +17,10 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.testKontoRepository
 
 /**
  * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
@@ -60,7 +58,7 @@ class BrickRepositoryErrorMappingTest {
             .build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ApiJson
+        val json = BrickJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -69,9 +67,9 @@ class BrickRepositoryErrorMappingTest {
             .create(BrickApiService::class.java)
         // KontoRepository statt BrickRepository: getMe() liegt
         // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
-        // safeCall() — die steht in Abruf.kt und ist fuer alle fuenf
+        // sicherAufrufen() — die steht in Abruf.kt und ist fuer alle fuenf
         // Teil-Repositories dieselbe; getMe ist nur das Vehikel.
-        return KontoRepository(api, ResponseCache { cacheDir })
+        return testKontoRepository(api)
     }
 
     @Before
@@ -89,9 +87,9 @@ class BrickRepositoryErrorMappingTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
-        assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam aber: $r" }
-        return r as Ergebnis.Error
+    private fun fehler(r: Ergebnis<*>): Ergebnis.Fehler {
+        assert(r is Ergebnis.Fehler) { "Erwartet wurde ein Fehler, kam aber: $r" }
+        return r as Ergebnis.Fehler
     }
 
     @Test
@@ -106,7 +104,7 @@ class BrickRepositoryErrorMappingTest {
         assert(e.message == "Für dieses Datum gibt es schon einen Kaufpreis") {
             "Servermeldung ging verloren: '${e.message}'"
         }
-        assert(e == Ergebnis.Error.Server(409, "Für dieses Datum gibt es schon einen Kaufpreis")) {
+        assert(e == Ergebnis.Fehler.Server(409, "Für dieses Datum gibt es schon einen Kaufpreis")) {
             "Bei vorhandener Servermeldung bleibt es ein Serverfehler mit ihrem Satz, war: $e"
         }
     }
@@ -115,7 +113,7 @@ class BrickRepositoryErrorMappingTest {
     fun `Fehlercode ohne Rumpf wird als Serverfehler eingeordnet`() = runTest {
         server.enqueue(MockResponse().setResponseCode(500).setBody(""))
         val e = fehler(repo.getMe())
-        assert(e is Ergebnis.Error.Server && e.status == 500) { "Art war $e" }
+        assert(e is Ergebnis.Fehler.Server && e.status == 500) { "Art war $e" }
         assert(e.message.isBlank()) {
             "Die Datenschicht darf keinen Satz bauen, tat es aber: '${e.message}'"
         }
@@ -128,7 +126,7 @@ class BrickRepositoryErrorMappingTest {
         // einer alten Antwort von der Platte überdecken.
         server.enqueue(MockResponse().setResponseCode(401).setBody(""))
         val e = fehler(repo.getMe())
-        assert(e is Ergebnis.Error.Abgewiesen) { "Art war $e" }
+        assert(e is Ergebnis.Fehler.Abgewiesen) { "Art war $e" }
         assert(!e.transient) { "401 darf nicht als vorübergehend gelten" }
     }
 
@@ -137,14 +135,14 @@ class BrickRepositoryErrorMappingTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         val e = fehler(baueRepo(leseFristMs = 300).getMe())
         assert(e.transient) { "Zeitüberschreitung muss als vorübergehend gelten" }
-        assert(e == Ergebnis.Error.Zeitueberschreitung) { "Art war $e" }
+        assert(e == Ergebnis.Fehler.Zeitueberschreitung) { "Art war $e" }
     }
 
     @Test
     fun `abgerissene Verbindung ist ein Netzfehler und voruebergehend`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
         val e = fehler(repo.getMe())
-        assert(e is Ergebnis.Error.Netz && e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
+        assert(e is Ergebnis.Fehler.Netz && e.transient) { "Abriss muss als vorübergehend gelten, war: $e" }
         assert(e.message.isBlank()) { "Kein Satz aus der Datenschicht, war: '${e.message}'" }
     }
 
@@ -164,7 +162,7 @@ class BrickRepositoryErrorMappingTest {
         }
         val waechter = ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
         val e = fehler(baueRepo(waechter = waechter).getMe())
-        assert(e == Ergebnis.Error.Klartext) { "Art war $e" }
+        assert(e == Ergebnis.Fehler.Klartext) { "Art war $e" }
         assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }
         assert(server.requestCount == 0) { "Die Anfrage ging trotzdem hinaus" }
     }
@@ -180,8 +178,8 @@ class BrickRepositoryErrorMappingTest {
         // `when` statt Cast: Ergebnis hat genau zwei Varianten, also ist es
         // erschöpfend — und der Smart Cast im Zweig liefert den Typ mit.
         when (val r = repo.getMe()) {
-            is Ergebnis.Success -> assert(r.data.success) { "success war false" }
-            is Ergebnis.Error   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
+            is Ergebnis.Erfolg -> assert(r.data?.benutzer == "marco") { "Konto nicht gelesen: ${r.data}" }
+            is Ergebnis.Fehler   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
         }
     }
 }

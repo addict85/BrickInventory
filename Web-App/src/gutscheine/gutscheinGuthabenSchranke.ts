@@ -1,6 +1,14 @@
 /** Ein Aufruf je 30 Sekunden über alle Konten, und Ruhe, wenn der Bot-Schutz
  * anspricht — sonst sperrt LEGO die Adresse. */
-import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
+import {
+  holeGuthaben,
+  BotSchutz,
+  LAND_STANDARD,
+  verdecke,
+  type Abruf,
+  type Guthaben,
+  type Sitzungsvorrat,
+} from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/guthabenSchranke';
 import type { GutscheineKontext } from './kontext';
@@ -12,6 +20,7 @@ export const BOTSCHUTZ_PAUSE_MIN = 30;
 /** Vor der Grenze für alle: Ein Konto allein belegt den Platz je 30 s nicht
  * dauerhaft und löst den Bot-Schutz nicht beliebig oft für alle aus. */
 export const KONTO_JE_STUNDE = 20;
+const kontoSchluessel = (uid: number) => `guthaben-konto|${uid}`;
 
 export interface Gesperrt {
   grund: 'konto' | 'abstand' | 'botschutz';
@@ -41,7 +50,7 @@ export async function belegePlatz(
       return Number.isFinite(n) ? n : 0;
     };
 
-    const konto = await repo.kontoStand(t.db, uid);
+    const konto = await t.drossel.stundenStand(kontoSchluessel(uid));
     if (rest(konto?.anzahl) >= KONTO_JE_STUNDE)
       return { frei: false as const, grund: 'konto' as const, wartenSek: Math.max(1, rest(konto?.warten_sek)) };
 
@@ -54,7 +63,7 @@ export async function belegePlatz(
     if (abstand > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: abstand };
 
     await repo.merkeAbruf(t.db);
-    await repo.zaehleKonto(t.db, uid);
+    await t.drossel.zaehleStunde(kontoSchluessel(uid));
     return { frei: true as const };
   });
 }
@@ -84,9 +93,9 @@ export async function frageGuthabenAb(
   try {
     // Einzeln setzen: exactOptionalPropertyTypes unterscheidet „nicht gesetzt" von
     // „undefined", und nur bei „nicht gesetzt" nimmt holeGuthaben den echten fetch.
-    const durch: { locale: string; abruf?: Abruf } = { locale: opt.locale || LAND_STANDARD };
-    if (opt.abruf) durch.abruf = opt.abruf;
-    const guthaben = await holeGuthaben(nummer, pin, durch);
+    const durch = { locale: opt.locale || LAND_STANDARD, abruf: opt.abruf ?? k.fremdquellen.quellen.legoAbruf };
+    const vorrat = k.faecher.fach<Sitzungsvorrat>('guthabenSitzungen', () => new Map());
+    const guthaben = await holeGuthaben(vorrat, nummer, pin, durch);
     return { art: 'guthaben', guthaben };
   } catch (e) {
     if (e instanceof BotSchutz) {

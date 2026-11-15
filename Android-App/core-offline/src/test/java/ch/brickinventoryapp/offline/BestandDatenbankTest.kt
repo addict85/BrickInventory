@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -11,7 +12,7 @@ import ch.brickinventoryapp.offline.room.AusgangZeile
 import ch.brickinventoryapp.offline.room.BestandDatenbank
 import ch.brickinventoryapp.offline.room.RoomAusgang
 import ch.brickinventoryapp.offline.room.RoomBestand
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.SetItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -27,8 +28,9 @@ import org.robolectric.RobolectricTestRunner
  *
  * Gegenproben: in der CI zu messen, sobald der Lauf grün ist —
  *   A  in BestandDao.beobachte `ORDER BY position` entfernen → „hält die Reihenfolge“
- *   B  in AusgangDao.erster `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
- *   C  in RoomAusgang.lies das Entfernen weglassen → „ein unlesbarer Posten blockiert nicht“
+ *   B  in AusgangDao.alle `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
+ *   C  in RoomAusgang.raeumeUnlesbare das merkeVerworfen streichen → „ein unlesbarer Posten wird
+ *      gemeldet …“ (kein Hinweis); in RoomAusgang.alle wieder entfernen → ebenda (Lesen schreibt)
  *   D  in RoomAusgang.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
  *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere ersetzt wieder die
  *      ganze Liste) → rot „eine lokale Bearbeitung schreibt nur die betroffene Zeile“
@@ -68,7 +70,7 @@ class BestandDatenbankTest {
     @Test
     fun `sendet der Reihe nach und zählt Versuche`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)).map { it.alsAnsicht() })
         for (n in 1..3) ablage.puffere(Bearbeitung.SetMenge("1-1", n))
         assertEquals(3, ausgang.anzahl("a").first())
         assertEquals(7, ablage.lies(Faecher.SETS)!!.liste.single().quantity)
@@ -107,7 +109,7 @@ class BestandDatenbankTest {
     @Test
     fun `eine lokale Bearbeitung schreibt nur die betroffene Zeile`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("1-1", quantity = 1), SetItem("2-1", quantity = 1), SetItem("3-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)).map { it.alsAnsicht() })
         val geschrieben = protokolliereSchreiben()
         ablage.puffere(Bearbeitung.SetMenge("2-1", 1))
         assertEquals(listOf("UPDATE 2-1"), geschrieben())
@@ -131,12 +133,18 @@ class BestandDatenbankTest {
     }
 
     @Test
-    fun `ein unlesbarer Posten blockiert nicht`() = runBlocking {
-        db.ausgang().fuegeEin(AusgangZeile(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\"}", erstellt = 1,
-            schluessel = "k0"))
+    fun `ein unlesbarer Posten wird gemeldet, nie still gelöscht, und blockiert nicht`() = runBlocking {
+        db.ausgang().fuegeEin(AusgangZeile(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\",\"setNumber\":\"10001-1\"}",
+            erstellt = 1, schluessel = "k0"))
         ausgang.einreihen("a", Bearbeitung.SetMenge("1-1", 1), 2, "k1")
         assertEquals(Bearbeitung.SetMenge("1-1", 1), ausgang.erster("a")!!.bearbeitung)
         assertEquals("der Schlüssel kommt so zurück, wie er abgelegt wurde", "k1", ausgang.erster("a")!!.schluessel)
-        assertEquals(1, ausgang.anzahl("a").first())
+        assertEquals(1, ausgang.alle("a").size)
+        assertEquals("Lesen schreibt nicht: der unlesbare Posten liegt noch da", 2, ausgang.anzahl("a").first())
+
+        val abgleich = Abgleich(Offlineablage(bestand, ausgang, { "a" }), ausgang) { _, _ -> Sendeergebnis.Angenommen }
+        assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
+        assertEquals(listOf(VerworfenerPosten("k0", "10001-1", "", null, unlesbar = true)), ausgang.verworfene("a").first())
+        assertEquals(0, ausgang.anzahl("a").first())
     }
 }

@@ -6,9 +6,9 @@
  * zählen die Zeilen, die der Scan auf set_acquisitions laut EXPLAIN liefert.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in computePartsValuation den Vorrat nicht weitergereicht → rot:
+ *   A  in bewerteTeile den Vorrat nicht weitergereicht → rot:
  *      „zwölf Teile, eine Abfrage auf den Teile-Cache“
- *   B  dasselbe in computeMinifigsValuation → rot: „sechs Figuren, …“
+ *   B  dasselbe in bewerteFiguren → rot: „sechs Figuren, …“
  *   C  in mengeJoin den Kontofilter ignoriert → rot: „die Setmenge liest nur
  *      die Erfassungen der gefragten Konten“
  *   D  inKontowaehrung liefert immer TRUE → rot: „der Durchschnittskaufpreis
@@ -30,9 +30,9 @@ const { haeltTeil, haeltFigur, haeltSet } = require('./helpers/bestand');
 
 const gesehen = [];
 let zaehlen = false;
-// Gezählt in den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+// Gezählt in den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
 const zugang = require('./helpers/sources').testZugang();
-const pools = [...new Set([zugang.pool, zugang.systemPool])];
+const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
 const altQuery = pools.map(p => p.query);
 for (const [i, p] of pools.entries())
   p.query = (text, ...rest) => {
@@ -87,10 +87,10 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
       [nr + 'bl'],
     );
   }
-  const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
+  const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
-    const m = await abfragen(/FROM part_price_cache/, () => computePartsValuation(uid, [uid]));
+    const m = await abfragen(/FROM part_price_cache/, () => bewerteTeile(uid, [uid]));
     assert.equal(m.ergebnis.parts.length, 12);
     assert.ok(
       m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
@@ -100,7 +100,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   });
 
   await t.test('sechs Figuren, eine Abfrage auf den Figuren-Cache', async () => {
-    const m = await abfragen(/FROM minifig_price_cache/, () => computeMinifigsValuation(uid, [uid]));
+    const m = await abfragen(/FROM minifig_price_cache/, () => bewerteFiguren(uid, [uid]));
     assert.equal(m.ergebnis.figs.length, 6);
     assert.ok(
       m.ergebnis.figs.every(f => Number(f.avg_price) === 4),
@@ -150,8 +150,8 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
                     VALUES ($1, $2, 1, $3, 'N', $4)`,
         [uid, SN, preis, waehrung],
       );
-    const { getSets } = require('./helpers/sources').bereichsSeite('sets');
-    const r = await getSets([uid], {});
+    const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+    const r = await setsLesen([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);
     assert.ok(zeile, 'das Set fehlt in der Liste');
     assert.equal(Number(zeile.avg_purchase_price), 100);

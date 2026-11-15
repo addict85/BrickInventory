@@ -8,6 +8,8 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.core.ui"
+    // Die Dialogtests lesen Texte aus den Ressourcen.
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -20,7 +22,10 @@ dependencies {
     implementation(libs.androidx.biometric)
 
     testImplementation(project(":core-testing"))
-    // GeheimeZwischenablageTest liest die Zwischenablage unter Robolectric.
+    // Zwischenablage und Dialogfenster werden unter Robolectric geprüft.
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

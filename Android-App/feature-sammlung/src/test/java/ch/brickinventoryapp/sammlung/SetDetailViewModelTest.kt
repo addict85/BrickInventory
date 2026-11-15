@@ -1,20 +1,25 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Setzusammenfassung
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.fehlerArt
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.data.model.SetAggregate
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,7 +41,7 @@ import ch.brickinventoryapp.testing.TestDienste
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen SetDetailViewModel.kt):
  *   A  setNumber nicht aus dem SavedStateHandle, sondern "" → alle vier rot,
  *      zuerst „das Set kommt aus dem SavedStateHandle …“
- *   B  in SetsRepositoryImpl.updateQuantity `r.quantity ?: quantity` durch `quantity`
+ *   B  in SetsRepositoryImpl.setzeMenge `r.quantity ?: quantity` durch `quantity`
  *      ersetzt → rot „eine geänderte Menge steht sofort da und in der Ablage“ (5 statt 3)
  *   C  im init von SetDetailViewModel `firstOrNull { it.setNumber == setNumber }`
  *      durch die ganze Liste ersetzt → rot „ein geänderter Kauf eines anderen Sets lädt hier nichts“
@@ -61,7 +66,7 @@ class SetDetailViewModelTest {
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
     private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
-        FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), keinLeser,
+        testFinanzenRepository(t.api), testHaushaltRepository(t.api), keinLeser,
         SavedStateHandle(mapOf("setNumber" to setNumber))))
 
     @Before
@@ -108,13 +113,13 @@ class SetDetailViewModelTest {
 
     @Test
     fun `eine geaenderte Menge steht sofort da und in der Ablage`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", quantity = 1))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", quantity = 1)).map { it.alsAnsicht() }) }
         val vm = vm()
         geladen(vm)
         serverHatDanachDrei()
         // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
         // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
-        vm.updateQuantity("75192-1", 5)
+        vm.setzeMenge("75192-1", 5)
         assertTrue("Menge da", vm.setDetailState.value.setDetail?.quantity == 3)
         val abgelegt = runBlocking { t.sets().beobachteSets().first().liste.single() }
         assertEquals("die Galerie liest dieselbe Zahl aus der Ablage", 3, abgelegt.quantity)
@@ -137,16 +142,18 @@ class SetDetailViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines anderen Sets laedt hier nichts, einer dieses Sets schon`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1"), SetItem("10294-1"))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1")).map { it.alsAnsicht() }) }
         val vm = vm()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
 
-        // So schreibt KaeufeViewModel die Zusammenfassung des Servers in die Ablage.
-        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "10294-1", usedCount = 1)) }
+        // So schreibt HaushaltRepository die Zusammenfassung des Servers in die Ablage.
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(Setzusammenfassung(setNumber = "10294-1", zustand = Zustand.GEBRAUCHT, zustaende = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+            hoechsterKaufpreis = null, kaufpreisSchnitt = null))) }
         assertEquals(vorher, pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size)
 
-        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(Setzusammenfassung(setNumber = "75192-1", zustand = Zustand.GEBRAUCHT, zustaende = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+            hoechsterKaufpreis = null, kaufpreisSchnitt = null))) }
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
     }
 
@@ -162,7 +169,7 @@ class SetDetailViewModelTest {
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").size)
         // Der Zustand liest die Ablage nur beim Laden: ohne Nachladen bliebe er leer.
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
-        assertEquals(listOf(450.0), vm.setDetailState.value.preisalarme.map { it.schwelle })
+        assertEquals(listOf(Geld.aus(450.0)), vm.setDetailState.value.preisalarme.map { it.schwelle })
     }
 
     private fun preisAbrufe() = pfade.anfragen.count { Regex("""^GET /api/v1/sets/75192-1/price(\?|$)""").containsMatchIn(it) }
@@ -176,7 +183,7 @@ class SetDetailViewModelTest {
         // Der erste Abruf ist abgebrochen und bekommt keine Antwort mehr; nur der zweite kommt an.
         assertEquals(1, preisAbrufe())
         assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
-        assertEquals(false, vm.setDetailState.value.setPriceLoading)
+        assertEquals(false, vm.setDetailState.value.preisAbruf.laedt)
     }
 
     @Test
@@ -185,14 +192,14 @@ class SetDetailViewModelTest {
         pfade.codes["/api/v1/sets/75192-1/price-history"] = 500
         val vm = vm()
         geladen(vm)
-        assertEquals("fehler", vm.setDetailState.value.preisFehler)
-        assertEquals("fehler", vm.setDetailState.value.verlaufFehler)
-        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.preisFehlerKlasse)
+        assertTrue(vm.setDetailState.value.preisAbruf is Laden.Fehler)
+        assertTrue(vm.setDetailState.value.verlaufAbruf is Laden.Fehler)
+        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.preisAbruf.fehlerArt)
 
         pfade.codes.clear()
         vm.aktualisiere()
-        assertEquals(null, vm.setDetailState.value.preisFehler)
-        assertEquals(null, vm.setDetailState.value.verlaufFehler)
+        assertEquals(null, vm.setDetailState.value.preisAbruf.fehlerMeldung)
+        assertEquals(null, vm.setDetailState.value.verlaufAbruf.fehlerMeldung)
         assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
     }
 }

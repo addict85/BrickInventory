@@ -45,12 +45,10 @@
  * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
  * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
  *
- * Ebenfalls am 20.10. ist Fall 5b dazugekommen (Marcos Frage nach dem zweiten
- * Lauf). Ausgangslage damit `# pass 10 / # fail 0` — neun Unterfälle plus der
- * Rahmen; die Zahlen von A bis G verschieben sich entsprechend um eins.
+ * Mit Fall 5b (zweiter Lauf) ist die Ausgangslage `# pass 10 / # fail 0` — neun
+ * Unterfälle plus der Rahmen.
  *
  *   H  `|| a.sicherheit === 'rebrickable'` aus der Merk-Bedingung entfernt
- *      (also der Stand von Marcos Frage)
  *      → `pass 8 / fail 2`. Rot ist 5b: „Gemerkt wurde []".
  *   I  dieselbe Bedingung auf JEDE Stufe geweitet (`if (a.sicherheit …)`)
  *      → `pass 8 / fail 2`. Rot ist 5: Ein Katalogtreffer — eine Vermutung —
@@ -84,20 +82,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const path = require('node:path');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben, BEVOR wantedListe die Funktionen herauszieht. esbuild
-// exportiert ueber Getter, ein `rb.blTeilZuRb = …` liefe ins Leere — deshalb
-// der Eintrag im require-Zwischenspeicher (dasselbe Vorgehen wie in
-// test/preis-schreibweg-db.test.js). Erst laden, dann ersetzen: Vor dem
-// require gibt es den Eintrag nicht.
-const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients/rebrickable.js'));
-const echtRb = require(rbPfad);
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+// Rebrickable an der Verdrahtung gestellt (testQuellen).
+testQuellen(null, {
   // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
   // dort steht. Alles andere kennt dieses Doppel nicht.
   blTeilZuRb: async blId => (blId === '98765' ? '12345' : null),
@@ -375,7 +366,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   });
 
   await t.test('5b. auch eine bei Rebrickable nachgeschlagene Nummer wird gemerkt', async () => {
-    // Marcos Frage vom 20.10.
     const gemerkt = [];
     const xml = liste(item('P', '98765', 5, 1));
     const b = await importiereWantedListe(1, xml, {
@@ -487,7 +477,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   await t.test('9. ein beim Anlegen geholtes Bild steht im Bericht', async () => {
     // Der Gewinn daraus, dass beschreibePosten NACH der Schleife läuft: Ein
     // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
-    // Anlegen (addManualPart → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
+    // Anlegen (manuellesTeilAnlegen → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
     // der Schleife zeigte für genau diese Posten nichts.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
@@ -501,7 +491,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
       vorschau: false,
       anleger: {
-        // So, wie addManualPart es täte: erst den Katalog füllen, dann melden.
+        // So, wie manuellesTeilAnlegen es täte: erst den Katalog füllen, dann melden.
         teil: async () => {
           await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)
                         VALUES ('7777',4,'https://cdn.example/7777.png')

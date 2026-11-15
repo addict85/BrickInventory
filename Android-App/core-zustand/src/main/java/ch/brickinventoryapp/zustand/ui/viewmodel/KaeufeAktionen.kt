@@ -2,7 +2,7 @@ package ch.brickinventoryapp.zustand.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 
 /**
  * Was die Kauf- und Detailbildschirme an den Käufen eines Eintrags ändern.

@@ -60,6 +60,15 @@ android {
         applicationId = "ch.brickinventoryapp"
         versionCode   = generatedVersionCode
         versionName   = generatedVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // Gerätetests auf einem Emulator, den Gradle selbst anlegt (android.yml, Job
+    // geraetetests): ATD-Abbild ohne Play, nur die Debug-Fassung, nichts signiert.
+    testOptions.managedDevices.allDevices.create("pixel6Api34", com.android.build.api.dsl.ManagedVirtualDevice::class.java) {
+        device = "Pixel 6"
+        apiLevel = 34
+        systemImageSource = "aosp-atd"
     }
 
     // Signatur aus Umgebungsvariablen oder ~/.gradle/gradle.properties, nie aus einer
@@ -213,6 +222,7 @@ dependencies {
     implementation(project(":core-ui"))
     implementation(project(":core-ui-bestand"))
     implementation(project(":core-zustand"))
+    implementation(project(":core-navigation"))
     implementation(project(":core-sitzung"))
     implementation(project(":feature-anmeldung"))
     implementation(project(":feature-katalog"))
@@ -222,6 +232,10 @@ dependencies {
     implementation(project(":feature-konto"))
     implementation(project(":feature-verwaltung"))
     testImplementation(project(":core-testing"))
+    // Die Testserver antworten im Wire-Format.
+    testImplementation(project(":core-vertrag"))
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     // GeraeteSchutzTest baut die TokenAblage auf einem eigenen DataStore.
     testImplementation(libs.androidx.datastore)
     implementation(libs.androidx.core.ktx)

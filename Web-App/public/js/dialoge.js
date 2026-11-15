@@ -108,12 +108,56 @@ function zustandGeaendert(dialog) {
       return;
     }
     // Per Adresse geöffnet gibt es keinen Auslöser: dann die Überschrift der Ansicht statt <body>.
-    const kopf = /** @type {HTMLElement|null} */ (document.querySelector('#app .tab.active h1'));
-    if (kopf && sichtbar(kopf)) {
-      if (!kopf.hasAttribute('tabindex')) kopf.tabIndex = -1;
-      kopf.focus({ preventScroll: true });
+    fokussiereKopf();
+  }
+}
+
+function fokussiereKopf() {
+  const kopf = /** @type {HTMLElement|null} */ (document.querySelector('#app .tab.active h1'));
+  if (kopf && sichtbar(kopf)) {
+    if (!kopf.hasAttribute('tabindex')) kopf.tabIndex = -1;
+    kopf.focus({ preventScroll: true });
+  }
+}
+
+// Verschwindet das fokussierte Element (Karte gelöscht, Liste neu gezeichnet, Meldung geschlossen), fiele der
+// Fokus auf <body> (WCAG 2.4.3). Dann dasselbe Element neu gezeichnet, sonst der Nachbar, sonst die Überschrift.
+const EINTRAG = '.sc, tr[data-arg], .part-card, .man-tile, .mk-zeile';
+/** @type {{ el: Element, orte: string[] } | null} */
+let _fokus = null;
+/** @param {Element | null} e */
+function ort(e) {
+  if (!e) return '';
+  const args = ['data-arg', 'data-arg2', 'data-arg3'].filter(a => e.hasAttribute(a));
+  if (!args.length) return '';
+  const art = e.classList[0] ? `.${CSS.escape(e.classList[0])}` : e.tagName.toLowerCase();
+  return art + args.map(a => `[${a}="${CSS.escape(e.getAttribute(a) || '')}"]`).join('');
+}
+/** @param {FocusEvent} ev */
+function fokusGemerkt(ev) {
+  const el = /** @type {Element} */ (ev.target);
+  const eintrag = el.closest?.(EINTRAG);
+  const nachbar = (/** @type {'next' | 'previous'} */ r) => {
+    let x = eintrag?.[`${r}ElementSibling`];
+    while (x && !x.matches(EINTRAG)) x = x[`${r}ElementSibling`];
+    return ort(x || null);
+  };
+  _fokus = { el, orte: [ort(el), ort(eintrag || null), nachbar('next'), nachbar('previous')].filter(Boolean) };
+}
+function fokusVerloren() {
+  if (!_fokus || _fokus.el.isConnected || obersterDialog()) return;
+  const aktiv = document.activeElement;
+  if (aktiv && aktiv !== document.body) return;
+  const { orte } = _fokus;
+  _fokus = null;
+  for (const o of orte) {
+    const ziel = /** @type {HTMLElement | null} */ (document.querySelector(`#app .tab.active ${o}`));
+    if (ziel && sichtbar(ziel)) {
+      ziel.focus({ preventScroll: true });
+      if (document.activeElement === ziel) return;
     }
   }
+  fokussiereKopf();
 }
 
 /**
@@ -195,6 +239,8 @@ export function initDialoge() {
   }
   // Capture: vor den Escape-Handlern einzelner Module (Benutzermenü u. a.).
   document.addEventListener('keydown', tasteGedrueckt, true);
+  document.addEventListener('focusin', fokusGemerkt, true);
+  new MutationObserver(fokusVerloren).observe(document.body, { childList: true, subtree: true });
 }
 
 if (typeof document !== 'undefined') {

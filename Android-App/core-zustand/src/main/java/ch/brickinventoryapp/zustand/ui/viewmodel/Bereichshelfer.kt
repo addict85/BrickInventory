@@ -1,5 +1,12 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.update
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -117,5 +124,52 @@ fun ViewModel.folgeAbmeldung(sitzung: Sitzung, zuruecksetzen: () -> Unit) {
 fun ViewModel.ladeBeimBeobachten(zustand: MutableStateFlow<*>, laden: () -> Unit) {
     viewModelScope.launch {
         zustand.subscriptionCount.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
+    }
+}
+
+/**
+ * Lädt, solange [zustand] beobachtet wird, für jede Serveradresse einmal: beim Betreten der
+ * Seite und wieder, wenn die Adresse wechselt, während sie offen ist. Ohne Adresse nichts.
+ */
+fun ViewModel.ladeJeServer(sitzung: Sitzung, zustand: MutableStateFlow<*>, laden: () -> Unit) =
+    ladeJeServer(sitzung, zustand.subscriptionCount, laden)
+
+/** Dasselbe für einen durchgereichten Fluss. */
+fun ViewModel.ladeJeServer(sitzung: Sitzung, zustand: Beobachtet<*>, laden: () -> Unit) =
+    ladeJeServer(sitzung, zustand.beobachter, laden)
+
+/** Wie [ladeBeimBeobachten] für einen durchgereichten Fluss. */
+fun ViewModel.ladeBeimBeobachten(zustand: Beobachtet<*>, laden: () -> Unit) {
+    viewModelScope.launch {
+        zustand.beobachter.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
+    }
+}
+
+private fun ViewModel.ladeJeServer(sitzung: Sitzung, beobachter: StateFlow<Int>, laden: () -> Unit) {
+    viewModelScope.launch {
+        beobachter.map { it > 0 }.distinctUntilChanged().collectLatest { beobachtet ->
+            if (beobachtet) sitzung.state.map { it.serverUrl }.distinctUntilChanged().filter { it.isNotBlank() }.collect { laden() }
+        }
+    }
+}
+
+/**
+ * Ein fremder Zustand mit gezählten Beobachtern: So kann ein ViewModel beim Betreten der Seite
+ * laden, auch wenn es den Fluss nur durchreicht (etwa die Sitzung), oder je Eintrag, den die
+ * Seite zeigt ([beimBeobachten] läuft, sobald der erste Beobachter kommt).
+ */
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
+class Beobachtet<T>(private val quelle: StateFlow<T>, private val beimBeobachten: () -> Unit = {}) : StateFlow<T> {
+    private val zaehler = MutableStateFlow(0)
+    val beobachter: StateFlow<Int> = zaehler.asStateFlow()
+    override val value: T get() = quelle.value
+    override val replayCache: List<T> get() = quelle.replayCache
+    override suspend fun collect(collector: FlowCollector<T>): Nothing {
+        if (zaehler.getAndUpdate { it + 1 } == 0) beimBeobachten()
+        try {
+            quelle.collect(collector)
+        } finally {
+            zaehler.update { it - 1 }
+        }
     }
 }

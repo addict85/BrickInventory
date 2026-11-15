@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 
 export type Zustand = 'N' | 'U';
@@ -14,16 +15,22 @@ export function setPreisAusCache(db: DbSchnittstelle, setNumber: string, zustand
   );
 }
 
-export function teilErfassungsZustand(db: DbSchnittstelle, userId: number, partNumber: string, colorId: number) {
+export function teilErfassungsZustand(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  userId: number,
+  partNumber: string,
+  colorId: number,
+) {
   return db.get<{ any_used: number | null; cnt: string }>(
-    "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3",
+    `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.teilErfassungen()} e WHERE user_id=$1 AND part_number=$2 AND color_id=$3`,
     [userId, partNumber, colorId],
   );
 }
 
-export function figurErfassungsZustand(db: DbSchnittstelle, userId: number, figNumber: string) {
+export function figurErfassungsZustand(db: DbSchnittstelle, l: FinanzenLesevertrag, userId: number, figNumber: string) {
   return db.get<{ any_used: number | null; cnt: string }>(
-    "SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2",
+    `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.figurErfassungen()} e WHERE user_id=$1 AND fig_number=$2`,
     [userId, figNumber],
   );
 }

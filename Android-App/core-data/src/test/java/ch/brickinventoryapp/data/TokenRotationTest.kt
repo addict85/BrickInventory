@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.netz.di.ServerWaechter
@@ -26,13 +25,12 @@ import kotlinx.coroutines.cancel
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import java.io.IOException
 import okhttp3.mockwebserver.SocketPolicy
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -123,9 +121,9 @@ class TokenRotationTest {
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {
-        konto = KontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
-            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
-            .build().create(KontoApi::class.java), ResponseCache { dir })
+        konto = testKontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
+            .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+            .build().create(KontoApi::class.java))
     }
 
     @After
@@ -157,9 +155,9 @@ class TokenRotationTest {
         val c = OkHttpClient.Builder().dispatcher(plaetze)
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
-        k = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
-            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
-            .build().create(KontoApi::class.java), ResponseCache { dir })
+        k = testKontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
+            .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
+            .build().create(KontoApi::class.java))
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
             c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
@@ -231,7 +229,7 @@ class TokenRotationTest {
             gespeichert = ""
             umgezogen = neuer.url("/").toString().trimEnd('/')
             val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
-            assertTrue(r is Ergebnis.Error)
+            assertTrue(r is Ergebnis.Fehler)
             assertEquals(listOf<String?>(null), dort.toList())
         } finally {
             neuer.shutdown()

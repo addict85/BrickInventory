@@ -3,7 +3,6 @@ package ch.brickinventoryapp.sammlung.ui
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,6 +19,7 @@ import ch.brickinventoryapp.sammlung.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.sammlung.ui.screens.BarcodeScannerScreen
 import ch.brickinventoryapp.sammlung.ui.screens.ComparisonScreen
 import ch.brickinventoryapp.sammlung.ui.screens.GalerieRueckgaengigRoute
+import ch.brickinventoryapp.sammlung.ui.screens.GalerieUndDetail
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerkpostenDetailRoute
@@ -30,11 +30,9 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
-import ch.brickinventoryapp.ui.components.ListeUndDetail
-import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.MitZiel
 import ch.brickinventoryapp.ui.listeUndDetail
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 
 /** Was die Sammlung von der App braucht; die Erfassung hängt am Ziel, das scannt. */
@@ -71,17 +69,15 @@ fun NavGraphBuilder.sammlungGraph(navigation: SammlungNavigation) {
 private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.Gallery> { eintrag ->
-        val vm = navigation.app
         val galerieVm: GalerieViewModel = hiltViewModel()
-        val state by galerieVm.state.collectAsStateWithLifecycle()
+        // Die Galerie lädt beim Beobachten ihres Zustands (GalerieViewModel).
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
         val erfassung: ErfassungViewModel = hiltViewModel()
         Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
-        LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory.
         val galleryGridState = remember { LazyGridState() }
         ScrollPositionKeeper(
-            SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
+            SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), navigation.rollgedaechtnis)
         // Das Set-Detail gibt ein gelöschtes Set als Ergebnis an diesen Eintrag zurück;
         // die Galerie merkt es mit „Rückgängig“ vor. Kein Zugriff auf ihr ViewModel von aussen.
         val zuLoeschen by eintrag.savedStateHandle.getStateFlow<ArrayList<String>?>(LOESCHEN_VORMERKEN, null)
@@ -94,16 +90,20 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
 
         GalerieRueckgaengigRoute(galerieVm, navigation.snackbar)
         val ziel = this
+        val scannen = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) }
+        val oeffnen: (String) -> Unit = { navController.navigate(SammlungZiel.SetDetail(it)) }
         navigation.Reiter(stringResource(R.string.nav_collection)) {
             MitZiel(ziel) {
-            GalleryRoute(
-                vm = galerieVm,
-                erfassung = erfassung,
-                imageLoader = navigation.bilder,
-                onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
-                onSetClick = { navController.navigate(SammlungZiel.SetDetail(it)) },
-                gridState = galleryGridState
-            )
+            // Auf breiten Fenstern steht die Fläche fürs Detail schon vor dem ersten Tipp da.
+            BoxWithConstraints {
+                if (listeUndDetail(maxWidth.value)) {
+                    GalerieUndDetail(galerieVm, erfassung, navigation.bilder, offen = null, onSetClick = oeffnen,
+                        onScanBarcode = scannen, gridState = galleryGridState) {}
+                } else {
+                    GalleryRoute(vm = galerieVm, erfassung = erfassung, imageLoader = navigation.bilder,
+                        onScanBarcode = scannen, onSetClick = oeffnen, gridState = galleryGridState)
+                }
+            }
             }
         }
     }
@@ -113,8 +113,7 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
 private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.SetDetail> { backStack ->
-        val vm = navigation.app
-        val state by vm.state.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
         val setNumber = backStack.toRoute<SammlungZiel.SetDetail>().setNumber
         // Liegt die Galerie darunter (Startziel), nimmt sie ein gelöschtes Set als Ergebnis
         // entgegen und bietet „Rückgängig“ an.
@@ -174,28 +173,23 @@ private fun GalerieNebenDetailRoute(
     val galerieZustand by galerie.galleryState.collectAsStateWithLifecycle()
     val gridState = remember { LazyGridState() }
     ScrollPositionKeeper(SammlungZiel.Gallery.rollSchluessel, gridState, galerieZustand.sets.isNotEmpty(),
-        navigation.app.scrollMemory)
+        navigation.rollgedaechtnis)
     // Die Erfassung der Galerie; den Scan gibt der Scanner diesem Ziel zurück.
     val erfassung: ErfassungViewModel = hiltViewModel(galerieEintrag)
     Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
     navigation.Reiter(stringResource(R.string.nav_collection)) {
-        ListeUndDetail(
-            liste = {
-                CompositionLocalProvider(LocalOffenesDetail provides setNumber) {
-                    GalleryRoute(
-                        vm = galerie,
-                        erfassung = erfassung,
-                        imageLoader = navigation.bilder,
-                        onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
-                        onSetClick = { sn ->
-                            if (sn != setNumber) navController.navigate(SammlungZiel.SetDetail(sn)) {
-                                popUpTo<SammlungZiel.SetDetail> { inclusive = true }
-                            }
-                        },
-                        gridState = gridState,
-                    )
+        GalerieUndDetail(
+            galerie = galerie,
+            erfassung = erfassung,
+            imageLoader = navigation.bilder,
+            offen = setNumber,
+            onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
+            onSetClick = { sn ->
+                if (sn != setNumber) navController.navigate(SammlungZiel.SetDetail(sn)) {
+                    popUpTo<SammlungZiel.SetDetail> { inclusive = true }
                 }
             },
+            gridState = gridState,
             detail = detail,
         )
     }

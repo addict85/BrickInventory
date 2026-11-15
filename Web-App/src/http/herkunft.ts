@@ -32,7 +32,7 @@ export function nurEigeneHerkunft(req: Request, res: Response, next: NextFunctio
   // Mit Cookie entscheidet die Sitzung; ein Bearer-Kopf daneben schaltet nichts ab.
   const mitSitzung = traegtSitzungsKeks(String(req.headers.cookie || ''));
   if (!mitSitzung && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
-  const fremd = () => sendeFehler(req, res, 403, 'fremde_herkunft');
+  const fremd = () => sendeFehler(req, res, 'verboten', 'fremde_herkunft');
 
   const herkunft = String(req.headers['sec-fetch-site'] || '');
   if (herkunft) return herkunft === 'same-origin' || herkunft === 'none' ? next() : fremd();
@@ -50,13 +50,19 @@ const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 const IP_ADRESSE = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])$/;
 const FREI = /^\/(ca\.crt|api\/v1\/health(\/live|\/ready)?)$/;
 
-/** Mit APP_BASE_URL nur dieser Name, gegen DNS-Rebinding. Frei: Loopback, IP-Adressen
- * (die Android-App; nur ein Name lässt sich umbiegen), Wurzelzertifikat, Gesundheit. */
+/** Ohne Basis-URL nennt die Absage die Adresse, unter der die Anfrage ankam. */
+function eigeneIp(req: Request): string {
+  const ip = (req.socket.localAddress ?? '').replace(/^::ffff:/, '');
+  return ip.includes(':') ? `[${ip}]` : ip;
+}
+
+/** Nur der Name aus APP_BASE_URL, gegen DNS-Rebinding; ohne sie gar kein Name. Frei: Loopback,
+ * IP-Adressen (die Android-App; nur ein Name lässt sich umbiegen), Wurzelzertifikat, Gesundheit. */
 export function nurEigenerHost(req: Request, res: Response, next: NextFunction) {
+  if (FREI.test(req.path)) return next();
   const adresse = konfig().appBaseUrl;
-  if (!adresse || FREI.test(req.path)) return next();
   const name = (h: string) => h.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
   const kopf = name(String(req.headers.host || ''));
-  if (LOOPBACK.has(kopf) || IP_ADRESSE.test(kopf) || kopf === name(hostVon(adresse) ?? '')) return next();
-  sendeFehler(req, res, 421, 'fremder_host', { adresse });
+  if (LOOPBACK.has(kopf) || IP_ADRESSE.test(kopf) || (adresse && kopf === name(hostVon(adresse) ?? ''))) return next();
+  sendeFehler(req, res, 'falscher_host', 'fremder_host', { adresse: adresse ?? eigeneIp(req) });
 }

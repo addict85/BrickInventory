@@ -34,10 +34,10 @@ try {
   process.exit(2);
 }
 
-const funde = bericht.diagnostics.filter(d =>
-  art === 'lint' ? d.category.startsWith('lint/') : d.category === 'format',
-);
-const fremd = bericht.diagnostics.filter(d => !d.category.startsWith('lint/') && d.category !== 'format');
+// Eigene Regeln (biome/*.grit) melden als „plugin“; sie zählen wie jede andere Lint-Regel.
+const istLint = (/** @type {{ category: string }} */ d) => d.category.startsWith('lint/') || d.category === 'plugin';
+const funde = bericht.diagnostics.filter(d => (art === 'lint' ? istLint(d) : d.category === 'format'));
+const fremd = bericht.diagnostics.filter(d => !istLint(d) && d.category !== 'format');
 if (fremd.length) {
   console.error(
     `[${art}] Biome meldet Fehler ausserhalb der Regeln:\n${fremd.map(d => `${d.category}: ${d.location?.path ?? ''}`).join('\n')}`,

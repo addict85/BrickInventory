@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import java.time.Instant
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
@@ -11,10 +16,10 @@ import ch.brickinventoryapp.model.fach.Zustand
  * Inhalte darin sind Composables.
  */
 
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -51,13 +56,14 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.sammlung.ui.ALARM_ZUSTAND_VORGABE
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.GemeinsamesBild
+import ch.brickinventoryapp.ui.components.MengenKnopf
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
@@ -80,11 +86,11 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 internal fun LazyListScope.setDetailPriceSection(
     detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung, onErneut: () -> Unit,
 ) {
-    if (price != null && !price.noPrice || detailState.setPriceLoading || detailState.preisFehler != null) {
+    if (price != null && !price.noPrice || detailState.preisAbruf !is Laden.Daten) {
         item {
             // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
             // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
-            val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.priceHistoryLoading
+            val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.verlaufAbruf.laedt
             SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
                 PreisKarteInhalt(detailState, price, history, currency, onErneut)
             }
@@ -96,10 +102,11 @@ internal fun LazyListScope.setDetailPriceSection(
 private fun PreisKarteInhalt(
     detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: Waehrung, onErneut: () -> Unit,
 ) {
-    if (detailState.setPriceLoading && price == null) {
+    val preisFehler = detailState.preisAbruf as? Laden.Fehler
+    if (detailState.preisAbruf.laedt && price == null) {
         PreisLaedtZeile()
-    } else if (price == null && detailState.preisFehler != null) {
-        FehlerHinweis(detailState.preisFehler, onErneut, detailState.preisFehlerKlasse)
+    } else if (price == null && preisFehler != null) {
+        FehlerHinweis(preisFehler.meldung.satz(), onErneut, preisFehler.art)
     } else if (price != null && !price.noPrice) {
         // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
         // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
@@ -112,31 +119,28 @@ private fun PreisKarteInhalt(
         if (chart != null && chart.values.isNotEmpty()) {
             Spacer(Modifier.height(Abstaende.klein))
             PriceChart(chart, currency)
-        } else if (detailState.priceHistoryLoading) {
+        } else if (detailState.verlaufAbruf.laedt) {
             Spacer(Modifier.height(Abstaende.klein))
             PreisLaedtZeile()
-        } else if (detailState.verlaufFehler != null) {
+        } else if (detailState.verlaufAbruf is Laden.Fehler) {
             Spacer(Modifier.height(Abstaende.klein))
-            FehlerHinweis(detailState.verlaufFehler, onErneut)
+            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut)
         }
     }
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: Waehrung, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
+internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: Waehrung, fmtDate: (Instant?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
             // Ohne Datum keine Zeile: „Hinzugefügt —“ sagt nichts.
-            if (!set.addedAt.isNullOrBlank()) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
+            if (set.addedAt != null) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
             // ── Lagerort ──
             //
             // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
-            // Besitzer des Sets, nicht dem Betrachter (siehe loadLagerortVorrat()).
-            LaunchedEffect(setNumber, set.owners) {
-                aktionen.loadLagerortVorrat(set.owners.map { it.id })
-            }
+            // Besitzer des Sets; das SetDetailViewModel holt sie mit dem Detail.
             // Bei grosser Schrift steht das Feld unter der Bezeichnung in voller Breite:
             // 180 dp neben „Lagerort“ reichten bei 200 % nicht einmal für den Platzhalter.
             val lagerBezeichnung: @Composable () -> Unit = {
@@ -195,10 +199,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     MitTooltip(stringResource(R.string.cd_qty_decrease)) {
-                        FilledTonalIconButton(
-                            onClick = { if (qty > 1) { qty--; takt(); aktionen.aendereMengeUm(set.setNumber, -1) } },
-                            shape = Formen.etikett
-                        ) {
+                        MengenKnopf(onClick = { if (qty > 1) { qty--; takt(); aktionen.aendereMengeUm(set.setNumber, -1) } }) {
                             Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
                                 Modifier.size(mitSchrift(18.dp)))
                         }
@@ -211,10 +212,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                         textAlign = TextAlign.Center
                     )
                     MitTooltip(stringResource(R.string.cd_qty_increase)) {
-                        FilledTonalIconButton(
-                            onClick = { qty++; takt(); aktionen.aendereMengeUm(set.setNumber, 1) },
-                            shape = Formen.etikett
-                        ) {
+                        MengenKnopf(onClick = { qty++; takt(); aktionen.aendereMengeUm(set.setNumber, 1) }) {
                             Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
                                 Modifier.size(mitSchrift(18.dp)))
                         }
@@ -237,7 +235,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
 }
 
 /** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
-internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
+internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Geld?) -> String) {
     item(key = "wertkacheln") {
         // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
         val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
@@ -247,7 +245,7 @@ internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisA
             markt = fmtPrice(marktpreis),
             kauf = fmtPrice(kaufpreis),
             pnl = pnlPct,
-            pnlBetrag = differenz?.let { (if (it > 0) "+" else "") + fmtPrice(it) },
+            pnlBetrag = differenz?.let { (if (it.positiv) "+" else "") + fmtPrice(it) },
             modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
         )
     }
@@ -375,7 +373,7 @@ internal fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.richtung ?: Alarmrichtung.UNTER)
             }
             var schwelle by rememberSaveable(alarm?.schwelle) {
-                mutableStateOf(alarm?.let { if (it.schwelle > 0) fmtEingabe(it.schwelle) else "" } ?: "")
+                mutableStateOf(alarm?.let { if (it.schwelle.positiv) fmtEingabe(it.schwelle) else "" } ?: "")
             }
 
             // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne

@@ -10,17 +10,17 @@ const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { ohneKommentare } = require('./helpers/sources');
-const { REBRICKABLE_DEFAULT_DAILY } = _req('src/katalog/rateLimiter.js');
+const { REBRICKABLE_DEFAULT_DAILY } = _req('src/fremdquellen/rateLimiter.js');
 
 const EXPECTED = 25000;
 
 test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   assert.equal(REBRICKABLE_DEFAULT_DAILY, EXPECTED);
-  // getLimitForApi() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
+  // grenzeDerQuelle() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
-  // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
+  // beide über kontingentPruefenUndZaehlen laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften …
-  const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8');
+  const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8');
   assert.match(
     fc,
     /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
@@ -31,11 +31,11 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
 
 test('das Tageskontingent zählt für die Installation, nicht je Worker', () => {
   // Woher dieser Test kommt
-  const rl = fs.readFileSync(path.join(ROOT, 'src/katalog/rateLimiter.ts'), 'utf8');
+  const rl = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(
     rl,
-    /checkAndIncrementRateLimit\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
+    /kontingentPruefenUndZaehlen\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
     'Derselbe Mechanismus wie bei BrickLink und Brickset — kein dritter Weg',
   );
   assert.doesNotMatch(rl, /new DailyLimiter\(/, 'Keine prozesslokale Instanz mehr für ein Tagesbudget');
@@ -70,13 +70,13 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/, 'setMax() erreicht nur den eigenen Prozess');
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
-  // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
+  // grenzeDerQuelle ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
-  const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  const fn = fc.slice(fc.indexOf('async function getLimitForApi'), fc.indexOf('const grenzeJeKonto'));
+  const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
+  const fn = fc.slice(fc.indexOf('async function grenzeDerQuelle'), fc.indexOf('const grenzeJeKonto'));
   assert.match(
     fn,
-    /await k\.einstellungen\.getGlobalSetting\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
+    /await k\.einstellungen\.globalerWert\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
     'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen',
   );
 });
@@ -119,7 +119,8 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
 test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
-  const src = require('./helpers/sources').dienstQuelle('src/konto/loginLimiter.ts');
+  // Die Zähler schreibt src/drossel (Besitzer von rate_limit_attempts), die Anmeldung ruft k.drossel.
+  const src = fs.readFileSync(path.join(ROOT, 'src/drossel/repository.ts'), 'utf8');
   assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
   assert.match(
     src,
@@ -134,8 +135,8 @@ test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
 });
 
 test('bei DB-Ausfall greift die Rückfallebene', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/konto/loginLimiter.ts'), 'utf8');
-  for (const fn of ['_read', '_bump', '_clear']) {
+  const src = fs.readFileSync(path.join(ROOT, 'src/drossel/zaehler.ts'), 'utf8');
+  for (const fn of ['zaehlerStand', 'zaehleVersuch', 'vergissZaehler']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
     // Der Rückfall meldet sich (imSpeicher); der Name der Fehlervariable zählt nicht.
     assert.match(
@@ -148,7 +149,7 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
 });
 
 test('die Aufrufstellen warten auf das Ergebnis', () => {
-  // checkLoginAllowed ist seit der Umstellung asynchron — ein vergessenes
+  // anmeldungErlaubt ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -165,7 +166,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
   let gefunden = 0;
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/\b(checkLoginAllowed|recordLoginFailure|recordLoginSuccess)\s*\(/g)) {
+    for (const m of src.matchAll(/\b(anmeldungErlaubt|anmeldungGescheitert|anmeldungGelungen)\s*\(/g)) {
       // Die Zeile selbst ansehen — ein `await` davor genügt. Import und
       // Definition sind keine Aufrufe und zählen nicht mit.
       const zeilenAnfang = src.lastIndexOf('\n', m.index) + 1;
@@ -184,7 +185,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
     [],
     'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' +
       ohneAwait.join('\n  ') +
-      '\nEin Promise ist immer truthy — ohne await sperrt checkLoginAllowed JEDEN Login.',
+      '\nEin Promise ist immer truthy — ohne await sperrt anmeldungErlaubt JEDEN Login.',
   );
 });
 

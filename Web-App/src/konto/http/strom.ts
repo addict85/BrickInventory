@@ -12,6 +12,16 @@ export interface Strom {
   /** Läuft beim Ende mit, auch wenn es der Client oder die Wache auslöst. */
   beiEnde(f: () => void): void;
   readonly zu: boolean;
+  /** Wie sende(), aber bei geschlossenem Strom StromGeschlossen: Die Arbeit dahinter bricht ab. */
+  sendeOderBrichAb(daten: object): void;
+}
+
+/** Der Client ist weg. Ein Abbruch, kein Fehler: Wer ihn fängt, meldet nichts. */
+export class StromGeschlossen extends Error {
+  constructor() {
+    super('Strom geschlossen');
+    this.name = 'StromGeschlossen';
+  }
 }
 
 export interface StromOptionen {
@@ -67,6 +77,10 @@ export function oeffneStrom(konto: KontoDienste, req: Request, res: Response, o:
     },
     get zu() {
       return zu;
+    },
+    sendeOderBrichAb: daten => {
+      if (zu) throw new StromGeschlossen();
+      sende(daten);
     },
   };
 }

@@ -174,7 +174,7 @@ function translateJobSub(sub) {
  * @param {Element} [feld]
  */
 export async function saveJobSchedule(name, payload, feld) {
-  const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload }).catch(() => null);
+  const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload });
   if (d?.success) meldeAmFeld(feld);
   else toast(d?.error || t('settings.error'), 'error');
 }
@@ -222,34 +222,18 @@ export async function ladeZeitplaene() {
     </table></div>`,
   );
 }
-const jobIconSvg = (/** @type {string} */ k) => {
-  /** @type {Record<string, string>} */
-  const svgs = {
-    // CSV-Import (Rebrickable): kleine Tabelle/Raster mit farbigen Zeilen
-    csvImport:
-      '<rect x="12" y="20" width="96" height="18" rx="2" fill="#0055BF"/><rect x="12" y="44" width="96" height="18" rx="2" fill="#F2CD37"/><rect x="12" y="68" width="96" height="18" rx="2" fill="#E63329"/><rect x="12" y="92" width="96" height="18" rx="2" fill="#9BA19D"/>',
-    // BrickLink IDs nachladen: zwei verbundene Ringe (Verknüpfung/Mapping)
-    blIds:
-      '<path d="M40,45 a20,20 0 1,0 0.1,0" fill="none" stroke="#0055BF" stroke-width="12"/><path d="M80,75 a20,20 0 1,0 0.1,0" fill="none" stroke="#E63329" stroke-width="12"/>',
-    // Handbücher herunterladen: kleines aufgeschlagenes Buch
-    instrQueue:
-      '<path d="M60,28 C50,22 30,20 16,24 L16,92 C30,88 50,90 60,96 Z" fill="#E63329"/><path d="M60,28 C70,22 90,20 104,24 L104,92 C90,88 70,90 60,96 Z" fill="#CC2A21"/><rect x="24" y="38" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="50" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="62" width="20" height="4" rx="2" fill="#fff"/>',
-    // Preise aktualisieren: Preisschild (Gold) mit Loch
-    brickset:
-      '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
-    priceJob:
-      '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
-    // Bild-Download: Bilderrahmen mit Berg und Sonne
-    imgDl:
-      '<rect x="10" y="20" width="100" height="80" rx="8" fill="#0055BF"/><circle cx="82" cy="44" r="10" fill="#F2CD37"/><path d="M18,92 L48,52 L70,80 L82,66 L102,92 Z" fill="#fff"/>',
-    // PDF-Aufträge: Blatt mit roter Leiste
-    pdfJobs:
-      '<path d="M26,10 L76,10 L98,32 L98,110 L26,110 Z" fill="#9BA19D"/><path d="M76,10 L76,32 L98,32 Z" fill="#fff" fill-opacity=".6"/><rect x="16" y="56" width="70" height="26" rx="4" fill="#E63329"/><rect x="38" y="90" width="44" height="5" rx="2.5" fill="#fff"/>',
-  };
-  return svgs[k]
-    ? html`<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ungeprueft(svgs[k])}</svg>`
-    : html`<span class="mon-sinnbild" aria-hidden="true"></span>`;
-};
+/** Strichsymbole aus dem Sprite wie überall sonst; farbige Bildchen wirkten neben ihnen wie Emojis. */
+const JOB_SYMBOL = /** @type {Record<string, string>} */ ({
+  csvImport: 'import',
+  blIds: 'link',
+  instrQueue: 'datei',
+  brickset: 'aktualisieren',
+  priceJob: 'finanzen',
+  imgDl: 'bild',
+  pdfJobs: 'drucker',
+});
+const jobIconSvg = (/** @type {string} */ k) =>
+  html`<svg class="ico mon-sinnbild" aria-hidden="true"><use href="#i-${JOB_SYMBOL[k] || 'uhr'}"/></svg>`;
 const jobZustand = (/** @type {string} */ s) =>
   ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'), error: tRaw('monitor.state.error') })[
     s
@@ -262,6 +246,7 @@ const statusIcon = (/** @type {string} */ s, /** @type {JobStatus} */ j) => {
   if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
   return ico('pause');
 };
+/** Nur bei laufender Arbeit: Ein stehender Balken las sich wie ein hängender Lauf. */
 const bar = (/** @type {number} */ v, /** @type {number} */ gesamt) => {
   if (!gesamt) return '';
   const pct = Math.min(100, Math.round((v / gesamt) * 100));
@@ -342,7 +327,7 @@ export async function loadMonitor() {
           ([k, j]) => html`<tr>
           <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
-            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'wann') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j).length ? aktionen(k, j) : html`<span class="mon-leise">–</span>`}</div></td>
@@ -390,6 +375,7 @@ const ARTNAMEN = {
   aufraeumen: () => tRaw('monitor.art.aufraeumen'),
   aufraeumen_taeglich: () => tRaw('monitor.art.aufraeumen_taeglich'),
   konto_dateien: () => tRaw('monitor.art.konto_dateien'),
+  widerrufsliste: () => tRaw('monitor.art.widerrufsliste'),
 };
 /** @type {Record<string, () => string>} */
 const STATUSNAMEN = {
@@ -476,7 +462,7 @@ const auftragsZeile = (a, mehrfach) => {
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
   if (!el) return;
-  const d = await api('GET', '/v1/admin/auftraege').catch(() => null);
+  const d = await api('GET', '/v1/admin/auftraege');
   if (!d?.success) {
     el.replaceChildren();
     return;
@@ -497,6 +483,10 @@ async function zeigeAuftraege() {
   const ziffer = (/** @type {number | undefined} */ n, klasse = '') =>
     html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
   const mehr = d.auftraege.length - 40;
+  /** @type {Record<string, number>} */
+  const nachFehler = {};
+  for (const a of d.auftraege)
+    if (a.status === 'offen' && (a.versuche > 1 || a.fehler)) nachFehler[a.art] = (nachFehler[a.art] || 0) + 1;
   const jeArt = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.art);
   const mehrfach = new Set(jeArt.filter((art, i) => jeArt.indexOf(art) !== i));
   const pause = (/** @type {AuftragPause} */ p) =>
@@ -504,7 +494,7 @@ async function zeigeAuftraege() {
   setzeHtml(
     el,
     html`
-    <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
+    <h2 class="mon-titel" id="mon-t-auftraege" tabindex="-1">${ico('liste')}<span>${tRaw('monitor.auftraege.titel')}</span></h2>
     <p class="mon-hinweis">${tRaw('monitor.auftraege.hinweis')}</p>
     ${d.job_prozess.laeuft ? '' : html`<p class="mon-warnung">${ico('warnung')} ${tRaw('monitor.auftraege.kein_prozess')}</p>`}
     ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`)}
@@ -516,7 +506,7 @@ async function zeigeAuftraege() {
       <tbody>${arten.map(
         art => html`<tr>
         <td>${artName(art)}</td>
-        <td class="zahl">${ziffer(zahl[art].offen)}</td>
+        <td class="zahl">${ziffer(zahl[art].offen)}${nachFehler[art] ? html`<span class="mon-leise mon-zusatz">${tRaw('monitor.auftraege.davon_nach_fehler', { n: nachFehler[art] })}</span>` : ''}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
         <td>${naechster[art] ? fmtDatum(naechster[art], 'wann') : ''}</td>
@@ -553,21 +543,21 @@ if (typeof document !== 'undefined')
 
 /** @param {string} id */
 async function auftragAbbrechen(id) {
-  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);
+  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
 /** @param {string} art */
 async function auftragsArtJetzt(art) {
-  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`).catch(() => null);
+  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
 /** @param {string} art */
 async function auftragsArtLeeren(art) {
-  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`).catch(() => null);
+  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`);
   if (d?.success) toast(tRaw('monitor.auftraege.geleert', { n: d.entfernt }), 'success');
   else toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();

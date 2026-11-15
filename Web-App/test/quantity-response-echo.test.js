@@ -1,7 +1,7 @@
 /**
  * Beide Oberflächen übernehmen die Menge aus der SERVERANTWORT.
  *
- * Gegenprobe (durchgeführt): in gallery.js `const echt = qty` gesetzt →
+ * Gegenprobe (durchgeführt): in sammlung.js `const echt = qty` gesetzt →
  * der Webapp-Teilschritt wird rot. Am 30.10.2026 gemessen: in
  * routes/api_v1/sets.ts `...(r || {})` aus der PUT-Antwort entfernt → rot:
  * „die Route liefert die Menge“ (undefined statt 3). Am 08.11.2026
@@ -23,7 +23,7 @@ const { haeltSet } = require('./helpers/bestand');
 
 test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t => {
   // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
-  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus updateSet(),
+  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus setAendern(),
   // summiert über das Blickfeld.
   const db = testDaten();
   if (!(await datenOderSkip(t, _req))) return;

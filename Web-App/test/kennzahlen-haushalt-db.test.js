@@ -56,16 +56,17 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
   await haeltSet(db, kind, '21318-1', 1);
 
   const { blickfeldIds } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
   const { getStats } = _req('src/bestand/kennzahlen.js');
-  const { getSets } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
 
   for (const modus of ['all', 'own']) {
     const uids = await blickfeldIds(haupt, modus);
     const kopf = await getStats(uids);
-    const liste = await getSets(uids, { page_size: 60 });
+    const liste = await setsLesen(uids, { page_size: 60 });
     assert.equal(
       kopf.total_sets,
       liste.total,

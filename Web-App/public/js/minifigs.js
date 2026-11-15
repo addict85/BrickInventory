@@ -1,6 +1,7 @@
 // Der Reiter Minifiguren: Figuren aus Sets und manuell erfasste Figuren, dazu die gemeinsamen Hilfen für
 // manuelle Tabellen und CSV-Status.
-import { abonniere } from './ereignisse.js';
+import { generationen } from './lader.js';
+import { abonniere, melde } from './ereignisse.js';
 import { echt, registerActions } from './registry.js';
 import {
   listeLadefehler,
@@ -25,14 +26,14 @@ import {
   aktiverReiter,
   ico,
   setzeHtml,
+  telefonBreite,
 } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
-import { addLagerParam, addScopeParam, scopeQuery } from './scope.js';
-import { loadFinance } from './finance.js';
+import { addLagerParam, addScopeParam, scopeQuery } from './kontofilter.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { CURRENCY } from './zustand.js';
+import { kontoWaehrung } from './zustand.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 import { confirmDelete } from './rueckfrage.js';
 
@@ -51,8 +52,8 @@ export function alleFiguren() {
 // Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an den Server: Clientseitig über
 // allFigsCache zu filtern würde mit seitenweisem Laden nur die geladene Seite durchsuchen.
 const FIG_PAGE_SIZE = 60;
-let _figGen = 0,
-  _figPage = 1,
+const figurenLaden = generationen();
+let _figPage = 1,
   _figDone = false,
   _figLoadingMore = false,
   _figTotal = 0;
@@ -74,10 +75,10 @@ function figParams(page) {
 async function loadMinifigsMore() {
   if (_figLoadingMore || _figDone) return;
   _figLoadingMore = true;
-  const gen = _figGen;
+  const gen = figurenLaden.jetzt();
   try {
     const d = await api('GET', `/v1/minifigs?${figParams(_figPage + 1)}`);
-    if (gen !== _figGen) return;
+    if (!figurenLaden.gilt(gen)) return;
     const batch = d.figs || [];
     if (!batch.length) {
       _figDone = true;
@@ -90,7 +91,7 @@ async function loadMinifigsMore() {
   } catch (_) {
     /* stumm — der Sentinel versucht es beim nächsten Scrollen */
   } finally {
-    if (gen === _figGen) _figLoadingMore = false;
+    if (figurenLaden.gilt(gen)) _figLoadingMore = false;
   }
 }
 
@@ -122,16 +123,15 @@ function bindFigsSentinel() {
 }
 
 export async function loadMinifigs() {
-  _figGen++;
+  figurenLaden.neu();
   _figPage = 1;
   _figDone = false;
   _figLoadingMore = false;
-  const gen = _figGen;
   // Ein alter Fehlerzustand weicht dem Gerüst, solange neu geladen wird (wie in der Merkliste).
   const liste = G('figs-list');
   if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skelettKacheln(8, tRaw('common.loading')));
-  const d = await api('GET', `/v1/minifigs?${figParams(1)}`);
-  if (gen !== _figGen) return;
+  const d = await figurenLaden.aktuell(api('GET', `/v1/minifigs?${figParams(1)}`));
+  if (d === undefined) return;
   if (listeLadefehler(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
   _figTotal = d.total ?? allFigsCache.length;
@@ -151,7 +151,7 @@ export async function loadMinifigs() {
   // Manual valuation — mit dem Filter des Minifiguren-Reiters, damit die Wertangabe zur Liste darüber passt.
   const v = await api('GET', `/v1/finance/minifigs-valuation${scopeQuery('minifigs')}`);
   if (v.success && parseFloat(v.total_value) > 0) {
-    G('mf-val').textContent = fmtN(v.total_value, v.currency || CURRENCY);
+    G('mf-val').textContent = fmtN(v.total_value, v.currency || kontoWaehrung);
   } else if (G('mf-val')) {
     G('mf-val').textContent = '—';
   }
@@ -214,9 +214,7 @@ export function renderFigs(list, target) {
   }
   if (!target) figurenLeerAbgleichen();
 
-  const viewMode = G('figs-view')?.value || 'grid';
-
-  if (viewMode === 'table') {
+  if (tabellenAnsicht('figs-view')) {
     // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
     // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
     setzeHtml(
@@ -279,7 +277,7 @@ export function renderFigs(list, target) {
           // den Sets. Dies aber nur in der webapp."
           const delBtn =
             f.source === 'manual'
-              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
+              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-taste="${esc(tRaw('kachel.entf'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
               : '';
           // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
           // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
@@ -324,7 +322,12 @@ export async function deleteManualFig(figNumber, owner) {
     `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
   );
   if (d.success) {
-    geloeschtMitRueckgaengig(tRaw('figs.deleted'), d);
+    geloeschtMitRueckgaengig(
+      tRaw('figs.deleted'),
+      d,
+      undefined,
+      `.man-tile[data-arg="fig"][data-arg2="${CSS.escape(figNumber)}"]`,
+    );
     loadMinifigs();
     loadManualFigsTable();
     return true;
@@ -353,7 +356,7 @@ let _setFigurenLeer = null; // null: noch nicht geladen
 let _manuelleFigurenLeer = null;
 
 /**
- * Wie bei den Teilen (teileLeerAbgleichen in parts.js): ein Leerzustand für den Reiter, und nur wenn beide
+ * Wie bei den Teilen (teileLeerAbgleichen in teile.js): ein Leerzustand für den Reiter, und nur wenn beide
  * Listen leer sind.
  */
 function figurenLeerAbgleichen() {
@@ -421,11 +424,11 @@ export function renderManualFigsTable() {
       // geschriebene Einzelwert der Stammzeile — bei zwei Erfassungen zu verschiedenen Preisen stimmte er
       // nicht.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
-      const priceStr = figPrice != null ? fmtN(figPrice, CURRENCY) : '—';
+      const priceStr = figPrice != null ? esc(tRaw('finance.je', { preis: fmtN(figPrice, kontoWaehrung) })) : '—';
       const condBadge = condBadges(f);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
+        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" data-taste="${tRaw('kachel.entf')}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
         ${ungeprueft(img)}
         <div class="man-tile-num">${f.fig_number}</div>
         <div class="man-tile-name">${f.fig_name || '—'}</div>
@@ -452,7 +455,7 @@ export async function updateManualFig(figNumber, body, owner) {
     toast(tRaw('settings.saved'), 'success');
     loadManualFigsTable();
     loadMinifigs();
-    if (aktiverReiter() === 'finance') loadFinance();
+    if (aktiverReiter() === 'finance') melde('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -580,7 +583,7 @@ export function manuellQuery(view, sucheId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
   // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum gleichen Versprechen. Es gibt ihn nur
-  // fuer Galerie und Teile (LAGER_VIEWS in scope.js); fuer 'minifigs' haengt addLagerParam nichts an, und
+  // fuer Galerie und Teile (LAGER_VIEWS in kontofilter.js); fuer 'minifigs' haengt addLagerParam nichts an, und
   // deshalb kennt getManualMinifigs ihn auch nicht.
   addLagerParam(p, view);
   const q = G(sucheId)?.value?.trim();
@@ -632,7 +635,7 @@ export function manuelleTabelle(posten, art) {
       ${istTeil ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
-      <td class="preis">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
+      <td class="preis">${preis != null ? fmtN(preis, kontoWaehrung) : '—'}</td>
       <td data-stil="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
       <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${ungeprueft(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
@@ -645,7 +648,7 @@ export function manuelleTabelle(posten, art) {
  * @param {string} id
  */
 export function tabellenAnsicht(id) {
-  return G(id)?.value === 'table';
+  return G(id)?.value === 'table' && !telefonBreite();
 }
 
 abonniere('bestandGeaendert', () => {

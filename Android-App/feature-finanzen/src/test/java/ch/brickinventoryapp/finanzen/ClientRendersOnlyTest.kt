@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.finanzen
 
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.data.model.PartsValuationResponse
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PnlTotals
-import ch.brickinventoryapp.model.data.model.ValuationResponse
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.PartsValuationResponse
+import ch.brickinventoryapp.vertrag.PnlResponse
+import ch.brickinventoryapp.vertrag.PnlTotals
+import ch.brickinventoryapp.vertrag.ValuationResponse
 import ch.brickinventoryapp.finanzen.ui.finanzSummen
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -66,7 +66,7 @@ class ClientRendersOnlyTest {
         // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
         // Alle Modelldateien: Vorher stand hier ein Dateiname,
         // und die Klassen liegen seither nach Sachgebieten verteilt.
-        val models = File(Quellen.wurzel, "model/data/model")
+        val models = File(Quellen.wurzel, "vertrag")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }

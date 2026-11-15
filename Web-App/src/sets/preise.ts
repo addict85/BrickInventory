@@ -1,8 +1,6 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
-import { blickfeldAus, type Sicht } from '../haushalt';
-import { einstellungMitZugang } from '../einstellungen';
-import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen';
-import { normalizeSetNumber } from './erfassen';
+import type { Sicht } from '../haushalt';
+import { normalisiereSetNummer } from '../infra/setNummer';
 import type { Zustand } from '../infra/validate';
 import type { CsvImportBericht } from '../infra/csvExport';
 import * as repo from './repository/setDetail';
@@ -11,23 +9,16 @@ import type { SetsKontext } from './kontext';
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
 export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sicht | number[], sn: string) {
-  const blickfeld = await blickfeldAus(sk.db, blickfeldWahl);
+  const blickfeld = await sk.haushalt.blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sk.db, sn, blickfeld);
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
   // kannte.
   const currency = await waehrungVon(sk, uid);
-  const guideType = String(await einstellungMitZugang(sk.db, uid, 'price_guide_type', 'sold'));
-  const ttlHours = String(await einstellungMitZugang(sk.db, uid, 'price_cache_ttl', '24'));
+  const guideType = String(await sk.einstellungen.nutzerWert(uid, 'price_guide_type', 'sold'));
+  const ttlHours = String(await sk.einstellungen.nutzerWert(uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
-    sk.finanzen.fetchPrice(
-      sn,
-      await sk.finanzen.resolveSetCondition(blickfeld, sn, undefined),
-      guideType,
-      currency,
-      ttlHours,
-      null,
-    ),
+    sk.finanzen.holePreis(sn, await sk.finanzen.setZustand(blickfeld, sn), guideType, currency, ttlHours, null),
   );
   if (!preis.ok)
     return {
@@ -56,32 +47,31 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
 /** Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
  * liefen beim nächsten Wechsel auseinander. */
 export async function waehrungVon(sk: SetsKontext, uid: number): Promise<string> {
-  return String(await einstellungMitZugang(sk.db, uid, 'currency', 'EUR'));
+  return String(await sk.einstellungen.nutzerWert(uid, 'currency', 'EUR'));
 }
 
 export function setAlarmeLesen(sk: SetsKontext, uid: number, sn: string) {
-  return alarmeFuer(sk.db, uid, normalizeSetNumber(sn));
+  return sk.finanzen.preisalarm.alarmeFuer(uid, normalisiereSetNummer(sn));
 }
 
 export async function alarmDesSetsSetzen(
   sk: SetsKontext,
   uid: number,
   sn: string,
-  eingabe: Parameters<typeof setzeAlarm>[4],
+  eingabe: Parameters<SetsKontext['finanzen']['preisalarm']['setzeAlarm']>[3],
 ) {
-  return setzeAlarm(sk.db, uid, normalizeSetNumber(sn), await waehrungVon(sk, uid), eingabe);
+  return sk.finanzen.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await waehrungVon(sk, uid), eingabe);
 }
 
 export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, condition: Zustand | undefined) {
-  return loescheAlarm(sk.db, uid, normalizeSetNumber(sn), condition ?? 'N');
+  return sk.finanzen.preisalarm.loescheAlarm(uid, normalisiereSetNummer(sn), condition ?? 'N');
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {
-  return sk.auftraege.importAlsAuftrag<CsvImportBericht>(
-    uid,
-    'alarme_csv',
-    { waehrung: await waehrungVon(sk, uid), text },
-    {},
+  return sk.auftraege.warteAufAuftrag<CsvImportBericht, 'csv_import'>(
+    'csv_import',
+    { user_id: uid, quelle: 'alarme_csv', eingabe: { waehrung: await waehrungVon(sk, uid), text } },
+    { userId: uid },
   );
 }
 

@@ -3,12 +3,12 @@ package ch.brickinventoryapp.ui.components
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonColors
 import androidx.compose.material3.SegmentedButtonDefaults
+import ch.brickinventoryapp.ui.theme.gesperrtFarben
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.MaterialTheme
@@ -25,13 +27,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Badge
@@ -53,7 +57,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 /**
  * Genau eine von zwei bis vier gleichrangigen Möglichkeiten (Neu | Gebraucht,
  * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
- * zwei Chips nebeneinander lasen sich wie zwei Filter, die man beide setzen kann.
+ * Chips lesen sich wie Filter. Bei grosser Schrift stehen die Segmente untereinander,
+ * damit kein Wort bricht und die Bauform dieselbe bleibt.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,9 +67,11 @@ fun <T> SegmentWahl(
     gewaehlt: T,
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
+    /** Aus, wenn die Wahl gerade nichts bewirkt; der Aufrufer sagt daneben, warum. */
+    enabled: Boolean = true,
 ) {
     if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
-        WahlChips(optionen, gewaehlt, onWahl, modifier.fillMaxWidth())
+        SegmentSpalte(optionen, gewaehlt, onWahl, modifier, enabled)
         return
     }
     SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
@@ -73,6 +80,8 @@ fun <T> SegmentWahl(
                 selected = wert == gewaehlt,
                 onClick = { onWahl(wert) },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+                enabled = enabled,
+                colors = segmentFarben(),
             ) {
                 // Zwei Zeilen statt Auslassung: Bei grosser Schrift wurde „Gebraucht“ zu „Gebr…“.
                 Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -83,36 +92,113 @@ fun <T> SegmentWahl(
 }
 
 /**
- * Eine Wahl aus wenigen Möglichkeiten als Chips: Vorgelesen als Radiogruppe
- * (FilterChip meldet sich als Kontrollkästchen), umbrechend statt abgeschnitten
- * bei grosser Schrift, und die Wahl trägt Häkchen und Rand — im Dunkeln lag die
- * Füllung allein nur 1,2:1 über der Fläche.
+ * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) sind immer Segmente, nie
+ * Chips, die wie Filter aussähen. Bei grosser Schrift stehen sie untereinander: Seitlich
+ * rollend lag „Minifiguren“ ausserhalb des Bilds, ohne dass etwas darauf hinwies.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T> WahlChips(
+fun <T> AnsichtUmschalter(
     optionen: List<Pair<T, String>>,
     gewaehlt: T,
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
-    /** Aus, wenn die Wahl gerade nichts bewirkt; der Aufrufer sagt daneben, warum. */
-    enabled: Boolean = true,
 ) {
-    FlowRow(
-        modifier.selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-    ) {
-        optionen.forEach { (wert, text) -> WahlChip(text, wert == gewaehlt, { onWahl(wert) }, enabled = enabled) }
+    if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
+        SegmentSpalte(optionen, gewaehlt, onWahl, modifier)
+        return
+    }
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+        optionen.forEachIndexed { i, (wert, text) ->
+            SegmentedButton(
+                selected = wert == gewaehlt,
+                onClick = { onWahl(wert) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+            ) {
+                // Genau so breit wie das Wort: Dann heisst ein Überlauf im Textlayout wirklich
+                // abgeschnitten, nicht bloss „Platz neben dem Wort“ (das Segment reserviert
+                // daneben immer Raum fürs Häkchen).
+                Text(text, Modifier.width(IntrinsicSize.Max), maxLines = 1, softWrap = false)
+            }
+        }
     }
 }
 
 /**
- * Ein Chip einer Einfachwahl, vorgelesen als Optionsfeld; die Gruppe drumherum trägt
- * `selectableGroup()`. Der Text bricht um statt abgeschnitten zu werden.
+ * Segmente untereinander, je über die volle Breite: oben und unten gerundet, dazwischen
+ * gerade, die Ränder übereinander. Material kennt nur die Zeile; so bleibt es dieselbe
+ * Bauform (Rand, Häkchen, Fläche der Wahl) und wird nicht zur Chipgruppe.
+ */
+@Composable
+private fun <T> SegmentSpalte(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val farben = MaterialTheme.colorScheme
+    val gesperrt = gesperrtFarben(farben)
+    Column(modifier.fillMaxWidth().selectableGroup()) {
+        optionen.forEachIndexed { i, (wert, text) ->
+            val an = wert == gewaehlt
+            val form = RoundedCornerShape(
+                topStart = if (i == 0) SPALTE_RUNDUNG else 0.dp, topEnd = if (i == 0) SPALTE_RUNDUNG else 0.dp,
+                bottomStart = if (i == optionen.lastIndex) SPALTE_RUNDUNG else 0.dp,
+                bottomEnd = if (i == optionen.lastIndex) SPALTE_RUNDUNG else 0.dp,
+            )
+            Surface(
+                selected = an,
+                onClick = { onWahl(wert) },
+                enabled = enabled,
+                shape = form,
+                color = if (!enabled && an) gesperrt.flaeche else if (an) farben.secondaryContainer else farben.surface,
+                contentColor = when {
+                    !enabled -> if (an) gesperrt.aufFlaeche else gesperrt.schrift
+                    an -> farben.onSecondaryContainer
+                    else -> farben.onSurface
+                },
+                border = BorderStroke(1.dp, if (enabled) farben.outline else gesperrt.rand),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).offset(y = -(i.dp))
+                    .fokusRahmen(form).semantics { role = Role.RadioButton },
+            ) {
+                Row(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    if (an) {
+                        Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
+                        Spacer(Modifier.width(Abstaende.klein))
+                    }
+                    // So breit wie das Wort, wie in der Zeile: Sonst meldet das Textlayout der
+                    // Semantik die ganze Segmentbreite als Überlauf, obwohl das Wort ganz dasteht.
+                    Text(text, Modifier.width(IntrinsicSize.Max), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+/** Segmente, deren Sperre lesbar bleibt (gesperrtFarben). */
+@Composable
+private fun segmentFarben(): SegmentedButtonColors {
+    val g = gesperrtFarben(MaterialTheme.colorScheme)
+    return SegmentedButtonDefaults.colors(
+        disabledActiveContainerColor = g.flaeche, disabledActiveContentColor = g.aufFlaeche,
+        disabledActiveBorderColor = g.rand, disabledInactiveContentColor = g.schrift,
+        disabledInactiveBorderColor = g.rand,
+    )
+}
+
+/** Wie die Enden einer Segmentzeile: halbrund bei 48 dp Höhe. */
+private val SPALTE_RUNDUNG = 24.dp
+
+/**
+ * Ein Filter-Chip, der genau einen Wert wählt, vorgelesen als Optionsfeld; die Gruppe
+ * drumherum trägt `selectableGroup()`. Nur für Filter: Eine Einstellung ist eine
+ * [SegmentWahl] oder ein [AuswahlFeld]. Der Text bricht um statt abgeschnitten zu werden.
  */
 @Composable
 fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    val gesperrt = gesperrtFarben(MaterialTheme.colorScheme)
     // Surface mit selected/onClick statt Modifier.selectable: so bleibt die Welle in der Chipform.
     Surface(
         selected = an,
@@ -120,13 +206,20 @@ fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier 
         enabled = enabled,
         shape = Formen.chip,
         color = if (an) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
-        contentColor = if (an) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        border = BorderStroke(if (an) 2.dp else 1.dp,
-            if (an) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-        modifier = modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.6f).fokusRahmen(Formen.chip)
+        contentColor = when {
+            !enabled -> gesperrt.schrift
+            an -> MaterialTheme.colorScheme.onSecondaryContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        border = BorderStroke(if (an) 2.dp else 1.dp, when {
+            !enabled -> gesperrt.rand
+            an -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.outline
+        }),
+        modifier = modifier.heightIn(min = 48.dp).fokusRahmen(Formen.chip)
             .semantics { role = Role.RadioButton },
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        Row(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (an) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))

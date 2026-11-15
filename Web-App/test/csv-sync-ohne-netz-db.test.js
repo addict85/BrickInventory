@@ -28,7 +28,7 @@ Module.prototype.require = function (name, ...rest) {
     return {
       ...m,
       get: () => {
-        const req = new EventEmitter();
+        const req = /** @type {any} */ (new EventEmitter());
         req.setTimeout = () => req;
         setImmediate(() => req.emit('error', new Error('getaddrinfo ENOTFOUND cdn.rebrickable.com')));
         return req;
@@ -37,7 +37,7 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -46,11 +46,10 @@ const path = require('node:path');
 
 // Mit `zwischendatei` legt der Download die Datei an und gelingt; den Import danach gibt es hier nicht.
 let zwischendatei = false;
-const quellen = require.resolve(path.join(__dirname, '..', 'dist', 'src/katalog/quellen.js'));
-const echteQuellen = require(quellen);
-require.cache[quellen].exports = Object.assign({}, echteQuellen, {
+const echt = _req('clients/rebrickableCsv.js');
+testQuellen(null, {
   ladeKatalogCsv: async (datei, ziel, o) => {
-    if (!zwischendatei) return echteQuellen.ladeKatalogCsv(datei, ziel, o);
+    if (!zwischendatei) return echt.ladeKatalogCsv(datei, ziel, o);
     fs.mkdirSync(path.dirname(ziel), { recursive: true });
     fs.writeFileSync(ziel, 'id,name\n1,Rot\n');
   },
@@ -62,14 +61,15 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
     (await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='rb_csv_last_sync'`))?.value ?? null;
   await db.run(`DELETE FROM laufzustand WHERE schluessel IN ('rb_csv_last_sync','startup_status')`);
   const zustand = _req('src/auftraege/startZustand.js');
-  zustand.setzeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
+  await zustand.meldeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
     await t.test('ohne Netz ist der Server trotzdem bereit', async () => {
       await assert.rejects(
         _req('src/katalog/csvAbgleich.js').run(),
         'der Auftrag soll den Fehler sehen und wiederholen',
       );
-      assert.equal(zustand.startZustand().ready, true, JSON.stringify(zustand.startZustand()));
+      const stand = await zustand.aktuellerStartZustand();
+      assert.equal(stand.ready, true, JSON.stringify(stand));
       const gespeichert = JSON.parse(
         (await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='startup_status'`)).value,
       );

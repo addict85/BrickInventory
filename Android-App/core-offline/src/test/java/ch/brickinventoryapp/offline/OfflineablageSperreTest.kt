@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,11 +52,11 @@ class OfflineablageSperreTest {
 
     @Test
     fun `ein puffere waehrend einer Serverantwort geht nicht verloren`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() })
         val tor = bestand.halte()
         // Der Server kennt die Änderung noch nicht: Seine Antwort hat den Ausgang
         // schon gelesen (leer) und wartet im Schreiben.
-        val antwort = launch { ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1))) }
+        val antwort = launch { ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() }) }
         yield()
         val offline = launch { ablage.puffere(Bearbeitung.SetMenge("10001-1", 1)) }
         repeat(3) { yield() }
@@ -66,7 +67,7 @@ class OfflineablageSperreTest {
 
     @Test
     fun `zwei gleichzeitige wendeAn zaehlen beide`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() })
         val tor = bestand.halte()
         val erste = launch { ablage.wendeAn(Bearbeitung.SetMenge("10001-1", 1)) }
         yield()
@@ -82,7 +83,7 @@ class OfflineablageSperreTest {
         val sitzung = MutableStateFlow<String?>("a")
         // Die Punktabfrage bleibt bei „a“: Beobachtet wird allein der Fluss der Sitzung.
         val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { "a" }, bereichFluss = sitzung)
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1")))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1")).map { it.alsAnsicht() })
         assertEquals(listOf("10001-1"), ablage.beobachte(Faecher.SETS).first().liste.map { it.setNumber })
         sitzung.value = null
         assertEquals("abgemeldet zeigt nichts", emptyList<String>(), ablage.beobachte(Faecher.SETS).first().liste.map { it.setNumber })

@@ -1,4 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { FinanzenLesevertrag } from '../lesevertrag';
+import { marktpreisSql } from '../../../db/geldSql';
+import type { Tabellen } from '../../../db/zeilen';
 
 export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
@@ -20,17 +23,11 @@ export interface Preiszeile {
   fetched_at: Date | null;
 }
 
-/** `dbh` erlaubt das Lesen in einer offenen Transaktion. */
-export function setZustandsZaehler(
-  db: DbSchnittstelle,
-  uids: number[],
-  setNumber: string,
-  dbh: Pick<DbSchnittstelle, 'get'> = db,
-) {
-  return dbh.get<{ acq_count: string; used_count: string }>(
+export function setZustandsZaehler(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[], setNumber: string) {
+  return db.get<{ acq_count: string; used_count: string }>(
     `SELECT COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
-       FROM sets s LEFT JOIN set_acquisitions a
+       FROM ${l.setBestand('= ANY($1)')} s LEFT JOIN ${l.setErfassungen('= ANY($1)')} a
          ON a.user_id = s.user_id AND a.set_number = s.set_number
       WHERE s.user_id = ANY($1) AND s.set_number=$2`,
     [uids, setNumber],
@@ -222,5 +219,28 @@ export function merkeFigurVerlauf(
     `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price)
            VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
     [figNumber, condition, currency, avg, qavg],
+  );
+}
+
+/** Der Marktpreis (marktpreisSql) ist eine der Preisspalten von price_cache. */
+type Marktpreis = { marktpreis: NonNullable<Tabellen['price_cache']['avg_price']> };
+
+/** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
+export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
+  return dbh.get<Marktpreis>(
+    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
+     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
+     ORDER BY (condition = $3) DESC LIMIT 1`,
+    [setNumber, currency, zustand],
+  );
+}
+
+/** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
+export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
+  return dbh.get<Marktpreis>(
+    `SELECT ${marktpreisSql()} AS marktpreis FROM price_history
+        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
+        ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
+    [setNumber, currency, zustand],
   );
 }

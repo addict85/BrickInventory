@@ -1,5 +1,5 @@
 import { tRaw } from '../i18n.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 import { G, ico, setzeHtml } from './dom.js';
 
 // Toasts: kurze Meldungen unten im Bild. Gleiche Meldungen zählen statt zu stapeln, damit eine wiederholte
@@ -32,7 +32,11 @@ const _meldungenDerAbgelaufenenSitzung = new Set();
  */
 export function toast(msg, type = 'info', aktion, details) {
   const c = G('toasts');
-  if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m)))
+  if (
+    type === 'error' &&
+    !angemeldetesKonto &&
+    [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))
+  )
     return null;
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
   const schluessel = `${type}|${String(msg ?? '')}`;

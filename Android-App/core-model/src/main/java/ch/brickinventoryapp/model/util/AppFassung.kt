@@ -5,4 +5,5 @@ package ch.brickinventoryapp.model.util
  * BuildConfig; die Bereiche bekommen die Werte über Hilt (ViewModels) und
  * LocalAppFassung (Oberfläche).
  */
+
 data class AppFassung(val name: String, val code: Int)

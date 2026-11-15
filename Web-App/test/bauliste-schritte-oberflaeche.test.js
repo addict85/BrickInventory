@@ -14,9 +14,12 @@
  *   C  Zurücksetzen wieder class="btn bd" → rot: „Aufbau“
  *   E  (05.11.2026, UI-Prüfung 17 M14) Farbgruppe wieder ohne colorName() →
  *      rot: „Farbgruppen deutsch, Zusammenfassung nennt Sorten“ („Red“)
- *   F  (12.11.2026) plSchritt() in plRenderSets nicht gerufen → rot: „ein
+ *   F  (12.11.2026) plSchritt() in plRenderSets nicht gerufen (heute entfallen) → rot: „ein
  *      Hauptknopf …“; in plGenerate die getippte Nummer nicht übernommen →
  *      rot: ebenda (Fehler am Feld statt Liste)
+ *   H  (14.11.2026, UX-Prüfung 24 N11) in plRenderSets `btn-pl-gen` nicht
+ *      verborgen → rot: „Hinzufügen rechnet sofort …“ (sichtbar ohne Inhalt);
+ *      Leerzustand ohne textKey → rot: ebenda (sagt nicht, was zu tun ist)
  *   G  (12.11.2026, UX-Prüfung 19 M6) in plAddSet `await plGenerate()`
  *      entfernt → rot: „Hinzufügen rechnet sofort …“ und jede Prüfung über
  *      erstelle() (keine Liste ohne zweiten Schritt); in plRemoveSet das
@@ -33,7 +36,7 @@ const TEIL = {
   color_id: 4,
   color_name: 'Red',
   color_hex: 'C91A09',
-  quantity: 6,
+  total_quantity: 6,
 };
 
 async function erstelle(teile, nummern = '10294') {
@@ -70,7 +73,7 @@ test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
   }
 });
 
-test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ gesperrt mit Grund', async () => {
+test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ erst mit einem Set', async () => {
   const o = await oeffneOberflaeche({
     '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
     '/v1/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
@@ -81,13 +84,19 @@ test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ gesp
   try {
     await reiter(w, 'partslist');
     const haupt = () => [...d.querySelectorAll('#tab-partslist .btn.bp')].map(text);
-    const gen = d.getElementById('btn-pl-gen'),
-      hinweis = d.getElementById('pl-gen-hinweis');
+    const gen = d.getElementById('btn-pl-gen');
     assert.deepEqual(haupt(), ['Hinzufügen'], 'ohne Sets');
-    assert.equal(gen.getAttribute('aria-disabled'), 'true');
-    assert.equal(hinweis.hidden, false, 'der Grund steht nicht da');
-    assert.match(text(hinweis), /entsteht sofort/);
-    assert.ok(gen.getAttribute('aria-describedby').split(' ').includes('pl-gen-hinweis'));
+    assert.equal(gen.hidden, true, '„Neu berechnen“ ohne Inhalt sichtbar');
+    assert.match(
+      text(d.getElementById('pl-sets')),
+      /noch leer.*entsteht sofort/,
+      'der Leerzustand sagt nicht, was zu tun ist',
+    );
+    assert.equal(
+      d.querySelectorAll('#tab-partslist [data-i18n="pl.erst_set"]').length,
+      0,
+      'Leerzustand doppelt gesagt',
+    );
     assert.equal(d.querySelector('#pl-sets button'), null, 'der Leerzustand hat einen eigenen Knopf');
 
     d.getElementById('pl-setnr').value = '10294';
@@ -95,9 +104,7 @@ test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ gesp
     assert.ok(await warte(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'keine Liste');
     assert.ok(d.querySelector('#pl-result .pl-have-input'), 'die Tabelle fehlt');
     assert.deepEqual(haupt(), ['Hinzufügen'], 'mit Set');
-    assert.equal(gen.hasAttribute('aria-disabled'), false);
-    assert.equal(hinweis.hidden, true);
-    assert.equal((gen.getAttribute('aria-describedby') || '').includes('pl-gen-hinweis'), false);
+    assert.equal(gen.hidden, false, '„Neu berechnen“ fehlt mit Set');
   } finally {
     w.close();
   }
@@ -162,7 +169,10 @@ test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () =>
 });
 
 test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
-  const { w, d } = await erstelle([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', quantity: 10 }]);
+  const { w, d } = await erstelle([
+    TEIL,
+    { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 },
+  ]);
   try {
     assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
     assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);

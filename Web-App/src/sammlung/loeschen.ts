@@ -1,7 +1,5 @@
 /** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
  * Zeilen in den Papierkorb nehmen. */
-import { legeInPapierkorb, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
-import * as repo from './repository/loeschen';
 import type { SammlungKontext } from './kontext';
 
 export async function loescheTeil(
@@ -11,31 +9,26 @@ export async function loescheTeil(
   cid: number,
 ): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await legeInPapierkorb(t.db, 'teil', besitzer, pn, cid);
-    const r = await loescheManuellesTeil(t.db, besitzer, pn, cid);
-    if (r.changes === 0) return null;
-    // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
-    await repo.loescheTeilErfassungen(t.db, besitzer, pn, cid || 0);
-    return id;
+    const id = await t.bestand.legeInPapierkorb('teil', besitzer, pn, cid);
+    const r = await t.bestand.loescheManuell('part', besitzer, [pn, cid]);
+    return r.changes === 0 ? null : id;
   });
 }
 
 export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: string): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await legeInPapierkorb(t.db, 'figur', besitzer, fn);
-    const r = await loescheManuelleFigur(t.db, besitzer, fn);
-    if (r.changes === 0) return null;
-    await repo.loescheFigurErfassungen(t.db, besitzer, fn);
-    return id;
+    const id = await t.bestand.legeInPapierkorb('figur', besitzer, fn);
+    const r = await t.bestand.loescheManuell('fig', besitzer, [fn]);
+    return r.changes === 0 ? null : id;
   });
 }
 
 /** Nur das EIGENE Konto, nie das Blickfeld. Jedes Element einzeln, damit jedes
  * einzeln wiederherstellbar ist. */
 export async function loescheAllesEigene(k: SammlungKontext, uid: number) {
-  const sets = await k.loeschen.setsDesKontos(uid);
-  const teile = await k.loeschen.manuelleTeileDesKontos(uid);
-  const figuren = await k.loeschen.manuelleFigurenDesKontos(uid);
+  const sets = await k.sets.setsDesKontos(uid);
+  const teile = await k.bestand.manuell.teileDesKontos(uid);
+  const figuren = await k.bestand.manuell.figurenDesKontos(uid);
   const papierkorb: number[] = [];
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {

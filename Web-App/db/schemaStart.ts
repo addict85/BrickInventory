@@ -6,7 +6,6 @@ import type { Client, Pool } from 'pg';
 import { runMigrations, offeneMigrationen } from './migrate';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { logAndContinue } from '../src/infra/fehler';
-import { konfig } from '../src/infra/konfig';
 
 /** Was nach dem Einspielen der Basis in eine leere Datenbank geschieht (das erste
  * Konto). Die Datenbankschicht kennt keine Konten; wer den Zugang anlegt, gibt es mit. */
@@ -46,7 +45,13 @@ export async function initSchema(eigeneVerbindung: () => Promise<Client>, erstst
 // Starten web und jobs zugleich, migriert genau einer; der andere wartet.
 // Die Laufzeitrolle (compose.yaml) darf kein Schema ändern: Sie prüft nur,
 // ob der Dienst migration fertig ist, statt an CREATE zu scheitern.
-export async function initSchemaOnce(pool: Pool, initSchema: () => Promise<boolean>): Promise<void> {
+/** `systemPool` schreibt die Zeitzone, wenn die Laufzeitrolle nur prüft: global_settings liest sie nur (0117). */
+export async function initSchemaOnce(
+  pool: Pool,
+  initSchema: () => Promise<boolean>,
+  zeitzone: string,
+  systemPool: Pool = pool,
+): Promise<void> {
   const client = await pool.connect();
   try {
     // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout
@@ -55,33 +60,35 @@ export async function initSchemaOnce(pool: Pool, initSchema: () => Promise<boole
     await client.query('SET statement_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
     await client.query('RESET statement_timeout');
-    if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client);
+    if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client, zeitzone, systemPool);
     const neu = await initSchema();
     if (!neu) await pruefeMindeststand(client);
     // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
     // eben angelegten, leeren Datenbank.
     const applied = await runMigrations(client, { sichern: !neu });
-    await schreibeErfassungsZeitzone(client);
+    await schreibeErfassungsZeitzone(client, zeitzone);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
-    await client
-      .query(`SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`)
-      .catch(logAndContinue('db:pg_advisory_unlock'));
-    await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
-    await client.query('RESET statement_timeout').catch(logAndContinue('db:statement_timeout'));
+    // Aufräumen nach dem eigentlichen Ergebnis: Dessen Fehler zählt, nicht einer von hier.
+    for (const sql of [
+      `SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`,
+      'RESET lock_timeout',
+      'RESET statement_timeout',
+    ])
+      await client.query(sql).catch(logAndContinue(`db:aufräumen ${sql}`));
     client.release();
   }
 }
 
 /** Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
  * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet. */
-async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Promise<void> {
+async function schreibeErfassungsZeitzone(client: import('pg').ClientBase, zeitzone: string): Promise<void> {
   await client.query(
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
      WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`,
-    [konfig().erfassungZeitzone],
+    [zeitzone],
   );
 }
 
@@ -92,7 +99,7 @@ async function darfSchemaAendernAuf(client: import('pg').ClientBase): Promise<bo
 
 /** Für die Laufzeitrolle: Ein leeres oder nicht migriertes Schema hält den Start
  * an, statt dass Anfragen auf fehlende Spalten treffen. */
-async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
+async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string, systemPool: Pool): Promise<void> {
   const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
   const offen = leer ? [] : await offeneMigrationen(client);
   if (leer || offen.length)
@@ -100,7 +107,16 @@ async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
       `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
         'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
-  await schreibeErfassungsZeitzone(client);
+  // Meist hat der Dienst migration denselben Wert schon geschrieben; sonst die Systemrolle.
+  const da = await client.query("SELECT value FROM global_settings WHERE key = 'erfassung_zeitzone'");
+  if (da.rows[0]?.value !== zeitzone) {
+    const sys = await systemPool.connect();
+    try {
+      await schreibeErfassungsZeitzone(sys, zeitzone);
+    } finally {
+      sys.release();
+    }
+  }
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
 }
 

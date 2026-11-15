@@ -2,16 +2,13 @@ package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.model.fach.Teilerfassung
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.model.data.model.BrickColor
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.json.BrickJson
+import ch.brickinventoryapp.vertrag.BrickColor
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
+import ch.brickinventoryapp.vertrag.Part
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.teile.ui.TeileZiel
@@ -67,7 +64,7 @@ class KeineFarbeTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht, SavedStateHandle()))
 
     private fun koerperZu(methodeUndPfad: String): String {
         val i = pfade.anfragen.indexOfFirst { it == methodeUndPfad }
@@ -101,8 +98,8 @@ class KeineFarbeTest {
 
     @Test
     fun `9999 heisst keine Farbe, 0 bleibt Schwarz`() {
-        val liste = listOf(BrickColor(KEINE_FARBE, "[No Color/Any Color]"), BrickColor(0, "Black", "05131D"),
-                           BrickColor(4, "Red", "C91A09")).map { it.alsAnsicht() }
+        val liste = listOf(BrickColor(id = KEINE_FARBE, name = "[No Color/Any Color]"), BrickColor(id = 0, name = "Black", hex = "05131D"),
+                           BrickColor(id = 4, name = "Red", hex = "C91A09")).map { it.alsAnsicht() }
         assertEquals(listOf(0, 4), ohneKeineFarbe(liste).map { it.id })
         assertEquals("keine", farbName(liste, KEINE_FARBE, "[No Color/Any Color]", "keine"))
         assertEquals("Black", farbName(liste, 0, null, "keine"))
@@ -112,9 +109,9 @@ class KeineFarbeTest {
 
     @Test
     fun `ein fehlendes color_id ist keine Farbe, nicht Schwarz`() {
-        assertEquals(KEINE_FARBE, ApiJson.decodeFromString(Part.serializer(), """{"part_number":"3001"}""").colorId)
-        assertEquals(KEINE_FARBE, ApiJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
-        assertEquals(0, ApiJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
+        assertEquals(KEINE_FARBE, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001"}""").colorId)
+        assertEquals(KEINE_FARBE, BrickJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
+        assertEquals(0, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
         assertEquals(KEINE_FARBE, ManualItemDetailUiState().colorId)
         assertEquals(KEINE_FARBE, TeileZiel.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke").colorId)
     }

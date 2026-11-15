@@ -2,16 +2,16 @@
  * src/infra/abruf.ts gegen einen echten TLS-Server auf 127.0.0.1: Umleitungen
  * mit relativer, http- und fremder Adresse, Schleifen, zu grosse Körper und
  * Stille dürfen den Prozess nicht beenden; sie werden zu AbrufFehler.
- * downloadSetImage läuft über einen Agenten, der jeden Host auf den Testserver
+ * setBildHerunterladen läuft über einen Agenten, der jeden Host auf den Testserver
  * lenkt — so sieht der Test den echten Aufrufer, nicht nur den Helfer.
  *
  * Gegenproben (am 01.11.2026 gemessen):
- *   A  in src/katalog/bilder/setImages.ts den alten Abruf (https.get mit
- *      tryGet(res.headers.location)) zurückgeholt → rot: „downloadSetImage
+ *   A  in src/bilder/setImages.ts den alten Abruf (https.get mit
+ *      tryGet(res.headers.location)) zurückgeholt → rot: „setBildHerunterladen
  *      übersteht jede Umleitung" (uncaughtException ERR_INVALID_URL)
  *   B  in abruf.ts die Hostliste nur noch für die Startadresse geprüft
  *      (naechsteUmleitung ohne o.hosts, sprung() nur bei u === start) → rot:
- *      „fremder Host wird abgewiesen" und „downloadSetImage übersteht …"
+ *      „fremder Host wird abgewiesen" und „setBildHerunterladen übersteht …"
  *   C  in abruf.ts die Zählung im data-Handler von holeHttps entfernt → rot:
  *      „Körper ohne Längenangabe über der Grenze"
  *   D  in fremdeAdressen.ts den Kopf-Filter bei Hostwechsel entfernt → rot:
@@ -25,8 +25,9 @@ const https = require('node:https');
 const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const { holeHttps, oeffneHttps, AbrufFehler } = _req('src/infra/abruf.js');
-const { downloadSetImage } = _req('src/katalog/bilder/setImages.js');
+const { setBildHerunterladen } = _req('src/bilder/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');
@@ -91,8 +92,8 @@ const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, zeit
 const basis = () => `https://localhost:${port}`;
 
 test.before(async () => {
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
-  port = server.address().port;
+  await new Promise(r => server.listen(0, '127.0.0.1', () => r(null)));
+  port = portVon(server);
 });
 test.after(() => {
   server.closeAllConnections();
@@ -190,7 +191,7 @@ test('ein schweigender Server läuft ins Zeitlimit', async () => {
   assert.equal(await grund(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'zeitlimit');
 });
 
-test('downloadSetImage übersteht jede Umleitung', async t => {
+test('setBildHerunterladen übersteht jede Umleitung', async t => {
   const echt = https.globalAgent;
   https.globalAgent = new Umlenker();
   const nr = `abruftest-${process.pid}`;
@@ -202,8 +203,8 @@ test('downloadSetImage übersteht jede Umleitung', async t => {
     fs.rmSync(datei, { force: true });
   });
   for (const pfad of ['/http', '/fremd', '/ohne-ziel', '/kaputt', '/schleife'])
-    assert.equal(await downloadSetImage(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
+    assert.equal(await setBildHerunterladen(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
   assert.equal(fs.existsSync(datei), false);
-  assert.equal(await downloadSetImage('https://cdn.rebrickable.com/relativ', nr), `/images/sets/${nr}.jpg`);
+  assert.equal(await setBildHerunterladen('https://cdn.rebrickable.com/relativ', nr), `/images/sets/${nr}.jpg`);
   assert.equal(fs.readFileSync(datei).length, BILD.length);
 });

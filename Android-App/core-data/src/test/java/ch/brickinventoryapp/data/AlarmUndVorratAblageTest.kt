@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -50,13 +51,13 @@ class AlarmUndVorratAblageTest {
 
     @Test
     fun `ein gesetzter und ein geloeschter Alarm stehen sofort in der Ablage`() = runBlocking {
-        assertTrue(alarme.aktualisiereAlarme() is Ergebnis.Success)
+        assertTrue(alarme.aktualisiereAlarme() is Ergebnis.Erfolg)
         assertEquals(listOf("75192-1", "10294-1"), alarme.beobachteAlarme().first().liste.map { it.setNumber })
         assertEquals(listOf(Alarmrichtung.UNTER), alarme.beobachteAlarme("75192-1").first().liste.map { it.richtung })
 
-        alarme.setPreisalarm("75192-1", Alarmrichtung.UEBER, 800.0, Zustand.NEU)
+        alarme.setPreisalarm("75192-1", Alarmrichtung.UEBER, Geld.aus(800.0)!!, Zustand.NEU)
         val gesetzt = alarme.beobachteAlarme("75192-1").first().liste.single()
-        assertEquals(Alarmrichtung.UEBER to 800.0, gesetzt.richtung to gesetzt.schwelle)
+        assertEquals(Alarmrichtung.UEBER to Geld.aus(800.0), gesetzt.richtung to gesetzt.schwelle)
         assertEquals("der Name der Übersicht bleibt", "Falcon", gesetzt.name)
 
         alarme.deletePreisalarm("10294-1", Zustand.GEBRAUCHT)
@@ -68,13 +69,13 @@ class AlarmUndVorratAblageTest {
         alarme.aktualisiereAlarme()
         // Im Takt antwortet PfadServer ohne Netz; abschalten hiesse hier nichts.
         pfade.vorrang = { _, _ -> 503 to """{"success":false}""" }
-        assertTrue(alarme.aktualisiereAlarme() is Ergebnis.Error)
+        assertTrue(alarme.aktualisiereAlarme() is Ergebnis.Fehler)
         assertEquals(2, alarme.beobachteAlarme().first().liste.size)
     }
 
     @Test
     fun `Anlegen, Umbenennen und der Stern aendern den Vorrat in der Ablage`() = runBlocking {
-        assertTrue(teile.aktualisiereLagerortVorrat() is Ergebnis.Success)
+        assertTrue(teile.aktualisiereLagerortVorrat() is Ergebnis.Erfolg)
         fun vorrat() = runBlocking { teile.beobachteLagerortVorrat().first().liste.map { it.ort.name to it.vorgabe } }
         assertEquals(listOf("Keller" to false, "Regal" to true), vorrat())
         teile.benenneLagerortUm(1, alt = "Keller", name = "Estrich")

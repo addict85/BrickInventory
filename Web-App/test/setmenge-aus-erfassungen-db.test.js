@@ -157,12 +157,12 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
     for (const z of codeZeilen(txt)) {
-      for (const [was, muster] of [
+      for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
         ['setzt', setzt],
         ['schreibt fort', fortschreiben],
         ['bei Konflikt', beiKonflikt],
         ['legt an', legtAn],
-      ]) {
+      ])) {
         if (muster.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
       }
     }
@@ -183,7 +183,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // Die Muster oben finden jetzt nichts — das ist der Punkt, sagt aber allein
   // noch nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also einmal an
   // erfundenen Zeilen nachgewiesen, in genau der Form, die vorher im Baum
-  // stand (die Beispiele stehen so in src/sets/setService.ts, Fassung vor 0036).
+  // stand (die Beispiele stehen so in src/sets/dienst.ts, Fassung vor 0036).
   const proben = [
     ['UPDATE sets SET quantity = $1 WHERE user_id=$2', setzt],
     ['UPDATE sets SET quantity = quantity + $1 WHERE id=$2', fortschreiben],
@@ -194,7 +194,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
     ],
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
-  for (const [zeile, muster] of proben) {
+  for (const [zeile, muster] of /** @type {[string, RegExp][]} */ (proben)) {
     assert.ok(muster.test(zeile), `Das Muster greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
   }
   // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
@@ -202,12 +202,12 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
     'UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE parts SET quantity = COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a), 0)',
   ]) {
-    for (const [was, muster] of [
+    for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
       ['setzt', setzt],
       ['schreibt fort', fortschreiben],
       ['bei Konflikt', beiKonflikt],
       ['legt an', legtAn],
-    ]) {
+    ])) {
       assert.ok(!muster.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
     }
   }
@@ -223,7 +223,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   const SN = '10290-1';
 
   await katalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
-  // Zwei Konten halten dasselbe Set — der Haushaltszweig von getSets() fasst
+  // Zwei Konten halten dasselbe Set — der Haushaltszweig von setsLesen() fasst
   // sie zu EINER Kachel zusammen und muss die Mengen addieren.
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`, [haupt.id, SN, kind.id]);
   // Drei Erfassungen: zwei beim Hauptkonto (2+1), eine beim Kind (3).
@@ -243,7 +243,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   const H = require('./helpers/sources').bereichsSeite('sets');
 
   // ── Ein Konto ────────────────────────────────────────────────────────────
-  const eins = await H.getSets([haupt.id], { page_size: 60 });
+  const eins = await H.setsLesen([haupt.id], { page_size: 60 });
   const kachel = eins.sets.find(s => s.set_number === SN);
   assert.ok(kachel, `Das Set fehlt in der Antwort: ${JSON.stringify(eins.sets).slice(0, 300)}`);
   assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
@@ -257,7 +257,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   );
 
   // ── Haushalt ─────────────────────────────────────────────────────────────
-  const beide = await H.getSets([haupt.id, kind.id], { page_size: 60 });
+  const beide = await H.setsLesen([haupt.id, kind.id], { page_size: 60 });
   const zusammen = beide.sets.find(s => s.set_number === SN);
   assert.ok(zusammen, 'Das Set fehlt in der Haushaltsantwort');
   assert.equal(Number(zusammen.quantity), 6, `Haushalt, Erfassungen 2+1+3: erwartet 6, bekam ${zusammen.quantity}`);
@@ -268,7 +268,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   );
 
   // ── Detail ───────────────────────────────────────────────────────────────
-  const detail = await H.getSet(haupt.id, SN);
+  const detail = await H.setLesen(haupt.id, SN);
   assert.ok(detail, 'Das Set-Detail antwortet nicht');
   assert.equal(Number(detail.quantity), 3, `Detail eines Kontos: erwartet 3, bekam ${detail.quantity}`);
 
@@ -285,7 +285,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   );
   await db.run('UPDATE set_acquisitions SET quantity = 7 WHERE id=$1', [eine.id]);
 
-  const nachher = await H.getSets([haupt.id], { page_size: 60 });
+  const nachher = await H.setsLesen([haupt.id], { page_size: 60 });
   const neu = nachher.sets.find(s => s.set_number === SN);
   assert.equal(
     Number(neu.quantity),
@@ -294,7 +294,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
       'Liste die Menge nicht aus set_acquisitions.',
   );
 
-  const detail2 = await H.getSet(haupt.id, SN);
+  const detail2 = await H.setLesen(haupt.id, SN);
   assert.equal(Number(detail2.quantity), 8, `Das Detail folgt der Änderung nicht: ${detail2.quantity} statt 8`);
 
   // ── Und ohne Erfassung ist die Menge 0, nicht 1 ──────────────────────────
@@ -304,7 +304,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   // LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet dann
   // null Stueck.
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [haupt.id, SN]);
-  const leer = await H.getSets([haupt.id], { page_size: 60 });
+  const leer = await H.setsLesen([haupt.id], { page_size: 60 });
   const nullStueck = leer.sets.find(s => s.set_number === SN);
   assert.ok(
     nullStueck,

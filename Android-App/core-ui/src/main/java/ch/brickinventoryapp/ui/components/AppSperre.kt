@@ -68,5 +68,23 @@ class AppSperre(private val uhr: () -> Long, private val ablage: Ablage, private
         const val MINUTE_MS = 60_000L
         /** Die Wahl in den Einstellungen; 0 ist aus. */
         val WAHL = listOf(0, 1, 5, 15, 30)
+
+        /** Die Vorgabe einer neuen Installation mit Displaysperre. */
+        const val VORGABE_MINUTEN = 5
+
+        /**
+         * Neu installiert und mit Displaysperre: an. Ein Update ändert nichts, was der Nutzer
+         * bisher hatte; ohne Displaysperre gäbe es nichts, womit sich entsperren liesse.
+         */
+        fun vorgabe(neuInstalliert: Boolean, geraetGesichert: Boolean): Int =
+            if (neuInstalliert && geraetGesichert) VORGABE_MINUTEN else 0
+
+        /**
+         * Ob das Widget Geldwerte verdeckt: gesperrt, oder bei eingeschalteter Sperre schon im
+         * Hintergrund. Das Widget wird beim Ablauf der Frist nicht neu gezeichnet; wartete es
+         * darauf, stünden die Beträge bis zum nächsten Lauf offen auf dem Startbildschirm.
+         */
+        fun verdecktWidget(ablage: Ablage): Boolean =
+            ablage.gesperrt() || ablage.minuten() > 0 && ablage.hintergrundSeit() != null
     }
 }

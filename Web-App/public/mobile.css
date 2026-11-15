@@ -91,9 +91,9 @@
   .filterleiste > select { display: none; }
   /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
   .filterleiste.offen > select { display: block; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; }
-  /* Filterknopf und Ansicht teilen sich die erste Zeile, die Suche hat die zweite ganz. */
+  /* Am Telefon nur Karten (js/dom.js telefonBreite): Eine Tabellenzeile wäre eine Bildschirmhöhe hoch. */
   .filterleiste > .filter-knopf { order: -2; }
-  .filterleiste > .vtgl { order: -1; margin-left: auto; }
+  :is(.filterleiste, .filterzeile) > .vtgl { display: none; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
@@ -501,7 +501,8 @@
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
   .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
   [data-theme="brick"] nav { padding-left: 2px; padding-right: 2px; column-gap: 0; }
-  [data-theme="brick"] .ntab { padding-left: 0; padding-right: 0; }
+  /* Die Grundplatte ohne seitlichen Rand: Mit 2 × 16 px fehlte der Sammlungswahl der Platz, „Minifiguren“ brach in eine zweite Reihe. */
+  [data-theme="brick"] #app { padding-left: 0; padding-right: 0; }
   /* „Minifiguren“ berührt den Rand der Sammlungswahl nicht. */
   .sammlung-wahl button { gap: 4px; padding-left: 2px; padding-right: 2px; }
   .sammlung-wahl button .ico { width: 1rem; height: 1rem; }
@@ -530,7 +531,6 @@
   .bstat:not(:last-child):not(:nth-child(3))::after { content: "·"; margin: 0 0 0 .5em; color: var(--mut); order: -2; }
   /* Der Punkt erhöht die Zeile nicht: Mit seiner vollen Zeilenhöhe stand die Kennzahl ohne Punkt 2 px höher. */
   .bstat::after { line-height: 1; }
-  .bstat.bstat-erklaert::after { order: 0; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
   .bstat .bstat-s { display: none; }
@@ -543,7 +543,7 @@
     background: var(--sur); border-top: 1px solid var(--bdr);
     box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
   }
-  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 2px; }
+  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 0; font-size: var(--fs-0); }
 
   /* Noppenreihen schmaler skalieren, sonst wirken sie auf dem Telefon grob */
   [data-theme="brick"] .sc::after,
@@ -578,9 +578,10 @@
 /* ── Geringe Höhe: 200 % Zoom, Telefon quer ──────────────────────────────
    Kopf (52 px), Hinweisband und untere Leiste nahmen bei 640 × 450 fast die
    Hälfte der Höhe. Der Kopf weicht beim Rollen nach unten (Klasse aus
-   mobile.js), die untere Leiste wird schmaler und zeigt nur Symbole; der
-   Name bleibt für Vorleser erhalten. Breiter als 640 px steht die Leiste
-   oben unter dem Kopf und rückt mit ihm nach oben. */
+   mobile.js), die untere Leiste wird schmaler: Name neben dem Symbol, erst
+   unter 600 px nur Symbole (der Name bleibt für Vorleser erhalten) — Symbole
+   allein erklären „Bauliste“ und „Katalog“ nicht. Breiter als 640 px steht
+   die Leiste oben unter dem Kopf und rückt mit ihm nach oben. */
 @media (max-height: 500px) {
   header { transition: transform .2s ease; }
   .kopf-weg header { transform: translateY(-100%); }
@@ -590,9 +591,17 @@
   .kopf-weg nav { top: 0; }
 }
 @media (max-height: 500px) and (max-width: 640px) {
+  /* Ohne Kopf rückt die Sprungleiste ganz nach oben, statt eine Lücke über sich zu lassen. */
+  .kopf-weg :is(.konto-nav, #global-settings-grid > .einst-nav) { top: 0; }
   .ntab { padding: 10px 2px; gap: 0; }
-  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   main:not(#login-screen) { padding-bottom: 3.5rem; }
+}
+@media (max-height: 500px) and (max-width: 600px) {
+  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (max-height: 500px) and (min-width: 601px) and (max-width: 640px) {
+  .ntab { flex-direction: row; justify-content: center; gap: 4px; }
+  .ntab .tab-label { white-space: nowrap; }
 }
 @media (max-height: 500px) and (prefers-reduced-motion: reduce) {
   header, nav { transition: none; }
@@ -603,6 +612,7 @@
   .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: transform .2s ease; }
   .schrift-gross.kopf-weg header { transform: translateY(-100%); }
   .schrift-gross.kopf-weg nav:not(.einst-nav) { transform: translateY(100%); }
+  .schrift-gross.kopf-weg :is(.konto-nav, #global-settings-grid > .einst-nav) { top: 0; }
 }
 @media (max-width: 640px) and (prefers-reduced-motion: reduce) {
   .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: none; }
@@ -631,28 +641,26 @@
   .erfassen-leiste .import-menue > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
   .erfassen-leiste .import-menue :is(.import-datei, .import-pfeil) { display: none; }
   .erfassen-leiste .import-menue .import-mehr { display: inline-block; width: 22px; height: 22px; }
-  .erfassen-leiste .import-text, #tab-gallery .filter-text { display: none; }
-  :is(.erfassen-leiste, #tab-gallery) .nur-telefon { display: inline; }
+  .erfassen-leiste .import-text, .filterleiste .filter-text { display: none; }
+  :is(.erfassen-leiste, .filterleiste) .nur-telefon { display: inline; }
   .erfassen-leiste .import-klappe { left: auto; right: 0; width: min(18rem, calc(100vw - 32px)); }
+  :root { --schwebend-unten: calc(4.75rem + env(safe-area-inset-bottom)); --schwebend-hoehe: 52px; }
   .knopf-schwebend {
-    position: fixed; z-index: 90; right: 16px; bottom: calc(4.75rem + env(safe-area-inset-bottom));
-    min-height: 52px; padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
+    position: fixed; z-index: 90; right: 16px; bottom: var(--schwebend-unten);
+    min-height: var(--schwebend-hoehe); padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
   }
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
-  /* Merkliste: Jeder Filter so breit wie sein längster Eintrag, sonst eine eigene Zeile („Alle Zuständ…“ bei 320 px). */
-  #tab-wanted .filterzeile > select { flex: 1 1 auto; min-width: 0; }
-  /* Katalog: Suche, Thema und Sortierung je über die ganze Breite, die beiden Jahre nebeneinander. Zu dritt in
-     einer Zeile fehlte den Jahresfeldern der Platz für „Jahr ab…“, als Fliesstext umbrach „Jahr ↓“ allein. */
-  #tab-catalog .filterzeile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
-  #tab-catalog .filterzeile > :is(#cat-search, #cat-theme, #cat-sort) { grid-column: 1 / -1; max-width: none !important; width: 100% !important; }
-  #tab-catalog .filterzeile > select { min-width: 0; width: 100%; }
+  /* Katalog aufgeklappt: die beiden Jahre nebeneinander, sie gehören zusammen. */
+  #tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to) { flex: 1 1 40%; width: auto; }
   /* Set hinzufügen: Preis und Währung brauchen die Breite der ganzen Zeile, in einer halben Spalte blieb für „z. B. 79,99“ nichts. */
   .erfassen-raster > .fg:has(> .preis-mit-waehrung) { grid-column: 1 / -1; }
+  /* Bauliste: das Feld für mehrere Setnummern über die ganze Breite, „Hinzufügen“ darunter. */
+  .pl-setnr { flex-basis: 100%; }
   /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
      Kartentext übereinander und waren beide nicht zu lesen. */
   :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
-  /* Die letzte Karte rollt unter dem schwebenden Knopf hervor. */
-  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: 9rem; }
+  /* Die letzte Zeile rollt über dem schwebenden Knopf aus: Abstand bis zu seiner Oberkante und etwas Luft. */
+  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: calc(var(--schwebend-unten) + var(--schwebend-hoehe) + 1rem); }
 
   /* Kennzahlen umbrechend: Mit fünfstelligen Zahlen passte die Zeile nicht mehr und schob die Seite auf. */
   .brick-stats { flex-wrap: wrap; gap: .35rem; margin-bottom: var(--sp-3); }
@@ -662,8 +670,8 @@
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
 
   /* Filter als Symbol, daneben Suche und Ansicht in einer Zeile. */
-  #tab-gallery .filterleiste > .filter-knopf { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
-  #tab-gallery .filterleiste > input.suchfeld { order: -1; flex: 1 1 8rem; }
+  .filterleiste > .filter-knopf { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  .filterleiste > input.suchfeld { flex: 1 1 8rem; }
 
   /* Das Kartenbild 4:3 statt quadratisch: eine Karte ist so ein Viertel kürzer. */
   #gallery .sc > .sci { aspect-ratio: 4 / 3; }
@@ -672,8 +680,7 @@
    (zweizeilig lag er über dem Suchfeld). Ebenso beim Rollen nach unten, wo er sonst Karten verdeckt;
    den Namen trägt aria-label. */
 @container haupt (max-width: 20.5em) {
-  #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 100%; }
-  #tab-catalog .filterzeile { grid-template-columns: minmax(0, 1fr); }
+  .filterleiste > input.suchfeld { flex: 1 1 100%; }
   .brick-stats { flex-wrap: wrap; }
   .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
   .knopf-schwebend > span { display: none; }
@@ -696,10 +703,11 @@
   .kopf-weg .knopf-schwebend > span { display: none; }
   /* Tippziel am Telefon: Der Zeilenknopf einer Tabelle wird so hoch wie ein Finger. */
   .zeile-oeffnen { min-height: 44px; min-width: 44px; }
-  .toast-zu { min-width: 44px; min-height: 44px; }
+  .toast-zu { min-width: 44px; min-height: 44px; top: 0; right: 0; }
+  .toast:has(> .toast-zu) { padding-right: 48px; }
 }
 @container haupt (min-width: 15em) and (max-width: 22em) {
-  #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
+  .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
 }
 /* Sehr grosse Schrift: Schwebend lag der Knopf über Suchfeld und Kennzahlen;
    er steht dann rechts beim Titel unter „•••“, der Titel behält seine Breite. */
@@ -708,13 +716,22 @@
   .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
     min-height: 44px; padding: 0; box-shadow: none; }
 }
+/* Geringe Höhe (200 % Zoom auf 1280 × 900): Schwebend deckte der Knopf bei 450 px Höhe einen Teil jeder
+   dritten Karte. Er steht dann ebenso beim Titel. */
+@media (max-width: 640px) and (max-height: 500px) {
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { min-height: 96px; }
+  .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
+    min-height: 44px; padding: 0; box-shadow: none; }
+  .erfassen-leiste .knopf-schwebend > span { display: none; }
+}
 
 /* Set-Dialog am Telefon und bei geringer Höhe (200 % Zoom auf 1440 × 900): kleines Bild links, Wert und
    Gewinn daneben, die übrigen Angaben darunter. Sonst füllte das Bild den ersten Bildschirm. */
 @media (max-width: 640px), (max-height: 600px) and (max-width: 899px) {
   #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
   #set-modal .m-kopfteil :is(#m-det, #m-det-links) > * { grid-column: 1 / -1; }
-  #set-modal .m-kopfteil .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
+  #set-modal .m-kopfteil .zoom-knopf { grid-column: 1; grid-row: 1; }
+  #set-modal .m-kopfteil .mimg { max-height: none; margin: 0; }
   #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
   #set-modal .wk-wert { font-size: var(--fs-4); }
 }
@@ -725,29 +742,27 @@
 @container setdialog (max-width: 19rem) {
   #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
   #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 1; grid-row: auto; }
-  #set-modal .m-kopfteil .mimg { width: 7.5rem; }
+  #set-modal .m-kopfteil .zoom-knopf { width: 7.5rem; }
 }
 
-/* Die Erklärung zu „0 Teile“ bleibt auch am Telefon stehen. */
+/* Die Erklärung zu „0 Teile“ steht am Telefon als eigene Zeile unter den Kennzahlen: In der Zeile riss
+   sie „0 Teile“ von den Minifiguren und liess einen doppelten Punkt stehen. */
 @media (max-width: 640px) {
-  .brick-stats:has(.bstat-erklaert) { flex-wrap: wrap; }
-  .bstat.bstat-erklaert { flex-wrap: wrap; flex-direction: row; border-radius: 12px; }
-  .bstat.bstat-erklaert .bstat-v { order: -1; }
-  .bstat.bstat-erklaert .bstat-s { display: block; flex: 1 1 100%; order: 1; font-size: var(--fs-0); color: var(--mut); }
+  .bstat-hinweis:not(:empty) { display: block; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); font-size: var(--fs-1); color: var(--mut); }
 }
 
-/* Hintergrundarbeiten am Telefon: Beschriftung und Wert in einer Zeile, leere
-   Felder weg. Jede Zelle stand vorher zweizeilig; die Seite war 7300 px lang. */
+/* Hintergrundarbeiten am Telefon: Beschriftung links, die Werte untereinander in der zweiten Spalte, die
+   umbrechen darf. In einer Flexzeile ohne Umbruch drückten Name, Etikett und Hinweis die Karte breiter als das Fenster. */
 @media (max-width: 640px) {
   .mon-einzeln > summary { min-height: 44px; }
-  .mon-tabelle td::before { flex: 0 0 6.5rem; }
-  .mon-tabelle td { flex-wrap: nowrap; align-items: baseline; }
-  .mon-tabelle td > * { min-width: 0; }
+  .mon-tabelle td { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; justify-items: start; }
+  .mon-tabelle td > * { grid-column: 2; max-width: 100%; min-width: 0; }
+  .mon-rolle { white-space: normal; }
   .mon-tabelle td:empty, .mon-tabelle td:has(> .mon-knoepfe:empty) { display: none; }
 }
 @container haupt (max-width: 20.5em) {
-  .mon-tabelle td { flex-wrap: wrap; }
-  .mon-tabelle td::before { flex-basis: 100%; }
+  .mon-tabelle td { grid-template-columns: minmax(0, 1fr); }
+  .mon-tabelle td > * { grid-column: 1; }
 }
 
 /* Auftragsarten am Telefon als kompakte Zeile: Name, nur Zahlen ungleich null,
@@ -798,4 +813,21 @@
   .alarm-ue { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "bild text" ". stand" ". schwelle" ". loeschen"; }
   .alarm-ue-stand { align-items: flex-start; }
   .alarm-ue-loeschen { justify-self: start; }
+}
+
+/* Teile am Telefon auch als kompakte Liste: Eine Karte war 150 px hoch, bei 300 Teilen rollte man ewig.
+   Die Wahl Karten/Liste ist dieselbe wie am Desktop (#parts-view); die Liste setzt die Karten als Zeilen,
+   denn eine Tabellenzeile wäre am Telefon eine Bildschirmhöhe hoch. */
+@media (max-width: 640px) {
+  #tab-parts .filterleiste > .vtgl { display: flex; flex: none; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) :is(.parts-list, .parts-grid) { grid-template-columns: minmax(0, 1fr); gap: .4rem; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card {
+    display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) auto; grid-template-areas: "bild name mehr" "bild num mehr" "bild farbe mehr";
+    column-gap: .75rem; align-items: center; padding: .4rem .75rem; text-align: left; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-img { grid-area: bild; width: 2.75rem; height: 2.75rem; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-name { grid-area: name; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-num { grid-area: num; margin: 0; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .part-color { grid-area: farbe; justify-content: flex-start; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card > .kachel-mehr { grid-area: mehr; text-align: right; }
+  #tab-parts:has(#parts-view option[value="table"]:checked) .part-card .part-qty { margin: 0; }
 }

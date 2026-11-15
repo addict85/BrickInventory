@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
 export interface AnleitungsZeile {
   id: number;
@@ -17,23 +17,12 @@ export function anleitungenDesSets(db: DbSchnittstelle, setNumber: string) {
   return db.all<AnleitungsZeile>('SELECT * FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
-/** Zählen und Stand liefern in einem Schritt, wie die Anmeldebremse. */
-export function zaehleQuellenAufruf(db: DbSchnittstelle, key: string) {
-  return db.get(
-    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
-     ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()
-       WHERE rate_limit_attempts.first_at < NOW() - INTERVAL '1 day'
-     RETURNING key`,
-    [key],
-  );
-}
-
 export function loescheAnleitungenDesSets(db: DbSchnittstelle, setNumber: string) {
   return db.run('DELETE FROM shared_instructions WHERE set_number = $1', [setNumber]);
 }
 
 export function hatBrickinstructions(db: DbSchnittstelle, setNumber: string) {
-  return db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
+  return db.get<Treffer>("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
     setNumber,
   ]);
 }

@@ -4,7 +4,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.background
@@ -24,7 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.ui.components.KachelAusgleich
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
@@ -48,6 +48,7 @@ import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.LocalSteinDekor
 import ch.brickinventoryapp.ui.theme.lichtStreifen
 
@@ -65,7 +66,7 @@ fun CatalogSetCard(
     val istNoppe = LocalIsNoppeTheme.current
     val istGlanz = LocalIstGlanz.current
     // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
-    // --faecher-ton in js/catalog.js. Ohne Thema-Nummer gibt es keinen
+    // --faecher-ton in js/katalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
     val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
     val besitz = set.ownedQuantity.coerceAtLeast(1)
@@ -127,11 +128,13 @@ fun CatalogSetCard(
                     }
                 }
                 // Der Name zuerst, wie er vorgelesen wird; Nummer, Jahr und Teile darunter.
+                // Ein kurzer Name lässt keine Lücke; die Zeile fehlt am Fuss (KachelAusgleich).
+                var namensZeilen by remember { mutableIntStateOf(2) }
                 Box {
-                    Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                    Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                            maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
                         Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -145,14 +148,15 @@ fun CatalogSetCard(
                                     ImageVector.vectorResource(R.drawable.ic_parts_bricks),
                                     contentDescription = null,
                                     tint = Color.Unspecified,
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(mitSchrift(13.dp))
                                 )
+                                // Die Zahl mit Wort: „500“ allein neben dem Steinsymbol las sich wie ein Preis.
                                 val teile = set.numParts ?: 0
-                                Text(fmtInt(teile), Modifier.vorgelesenAls(
-                                    pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
+                                Text(pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile)),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
+                        KachelAusgleich(2 - namensZeilen)
                     }
                     if (besitzAnsage != null) Box(Modifier.semantics { contentDescription = besitzAnsage })
                 }

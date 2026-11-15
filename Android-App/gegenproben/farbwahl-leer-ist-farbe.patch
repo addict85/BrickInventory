@@ -1,0 +1,17 @@
+Gegenprobe: Farbwahl.aus nimmt einen leeren Text als Farbe
+Modul: core-model
+Test: ch.brickinventoryapp.model.FachtypenTest
+Rot: leer heisst alle Farben
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt
+@@ -13,7 +13,7 @@
+     val wert: String? get() = (this as? Farbe)?.name
+ 
+     companion object {
+-        fun aus(text: String?): Farbwahl = text?.takeIf { it.isNotBlank() }?.let(::Farbe) ?: Alle
++        fun aus(text: String?): Farbwahl = text?.let(::Farbe) ?: Alle
+     }
+ }
+ 

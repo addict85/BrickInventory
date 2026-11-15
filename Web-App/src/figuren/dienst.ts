@@ -1,4 +1,5 @@
 import { logAndContinue } from '../infra/fehler';
+import { mitVersion } from '../infra/setNummer';
 import type { KatalogZeile } from './zeilen';
 import type { FigurenKontext } from './kontext';
 export type { FigurTeil, KatalogZeile } from './zeilen';
@@ -20,9 +21,10 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
   let kat = await katalogTeile(kx, figNumber);
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const elternSet = await kx.figurTeile.setMitFigur(figNumber);
-    if (elternSet)
-      await kx.nacharbeit.figurenAnreichern(elternSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
-    else await kx.nacharbeit.setTeileAnreichern(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
+    const anreichern = elternSet
+      ? kx.katalog.reichereSetFigurenAn(elternSet.set_number)
+      : kx.katalog.reichereSetTeileAn(figNumber);
+    await anreichern.catch(logAndContinue('figuren:anreichern'));
     kat = await katalogTeile(kx, figNumber);
   }
   const jeTeil = new Map(kat.map(r => [`${r.part_number}|${r.color_id}`, r]));
@@ -35,7 +37,13 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
     };
   });
   setImmediate(() => {
-    kx.nacharbeit.setBilderLaden(figNumber).catch(logAndContinue('figuren:downloadSetImages'));
+    kx.auftraege
+      .stelleAuftragEin(
+        'bilder',
+        { set_number: figNumber, nur_bilder: true },
+        { schluessel: `bilder:${mitVersion(figNumber)}:nur`, maxVersuche: 3 },
+      )
+      .catch(logAndContinue('figuren:downloadSetImages'));
   });
   return { parts, source: kat.length ? 'enriched' : 'csv_cache' };
 }

@@ -1,0 +1,18 @@
+Gegenprobe: Die Frage nach einem neuen Serverschlüssel erfährt nie, dass das System CT prüft
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: mit CT-Pflicht genuegt fuer einen neuen Serverschluessel ein Tipp
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+index 6ec1f8a..0789922 100644
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -302,7 +302,7 @@ class PinVertrauen(
+         if (gemerkt == neu) return
+         if (gemerkt == null || ausCode) return pins.merkePin(blattPinSchluessel(schluessel), neu)
+         throw gemeldet(ZertifikatUngeklaert(schluessel, neu, ZertifikatUngeklaert.Art.SCHLUESSEL_NEU,
+-            erwartet = gemerkt, ctErzwungen = ctErzwungen))
++            erwartet = gemerkt, ctErzwungen = false))
+     }
+ 
+     /** Beide sind System-Wurzeln derselben bekannten Familie; das O= im Subjekt wählt jede CA selbst. */

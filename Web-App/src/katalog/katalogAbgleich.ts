@@ -1,7 +1,5 @@
 /** Alles hier gilt für alle Konten. */
 import { setTimeout as warte } from 'node:timers/promises';
-import { downloadFile, lookupPart } from './quellen';
-import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import {
@@ -37,7 +35,6 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
   const parts = await k.csvKatalog.inventarTeileOhneErsatz(invId);
 
   if (!parts.length) {
-    // Noch keine Teile im CSV-Zwischenspeicher — still überspringen.
     return;
   }
   fs.mkdirSync(IMG_DIR, { recursive: true });
@@ -52,19 +49,17 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
       if (fs.existsSync(dest)) {
         imageLocal = rel;
       } else {
-        await k.drossel.hintergrund.waitForSlot();
-        await downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
+        await k.fremdquellen.drossel.hintergrund.waitForSlot();
+        await k.fremdquellen.quellen.downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
-          await generateThumb(rel).catch(logAndContinue('katalog-sync:generateThumb'));
+          await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('katalog-sync:vorschauErzeugenAus'));
           imageLocal = rel;
         }
       }
     }
 
     if (total === 0) {
-      // Name, Farbe und Bild in die Kataloge, Menge in die Setliste.
-      const melde = logAndContinue('katalogSync:setteil');
-      await merkeTeil(k, p.part_number, p.part_name).catch(melde);
+      await merkeTeil(k, p.part_number, p.part_name);
       await merkeTeilFarbe(
         k,
         p.part_number,
@@ -73,12 +68,10 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
         p.color_hex,
         p.image_url,
         imageLocal,
-      ).catch(melde);
-      await merkeSetTeil(k, n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
-    } else if (imageLocal) {
-      await setzeTeilBildLokal(k, p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(
-        logAndContinue('katalogSync:bild'),
       );
+      await merkeSetTeil(k, n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+    } else if (imageLocal) {
+      await setzeTeilBildLokal(k, p.part_number, p.color_id ?? KEINE_FARBE, imageLocal);
     }
   }
 
@@ -87,12 +80,12 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
   await merkeFiguren(
     k,
     figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })),
-  ).catch(logAndContinue('katalog-sync:figur merken'));
+  );
   await merkeSetFiguren(
     k,
     n,
     figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })),
-  ).catch(logAndContinue('katalog-sync:setfigur merken'));
+  );
 }
 
 async function syncAllMissing(k: KatalogKontext) {
@@ -108,7 +101,7 @@ async function teilfarbenbilderNachtragen(k: KatalogKontext) {
   let done = 0;
   for (const row of rows) {
     try {
-      const info = await lookupPart(row.part_number, row.color_id);
+      const info = await k.fremdquellen.quellen.lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
         await k.csvKatalog.ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;

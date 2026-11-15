@@ -1,23 +1,29 @@
 /** Bilder eines Sets laden: Teile und Figuren aus dem CDN in den eigenen Ordner,
  * unter einer Sperre je Set, die auch andere Prozesse sehen. */
-import { cdnImageLimiter } from './rateLimiter';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
-import { BILD_KOPFZEILEN } from './quellen';
+import { BILD_KOPFZEILEN } from '../fremdquellen';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
-import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
+import { bildEndung, dateiTeil, zielImOrdner } from '../bilder';
 import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } from '../infra/appPaths';
-import { generateThumb } from './bilder/thumbs';
 import type { KatalogKontext } from './kontext';
+
+/** Wie viele Bilder gerade noch zu laden sind; die Verwaltung zeigt es in der Kachel. */
+export const BILDLADE_ZAEHLER = 'imgdl_pending_count';
+async function bildladeZaehler(k: KatalogKontext, delta: number): Promise<void> {
+  const d = Math.round(Number(delta) || 0);
+  if (d) await k.auftraege.zaehleZustand(BILDLADE_ZAEHLER, d).catch(logAndContinue('teile-enrich:imgDlAdd'));
+}
 
 /** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
 async function downloadImage(
+  k: KatalogKontext,
   imgUrl: string | null | undefined,
   partNum: string,
   colorId: number,
@@ -37,9 +43,9 @@ async function downloadImage(
   const rel = `${webBase}${file}`;
   if (fs.existsSync(dest)) return rel;
   fs.mkdirSync(IMG_DIR, { recursive: true });
-  if (!(await ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
+  if (!(await k.bilder.ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
   try {
-    await generateThumb(rel).catch(logAndContinue('teile-enrich:generateThumb'));
+    await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   } catch (e) {
     meldeFehler('teile-enrich:vorschau', e);
   }
@@ -70,11 +76,13 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
   const rel = `/images/parts/${file}`;
 
   if (!fs.existsSync(dest)) {
-    await cdnImageLimiter.acquire();
+    await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
-      console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
-    ).finally(() => cdnImageLimiter.release());
+    const ok = await k.bilder
+      .ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
+        console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
+      )
+      .finally(() => k.cdnDrossel.release());
     if (!ok) return;
   }
 
@@ -100,7 +108,7 @@ async function holeBildSperre(
     lockClient = null;
   }
   if (!lockClient) return { lockClient, haveXlock };
-  const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
+  const deadline = k.uhr.jetzt() + 180000; // max. 3 Min auf anderen Worker warten
   while (true) {
     try {
       haveXlock = await repo.versucheBildSperre(lockClient, n);
@@ -113,7 +121,7 @@ async function holeBildSperre(
       lockClient.release();
       return 'belegt';
     }
-    if (Date.now() > deadline) {
+    if (k.uhr.jetzt() > deadline) {
       console.warn(`[img-dl] ${n}: Wartezeit auf anderen Worker überschritten — fahre ohne Lock fort`);
       break; // best effort ohne Lock weitermachen
     }
@@ -123,11 +131,11 @@ async function holeBildSperre(
 }
 
 // Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
-const _downloadLocks = new Map();
+const sperren = (k: KatalogKontext) => k.faecher.fach('setBilder:sperren', () => new Map<string, Promise<void>>());
 
 async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBusy = false) {
   const n = mitVersion(setNumber);
-
+  const _downloadLocks = sperren(k);
   if (_downloadLocks.has(n)) {
     await _downloadLocks.get(n);
     return;
@@ -150,7 +158,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
 
   let _pendingAdded = 0; // Anteil dieses Batches am globalen imgDl-Zähler
   let _flushed = 0; // davon bereits an den Zähler gemeldet (Rest im finally)
-  let _lastFlush = Date.now();
+  let _lastFlush = k.uhr.jetzt();
   try {
     const needsImg = await k.teileAnreicherung.bilderOhneDatei(n);
     if (!needsImg.length) return;
@@ -159,7 +167,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
-    await k.auftraege.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    await bildladeZaehler(k, _pendingAdded);
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -167,10 +175,10 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     const flushProgress = async (force?: boolean) => {
       const delta = done - _flushed;
       if (delta <= 0) return;
-      if (!force && Date.now() - _lastFlush < 1000) return;
+      if (!force && k.uhr.jetzt() - _lastFlush < 1000) return;
       _flushed += delta;
-      _lastFlush = Date.now();
-      await k.auftraege.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
+      _lastFlush = k.uhr.jetzt();
+      await bildladeZaehler(k, -delta);
     };
     await Promise.all(
       needsImg.map(async p => {
@@ -185,7 +193,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
     // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await k.auftraege.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    if (_rest > 0) await bildladeZaehler(k, -_rest);
     if (lockClient) {
       if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
       lockClient.release();

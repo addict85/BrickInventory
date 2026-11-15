@@ -29,8 +29,8 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [id]);
     await db.pool.end().catch(() => {});
   });
-  const voll = await A.createToken(id, 'voll', false, null, { scope: 'voll' });
-  const app = await A.createToken(id, 'app', false, null, { scope: 'app' });
+  const voll = await A.tokenAnlegen(id, 'voll', false, null, { scope: 'voll' });
+  const app = await A.tokenAnlegen(id, 'app', false, null, { scope: 'app' });
 
   await t.test('ein Token mit Scope voll trägt true, mit app false', async () => {
     assert.equal((await A.pruefeToken(voll)).nutzer?.is_admin, true);

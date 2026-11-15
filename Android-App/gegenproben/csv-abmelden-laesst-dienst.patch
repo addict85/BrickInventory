@@ -6,11 +6,11 @@ Rot: nach dem Abmelden ist der Balken leer
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
-@@ -41,7 +41,6 @@
+@@ -40,7 +40,6 @@
          if (!folgt.compareAndSet(false, true)) return
          try {
              angemeldet.distinctUntilChanged().collectLatest { an ->
--                if (!an && _zustand.value.running) dienst.stop()
+-                if (!an && _zustand.value.lauf.laeuft) dienst.stop()
                  _zustand.value = CsvImportUiState()
-                 if (an) csvImport.beobachte().collect { verarbeite(it.alsAnsicht()) }
+                 if (an) csvImport.beobachte().collect { verarbeite(it) }
              }

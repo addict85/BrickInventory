@@ -7,6 +7,7 @@ package ch.brickinventoryapp.model.ui
  * werden. Unbekannte Wörter bleiben stehen. Den Wortschatz gleicht FarbeDeutschTest
  * mit der Webapp ab.
  */
+
 object FarbeDeutsch {
     val woerter: Map<String, String> = mapOf(
         // Modifikatoren

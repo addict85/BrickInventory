@@ -157,7 +157,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   const H = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
 
-  const teile = await H.getManualParts([uid], uid);
+  const teile = await H.manuelleTeileListe([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
   assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
   assert.equal(
@@ -166,7 +166,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
     `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` + 'Nummer nicht aus bl_zuordnung',
   );
 
-  const figs = await M.getManualMinifigs([uid], uid);
+  const figs = await M.manuelleFigurenAbfrage([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-9');
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
   assert.equal(fig.bl_fig_number, 'sw9999', `bl_fig_number kam als ${fig.bl_fig_number} statt sw9999`);
@@ -179,7 +179,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   await db.run(`UPDATE bl_zuordnung SET bl_id='3070neu' WHERE art='part' AND rb_id='3070b'`);
   await db.run(`UPDATE bl_zuordnung SET bl_id='sw0000'  WHERE art='fig'  AND rb_id='fig-9'`);
 
-  const teile2 = await H.getManualParts([uid], uid);
+  const teile2 = await H.manuelleTeileListe([uid], uid);
   const teil2 = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3070b');
   assert.equal(
     teil2.bl_part_number,
@@ -187,7 +187,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
     `Die Teileliste folgt der Zuordnung nicht: ${teil2.bl_part_number} statt 3070neu`,
   );
 
-  const figs2 = await M.getManualMinifigs([uid], uid);
+  const figs2 = await M.manuelleFigurenAbfrage([uid], uid);
   const fig2 = (Array.isArray(figs2) ? figs2 : figs2.minifigs || []).find(f => f.fig_number === 'fig-9');
   assert.equal(
     fig2.bl_fig_number,
@@ -202,7 +202,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   // NULL-Wert in seine eigene Gruppe, und jedes Teil ohne Zuordnung stünde
   // einzeln in der Liste.
   await db.run(`DELETE FROM bl_zuordnung WHERE art='part' AND rb_id='3070b'`);
-  const teile3 = await H.getManualParts([uid], uid);
+  const teile3 = await H.manuelleTeileListe([uid], uid);
   const teil3 = (Array.isArray(teile3) ? teile3 : teile3.parts || []).find(p => p.part_number === '3070b');
   assert.equal(
     teil3.bl_part_number,
@@ -243,6 +243,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
   // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
   // Gruppenschlüssel als fertige Spalte (src/teile/partsSummary.ts).
+  /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts.bl_part_number', /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
     ['setzt minifigs.bl_fig_number', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],

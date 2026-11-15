@@ -1,7 +1,6 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import { raeumeBildCacheAuf } from '../katalog';
 import { fehlertext } from '../infra/fehler';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
 import type { VerwaltungKontext } from './kontext';
@@ -25,12 +24,11 @@ async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<v
 function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['abgelaufene Tokens', k.konto.purgeExpiredTokens],
-      ['Anmeldezähler', k.konto.raeumeAnmeldezaehlerAuf],
+      ...k.konto.aufraeumSchritte('stuendlich'),
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
-      ['PDF-Aufträge', k.auftraege.cleanOldPdfJobs],
+      ['PDF-Aufträge', k.katalog.pdf.raeumeAuf],
       ['alte Aufträge', k.auftraege.raeumeErledigteAuf],
-      ['verfallene Bildwünsche', k.katalog.loescheVerfallene],
+      ['verfallene Bildwünsche', k.bilder.loescheVerfallene],
       ['Idempotenzschlüssel', k.idempotenz.raeumeIdempotenzAuf],
     ],
     lauf,
@@ -40,10 +38,9 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
 function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['Preisverlauf', k.finanzen.purgeAltePreise],
-      ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
-      ['Bild-Cache', raeumeBildCacheAuf],
-      ['Verwaltungsprotokoll', () => k.konto.raeumeProtokollAuf()],
+      ['Preisverlauf', k.finanzen.loescheAltePreise],
+      ...k.konto.aufraeumSchritte('taeglich'),
+      ['Bild-Cache', () => k.bilder.raeumeBildCacheAuf(k.bilder.bildGrenzen().cacheMaxBytes, k.uhr.jetzt())],
       ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(k.db)],
     ],
     lauf,

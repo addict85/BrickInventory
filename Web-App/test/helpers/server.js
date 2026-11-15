@@ -34,7 +34,7 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const { testZugang, testDienste } = require('./sources');
   const gestellt = alsSitzung(sitzung);
   const app = _req('startup/app.js').baueApp({
-    pool: testZugang().pool,
+    pool: testZugang().systemWebPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: testDienste(),
@@ -46,7 +46,7 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);
-  return { app, srv, base: `http://localhost:${srv.address().port}`, schliessen };
+  return { app, srv, base: `http://localhost:${portVon(srv)}`, schliessen };
 }
 
 /**
@@ -70,7 +70,15 @@ function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);
-  return { app, srv, base: `http://localhost:${srv.address().port}`, schliessen };
+  return { app, srv, base: `http://localhost:${portVon(srv)}`, schliessen };
 }
 
-module.exports = { testServer, routerServer };
+/** Der Port eines lauschenden Servers (net, http, https): address() ist erst danach ein AddressInfo.
+ * @param {{ address(): string | import('node:net').AddressInfo | null }} srv @returns {number} */
+function portVon(srv) {
+  const a = srv.address();
+  if (!a || typeof a === 'string') throw new Error('Server lauscht nicht auf einem TCP-Port');
+  return a.port;
+}
+
+module.exports = { testServer, routerServer, portVon };

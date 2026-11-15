@@ -3,8 +3,8 @@
 import { tRaw } from '../i18n.js';
 import { esc, html } from './escapen.js';
 import { ico } from './dom.js';
-import { fmtDatum, fmtGeld, fmtGeldCode, fmtN } from './format.js';
-import { CURRENCY } from './zustand.js';
+import { fmtDatum, fmtGeld, fmtGeldCode, fmtN, istGeschenk } from './format.js';
+import { kontoWaehrung } from './zustand.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
 
@@ -29,7 +29,7 @@ export function acqSummary(totals) {
 /** Die Summe in der Währung des Kontos; fremde Käufe hat der Server zum Kurs des Kauftags umgerechnet.
  * @param {Erfassungssumme | null | undefined} totals */
 export function summenText(totals) {
-  return totals?.amount != null ? fmtN(totals.amount, totals.currency || CURRENCY) : '—';
+  return totals?.amount != null ? fmtN(totals.amount, totals.currency || kontoWaehrung) : '—';
 }
 
 /** @param {Erfassungssumme | null | undefined} totals */
@@ -42,7 +42,7 @@ function summenHinweis(totals) {
  * @param {Erfassung} a @param {Erfassungssumme | null | undefined} totals
  */
 export function umgerechnetText(a, totals) {
-  const konto = totals?.currency || CURRENCY;
+  const konto = totals?.currency || kontoWaehrung;
   if (!a.currency || a.currency === konto || a.preis_konto == null) return '';
   return '≈ ' + fmtN(a.preis_konto, konto);
 }
@@ -57,10 +57,12 @@ export function umgerechnetText(a, totals) {
  */
 export function erfassungsPreis(a, betrag) {
   if (betrag == null) return '';
-  const fremd = !!a.currency && a.currency !== CURRENCY;
+  // 0 heisst geschenkt; Kachel, Tabelle und Finanzen sagen es so, nicht „0,00 €“.
+  if (istGeschenk(betrag) && !a.price_estimated) return html`<strong>${tRaw('finance.gift')}</strong>`;
+  const fremd = !!a.currency && a.currency !== kontoWaehrung;
   const zahl = fremd
-    ? html`<strong>${fmtGeldCode(betrag, a.currency || CURRENCY)}</strong>${a.preis_konto != null ? html` <span class="acq-umgerechnet-inline" title="${tRaw('acq.umgerechnet_titel')}">≈ ${fmtGeld(a.preis_konto, CURRENCY)}</span>` : ''}`
-    : html`<strong>${fmtGeld(betrag, a.currency || CURRENCY)}</strong>`;
+    ? html`<strong>${fmtGeldCode(betrag, a.currency || kontoWaehrung)}</strong>${a.preis_konto != null ? html` <span class="acq-umgerechnet-inline" title="${tRaw('acq.umgerechnet_titel')}">≈ ${fmtGeld(a.preis_konto, kontoWaehrung)}</span>` : ''}`
+    : html`<strong>${fmtGeld(betrag, a.currency || kontoWaehrung)}</strong>`;
   if (!a.price_estimated) return zahl;
   const hinweis = esc(tRaw('acq.geschaetzt'));
   return html`<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${zahl}</span>`;

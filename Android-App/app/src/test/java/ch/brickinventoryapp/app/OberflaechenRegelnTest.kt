@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
@@ -45,12 +47,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.SetCard
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
@@ -71,7 +73,6 @@ import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.ui.components.BILD_ERSATZ
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
@@ -93,7 +94,7 @@ import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import java.math.BigDecimal
 import java.util.Locale
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.app.nav.AppZiel
 import ch.brickinventoryapp.finanzen.ui.FinanzZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
@@ -117,13 +118,19 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
- *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
+ *   merkliste-zustand-als-segmente  Zustandsfilter der Merkliste wieder als Segmente → rot „Merkliste filtert …“
+ *   umschalter-chips-bei-200        Sets | Teile | Minifiguren ab 130 % als Chipreihe statt Segmente
+ *                                   → rot „der Sammlungs-Umschalter zeigt bei 200 Prozent …“ (Abstand)
+ *   umschalter-zeile-bei-200        Segmente auch bei 200 % in einer Zeile → rot „der Sammlungs-Umschalter
+ *                                   zeigt bei 200 Prozent …“ („Minifiguren … abgeschnitten“)
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
  *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
+ *   einfachwahl-chips-bei-200       Einfachwahl bei 200 % wieder als Chips → rot „Einfachwahl steht bei
+ *                                   200 Prozent als Segmente …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
  *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
@@ -133,6 +140,8 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
  *   teile-erfassen-schwebt          Erfassen auch bei 200 % schwebend → rot „Teile bei 200 Prozent …“
  *   teile-kachel-gross              Teilekachel auch bei 200 % mit Bild über die Breite → rot „Teile bei 200 Prozent zeigen …“
+ *   detail-spalte-ohne-hoechstbreite  Set-Detail einspaltig wieder ohne gemeinsame Höchstbreite
+ *                                   → rot „Set-Detail auf dem Tablet hochkant …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -187,6 +196,47 @@ class OberflaechenRegelnTest {
         val reiterRechts = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
             compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= reiterRechts)
+    }
+
+    /**
+     * Sets | Teile | Minifiguren wechselt die Ansicht und bleibt darum auch bei 200 % aus
+     * Segmenten: aneinanderstossend (neben- oder untereinander), keine Beschriftung
+     * abgeschnitten, alle drei ganz im Bild.
+     */
+    @Test
+    fun `der Sammlungs-Umschalter zeigt bei 200 Prozent alle drei Ansichten als Segmente`() {
+        zeige(schrift = 2f) {
+            val nav = rememberNavController()
+            val reiter = remember { listOf(Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung")) }
+            MainScaffold(
+                title = "Sammlung", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
+            }
+        }
+        val dichte = ctx.resources.displayMetrics.density
+        val segmente = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs).map {
+            val text = ctx.getString(it)
+            val beschriftung = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
+                .first { n -> n.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
+            val layouts = mutableListOf<TextLayoutResult>()
+            beschriftung.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            assertTrue("$text bei 200 % abgeschnitten", layouts.none { l -> l.hasVisualOverflow })
+            compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        }
+        val breite = ctx.resources.displayMetrics.widthPixels
+        segmente.forEach { s ->
+            assertTrue("Segment ausserhalb des Bilds (${s.left / dichte} – ${s.right / dichte} dp)",
+                s.left >= 0f && s.right <= breite + 1f)
+        }
+        segmente.zipWithNext().forEach { (a, b) ->
+            val nebeneinander = kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f
+            val untereinander = kotlin.math.abs(b.top - a.bottom) <= 2 * dichte && kotlin.math.abs(a.left - b.left) < 1f
+            assertTrue("Segmente stossen aneinander ($a / $b)", nebeneinander || untereinander)
+        }
     }
 
     @Test
@@ -284,7 +334,7 @@ class OberflaechenRegelnTest {
                 SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
             }
-            warte("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.setPriceLoading } }
+            warte("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.preisAbruf.laedt } }
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             // Die G&V-Kachel nennt Betrag und Prozent (812.50 − 700.00); der Prozentwert allein steht
             // weiter unten in der Plakette je Zustand.
@@ -296,13 +346,44 @@ class OberflaechenRegelnTest {
         }
     }
 
+    /**
+     * Tablet hochkant, eine Spalte: Kacheln und Preisverlauf beginnen an derselben Kante.
+     * Vorher stand die Karte auf der Lesebreite mittig, die Kacheln über die ganze Breite.
+     */
+    @Test
+    fun `Set-Detail auf dem Tablet hochkant hat eine Breite fuer Kacheln und Preisverlauf`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w800dp-h1280dp-port-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.setDetail()
+            zeige {
+                SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
+            }
+            warte("Set-Detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.verlaufAbruf.laedt && !it.preisAbruf.laedt } }
+            val dichte = ctx.resources.displayMetrics.density
+            val titel = ctx.getString(R.string.detail_section_price_history)
+            // Innen liegen die Kachel 12 dp (mittel), der Titel 16 dp (gross) vom Rand ihrer Fläche.
+            val kachel = compose.onAllNodes(hasText(ctx.getString(R.string.detail_section_market)))[0]
+                .fetchSemanticsNode().boundsInRoot.left - 12 * dichte
+            compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(hasText(titel, ignoreCase = true))
+            // Die Überschrift, nicht ihr Text in Versalien darunter: Abschnittstitel trägt beide.
+            val karte = compose.onNode(hasText(titel) and androidx.compose.ui.test.isHeading(), useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot.left - 16 * dichte
+            assertEquals("Preisverlauf beginnt wie die Kacheln (${karte / dichte} / ${kachel / dichte} dp)",
+                kachel / dichte, karte / dichte, 1f)
+        } finally {
+            welt.close()
+        }
+    }
+
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
     private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
-        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-            KatalogRepository(welt.t.api, welt.t.cache),
+        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+            testKatalogRepository(welt.t.api),
             object : SetAnleger {
-                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
             }))
@@ -310,7 +391,7 @@ class OberflaechenRegelnTest {
             GalleryRoute(vm = vm, erfassung = erfassung,
                 imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
-        warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+        warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.abruf.laedt }
     }
 
     /**
@@ -367,8 +448,8 @@ class OberflaechenRegelnTest {
             zeige(schrift = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
-            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
+            val namen = vm.teileState.value.parts.mapNotNull { it.partName }
             assertTrue(namen.size >= 3)
             val ganz = ganzSichtbar(namen)
             assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
@@ -505,10 +586,10 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-                KatalogRepository(welt.t.api, welt.t.cache),
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+                testKatalogRepository(welt.t.api),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
@@ -516,7 +597,7 @@ class OberflaechenRegelnTest {
                 GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
-            warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+            warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.abruf.laedt }
             val scan = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
             scan.assertCountEquals(1)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
@@ -537,8 +618,8 @@ class OberflaechenRegelnTest {
             zeige(schrift = 2f) {
                 PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
-            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
+            val namen = vm.teileState.value.parts.mapNotNull { it.partName }
             assertTrue(namen.size >= 3)
             val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
@@ -575,7 +656,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.teile().also { it.loadParts() }
             zeige { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            warte("Teile") { vm.teileState.value.parts.isNotEmpty() }
             compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
                 assertTrue("Trans-Klar steht da", it.isNotEmpty())
             }
@@ -596,7 +677,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.historyLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.verlauf.laedt } }
             val verlauf = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
             val falcon = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
@@ -638,26 +719,25 @@ class OberflaechenRegelnTest {
     }
 
     /**
-     * Ein Bauteil je Entscheidungstyp: Der Zustand ist eine Einfachwahl und steht als
-     * Segmentschaltfläche da (gleich breite, aneinanderstossende Segmente mit der
-     * Rolle RadioButton); die Sortierung ist ein Menü hinter einem Symbol.
+     * Ein Bauteil je Entscheidungstyp: Der Zustand schränkt die Liste ein und steht als
+     * Filterchips da (Rolle Checkbox, mit Abstand), wie die Filter in Galerie und Finanzen;
+     * Segmente gehören Ansichten. Die Sortierung ist ein Menü hinter einem Symbol.
      */
     @Test
-    fun `Merkliste waehlt den Zustand mit Segmenten und sortiert ueber ein Menue`() {
+    fun `Merkliste filtert den Zustand mit Chips und sortiert ueber ein Menue`() {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.merkliste().also { it.ladeMerkliste() }
             zeige { MerklisteRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnenEinzeln = { _, _ -> }) }
             warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
-            val segmente = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
+            val chips = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
                 compose.onNode(hasText(ctx.getString(it)) and
                     SemanticsMatcher.expectValue(SemanticsProperties.Role,
-                        Role.RadioButton)).fetchSemanticsNode().boundsInRoot
+                        Role.Checkbox)).fetchSemanticsNode("${ctx.getString(it)} ist kein Filterchip").boundsInRoot
             }
             val dichte = ctx.resources.displayMetrics.density
-            segmente.zipWithNext().forEach { (a, b) ->
-                assertTrue("Segmente stossen aneinander (${a.right / dichte} / ${b.left / dichte} dp)",
-                    kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f)
+            chips.zipWithNext().forEach { (a, b) ->
+                assertTrue("Chips stehen mit Abstand (${a.right / dichte} / ${b.left / dichte} dp)", b.left - a.right >= 4 * dichte)
             }
             // Die Sortierung steht nicht als Chip mit ihrem Namen da, sondern hinter dem Symbol.
             val vorgabe = ctx.getString(R.string.gallery_sort_added_desc)
@@ -709,7 +789,7 @@ class OberflaechenRegelnTest {
             welt.pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
             val vm = welt.merkliste().also { it.ladeMerkliste() }
             zeige { MerklisteRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnenEinzeln = { _, _ -> }) }
-            treibeBis("Merkliste", bereit = { !(welt.pfade.anfragen.none { "/api/v1/wanted" in it } || vm.merklisteState.value.laedt) })
+            treibeBis("Merkliste", bereit = { !(welt.pfade.anfragen.none { "/api/v1/wanted" in it } || vm.merklisteState.value.abruf.laedt) })
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
@@ -750,6 +830,34 @@ class OberflaechenRegelnTest {
         (zustaende + zeitraum).forEach { ganzEineZeile(it) }
     }
 
+    /**
+     * Bei 200 % bleibt eine Einfachwahl eine Segmentgruppe: untereinander, jede Möglichkeit
+     * über die volle Breite und als Optionsfeld vorgelesen. Als Chips las sie sich wie ein Filter.
+     */
+    @Test
+    fun `Einfachwahl steht bei 200 Prozent als Segmente untereinander in voller Breite`() {
+        val zustaende = listOf(R.string.condition_new, R.string.condition_used).map { ctx.getString(it) }
+        zeige(schrift = 2f) {
+            Column(Modifier.width(360.dp).padding(horizontal = 16.dp).testTag("wahl")) {
+                SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
+            }
+        }
+        val dichte = ctx.resources.displayMetrics.density
+        val rahmen = compose.onNodeWithTag("wahl").fetchSemanticsNode().boundsInRoot
+        val segmente = zustaende.map { text ->
+            val knoten = compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode()
+            assertEquals("$text ist ein Optionsfeld", Role.RadioButton, knoten.config.getOrNull(SemanticsProperties.Role))
+            knoten.boundsInRoot
+        }
+        segmente.forEach { s ->
+            assertTrue("Segment über die volle Breite (${s.width / dichte} von ${rahmen.width / dichte} dp)",
+                kotlin.math.abs(s.width - rahmen.width) <= dichte)
+        }
+        val (oben, unten) = segmente
+        assertTrue("Segmente stehen untereinander und stossen aneinander ($oben / $unten)",
+            kotlin.math.abs(unten.top - oben.bottom) <= 2 * dichte)
+    }
+
     /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */
     @Test
     fun `Finanzen nennen bei zwei Stueck den Kauf gesamt und den Gewinn als Betrag`() {
@@ -757,14 +865,14 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation() }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.bewertung.laedt } }
             val zeile = setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
-            val gesamt = BigDecimal.valueOf(zeile.kaufpreis!!).multiply(BigDecimal(zeile.menge)).toDouble()
+            val gesamt = zeile.kaufpreis!! * zeile.menge
             val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, Waehrung("CHF")))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
-            val gewinn = BigDecimal.valueOf(zeile.wert!!).subtract(BigDecimal.valueOf(gesamt)).toDouble()
+            val gewinn = zeile.wert!! - gesamt
             compose.onAllNodesWithText(fmtMoney(gewinn, Waehrung("CHF")), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
@@ -785,7 +893,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.finanzen().also { it.loadValuation() }
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
-            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoading } }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.bewertung.laedt } }
             compose.waitForIdle()
             // Die Zahlen der Beispiele, nicht aus finanzKopf: Sonst prüfte der Test die Rechnung mit sich selbst.
             val einstand = BigDecimal("1500.00")
@@ -819,12 +927,12 @@ class OberflaechenRegelnTest {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
-                        preis = KachelPreis(180.0, null, "kauf"), waehrung = Waehrung("CHF"))
+                        preis = KachelPreis(Geld.aus(180.0), null, "kauf"), waehrung = Waehrung("CHF"))
                 }
                 // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
-                        preis = KachelPreis(812.5, 16.1), waehrung = Waehrung("CHF"))
+                        preis = KachelPreis(Geld.aus(812.5), 16.1), waehrung = Waehrung("CHF"))
                 }
             }
         }

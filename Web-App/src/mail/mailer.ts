@@ -2,12 +2,13 @@
 
 import type { MailKontext } from './kontext';
 import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
-import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, getMailTheme } from './vorlage';
+import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailDesign } from './vorlage';
 import { sendMail, testSmtp } from './transport';
-const einstellung = (k: MailKontext, key: string) => k.einstellungen.getGlobalSetting(key, '');
+import { fachfehler } from '../infra/fehlerTexte';
+const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalerWert(key, '');
 
 // Mitexportiert, damit Aufrufer und Tests bei einer Adresse bleiben.
-export { MAIL_THEMES, getMailTheme, emailTemplate } from './vorlage';
+export { MAIL_THEMES, mailDesign, emailTemplate } from './vorlage';
 export {
   meldeSmtpAltlast,
   linkFuerKonsole,
@@ -30,7 +31,7 @@ export async function sendVerificationMail(
   mehrere = false,
 ) {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const url = `${baseUrl}/verify#token=${token}`;
   const adresse = art === 'adresse';
   const L =
@@ -99,7 +100,7 @@ export async function sendEmailGeaendertMail(
   neueAdresse: string,
   lang = 'de',
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     lang === 'en'
       ? {
@@ -133,7 +134,7 @@ export async function sendRegistrierungsVersuchMail(
   lang = 'de',
   anlass: 'registrierung' | 'adresse' = 'registrierung',
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     anlass === 'adresse'
       ? lang === 'en'
@@ -182,7 +183,7 @@ export async function sendRegistrierungsVersuchMail(
  * angegebene Adresse erfährt, dass es ihn schon gibt. Ohne den Namen selbst:
  * Ihn wählt, wer registriert, und die Adresse ist unbestätigt. */
 export async function sendBenutzernameVergebenMail(k: MailKontext, to: string, lang = 'de', basis = '') {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     lang === 'en'
       ? {
@@ -229,7 +230,7 @@ export async function sendHaushaltVerknuepftMail(
   hauptkonto: string,
   lang = 'de',
 ) {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const L =
     lang === 'en'
       ? {
@@ -286,37 +287,91 @@ export type KontoHinweis =
   | 'zweiter_faktor_eingerichtet'
   | 'zweiter_faktor_abgeschaltet'
   | 'anmeldung_gebremst'
+  | 'anmeldung_tagesgrenze'
   | 'zweiter_faktor_gesperrt'
   | 'bestaetigung_gebremst'
   | 'einstellungen_geaendert'
   | 'zugang_beendet'
-  | 'zugaenge_beendet';
+  | 'zugaenge_beendet'
+  | 'uebernahme_angekuendigt'
+  | 'verwaltung_uebernahme_angekuendigt'
+  | 'verwaltung_uebernahme_abgebrochen';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
-export async function sendKontoHinweisMail(
-  k: MailKontext,
-  to: string,
-  username: string,
-  art: KontoHinweis,
-  o: {
-    lang?: string;
-    passkey?: string;
-    haushalt?: string[];
-    konto?: string | undefined;
-    durch?: string | undefined;
-  } = {},
-) {
-  const theme = await getMailTheme(k);
-  const en = o.lang === 'en';
-  const was = {
+/** Was „Passwort vergessen“ ausser dem Passwort beendet hat. */
+export type Geloest = { haushalt: string[]; einladungen: number; adresse: string | null };
+
+/** Der eine Satz, was am Konto geschah. */
+type HinweisAngaben = {
+  geloest?: Geloest | undefined;
+  passkey?: string;
+  konto?: string | undefined;
+  durch?: string | undefined;
+  was?: string | undefined;
+  bis?: string | undefined;
+};
+
+/** Was ein Verwalter an einem Verwalterkonto ändern will, und ab wann (UTC, ohne Sprache des Servers). */
+function uebernahme(o: HinweisAngaben, en: boolean): { was: string; bis: string } {
+  const arten = (o.was ?? '').split(', ');
+  const was = arten
+    .map(a =>
+      a === 'passwort'
+        ? en
+          ? 'set a new password'
+          : 'ein neues Passwort setzen'
+        : en
+          ? 'remove the second factor'
+          : 'den zweiten Faktor entfernen',
+    )
+    .join(en ? ' and ' : ' und ');
+  return { was, bis: o.bis ? `${o.bis.slice(0, 16).replace('T', ' ')} UTC` : '' };
+}
+
+/** Der Inhaber soll sehen, was ein Eindringling angelegt haben könnte und wegfiel. */
+function geloestSatz(g: Geloest | undefined, en: boolean): string {
+  if (!g) return '';
+  const teile: string[] = [];
+  if (g.haushalt.length)
+    teile.push(
+      en
+        ? `the link to ${g.haushalt.map(n => `“${n}”`).join(', ')} (these accounts could see your collection)`
+        : `die Verknüpfung mit ${g.haushalt.map(n => `„${n}“`).join(', ')} (diese Konten sahen deine Sammlung)`,
+    );
+  if (g.adresse)
+    teile.push(
+      en
+        ? `the pending change of your email address to ${g.adresse}`
+        : `die ausstehende Änderung deiner E-Mail-Adresse auf ${g.adresse}`,
+    );
+  if (g.einladungen)
+    teile.push(en ? `${g.einladungen} open household invitation(s)` : `${g.einladungen} offene Haushaltseinladung(en)`);
+  if (!teile.length) return '';
+  return en ? ` Also removed: ${teile.join('; ')}.` : ` Ausserdem aufgehoben: ${teile.join('; ')}.`;
+}
+
+function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string {
+  const u = uebernahme(o, en);
+  return {
+    uebernahme_angekuendigt: en
+      ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough); the change is then dropped.`
+      : `der Verwalter „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt); dann entfällt die Änderung.`,
+    verwaltung_uebernahme_angekuendigt: en
+      ? `“${o.durch ?? ''}” wants to ${u.was} for the administrator account “${o.konto ?? ''}”, effective ${u.bis} unless “${o.konto ?? ''}” signs in before then.`
+      : `„${o.durch ?? ''}“ will für das Verwalterkonto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
+    verwaltung_uebernahme_abgebrochen: en
+      ? `“${o.konto ?? ''}” signed in; the announced change (${u.was}) is dropped.`
+      : `„${o.konto ?? ''}“ hat sich angemeldet; die angekündigte Änderung (${u.was}) entfällt.`,
     passkey_neu: en
       ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
       : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
     passwort_geaendert: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
-    passwort_zurueckgesetzt: en
-      ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
-      : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.',
+    passwort_zurueckgesetzt:
+      (en
+        ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
+        : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.') +
+      geloestSatz(o.geloest, en),
     token_neu: en
       ? `a new app token (“${o.passkey ?? ''}”) was created for your account.`
       : `für dein Konto wurde ein neuer App-Zugang („${o.passkey ?? ''}“) erzeugt.`,
@@ -347,6 +402,9 @@ export async function sendKontoHinweisMail(
     anmeldung_gebremst: en
       ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
       : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    anmeldung_tagesgrenze: en
+      ? 'there were 50 failed sign-in attempts for your account within 24 hours. For now, signing in with the password only works together with the second factor; a passkey or “Forgot password” work as before. Change your password if it may be known.'
+      : 'für dein Konto gab es 50 fehlgeschlagene Anmeldeversuche in 24 Stunden. Mit dem Passwort geht die Anmeldung vorerst nur zusammen mit dem zweiten Faktor; Passkey und „Passwort vergessen“ gehen wie bisher. Ändere dein Passwort, falls es bekannt sein könnte.',
     zweiter_faktor_gesperrt: en
       ? 'someone entered the right password for your account but many wrong codes of the second factor. For up to 24 hours, sign-in only works with a recovery code or a passkey. Change your password: it is probably known.'
       : 'für dein Konto wurde das richtige Passwort, aber vielfach ein falscher Code des zweiten Faktors eingegeben. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder Passkey. Ändere dein Passwort: Es ist vermutlich bekannt.',
@@ -366,6 +424,18 @@ export async function sendKontoHinweisMail(
       ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
       : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];
+}
+
+export async function sendKontoHinweisMail(
+  k: MailKontext,
+  to: string,
+  username: string,
+  art: KontoHinweis,
+  o: HinweisAngaben & { lang?: string; haushalt?: string[] } = {},
+) {
+  const theme = await mailDesign(k);
+  const en = o.lang === 'en';
+  const was = hinweisSatz(art, o, en);
   const subject = en
     ? 'BrickInventory Manager — Change to your account'
     : 'BrickInventory Manager — Änderung an deinem Konto';
@@ -391,7 +461,7 @@ export async function sendKontoHinweisMail(
 
 // Sprache des Kontos, wie alle Mails.
 export async function sendPasswordResetMail(k: MailKontext, to: string, token: string, baseUrl: string, lang = 'de') {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const url = `${baseUrl}/reset-password#token=${token}`;
   const de = lang !== 'en';
   const L = de
@@ -452,12 +522,32 @@ export interface AlarmMailDaten {
   waehrung: string;
 }
 
+/** Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
+ * Tabelle statt flex wegen Outlook. */
+function alarmZahlen(theme: Awaited<ReturnType<typeof mailDesign>>, de: boolean, preis: string, schwelle: string) {
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
+    <tr>
+      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
+        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Marktpreis' : 'Market price'}</div>
+        <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(preis)}</div>
+      </td>
+      <td width="12%" style="width:12%;font-size:0;line-height:0">&nbsp;</td>
+      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
+        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Deine Schwelle' : 'Your threshold'}</div>
+        <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(schwelle)}</div>
+      </td>
+    </tr>
+  </table>`;
+}
+
 // Ohne APP_BASE_URL sagt die Mail, warum der Knopf fehlt.
 export async function baueAlarmMail(
   k: MailKontext,
   d: AlarmMailDaten,
 ): Promise<{ subject: string; text: string; html: string; link?: string }> {
-  const theme = await getMailTheme(k);
+  const theme = await mailDesign(k);
   const de = d.lang !== 'en';
   const geld = (n: number) => `${d.waehrung} ${n.toFixed(2)}`;
   const zustand = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';
@@ -491,23 +581,7 @@ export async function baueAlarmMail(
       `You get this once per crossing: it can only trigger again after the ` +
       `price has moved back to the other side.\n`;
 
-  // Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
-  // Tabelle statt flex wegen Outlook.
-  const zahlen = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
-    <tr>
-      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
-                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
-        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Marktpreis' : 'Market price'}</div>
-        <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(geld(d.preis))}</div>
-      </td>
-      <td width="12%" style="width:12%;font-size:0;line-height:0">&nbsp;</td>
-      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
-                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
-        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Deine Schwelle' : 'Your threshold'}</div>
-        <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(geld(d.schwelle))}</div>
-      </td>
-    </tr>
-  </table>`;
+  const zahlen = alarmZahlen(theme, de, geld(d.preis), geld(d.schwelle));
 
   const einleitung = de
     ? `<p style="margin:0 0 8px">Hallo <strong>${esc(d.username)}</strong>,</p>
@@ -548,9 +622,10 @@ export async function baueAlarmMail(
 }
 
 /** Erst die Verbindung, dann eine Probe an `to`; Betreff und Text gehören zum Versand, nicht zur Route. */
+/** Eine Absage bei der Prüfung des Servers wirft; der Versand selbst liefert, wie er ging. */
 export async function sendeSmtpTest(k: MailKontext, to: string) {
   const verify = await testSmtp(k);
-  if (!verify.success) return verify;
+  if ('code' in verify) fachfehler('ungueltig', verify.code, 'vars' in verify ? verify.vars : undefined);
   return sendMail(k, {
     to,
     subject: 'BrickInventory Manager — SMTP Test',

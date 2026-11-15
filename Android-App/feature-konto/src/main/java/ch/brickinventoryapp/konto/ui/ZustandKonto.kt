@@ -1,13 +1,15 @@
 package ch.brickinventoryapp.konto.ui
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
-import ch.brickinventoryapp.model.ui.model.HaushaltStatusAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
-import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.CsvErgebnisAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportArt
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.HaushaltStatusAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
 import ch.brickinventoryapp.update.util.UpdateBeschreibung
 import ch.brickinventoryapp.update.util.UpdateFrische
 
@@ -18,11 +20,13 @@ import ch.brickinventoryapp.update.util.UpdateFrische
  * Snackbar, die das überlebt.
  */
 data class KontoUiState(
-    val laedt: Boolean = false,
+    /** Der Abruf des Profils; das Profil selbst bleibt stehen, während neu geholt wird. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     val profil: ProfilAnsicht? = null,
-    val speichert: Boolean = false,
-    val meldung: String? = null,
-    val fehler: String? = null,
+    /** Profil, Passwort oder Design speichern; scheitert es, steht der Grund hier. */
+    val speichern: Vorgang = Vorgang.Fertig,
+    /** Was das Speichern bewirkt hat. */
+    val meldung: Meldung? = null,
     /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */
     val codeNoetig: Boolean = false,
     /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
@@ -34,7 +38,8 @@ data class DesignWahl(val wirksam: Design, val vorgabe: Design, val eigenes: Des
 
 /** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */
 data class ZweiterFaktorUiState(
-    val laedt: Boolean = false,
+    /** Der letzte Schritt: läuft, gelungen oder mit Grund gescheitert. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     /** null = noch nicht geladen. */
     val aktiv: Boolean? = null,
     val codesUebrig: Int = 0,
@@ -43,7 +48,6 @@ data class ZweiterFaktorUiState(
     val otpauth: String? = null,
     /** Die Wiederherstellungscodes — nur unmittelbar nach dem Erzeugen. */
     val codes: List<String> = emptyList(),
-    val fehler: String? = null,
 )
 
 /**
@@ -51,11 +55,10 @@ data class ZweiterFaktorUiState(
  * nur in den Einstellungen gebraucht, mit eigenen Zwischenständen, die sonst jeden
  * Reiter neu zeichnen liessen.
  */
-data class GeraeteUiState(
-    val laedt: Boolean = false,
+internal data class GeraeteUiState(
+    /** Der Abruf der Liste; ein Fehler steht statt der Liste. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     val geraete: List<GeraetAnsicht> = emptyList(),
-    /** Meldung des Servers oder der Verbindung; null = nichts zu sagen. */
-    val fehler: String? = null,
     /** Die offene Passwort-Rückfrage vor dem Abmelden; null = keine. */
     val rueckfrage: GeraeteRueckfrage? = null,
 )
@@ -65,23 +68,21 @@ data class GeraeteUiState(
  * erbeuteter Zugang soll den Inhaber nicht aussperren. [tokenId] null heisst
  * „alle anderen“.
  */
-data class GeraeteRueckfrage(
+internal data class GeraeteRueckfrage(
     val tokenId: String?,
     val codeNoetig: Boolean = false,
-    val fehler: String? = null,
-    val laeuft: Boolean = false,
+    val vorgang: Vorgang = Vorgang.Fertig,
 )
 
 /** Zustand der Haushalts-Karte in den Einstellungen. */
 data class HouseholdUiState(
-    val isLoading: Boolean = false,
+    /** Laden, Einladen, Einlösen, Lösen: läuft, gelungen oder mit dem Grund des Servers gescheitert. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     val status: HaushaltStatusAnsicht? = null,
     /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
     val inviteCode: String? = null,
     /** Bis wann der Code gilt (Millisekunden seit 1970); null, wenn der Server es nicht sagt. */
     val inviteGueltigBis: Long? = null,
-    /** Meldung des Servers (Währung weicht ab, schon verknüpft, zweite Stufe). */
-    val message: String? = null,
     /** Das Passwort beim Einlösen war falsch; das Feld zeigt es an. */
     val passwortFalsch: Boolean = false,
     /** Zählt gelungene Einlösungen — daran leert die Ansicht ihre Felder. */
@@ -99,11 +100,10 @@ data class HouseholdUiState(
  * verschiedener Lebensdauer teilen keinen Fortschritt.
  */
 data class CsvHochladenUiState(
-    val laeuft: Boolean = false,
+    val hochladen: Vorgang = Vorgang.Fertig,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
     val art: CsvImportArt? = null,
     val ergebnis: CsvErgebnisAnsicht? = null,
-    val fehler: String? = null,
 )
 
 /**
@@ -113,7 +113,7 @@ data class CsvHochladenUiState(
  * Neues“, damit der Knopf eine Rückmeldung gibt.
  */
 data class UpdateUiState(
-    val laedtPruefung: Boolean = false,
+    val pruefung: Vorgang = Vorgang.Fertig,
     /** Wurde in dieser Sitzung schon nachgesehen? */
     val geprueft: Boolean = false,
     /** Die neuere Fassung, oder null: es gibt keine. */

@@ -1,14 +1,13 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
-import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Dienste } from '../../src/dienste';
 
-export function baueMiscRouter(d: Dienste) {
+export function baueMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
   const { requireToken } = waechterFuer(d.konto);
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
 
-  router.get('/stats', requireToken, async (req: Anfrage<'GET /api/v1/stats'>, res: Antwort<'GET /api/v1/stats'>) => {
-    res.json({ success: true, stats: await d.bestand.getStats(sichtVon(req)) });
+  router.endpunkt('GET /api/v1/stats', requireToken, async req => {
+    return { stats: await d.bestand.bestandsKennzahlen(sichtVon(req)) };
   });
 
   const UEBERSICHT = {
@@ -48,8 +47,6 @@ export function baueMiscRouter(d: Dienste) {
   };
 
   // Hinter requireToken: Die Übersicht verriete sonst die ganze API-Fläche.
-  router.get('/', requireToken, (_req: AuthedRequest, res: Antwort<'GET /api/v1/'>) => res.json(UEBERSICHT));
-
-  router.use(fehlerAntwort);
+  router.endpunkt('GET /api/v1/', requireToken, (_req, res) => res.json(UEBERSICHT));
   return router;
 }

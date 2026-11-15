@@ -1,14 +1,13 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.Kontosicht
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontosicht
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.testing.SpeicherAblage
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.bildAdressenDerSammlung
@@ -44,12 +43,11 @@ class SammlungVorwaermenTest {
         val ordner = File(System.getProperty("java.io.tmpdir"), "bim-sammlung-${System.nanoTime()}").apply { mkdirs() }
         try {
             val api = TestApi.fuer(pfade.server)
-            val cache = ResponseCache { ordner }
-            val teile = TeileRepository(api, cache)
-            val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), teile)
+            val teile = testTeileRepository(api)
+            val blickfeld = Blickfeld(SpeicherAblage(), testHaushaltRepository(api), teile)
             val adressen = runBlocking {
                 for (v in listOf(ScopeFilter.View.GALLERY, ScopeFilter.View.PARTS, ScopeFilter.View.MINIFIGS)) blickfeld.setzeKonto(v, "own")
-                bildAdressenDerSammlung(SetsRepository(api, cache), teile, FigurenRepository(api, cache), Kontosicht(api), blickfeld,
+                bildAdressenDerSammlung(testSetsRepository(api), teile, testFigurenRepository(api), testKontosicht(api), blickfeld,
                     "https://brick.example")
             }
             assertEquals(listOf("set", "teil", "figur", "mteil", "mfigur").map { "https://brick.example/b/${it}_thumb.jpg" },

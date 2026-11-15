@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.ressourcen.R
 
 /**

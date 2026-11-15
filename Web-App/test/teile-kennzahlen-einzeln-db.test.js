@@ -51,21 +51,21 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     await haeltTeil(db, UB, 'ke3', { colorId: 15, menge: 1 });
 
     await t.test('nur einzelne Teile: 4 Sorten in 4 Farben', async () => {
-      const s = await H.getPartsStats(UA);
+      const s = await H.teileKennzahlenLesen(UA);
       assert.equal(s.unique_parts, 4);
       assert.equal(s.unique_colors, 4);
       assert.equal(s.total_parts, 0, 'keine Set-Teile');
       assert.equal(s.manual_parts, 100);
     });
     await t.test('die Gesamtzahl zählt einzelne Teile nicht doppelt', async () => {
-      const s = await H.getPartsStats(UB);
+      const s = await H.teileKennzahlenLesen(UB);
       assert.equal(s.total_parts, 5, 'Set-Teile 3 + 2');
       assert.equal(s.manual_parts, 8, 'einzeln 7 + 1');
       assert.equal(s.unique_parts, 3);
       assert.equal(s.unique_colors, 3);
     });
     await t.test('gemischt: Zusammenfassung und Live gleich', async () => {
-      const live = await H.getPartsStats(UB);
+      const live = await H.teileKennzahlenLesen(UB);
       await PS.rebuildNow(UB);
       const repo = {
         ..._req('src/teile/repository/teileListe.js'),
@@ -73,7 +73,7 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
       };
       const zsf = await repo.kennzahlen([UB], true);
       assert.deepEqual(zsf, live);
-      assert.deepEqual(await H.getPartsStats(UB), live);
+      assert.deepEqual(await H.teileKennzahlenLesen(UB), live);
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[UA, UB]]);

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 /**
  * Zustand rund um den Barcode- und OCR-Scanner — eigener Fluss, weil ein Scan
@@ -34,7 +35,7 @@ data class BarcodeUiState(
     val besitzMenge: Int = 0,
     // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
     // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
-    val adding: Boolean = false,
+    val hinzufuegen: Vorgang = Vorgang.Fertig,
     /**
      * Die angezeigte Nummer ist geraten — der Dialog weist darauf hin. Gesetzt vom
      * Server (keine abgeglichene EAN, nur ein plausibler Kandidat) und von der App bei

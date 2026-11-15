@@ -1,10 +1,11 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.ui.model.DiagrammAchse
-import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
+import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
+import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,7 +24,7 @@ import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 class AchsenRundTest {
 
     private fun verlauf(vararg werte: Double) = PreisDiagrammAnsicht(
-        values = listOf(PreisReiheAnsicht("N", werte.mapIndexed { i, w -> PreisPunktAnsicht("2026-0${i + 1}-01", w) })),
+        values = listOf(PreisReiheAnsicht("N", werte.mapIndexed { i, w -> PreisPunktAnsicht("2026-0${i + 1}-01", Geld.aus(w)!!) })),
         x = werte.indices.map { "2026-0${it + 1}-01" })
 
     @Test
@@ -44,8 +45,8 @@ class AchsenRundTest {
 
     @Test
     fun `grosse Schrift beschriftet die Wertachse kurz`() {
-        val achse = listOf(DiagrammAchse("CHF 1'712", 1712.4, 1.0), DiagrammAchse("CHF 850", 850.0, 0.0),
-            DiagrammAchse("CHF 12'400", 12_400.0, 0.5))
+        val achse = listOf(DiagrammAchse("CHF 1'712", Geld.aus(1712.4)!!, 1.0), DiagrammAchse("CHF 850", Geld.aus(850.0)!!, 0.0),
+            DiagrammAchse("CHF 12'400", Geld.aus(12_400.0)!!, 0.5))
         val de = Locale.forLanguageTag("de-CH")
         assertEquals(listOf("1.7k", "850", "12k"), lokaleWerte(achse, Waehrung("CHF"), de, kompakt = true).map { it.label })
         // Ohne kompakt bleibt der ausgeschriebene Betrag.

@@ -258,11 +258,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Preisvergleich haengt am Merkposten, nicht am Katalog', async () => {
-    // Marco: „Der Link für den Vergleich fehlt noch auf der Detailseite der
-    // Merkliste." Beide Oberflächen holten ihn aus /catalog/sets/:nr —
-    // derselben Anfrage wie Thema und Teilezahl. Für ein Set, das rb_sets
-    // nicht kennt, antwortet die Route 404, und der Knopf blieb aus. Dabei
-    // braucht die Adresse nur die Setnummer.
+    // Die Adresse braucht nur die Setnummer, nicht den Katalog (der kennt nicht jedes Set).
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) `preisvergleich_url: fuerSet(...)` aus merkpostenVon() entfernt →
@@ -302,11 +298,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     //   b) image_local fest auf null → „die lokale Datei gewinnt" rot.
     const fs = require('node:fs');
     const path = require('node:path');
-    const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+    const IQ = _req('src/bilder/bildbedarfLauf.js');
     const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
-    // ZWEI Setnummern, und das ist kein Zufall: resolveIfExists() merkt sich
-    // ein „gibt es nicht" zehn Minuten lang (src/katalog/bilder/images.ts). Dieselbe Nummer
+    // ZWEI Setnummern, und das ist kein Zufall: bildFallsVorhanden() merkt sich
+    // ein „gibt es nicht" zehn Minuten lang (src/bilder/images.ts). Dieselbe Nummer
     // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
     const ohneDatei = `wlimg${process.pid}a-1`;
     const mitDatei = `wlimg${process.pid}b-1`;
@@ -359,9 +355,6 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Inhaber laesst sich wechseln — mit Alarm und Datum', async () => {
-    // Marcos Befund: „Auf dem Detail-Dialog der Merkliste kann der Inhaber
-    // nicht geändert werden. Auch in der Android-App nicht."
-    //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) In verschiebeMerkposten() das UPDATE der price_alerts entfernt →
     //      „der Alarm zieht mit" wird rot.

@@ -41,7 +41,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Die Ruhe steht jetzt im Sichtfenster-Lader. Sie deckt beide Wege ab, denn
  * beide enden dort. Genau so macht es die Webapp seit jeher
- * (js/catalog.js, `_ladeSichtbareSeiten`, 150 ms) — und genau deshalb ist
+ * (js/katalog.js, `_ladeSichtbareSeiten`, 150 ms) — und genau deshalb ist
  * die Webapp schnell.
  *
  * ── Wie geprueft wird ───────────────────────────────────────────────────────

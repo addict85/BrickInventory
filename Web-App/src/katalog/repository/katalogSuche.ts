@@ -1,6 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
-import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
+import { mengeAus } from '../../../db/bestandsmenge';
+import type { KatalogLesevertrag } from '../lesevertrag';
 import { ausTabelle } from '../../infra/validate';
 
 export type Thema = { id: number; name: string; parent_id: number | null };
@@ -92,9 +93,8 @@ const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb
             (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
 const BILD_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 /** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */
-const BESITZ_JOIN = `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
-                    FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
-                   WHERE s.user_id = ANY($1)
+const besitzJoin = (l: KatalogLesevertrag) => `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
+                    FROM ${l.setBestand('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
 export async function katalogAnzahl(db: DbSchnittstelle, f: KatalogWahl): Promise<number> {
@@ -106,6 +106,7 @@ export async function katalogAnzahl(db: DbSchnittstelle, f: KatalogWahl): Promis
 
 export function katalogZeilen(
   db: DbSchnittstelle,
+  l: KatalogLesevertrag,
   konten: number[],
   f: KatalogWahl,
   ordnung: unknown,
@@ -121,7 +122,7 @@ export function katalogZeilen(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
        ${BILD_JOIN}
-       ${BESITZ_JOIN}
+       ${besitzJoin(l)}
        ${wo}
       ORDER BY ${sortSql}
       LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -129,12 +130,12 @@ export function katalogZeilen(
   );
 }
 
-export function katalogZeile(db: DbSchnittstelle, konten: number[], setNumber: string) {
+export function katalogZeile(db: DbSchnittstelle, l: KatalogLesevertrag, konten: number[], setNumber: string) {
   return db.get<KatalogSet>(
     `SELECT ${SET_SPALTEN}
        FROM rb_sets rb
        ${BILD_JOIN}
-       ${BESITZ_JOIN}
+       ${besitzJoin(l)}
       WHERE rb.set_num = $2 AND (b.set_number IS NOT NULL OR NOT ${PLATZHALTER})`,
     [konten, setNumber],
   );

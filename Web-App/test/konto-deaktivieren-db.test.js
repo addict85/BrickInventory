@@ -82,6 +82,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
+  /** @param {string} methode @param {string} pfad @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
   const rufe = (methode, pfad, { body, cookie, token } = {}) =>
     fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth${pfad}`, {
       method: methode,
@@ -198,10 +199,10 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   await t.test('die Token-Abfrage prüft is_active', async () => {
     const auth = _req('src/konto/geraeteToken.js');
     const tokenCache = _req('src/konto/tokenCache.js');
-    const token = await auth.createToken(nutzer, 'Probe');
-    assert.ok(await auth.validateToken(token));
+    const token = await auth.tokenAnlegen(nutzer, 'Probe');
+    assert.ok(await auth.nutzerZumToken(token));
     await db.run('UPDATE users SET is_active = false WHERE id = $1', [nutzer]);
     tokenCache.leereTokenCache();
-    assert.equal(await auth.validateToken(token), null);
+    assert.equal(await auth.nutzerZumToken(token), null);
   });
 });

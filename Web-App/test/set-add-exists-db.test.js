@@ -1,8 +1,10 @@
 /**
  * Ein Set, das schon im Blickfeld steht, wird beim Erfassen NICHT erhöht.
  *
- * Gegenprobe (durchgeführt): den findSetInScope-Zweig aus routes/api_v1/sets.ts
+ * Gegenprobe (durchgeführt): den findeSetImBlickfeld-Zweig aus routes/api_v1/sets.ts
  * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
+ * Gegenprobe (15.11.2026): in setVorhanden() (src/sets/erfassen.ts) die Nummer ohne
+ * normalisiereSetNummer zurückgegeben → rot „exists: false, set_number“ (ohne -1).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
  */
@@ -24,7 +26,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
 
   const HAUPT = `ex-haupt-${process.pid}`,
     SUB = `ex-sub-${process.pid}`;
-  // Endung bewusst „-1": sanitizeSetNumber() hängt an eine Nummer OHNE Suffix
+  // Endung bewusst „-1": normalisiereSetNummer() hängt an eine Nummer OHNE Suffix
   // immer „-1" an. Ein Set 97001-42 wäre über die blosse Eingabe „97001" also
   // gar nicht auffindbar — das ist die bestehende Regel des Projekts und nicht
   // Gegenstand dieses Tests. Teilschritt 2 prüft die Normalisierung deshalb an
@@ -135,6 +137,10 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
       assert.equal(e.exists, erwartet, `exists für ${sn}`);
       if (erwartet) assert.ok(e.owner_user_id > 0, `Besitzer fehlt für ${sn}`);
     }
+    // Ohne Treffer nennt die Vorabfrage die Nummer so, wie sie angelegt würde (mit Suffix).
+    const neuOhneSuffix = NEU.replace(/-1$/, '');
+    const keins = await (await fetch(`${base}/api/v1/sets/exists/${neuOhneSuffix}`)).json();
+    assert.deepEqual([keins.exists, keins.set_number], [false, NEU], 'exists: false, set_number');
     // Das eigene Konto gewinnt, wenn beide dasselbe Set haben.
     await anlegen(subId, EIGEN);
     const beide = await (await fetch(`${base}/api/v1/sets/exists/${EIGEN}`)).json();
@@ -145,17 +151,17 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     );
     assert.equal(beide.is_self, true);
 
-    // 4. AUSNAHME: Der CSV-Import ruft addSet() direkt und fasst weiterhin
-    //    zusammen. Die Regel darf nicht dort hineingerutscht sein.
-    // Fundort: src/sets/erfassen.ts, erreichbar über den Einstieg src/sets.
-    const { addSet } = require('./helpers/sources').bereichsSeite('sets');
+    // 4. AUSNAHME: Der CSV-Import stockt auf (wennVorhanden: 'aufstocken').
+    const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
     const vorImport = await stand(KIND);
-    const erg = await addSet({ setNumber: KIND, menge: 1, konto: subId, zustand: 'N' });
-    assert.equal(
-      erg.action,
-      'updated',
-      'addSet() selbst muss weiterhin zusammenfassen — sonst steht der CSV-Import still',
-    );
+    const erg = await setErfassen({
+      anfragender: subId,
+      setNumber: KIND,
+      menge: 1,
+      zustand: 'N',
+      wennVorhanden: 'aufstocken',
+    });
+    assert.equal(erg.action, 'updated', 'der Import muss aufstocken — sonst steht der CSV-Import still');
     assert.equal((await stand(KIND)).menge, vorImport.menge + 1);
   } finally {
     await aufraeumen();
@@ -166,25 +172,20 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
   }
 });
 
-test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
-  // Warum das jetzt anders geprueft wird
-  const { normalizeSetNumber } = require('./helpers/sources').bereichsSeite('sets');
-  const { sanitizeSetNumber } = require('./helpers/sources').bereichsSeite('sets');
-  assert.equal(
-    typeof sanitizeSetNumber,
-    'function',
-    'sanitizeSetNumber ist nicht mehr exportiert — dann prueft dieser Test nichts',
-  );
-  for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', '75192 Falcon', 'ab-12', '4002!!']) {
-    assert.equal(normalizeSetNumber(eingabe), sanitizeSetNumber(eingabe), `Abweichung bei "${eingabe}"`);
-  }
-  // Und beide sagen dasselbe wie die Stelle, an der die Regel steht.
+test('eine Regel für Setnummern: normalisiereSetNummer', () => {
+  // Früher drei Namen (normalizeSetNumber, sanitizeSetNumber); jetzt nur die Stelle, an der die Regel steht.
   const { normalisiereSetNummer } = _req('src/infra/setNummer.js');
-  for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', 'ab-12', '4002!!']) {
-    assert.equal(
-      normalizeSetNumber(eingabe),
-      normalisiereSetNummer(eingabe),
-      `Abweichung zur zentralen Fassung bei "${eingabe}"`,
-    );
-  }
+  const sets = _req('src/sets/index.js');
+  assert.equal(sets.normalizeSetNumber, undefined);
+  assert.equal(sets.sanitizeSetNumber, undefined);
+  for (const [eingabe, erwartet] of [
+    ['75192', '75192-1'],
+    ['75192-1', '75192-1'],
+    [' 75192 ', '75192-1'],
+    ['75192; irgendwas', '75192-1'],
+    ['75192 Falcon', '75192-1'],
+    ['ab-12', 'ab-12'],
+    ['4002!!', '4002-1'],
+  ])
+    assert.equal(normalisiereSetNummer(eingabe), erwartet, `bei "${eingabe}"`);
 });

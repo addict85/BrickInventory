@@ -16,7 +16,6 @@ import okhttp3.Request
 import java.io.IOException
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
@@ -42,10 +41,9 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import retrofit2.Retrofit
-import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.serializer
 import okhttp3.ResponseBody
 import retrofit2.Invocation
@@ -57,12 +55,15 @@ import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
 
 /** Die angezeigte Meldung als Satz, wie NummernTexte ihn bildet; null ohne Meldung. */
-val MeldungsKanal.text: String?
-    get() = when (val m = meldung.value) {
+val MeldungsKanal.text: String? get() = meldung.value.text
+
+/** Eine Meldung als prüfbarer Satz: „t<id>(werte)“, „m<id>:<anzahl>“ oder der Text selbst. */
+val Meldung?.text: String?
+    get() = when (this) {
         null -> null
-        is Meldung.Text -> m.text
-        is Meldung.Ressource -> "t${m.id}" + if (m.werte.isEmpty()) "" else m.werte.joinToString(", ", "(", ")")
-        is Meldung.Menge -> "m${m.id}:${m.anzahl}"
+        is Meldung.Text -> text
+        is Meldung.Ressource -> "t$id" + if (werte.isEmpty()) "" else werte.joinToString(", ", "(", ")")
+        is Meldung.Menge -> "m$id:$anzahl"
     }
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
@@ -73,7 +74,7 @@ object TestApi {
         OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build())
 
     fun fuer(basis: String, rufe: Call.Factory): BrickApiService {
-        val json = ApiJson
+        val json = BrickJson
         return Retrofit.Builder()
             .baseUrl(basis)
             .callFactory(rufe)
@@ -111,7 +112,7 @@ object TestApi {
 object NummernTexte : Texte {
     override fun text(id: Int, vararg args: Any?) = "t$id"
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-    override fun meldung(fehler: Ergebnis.Error) = "fehler"
+    override fun meldung(fehler: Ergebnis.Fehler) = "fehler"
     override fun angemeldet() = true
 }
 
@@ -200,7 +201,7 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     private fun pruefeGegenDto(anfrage: Request, pfad: String, text: String) {
         val typ = anfrage.tag(Invocation::class.java)?.let { antworttyp(it.method()) } ?: return
         try {
-            ApiJson.decodeFromString(ApiJson.serializersModule.serializer(typ), text)
+            BrickJson.decodeFromString(BrickJson.serializersModule.serializer(typ), text)
         } catch (e: IllegalArgumentException) {
             val grund = "${anfrage.method} $pfad: ${e.message?.lineSequence()?.firstOrNull()}"
             einlesefehler += grund
@@ -267,26 +268,25 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
 
     constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
 
-    val cacheDir: File = File(System.getProperty("java.io.tmpdir"), "bim-vm-${System.nanoTime()}").apply { mkdirs() }
-    val cache = ResponseCache(io = io) { cacheDir }
     val sitzung = Sitzung()
-    val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache))
+    val blickfeld = Blickfeld(SpeicherAblage(), testHaushaltRepository(api), testTeileRepository(api))
     val meldungen = MeldungsKanal()
 
     /** Eine Ablage für alle Repositories dieses Tests: Was eines schreibt, sehen die Listen der anderen. */
     val ablage = Testablage()
-    val kontosicht: Kontosicht = Kontosicht(api, ablage)
-    val abgleich: Bestandsabgleich = Bestandsabgleich(api, ablage)
+    val kontosicht: Kontosicht = testKontosicht(api, ablage)
+    val abgleich: Bestandsabgleich = testBestandsabgleich(api, ablage)
 
     /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
     val aenderungen: Bestandsabgleich get() = abgleich
-    fun sets(): SetsRepository = SetsRepository(api, cache, ablage)
-    fun merkliste(): MerklisteRepository = MerklisteRepository(api, cache, ablage)
-    fun alarme(): AlarmRepository = AlarmRepository(api, cache, ablage)
-    fun setKatalog(): SetKatalogRepository = SetKatalogRepository(api, cache)
-    fun setDateien(): SetDateienRepository = SetDateienRepository(api, cache)
-    fun teile(): TeileRepository = TeileRepository(api, cache, ablage)
-    fun figuren(): FigurenRepository = FigurenRepository(api, cache, ablage)
+    fun sets(): SetsRepository = testSetsRepository(api, ablage)
+    fun haushalt(): HaushaltRepository = testHaushaltRepository(api, ablage)
+    fun merkliste(): MerklisteRepository = testMerklisteRepository(api, ablage)
+    fun alarme(): AlarmRepository = testAlarmRepository(api, ablage)
+    fun setKatalog(): SetKatalogRepository = testSetKatalogRepository(api)
+    fun setDateien(): SetDateienRepository = testSetDateienRepository(api)
+    fun teile(): TeileRepository = testTeileRepository(api, ablage)
+    fun figuren(): FigurenRepository = testFigurenRepository(api, ablage)
     val scrollMemory = ScrollMemory()
     val hinweise = Meldungen(meldungen, texte)
 
@@ -319,18 +319,16 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
         kotlinx.coroutines.runBlocking {
             kotlinx.coroutines.withTimeoutOrNull(5_000) { jobs.forEach { it.join() } }
         }
-        cacheDir.deleteRecursively()
         PfadServer.von(api)?.pruefeEinlesen()
     }
 }
 
-/** Ein Repository gegen einen Testserver, mit Ablage in einem Wegwerf-Ordner. */
-fun <R, T> mitRepo(bau: (BrickApiService, ResponseCache) -> R, block: (PfadServer, R) -> T): T {
+/** Ein Repository gegen einen Testserver; braucht es eine Ablage, bringt seine Fabrik eine mit. */
+fun <R, T> mitRepo(bau: (BrickApiService) -> R, block: (PfadServer, R) -> T): T {
     val pfade = PfadServer()
-    val ordner = File(System.getProperty("java.io.tmpdir"), "bim-repo-${System.nanoTime()}").apply { mkdirs() }
     try {
-        return block(pfade, bau(TestApi.fuer(pfade.server), ResponseCache { ordner }))
-    } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+        return block(pfade, bau(TestApi.fuer(pfade.server)))
+    } finally { pfade.server.shutdown() }
 }
 
 /** Ein Abruf, der auch asynchron gestellt im aufrufenden Faden läuft (PfadServer.imTakt). */

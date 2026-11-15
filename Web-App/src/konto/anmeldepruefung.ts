@@ -1,29 +1,28 @@
 /** Anmeldedaten prüfen: Passwort, Kontozustand, zweiter Faktor, Bremse. */
 import * as passwortRegel from '../infra/passwortRegel';
-import bcrypt from 'bcryptjs';
-import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
+import { BcryptUeberlast } from './bcryptSchranke';
+import { brauchtNeuenHash, hashePasswort, hashePasswortSofort, passwortPasst } from './passwortHash';
 import {
-  checkLoginAllowed,
+  anmeldungErlaubt,
   bekannteAnmeldung,
   gibAnmeldeplatzFrei,
-  recordLoginFailure,
-  recordLoginSuccess,
+  anmeldungGescheitert,
+  anmeldungGelungen,
   meldeAnmeldeereignis,
   meldeAnmeldung,
   faktorCodeGesperrt,
   faktorCodeFalsch,
+  tagesgrenzeErreicht,
   MAX_ATTEMPTS,
   type Anmeldeereignis,
   type Anmeldeweg,
 } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
-import * as zf from './zweiterFaktor';
-import * as passkeys from './passkeys';
-import { doppeltAls, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
+import { doppeltAls, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { hinweisNebenher } from './kontoHinweis';
-import { hashToken } from './geraeteToken';
+import { tokenAbdruck } from './geraeteToken';
 import { zugangsTransaktion } from './zugangsende';
-import { isValidLoginIdentifier } from './namensRegeln';
+import { anmeldenameGueltig } from './namensRegeln';
 import type { KontoKontext } from './kontext';
 
 const TAG_MS = 86_400_000;
@@ -42,19 +41,18 @@ export interface KontoZustand {
 export async function verifiziereEmailToken(
   k: KontoKontext,
   token: string | null | undefined,
-): Promise<{ ok: boolean; grund?: string; userId?: number }> {
-  if (token === undefined || token === null || String(token).trim() === '') {
-    return { ok: false, grund: 'fehlt' };
-  }
-  const hash = hashToken(String(token));
-  const id = await k.konten.kontoZuEmailToken(hash);
-  if (id === undefined) return { ok: false, grund: 'ungueltig' };
+): Promise<{ userId: number }> {
+  const leer = token === undefined || token === null || String(token).trim() === '';
+  const hash = tokenAbdruck(String(token));
+  const id = leer ? undefined : await k.konten.kontoZuEmailToken(hash);
+  if (id === undefined) fachfehler('ungueltig', 'bestaetigungslink_ungueltig');
   const ok = await zugangsTransaktion(k, t => t.konten.uebernimmEmailNeu(id, hash)).catch(doppeltAls(false));
-  if (!ok) await k.konten.verwirfEmailNeu(id, hash);
-  return ok ? { ok: true, userId: id } : { ok: false, grund: 'vergeben', userId: id };
+  if (!ok) {
+    await k.konten.verwirfEmailNeu(id, hash);
+    fachfehler('ungueltig', 'email_vergeben');
+  }
+  return { userId: id };
 }
-
-export const BCRYPT_ROUNDS = 12;
 
 /** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen. */
 export const PASSWORT_MIN_ZEICHEN = passwortRegel.PASSWORT_MIN_ZEICHEN;
@@ -72,9 +70,9 @@ export function assertLoginAllowed(
   return null;
 }
 
-/** Für unbekannte Namen: bcrypt.compare() braucht dann dieselbe Zeit wie bei
- * einem echten Konto, mit denselben Runden erzeugt. */
-const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
+/** Für unbekannte Namen: Die Prüfung braucht dann dieselbe Zeit wie bei einem
+ * Konto mit aktuellem Hash. */
+const DUMMY_HASH = hashePasswortSofort('nonexistent-account-placeholder');
 
 /** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
 export interface AnmeldeAbsage {
@@ -126,11 +124,11 @@ export async function pruefeAnmeldedaten(
   passkeyAntwort?: unknown,
 ): Promise<AnmeldeErgebnis> {
   if (!username || !password) return absage('ungueltig', 'benutzername_passwort');
-  if (!isValidLoginIdentifier(username)) return absage('ungueltig', 'name_oder_email_eingeben');
+  if (!anmeldenameGueltig(username)) return absage('ungueltig', 'name_oder_email_eingeben');
 
   const ip = herkunft.ip || '?';
   const name = String(username);
-  const gesperrt = await checkLoginAllowed(k, ip, name);
+  const gesperrt = await anmeldungErlaubt(k, ip, name);
   if (gesperrt) {
     meldeAnmeldeereignis('anmeldung_gesperrt', {
       ip,
@@ -140,6 +138,9 @@ export async function pruefeAnmeldedaten(
   }
 
   const user = await k.zugaenge.kontoZurAnmeldung(name);
+  const mitFaktor = (passkeyAntwort !== undefined && passkeyAntwort !== null) || !!String(code ?? '').trim();
+  if (await nurNochMitFaktor(k, ip, name, user?.id, mitFaktor))
+    return absage('zu_viele', 'konto_tagesgrenze', undefined, false, true);
   // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen. Wer sich von
   // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
   const vorrang = await bekannteAnmeldung(k, ip, name);
@@ -158,11 +159,11 @@ export async function pruefeAnmeldedaten(
   }
 
   let zugang: Anmeldeweg = 'passwort';
-  if (await zf.istAktiv(k, user.id)) {
+  if (await k.faktoren.istAktiv(user.id)) {
     // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
     const mitPasskey = passkeyAntwort !== undefined && passkeyAntwort !== null;
     zugang = mitPasskey ? 'passwort+passkey' : 'passwort+code';
-    const hatPasskey = await passkeys.hatPasskeys(k, user.id);
+    const hatPasskey = await k.faktoren.hatPasskeys(user.id);
     const ergaenzt = (e: AnmeldeErgebnis) => {
       if (!e.ok && hatPasskey) e.absage.passkey = true;
       return e;
@@ -174,8 +175,8 @@ export async function pruefeAnmeldedaten(
     }
     const nurNotweg = !mitPasskey && (await faktorCodeGesperrt(k, user.id));
     const gilt = mitPasskey
-      ? (await passkeys.anmeldungPruefen(k, passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
-      : await zf.pruefeCode(k, user.id, code, !nurNotweg);
+      ? (await k.faktoren.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
+      : await k.faktoren.pruefeCode(user.id, code, !nurNotweg);
     if (!gilt) {
       await fehlversuch(k, 'zweiter_faktor_falsch', ip, name, user.id);
       // Sofort, nicht erst mit der Kontosperre: Wer hier rät, kennt das Passwort.
@@ -185,9 +186,28 @@ export async function pruefeAnmeldedaten(
       return ergaenzt(absage('nicht_angemeldet', grund, undefined, false, true));
     }
   }
-  await recordLoginSuccess(k, ip, name);
+  // Erst jetzt, nach Passwort und zweitem Faktor: Den Klartext gibt es nur bei einer Anmeldung.
+  if (brauchtNeuenHash(user.password_hash))
+    await k.zugaenge.ersetzePasswortHash(user.id, user.password_hash, await hashePasswort(password));
+  await anmeldungGelungen(k, ip, name);
   meldeAnmeldung({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };
+}
+
+/** Über der Tagesgrenze nur mit Code oder Passkey und aktivem Faktor. Vor der Passwortprüfung
+ * und ohne deren Ergebnis entschieden: Eine eigene Absage danach verriete das Passwort. */
+async function nurNochMitFaktor(
+  k: KontoKontext,
+  ip: string,
+  name: string,
+  konto: number | undefined,
+  mitFaktor: boolean,
+): Promise<boolean> {
+  if (!(await tagesgrenzeErreicht(k, ip, name))) return false;
+  if (mitFaktor && konto !== undefined && (await k.faktoren.istAktiv(konto))) return false;
+  await gibAnmeldeplatzFrei(k, ip, name);
+  meldeAnmeldeereignis('anmeldung_tagesgrenze', { ip, konto: konto ?? null });
+  return true;
 }
 
 /** Beim Erreichen der Kontosperre erfährt es der Inhaber, höchstens einmal am Tag:
@@ -200,6 +220,9 @@ async function fehlversuch(
   konto?: number,
 ): Promise<void> {
   meldeAnmeldeereignis(ereignis, { ip, konto: konto ?? null });
-  if ((await recordLoginFailure(k, ip, name)) !== MAX_ATTEMPTS || konto === undefined) return;
-  if (!(await kontoGedrosselt(k, 'sperr-hinweis', konto, 1, TAG_MS))) hinweisNebenher(k, konto, 'anmeldung_gebremst');
+  const { n, tagesgrenze } = await anmeldungGescheitert(k, ip, name);
+  if (konto === undefined) return;
+  if (tagesgrenze) hinweisNebenher(k, konto, 'anmeldung_tagesgrenze');
+  else if (n === MAX_ATTEMPTS && !(await kontoGedrosselt(k, 'sperr-hinweis', konto, 1, TAG_MS)))
+    hinweisNebenher(k, konto, 'anmeldung_gebremst');
 }

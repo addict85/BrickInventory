@@ -63,7 +63,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
   const stand = () => db.get('SELECT password_hash, sitzungs_version FROM users WHERE id=$1', [uid]);
   await db.run(`INSERT INTO api_tokens (token, user_id) VALUES ('t1', $1), ('t2', $1)`, [uid]);
-  const link = A.hashToken('ruecksetz-link');
+  const link = A.tokenAbdruck('ruecksetz-link');
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + interval '1 hour' WHERE id = $2`, [
     link,
     uid,
@@ -83,7 +83,9 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('andere Zugänge: der Token bleibt', async () => {
-    await mitBremse(() => assert.rejects(zugangsende.beendeAndereZugaenge(uid, null, null), /erzwungen/));
+    await mitBremse(() =>
+      assert.rejects(zugangsende.beendeAndere(uid, { sitzung: null, token: null, zugaenge: true }), /erzwungen/),
+    );
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 

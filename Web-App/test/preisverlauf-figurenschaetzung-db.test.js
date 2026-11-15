@@ -37,14 +37,22 @@ https.get = (_url, _opts, cb) => {
   const req = new EventEmitter();
   setImmediate(() => {
     cb(
-      Object.assign(
-        Readable.from([
-          JSON.stringify({
-            meta: { code: 200 },
-            data: { avg_price: '20.00', qty_avg_price: '19.00', min_price: '15', max_price: '25', total_quantity: '4' },
-          }),
-        ]),
-        { statusCode: 200, headers: {} },
+      /** @type {any} */ (
+        Object.assign(
+          Readable.from([
+            JSON.stringify({
+              meta: { code: 200 },
+              data: {
+                avg_price: '20.00',
+                qty_avg_price: '19.00',
+                min_price: '15',
+                max_price: '25',
+                total_quantity: '4',
+              },
+            }),
+          ]),
+          { statusCode: 200, headers: {} },
+        )
       ),
     );
   });

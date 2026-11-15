@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
-import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
+import ch.brickinventoryapp.model.fach.DiagrammPunkt
 
 /**
  * Was TalkBack über das Wertdiagramm sagt: von wann bis wann, Anfangs- und
@@ -22,8 +22,8 @@ data class DiagrammZusammenfassung(
  */
 fun diagrammZusammenfassung(punkte: List<DiagrammPunkt>, veraenderungServer: Double?): DiagrammZusammenfassung? {
     if (punkte.size < 2) return null
-    val anfang = punkte.first().value
-    val ende = punkte.last().value
+    val anfang = punkte.first().wert.alsDouble()
+    val ende = punkte.last().wert.alsDouble()
     val prozent = veraenderungServer
         ?: if (anfang != 0.0) (ende - anfang) / anfang * 100.0 else null
     // Nicht jeder Punkt trägt eine Beschriftung; die äussersten vorhandenen

@@ -1,7 +1,7 @@
 import type { Sicht } from '../../haushalt';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
-import { computeMinifigsValuation, computePartsValuation } from './bewertung';
+import { bewerteFiguren, bewerteTeile } from './bewertung';
 import type { Blickfeld } from './preise';
 import { zaehle } from './abfragen';
 import type { ladeSetErfassungen } from '../repository/erfassungen';
@@ -120,13 +120,13 @@ function postenZeile(p: { quantity?: number | null; avg_price?: unknown; purchas
 const kaufsumme = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
   summeAus(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
 
-export async function computePnl(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function gewinnUndVerlust(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
   const uids = await k.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
-    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalerWert('price_cache_ttl', '24'),
   ]);
   const sets = await k.gewinnVerlust.setsMitErfassungen(uids);
   // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.
@@ -141,10 +141,7 @@ export async function computePnl(k: FinanzenKontext, viewerId: number, idsWahl: 
 
   const setResults = sets.map(s => pnlSetZeile(s, werte));
   const kachel = kachelWerte(setResults);
-  const [partsVal, figsVal] = await Promise.all([
-    computePartsValuation(k, viewerId, uids),
-    computeMinifigsValuation(k, viewerId, uids),
-  ]);
+  const [partsVal, figsVal] = await Promise.all([bewerteTeile(k, viewerId, uids), bewerteFiguren(k, viewerId, uids)]);
   const partsResults = partsVal.parts.map(postenZeile),
     figsResults = figsVal.figs.map(postenZeile);
 

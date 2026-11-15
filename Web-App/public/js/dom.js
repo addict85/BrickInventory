@@ -42,6 +42,14 @@ export function aktiverReiter() {
   return eins('.ntab.active')?.dataset.tab;
 }
 
+const TELEFON = '(max-width: 640px)';
+/** Telefonbreite wie in mobile.css: Dort gibt es keine Tabellenansicht, die Zeilen wären eine Bildschirmhöhe hoch. */
+export const telefonBreite = () => !!globalThis.matchMedia?.(TELEFON).matches;
+/** @param {() => void} fn läuft, wenn das Fenster die Telefonbreite erreicht oder verlässt */
+export function beiTelefonWechsel(fn) {
+  globalThis.matchMedia?.(TELEFON).addEventListener?.('change', fn);
+}
+
 /**
  * Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML.
  * @param {string} name

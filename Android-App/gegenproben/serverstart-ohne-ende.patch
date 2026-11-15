@@ -6,12 +6,12 @@ Rot: der Serverstart wird im Takt verfolgt
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 --- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 +++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
-@@ -203,7 +203,7 @@ class SitzungsDienst @Inject constructor(
+@@ -198,7 +198,7 @@
          if (prefs.serverUrlJetzt().isBlank()) return
          while (true) {
              val r = verwaltung.getStartupStatus()
--            if (r !is Ergebnis.Success || r.data.ready) {
-+            if (r !is Ergebnis.Success) {
+-            if (r !is Ergebnis.Erfolg || r.data.bereit) {
++            if (r !is Ergebnis.Erfolg) {
                  sitzung.serverstartGeaendert(null)
                  return
              }

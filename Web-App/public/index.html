@@ -15,27 +15,37 @@
   <title>BrickInventory Manager</title>
   <!-- Startgerüst: Kopf, Leiste und Kacheln als Platzhalter, bis Stile, Sprache … -->
   <style id="startstil">
-#startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;--sg-akzent:#2563eb;--sg-band:#eff6ff;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 [data-theme=brick] #startgeruest{--sg-bg:#c9d5e2;--sg-sur:#e6ecf2;--sg-bdr:#b7c6d8;--sg-ph:#d3deea}
-[data-dunkel] #startgeruest,[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}
+[data-dunkel] #startgeruest,[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee;--sg-akzent:#93c5fd;--sg-band:#1a2433}
 .sg-kopf{display:flex;align-items:center;gap:9px;height:58px;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr);color:var(--sg-txt);font-weight:800;font-size:17px}
 [data-theme=brick] .sg-kopf{background:#3d5a80;color:#fff}
 [data-theme=brick][data-dunkel] .sg-kopf{background:#273849}
 [data-theme=brick] .sg-kopf{border:0;border-radius:16px;margin:14px 16px 0}
 [data-abgemeldet] #startgeruest>*{display:none}
-.sg-leiste{display:flex;gap:28px;height:46px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
-.sg-leiste i,.sg-titel,.sg-karten i,.sg-kacheln i{display:block;background:var(--sg-ph);border-radius:8px}
+#startgeruest .sg-zusatz{color:var(--sg-akzent);margin-left:-4px}
+[data-theme=brick] #startgeruest .sg-zusatz{color:inherit}
+.sg-leiste{display:flex;gap:28px;height:44px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
+.sg-band{display:none;height:45px;background:var(--sg-band);border-bottom:1px solid var(--sg-bdr)}
+[data-rb-band] .sg-band{display:block}
+.sg-leiste i,.sg-inhalt i{display:block;background:var(--sg-ph);border-radius:8px}
 .sg-leiste i{width:84px;height:12px}
-.sg-inhalt{max-width:1720px;margin:0 auto;padding:2rem 1.5rem}
-.sg-titel{width:min(260px,60%);height:28px;margin-bottom:1.5rem}
-.sg-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.75rem}
-.sg-karten i{height:84px;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+.sg-inhalt{max-width:1720px;margin:0 auto;padding:2rem}
+.sg-ph{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.5rem}
+.sg-ph div{display:grid;gap:13px;flex:1}
+.sg-pfad{width:120px;height:12px}.sg-titel{width:160px;height:32px}.sg-unter{width:min(360px,80%);height:14px}
+.sg-inhalt .sg-wahl{width:304px;height:45px;flex:none}
+.sg-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem}
+.sg-inhalt .sg-karten i,.sg-inhalt .sg-kacheln i{height:95px;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+.sg-knoepfe{display:flex;gap:8px;margin-bottom:1.5rem}.sg-knoepfe i{width:155px;height:39px}
+.sg-inhalt .sg-suche{height:40px;margin-bottom:1.5rem}
 .sg-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr));gap:1rem}
-.sg-kacheln i{aspect-ratio:3/4;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
-@media (max-width:640px){.sg-leiste{display:none}.sg-inhalt{padding:1rem}.sg-karten{grid-template-columns:repeat(2,1fr)}.sg-kacheln{grid-template-columns:1fr}.sg-kacheln i{aspect-ratio:auto;height:120px}}
-@media (prefers-reduced-motion:no-preference){.sg-inhalt i,.sg-titel{animation:sg-puls 1.4s ease-in-out infinite alternate}}
+.sg-inhalt .sg-kacheln i{height:28rem}
+@media (max-width:640px){#startgeruest .sg-kopf{height:53px;padding:0 .75rem}.sg-zusatz{display:none}.sg-leiste{position:fixed;bottom:0;left:0;right:0;height:56px;justify-content:space-around;border:0;border-top:1px solid var(--sg-bdr);padding:0}.sg-leiste i{width:44px}.sg-band{height:53px}.sg-inhalt{padding:12px 1rem}.sg-ph div,.sg-knoepfe{display:none}.sg-inhalt .sg-wahl{width:100%;height:52px}.sg-karten{display:block;margin-bottom:12px}.sg-inhalt .sg-karten i{width:60%;height:20px;border:0;background:var(--sg-ph)}.sg-karten i+i{display:none}.sg-inhalt .sg-suche{height:44px}.sg-kacheln{grid-template-columns:repeat(2,1fr);gap:12px}.sg-inhalt .sg-kacheln i{height:25rem}}
+@media (prefers-reduced-motion:no-preference){.sg-inhalt i{animation:sg-puls 1.4s ease-in-out infinite alternate}}
 @keyframes sg-puls{from{opacity:1}to{opacity:.55}}
 #start-offline{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:3;width:min(26rem,calc(100% - 2rem));padding:1.25rem 1.5rem;border-radius:12px;background:#fff;color:#1e293b;border:1px solid #e3e6ea;box-shadow:0 8px 28px rgba(0,0,0,.18);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
+[data-dunkel] #start-offline,[data-theme=werkbank] #start-offline{background:#1b2027;color:#e6e9ee;border-color:#2f3843;box-shadow:0 8px 28px rgba(0,0,0,.5)}
 #start-offline[hidden]{display:none}
 #start-offline p{margin:0 0 .5rem}
 #start-offline button{min-height:44px;padding:.5rem 1.25rem;border-radius:8px;border:0;background:#1d4ed8;color:#fff;font:inherit;font-weight:600;cursor:pointer}
@@ -44,9 +54,10 @@
 <body>
 <a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
 <div id="startgeruest" aria-hidden="true">
-  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
+  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory <span class="sg-zusatz">Manager</span></div>
   <div class="sg-leiste"><i></i><i></i><i></i><i></i><i></i></div>
-  <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="sg-band"></div>
+  <div class="sg-inhalt"><div class="sg-ph"><div><i class="sg-pfad"></i><i class="sg-titel"></i><i class="sg-unter"></i></div><i class="sg-wahl"></i></div><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-knoepfe"><i></i><i></i></div><i class="sg-suche"></i><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
 <div id="start-offline" role="alert" hidden>
   <p><strong id="start-offline-titel" data-i18n="startup.offline_titel">Server nicht erreichbar</strong></p>
@@ -187,12 +198,13 @@
       <h1 class="vh" data-i18n="login.submit">Anmelden</h1>
       <div class="lerr" id="lerr" role="alert"></div>
       <div class="login-hinweis" id="login-hinweis" role="status" hidden></div>
+      <p class="login-hinweis login-warnung" id="login-ohne-https" data-i18n="auth.ohne_https" hidden>Verbindung unverschlüsselt: Passwort und Sitzung gehen ungeschützt durchs Netz.</p>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten: … -->
       <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><div class="geheim-feld"><input type="password" id="lp" autocomplete="current-password" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="lp" aria-pressed="false" aria-controls="lp" aria-label="Passwort anzeigen" data-i18n="login.passwort_zeigen" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
         <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
-        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="24" aria-describedby="lc-hinweis" /><div class="text-klein abstand-o-3" id="lc-hinweis" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
+        <div class="fg" id="lc-zeile" data-stil="display:none"><p class="lc-status" id="lc-status" role="status"></p><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="24" aria-describedby="lc-status lc-hinweis" /><div class="text-klein abstand-o-3" id="lc-hinweis" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
           <button type="button" class="btn bs btn-sm abstand-o-075" id="lc-passkey" data-click="passkeyZweiterFaktor" data-i18n="pk.statt_code" hidden>Passkey statt Code verwenden</button></div>
         <button type="button" class="btn bp knopf-breit" id="btn-login" data-i18n="login.submit">Anmelden</button>
         <button type="button" class="btn bs knopf-breit abstand-o-075" id="btn-passkey" data-click="passkeyAnmelden" data-i18n="pk.login" hidden>Mit Passkey anmelden</button>
@@ -434,6 +446,7 @@
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div><div class="bstat-s"></div></div>
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div><div class="bstat-s"></div></div>
       </div>
+      <p class="bstat-hinweis" id="bstat-hinweis"></p>
 
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
            Das Formular steht im Dialog #add-set-modal. -->
@@ -467,6 +480,11 @@
             <option value="price_asc" data-i18n="gallery.sort.price_asc">Preis ↑</option>
             <option value="qty_desc" data-i18n="gallery.sort.qty_desc">Anzahl ↓</option>
             <option value="qty_asc" data-i18n="gallery.sort.qty_asc">Anzahl ↑</option>
+            <option value="kauf_desc" data-i18n="gallery.sort.kauf_desc">Kaufdatum ↓</option>
+            <option value="kauf_asc" data-i18n="gallery.sort.kauf_asc">Kaufdatum ↑</option>
+            <option value="name_desc" data-i18n="gallery.sort.name_desc" hidden>Name Z–A</option>
+            <option value="num_desc" data-i18n="gallery.sort.num_desc" hidden>Nummer ↓</option>
+            <option value="year_asc" data-i18n="gallery.sort.year_asc" hidden>Jahr ↑</option>
           </select>
           <select id="scope-gallery" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="gallery" data-stil="display:none"></select>
           <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt … -->
@@ -489,7 +507,8 @@
         <h1 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h1>
       </div>
       <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren … -->
-      <div class="filterzeile">
+      <div class="filterleiste filterzeile">
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
           <input type="text" class="si suchfeld" id="cat-search" placeholder="Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" data-i18n-aria="catalog.search_aria" aria-label="Katalog nach Setnummer oder Name durchsuchen">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
@@ -538,7 +557,8 @@
       </details>
 
       <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an … -->
-      <div class="filterzeile">
+      <div class="filterleiste filterzeile">
+        <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
         <input type="text" class="si suchfeld" id="mks" placeholder="Merkliste durchsuchen…" data-i18n="wanted.search" data-i18n-attr="placeholder" data-i18n-aria="wanted.search_aria" aria-label="Merkliste durchsuchen" />
         <select class="w-auto" id="mkcond" aria-label="Zustand" data-i18n="common.condition" data-i18n-attr="aria-label" data-change="ladeMerkliste">
           <option value="" data-i18n="filter.condition_all">Alle Zustände</option>
@@ -593,7 +613,7 @@
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im … -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="filter">Filter</button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
           <input class="suchfeld" type="text" id="parts-search" placeholder="Teile suchen…" data-i18n="parts.search" data-i18n-attr="placeholder" data-i18n-aria="parts.search_aria" aria-label="Teile suchen">
           <select class="w-auto" id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>
@@ -737,7 +757,7 @@
       </div>
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
-        <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
+        <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.col.purchase">Kaufpreis</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub"></div></div>
         <div class="fstat hi"><div class="flbl" id="fin-wert-titel" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
         <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
@@ -767,10 +787,9 @@
             </div>
           </div>
           <div class="zeile mittig luecke-05 umbruch">
-            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
+            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" hidden data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
-          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Setnummer eintragen und hinzufügen — die Bauliste entsteht sofort.</p>
         </div>
       </div>
       <!-- Added sets -->
@@ -823,7 +842,7 @@
           <a class="einst-link" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
           <a class="einst-link" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
           <a class="einst-link" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
-          <a class="einst-link" href="#einst-hintergrund" data-click="einstAbschnitt" data-arg="einst-hintergrund" data-i18n="settings.hintergrund_titel">Hintergrundarbeiten</a>
+          <a class="einst-link" href="#einst-hintergrund" data-click="einstAbschnitt" data-arg="einst-hintergrund" data-i18n="settings.hintergrund_titel">Zeitpläne und Preise</a>
           <a class="einst-link" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
         </nav>
         <div class="ssec" id="einst-design">
@@ -947,7 +966,7 @@
 
 
         <div class="ssec full" id="einst-hintergrund">
-          <h2 class="stit" data-i18n="settings.hintergrund_titel" data-ico="monitoring">Hintergrundarbeiten</h2>
+          <h2 class="stit" data-i18n="settings.hintergrund_titel" data-ico="uhr">Zeitpläne und Preise</h2>
           <p class="hinweis-absatz abstand-u-075" data-i18n="settings.hintergrund_hint">Wie lange Preise gelten und wann die Dienste laufen. Jede Änderung gilt sofort; beobachten lässt sich alles unter „Hintergrundarbeiten“.</p>
           <div class="sform">
             <div class="fg"><label for="mon-cache-ttl" data-i18n="monitor.cache_duration">Preise aufbewahren</label>
@@ -991,9 +1010,17 @@
       <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Konto</span></h1></div>
 
       <!-- ── KONTO (Profil) ───────────────────────────────────────────────── -->
+      <div class="konto-nav" role="navigation" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
+        <a class="einst-link" href="#konto-t-darstellung" data-click="kontoSprung" data-arg="konto-t-darstellung" data-i18n="konto.darstellung">Darstellung</a>
+        <a class="einst-link" href="#konto-t-profil" data-click="kontoSprung" data-arg="konto-t-profil" data-i18n="konto.profil">Profil</a>
+        <a class="einst-link" href="#konto-t-passwort" data-click="kontoSprung" data-arg="konto-t-passwort" data-i18n="login.password">Passwort</a>
+        <a class="einst-link" href="#konto-t-zf" data-click="kontoSprung" data-arg="konto-t-zf" data-i18n="zf.title">Zweiter Faktor</a>
+        <a class="einst-link" href="#konto-t-pk" data-click="kontoSprung" data-arg="konto-t-pk" data-i18n="pk.title">Passkeys</a>
+        <a class="einst-link" href="#konto-t-gefahr" data-click="kontoSprung" data-arg="konto-t-gefahr" data-i18n="settings.danger_zone">Gefahrenzone</a>
+      </div>
 
       <section class="ssec abstand-u-125" id="profile-settings-card" aria-labelledby="konto-t-darstellung">
-        <h2 class="stit" id="konto-t-darstellung"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg> <span data-i18n="konto.darstellung">Darstellung</span></h2>
+        <h2 class="stit" id="konto-t-darstellung" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg> <span data-i18n="konto.darstellung">Darstellung</span></h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="konto.darstellung_hint">Jede Änderung gilt sofort.</p>
         <div class="profil-raster">
           <div class="fg"><label for="design-wahl" data-i18n="settings.own_theme">Design</label>
@@ -1044,7 +1071,7 @@
       </section>
 
       <section class="ssec abstand-u-125" aria-labelledby="konto-t-profil">
-        <h2 class="stit" id="konto-t-profil"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg> <span data-i18n="konto.profil">Profil</span></h2>
+        <h2 class="stit" id="konto-t-profil" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg> <span data-i18n="konto.profil">Profil</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-prof">
           <div class="profil-raster">
             <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" autocomplete="given-name" /></div>
@@ -1061,7 +1088,7 @@
       </section>
 
       <section class="ssec abstand-u-125" aria-labelledby="konto-t-passwort">
-        <h2 class="stit" id="konto-t-passwort"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
+        <h2 class="stit" id="konto-t-passwort" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-pw">
           <div class="profil-raster">
             <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" aria-describedby="pw-n-regel" />
@@ -1077,20 +1104,20 @@
 
       <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/zweiter-faktor.js -->
       <div class="ssec abstand-u-125">
-        <h2 class="stit" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</h2>
+        <h2 class="stit" id="konto-t-zf" tabindex="-1" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="zf.hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.</p>
         <div id="zf-flaeche"></div>
       </div>
 
       <!-- Passkeys — Inhalt zeichnet js/passkeys.js -->
       <div class="ssec abstand-u-125">
-        <h2 class="stit" data-i18n="pk.title" data-ico="schluessel">Passkeys</h2>
+        <h2 class="stit" id="konto-t-pk" tabindex="-1" data-i18n="pk.title" data-ico="schluessel">Passkeys</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="pk.hint">Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.</p>
         <div id="pk-flaeche"></div>
       </div>
 
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
-      <div class="sgroup-label text-gefahr" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
+      <div class="sgroup-label text-gefahr" id="konto-t-gefahr" tabindex="-1" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
       <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-schreibend data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
@@ -1448,7 +1475,7 @@
         </div>
       </div>
 
-      <!-- Server-Zertifikat: Fingerabdruck der CA-Wurzel zum Abgleich (js/settings.js, ladeTls) -->
+      <!-- Server-Zertifikat: Fingerabdruck der CA-Wurzel zum Abgleich (js/einstellungen.js, ladeTls) -->
       <div class="ssec abstand-u-125">
         <h2 class="stit" data-i18n="tls.title" data-ico="schloss">Server-Zertifikat</h2>
         <div id="tls-flaeche"></div>
@@ -1487,10 +1514,16 @@
         <span id="job-status-detail"></span>
         <div id="job-progress-wrap"><div id="job-prog-bar"></div><span id="job-prog-txt"></span></div>
       </div>
+      <div class="konto-nav" role="navigation" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
+        <a class="einst-link" href="#mon-t-kontingente" data-click="kontoSprung" data-arg="mon-t-kontingente" data-i18n="monitor.api_calls">Kontingente heute</a>
+        <a class="einst-link" href="#mon-t-speicher" data-click="kontoSprung" data-arg="mon-t-speicher" data-i18n="monitor.cache_status">Zwischenspeicher</a>
+        <a class="einst-link" href="#mon-t-dienste" data-click="kontoSprung" data-arg="mon-t-dienste" data-i18n="monitor.services">Dienste und Zeitpläne</a>
+        <a class="einst-link" href="#mon-t-auftraege" data-click="kontoSprung" data-arg="mon-t-auftraege" data-i18n="monitor.auftraege.titel">Aufträge</a>
+      </div>
       <p class="mon-einleitung" data-i18n="monitor.intro">Was der Server im Hintergrund holt und rechnet: Kontingente der Dienste, Zwischenspeicher und anstehende Aufträge.</p>
 
       <section class="card mon-teil" aria-labelledby="mon-t-kontingente">
-        <h2 class="mon-titel" id="mon-t-kontingente"><svg class="ico" aria-hidden="true"><use href="#i-uhr"/></svg><span data-i18n="monitor.api_calls">Kontingente heute</span></h2>
+        <h2 class="mon-titel" id="mon-t-kontingente" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-uhr"/></svg><span data-i18n="monitor.api_calls">Kontingente heute</span></h2>
         <p class="mon-hinweis" data-i18n="monitor.api_calls_hint">API-Aufrufe seit Mitternacht und die Tagesgrenze je Dienst.</p>
         <div class="mon-kacheln" id="rl-stats">
           <div class="mon-kachel"><div class="mon-kachel-l" data-i18n="monitor.api.rebrickable">Rebrickable</div><div class="mon-kachel-v" id="rl-rebrickable">—</div><div class="mon-balken"><div id="rl-rebrickable-balken"></div></div></div>
@@ -1500,7 +1533,7 @@
       </section>
 
       <section class="card mon-teil" aria-labelledby="mon-t-speicher">
-        <h2 class="mon-titel" id="mon-t-speicher"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="monitor.cache_status">Zwischenspeicher</span></h2>
+        <h2 class="mon-titel" id="mon-t-speicher" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="monitor.cache_status">Zwischenspeicher</span></h2>
         <dl class="mon-zahlen">
           <div><dt data-i18n="monitor.prices_cached">Gespeicherte Preise</dt><dd id="cs-prices">—</dd></div>
           <div><dt data-i18n="monitor.parts_lists">Baulisten</dt><dd id="cs-subsets">—</dd></div>
@@ -1518,7 +1551,7 @@
       </section>
 
       <section class="card mon-teil" aria-labelledby="mon-t-dienste">
-        <h2 class="mon-titel" id="mon-t-dienste"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
+        <h2 class="mon-titel" id="mon-t-dienste" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
         <div id="monitor-content">
           <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="monitor.loading">Lade…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
         </div>
@@ -1536,6 +1569,7 @@
     <h2 class="dialog-titel-mitte" id="cd-title" data-i18n="common.delete_title">Löschen?</h2>
     <p class="dialog-text-mitte" id="cd-msg"></p>
     <form class="ohne-rand" data-submit="cd-confirm">
+    <fieldset id="cd-wahl" class="cd-wahl" aria-labelledby="cd-title" hidden></fieldset>
     <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
       <label for="cd-pw" id="cd-pw-label" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password">
@@ -1557,7 +1591,7 @@
 <div class="ovl" id="add-part-modal" role="dialog" aria-modal="true" aria-labelledby="add-part-tit">
   <div class="modal max-720">
     <div class="mhd"><h2 class="mtit" id="add-part-tit" data-i18n="parts.add_title">Teil hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="part" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
-    <div id="add-part-inline">
+    <form id="add-part-inline" data-submit="btn-add-part" novalidate>
           <div class="raster-160">
             <div class="fg"><label for="ap-num-inline" data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. 3001" data-i18n="parts.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
             <div class="fg"><label for="ap-color-select" data-i18n="parts.color_label">Farbe</label>
@@ -1573,16 +1607,16 @@
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="ap-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="ap-date" data-heute /></div>
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
-            <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
+            <div class="fg unten-buendig"><button type="button" class="btn bs voll-breit hoehe-38" data-click="schliesseErfassen" data-arg="part" data-i18n="common.cancel">Abbrechen</button></div><div class="fg unten-buendig"><button type="button" class="btn bp voll-breit hoehe-38" id="btn-add-part" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
           <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result" role="status"></div>
-        </div>
+        </form>
   </div>
 </div>
 <div class="ovl" id="add-fig-modal" role="dialog" aria-modal="true" aria-labelledby="add-fig-tit">
   <div class="modal max-720">
     <div class="mhd"><h2 class="mtit" id="add-fig-tit" data-i18n="figs.add_title">Minifigur hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="fig" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
-    <div id="add-fig-inline">
+    <form id="add-fig-inline" data-submit="btn-add-fig" novalidate>
         <div class="raster-160">
           <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span class="text-klein" data-i18n="figs.num_hint">(Rebrickable-Nummer)</span></label>
             <input type="text" id="af-num-inline" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. fig-007357" data-i18n="figs.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
@@ -1595,12 +1629,11 @@
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="af-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg"><label for="af-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="af-date" data-heute /></div>
             <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
-          <div class="fg unten-buendig">
-            <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
+          <div class="fg unten-buendig"><button type="button" class="btn bs voll-breit hoehe-38" data-click="schliesseErfassen" data-arg="fig" data-i18n="common.cancel">Abbrechen</button></div><div class="fg unten-buendig"><button type="button" class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
         <div class="text-klein abstand-o-05" data-i18n="figs.add.hint" data-ico="idee">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
         <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result" role="status"></div>
-      </div>
+      </form>
   </div>
 </div>
 <div class="ovl" id="add-set-modal" role="dialog" aria-modal="true" aria-labelledby="add-set-tit">
@@ -1608,7 +1641,7 @@
     <div class="mhd"><h2 class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="set" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <!-- Ein Raster mit zwei Spalten: Beschriftungen und Felder stehen bündig,
          der Knopf schliesst rechts unten ab (vorher eine umbrechende Zeile). -->
-    <div class="erfassen-raster">
+    <form class="erfassen-raster" data-submit="btn-add" novalidate>
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Setnummer *</label><input type="text" id="add-num" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
       <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label>
@@ -1620,8 +1653,8 @@
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
       <div class="hinweis-warnung erfassen-unbekannt" id="add-unbekannt" role="status" hidden></div>
-      <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-schreibend><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
-    </div>
+      <div class="erfassen-fuss"><button type="button" class="btn bs" data-click="schliesseErfassen" data-arg="set" data-i18n="common.cancel">Abbrechen</button><button type="button" class="btn bp" id="btn-add" data-schreibend><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
+    </form>
     <div class="abstand-o-8 schrift-2" id="add-status" role="status"></div>
   </div>
 </div>
@@ -1631,7 +1664,7 @@
     <div class="m-kopfteil">
       <!-- Links unter dem Bild Wert und Preisverlauf: Die Spalte stand am Rechner sonst ~800 px leer. -->
       <div class="m-links">
-        <img id="m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+        <button type="button" class="zoom-knopf" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-klick="openImageLightboxFromEl" aria-hidden="true" disabled><img id="m-img" alt="" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" /></button>
         <div id="m-det-links"></div>
       </div>
       <div id="m-det"></div>
@@ -1662,7 +1695,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="schliesseMerkpostenDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="mk-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+    <button type="button" class="zoom-knopf" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-klick="openImageLightboxFromEl" aria-hidden="true" disabled><img id="mk-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" /></button>
     <div id="mk-m-det"></div>
     <div id="mk-m-market-rows"></div>
     <div class="abstand-o-075" id="mk-m-price-chart">
@@ -1695,14 +1728,17 @@
       <h2 class="mtit" id="mk-take-tit">—</h2>
       <button class="btn bs btn-sm" data-click="schliesseUebernahme" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
+    <form data-submit="mk-take-ok" novalidate>
     <div data-stil="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
       <div class="fg max-82"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="mk-take-qty" value="1" min="1" /></div>
       <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="mk-take-price" placeholder="—" /></div>
       <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
-      <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
+      <button type="button" class="btn bs" data-click="schliesseUebernahme" data-i18n="common.cancel">Abbrechen</button>
+      <button type="button" class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
     </div>
+    </form>
   </div>
 </div>
 
@@ -1716,7 +1752,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="cat-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+    <button type="button" class="zoom-knopf" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-zoom-klick="openImageLightboxFromEl" aria-hidden="true" disabled><img id="cat-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" /></button>
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
@@ -1803,7 +1839,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeSetItemDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <!-- data-click="openImageLightboxFromEl" ist der Zoom (actions.js);
+    <!-- data-click="openImageLightboxFromEl" ist der Zoom (aktionen.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
     <img id="setitem-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-click="openImageLightboxFromEl"
          data-stil="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
@@ -1823,7 +1859,7 @@
         <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der … -->
         <div class="pdf-zoom">
           <button id="pdf-viewer-zoom-out" class="btn bs btn-sm" data-click="pdfZoomOut" aria-label="Verkleinern (Taste −, oder Strg + Mausrad)" data-i18n="pdf.zoom_out" data-i18n-attr="aria-label">−</button>
-          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)">100%</button>
+          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)" data-i18n-aria="pdf.zoom_reset">100%</button>
           <button id="pdf-viewer-zoom-in" class="btn bs btn-sm" data-click="pdfZoomIn" aria-label="Vergrössern (Taste +, oder Strg + Mausrad)" data-i18n="pdf.zoom_in" data-i18n-attr="aria-label">+</button>
         </div>
         <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer" aria-label="Drucken" data-i18n-aria="pdf.print"><svg class="ico" aria-hidden="true"><use href="#i-drucker"/></svg> <span data-i18n="pdf.print">Drucken</span></button>
@@ -1990,7 +2026,7 @@
 <!-- Bekannte Lagerorte — EINE Liste für alle Eingabefelder (Set-Detail, … -->
 <datalist id="lagerorte"></datalist>
 
-<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/scrollbar.js ERZEUGT, … -->
+<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/rollbalken.js ERZEUGT, … -->
 </body>
 </html>
 

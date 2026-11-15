@@ -1,8 +1,5 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. */
+/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
 export { istHeikel } from './datenexport';
-export { bildProbe } from './diagnose';
-export { quellePruefen } from './dienst';
 export { NACHLAEUFE } from './startNachlaeufe';
 export type { Nachlauf } from './startNachlaeufe';
 export { hatGlobaleWerte } from './einstellungenSpeichern';

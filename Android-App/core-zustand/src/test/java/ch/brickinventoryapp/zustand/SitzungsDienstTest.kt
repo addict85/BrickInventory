@@ -4,9 +4,9 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.model.data.model.AppThemeResponse
-import ch.brickinventoryapp.model.data.model.SettingsResponse
-import ch.brickinventoryapp.model.data.model.UserSettings
+import ch.brickinventoryapp.vertrag.AppThemeResponse
+import ch.brickinventoryapp.model.fach.Kontoeinstellungen
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -15,9 +15,9 @@ import ch.brickinventoryapp.sitzung.Kontowerte
 import ch.brickinventoryapp.sitzung.Sitzung
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import ch.brickinventoryapp.model.data.model.MeResponse
-import ch.brickinventoryapp.model.data.model.StartupStatus
-import ch.brickinventoryapp.model.data.model.User
+import ch.brickinventoryapp.vertrag.MeResponse
+import ch.brickinventoryapp.vertrag.StartupStatus
+import ch.brickinventoryapp.vertrag.User
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sitzung.Abmeldevorgang
 import ch.brickinventoryapp.sitzung.SitzungsDienst
@@ -44,10 +44,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.SpeicherSitzungsablage
 import ch.brickinventoryapp.testing.TestDienste
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.model.ui.Meldung
 
@@ -105,22 +105,21 @@ class SitzungsDienstTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     /** Erzeugt und startet den Dienst, führt [block] aus und beendet seine Koroutinen. */
     private fun mitVm(block: suspend TestScope.(SitzungsDienst) -> Unit) = runTest(takt) {
         val bereich = CoroutineScope(SupervisorJob() + takt)
-        val echt = KontoRepository(fake.api, t.cache)
+        val echt = testKontoRepository(fake.api)
         val konto = object : KontoRepository by echt {
-            override suspend fun getSettings(): Ergebnis<SettingsResponse> {
+            override suspend fun getSettings(): Ergebnis<Kontoeinstellungen> {
                 val (dauer, waehrung) = einstellungen.removeFirstOrNull() ?: return echt.getSettings()
                 delay(dauer)
-                return Ergebnis.Success(SettingsResponse(success = true, settings = UserSettings(currency = waehrung)))
+                return Ergebnis.Erfolg(Kontoeinstellungen(waehrung, Zustand.NEU, Zustand.NEU, Zustand.NEU))
             }
         }
         val dienst = SitzungsDienst(
-            konto = konto, verwaltung = VerwaltungRepository(fake.api, t.cache), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
+            konto = konto, verwaltung = testVerwaltungRepository(fake.api), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
             meldungen = t.meldungen, sitzung = sitzung, blickfeld = t.blickfeld,
             abgleich = t.abgleich, zweiterFaktorPflicht = ZweiterFaktorPflicht(),
             abmeldevorgang = Abmeldevorgang {
@@ -178,12 +177,12 @@ class SitzungsDienstTest {
 
     @Test
     fun `entzogene Verwalterrechte gelten sofort und werden einmal gemeldet`() = mitVm {
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(1, "anna", isAdmin = true))
+        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
         angemeldet()
         advanceUntilIdle()
         assertTrue(sitzung.state.value.isAdmin)
 
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(1, "anna", isAdmin = false))
+        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = false))
         rechte.melde()
         advanceUntilIdle()
         assertFalse(sitzung.state.value.isAdmin)

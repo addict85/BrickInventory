@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.katalog.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import ch.brickinventoryapp.model.ui.Laden
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 
 /**
  * Was der Katalog von anderen Bereichen braucht: Erfassen gehört der Galerie, die
@@ -43,21 +43,14 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
     val navController = navigation.navController
     navigation<KatalogZiel.Bereich>(startDestination = KatalogZiel.Catalog) {
         composable<KatalogZiel.Catalog> { eintrag ->
-            val vm = navigation.app
             val katalog = katalogViewModel(navController, eintrag)
-            val state by vm.state.collectAsStateWithLifecycle()
-            val catalogState by katalog.state.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) {
-                if (state.serverUrl.isNotBlank() && catalogState.loadedPages.isEmpty() && !catalogState.isLoading) {
-                    katalog.loadCatalogMeta(); katalog.loadCatalogSets()
-                }
-            }
+            val state by navigation.sitzung.collectAsStateWithLifecycle()
             navigation.Reiter(stringResource(R.string.nav_catalog)) {
                 CatalogRoute(
                     katalog = katalog,
                     serverUrl = state.serverUrl,
                     imageLoader = navigation.bilder,
-                    rollgedaechtnis = vm.scrollMemory,
+                    rollgedaechtnis = navigation.rollgedaechtnis,
                     onSetClick = { navController.navigate(KatalogZiel.CatalogDetail(it)) },
                 )
             }
@@ -70,13 +63,12 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
 @Composable
 private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackStackEntry) {
     val navController = navigation.navController
-    val vm = navigation.app
     val katalog = katalogViewModel(navController, backStack)
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val state by navigation.sitzung.collectAsStateWithLifecycle()
+    val blick by navigation.blickfeld.collectAsStateWithLifecycle()
     val catSetNumber = backStack.toRoute<KatalogZiel.CatalogDetail>().setNumber
     val catalogState by katalog.state.collectAsStateWithLifecycle()
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val lagerZustand by navigation.lager.collectAsStateWithLifecycle()
     // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
     val gemerkt by remember(katalog, catSetNumber) { katalog.gemerkt(catSetNumber) }.collectAsStateWithLifecycle(null)
     val erfasse = navigation.erfassen(backStack)
@@ -84,8 +76,8 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
     // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
     CatalogDetailScreen(
         setNumber = catSetNumber,
-        detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },
-        isLoading = catalogState.detailLoading,
+        // Bis das Detail dieses Sets da ist, nicht das zuletzt geöffnete zeigen.
+        geladen = catalogState.detail.let { if (it is Laden.Daten && it.wert.setNumber != catSetNumber) Laden.Laedt else it },
         imageLoader = navigation.bilder,
         serverUrl = state.serverUrl,
         defaultCondition = state.userDefaultCondition ?: Zustand.NEU,
@@ -104,8 +96,6 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
         onBack = { navController.popBackStack() },
         gemerkt = gemerkt,
         onOeffneMerkposten = navigation::oeffneMerkposten,
-        fehler = catalogState.detailFehler,
-        fehlerKlasse = catalogState.detailFehlerKlasse,
     )
 }
 

@@ -1,27 +1,24 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.vertrag.Preisalarm
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import retrofit2.http.DELETE
 import retrofit2.http.PUT
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.AlarmRepository
+import ch.brickinventoryapp.testing.testAlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
  * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp: Ein Alarm,
  * der nur im Detail seines Sets steht, ist nur auffindbar, wenn man das Set schon kennt.
- * Die Webapp prüft die Gegenrichtung (test/abgleich-webapp-endpunkte.test.js).
+ * Die Webapp prüft die Gegenrichtung (test/webapp-endpunkte.test.js).
  *
  * Gegenprobe (gegenproben/alarm-besitzt-vorgabe-falsch.patch): Vorgabe von `besitzt`
  * auf false → rot „ein fehlendes besitzt-Feld …“. Laden, Ändern, Löschen nach Rückfrage,
@@ -40,8 +37,7 @@ class AlarmUebersichtTest {
         val pfade = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                AlarmRepository(TestApi.fuer(pfade.server),
-                    ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).aktualisiereAlarme()
+                testAlarmRepository(TestApi.fuer(pfade.server)).aktualisiereAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {
@@ -89,10 +85,10 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
-        val alarm = ApiJson.decodeFromString(Preisalarm.serializer(),
+        val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
             """{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}""")
         assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
-        val weg = ApiJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
+        val weg = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
         assertFalse(weg.besitzt)
     }
 
@@ -181,7 +177,7 @@ class AlarmUebersichtTest {
 
     // Die Gegenrichtung — „hat die WEBAPP die Rubrik auch?" — steht bewusst
     // NICHT hier. Sie hat dort ihre eigene Regel: Web-App/test/
-    // abgleich-webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
+    // webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
     // ruft, entweder von der App nachgezogen wird oder einen Grund bei sich
     // traegt. Genau diese Regel hat den Bau dieser Rubrik ausgeloest.
     //

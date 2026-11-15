@@ -1,15 +1,19 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Teilerfassung
+import ch.brickinventoryapp.model.fach.Setzusammenfassung
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.data.model.SetAggregate
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.model.data.model.AddPartRequest
+import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
@@ -56,7 +60,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *      abgeloesten Loeschens fuehrt das naechste nicht aus“ (DELETE für 75192-1)
  *   L  in ladeWennLeer() die Prüfung auf eine leere Liste entfernt → rot „beim
  *      Zeigen laedt die Galerie nur, wenn sie leer ist“ (zwei Abrufe)
- *   K und L nur in der CI messbar (Android-Klassen im Testlauf).
+ *   galerie-laedt-nicht-beim-zeigen  (gegenproben/) ladeJeServer der Galerie gestrichen → rot
+ *      „wer die Galerie zeigt, stoesst das Laden an …“
+ *   K, L und die letzte nur in der CI messbar (Android-Klassen im Testlauf).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -66,7 +72,7 @@ class GalerieViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.sets(),
-        t.kontosicht, FinanzenRepository(t.api, t.cache), gemerkt))
+        t.kontosicht, testFinanzenRepository(t.api), gemerkt))
 
     private fun abrufe(pfade: PfadServer = this.pfade) =
         pfade.anfragenAn("GET /api/v1/sets?") + pfade.anfragenAn("GET /api/v1/sets ")
@@ -98,7 +104,7 @@ class GalerieViewModelTest {
         val vm = vm()
         vm.loadStats()
         assertTrue("Preise da", vm.preise.value.containsKey("75192-1"))
-        assertEquals(812.5, vm.preise.value["75192-1"]?.betrag ?: -1.0, 1e-9)
+        assertEquals(Geld.aus(812.5), vm.preise.value["75192-1"]?.betrag)
         assertEquals(16.1, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
     }
 
@@ -217,6 +223,18 @@ class GalerieViewModelTest {
     }
 
     @Test
+    fun `wer die Galerie zeigt, stoesst das Laden an, je Server einmal`() {
+        val vm = vm()
+        t.sitzung.anmeldungGeaendert(pfade.server.url("/").toString(), angemeldet = true)
+        assertTrue("ohne Beobachter kein Abruf", abrufe().isEmpty())
+        val seite = CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }
+        assertEquals("beim Zeigen geladen", 1, abrufe().size)
+        seite.cancel()
+        CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }.cancel()
+        assertEquals("schon da: beim Wiederkommen nicht noch einmal", 1, abrufe().size)
+    }
+
+    @Test
     fun `beim Zeigen laedt die Galerie nur, wenn sie leer ist`() {
         val vm = vm()
         vm.ladeWennLeer()
@@ -238,8 +256,9 @@ class GalerieViewModelTest {
         // Gezählt ab hier: Die erste Ladung holt die Kennzahlen schon selbst.
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
-        // So schreibt KaeufeViewModel die Antwort des Servers in die Ablage.
-        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)) }
+        // So schreibt HaushaltRepository die Antwort des Servers in die Ablage.
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(Setzusammenfassung(setNumber = "75192-1", zustand = Zustand.GEBRAUCHT, zustaende = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+            hoechsterKaufpreis = null, kaufpreisSchnitt = null))) }
         assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher)
         assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)
@@ -256,7 +275,7 @@ class GalerieViewModelTest {
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         // So wendet TeileRepository ein erfasstes Teil in der Ablage an.
-        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(AddPartRequest("3001", colorId = 5, quantity = 2))) }
+        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(Teilerfassung(nummer = "3001", farbId = 5, menge = 2))) }
         assertEquals("Kennzahlen nach Teilen", zahlenVorher + 1, pfade.anfragenAn("GET /api/v1/stats").size)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listeVorher, abrufe().size)
     }

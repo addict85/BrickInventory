@@ -1,0 +1,18 @@
+Gegenprobe: Die Familie einer Wurzel wieder aus dem O= im Subjekt statt aus der festen Liste
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: dasselbe O= im Subjekt macht noch keine Familie
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -293,7 +293,8 @@
+     /** Beide sind System-Wurzeln derselben bekannten Familie; das O= im Subjekt wählt jede CA selbst. */
+     private fun gleicherBetreiber(a: String, b: String): Boolean {
+         if (a !in systemWurzeln || b !in systemWurzeln) return false
+-        return familien[a]?.let { it == familien[b] } ?: false
++        fun o(x: String) = systemWurzeln[x]?.subjectX500Principal?.name?.substringAfter("O=")?.substringBefore(",")
++        return o(a) != null && o(a) == o(b)
+     }
+ 
+     /** Die System-Wurzeln nach Fingerabdruck: Ein Pin auf eine davon heisst „öffentlich gültig“. */

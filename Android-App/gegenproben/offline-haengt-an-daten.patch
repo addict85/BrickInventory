@@ -6,7 +6,7 @@ Rot: Schichtung der Kernmodule
 diff --git a/Android-App/core-offline/build.gradle.kts b/Android-App/core-offline/build.gradle.kts
 --- a/Android-App/core-offline/build.gradle.kts
 +++ b/Android-App/core-offline/build.gradle.kts
-@@ -25,6 +25,7 @@ dependencies {
+@@ -25,6 +25,7 @@
      api(project(":core-model"))
      // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
      implementation(project(":core-sicherheit"))

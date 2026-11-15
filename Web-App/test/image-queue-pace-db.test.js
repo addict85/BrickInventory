@@ -58,8 +58,9 @@ testBildwerk(null, {
 });
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
+const { portVon } = require('./helpers/server');
 const db = testDaten();
-const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+const IQ = _req('src/bilder/bildbedarfLauf.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
@@ -347,8 +348,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
 
   // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
   // das bereits erzeugte dist/ und legt nur einen Takt hin.
-  // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
-  // Hier stand als erste Zeile des Kind-Skripts …
+  // Das Kind setzt die Adresse NICHT selbst, es erbt sie über die Umgebung.
   execFileSync(
     process.execPath,
     [
@@ -359,10 +359,10 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     const db = erzeugeDb(dbKonfigAusUmgebung(), { erststart: async () => {} });
     const kontexte = {};
     V.baueDienste(db, { kontexte });
-    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
+    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/bilder/bildbedarfLauf.js'))});
     (async () => {
       await db.initSchemaOnce();
-      await IQ._taktDurchgang(kontexte.katalog);
+      await IQ._taktDurchgang(kontexte.bilder);
       await db.pool.end();
     })().catch(e => { console.error(e); process.exit(1); });
   `,
@@ -381,7 +381,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
   // Und jetzt bis zur KACHEL
-  const IQhier = _req('src/katalog/bilder/bildbedarfLauf.js');
+  const IQhier = _req('src/bilder/bildbedarfLauf.js');
   IQhier.letzterLauf.zeit = null;
   IQhier.letzterLauf.ergebnis = null;
 
@@ -393,14 +393,14 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = { userId: uid, isAdmin: 1 };
-    req.apiUser = { user_id: uid, is_admin: 1 };
+    /** @type {any} */ (req).session = { userId: uid, isAdmin: 1 };
+    /** @type {any} */ (req).apiUser = { user_id: uid, is_admin: 1 };
     next();
   });
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   try {
-    const kachel = (await (await fetch(`http://localhost:${srv.address().port}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
+    const kachel = (await (await fetch(`http://localhost:${portVon(srv)}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
     assert.ok(
       kachel?.queueLastRun,
       'Die Kachel kennt den Durchgang des anderen Prozesses nicht. Genau so kam ' +
@@ -427,7 +427,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const IM = _req('src/katalog/bilder/imageMisses.js');
+  const IM = _req('src/bilder/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   await t.test('Notiz ohne Setnummer', async () => {

@@ -26,6 +26,7 @@ const { spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 
 function runner(dateien, mehr = {}) {
+  /** @type {NodeJS.ProcessEnv} */
   const env = { ...process.env, TEST_FRIST_MS: '3000', TEST_PARALLEL: '2' };
   delete env.TEST_NACHLAUF;
   Object.assign(env, mehr);

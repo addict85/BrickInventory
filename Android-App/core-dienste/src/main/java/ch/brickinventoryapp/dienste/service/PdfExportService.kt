@@ -183,11 +183,11 @@ internal fun fehlerText(grund: PdfFehlschlag, satz: Satz): String = when (grund)
     is PdfFehlschlag.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }
         ?: fehlerTextZuCode(grund.fehler.code)?.let { satz(it, emptyList()) }
         ?: when (val f = grund.fehler) {
-            is Ergebnis.Error.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))
-            is Ergebnis.Error.Netz, Ergebnis.Error.Abgebrochen -> satz(R.string.err_network, emptyList())
-            Ergebnis.Error.Zeitueberschreitung -> satz(R.string.err_timeout, emptyList())
-            is Ergebnis.Error.Abgewiesen -> satz(R.string.err_session_expired, emptyList())
-            Ergebnis.Error.Klartext -> satz(R.string.err_klartext, emptyList())
-            is Ergebnis.Error.LeereAntwort, is Ergebnis.Error.Unbekannt -> satz(R.string.pdfexp_unknown_error, emptyList())
+            is Ergebnis.Fehler.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))
+            is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Abgebrochen -> satz(R.string.err_network, emptyList())
+            Ergebnis.Fehler.Zeitueberschreitung -> satz(R.string.err_timeout, emptyList())
+            is Ergebnis.Fehler.Abgewiesen -> satz(R.string.err_session_expired, emptyList())
+            Ergebnis.Fehler.Klartext -> satz(R.string.err_klartext, emptyList())
+            is Ergebnis.Fehler.LeereAntwort, is Ergebnis.Fehler.Absage, is Ergebnis.Fehler.Unbekannt -> satz(R.string.pdfexp_unknown_error, emptyList())
         }
 }

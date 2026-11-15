@@ -3,16 +3,21 @@
 // Sitzungsende nur als Ereignis; reagiert wird hier.
 import { registerActions } from './registry.js';
 import { html } from './escapen.js';
-import { abonniere } from './ereignisse.js';
-import { resetScopeModes } from './scope.js';
+import { abonniere, melde } from './ereignisse.js';
+import { resetScopeModes } from './kontofilter.js';
 import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';
 import { api, apiRoh, leereZwischenspeicher } from './api.js';
 import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
-import { formularFehler, passwortRegelText } from './formular.js';
+import { feldFehler, formularFehler, passwortRegelText } from './formular.js';
 import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './konto.js';
 import { toast } from './meldungen.js';
-import { setAllSets, set_ME, set_settingsCache, set_CURRENCY, ME } from './zustand.js';
-import { loadGallery, loadStats } from './gallery.js';
+import {
+  setzeGalerieSets,
+  setzeKonto,
+  setzeEinstellungsStand,
+  setzeKontoWaehrung,
+  angemeldetesKonto,
+} from './zustand.js';
 import { routeBeimStart } from './router.js';
 import { plInit, resetPartsList, plRenderSets } from './init.js';
 import { bindGlobalErrorHandlers } from './fehlerfang.js';
@@ -20,7 +25,7 @@ import { frageSitzung, sitzungUngeklaert, startgeruestWeg, waitForStartup, zeige
 import { gibCheckOnLoad, gibZuruecksetzen } from './fortschritt.js';
 import { pruefeEinrichtung } from './einrichtung.js';
 import { einrichtungKnopfPruefen } from './einrichtung-stand.js';
-import { initScrollbalken } from './scrollbar.js';
+import { initScrollbalken } from './rollbalken.js';
 import { bindTabs, seitennameAktualisieren } from './navigation.js';
 import { loadHouseholdMembers } from './konten-orte.js';
 import { mitZweitemFaktor } from './rueckfrage.js';
@@ -39,16 +44,32 @@ export function startApp() {
 abonniere('passwortWechselNoetig', () => zeigePflichtwechsel());
 abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 
+/** Konto der abgelaufenen Sitzung: Meldet sich ein anderes an, lädt die Seite neu statt dessen Stand zu zeigen. */
+let _abgelaufenesKonto = /** @type {number | null} */ (null);
 /**
  * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
  * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
  */
 abonniere('sitzungBeendet', path => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
-  if (!ME) return; // war nie angemeldet — nichts zu beenden
-  set_ME(null);
-  showLogin({ abgelaufen: true });
+  if (!angemeldetesKonto) return; // war nie angemeldet — nichts zu beenden
+  _abgelaufenesKonto = angemeldetesKonto.id;
+  setzeKonto(null);
+  // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Das Secure-Cookie fehlt.
+  // „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
+  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && !_keksGesetzt && ohneHttps();
+  showLogin({ abgelaufen: true, hinweis: ohneKeks ? tRaw('auth.cookie_fehlt') : undefined });
 });
+/** Zeitpunkt der letzten Anmeldung per Formular (für den Fall oben). */
+let _angemeldetUm = 0;
+/** Der Server hat bestätigt, dass er das Cookie gesetzt hat (keks_fehlt: false); dann ist ein 401 echt. */
+let _keksGesetzt = false;
+/** http://localhost gilt dem Browser als sicherer Kontext, trägt aber kein Secure-Cookie vom Server. */
+const ohneHttps = () => window.isSecureContext === false || location.protocol === 'http:';
+// Vorab nur der Satz für jeden Nutzer; was der Betreiber tun muss (COOKIE_SECURE), sagt auth.cookie_fehlt
+// erst, wenn das Cookie wirklich fehlt.
+const _ohneHttpsHinweis = G('login-ohne-https');
+if (_ohneHttpsHinweis) _ohneHttpsHinweis.hidden = !ohneHttps();
 
 // ── AUTH & PANELS ─────────────────────────────────────
 /** @type {string | null} */
@@ -68,6 +89,10 @@ function showPanel(name) {
     const el = G('panel-' + p);
     if (el) el.style.display = p === name ? 'block' : 'none';
   });
+  const titel = G('panel-' + name)
+    ?.querySelector('h1')
+    ?.textContent?.trim();
+  if (titel) document.title = `${titel} – BrickInventory`;
 }
 
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
@@ -99,8 +124,8 @@ function pflichtAbmelden() {
   G('btn-logout')?.click();
 }
 function oeffneApp() {
-  if (ME?.mustChangePassword) zeigePflichtwechsel();
-  else if (ME?.zweiterFaktorPflicht) zeigeZweitpflicht();
+  if (angemeldetesKonto?.mustChangePassword) zeigePflichtwechsel();
+  else if (angemeldetesKonto?.zweiterFaktorPflicht) zeigeZweitpflicht();
   else showApp();
 }
 G('btn-pflicht')?.addEventListener('click', async () => {
@@ -309,7 +334,7 @@ export async function checkAuth() {
   const { d, warteSek } = await frageSitzung();
   // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich inzwischen angemeldet hat,
   // bekäme sonst von der späten Antwort „nein“ die Maske zurück, obwohl die Sitzung gilt.
-  if (ME) return;
+  if (angemeldetesKonto) return;
   // Nur ein ausdrückliches „nicht angemeldet“ führt zur Maske. Drosselung, Serverfehler oder kein Netz
   // sagen nichts über die Sitzung; die Maske legte sonst nahe, sie sei weg.
   if (typeof d.loggedIn !== 'boolean') {
@@ -317,13 +342,13 @@ export async function checkAuth() {
     return;
   }
   zeigeOffline(false);
-  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; ME behält isAdmin, id und
+  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; angemeldetesKonto behält isAdmin, id und
   // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
   if (_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
   // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
   if (d.loggedIn && !_verifyToken) {
-    set_ME(
+    setzeKonto(
       /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
     oeffneApp();
@@ -399,7 +424,7 @@ async function bestaetigtAngemeldet() {
   toast(_verifyEmail ? tRaw('verify.bestaetigt', { email: _verifyEmail }) : tRaw('verify.bestaetigt_kurz'), 'success');
 }
 /**
- * @param {{ abgelaufen?: boolean }} [o] abgelaufen: Der Name bleibt stehen, damit
+ * @param {{ abgelaufen?: boolean, hinweis?: string }} [o] abgelaufen: Der Name bleibt stehen, damit
  *   man sich gleich wieder anmelden kann; Passwort und Code nie — sonst genügt
  *   dem Nächsten am Gerät ein Druck auf „Anmelden“.
  */
@@ -407,6 +432,7 @@ function showLogin(o = {}) {
   G('lp').value = '';
   G('lc').value = '';
   G('lc-zeile').style.display = 'none';
+  G('lc-status').textContent = '';
   // Ein angezeigtes Passwort bleibt nicht für die nächste Anmeldung sichtbar.
   if (G('lp').type !== 'password') {
     G('lp').type = 'password';
@@ -418,7 +444,7 @@ function showLogin(o = {}) {
   const hinweis = G('login-hinweis');
   if (hinweis) {
     hinweis.hidden = !o.abgelaufen;
-    hinweis.textContent = o.abgelaufen ? tRaw('auth.session_expired') : '';
+    hinweis.textContent = o.abgelaufen ? o.hinweis || tRaw('auth.session_expired') : '';
   }
   formularFehler(G('lerr'), '');
   // Der Fortschrittsbalken gehört js/fortschritt.js — dort steht auch, was „zurücksetzen“ für ihn bedeutet
@@ -433,7 +459,7 @@ function showLogin(o = {}) {
     const el = G(id);
     if (el) el.replaceChildren();
   });
-  setAllSets([]);
+  setzeGalerieSets([]);
   resetPartsList();
   // Clear partslist DOM so it doesn't persist after re-login
   const plResult = G('pl-result');
@@ -490,7 +516,7 @@ function showApp() {
   // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
-  if (ME?.isAdmin) pruefeEinrichtung();
+  if (angemeldetesKonto?.isAdmin) pruefeEinrichtung();
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
   // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
   // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
@@ -502,8 +528,8 @@ function showApp() {
   // Load settings — also picks up server-stored language preference
   const einstellungen = api('GET', '/v1/settings/raw').then(d => {
     if (d.success && d.settings) {
-      set_settingsCache(d.settings);
-      set_CURRENCY(d.settings.currency || 'EUR');
+      setzeEinstellungsStand(d.settings);
+      setzeKontoWaehrung(d.settings.currency || 'EUR');
       applyTheme(d.settings.app_theme);
       // Die Sprache des Servers gewinnt (ausdrückliche Wahl); localStorage mitziehen
       const srvLang = d.settings.language;
@@ -518,11 +544,11 @@ function showApp() {
   // Der Reiter „Einstellungen" traegt seit dem 16.10. nur noch, was ein Verwalter setzt (Marcos Vorgabe) — er
   // wird deshalb wie das Monitoring erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
-  if (ME?.isAdmin) {
+  if (angemeldetesKonto?.isAdmin) {
     const ns = G('ntab-settings');
     if (ns) ns.style.display = '';
   }
-  if (ME?.isAdmin) {
+  if (angemeldetesKonto?.isAdmin) {
     alle('.admin-only').forEach(el => {
       el.style.display = '';
     });
@@ -560,9 +586,8 @@ function showApp() {
   const bandEntschieden = einstellungen
     .catch(() => {})
     .finally(() => {
-      if (ME?.isAdmin) rbHinweisZeigen();
-      loadGallery();
-      loadStats();
+      if (angemeldetesKonto?.isAdmin) rbHinweisZeigen();
+      melde('sammlungLaden');
     });
   // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
   // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.
@@ -572,6 +597,11 @@ function showApp() {
   routeBeimStart();
   seitennameAktualisieren();
 }
+/** @type {[string, string][]} */
+const LOGIN_PFLICHT = [
+  ['lu', 'login.user_leer'],
+  ['lp', 'login.passwort_leer'],
+];
 G('btn-login').onclick = doLogin;
 for (const id of ['lu', 'lp', 'lc'])
   G(id).addEventListener('keydown', e => {
@@ -581,6 +611,20 @@ for (const id of ['lu', 'lp', 'lc'])
     }
   });
 async function doLogin() {
+  // Leere Pflichtfelder meldet das Feld selbst, wie in den übrigen Formularen; die Sammelmeldung oben bleibt
+  // für das, was erst der Server weiss (falsche Anmeldedaten, Sperre).
+  formularFehler(G('lerr'), '');
+  // Steht das Codefeld da, ist der Code Pflicht: Ohne ihn kam vom Server nur ein stilles 401, das obendrein
+  // gegen die Anmeldedrossel zählte.
+  /** @type {[string, string][]} */
+  const pflicht =
+    G('lc-zeile').style.display === 'none' ? LOGIN_PFLICHT : [...LOGIN_PFLICHT, ['lc', 'login.code_leer']];
+  const leer = pflicht.filter(([id]) => !(id === 'lp' ? G(id).value : G(id).value.trim()));
+  for (const [id, schluessel] of pflicht) feldFehler(id, leer.some(([l]) => l === id) ? tRaw(schluessel) : '');
+  if (leer.length) {
+    G(leer[0][0]).focus();
+    return;
+  }
   const b = G('btn-login');
   const frei = knopfBesetzt(b);
   const code = G('lc').value.trim();
@@ -595,6 +639,8 @@ async function doLogin() {
   if (d.zweiter_faktor) {
     G('lc-zeile').style.display = '';
     G('lc').value = '';
+    // Der Fokus springt ins neue Feld; ohne den Satz wüsste man nicht, ob das Passwort gestimmt hat.
+    G('lc-status').textContent = code ? '' : tRaw('login.code_jetzt');
     G('lc').focus();
     // Hat das Konto Passkeys, geht einer statt des Codes (js/passkeys.js).
     G('lc-passkey').hidden = !d.passkey;
@@ -603,8 +649,18 @@ async function doLogin() {
   }
   G('lc-zeile').style.display = 'none';
   G('lc').value = '';
+  G('lc-status').textContent = '';
+  if (d.success && d.keks_fehlt) {
+    // Der Server hat das Cookie gar nicht gesetzt: Die App zu öffnen hiesse, gleich wieder „abgelaufen“.
+    showLogin({ abgelaufen: true, hinweis: tRaw('auth.cookie_fehlt') });
+    return;
+  }
   if (d.success) {
-    set_ME(
+    if (_abgelaufenesKonto !== null && _abgelaufenesKonto !== d.user?.id) {
+      location.reload();
+      return;
+    }
+    setzeKonto(
       /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(), damit die Auswahlfelder gleich mit dem
@@ -612,12 +668,13 @@ async function doLogin() {
     resetScopeModes();
     formularFehler(G('lerr'), '');
     G('login-hinweis').hidden = true;
+    _angemeldetUm = Date.now();
+    _keksGesetzt = d.keks_fehlt === false;
     oeffneApp();
   } else {
     const err = d.error || tRaw('settings.error');
-    // Fokus ins erste leere Feld; sind beide gefüllt, stimmt meist das Passwort nicht.
-    const leer = ['lu', 'lp'].filter(id => !G(id).value);
-    formularFehler(G('lerr'), err, leer.length ? leer : ['lp', 'lu']);
+    // Beide gefüllt (siehe oben): Meist stimmt das Passwort nicht, also dorthin.
+    formularFehler(G('lerr'), err, ['lp', 'lu']);
     if (d.unverified || d.code === 'email_nicht_bestaetigt') {
       setzeHtml(
         G('lerr'),
@@ -629,46 +686,18 @@ async function doLogin() {
 G('btn-logout').onclick = async () => {
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
-  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“ und
-  // öffnen die Anmeldemaske kein zweites Mal.
-  set_ME(null);
+  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“.
+  setzeKonto(null);
   await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { Authorization: 'Bearer ' + _wt } : {},
   }).catch(() => {});
-  setAllSets([]);
-  // Reset all admin-only elements before showing login
-  const nm = G('ntab-monitor');
-  if (nm) nm.style.display = 'none';
-  const ns = G('ntab-settings');
-  if (ns) ns.style.display = 'none';
-  // Auch die Verwaltereinträge im Menü: Meldet sich danach ein anderes Konto an, stünden sie sonst noch da.
-  alle('.admin-only').forEach(el => {
-    el.style.display = 'none';
-  });
-  G('usermgmt').style.display = 'none';
-
-  ['bl-ao', 'rb-ao', 'bs-ao'].forEach(id => {
-    const el = G(id);
-    if (el) el.style.display = '';
-  });
-  const gg = G('global-settings-grid');
-  if (gg) gg.style.display = 'none';
-  const gl = G('global-settings-label');
-  if (gl) gl.style.display = 'none';
-  // Switch back to gallery tab manually
-  document.querySelectorAll('.ntab').forEach(x => {
-    x.classList.remove('active');
-  });
-  document.querySelectorAll('.tab').forEach(x => {
-    x.classList.remove('active');
-  });
-  const gt = document.querySelector('.ntab[data-tab="gallery"]');
-  if (gt) {
-    gt.classList.add('active');
-    const gp = document.getElementById('tab-gallery');
-    if (gp) gp.classList.add('active');
-  }
+  sessionStorage.removeItem('webToken');
+  // Neu laden statt aufräumen: Listen, Dialoge, Titel und Sprache des vorigen Kontos blieben sonst im Dokument
+  // stehen. Die Anmeldemaske spricht dann wieder die Sprache des Browsers.
+  localStorage.removeItem('bim_lang');
   showLogin();
+  if (navigator.onLine !== false) location.replace('/');
+  else addEventListener('online', () => location.replace('/'), { once: true });
 };
 
 // Ohne Auskunft über das Konto: Der Server antwortet für jede Adresse gleich.

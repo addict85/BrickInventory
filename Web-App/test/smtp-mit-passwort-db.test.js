@@ -44,7 +44,7 @@ const { datenOderSkip } = require('./helpers/db');
 const mails = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _n, art, o) => {
+  mailKontoHinweis: async (an, _n, art, o) => {
     mails.push({ an, art, konto: o.konto });
     return { success: true };
   },

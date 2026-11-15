@@ -9,7 +9,7 @@
  *   A  Figurenkachel aus Sets wieder ohne tabindex und role (minifigs.js) →
  *      rot: „jede Klickfläche ist bedienbar“ (Minifiguren: DIV.part-card
  *      openSetItemDetail) und „Figur aus Set per Tastatur“
- *   B  Finanzzeile der Teile und Figuren wieder ohne tabindex (finance.js)
+ *   B  Finanzzeile der Teile und Figuren wieder ohne tabindex (finanzen.js)
  *      → rot: „jede Klickfläche ist bedienbar“ (Finanzen: TR openManDetail)
  *   C  Tabellenzeile der Figuren wieder ohne tabindex → rot: „jede Klickfläche
  *      ist bedienbar“ (Minifiguren Tabelle: TR openSetItemDetail)

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,13 +20,16 @@ import ch.brickinventoryapp.netz.di.Rotationsanlass
  * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu
  * angemeldet oder der Server gewechselt; der neue Token gehört nicht mehr hierher.
  */
-enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN, VERWORFEN }
+internal enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN, VERWORFEN }
 
 /** Was der Tausch vom Speicher sieht; [generation] zählt Anmelden, Abmelden und Serverwechsel. */
 data class TokenStand(val token: String, val herkunft: String?, val generation: Long)
 
-/** Der neue Token und die Herkunft der Anfrage, die ihn brachte (nach Umschreiben und Umleitung). */
-data class GetauschterToken(val rotation: TokenRotation, val herkunft: String?)
+/**
+ * Der neue Token und die Herkunft der Anfrage, die ihn brachte (nach Umschreiben und Umleitung).
+ * Nur diese zwei Werte: Der Tausch braucht nicht mehr, und das Wire-Format bleibt in core-data.
+ */
+data class GetauschterToken(val token: String?, val herkunft: String?)
 
 /**
  * Sperre und Generation für jede Schreibung des Tokens. Ein Tausch kann bis zu
@@ -107,6 +109,11 @@ internal class TokenTausch(
     private val hintergrund: CoroutineScope,
     /** So lange hält noetig() einen Thread des OkHttp-Dispatchers fest. */
     private val warten: Long = NOETIG_WARTEN_MS,
+    /**
+     * Darf jetzt getauscht werden? Bei gesperrtem Gerät nicht: Den neuen Token nähme nur ein
+     * Schlüssel ohne Entsperr-Bedingung auf, und den gibt es nicht mehr (EntsperrTresor).
+     */
+    private val bereit: () -> Boolean = { true },
 ) : Rotationsanlass {
     private val sperre = Mutex()
 
@@ -146,15 +153,16 @@ internal class TokenTausch(
     private suspend fun tauscheGesperrt(alterToken: String): Tauschergebnis {
         val vorher = stand()
         if (vorher.token != alterToken) return Tauschergebnis.SCHON_GETAUSCHT
+        if (!bereit()) return Tauschergebnis.SPAETER
         val beginn = uhr()
         for (versuch in 0..pausen.size) {
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
             if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
-                is Ergebnis.Success -> return gelungen(vorher, r.data)
-                is Ergebnis.Error -> {
+                is Ergebnis.Erfolg -> return gelungen(vorher, r.data)
+                is Ergebnis.Fehler -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).
-                    if (r is Ergebnis.Error.Abgewiesen) return Tauschergebnis.NEU_KOPPELN
+                    if (r is Ergebnis.Fehler.Abgewiesen) return Tauschergebnis.NEU_KOPPELN
                     if (!r.transient) return Tauschergebnis.SPAETER
                     val pause = pausen.getOrNull(versuch) ?: break
                     if (uhr() - beginn + pause > UEBERLAPPUNG_MS) break
@@ -167,7 +175,7 @@ internal class TokenTausch(
 
     /** Eine Antwort ohne neuen Token ist kein Tausch; passt der Stand nicht mehr, wird verworfen. */
     private suspend fun gelungen(vorher: TokenStand, antwort: GetauschterToken): Tauschergebnis {
-        val neu = antwort.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
+        val neu = antwort.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
         return if (ersetze(vorher, neu, antwort.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
     }
 

@@ -64,6 +64,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
   };
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -112,7 +113,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     // danach einen Namen, den die Auswahlliste nicht mehr kannte.
     await assert.rejects(
       () => L.loescheOrt(UID, estrich.id),
-      e => String(e.code) === 'lagerort_in_benutzung',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
       'Ein belegter Ort liess sich loeschen',
     );
     assert.deepEqual(

@@ -1,0 +1,17 @@
+Gegenprobe: Die Galerie lädt nicht mehr, wenn jemand sie zeigt
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.GalerieViewModelTest
+Rot: wer die Galerie zeigt
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
+index 941844b..8fc1d05 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
+@@ -123,7 +123,6 @@ class GalerieViewModel @Inject constructor(
+             thema = gemerkt[THEMA] ?: "",
+             sortierung = Setsortierung.aus(gemerkt[SORTIERUNG]),
+         )
+-        ladeJeServer(sitzung, galerieBeobachtet) { ladeWennLeer() }
+     }
+ 
+     fun loadSets() = galerie.laden()

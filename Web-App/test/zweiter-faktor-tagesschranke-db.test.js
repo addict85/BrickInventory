@@ -28,14 +28,14 @@ const _req = S.buildAndRequire();
 const mails = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art) => {
+  mailKontoHinweis: async (an, _name, art) => {
     mails.push({ an, art });
     return { success: true };
   },
 });
 const { zugangOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const lim = _req('src/konto/loginLimiter.js');
 const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));

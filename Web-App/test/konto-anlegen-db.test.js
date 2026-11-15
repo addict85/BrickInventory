@@ -119,7 +119,7 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
   await t.test('die Datenbank lehnt Namen ab, die sich nur in der Schreibweise unterscheiden', async () => {
     await assert.rejects(
       db.run('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEU[2].toUpperCase(), 'x']),
-      e => e.code === '23505',
+      (/** @type {any} */ e) => e.code === '23505',
     );
   });
 
@@ -133,7 +133,10 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
       await k.query('BEGIN');
       await k.query('DROP INDEX users_username_lower');
       await k.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEU[2].toUpperCase(), 'x']);
-      await assert.rejects(k.query(sql), e => e.message.includes(NEU[2]) && e.message.includes(NEU[2].toUpperCase()));
+      await assert.rejects(
+        k.query(sql),
+        (/** @type {any} */ e) => e.message.includes(NEU[2]) && e.message.includes(NEU[2].toUpperCase()),
+      );
     } finally {
       await k.query('ROLLBACK');
       k.release();

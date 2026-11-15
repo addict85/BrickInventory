@@ -8,7 +8,7 @@ den Commits, nicht hier.
 
 | Wert | Wo |
 |---|---|
-| Konten, Passwort-Hashes (bcrypt), Sitzungen, API-Tokens (gehasht), Passkeys (öffentliche Schlüssel) | PostgreSQL |
+| Konten, Passwort-Hashes (argon2id, alte noch bcrypt), Sitzungen, API-Tokens (gehasht), Passkeys (öffentliche Schlüssel) | PostgreSQL |
 | Interne CA (Wurzel und Schlüssel), TLS-Zertifikate | `caddy/data/` (nur root) |
 | Sammlung, Kaufpreise, Finanzen je Konto und Haushalt | PostgreSQL |
 | Geheimnisse: Gutschein-PIN, TOTP, API-Schlüssel, SMTP-Passwort | PostgreSQL, AES-256-GCM |
@@ -28,6 +28,65 @@ den Commits, nicht hier.
    gemeinsame Daten (Bildcache, Katalog, Anleitungen) zu verändern.
 4. **Böswilliger Upload** — PDF/Bild mit falschem Typ, Entpackbombe,
    Pfadteile im Namen.
+
+**Was der Zeilenschutz nicht leistet.** Die Zeilenregeln folgen `app.konto`, und
+das kann jede Rolle per `set_config()` umsetzen (Migration 0112). Sie fangen
+deshalb **vergessene Filter** ab — eine Abfrage ohne Bedingung auf `user_id` —,
+aber kein eingeschleustes SQL: Eine eingeschleuste Anweisung, die das Konto selbst
+umsetzt, liest danach das andere Konto; in einer Transaktion mit mehreren
+Anweisungen (`einmaligeTransaktion`, `db/database.ts`) gilt das Umsetzen auch für
+die folgenden. Eine Prüfung von `app.konto` vor dem COMMIT hälfe nicht: Gelesenes
+ist dann gelesen, und die Anweisung kann das Konto vorher zurücksetzen. Gegen
+eingeschleustes SQL schützen gebundene Parameter (kein SQL aus Zeichenketten der
+Eingabe) und die Rollenrechte: Die Laufzeitrolle liest weder Passwort-Hashes noch
+Sitzungen (0115) und schreibt weder Passwort noch Verwalterrecht (0117).
+
+**Zwei Systemrollen.** Den Zeilenschutz heben zwei Rollen auf (`BYPASSRLS`):
+`brickinventory_system` hält nur der Dienst `jobs` (Aufträge, Umschlüsselung,
+Aufräumen über alle Konten). Der Web-Prozess hat nur
+`brickinventory_system_web`; Migration 0119 gibt ihr
+- volle Zeilenrechte auf Zugang und Verwaltung (`users`, `user_sessions`,
+  `api_tokens*`, `passkeys`, `webauthn_challenges`, `zweiter_faktor*`,
+  `qr_login_tokens`, `geraete_*`, `schritt_*`, `rate_limit_attempts`,
+  `account_links`, `account_link_invites`, `household_former_links`,
+  `verwalter_uebernahmen`, `global_settings`), auf `user_settings` (Sprache einer
+  Mail vor der Anmeldung, Währung des ganzen Haushalts) und auf `auftraege`
+  (einstellen, vorziehen, abbrechen);
+- `verwaltungsprotokoll` nur lesen und anfügen;
+- volle Zeilenrechte auf Tabellen ohne Kontobezug (Katalog, Preis- und
+  Bildspeicher, Laufzustand), die auch die Laufzeitrolle hat;
+- aus dem Bestand nur Nummern ohne Konto (`sets.set_number`,
+  `parts.part_number`/`source`, `minifigs.fig_number`) für die Übersichten der
+  Verwaltung, dazu den Stand je Konto (`parts_version_user`), den Trigger beim
+  Löschen eines Kontos hochzählen;
+- zwei Funktionen der Eigentümerin: `konten_mit_set()` (nur die Zahl der Konten
+  mit einem Set) und `konto_aus_sicherungen_loeschen()` (ein gelöschtes Konto
+  auch aus den Kopien vor Migrationen).
+
+Gutscheine, Kaufpreise, Sammlung, Papierkorb, Merkliste, Preisalarme,
+Teilezusammenfassungen, Importe, Idempotenz und die Kopien vor Migrationen
+erreicht sie nicht. Fehlt in einem Systemrahmen einer Anfrage ein Filter, bleibt
+der Fehler auf diese Tabellen beschränkt. `test/systemrolle-web-db.test.js` hält
+die Liste fest; alle Tests über `testServer` laufen mit dieser Rolle.
+
+**Codeausführung im Prozess.** Wer im Web-Prozess Code ausführt (eingeschleuste
+Abhängigkeit, RCE), hat Laufzeit- und Web-Systemrolle. Über `app.konto` liest er
+mit der Laufzeitrolle trotzdem jedes Konto der Reihe nach, Gutscheine
+eingeschlossen; Passwörter, Verwalterrecht und Sitzungen ändert er über die
+Web-Systemrolle. Die engere Rolle begrenzt Logikfehler, keine Codeausführung.
+Wer Code im Dienst `jobs` ausführt, hat die volle Systemrolle. Dagegen helfen nur
+Lieferkette, Container-Härtung (ohne root, schreibgeschützt) und die getrennte
+Migrationsrolle, die keinem Prozess der App gehört. Das Verwaltungsprotokoll ist
+für beide Systemrollen nur anfügbar: Eine Spur lässt sich so nicht nachträglich
+tilgen.
+
+Ein echter Gewinn gegen Codeausführung verlangte, dass die Datenbank das Konto
+selbst nachweist — `app.konto` nur über eine Funktion, die einen Sitzungs- oder
+Token-Hash gegen die Tabelle prüft, Verwaltungsrechte daraus abgeleitet,
+Anmeldung als Funktion, die nur das Konto zum passenden Nachweis liefert. Das ist
+ein Umbau der Datenbankschicht und der Anmeldung, kein Rechteschnitt; selbst dann
+handelte der Prozess für jede gerade aktive Sitzung.
+
 5. **Lieferkette** — npm-Pakete, Actions, Container-Images, fremde
    Antworten von Rebrickable, Brickset, LEGO.
 
@@ -35,8 +94,9 @@ den Commits, nicht hier.
 
 ### Transport (1)
 - HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
-  Port 80 leitet um und liefert nur `/ca.crt`: `compose.yaml`, `Caddyfile` —
-  `compose-haertung`.
+  Port 80 leitet nur um, `/ca.crt` gibt es nur über HTTPS (nach einmal
+  bestätigter Warnung, Abgleich des Fingerabdrucks): `compose.yaml`,
+  `Caddyfile`, `routes/zertifikat.ts` — `compose-haertung`, `tls-wurzel-db`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
   eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
@@ -46,19 +106,22 @@ den Commits, nicht hier.
   `ca-eigene-wurzel`.
 - Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
   Caddy Rümpfe bis 16 KB an und gehen ohne Verbindungsgrenze an die App: Die
-  Zahl gleichzeitiger Passwortprüfungen begrenzt die bcrypt-Schranke des
-  Servers (Vorrang bekannter Anmeldungen, sonst 503), die Raten je Adresse
-  und Konto zählt der Server — `caddy-anmeldebremse`, `bcrypt-schranke-db`.
-- bcrypt rechnet in höchstens 4 Worker-Threads (weniger bei kleinerem
-  cgroup-Kontingent, mehr mit `BCRYPT_ARBEITER`); untätige enden nach 60 s —
-  `bcrypt-pool`.
+  Zahl gleichzeitiger Passwortprüfungen begrenzt die Schranke des Servers
+  (`src/konto/bcryptSchranke.ts`, Vorrang bekannter Anmeldungen, sonst 503),
+  die Raten je Adresse und Konto zählt der Server — `caddy-anmeldebremse`,
+  `bcrypt-schranke-db`.
+- Passwörter als argon2id (19 MiB, 2 Durchläufe, OWASP-Vorgabe:
+  `src/konto/passwortHash.ts`); ein alter bcrypt-Hash gilt, bis die nächste
+  Anmeldung ihn ersetzt — `passwort-argon2-db`. bcrypt rechnet dafür in
+  höchstens 4 Worker-Threads (weniger bei kleinerem cgroup-Kontingent, mehr
+  mit `BCRYPT_ARBEITER`); untätige enden nach 60 s — `bcrypt-pool`.
 - Langsame Clients erreichen die App nicht: Caddy liest den Rumpf der
   Anmeldewege ganz (`request_buffers 32KB`, grösser als `max_size`), bevor er
   ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
   selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
   10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
   `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-anmeldebremse`,
-  `sicherheit-runde11-db`.
+  `sicherheit-server-grenzen-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
   (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
@@ -86,7 +149,12 @@ den Commits, nicht hier.
   Adresse — `konto-deaktivieren-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
-- Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
+- Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
+  mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
+  Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
+  sperrt den Inhaber so nicht an seinen Geräten aus. „Passwort vergessen“ leert
+  alle Zähler: `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
+- Sitzung: `httpOnly`, `sameSite=strict`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
   `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
@@ -108,8 +176,18 @@ den Commits, nicht hier.
   Geräteliste mit Scope, Netz und Ablauf: `src/konto/geraeteToken.ts` —
   `token-scope-rotation-db`, `token-gleitfrist-db`.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
-  einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/konto/passkeys.ts` —
-  `passkeys-db`. TOTP: `src/konto/zweiterFaktor.ts` — `zweiter-faktor-db`.
+  einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/faktoren/passkeys.ts` —
+  `passkeys-db`. TOTP: `src/faktoren/zweiterFaktor.ts` — `zweiter-faktor-db`.
+- Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
+  Key Attestation an (`src/geraete/attestation/`): Kette bis zu Googles Wurzel,
+  kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
+  Gerätesperre bei jeder Benutzung, gesperrter Bootloader und verifizierter
+  Start (RootOfTrust `deviceLocked`, `verifiedBootState = Verified`), auf Wunsch
+  ein Mindest-Patchstand (`ATTESTATION_PATCH_MINDESTENS`). Die Liste lädt der
+  Job-Prozess alle sechs Stunden (Auftrag `widerrufsliste`); fehlt sie oder ist
+  sie älter als `ATTESTATION_WIDERRUF_TAGE` (7), nimmt der Server keinen neuen
+  Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
+  `geraete-attestation`, `schrittschutz-db`, `attestation-widerrufsliste-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
   `bestaetigeMitFaktor` (`src/konto/http/anmeldung.ts`). Bei aktivem TOTP
   verlangt er immer Code oder Passkey-Antwort, auch mit dem
@@ -120,7 +198,8 @@ den Commits, nicht hier.
   E-Mail, 2FA abschalten, Haushalt beitreten, SMTP). Der Wächter
   `bestaetigung-vertrag-db` ruft jede markierte Route ohne und mit falschem
   Code, verlangt die Marke für jede Passwort-Eingabe des Vertrags und lässt
-  `bcrypt.compare` nur in Anmeldung und Bestätigung zu; eine Route ohne Marke,
+  `bcrypt.compare` nur im Pool und `@node-rs/argon2` nur in
+  `src/konto/passwortHash.ts` zu (Vergleich nur über `passwortPasst`); eine Route ohne Marke,
   die bestätigt, antwortet in Tests mit 500. Den Notausgang des Verwalters
   (`DELETE /auth/users/:id/zweiter-faktor`) gibt es nur für fremde Konten.
   Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt
@@ -159,13 +238,14 @@ den Commits, nicht hier.
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
   ohne Cookie ausgenommen: `src/http/herkunft.ts` — `herkunft`.
-- Mit `APP_BASE_URL` antwortet die App nur unter deren Namen (sonst 421
-  `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb. Frei bleiben
-  Loopback, Bearer-Token, `/ca.crt` und die Gesundheitspfade:
-  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-runde11-db`.
+- Die App antwortet nur unter dem Namen aus `APP_BASE_URL` (sonst 421
+  `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb; ohne
+  `APP_BASE_URL` (nur mit `APP_BASE_URL_FEHLT_OK=1`) unter keinem Namen. Frei
+  bleiben Loopback, IP-Adressen, `/ca.crt` und die Gesundheitspfade:
+  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-server-grenzen-db`, `herkunft`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
   `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
-  — `sicherheit-runde11-db`.
+  — `sicherheit-server-grenzen-db`.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
@@ -173,20 +253,27 @@ den Commits, nicht hier.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
 - Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
   (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
-  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-runde11-db`.
+  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-server-grenzen-db`.
 - Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
   Figurenbilder sind Katalog. Katalog, `/sets/info` und `/sets/barcode` nennen
-  `image_local` nur im Blickfeld: `src/katalog/bilder/bildBlickfeld.ts` —
+  `image_local` nur im Blickfeld: `src/bilder/bildBlickfeld.ts` —
   `bild-blickfeld-db`, `katalog-bilder-db`.
 - Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
   deren Besitzer: `routes/api_v1/sets.ts` — `teile-import-besitz-db`.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
   `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
-  `waehrung_geteiltes_unterkonto`: `src/konto/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
+  `waehrung_geteiltes_unterkonto`: `src/einstellungen/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
+- Datenbankrechte nach Rolle (Migration 0117, `postgres/app-rolle.sh`): Die
+  Laufzeitrolle schreibt in `users` nur Vor- und Nachname und liest
+  `global_settings` nur; Passwort, Verwalterrecht, Adresse, Links,
+  Sitzungsversion und globale Einstellungen schreibt nur die Systemrolle.
+  `verwaltungsprotokoll` ist für beide nur anfügbar, aufgeräumt wird über eine
+  Funktion der Eigentümerin mit fester Frist. Gutscheine und Idempotenzeinträge
+  sieht nur das eigene Konto (0118) — `db-rolle-db`, `zeilenschutz-db`.
 
 ### Gemeinsame Daten (3)
 - Bildcache nur aus geprüften Katalogadressen (`bild_von IS NULL`), nie aus
@@ -224,7 +311,7 @@ den Commits, nicht hier.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
   Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
   (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
-  `routes/imgProxy.ts`, `src/katalog/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
+  `routes/imgProxy.ts`, `src/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
   Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
   nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
   `bild-proxy-deckel`.
@@ -254,12 +341,12 @@ den Commits, nicht hier.
 - 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
   zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
   `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
-  `handleRouteError` — `sicherheit-runde11-db`.
+  `handleRouteError` — `sicherheit-server-grenzen-db`.
 - Aktions-Dispatcher kein Skript-Gadget: kein `mouseenter`, je Ereignis nur
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus
   Vorlagen mit `echt()` (Zufallsmarke je Seitenladung):
-  `public/js/actions.js`, `public/js/registry.js` — `aktionen-schutz`.
+  `public/js/aktionen.js`, `public/js/registry.js` — `aktionen-schutz`.
 
 ### Protokoll und Kontingente
 - Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde
@@ -271,7 +358,7 @@ den Commits, nicht hier.
   Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
-  `src/katalog/apiKontingent.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
+  `src/fremdquellen/apiKontingent.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
   (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
@@ -287,7 +374,7 @@ den Commits, nicht hier.
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
   darin, nach `einrichtung_erledigt` nur noch „erledigt“. Ohne Verwaltersitzung
   fehlen die Basis-URL und das Startpasswort („Konto“ heißt dann nur „es gibt
-  eines“): `src/konto/einrichtungStand.ts` — `einrichtung-stand-db`.
+  eines“): `src/profil/einrichtungStand.ts` — `einrichtung-stand-db`.
 - Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
   nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
   nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die
@@ -317,10 +404,10 @@ den Commits, nicht hier.
 
 ### Lieferkette (5)
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-haertung`.
-  Renovate schlägt neue Fassungen vor: Actions, Dockerfiles (auch
+  Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles (auch
   `Dockerfile.caddy`) und die Dienste in `compose.yaml` (`docker-compose`), npm und Gradle
-  (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
-  Erscheinen (`minimumReleaseAge`).
+  (`.github/dependabot.yml`), npm und Gradle frühestens drei Tage nach
+  Erscheinen (`cooldown`).
 - `npm ci --ignore-scripts` aus dem Lockfile (Dockerfile, CI); Install-Skripte
   nur gezielt für die Pakete, die eines haben (`npm rebuild esbuild`) —
   `dockerfile`. `npm audit --omit=dev` ist rot ab `moderate` (web-ci.yml) —
@@ -419,6 +506,11 @@ den Commits, nicht hier.
   und `caddy-rechte` laufen ohne Netz. `app`, `jobs` und `caddy` brauchen das
   Internet; den Weg ins Heimnetz sperrt optional eine `DOCKER-USER`-Regel auf
   ihr festes Subnetz (UPGRADE.md, Abschnitt 52) — `compose-haertung`.
+- Genau ein Web-Prozess je Datenbank: Budget je Konto, Kontoschranke,
+  Gutschein-Abfragen, PDF-Tickets und Passwort-Schranke zählen im Speicher
+  dieses Prozesses; mehrere Web-Prozesse teilten jede Grenze. Er hält deshalb
+  eine Datenbanksperre, ein zweiter beendet sich (UPGRADE.md §56) —
+  `web-einzelinstanz-db`.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
   `test` lockern sie — `betrieb-ohne-node-env-db`.
@@ -471,6 +563,116 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
 - R8 verkleinert und benennt um, auch die API-Modelle; Keep-Regeln nur, wo
   Reflexion oder das Framework es verlangen (`Android-App/app/proguard-rules.pro`).
 
+- **MASVS-R wird nicht angestrebt, Play Integrity nicht eingebaut** (Prüfung vom
+  14.11.2026, M3): Die App wird nicht über Google Play verteilt; Play Integrity
+  bräuchte ein Google-Cloud-Projekt und ein Play-Konto, meldete jede Prüfung an
+  Google und schlösse eigene ROMs aus. Was davon für die Daten zählt, prüft der
+  Server selbst und nicht umgehbar in der App: Den Geräteschlüssel des
+  Schrittschutzes nimmt er nur mit Key Attestation an (TEE oder StrongBox,
+  Gerätesperre, App-Paket und Signatur, gesperrter Bootloader und verifizierter
+  Start aus RootOfTrust, keine widerrufene Kette, auf Wunsch Mindest-Patchstand;
+  siehe „Anmeldung und Sitzung“). Heikle Schritte (Gutschein-PIN, Verwaltung,
+  zweiter Faktor) gehen damit nur von einem unveränderten Gerät mit echter App.
+  Nicht abgedeckt: Lesen und Ändern auf einem gerooteten oder mit Hooks
+  versehenen Gerät ausserhalb dieser Schritte (Anzeige, Bestand) und eine
+  Lücke im Gerät selbst, die RootOfTrust nicht verrät.
+- **App-Sperre ist ein Sichtschutz der Oberfläche** (N3): Sie verdeckt die App
+  nach der gewählten Zeit im Hintergrund und verlangt zum Weitermachen
+  Gerätesperre oder Biometrie. Neu installiert mit Displaysperre steht sie auf
+  5 Minuten, und die Einrichtung bietet sie an; ein Update stellt nichts um. Sie verschlüsselt nichts zusätzlich und hält
+  Hintergrundarbeit (Ausgang, Preisalarm, Widget-Abruf) nicht auf. Die Daten
+  schützen der Keystore (Token und Ablagen nur bei entsperrtem Gerät) und der
+  Schrittschutz am Server; das Widget verdeckt Beträge, solange die Sperre
+  greifen kann.
+- **Release-Signatur** (N5): Der Signierschlüssel liegt als Base64-Secret in der
+  GitHub-Environment `release` (`.github/workflows/android-signieren.yml`); dass
+  der Inhaber seine eigene Freigabe erteilen darf (`prevent_self_review` aus),
+  meldet der Workflow nur als Warnung. Bewusste Entscheidung des
+  Ein-Personen-Projekts: Heute gibt eine Person frei. Wie sich das ohne zweiten
+  Menschen stärken lässt, steht im nächsten Abschnitt; umgesetzt ist davon nichts,
+  der Inhaber entscheidet. Das Restrisiko steht unten („Update der Android-App per
+  Sideload“).
+- **Neuer Serverschlüssel unter öffentlicher CA** (Prüfung 476e4a4, M1): Auf
+  Android 11–15 nur mit abgetipptem Fingerabdruck aus dem Browser am Rechner,
+  ab Android 16 (CT im System) mit einem bewussten Tipp. Caddy behält seinen
+  Schlüssel beim Erneuern (`reuse_private_keys`, UPGRADE.md Abschnitt 62), damit
+  die Frage selten und auffällig bleibt.
+- **Daten auf dem Gerät** (N1, N3): Adresse, Benutzername, Herkunft des Tokens,
+  Widget-Zahlen und Abmeldeaufträge liegen unter einem Keystore-Schlüssel, der
+  nur entsperrt arbeitet; ein Schlüssel ohne diese Bedingung bleibt nur für Pins
+  und den Nutzer-CA-Schalter, weil jede TLS-Verbindung sie braucht. Einzelheiten
+  und Begründung: `Android-App/INVARIANTEN.md`, „Daten auf dem Gerät“.
+
+### Release-Freigabe stärken (Anleitung für den Inhaber)
+
+Heute genügt eine Person mit Zugang zum GitHub-Konto, um ein Update zu
+veröffentlichen, das jede installierte App annimmt: Sie gibt `release` und
+`release-beschreibung` frei, beide Schlüssel liegen als Secret bei GitHub. Drei
+Wege machen daraus mehr als eine Hürde; jeder lässt sich einzeln einführen.
+Workflow-Änderungen dafür bespricht der Inhaber vorher, sie stehen hier nur als
+Vorschlag.
+
+1. **Beschreibungsschlüssel offline (Hardware).** Die App nimmt eine Fassung
+   nur mit einer Beschreibung an, die einer der Schlüssel aus
+   `Android-App/core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem` signiert hat
+   (ECDSA P-256, SHA-256). Liegt dieser Schlüssel nicht bei GitHub, genügt ein
+   erbeutetes Konto nicht mehr.
+   - Schlüssel auf einem Token erzeugen, etwa YubiKey (PIV, Slot 9c):
+     `ykman piv keys generate --algorithm ECCP256 9c beschreibung.pub.pem`, dann
+     `ykman piv certificates generate --subject "CN=BrickInventory Beschreibung" 9c beschreibung.pub.pem`.
+     Ohne Token: auf einem Rechner ohne Netz mit
+     `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -aes256 -out beschreibung.pem`.
+   - Den öffentlichen Teil **zusätzlich** in `beschreibungs_schluessel.pem`
+     eintragen und eine Fassung mit dem bisherigen Schlüssel veröffentlichen. Erst
+     wenn die Geräte sie haben, mit dem neuen signieren; danach den alten Block
+     und die Secrets `BESCHREIBUNG_SCHLUESSEL`/`BESCHREIBUNG_PASS` entfernen.
+   - Signieren je Fassung: Der Job `beschreibung` legt dann statt zu signieren
+     `version-daten.json` als Artefakt ab (Workflow-Änderung). Der Inhaber prüft
+     Prüfsumme und Inhalt (versionCode, apkSha256 gegen den Lauf), signiert lokal
+     — mit Token z. B. `openssl dgst -sha256 -sign "pkcs11:object=Private key for Digital Signature" -provider pkcs11 version-daten.json > beschreibung.sig`,
+     offline mit `openssl dgst -sha256 -sign beschreibung.pem` — und lädt
+     `version-signiert.json` (Format wie im Workflow: `daten` und
+     `beschreibungssignatur` in Base64) an die Release.
+   - Vor dem Hochladen gegenprüfen und zusammensetzen:
+     `openssl dgst -sha256 -verify beschreibung.pub.pem -signature beschreibung.sig version-daten.json`,
+     dann `jq -n --arg d "$(base64 -w0 version-daten.json)" --arg s "$(base64 -w0 beschreibung.sig)" '{daten:$d, beschreibungssignatur:$s}' > version-signiert.json`
+     und `gh release upload <etikett> version-signiert.json`. Der öffentliche Teil
+     muss als `-----BEGIN PUBLIC KEY-----` (SPKI) in der App stehen; offline liefert
+     ihn `openssl pkey -in beschreibung.pem -pubout`.
+   - Die Frist bleibt sieben Tage: Auch das Auffrischen braucht dann jede Woche den
+     Token. Ohne Auffrischen bietet die App eine neuere Fassung weiter an, warnt aber,
+     dass es Neueres geben könnte.
+2. **Zweiter Prüfer.** Eine zweite Person (eigenes Konto mit Zwei-Faktor) unter
+   *Settings → Environments → release* und *release-beschreibung* als
+   *Required reviewer* eintragen und *Prevent self-review* einschalten; der
+   Workflow meldet das dann nicht mehr als Warnung. Der zweite Prüfer gibt nur
+   frei, wenn Etikett, Commit und Änderungen zu einer angekündigten Fassung passen.
+   *Allow administrators to bypass* bleibt aus (der Workflow prüft es).
+   - Prüfen: `gh api repos/<besitzer>/<repo>/environments/release --jq '.protection_rules'`
+     zeigt `"prevent_self_review": true` und den zweiten Prüfer; dasselbe für
+     `release-beschreibung`. Die Warnung „Selbstfreigabe“ im Lauf *APK signieren* fehlt dann.
+   - Der zweite Prüfer bekommt Leserecht am Repository, kein Schreibrecht: Er muss
+     nur freigeben, nicht pushen; *Deployment branches* bleibt auf `main`.
+3. **Haltefenster vor „Latest“.** Die App liest nur die als „Latest“ markierte
+   Release. Veröffentlicht der Workflow zunächst ohne diese Marke
+   (`gh release create … --latest=false`) und setzt sie erst nach 48–72 Stunden
+   von Hand (`gh release edit <etikett> --latest`), bleibt Zeit, eine unerwartete
+   Release zu bemerken (GitHub-Benachrichtigung „Releases“ für das Repository
+   abonnieren) und sie zu löschen, bevor ein Gerät sie lädt. Nachteil: Ein
+   dringender Fix braucht ebenso lang oder einen bewussten Handgriff.
+   - Workflow-Änderung: in `android-release.yml` bei `gh release create` `--latest`
+     durch `--latest=false` ersetzen.
+   - Im Fenster: `gh release download <etikett> -p 'BrickInventory-*.apk' -p version-signiert.json`,
+     `sha256sum` des APK mit `apkSha256` aus `daten` (Base64) und mit der Summe im Lauf
+     (*Übergabe an das Signieren*) vergleichen; Commit des Etiketts gegen `main` prüfen.
+   - Erst dann `gh release edit <etikett> --latest`. Die Frist der Beschreibung läuft
+     ab dem Signieren: Bei 72 Stunden Fenster bleiben vier Tage bis zum Auffrischen.
+     Bis zur Marke prüft das nächste Etikett seine Fassung gegen die alte „Latest“.
+
+Reihenfolge nach Wirkung: 1 nimmt GitHub den Schlüssel, 2 verlangt einen
+zweiten Menschen, 3 gibt Zeit zum Bemerken. Ein Schlüssel in HSM oder Cloud-KMS
+für die APK-Signatur bleibt eine Entscheidung über Infrastruktur.
+
 Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 „Daten auf dem Gerät“. Eine Änderung dieser Entscheidung gehört hierher.
 
@@ -496,6 +698,11 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **„Unbegrenzt“** endet nur durch Widerruf oder fehlenden Tausch: Ein
   gestohlenes Gerät, das weiter tauscht, bleibt angemeldet, bis es in der
   Geräteliste entfernt wird.
+- **Tagesgrenze von unbekannten Adressen**: 50 Fehlversuche eines Fremden
+  sperren die Passwortanmeldung ohne zweiten Faktor für einen Tag an jeder
+  Adresse, an der sich der Inhaber noch nicht angemeldet hat (neues Gerät,
+  neues Netz). Bekannte Adressen, Passkey und „Passwort vergessen“ bleiben
+  offen; die Mail an den Inhaber meldet die Grenze.
 - **Passkeys ohne zweiten Faktor**: Ein Konto ohne TOTP kann sich mit Passkey
   ODER Passwort anmelden; der Passkey verschärft die Passwortanmeldung nicht.
   Passkeys brauchen einen Namen in `APP_BASE_URL` (keine IP-Adresse).
@@ -533,7 +740,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   erscheinen geteilte Anleitungen eines selbst erfassten Sets sofort, wenn sie
   schon jemand geladen hatte.
 - **Bilder der Container** (`postgres`, die Basis von `Dockerfile.caddy`, ZAP)
-  sind per Digest fest und veralten damit; Renovate schlägt neue Fassungen vor
+  sind per Digest fest und veralten damit; Dependabot schlägt neue Fassungen vor
   (ZAP und die Dienst-Container der Workflows nicht). Eine hingenommene Lücke
   in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`; Caddy
   prüft der Job `trivy-eigenbau` ohne Ausnahmen.
@@ -545,11 +752,15 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **Update der Android-App per Sideload**: Die App darf Pakete installieren
   (`REQUEST_INSTALL_PACKAGES`). Abgesichert ist das durch die Signatur des
   APK, seine SHA-256-Prüfsumme, die signierte Fassungsbeschreibung und ein
-  Frischefenster gegen alte Fassungen. Restrisiko: Der Signierschlüssel liegt
-  als Secret in einem GitHub-Environment; wer ihn dort erbeutet, kann Updates
-  signieren.
+  Frischefenster gegen alte Fassungen. Restrisiko: Signier- und
+  Beschreibungsschlüssel liegen als Secret in GitHub-Environments, und eine
+  Person gibt frei; wer das Konto erbeutet, kann Updates veröffentlichen. Wie
+  sich das stärken lässt: „Release-Freigabe stärken“ oben.
 - **Beschreibungsschlüssel**: Die App nimmt eine Fassungsbeschreibung nur mit der
   Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
   das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
   gilt sieben Tage; danach meldet die App sie als veraltet, bis ein neues Etikett
-  sie auffrischt.
+  sie auffrischt. Eine abgelaufene, aber neuere Fassung bietet sie trotzdem an,
+  mit dem Hinweis, dass es Neueres geben könnte; eine ältere als die installierte
+  oder als die schon gesehene nie (Rückroll-Schutz über versionCode und
+  Ausstellungszeit).

@@ -11,6 +11,12 @@
  * @property {undefined} zweiterFaktorPflicht  Verwalter ohne zweiten Faktor: nur dessen Einrichtung ist erlaubt
  * @property {undefined} setsGeaendert      Sets sind anders als angezeigt (Import fertig oder abgebrochen)
  * @property {undefined} bestandGeaendert   Sets, Teile und Figuren sind anders als angezeigt (Wiederherstellung)
+ * @property {{ restore?: boolean } | undefined} sammlungLaden  Sammlung neu laden (restore: an derselben Stelle)
+ * @property {undefined} kennzahlenLaden    nur die Kennzahlen über der Sammlung
+ * @property {undefined} sammlungZeichnen   neu zeichnen ohne Abruf (Ansicht gewechselt)
+ * @property {undefined} finanzenLaden      Finanzen neu laden (Kauf oder Bestand geändert)
+ * @property {undefined} teileLaden         Teileliste neu laden (Set gelöscht, Teile neu geholt)
+ * @property {object | null | undefined} setAggregat  Zustand eines Sets vom Server (Kachel der Sammlung)
  * @property {string} ansichtGewechselt     Name des Reiters oder der Sicht
  * @property {undefined} filterZurueckgesetzt
  * @property {undefined} abschnittGewechselt

@@ -48,6 +48,10 @@ export const FEHLER = {
     de: 'Zu viele Fehlversuche — bitte in {minuten} Min. erneut versuchen',
     en: 'Too many failed attempts — please try again in {minuten} min',
   },
+  konto_tagesgrenze: {
+    de: 'Zu viele Fehlversuche für dieses Konto in 24 Stunden. Anmelden geht jetzt nur mit Passwort und Code des zweiten Faktors, mit Passkey oder nach „Passwort vergessen“.',
+    en: 'Too many failed attempts for this account in 24 hours. Sign-in now works only with password and second-factor code, with a passkey or after “Forgot password”.',
+  },
   anmeldedaten_ungueltig: { de: 'Ungültige Anmeldedaten', en: 'Invalid credentials' },
   name_oder_email_eingeben: {
     de: 'Bitte Benutzername oder E-Mail-Adresse eingeben.',
@@ -94,8 +98,8 @@ export const FEHLER = {
     en: 'The password must be at least 12 characters long.',
   },
   passwort_zu_lang: {
-    de: 'Das Passwort ist zu lang: höchstens 72 Byte (Umlaute und Sonderzeichen zählen doppelt).',
-    en: 'The password is too long: at most 72 bytes (accented letters and symbols count double).',
+    de: 'Das Passwort ist zu lang: höchstens 1024 Zeichen.',
+    en: 'The password is too long: at most 1024 characters.',
   },
   passwort_zu_haeufig: {
     de: 'Dieses Passwort ist zu häufig oder aus Datenlecks bekannt. Bitte ein anderes wählen.',
@@ -166,12 +170,8 @@ export const FEHLER = {
     en: 'Please change the temporary password first.',
   },
   letzter_verwalter: {
-    de: 'Das letzte Verwalterkonto kann sich nicht selbst löschen. Bitte zuerst ein anderes Konto zum Verwalter machen.',
-    en: 'The last administrator account cannot delete itself. Please make another account an administrator first.',
-  },
-  verwalter_muss_bleiben: {
-    de: 'Es muss mindestens ein aktiver Verwalter bleiben.',
-    en: 'At least one active administrator must remain.',
+    de: 'Es muss mindestens ein aktiver Verwalter bleiben. Bitte zuerst ein anderes Konto zum Verwalter machen.',
+    en: 'At least one active administrator must remain. Please make another account an administrator first.',
   },
   zweiter_faktor_pflicht: {
     de: 'Verwalterkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',
@@ -335,6 +335,10 @@ export const FEHLER = {
   upload_kontingent_voll: {
     de: 'Der Platz für eigene Anleitungen ({mb} MB) ist belegt — bitte erst alte löschen',
     en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first',
+  },
+  upload_gesamt_voll: {
+    de: 'Der Speicherplatz für hochgeladene Dateien auf dem Server ({mb} MB für alle Konten) ist belegt — bitte den Verwalter fragen',
+    en: 'The server space for uploaded files ({mb} MB for all accounts) is full — please ask the administrator',
   },
   datei_nicht_verfuegbar: { de: 'Datei nicht verfügbar', en: 'File not available' },
   json_ungueltig: { de: 'Ungültige JSON-Datei', en: 'Invalid JSON file' },
@@ -635,34 +639,30 @@ export type FehlerArt =
   | 'konflikt'
   | 'zu_gross'
   | 'falscher_typ'
+  | 'zu_langsam'
+  | 'nicht_mehr_da'
+  | 'nicht_verarbeitbar'
   | 'zu_viele'
+  | 'speicher_voll'
   | 'intern'
   | 'fremddienst'
   | 'nicht_verfuegbar'
-  | 'zeitueberschreitung';
+  | 'zeitueberschreitung'
+  | 'falscher_host'
+  | 'zu_alt';
 
 /** Art und Code reisen mit, der Satz entsteht erst in der Antwort in der
  * Sprache des Anfragenden. */
 export class Fachfehler extends Error {
+  /** `zusatz`: Felder, die die Antwort neben code und error trägt (z. B. `wartenSek`). */
   constructor(
     readonly art: FehlerArt,
     readonly code: FehlerCode,
     readonly vars?: Record<string, string | number>,
+    readonly zusatz?: Record<string, unknown>,
   ) {
     super(fehlerText(code, 'de', vars));
     this.name = 'Fachfehler';
-  }
-}
-
-/** Ein eigener Satz ohne Code: handleRouteError zeigt ihn, den Text einer
- * Bibliothek dagegen nicht. */
-export class Meldung extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = 'Meldung';
   }
 }
 
@@ -687,6 +687,11 @@ export function doppeltAls<T>(wert: T): (e: unknown) => T {
 /** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt. */
 export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
   throw new Fachfehler(art, code, vars);
+}
+
+/** Ein Lesepfad fand nichts: 404 mit dem Code, der sagt, was fehlt. */
+export function nichtGefunden(code: FehlerCode = 'nicht_gefunden', vars?: Record<string, string | number>): never {
+  throw new Fachfehler('nicht_gefunden', code, vars);
 }
 
 /** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */

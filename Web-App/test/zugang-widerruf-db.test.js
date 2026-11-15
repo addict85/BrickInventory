@@ -32,7 +32,7 @@ const _req = S.buildAndRequire();
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art, o) => {
+  mailKontoHinweis: async (an, _name, art, o) => {
     gesendet.push({ an, art, name: o.passkey });
     return { success: true };
   },
@@ -79,7 +79,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const kennung = token => auth.hashToken(token).slice(0, 16);
+  const kennung = token => auth.tokenAbdruck(token).slice(0, 16);
   const gilt = async token => {
     tokenCache.leereTokenCache();
     return (await ruf('GET', '/settings/tokens', token)).status === 200;
@@ -90,8 +90,8 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     return gesendet.filter(m => m.art === art);
   };
 
-  const eigen = await auth.createToken(uidA, 'Telefon', true);
-  const fremd = await auth.createToken(uidA, 'Tablet', true);
+  const eigen = await auth.tokenAnlegen(uidA, 'Telefon', true);
+  const fremd = await auth.tokenAnlegen(uidA, 'Tablet', true);
 
   await t.test('ein Präfix der Kennung wird abgewiesen', async () => {
     for (const teil of ['0', kennung(fremd).slice(0, 1), kennung(fremd).slice(0, 15), kennung(fremd).toUpperCase()]) {
@@ -110,7 +110,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein fremdes Konto widerruft nichts', async () => {
-    const tokB = await auth.createToken(uidB, 'Fremd', true);
+    const tokB = await auth.tokenAnlegen(uidB, 'Fremd', true);
     const r = await ruf('DELETE', `/settings/tokens/${kennung(fremd)}`, tokB, { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 0);
@@ -128,7 +128,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
   });
 
   await t.test('den eigenen Zugang beendet das Gerät ohne Passwort', async () => {
-    const kurz = await auth.createToken(uidA, 'Abmelden', true);
+    const kurz = await auth.tokenAnlegen(uidA, 'Abmelden', true);
     const r = await ruf('DELETE', `/settings/tokens/${kennung(kurz)}`, kurz);
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await gilt(kurz), false);
@@ -140,8 +140,8 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
   });
 
   await t.test('alle anderen: ein bestätigter Aufruf, der eigene bleibt', async () => {
-    const x = await auth.createToken(uidA, 'X', true),
-      y = await auth.createToken(uidA, 'Y', true);
+    const x = await auth.tokenAnlegen(uidA, 'X', true),
+      y = await auth.tokenAnlegen(uidA, 'Y', true);
     const ohne = await ruf('POST', '/settings/sessions/andere-beenden', eigen, { zugaenge: true });
     assert.ok(ohne.status >= 400 && ohne.status < 500, JSON.stringify(ohne.body));
     assert.equal(await gilt(x), true, 'ohne Passwort beendet');

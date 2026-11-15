@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { feldFehler, passwortRegelText } from './formular.js';
 import { toast } from './meldungen.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 import { html, ungeprueft } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 // Einstellungen, Abschnitt Verwaltung: Konten anlegen, sperren, freischalten, Rechte. Nur Verwalter sehen
@@ -47,6 +47,8 @@ const AKTIONEN = {
   gutschein_klartext: () => tRaw('users.aktion.gutschein_klartext'),
   gutschein_pdf: () => tRaw('users.aktion.gutschein_pdf'),
   gutschein_export: () => tRaw('users.aktion.gutschein_export'),
+  uebernahme_angekuendigt: () => tRaw('users.aktion.uebernahme_angekuendigt'),
+  uebernahme_abgebrochen: () => tRaw('users.aktion.uebernahme_abgebrochen'),
 };
 /** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
 async function ladeProtokoll() {
@@ -70,7 +72,8 @@ async function ladeProtokoll() {
  * @param {Konto} u
  */
 function nutzerAktionen(u) {
-  if (ME && u.id === ME.id) return html`<span class="text-klein">${tRaw('users.selbst')}</span>`;
+  if (angemeldetesKonto && u.id === angemeldetesKonto.id)
+    return html`<span class="text-klein">${tRaw('users.selbst')}</span>`;
   const selten = [
     nutzerKnopf(
       u,
@@ -193,7 +196,12 @@ G('btn-rpw').onclick = async () => {
   );
   if (d === null) return;
   if (d.success) {
-    toast(tRaw('users.pw_reset'), 'success');
+    toast(
+      d.wirksam_ab
+        ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') })
+        : tRaw('users.pw_reset'),
+      'success',
+    );
     G('pw-modal').classList.remove('open');
   } else toast(d.error || t('settings.error'), 'error');
 };

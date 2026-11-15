@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
+import ch.brickinventoryapp.model.fach.Geld
 import org.junit.Test
 
 /**
@@ -19,17 +20,17 @@ import org.junit.Test
 class AlarmeingabeTest {
 
     @Test
-    fun `eine gueltige Schwelle kommt als Zahl durch`() {
-        assert(Alarmeingabe.zahl("200") == 200.0)
-        assert(Alarmeingabe.zahl("249.90") == 249.90)
-        assert(Alarmeingabe.zahl(" 249.90 ") == 249.90) { "Leerzeichen sollten egal sein" }
+    fun `eine gueltige Schwelle kommt als Betrag durch`() {
+        assert(Alarmeingabe.zahl("200") == Geld(2_000_000))
+        assert(Alarmeingabe.zahl("249.90") == Geld(2_499_000))
+        assert(Alarmeingabe.zahl(" 249.90 ") == Geld(2_499_000)) { "Leerzeichen sollten egal sein" }
     }
 
     @Test
     fun `das Komma der deutschen Tastatur zaehlt als Punkt`() {
         // Ohne diese Zeile waere „249,90" keine Zahl, also ein Loeschen — der
         // Alarm verschwaende beim Eintippen.
-        assert(Alarmeingabe.zahl("249,90") == 249.90) {
+        assert(Alarmeingabe.zahl("249,90") == Geld(2_499_000)) {
             "249,90 ergab ${Alarmeingabe.zahl("249,90")}"
         }
     }
@@ -56,7 +57,7 @@ class AlarmeingabeTest {
         // Diese Pruefung steht jetzt hier, damit die richtige Antwort
         // festgehalten ist und nicht wieder jemand (ich) die plausible
         // annimmt.
-        assert(Alarmeingabe.zahl("249.") == 249.0) {
+        assert(Alarmeingabe.zahl("249.") == Geld(2_490_000)) {
             "249. ergab ${Alarmeingabe.zahl("249.")}"
         }
     }

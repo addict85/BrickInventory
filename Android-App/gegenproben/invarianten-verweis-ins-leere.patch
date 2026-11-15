@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.app.InvariantenVerweiseTest
 Rot: jede in INVARIANTEN genannte Quelldatei und Testklasse gibt es
 
 diff --git a/Android-App/INVARIANTEN.md b/Android-App/INVARIANTEN.md
+index e89f171..92abee4 100644
 --- a/Android-App/INVARIANTEN.md
 +++ b/Android-App/INVARIANTEN.md
-@@ -586,7 +586,7 @@ prüft, dass jeder projekteigene Import ein Ziel hat.
+@@ -127,7 +127,7 @@ Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
  
- ## Endlos-Scroll: Sperre vor dem launch, Schlüssel beim Anhängen sieben
+ **Endlos-Scroll.** Die Ladesperre wird synchron vor dem `launch` gesetzt und in jedem
+ Ausgang gelöst; beim Anhängen werden bekannte Schlüssel ausgesiebt.
+-Datei: `sammlung/ui/Galerie.kt` · Test: `GalerieTest`
++Datei: `sammlung/ui/GalleryFeature.kt` · Test: `GalerieTest`
  
--**Datei:** `sammlung/ui/Galerie.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
-+**Datei:** `sammlung/ui/GalleryFeature.kt` · **Test:** `GalerieTest` („zwei Nachlade-Aufrufe im selben Takt holen Seite 2 nur einmal“)
- 
- Der Auslöser hängt an einem `snapshotFlow`, dessen `LaunchedEffect` bei jeder
- Änderung von `sets.size` neu startet und sofort wieder auswertet — beim
+ **Schlüssel.** Stehen `items(…, key = …)` und ein `item { }` in derselben Liste, trägt auch
+ dieser einen Schlüssel. Test: `LazyGridItemKeyTest`

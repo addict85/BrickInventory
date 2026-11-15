@@ -49,8 +49,10 @@ test('ein Fach bleibt, je Fabrik eigene Fächer', () => {
   );
   /** @type {any[]} */
   const k = [];
-  erzeugeKatalog({ db: /** @type {any} */ ({}) }, x => k.push(x));
-  erzeugeKatalog({ db: /** @type {any} */ ({}) }, x => k.push(x));
+  // Der Katalog horcht beim Bau auf die Bilder (beiSetBildGeladen); mehr braucht der Bau nicht.
+  const abh = /** @type {any} */ ({ db: {}, bilder: { beiSetBildGeladen() {} } });
+  erzeugeKatalog(abh, x => k.push(x));
+  erzeugeKatalog(abh, x => k.push(x));
   const [k1, k2] = k;
   k1.faecher.fach('themenbaum', () => ({ n: 1 })).n = 2;
   assert.equal(k2.faecher.fach('themenbaum', () => ({ n: 1 })).n, 1);

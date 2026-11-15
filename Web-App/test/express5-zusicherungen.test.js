@@ -11,17 +11,18 @@ const express = require('express');
 const fs = require('node:fs');
 const path = require('node:path');
 const { serverAll, ohneKommentare } = require('./helpers/sources');
+const { portVon } = require('./helpers/server');
 
 test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   const src = serverAll();
 
   // Den Catch-all an seiner AUFGABE finden, nicht an seinem Muster: Es ist
-  // die app.get-Registrierung, die renderIndexHtml() ausliefert. Haenge die
+  // die app.get-Registrierung, die startseiteHtml() ausliefert. Haenge die
   // Suche am Muster, muesste sie bei jeder Umbenennung mitgepflegt werden —
   // und dann prueft sie irgendwann die Schreibweise statt der Sache. …
   const kandidaten = [];
   for (const m of src.matchAll(/^\s*app\.get\('([^']+)'/gm)) {
-    if (/renderIndexHtml|sendeStartseite/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
+    if (/startseiteHtml|sendeStartseite/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
   }
   assert.ok(kandidaten.length, 'Keine Route rendert mehr index.html — Suche veraltet?');
   const muster = kandidaten.find(k => k.includes('*'));
@@ -37,7 +38,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   app.get(muster, (_req, res) => res.status(200).send('ok'));
   const srv = app.listen(0);
   await new Promise(r => srv.once('listening', r));
-  const basis = `http://localhost:${srv.address().port}`;
+  const basis = `http://localhost:${portVon(srv)}`;
   try {
     const wurzel = await fetch(`${basis}/`);
     assert.equal(
@@ -70,7 +71,7 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   await new Promise(r => s1.once('listening', r));
   let ohneZusicherung;
   try {
-    ohneZusicherung = (await (await fetch(`http://localhost:${s1.address().port}/a`, { method: 'POST' })).json()).fehlt;
+    ohneZusicherung = (await (await fetch(`http://localhost:${portVon(s1)}/a`, { method: 'POST' })).json()).fehlt;
   } finally {
     await new Promise(r => s1.close(r));
   }
@@ -104,12 +105,7 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
 /**
  * Die Startseite geht durch den Renderer — nicht an ihm vorbei.
  *
- * Gegenproben (durchgefuehrt, Ergebnisse abgeschrieben):
- *   `index: false` entfernt → dieser Fall rot.
- *   Beim ERSTEN Versuch blieb er gruen: Die Pruefung las den Quelltext samt
- *   Kommentaren, und der Kommentar ueber der Option nennt sie beim Namen.
- *   Dieselbe Falle wie bei scripts/check-global-settings.js, das Erwaehnungen
- *   in Kommentaren mitzaehlt.
+ * Gegenprobe: `index: false` entfernt → dieser Fall rot (gelesen ohne Kommentare).
  */
 test('3. die Startseite geht durch den Renderer', () => {
   // OHNE KOMMENTARE, und das ist nicht Zierde: Der Erklaerkommentar ueber der

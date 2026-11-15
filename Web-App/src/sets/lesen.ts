@@ -1,7 +1,8 @@
-import { fuerSet, resolveImageLocal, anleitungenZusammenlegen } from '../katalog';
+import { fuerSet, anleitungenZusammenlegen } from '../katalog';
+import { resolveImageLocal } from '../bilder';
 import { meldeFehler } from '../infra/fehler';
 import * as repo from './repository/sets';
-import { asIds, besitzerAnhaengen, blickfeldAus, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { asIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 
 // Leseabfragen; Zustand aus den Erfassungen.
@@ -12,8 +13,12 @@ import type { SetsKontext } from './kontext';
 
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
-export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET /api/v1/sets'> = {}) {
-  const userId = await blickfeldAus(sk.db, userIdWahl);
+export async function setsLesen(
+  sk: SetsKontext,
+  userIdWahl: Sicht | Blickfeld,
+  query: Abfrage<'GET /api/v1/sets'> = {},
+) {
+  const userId = await sk.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
@@ -62,7 +67,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
-  const mitBesitzern = await besitzerAnhaengen(sk.db, uids, mapped);
+  const mitBesitzern = await sk.haushalt.besitzerAnhaengen(uids, mapped);
 
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
@@ -73,14 +78,14 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
 }
 
 // Eine gebrauchte Erfassung macht das Set gebraucht; die Regel steht nur hier.
-export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
+export async function zustandsAggregat(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(sk.db, uids, setNumber);
   const acqCount = Number(acq?.acq_count) || 0;
   const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
-    // Dieselben Felder wie getSets(sk): Die Kachel wird nach dem Speichern ohne
+    // Dieselben Felder wie setsLesen(sk): Die Kachel wird nach dem Speichern ohne
     // Neuladen aktualisiert und verlöre sonst die zweite Plakette.
     conditions: conditionsFromAcquisitions(acqCount, usedCount),
     acq_count: acqCount,
@@ -91,19 +96,19 @@ export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfel
 }
 
 /** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren. */
-export async function withSetAggregate<T extends object>(
+export async function mitSetAggregat<T extends object>(
   sk: SetsKontext,
   userId: Blickfeld,
   setNumber: string,
   payload: T,
 ) {
   const uids = asIds(userId);
-  const agg = await versuche('sets-handler:getSetConditionAggregate', getSetConditionAggregate(sk, uids, setNumber));
+  const agg = await versuche('sets-handler:zustandsAggregat', zustandsAggregat(sk, uids, setNumber));
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
-export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
-  const userId = await blickfeldAus(sk.db, userIdWahl);
+export async function setLesen(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
+  const userId = await sk.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
@@ -113,19 +118,21 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
-  // Dieselben Felder wie getSets(sk), damit ein Client die Kachel mit dem Detail
+  // Dieselben Felder wie setsLesen(sk), damit ein Client die Kachel mit dem Detail
   // überschreiben kann.
-  const agg = await getSetConditionAggregate(sk, uids, setNumber);
+  const agg = await zustandsAggregat(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
-    sk.katalog.resolveOne(setNumber).catch((e: unknown) => {
+    sk.katalog.blLinkAufloesen(setNumber).catch((e: unknown) => {
       meldeFehler('setdetail:bricklink', e);
       return null;
     }),
     Promise.resolve(fuerSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...ohneIds } = set;
-  const [mitBesitzern] = await besitzerAnhaengen(sk.db, uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
+  const [mitBesitzern] = await sk.haushalt.besitzerAnhaengen(uids, [
+    uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds,
+  ]);
   return {
     ...mitBesitzern,
     ...agg,

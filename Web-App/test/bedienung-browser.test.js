@@ -125,8 +125,15 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   });
 
   // Anmeldemaske: abmelden, dann jedes Design hell und dunkel messen.
-  await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-  await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
+  await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+  await bis(
+    `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
+    'Anmeldemaske',
+  );
+  // Abmelden lädt die Seite neu, und sie bringt nur das aktive Design mit: die übrigen wieder dazu.
+  await b.auswerten(`(() => { const v = document.getElementById('design-stile');
+    return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
+      l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
   // Der Testserver hat keine Domäne in APP_BASE_URL und blendet Passkey und
   // „Passwort vergessen?“ aus; gemessen wird die volle Maske.
   // Erst wenn die jüngste Antwort eingetragen ist: Eine spätere blendete sonst

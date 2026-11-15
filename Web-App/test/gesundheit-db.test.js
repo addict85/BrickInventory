@@ -33,10 +33,11 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const { warte } = require('./helpers/zeit');
+const { portVon } = require('./helpers/server');
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });
@@ -52,7 +53,7 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
       [NAME],
     )
   ).id;
-  const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
+  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Gesundheit', false, null, { scope: 'voll' });
   const { setzeZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
   await setzeZustand(
     'startup_status',

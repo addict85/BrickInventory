@@ -1,20 +1,26 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.BrickColorsResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.PartsCategoriesResponse
-import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
-import ch.brickinventoryapp.model.data.model.PartsStatsResponse
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.teile.ui.PartsUiState
+import ch.brickinventoryapp.teile.ui.Figuren
+import ch.brickinventoryapp.teile.ui.FigurenLokal
 import ch.brickinventoryapp.teile.ui.Teile
+import ch.brickinventoryapp.teile.ui.Teilefilter
 import ch.brickinventoryapp.teile.ui.TeileLokal
+import ch.brickinventoryapp.teile.ui.TeileUiState
 import ch.brickinventoryapp.teile.ui.TeileQuelle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,12 +48,12 @@ import ch.brickinventoryapp.model.ui.Listenansicht
  * Gegenproben (kotlinc gegen Teile.kt, Fassung mit einem Lademodus):
  *   A  in ladeTeile() den Zustand vor dem Entprellen gelesen → rot „die Filter des
  *      Zustands erreichen Quelle und Abruf“ (Suche fehlt)
- *   B  vergissScroll() in setzeFarbe() entfernt → rot „ein Filterwechsel vergisst
+ *   B  vergissScroll() in setzeFilter() entfernt → rot „ein Filterwechsel vergisst
  *      die Scrollstelle“
  *   C  die Figurenkennzahlen in denselben Auftrag wie die Liste gelegt → rot „die
  *      Figurenliste wartet nicht auf die Kennzahlen“
- *   D  in laden() `teileFolgen.forEach { it.cancel() }` entfernt → rot „nach einem
- *      Filterwechsel schreibt die alte Quelle nicht mehr hinein“
+ *   D  in Listenfolge.abbrechen() `folgen.forEach { it.cancel() }` entfernt → rot „nach
+ *      einem Filterwechsel schreibt die alte Quelle nicht mehr hinein“
  *   E  in ausgang() den Zweig „ohne Netz mit Stand“ entfernt → rot „ohne Netz
  *      bleiben die Figuren stehen“
  *   F  in folge() die Prüfung auf den Stand entfernt → rot „eine nie geladene
@@ -59,27 +65,27 @@ class TeileTest {
     private class Kennzahlen : TeileQuelle {
         var figurAbrufe = 0
         var figurDauer = 0L
-        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error.Server(503, "aus")
-        override suspend fun filterFarben() = Ergebnis.Success(PartsFilterColorsResponse(success = true))
-        override suspend fun kategorien() = Ergebnis.Success(PartsCategoriesResponse(success = true))
-        override suspend fun alleFarben() = Ergebnis.Success(BrickColorsResponse(success = true))
-        override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> {
+        override suspend fun teileKennzahlen(): Ergebnis<TeileKennzahlenAnsicht?> = Ergebnis.Fehler.Server(503, "aus")
+        override suspend fun filterFarben() = Ergebnis.Erfolg(emptyList<FilterFarbeAnsicht>())
+        override suspend fun kategorien() = Ergebnis.Erfolg(emptyList<KategorieAnsicht>())
+        override suspend fun alleFarben() = Ergebnis.Erfolg(emptyList<FarbeAnsicht>())
+        suspend fun figurKennzahlen(): Ergebnis<FigurenKennzahlenAnsicht> {
             figurAbrufe++
             delay(figurDauer)
-            return Ergebnis.Error.Server(500, "Zählung gescheitert")
+            return Ergebnis.Fehler.Server(500, "Zählung gescheitert")
         }
     }
 
     private val kennzahlen = Kennzahlen()
-    private val teile = MutableStateFlow(Lokal(listOf(Part(partNumber = "3001", partName = "Brick", colorName = "Red"),
-        Part(partNumber = "3023", partName = "Plate", colorName = "Blue")), 1L))
-    private val manuelleTeile = MutableStateFlow(Lokal(emptyList<PartValuationItem>(), 1L))
-    private val figuren = MutableStateFlow(Lokal(listOf(Minifig(figNumber = "sw0001")), 4L))
-    private val manuelleFiguren = MutableStateFlow(Lokal(emptyList<FigValuationItem>(), 4L))
-    private val teileAbrufe = mutableListOf<PartsUiState>()
+    private val teile = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "3001", partName = "Brick", colorName = "Red"),
+        TeilAnsicht(partNumber = "3023", partName = "Plate", colorName = "Blue")), 1L))
+    private val manuelleTeile = MutableStateFlow(Lokal(emptyList<ManuellesTeilAnsicht>(), 1L))
+    private val figuren = MutableStateFlow(Lokal(listOf(FigurAnsicht(figNumber = "sw0001")), 4L))
+    private val manuelleFiguren = MutableStateFlow(Lokal(emptyList<ManuelleFigurAnsicht>(), 4L))
+    private val teileAbrufe = mutableListOf<TeileUiState>()
     private val manuelleSuchen = mutableListOf<String>()
     private val figurAbrufe = mutableListOf<String>()
-    private var figurenAntwort: Ergebnis<Unit> = Ergebnis.Success(Unit)
+    private var figurenAntwort: Ergebnis<Unit> = Ergebnis.Erfolg(Unit)
     private var vergessen = 0
 
     /**
@@ -92,26 +98,36 @@ class TeileTest {
     private fun TestScope.teile() = Teile(
         scope = vordergrund(), quelle = kennzahlen, meldeFehler = {}, vergissScroll = { vergessen++ },
         listen = TeileLokal(
-            teile = { st -> teile.map { l -> l.copy(liste = l.liste.filter {
-                (st.partsQuery.isBlank() || it.partNumber.contains(st.partsQuery) || it.partName.orEmpty().contains(st.partsQuery)) &&
-                    (st.partsColorFilter.isBlank() || it.colorName == st.partsColorFilter) }) } },
-            manuelleTeile = { st -> manuelleSuchen += st.partsQuery; manuelleTeile },
-            figuren = { figuren },
-            manuelleFiguren = { manuelleFiguren },
-            aktualisiereTeile = { st -> teileAbrufe += st; Ergebnis.Success(Unit) },
-            aktualisiereFiguren = { st -> figurAbrufe += st.minifigsQuery; figurenAntwort },
+            teile = { st -> val f = st.filter; teile.map { l -> l.copy(liste = l.liste.filter {
+                (f.suche.isBlank() || it.partNumber.contains(f.suche) || it.partName.orEmpty().contains(f.suche)) &&
+                    (f.farbe == Farbwahl.Alle || it.colorName == f.farbe.wert) }) } },
+            manuelleTeile = { st -> manuelleSuchen += st.filter.suche; manuelleTeile },
+            aktualisiere = { st -> teileAbrufe += st; Ergebnis.Erfolg(Unit) },
         ),
     )
+
+    private fun TestScope.figurenliste() = Figuren(
+        scope = vordergrund(), meldeFehler = {},
+        listen = FigurenLokal(
+            figuren = { figuren },
+            manuelleFiguren = { manuelleFiguren },
+            aktualisiere = { st -> figurAbrufe += st.minifigsQuery; figurenAntwort },
+            kennzahlen = { kennzahlen.figurKennzahlen() },
+        ),
+    )
+
+    private fun Teile.filtere(aenderung: (Teilefilter) -> Teilefilter) = setzeFilter(aenderung(state.value.filter))
 
     @Test
     fun `die Filter des Zustands erreichen Quelle und Abruf`() = runTest {
         val t = teile()
-        t.setzeFarbe("Red"); t.setzeKategorie("11"); t.setzeErsatzteile(Ersatzteilwahl.OHNE); t.setzeAnsicht(Listenansicht.TABELLE)
-        t.setzeSuche("30")
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
+        t.filtere { it.copy(ersatz = Ersatzteilwahl.OHNE) }; t.filtere { it.copy(ansicht = Listenansicht.TABELLE) }
+        t.filtere { it.copy(suche = "30") }
         advanceUntilIdle()
-        val st = teileAbrufe.last()
-        assertEquals(listOf("30", "Red", "11"), listOf(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter))
-        assertEquals(Ersatzteilwahl.OHNE to Listenansicht.TABELLE, st.partsSpare to st.partsView)
+        val st = teileAbrufe.last().filter
+        assertEquals(listOf("30", "Red", "11"), listOf(st.suche, st.farbe.wert, st.kategorie.wert))
+        assertEquals(Ersatzteilwahl.OHNE to Listenansicht.TABELLE, st.ersatz to st.ansicht)
         assertEquals(listOf("3001"), t.state.value.parts.map { it.partNumber })
         assertEquals("die manuellen Teile unter demselben Suchtext", "30", manuelleSuchen.last())
     }
@@ -119,9 +135,10 @@ class TeileTest {
     @Test
     fun `ein Filterwechsel vergisst die Scrollstelle`() = runTest {
         val t = teile()
-        t.setzeFarbe("5"); t.setzeKategorie("11"); t.setzeErsatzteile(Ersatzteilwahl.NUR); t.setzeSuche("stein")
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("5")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
+        t.filtere { it.copy(ersatz = Ersatzteilwahl.NUR) }; t.filtere { it.copy(suche = "stein") }
         assertEquals(4, vergessen)
-        t.setzeFarbe("5")
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("5")) }
         assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, vergessen)
         advanceUntilIdle()
     }
@@ -130,9 +147,10 @@ class TeileTest {
     fun `die Liste folgt der Quelle, auch ohne Abruf`() = runTest {
         val t = teile()
         t.laden(); runCurrent()
-        assertEquals(listOf("3001", "3023"), t.state.value.parts.map { it.partNumber })
+        // Vorgabe ist „nach Farbe“ (TeileOrdnung): Blue vor Red, nicht die Reihenfolge der Quelle.
+        assertEquals(listOf("3023", "3001"), t.state.value.parts.map { it.partNumber })
         // Offline erfasst: Die Ablage ändert sich, die Liste folgt.
-        manuelleTeile.value = Lokal(listOf(PartValuationItem(partNumber = "neu", quantity = 3)), 2L)
+        manuelleTeile.value = Lokal(listOf(ManuellesTeilAnsicht(partNumber = "neu", quantity = 3)), 2L)
         runCurrent()
         assertEquals(listOf("neu" to 3), t.state.value.manualParts!!.map { it.partNumber to it.quantity })
         t.laden(seite = 2); runCurrent()
@@ -141,15 +159,14 @@ class TeileTest {
 
     @Test
     fun `nach einem Filterwechsel schreibt die alte Quelle nicht mehr hinein`() = runTest {
-        val alt = MutableStateFlow(Lokal(listOf(Part(partNumber = "alt")), 1L))
-        val neu = MutableStateFlow(Lokal(listOf(Part(partNumber = "neu")), 1L))
+        val alt = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "alt")), 1L))
+        val neu = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "neu")), 1L))
         val t = Teile(scope = vordergrund(), quelle = kennzahlen, meldeFehler = {}, vergissScroll = {},
-            listen = TeileLokal(teile = { st -> if (st.partsColorFilter.isBlank()) alt else neu },
-                manuelleTeile = { manuelleTeile }, figuren = { figuren }, manuelleFiguren = { manuelleFiguren },
-                aktualisiereTeile = { Ergebnis.Success(Unit) }, aktualisiereFiguren = { Ergebnis.Success(Unit) }))
+            listen = TeileLokal(teile = { st -> if (st.filter.farbe == Farbwahl.Alle) alt else neu },
+                manuelleTeile = { manuelleTeile }, aktualisiere = { Ergebnis.Erfolg(Unit) }))
         t.laden(); runCurrent()
-        t.setzeFarbe("Red"); runCurrent()
-        alt.value = Lokal(listOf(Part(partNumber = "spaet")), 2L)
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; runCurrent()
+        alt.value = Lokal(listOf(TeilAnsicht(partNumber = "spaet")), 2L)
         runCurrent()
         assertEquals(listOf("neu"), t.state.value.parts.map { it.partNumber })
     }
@@ -157,20 +174,20 @@ class TeileTest {
     @Test
     fun `die Figurenliste wartet nicht auf die Kennzahlen und ein Fehlschlag laesst sie stehen`() = runTest {
         kennzahlen.figurDauer = 5_000
-        val t = teile()
-        t.ladeFiguren()
+        val t = figurenliste()
+        t.laden()
         advanceTimeBy(10); runCurrent()
-        assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertFalse(t.state.value.minifigsLoading)
+        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
+        assertFalse(t.zustand.value.figurenAbruf.laedt)
         advanceUntilIdle()
-        assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertEquals(FigurenKennzahlenAnsicht(), t.state.value.minifigStats)
+        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
+        assertEquals(FigurenKennzahlenAnsicht(), t.zustand.value.minifigStats)
     }
 
     @Test
     fun `beim Tippen fragt die Figurenliste einmal und zaehlt nicht neu`() = runTest {
-        val t = teile()
-        t.setzeFigurSuche("lu"); t.setzeFigurSuche("luk"); t.setzeFigurSuche("luke")
+        val t = figurenliste()
+        t.setzeSuche("lu"); t.setzeSuche("luk"); t.setzeSuche("luke")
         advanceUntilIdle()
         assertEquals(listOf("luke"), figurAbrufe)
         assertEquals(0, kennzahlen.figurAbrufe)
@@ -178,31 +195,31 @@ class TeileTest {
 
     @Test
     fun `ohne Netz bleiben die Figuren stehen, mit ihrem Stand`() = runTest {
-        figurenAntwort = Ergebnis.Error.Netz()
-        val t = teile()
-        t.ladeFiguren(); runCurrent()
-        assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertNull("ohne Netz bleiben die Figuren stehen", t.state.value.minifigsFehler)
-        assertEquals(4L, t.state.value.figurenOfflineStand)
+        figurenAntwort = Ergebnis.Fehler.Netz()
+        val t = figurenliste()
+        t.laden(); runCurrent()
+        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
+        assertNull("ohne Netz bleiben die Figuren stehen", t.zustand.value.figurenAbruf.fehlerMeldung)
+        assertEquals(4L, t.zustand.value.figurenOfflineStand)
     }
 
     @Test
     fun `eine nie geladene Quelle zeigt nichts und leert nichts`() = runTest {
-        figuren.value = Lokal(listOf(Minifig(figNumber = "alt")), null)
-        val t = teile()
-        t.ladeFiguren(); runCurrent()
-        assertEquals(emptyList<String>(), t.state.value.minifigs.map { it.figNumber })
-        figuren.value = Lokal(listOf(Minifig(figNumber = "sw0002")), 5L)
+        figuren.value = Lokal(listOf(FigurAnsicht(figNumber = "alt")), null)
+        val t = figurenliste()
+        t.laden(); runCurrent()
+        assertEquals(emptyList<String>(), t.zustand.value.minifigs.map { it.figNumber })
+        figuren.value = Lokal(listOf(FigurAnsicht(figNumber = "sw0002")), 5L)
         runCurrent()
-        assertEquals(listOf("sw0002"), t.state.value.minifigs.map { it.figNumber })
+        assertEquals(listOf("sw0002"), t.zustand.value.minifigs.map { it.figNumber })
     }
 
     @Test
     fun `Abmelden raeumt auf, und eine spaete Antwort kommt nicht zurueck`() = runTest {
         val t = teile()
-        t.setzeFarbe("Red"); runCurrent()
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; runCurrent()
         t.zuruecksetzen()
         advanceUntilIdle()
-        assertEquals(PartsUiState(), t.state.value)
+        assertEquals(TeileUiState(), t.state.value)
     }
 }

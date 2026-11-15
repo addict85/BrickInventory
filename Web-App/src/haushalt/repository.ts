@@ -1,4 +1,5 @@
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../db/database';
+import type { HaushaltLesevertrag } from './lesevertrag';
 
 const zahl = (v: number | string) => parseInt(String(v), 10);
 
@@ -24,7 +25,10 @@ export async function istVerknuepft(
   sub: number,
   d: DbSchnittstelle = db,
 ): Promise<boolean> {
-  return !!(await d.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, sub]));
+  return !!(await d.get<Treffer>('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [
+    main,
+    sub,
+  ]));
 }
 
 export interface KontoName {
@@ -34,18 +38,19 @@ export interface KontoName {
 
 export async function kontoNamen(
   db: DbSchnittstelle,
+  l: HaushaltLesevertrag,
   ids: number[],
   ordnung: 'id' | 'username' = 'id',
 ): Promise<KontoName[]> {
   const rows = await db.all<{ id: number | string; username: string }>(
-    `SELECT id, username FROM users WHERE id = ANY($1) ORDER BY ${ordnung === 'id' ? 'id' : 'username'}`,
+    `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1) ORDER BY ${ordnung === 'id' ? 'id' : 'username'}`,
     [ids],
   );
   return rows.map(r => ({ id: zahl(r.id), username: r.username }));
 }
 
-export async function kontoName(db: DbSchnittstelle, id: number): Promise<string | null> {
-  const r = await db.get<{ username: string }>('SELECT username FROM users WHERE id = $1', [id]);
+export async function kontoName(db: DbSchnittstelle, l: HaushaltLesevertrag, id: number): Promise<string | null> {
+  const r = await db.get<{ username: string }>(`SELECT username FROM ${l.KONTEN} k WHERE id = $1`, [id]);
   return r?.username ?? null;
 }
 
@@ -102,6 +107,19 @@ export async function trenne(db: DbSchnittstelle, main: number | null, sub: numb
   return r.changes ?? 0;
 }
 
+/** Alle Hauptkonten von `sub` lösen und dessen offene Einladungen verwerfen. */
+export async function loeseUnterkontoUndEinladungen(
+  tx: DbSchnittstelle,
+  sub: number,
+): Promise<{ hauptkonten: number[]; einladungen: number }> {
+  const weg = await tx.all<{ main_user_id: number | string }>(
+    'DELETE FROM account_links WHERE sub_user_id = $1 RETURNING main_user_id',
+    [sub],
+  );
+  const einl = await tx.run('DELETE FROM account_link_invites WHERE main_user_id = $1 AND used_at IS NULL', [sub]);
+  return { hauptkonten: weg.map(z => zahl(z.main_user_id)), einladungen: einl.changes ?? 0 };
+}
+
 export async function loescheGetrenntHinweis(db: DbSchnittstelle, main: number, sub: number): Promise<number> {
   const r = await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2', [
     main,
@@ -125,38 +143,42 @@ export interface GetrennteKette {
   via: string | null;
 }
 
-export async function getrennteKetten(db: DbSchnittstelle, main: number): Promise<GetrennteKette[]> {
+export async function getrennteKetten(
+  db: DbSchnittstelle,
+  l: HaushaltLesevertrag,
+  main: number,
+): Promise<GetrennteKette[]> {
   const rows = await db.all<{ id: number | string; username: string; via: string | null }>(
     `SELECT f.sub_user_id AS id, u.username, v.username AS via
        FROM household_former_links f
-       JOIN users u ON u.id = f.sub_user_id
-       LEFT JOIN users v ON v.id = f.via_user_id
+       JOIN ${l.KONTEN} u ON u.id = f.sub_user_id
+       LEFT JOIN ${l.KONTEN} v ON v.id = f.via_user_id
       WHERE f.main_user_id = $1 ORDER BY u.username`,
     [main],
   );
   return rows.map(g => ({ id: zahl(g.id), username: g.username, via: g.via ?? null }));
 }
 
-/** Feste Liste, damit nie ein Request-Wert in den Tabellennamen gerät. */
-const ERFASSUNGEN = { set: 'set_acquisitions', part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
+/** Feste Liste, damit nie ein Request-Wert in den Namen gerät. */
+const ERFASSUNGEN = { set: 'setErfassungen', part: 'teilErfassungen', fig: 'figurErfassungen' } as const;
 export type ErfassungsArt = keyof typeof ERFASSUNGEN;
 
 /** Der Besitzer einer Erfassungszeile, oder null, wenn es sie nicht gibt. */
 export async function besitzerDerErfassung(
   db: DbSchnittstelle,
+  l: HaushaltLesevertrag,
   art: ErfassungsArt,
   id: number,
 ): Promise<number | null> {
-  const r = await db.get<{ user_id: number | string }>(`SELECT user_id FROM ${ERFASSUNGEN[art]} WHERE id = $1`, [id]);
+  const r = await db.get<{ user_id: number | string }>(`SELECT user_id FROM ${l[ERFASSUNGEN[art]]()} e WHERE id = $1`, [
+    id,
+  ]);
   return r ? zahl(r.user_id) : null;
 }
 
-export function benutzerNamen(db: DbSchnittstelle, uids: number[]) {
-  return db.all<{ id: number | string; username: string }>('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
-}
-
-/** NOTIFY wie db/pgNotify.ts notify(), über den Zugang des Aufrufers: In einer
- * Transaktion geht das Signal erst mit ihrem COMMIT hinaus. */
-export async function sendeSignal(db: DbSchnittstelle, kanal: string): Promise<void> {
-  await db.run('SELECT pg_notify($1, $2)', [kanal, '']);
+export function benutzerNamen(db: DbSchnittstelle, l: HaushaltLesevertrag, uids: number[]) {
+  return db.all<{ id: number | string; username: string }>(
+    `SELECT id, username FROM ${l.KONTEN} k WHERE id = ANY($1)`,
+    [uids],
+  );
 }

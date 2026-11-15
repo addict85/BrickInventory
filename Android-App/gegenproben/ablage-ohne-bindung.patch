@@ -6,7 +6,7 @@ Rot: eine Datei unter fremdem Namen gilt nicht
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
-@@ -93,7 +93,6 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
+@@ -114,7 +114,6 @@
          val iv = ByteArray(IV_LAENGE).also(SecureRandom()::nextBytes)
          val c = Cipher.getInstance(VERFAHREN)
          c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(schluessel(), "AES"), GCMParameterSpec(TAG_BITS, iv))
@@ -14,9 +14,9 @@ diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sich
          return KENNUNG + iv + c.doFinal(klartext)
      }
  
-@@ -112,7 +111,6 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
+@@ -136,7 +135,6 @@
              val c = Cipher.getInstance(VERFAHREN)
-             c.init(Cipher.DECRYPT_MODE, SecretKeySpec(schluessel(), "AES"),
+             c.init(Cipher.DECRYPT_MODE, k,
                  GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LAENGE))
 -            if (bindung != null) c.updateAAD(bindung.toByteArray(Charsets.UTF_8))
              c.doFinal(daten, kennung.size + IV_LAENGE, daten.size - kennung.size - IV_LAENGE)

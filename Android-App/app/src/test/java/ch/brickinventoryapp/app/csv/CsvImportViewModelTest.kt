@@ -1,12 +1,14 @@
 package ch.brickinventoryapp.app.csv
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +35,7 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.NummernTexte
-import ch.brickinventoryapp.testing.SetDateienRepository
+import ch.brickinventoryapp.testing.testSetDateienRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
@@ -89,18 +91,17 @@ class CsvImportViewModelTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     private fun status(s: String, done: Int = 0) =
-        CsvImportSseClient.Event.Status(CsvImportStatus(success = true, status = Laufstatus.aus(s), total = 3, done = done))
+        CsvImportSseClient.Event.Status(CsvImportStandAnsicht(status = Laufstatus.aus(s), total = 3, done = done))
 
     private lateinit var koordinator: CsvImportKoordinator
 
     /** Angemeldet, wie nach dem Start der App; das ViewModel folgt dem Import von selbst. */
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
+        val beobachter = CsvImportBeobachter(strom, testSetDateienRepository(fake.api))
         koordinator = CsvImportKoordinator(beobachter, dienst, t.abgleich)
         t.sitzung.angemeldet(admin = false)
         val vm = CsvImportViewModel(koordinator, beobachter, NummernTexte, t.meldungen, t.sitzung)
@@ -124,7 +125,7 @@ class CsvImportViewModelTest {
             zweiter.cancel()
             assertEquals("Der Dienst startet beim Anlaufen, nicht je Zeile", 1, dienst.starts)
             assertEquals(3, vm.csvImportState.value.done)
-            assertFalse(vm.csvImportState.value.running)
+            assertFalse(vm.csvImportState.value.lauf.laeuft)
 
             advanceTimeBy(4_999)
             assertEquals("Der Balken steht noch", 3, vm.csvImportState.value.done)
@@ -146,7 +147,7 @@ class CsvImportViewModelTest {
             runCurrent()
             assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatus"))
             assertEquals("Die Abfrage füllt den Balken", 2, vm.csvImportState.value.done)
-            assertTrue(vm.csvImportState.value.running)
+            assertTrue(vm.csvImportState.value.lauf.laeuft)
             assertEquals(1, dienst.starts)
 
             advanceTimeBy(60_000)
@@ -160,12 +161,12 @@ class CsvImportViewModelTest {
         val dienst = Dienst()
         mitVm(strom, dienst) { vm ->
             runCurrent()
-            assertTrue(vm.csvImportState.value.running)
+            assertTrue(vm.csvImportState.value.lauf.laeuft)
             assertEquals(1, dienst.starts)
             val vorher = strom.verbindungen.size
             t.sitzung.abgemeldet()
             advanceUntilIdle()
-            assertFalse(vm.csvImportState.value.running)
+            assertFalse(vm.csvImportState.value.lauf.laeuft)
             assertEquals(0, vm.csvImportState.value.done)
             assertEquals("Der Dienst läuft nicht für das abgemeldete Konto weiter", 1, dienst.stops)
             advanceTimeBy(120_000)
@@ -177,7 +178,7 @@ class CsvImportViewModelTest {
     fun `ohne Anmeldung verbindet niemand, die Anmeldung startet den Strom`() = runTest(takt) {
         val strom = Strom(listOf(status("running", 1)))
         strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
+        val beobachter = CsvImportBeobachter(strom, testSetDateienRepository(fake.api))
         val vm = CsvImportViewModel(CsvImportKoordinator(beobachter, Dienst(), t.abgleich), beobachter,
             NummernTexte, t.meldungen, t.sitzung)
         try {
@@ -186,7 +187,7 @@ class CsvImportViewModelTest {
             t.sitzung.angemeldet(admin = false)
             runCurrent()
             assertEquals(1, strom.verbindungen.size)
-            assertTrue(vm.csvImportState.value.running)
+            assertTrue(vm.csvImportState.value.lauf.laeuft)
         } finally {
             vm.viewModelScope.cancel()
         }

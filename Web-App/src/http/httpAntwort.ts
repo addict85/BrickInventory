@@ -7,15 +7,15 @@ import type { ServerResponse } from 'node:http';
 import { konfig } from '../infra/konfig';
 import {
   FEHLER,
+  Fachfehler,
   fehlerText,
   antwortSprache,
   dateiFehler,
-  Meldung,
   type FehlerArt,
   type FehlerCode,
 } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
-import { statusVon } from './fehlerArt';
+import { STATUS_DER_ART, statusVon } from './fehlerArt';
 
 export interface FehlerZiel {
   headersSent: boolean;
@@ -29,15 +29,15 @@ export interface FehlerQuelle {
 }
 
 /** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
- * vergleichen. */
+ * vergleichen. Den Status wählt die Art (STATUS_DER_ART), nicht der Aufrufer. */
 export function sendeFehler(
   req: { headers?: Record<string, unknown> } | undefined,
   res: { status(c: number): { json(b: unknown): unknown } },
-  status: number,
+  art: FehlerArt,
   code: FehlerCode,
   vars?: Record<string, string | number>,
 ): void {
-  res.status(status).json({
+  res.status(STATUS_DER_ART[art]).json({
     success: false,
     error: fehlerText(code, antwortSprache(req), vars),
     code,
@@ -70,6 +70,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   // Sprache des Anfragenden.
   if (typeof e?.code === 'string' && e.code in FEHLER) {
     res.status(code).json({
+      ...(e instanceof Fachfehler ? e.zusatz : undefined),
       success: false,
       code: e.code,
       error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),
@@ -77,7 +78,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
     return;
   }
   // Der Text einer Bibliothek nennt Parser, Pfade oder Bytes; er bleibt im Protokoll.
-  if (!isServerError && !(e instanceof Meldung)) {
+  if (!isServerError) {
     const ersatz: FehlerCode =
       code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
     res.status(code).json({ success: false, code: ersatz, error: fehlerText(ersatz, antwortSprache(req)) });
@@ -145,7 +146,7 @@ export function fehlerAntwort(e: unknown, req: Request, res: Response, _next: Ne
 /** Hinter allen Routen unter /api: Ein Tippfehler im Pfad bekommt dieselbe
  * Fehlerform wie jede andere Antwort, nicht die index.html. */
 export function unbekannterApiPfad(req: Request, res: Response): void {
-  sendeFehler(req, res, 404, 'nicht_gefunden');
+  sendeFehler(req, res, 'nicht_gefunden', 'nicht_gefunden');
 }
 
 /** @param req nur für die Sprache der Meldung; ohne ihn Deutsch. */
@@ -162,7 +163,7 @@ export function streamFileToResponse(
       // Nicht auf Express-Methoden verlassen: Der Helfer läuft auch an einer nackten
       // http-Antwort.
       if ('status' in res && typeof res.status === 'function')
-        sendeFehler(req, res as Response, 404, 'datei_nicht_verfuegbar');
+        sendeFehler(req, res as Response, 'nicht_gefunden', 'datei_nicht_verfuegbar');
       else {
         res.statusCode = 404;
         res.end();

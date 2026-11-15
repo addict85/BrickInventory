@@ -73,8 +73,9 @@ class AusgangsBeobachter @Inject constructor(
 
     /** Quittiert erst, wenn der Hinweis an der Reihe war und weggeräumt ist; bis dahin hält ihn die Ablage. */
     private suspend fun meldeVerworfen(v: VerworfeneAenderung) {
-        val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel,
-            v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)))
+        val grund = if (v.unlesbar) Meldung.Ressource(R.string.offline_verworfen_unlesbar)
+            else v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)
+        val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel, grund))
         meldungen.zeige(hinweis)
         meldungen.meldung.first { it == hinweis }
         meldungen.meldung.first { it != hinweis }
@@ -90,7 +91,8 @@ class AusgangsBeobachter @Inject constructor(
         Bestandsart.TEILE, Bestandsart.MANUELLE_TEILE -> Liste.TEILE
         Bestandsart.FIGUREN, Bestandsart.MANUELLE_FIGUREN -> Liste.FIGUREN
         // Ändern sich nie über den Ausgang, nur online.
-        Bestandsart.GUTSCHEINE, Bestandsart.PREISALARME, Bestandsart.LAGERORTE -> null
+        Bestandsart.GUTSCHEINE, Bestandsart.PREISALARME, Bestandsart.LAGERORTE,
+        Bestandsart.KENNZAHLEN, Bestandsart.KATALOG_META -> null
     }
 
     private suspend fun gleicheAb(l: Liste) {

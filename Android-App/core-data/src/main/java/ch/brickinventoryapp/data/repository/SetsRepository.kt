@@ -1,11 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.data.model.AddSetResponse
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.LagerortResponse
-import ch.brickinventoryapp.model.data.model.MoveSetResponse
-import ch.brickinventoryapp.model.data.model.SetAggregate
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.SetErfasst
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -17,15 +14,15 @@ import kotlinx.coroutines.flow.Flow
  * ein Bildschirm hängt nur an dem, was er braucht.
  */
 interface SetsRepository {
-    suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
+    suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Geld? = null,
                        condition: Zustand? = null, ownerUserId: Int? = null,
-                       storage: String? = null): Ergebnis<AddSetResponse>
+                       storage: String? = null): Ergebnis<SetErfasst>
 
-    suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<GenericResponse>
+    suspend fun setzeMenge(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<Int?>
 
-    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse>
+    suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<Int?>
 
-    suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse>
+    suspend fun deleteSet(setNumber: String): Ergebnis<Unit>
 
     /**
      * Die Galerie aus der Ablage nach Suche, Thema und Lagerort, sortiert wie am
@@ -33,17 +30,14 @@ interface SetsRepository {
      * gewählte Konten ist ein eigenes Lesemodell (Kontosicht).
      */
     fun beobachteSets(suche: String? = null, thema: String? = null, lagerort: String? = null,
-                      sort: Setsortierung? = null): Flow<Lokal<SetItem>>
+                      sort: Setsortierung? = null): Flow<Lokal<SetAnsicht>>
 
     /** Alle Seiten der ungefilterten Galerie in die Ablage; gezeigt wird die Ablage. */
     suspend fun aktualisiereSets(): Ergebnis<Unit>
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
-                        acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>
-
-    /** Ein Kauf hat sich geändert; die Zusammenfassung des Servers geht in die Ablage. */
-    suspend fun uebernimmZusammenfassung(agg: SetAggregate)
+                        acquisitionIds: List<Int>? = null): Ergebnis<Unit>
 
     /** Lagerort eines Sets setzen. Leerer Text löscht ihn. */
-    suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse>
+    suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit>
 }

@@ -1,9 +1,7 @@
 /** Gedrosselt, weil jede Anfrage sonst eine Zeile in user_sessions schriebe. */
 
-import { SITZUNG_LEERLAUF_MS } from './sitzungsFrist';
-
 // Höchstens ein Viertel der Leerlauf-Frist, sonst fiele eine arbeitende Sitzung heraus.
-export const BERUEHREN_MS = Math.min(5 * 60 * 1000, Math.floor(SITZUNG_LEERLAUF_MS / 4));
+export const beruehrenMs = (leerlaufMs: number) => Math.min(5 * 60 * 1000, Math.floor(leerlaufMs / 4));
 
 /** Beim Überlaufen leeren statt einzeln aufräumen: Ein verworfener Eintrag
  * kostet genau ein zusätzliches UPDATE. */
@@ -15,7 +13,7 @@ interface Speicher<S> {
 }
 
 // Spart Schreibzugriffe je Anfrage.
-export function drossleBeruehren<T extends Speicher<never>>(speicher: T, frist = BERUEHREN_MS): T {
+export function drossleBeruehren<T extends Speicher<never>>(speicher: T, frist: number): T {
   const echt = speicher.touch?.bind(speicher);
   if (!echt) return speicher;
 

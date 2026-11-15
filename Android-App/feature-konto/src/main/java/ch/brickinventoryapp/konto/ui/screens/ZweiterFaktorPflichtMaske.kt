@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.ui.components.zeichenweise
 import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
@@ -118,6 +120,10 @@ fun ZweiterFaktorPflichtMaske(
                         Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodyMedium)
                         Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                             modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
+                        val sichern = rememberCodesSichern(zustand.codes) { gesichert = true }
+                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.zf_codes_speichern))
+                        }
                         OutlinedButton(
                             onClick = { teileCodes(kontext, teilenTitel, zustand.codes) },
                             modifier = Modifier.fillMaxWidth(),
@@ -164,7 +170,7 @@ fun ZweiterFaktorPflichtMaske(
                             modifier = Modifier.fillMaxWidth())
                         Button(
                             onClick = { onBestaetigen(faktorCode) },
-                            enabled = faktorCode.isNotEmpty() && !zustand.laedt,
+                            enabled = faktorCode.isNotEmpty() && !zustand.abruf.laedt,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(stringResource(R.string.zf_confirm)) }
                     }
@@ -188,15 +194,15 @@ fun ZweiterFaktorPflichtMaske(
                         // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
                         Button(
                             onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
-                            enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
+                            enabled = pwAktuell.isNotEmpty() && !zustand.abruf.laedt,
                             modifier = Modifier.fillMaxWidth(),
                         // „Weiter“ wie Schritt 1 von 3: Eingerichtet ist danach noch nichts.
                         ) { Text(stringResource(R.string.setup_continue)) }
                     }
                 }
             }
-            if (zustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
-            zustand.fehler?.let { FehlerZeile(it) }
+            if (zustand.abruf.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
+            zustand.abruf.fehlerMeldung?.let { FehlerZeile(it) }
             // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.
             TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
         }

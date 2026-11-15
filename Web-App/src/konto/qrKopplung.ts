@@ -3,10 +3,9 @@
  * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
  * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
 import crypto from 'node:crypto';
-import { createToken, hashToken, ipBereich } from './geraeteToken';
+import { tokenAnlegen, tokenAbdruck, ipBereich } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
 import { fachfehler } from '../infra/fehlerTexte';
-import { neueNonce } from './geraeteChallenge';
 import type { KontoKontext } from './kontext';
 
 export type { QrStand } from './repository/qrKopplung';
@@ -23,8 +22,14 @@ export async function erzeuge(
 ): Promise<{ token: string; kopplung: number }> {
   await k.qrKopplung.raeumeQrKopplungenAuf();
   const nonce = crypto.randomBytes(32).toString('base64url');
-  const bis = new Date(Date.now() + QR_TTL_MS);
-  const kopplung = await k.qrKopplung.legeQrKopplungAn(hashToken(nonce), uid, bis, tage, OFFENE_KOPPLUNGEN_HOECHSTENS);
+  const bis = new Date(k.uhr.jetzt() + QR_TTL_MS);
+  const kopplung = await k.qrKopplung.legeQrKopplungAn(
+    tokenAbdruck(nonce),
+    uid,
+    bis,
+    tage,
+    OFFENE_KOPPLUNGEN_HOECHSTENS,
+  );
   if (kopplung === null) fachfehler('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };
 }
@@ -38,9 +43,9 @@ export async function meldeGeraet(
   if (typeof token !== 'string' || !token.startsWith('bim:')) return null;
   const abholung = crypto.randomBytes(32).toString('base64url');
   const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-  const z = await k.qrKopplung.melde(hashToken(token.slice(4)), {
-    abholung: hashToken(abholung),
-    codeHash: hashToken(code),
+  const z = await k.qrKopplung.melde(tokenAbdruck(token.slice(4)), {
+    abholung: tokenAbdruck(abholung),
+    codeHash: tokenAbdruck(code),
     geraet: tokenLabel(geraet, 'Android App'),
     ipBereich: ipBereich(ip),
     fristS: QR_TTL_MS / 1000,
@@ -50,14 +55,12 @@ export async function meldeGeraet(
 
 export type Abholung =
   | { stand: 'wartet' }
-  | { stand: 'abgelehnt' }
-  | { stand: 'ungueltig' }
   | { stand: 'bereit'; uid: number }
   | { stand: 'fertig'; token: string; uid: number; schluesselNonce: string | null };
 
 const zeileZur = (k: KontoKontext, abholung: string | null | undefined) =>
   typeof abholung === 'string' && abholung
-    ? k.qrKopplung.nachAbholung(hashToken(abholung))
+    ? k.qrKopplung.nachAbholung(tokenAbdruck(abholung))
     : Promise.resolve(undefined);
 
 /** Mit [vorschau] nur das Konto: Die App zeigt es und holt den Token erst nach dem Ja.
@@ -71,16 +74,15 @@ export async function holeQrTokenAb(
 ): Promise<Abholung> {
   const z = await zeileZur(k, abholung);
   if (z?.stand === 'wartet') return { stand: 'wartet' };
-  if (z?.stand === 'abgelehnt') return { stand: 'abgelehnt' };
-  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id))) return { stand: 'ungueltig' };
+  if (z?.stand === 'abgelehnt') fachfehler('verboten', 'qr_abgelehnt');
+  if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
   if (vorschau) return { stand: 'bereit', uid: z.user_id };
-  if (!(await k.qrKopplung.markiereAbgeholt(z.id))) return { stand: 'ungueltig' };
-  const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
+  if (!(await k.qrKopplung.markiereAbgeholt(z.id))) fachfehler('nicht_angemeldet', 'token_ungueltig');
+  const token = await tokenAnlegen(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
     scope: 'app',
     ip,
   });
-  const familie = await k.geraeteSchluessel.familieDesTokens(hashToken(token));
-  const schluesselNonce = familie ? await neueNonce(k, familie, true) : null;
+  const schluesselNonce = await k.geraete.nonceFuerQrToken(tokenAbdruck(token));
   return { stand: 'fertig', token, uid: z.user_id, schluesselNonce };
 }
 
@@ -100,10 +102,8 @@ export async function kopplungsStand(k: KontoKontext, kopplung: number, uid: num
 function codePasst(gespeichert: string | null, eingabe: string | number | null | undefined): boolean {
   const ziffern = String(eingabe ?? '').replace(/\s+/g, '');
   if (!gespeichert || !/^\d{6}$/.test(ziffern)) return false;
-  return crypto.timingSafeEqual(Buffer.from(hashToken(ziffern)), Buffer.from(gespeichert));
+  return crypto.timingSafeEqual(Buffer.from(tokenAbdruck(ziffern)), Buffer.from(gespeichert));
 }
-
-export type Bestaetigung = 'ok' | 'code_falsch' | 'abgelehnt' | 'nicht_wartend' | 'unbekannt';
 
 /** Nach QR_FEHLVERSUCHE falschen Codes ist die Kopplung abgelehnt: Sechs Ziffern hält das lange genug. */
 export async function bestaetigeKopplung(
@@ -111,16 +111,16 @@ export async function bestaetigeKopplung(
   kopplung: number,
   uid: number,
   code: string | number | null | undefined,
-): Promise<Bestaetigung> {
+): Promise<void> {
   const z = await k.qrKopplung.qrKopplungDesKontos(kopplung, uid);
-  if (!z) return 'unbekannt';
-  if (z.stand !== 'wartet') return 'nicht_wartend';
+  if (!z) fachfehler('nicht_gefunden', 'nicht_gefunden');
+  if (z.stand !== 'wartet') fachfehler('konflikt', 'qr_nicht_wartend');
   if (!codePasst(z.code_hash, code)) {
-    if ((await k.qrKopplung.zaehleQrFehlversuch(z.id)) < QR_FEHLVERSUCHE) return 'code_falsch';
+    if ((await k.qrKopplung.zaehleQrFehlversuch(z.id)) < QR_FEHLVERSUCHE) fachfehler('ungueltig', 'qr_code_falsch');
     await k.qrKopplung.markiereAbgelehnt(z.id);
-    return 'abgelehnt';
+    fachfehler('verboten', 'qr_abgelehnt');
   }
-  return (await k.qrKopplung.markiereBestaetigt(z.id)) ? 'ok' : 'nicht_wartend';
+  if (!(await k.qrKopplung.markiereBestaetigt(z.id))) fachfehler('konflikt', 'qr_nicht_wartend');
 }
 
 export async function lehneKopplungAb(k: KontoKontext, kopplung: number, uid: number): Promise<boolean> {

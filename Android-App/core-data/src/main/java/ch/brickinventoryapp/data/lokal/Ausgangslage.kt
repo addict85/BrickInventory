@@ -15,9 +15,11 @@ sealed class Abgleichsereignis {
 interface Ausgangslage {
     /**
      * Eine Bearbeitung, die der Server ablehnte. Kein flüchtiges Ereignis: Sie liegt in der
-     * Ablage, bis ihr Hinweis gezeigt ist. [ziel] benennt sie für den Hinweis („10001-1“).
+     * Ablage, bis ihr Hinweis gezeigt ist. [ziel] benennt sie für den Hinweis („10001-1“);
+     * [unlesbar]: nach einem Update nicht mehr lesbar, nie gesendet.
      */
-    data class VerworfeneAenderung(val id: String, val ziel: String, val meldung: String, val httpCode: Int?)
+    data class VerworfeneAenderung(val id: String, val ziel: String, val meldung: String, val httpCode: Int?,
+                                   val unlesbar: Boolean = false)
 
     fun offene(): Flow<Int>
     val ereignisse: Flow<Abgleichsereignis>

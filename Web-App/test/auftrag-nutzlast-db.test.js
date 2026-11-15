@@ -1,5 +1,5 @@
 /**
- * Die Nutzlast eines Auftrags hat je Art ein Schema (src/auftraege/nutzlasten.ts):
+ * Die Nutzlast eines Auftrags hat je Art ein Schema (src/auftraege/arten.ts):
  * Beim Einstellen wird eine falsche abgewiesen, und der Worker übergibt nur
  * eine geprüfte. Eine Nutzlast, die ein früherer Stand geschrieben hat und
  * die nicht mehr passt, scheitert sofort endgültig und mit klarem Text.
@@ -28,14 +28,14 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
-  const { NutzlastUngueltig } = _req('src/auftraege/nutzlasten.js');
+  const { NutzlastUngueltig } = _req('src/auftraege/arten.js');
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   await db.run(`DELETE FROM auftraege WHERE art = 'brickset'`);
 
   await t.test('eine falsche Nutzlast wird beim Einstellen abgewiesen', async () => {
     await assert.rejects(
       A.stelleAuftragEin('brickset', { set_numbr: '10179-1' }),
-      e => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message),
+      (/** @type {any} */ e) => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message),
     );
     await assert.rejects(A.stelleAuftragEin('gibt-es-nicht', {}), NutzlastUngueltig);
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE art = 'brickset'`);

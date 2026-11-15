@@ -1,0 +1,48 @@
+package ch.brickinventoryapp.model.fach
+
+import java.time.Instant
+
+// Konto, Haushalt, Server-Protokoll und CSV in den Einstellungen.
+
+/** Das eigene Profil; [emailBestaetigt] statt der 0/1 des Servers. */
+data class ProfilAnsicht(
+    val id: Int,
+    val username: String,
+    val email: String?,
+    val firstName: String?,
+    val lastName: String?,
+    val emailBestaetigt: Boolean,
+    /** Die beantragte neue Adresse, solange ihr Link nicht geöffnet ist. */
+    val emailNeu: String? = null,
+)
+
+/** Ein früher verknüpftes Konto, dessen Trennung noch bestätigt werden kann. */
+data class GetrenntesKontoAnsicht(val id: Int, val username: String, val via: String?)
+
+/** Der Haushalt aus Sicht dieses Kontos; [elternkonten] vereint `parents` und `linked_to`. */
+data class HaushaltStatusAnsicht(
+    val isMain: Boolean,
+    val isSub: Boolean,
+    val currency: Waehrung,
+    val elternkonten: List<KontoAnsicht>,
+    val subAccounts: List<MitgliedAnsicht>,
+    val openInvites: Int,
+    val formerLinks: List<GetrenntesKontoAnsicht>,
+)
+
+/** Eine Zeile des Server-Protokolls. */
+data class ProtokollZeileAnsicht(val id: Int?, val level: String?, val message: String?, val loggedAt: Instant?)
+
+/** Was ein CSV-Hochladen ergab; [neuAngelegt] gilt für beide Antwortformen des Servers. */
+data class CsvErgebnisAnsicht(val total: Int, val neuAngelegt: Int, val updated: Int, val errors: Int)
+
+/** Ein Stand des laufenden CSV-Imports; fehlende Zahlen sind 0. */
+data class CsvImportStandAnsicht(
+    val status: Laufstatus?,
+    val total: Int = 0,
+    val done: Int = 0,
+    val current: String? = null,
+    val ok: Int = 0,
+    val warn: Int = 0,
+    val err: Int = 0,
+)

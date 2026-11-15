@@ -182,10 +182,10 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   });
   try {
     await reiter(w, 'finance');
-    // Grund und Knopf stehen einmal, bei der Liste; das Diagramm sagt nur, dass es fehlt (UI-Prüfung 16).
-    await warte(() => /nicht erreichbar/.test(text(d.getElementById('fin-tbl'))));
-    assert.match(text(d.getElementById('fin-tbl')), /Keine Verbindung zum Server.*Erneut versuchen/);
-    assert.equal(text(d.getElementById('portfolio-chart')), 'Diagramm nicht verfügbar');
+    // Grund und Knopf stehen einmal, seit UX-Prüfung 24 (M2) oben im Diagrammkasten; die Liste darunter bleibt leer.
+    await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
+    assert.match(text(d.getElementById('portfolio-chart')), /Keine Verbindung zum Server.*Erneut versuchen/);
+    assert.equal(text(d.getElementById('fin-tbl')), '');
     assert.equal(
       d.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')
         .length,
@@ -196,10 +196,10 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   }
 });
 
-// UX-Prüfung 20: Grund und „Erneut versuchen“ stehen einmal, bei der Liste; die Karten zeigen „—“, die
-// Zeitraumknöpfe sind gesperrt. Gegenprobe (13.11.2026): in finanzenFehlen() wieder „Keine Verbindung“ in den
-// Karten → rot (Karte fin-einstand); das Sperren der Knöpfe entfernt → rot (Zeitraum bedienbar).
-test('offline: Die Kennzahl-Karten der Finanzen zeigen „—“, die Zeitraumknöpfe sind gesperrt', async () => {
+// UX-Prüfung 24 (M2): Ohne geladenen Stand fallen die Karten weg, statt „—“ ohne Fehlerbezug zu zeigen; die
+// Zeitraumknöpfe sind gesperrt. Gegenprobe (14.11.2026): in finanzenFehlen() `hidden = true` entfernt → rot
+// (Karten sichtbar); das Sperren der Knöpfe entfernt → rot (Zeitraum bedienbar).
+test('offline: Die Kennzahl-Karten der Finanzen fallen weg, die Zeitraumknöpfe sind gesperrt', async () => {
   const netzweg = () => {
     throw new TypeError('Failed to fetch');
   };
@@ -210,9 +210,9 @@ test('offline: Die Kennzahl-Karten der Finanzen zeigen „—“, die Zeitraumkn
     });
     try {
       await reiter(w, 'finance');
-      await warte(() => /nicht erreichbar/.test(text(d.getElementById('fin-tbl'))));
-      for (const id of ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current'])
-        assert.equal(text(d.getElementById(id)), '—', id);
+      await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
+      assert.equal(d.getElementById('fin-sum').hidden, true, 'Karten ohne Zahl sichtbar');
+      assert.equal(text(d.getElementById('portfolio-current')), '—');
       assert.deepEqual(
         [...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => k.disabled),
         [true, true, true, true],
@@ -227,8 +227,8 @@ test('offline: Die Kennzahl-Karten der Finanzen zeigen „—“, die Zeitraumkn
   });
   try {
     await reiter(w, 'finance');
-    await warte(() => text(d.getElementById('fin-einstand')) === '—');
-    assert.equal(text(d.getElementById('fin-wert')), '—');
+    await warte(() => d.getElementById('fin-sum').hidden === true);
+    assert.match(text(d.getElementById('portfolio-chart')), /Erneut versuchen/);
   } finally {
     w.close();
   }
