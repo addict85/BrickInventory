@@ -32,8 +32,8 @@ export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: str
  * einzeln wiederherstellbar ist. */
 export async function loescheAllesEigene(k: SammlungKontext, uid: number) {
   const sets = await k.sets.setsDesKontos(uid);
-  const teile = await k.bestand.manuelleTeileDesKontos(uid);
-  const figuren = await k.bestand.manuelleFigurenDesKontos(uid);
+  const teile = await k.bestand.manuell.teileDesKontos(uid);
+  const figuren = await k.bestand.manuell.figurenDesKontos(uid);
   const papierkorb: number[] = [];
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {

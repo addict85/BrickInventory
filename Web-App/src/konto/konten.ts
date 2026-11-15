@@ -5,7 +5,6 @@ import * as repo from './repository/konten';
 import { leereTokenCache } from './tokenCache';
 import { mitZugangsende, alleSitzungenBeenden, zugangsTransaktion } from './zugangsende';
 import { tokenAbdruck, alleTokensWiderrufen } from './geraeteToken';
-import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 import { verwalterAktionMerken } from './verwalterProtokoll';
@@ -14,16 +13,6 @@ import type { Geloest } from '../mail';
 import { hinweisNebenher } from './kontoHinweis';
 import { loescheTagesgrenze } from './loginLimiter';
 import type { KontoKontext } from './kontext';
-
-/** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
-export async function andereSitzungenBeenden(
-  k: KontoKontext,
-  uid: number,
-  eigeneSid: string,
-): Promise<{ beendet: number; version: number }> {
-  const version = await erhoeheSitzungsVersion(k, uid);
-  return { beendet: await k.konten.loescheAndereSitzungen(uid, eigeneSid), version };
-}
 
 /** Nur melden, nichts ändern: Welche Adresse gemeint war, weiss nur der Inhaber. */
 export async function meldeUngueltigeAdressen(k: KontoKontext): Promise<number[]> {

@@ -3,8 +3,7 @@ import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
 import * as gemeinsamDienst from './gemeinsam';
-import * as gemeinsamRepo from './repository/gemeinsam';
-import * as setInhaltRepo from './repository/setInhalt';
+import * as inhalt from './inhalt';
 import * as kennzahlenDienst from './kennzahlen';
 import * as manuelleMenge from './manuelleMenge';
 import * as papierkorbDienst from './papierkorb';
@@ -30,19 +29,20 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       verwendendeSets: mit(k)(gemeinsamDienst.verwendendeSets),
       loescheManuellesTeil: mit(k)(gemeinsamDienst.loescheManuellesTeil),
       loescheManuelleFigur: mit(k)(gemeinsamDienst.loescheManuelleFigur),
-      // Bausteine fremder Löschungen und Umzüge; in deren Transaktion über t.bestand gerufen.
-      entferneSetInhalt: mit(k.db, gemeinsamRepo.entferneSetInhalt),
-      kopiereSetInhalt: mit(k.db, gemeinsamRepo.kopiereSetInhalt),
-      legeManuellAn: mit(k.db, gemeinsamRepo.legeManuellAn),
-      manuelleTeileDesKontos: mit(k.db, gemeinsamRepo.manuelleTeileDesKontos),
-      manuelleFigurenDesKontos: mit(k.db, gemeinsamRepo.manuelleFigurenDesKontos),
-      legeTeilManuellAn: mit(k.db, gemeinsamRepo.legeTeilManuellAn),
-      legeFigurManuellAn: mit(k.db, gemeinsamRepo.legeFigurManuellAn),
-      setzeTeilLagerort: mit(k.db, gemeinsamRepo.setzeTeilLagerort),
-      loescheTeilzeile: mit(k.db, gemeinsamRepo.loescheTeilzeile),
-      faerbeTeilzeileUm: mit(k.db, gemeinsamRepo.faerbeTeilzeileUm),
-      setFigurenEintragen: mit(k.db, setInhaltRepo.setFigurenEintragen),
-      setTeileEintragen: mit(k.db, setInhaltRepo.setTeileEintragen),
+      setInhalt: {
+        teileEintragen: mit(k)(inhalt.teileEintragen),
+        figurenEintragen: mit(k)(inhalt.figurenEintragen),
+        entfernen: mit(k)(inhalt.entfernen),
+        kopieren: mit(k)(inhalt.kopieren),
+      },
+      manuell: {
+        legeTeilAn: mit(k)(inhalt.legeTeilAn),
+        legeFigurAn: mit(k)(inhalt.legeFigurAn),
+        legeAn: mit(k)(inhalt.legeAn),
+        teileDesKontos: mit(k)(inhalt.teileDesKontos),
+        figurenDesKontos: mit(k)(inhalt.figurenDesKontos),
+        teilzeileUmfaerben: mit(k)(inhalt.teilzeileUmfaerben),
+      },
       setzeManuellenZustand: mit(k)(gemeinsamDienst.applyManualCondition),
       bestandsKennzahlen: mit(k)(kennzahlenDienst.getStats),
       passeManuelleMengeAn: mit(k)(manuelleMenge.passeManuelleMengeAn),
@@ -60,7 +60,6 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
         legeOrtAn: mit(k)(lagerortDienst.legeOrtAn),
         loescheOrt: mit(k)(lagerortDienst.loescheOrt),
         ortFuerNeuerfassung: mit(k)(lagerortDienst.ortFuerNeuerfassung),
-        orteVon: mit(k)(lagerortDienst.orteVon),
         vorgabeVon: mit(k)(lagerortDienst.vorgabeVon),
         setzeLagerort: mit(k)(lagerortSetzen.setzeLagerort),
       },

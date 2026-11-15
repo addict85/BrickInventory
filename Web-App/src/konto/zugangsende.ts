@@ -37,18 +37,19 @@ export async function mitZugangsende<T>(
   return r;
 }
 
-/** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
- * mit einem alten Token oder einer alten Sitzung drinbleiben. */
-export async function beendeAndereZugaenge(
+/** Alle Sitzungen ausser der eigenen, mit `zugaenge` auch die App-Zugänge ausser dem eigenen.
+ * Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
+export async function beendeAndere(
   k: KontoKontext,
-  userId: number,
-  aktuellerToken: string | null,
-  sitzungsId: string | null,
-): Promise<number> {
-  return mitZugangsende(k, userId, async t => {
-    await t.zugaenge.loescheTokensDesKontos(userId, aktuellerToken ? tokenAbdruck(aktuellerToken) : null);
-    const v = await erhoeheSitzungsVersion(t, userId);
-    await t.zugaenge.loescheSitzungenDesKontos(userId, sitzungsId);
-    return v;
+  uid: number,
+  o: { sitzung: string | null; token: string | null; zugaenge: boolean },
+): Promise<{ sitzungen: number; zugaenge: number; version: number }> {
+  return mitZugangsende(k, uid, async t => {
+    const zugaenge = o.zugaenge
+      ? await t.konten.andereZugaengeLoeschen(uid, o.token ? tokenAbdruck(o.token) : null)
+      : 0;
+    const version = await erhoeheSitzungsVersion(t, uid);
+    const sitzungen = await t.konten.loescheAndereSitzungen(uid, o.sitzung ?? '');
+    return { sitzungen, zugaenge, version };
   });
 }

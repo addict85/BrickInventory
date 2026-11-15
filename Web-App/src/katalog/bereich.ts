@@ -31,7 +31,6 @@ export function erzeugeKatalog(
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
   const d = baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
-  a.bilder.beiSetBildGeladen((sn, quelle) => d.setBildLokalEintragen(sn, quelle));
   return d;
 }
 

@@ -46,7 +46,7 @@ async function angemeldetAntworten(
   mitToken: boolean,
   mitPasswort = false,
 ) {
-  await d.konto.uebernahmenAbbrechen(Number(user.id));
+  await d.konto.verwalter.uebernahmenAbbrechen(Number(user.id));
   if (!mitToken)
     await establishSession(d.konto, req, {
       userId: Number(user.id),
@@ -85,7 +85,7 @@ async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: Geprueft
       username: u.username,
       is_admin: u.is_admin === true,
       mustChangePassword: u.muss_passwort_aendern === true,
-      zweiterFaktorPflicht: u.is_admin === true && !(await d.konto.istAktiv(u.user_id)),
+      zweiterFaktorPflicht: u.is_admin === true && !(await d.konto.faktor.istAktiv(u.user_id)),
     },
     token_expires: u.expires_at,
     token_last_used: u.last_used,

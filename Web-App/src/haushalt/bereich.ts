@@ -12,8 +12,6 @@ export function erzeugeHaushalt(a: Omit<HaushaltAbhaengigkeiten, 'faecher'>, ein
     zugang,
     (k: HaushaltKontext) => ({
       meldeHaushaltsaenderung: mit(k)(haushalt.meldeHaushaltsaenderung),
-      haushaltVon: mit(k)(haushalt.haushaltVon),
-      darfSchreibenFuer: mit(k)(haushalt.darfSchreibenFuer),
       schreibbereich: mit(k)(haushalt.schreibbereich),
       haushaltsMitglieder: mit(k)(haushalt.haushaltsMitglieder),
       einladungAnlegen: mit(k)(haushalt.einladungAnlegen),

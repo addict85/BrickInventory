@@ -61,7 +61,8 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INVENTAR, SN]);
 
   const sql = [];
-  const { katalog, fremdquellen } = baueDienste(zaehlenderZugang(quellen.testZugang(), sql));
+  const kontexte = {};
+  const { katalog } = baueDienste(zaehlenderZugang(quellen.testZugang(), sql), { kontexte });
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await katalog.neuestesInventar(SN), INVENTAR);
@@ -73,7 +74,10 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('die Transaktion geht über den übergebenen Zugang', async () => {
     sql.length = 0;
-    const r = await fremdquellen.zaehleKontingent('brickset');
+    const { checkAndIncrementRateLimit } = require(
+      require('node:path').join(require('./helpers/sources').ROOT, 'dist/src/fremdquellen/apiKontingent.js'),
+    );
+    const r = await checkAndIncrementRateLimit(kontexte.fremdquellen, 'brickset');
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_aufrufe/.test(s)),

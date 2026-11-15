@@ -33,7 +33,14 @@ export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?
   return baueBereich(
     { ...a, faecher: new Faecher() },
     zugang,
-    (k: KontoKontext) => ({ ...anmeldungUndGeraete(k), ...konten(k), ...verwaltung(k), ...ausDemZugang(k) }),
+    (k: KontoKontext) => ({
+      ...anmeldungUndGeraete(k),
+      ...konten(k),
+      verwalter: verwaltung(k),
+      faktor: zweiterFaktor(k),
+      sitzungen: sitzungen(k),
+      ...ausDemZugang(k),
+    }),
     einblick,
   );
 }
@@ -61,7 +68,6 @@ function anmeldungUndGeraete(k: KontoKontext) {
 /** Konten, Zugänge, Verwaltung und Einstellungen des Kontos. */
 function konten(k: KontoKontext) {
   return {
-    andereSitzungenBeenden: mit(k)(kontenDienst.andereSitzungenBeenden),
     meldeUngueltigeAdressen: mit(k)(kontenDienst.meldeUngueltigeAdressen),
     meldeAusstehendeAdressen: mit(k)(kontenDienst.meldeAusstehendeAdressen),
     kontenListe: mit(k)(kontenDienst.kontenListe),
@@ -71,14 +77,9 @@ function konten(k: KontoKontext) {
     gibtKonto: mit(k)(kontenDienst.gibtKonto),
     kontoAnzeigeName: mit(k)(kontenDienst.kontoAnzeigeName),
     passwortWechselFaellig: mit(k)(kontenDienst.passwortWechselFaellig),
-    setzeFremdesPasswort: mit(k)(kontenDienst.setzeFremdesPasswort),
-    setzePasswortZurueck: mit(k)(kontenDienst.setzePasswortZurueck),
     passwortPerLinkSetzen: mit(k)(kontenDienst.passwortPerLinkSetzen),
     raeumeOffeneRegistrierungenAuf: mit(k)(kontenDienst.raeumeOffeneRegistrierungenAuf),
     legeKontoAn: mit(k)(kontenDienst.legeKontoAn),
-    registriere: mit(k)(kontenDienst.registriere),
-    setzeAktiv: mit(k)(kontenDienst.setzeAktiv),
-    setzeVerwalterRolle: mit(k)(kontenDienst.setzeVerwalterRolle),
     kontoEntfernen: mit(k)(kontoEntfernen.kontoEntfernen),
     auftragsarten: kontoAuftragsarten,
     verwalterHinweisNebenher: mit(k)(kontoHinweis.verwalterHinweisNebenher),
@@ -105,26 +106,36 @@ function konten(k: KontoKontext) {
     kontoZumRuecksetzLink: mit(k)(registrierungAblauf.kontoZumRuecksetzLink),
     legeStartVerwalterAn: mit(k)(startVerwalterDienst.legeStartVerwalterAn),
     horcheAufTokenWiderruf: mit(k)(tokenCache.horcheAufTokenWiderruf),
-    leereTokenCache: mit(k)(tokenCache.leereTokenCache),
     tokenAngaben: mit(k)(tokenWunsch.tokenAngaben),
-    zugaengeListe: mit(k)(zugaengeDienst.zugaengeListe),
-    zugangBeenden: mit(k)(zugaengeDienst.zugangBeenden),
-    andereZugaengeBeenden: mit(k)(zugaengeDienst.andereZugaengeBeenden),
-    beendeAndereZugaenge: mit(k)(zugangsende.beendeAndereZugaenge),
-    begrenzeSitzungen: mit(k)(zugangsende.begrenzeSitzungen),
+    zielGedrosselt: mit(k)(zielDrossel.zielGedrosselt),
+    kontoGedrosselt: mit(k)(zielDrossel.kontoGedrosselt),
+    bestaetigeEinrichtungGebremst: mit(k)(passwortBestaetigung.bestaetigeEinrichtungGebremst),
+    pruefeBestaetigung: mit(k)(passwortBestaetigung.pruefeBestaetigung),
+    pruefeCodeBestaetigung: mit(k)(passwortBestaetigung.pruefeCodeBestaetigung),
+  };
+}
+
+/** Der zweite Faktor des eigenen Kontos. */
+function zweiterFaktor(k: KontoKontext) {
+  return {
     istAktiv: mit(k)(zweiterFaktorDienst.istAktiv),
     stand: mit(k)(zweiterFaktorDienst.stand),
     beginneEinrichtung: mit(k)(zweiterFaktorDienst.beginneEinrichtung),
     otpauthFuer: mit(k)(zweiterFaktorDienst.otpauthFuer),
     schalteAb: mit(k)(zweiterFaktorDienst.schalteAb),
     erneuereCodes: mit(k)(zweiterFaktorDienst.erneuereCodes),
-    zielGedrosselt: mit(k)(zielDrossel.zielGedrosselt),
-    kontoGedrosselt: mit(k)(zielDrossel.kontoGedrosselt),
-    bestaetigeEinrichtungGebremst: mit(k)(passwortBestaetigung.bestaetigeEinrichtungGebremst),
-    pruefeBestaetigung: mit(k)(passwortBestaetigung.pruefeBestaetigung),
-    pruefeCodeBestaetigung: mit(k)(passwortBestaetigung.pruefeCodeBestaetigung),
-    sitzungsVersionAusDb: mit(k)(sitzungsVersion.sitzungsVersionAusDb),
-    aktuelleSitzungsVersion: mit(k)(sitzungsVersion.aktuelleSitzungsVersion),
+  };
+}
+
+/** Sitzungen und App-Zugänge des eigenen Kontos. */
+function sitzungen(k: KontoKontext) {
+  return {
+    zugaengeListe: mit(k)(zugaengeDienst.zugaengeListe),
+    zugangBeenden: mit(k)(zugaengeDienst.zugangBeenden),
+    beendeAndere: mit(k)(zugangsende.beendeAndere),
+    begrenze: mit(k)(zugangsende.begrenzeSitzungen),
+    versionAusDb: mit(k)(sitzungsVersion.sitzungsVersionAusDb),
+    aktuelleVersion: mit(k)(sitzungsVersion.aktuelleSitzungsVersion),
   };
 }
 

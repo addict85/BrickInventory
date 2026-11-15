@@ -217,7 +217,7 @@ export async function gutscheinEntfernen(k: GutscheineKontext, uid: number, id: 
 
 export async function gutscheinKlartext(k: GutscheineKontext, uid: number, id: number): Promise<GutscheinZeile> {
   const z = await vorhanden(k, uid, id);
-  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
+  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
   return z;
 }
 
@@ -225,14 +225,14 @@ export async function gutscheinKlartext(k: GutscheineKontext, uid: number, id: n
 export async function pdfFreigeben(k: GutscheineKontext, uid: number, id: number): Promise<string> {
   const z = await vorhanden(k, uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
+  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
   return stelleTicketAus(k, uid, String(id));
 }
 
 export async function exportFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
   const n = (await gutscheinListe(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
+  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
   return stelleTicketAus(k, uid, 'export');
 }
 

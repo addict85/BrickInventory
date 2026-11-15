@@ -20,7 +20,7 @@ import type { KontoDienste } from '../bereich';
 export async function zweiterFaktorPflicht(konto: KontoDienste, req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && verwalter && !(await konto.istAktiv(uid));
+  return uid !== null && verwalter && !(await konto.faktor.istAktiv(uid));
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
@@ -55,8 +55,8 @@ export async function establishSession(
 ): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
   const sitzungsVersion =
-    (await konto
-      .sitzungsVersionAusDb(data.userId)
+    (await konto.sitzungen
+      .versionAusDb(data.userId)
       .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0))) ?? 0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
@@ -74,7 +74,7 @@ export async function establishSession(
       req.session.save((e2?: Error) =>
         e2
           ? reject(e2)
-          : versuche('anmeldung:sitzungen-begrenzen', konto.begrenzeSitzungen(data.userId, req.sessionID)).then(() =>
+          : versuche('anmeldung:sitzungen-begrenzen', konto.sitzungen.begrenze(data.userId, req.sessionID)).then(() =>
               resolve(undefined),
             ),
       );

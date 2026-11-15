@@ -25,7 +25,6 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   einblick?.(k);
   const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt);
   const kontingent = {
-    zaehleKontingent: mit(k)(apiKontingentDienst.checkAndIncrementRateLimit),
     kontingentStand: mit(k)(apiKontingentDienst.getRateLimitStatus),
     kontingentFrei: mit(k)(apiKontingentDienst.kontingentFrei),
     setzeKontingentZurueck: mit(k)(apiKontingentDienst.setzeKontingentZurueck),
@@ -33,7 +32,7 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   };
   const klienten: KlientenZugang = {
     schluessel: async name => (await k.einstellungen.globalerWert(name)) || '',
-    zaehle: api => kontingent.zaehleKontingent(api),
+    zaehle: api => apiKontingentDienst.checkAndIncrementRateLimit(k, api),
     kontingentStand: api => kontingent.kontingentStand(api),
     drossel,
     bricksetVormerken: mit(k)(brickset.bricksetVormerken),
@@ -42,7 +41,6 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   const dienste = {
     /** Die Klienten dieses Zugangs; ein Test ersetzt einzelne über `ersatz`. */
     quellen: mitErsatz(baueQuellen(klienten), a.ersatz),
-    klienten,
     drossel,
     ...kontingent,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),

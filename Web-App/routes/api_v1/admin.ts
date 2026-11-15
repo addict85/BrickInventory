@@ -40,7 +40,7 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/protokoll', requireApiAdmin, async _req => {
-    return { eintraege: await d.konto.verwaltungsProtokoll() };
+    return { eintraege: await d.konto.verwalter.verwaltungsProtokoll() };
   });
 
   router.endpunkt('GET /api/v1/admin/cache-stats', requireApiAdmin, async _req => {

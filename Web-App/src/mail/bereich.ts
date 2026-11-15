@@ -24,7 +24,6 @@ export function erzeugeMail(a: MailAbhaengigkeiten, einblick?: Einblick<MailKont
     mailRegistrierungsVersuch: mit(k)(mailer.sendRegistrierungsVersuchMail),
     mailBestaetigung: mit(k)(mailer.sendVerificationMail),
     sendeSmtpTest: mit(k)(mailer.sendeSmtpTest),
-    testSmtp: mit(k)(mailer.testSmtp),
   };
   // Ohne eigenen Zugang: In einer Transaktion liest der Versand die Einstellungen über sie.
   return Object.assign(dienste, {

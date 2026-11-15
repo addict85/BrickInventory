@@ -51,10 +51,10 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
 
   await t.test('ein anderer Satz erfährt die Änderung über NOTIFY', async () => {
     await b.haushalt.horcheAufAenderungen();
-    assert.deepEqual((await b.haushalt.haushaltVon(ids[0])).memberIds, [ids[0]]);
+    assert.deepEqual(await b.haushalt.blickfeldIds(ids[0]), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
     a.haushalt.meldeHaushaltsaenderung();
-    const neu = async () => (await b.haushalt.haushaltVon(ids[0])).memberIds.length === 2;
+    const neu = async () => (await b.haushalt.blickfeldIds(ids[0])).length === 2;
     assert.ok(await bis(neu, 3000), 'altes Blickfeld: die Änderung kam nicht an');
   });
 });

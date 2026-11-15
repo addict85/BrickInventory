@@ -105,6 +105,8 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, drossel },
     zeige('katalog'),
   );
+  // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
+  bilder.beiSetBildGeladen((sn, quelle) => katalog.setBildLokalEintragen(sn, quelle));
   return {
     drossel,
     einstellungen,

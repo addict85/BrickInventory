@@ -24,7 +24,7 @@ async function copyContents(t: SetsKontext, sn: string, fromId: number, toId: nu
       n[tab] =
         tab === 'instructions'
           ? await repo.kopiereAnleitungen(t.db, sn, fromId, toId)
-          : await t.bestand.kopiereSetInhalt(tab, sn, fromId, toId);
+          : await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
   return n;
 }
 
@@ -95,7 +95,7 @@ export async function manuelleErfassungUmhaengen(
   const remaining = Math.max(0, (await repo.erfassteMenge(t.db, kind, fromId, keyValues)) - movingQty);
 
   const dst = await repo.manuelleZeile(t.db, kind, toId, keyValues);
-  if (!dst) await t.bestand.legeManuellAn(kind, toId, keyValues);
+  if (!dst) await t.bestand.manuell.legeAn(kind, toId, keyValues);
 
   await t.bestand.bucheTageserfassung(kind, toId, keyValues, {
     quantity: movingQty,

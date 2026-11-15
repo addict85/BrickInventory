@@ -80,16 +80,7 @@ export async function aendereTeilFarbe(
     await repo.loescheAufgestockteErfassungen(t.db, uid, partNumber, alt, neu);
     const verschoben = await repo.faerbeErfassungenUm(t.db, uid, partNumber, alt, neu);
 
-    if (ziel) {
-      // Die Zielzeile bleibt. Ihren Lagerort übernimmt sie nur, wenn sie keinen hat:
-      // „Kiste 3" soll durch eine Farbkorrektur nicht verschwinden.
-      if (quelle.storage_id && !ziel.storage_id) {
-        await t.bestand.setzeTeilLagerort(quelle.storage_id, ziel.id);
-      }
-      await t.bestand.loescheTeilzeile(quelle.id);
-    } else {
-      await t.bestand.faerbeTeilzeileUm(neu, quelle.id);
-    }
+    await t.bestand.manuell.teilzeileUmfaerben(quelle, ziel ?? null, neu);
 
     return {
       zusammengelegt: !!ziel,

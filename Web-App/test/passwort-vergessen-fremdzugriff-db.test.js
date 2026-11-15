@@ -20,7 +20,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { umgebung, testDaten, buildAndRequire, testDienste } = require('./helpers/sources');
+const { umgebung, testDaten, buildAndRequire } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
@@ -68,7 +68,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
     [V, `boese-${P}@example.org`],
   );
   const K_ = _req('src/konto/konten.js');
-  const H = testDienste().haushalt;
+  const H = _req('src/haushalt/haushalt.js');
   const { imSystemkontext } = _req('src/infra/kontoKontext.js');
   const hauptkontenVon = () => imSystemkontext('test', () => H.haushaltVon(A)).then(h => h.memberIds.includes(V));
 

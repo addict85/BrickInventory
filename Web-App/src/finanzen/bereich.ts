@@ -32,7 +32,6 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
         ausgeloesteSeit: mit(k)(preisalarm.ausgeloesteSeit),
         preisalarmeAlsCsv: mit(k)(preisalarm.preisalarmeAlsCsv),
         loescheAlarm: mit(k)(preisalarm.loescheAlarm),
-        pruefeSet: mit(k)(preisalarm.pruefeSet),
         setzeAlarm: mit(k)(preisalarm.setzeAlarm),
       },
       aktuellerMarktpreis: mit(k)(marketPrice.getCurrentMarketPrice),
