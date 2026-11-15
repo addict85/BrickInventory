@@ -90,8 +90,10 @@ async function seed() {
   // `sets` bleibt die einzige Attrappe. Die Setmenge steht seit Migration
   // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
   // (owned_quantity ueber db/bestandsmenge.ts) — mit nur `sets`
-  // antwortete sie 0 (gemessen: „expected 2, actual 0").
-  await db.run(`CREATE TABLE sets (user_id INTEGER, set_number TEXT)`);
+  // antwortete sie 0 (gemessen: „expected 2, actual 0"). Spalten wie setBestand() in db/bestandSicht.ts.
+  await db.run(
+    `CREATE TABLE sets (id SERIAL, user_id INTEGER, set_number TEXT, storage_id INTEGER, added_at TIMESTAMPTZ)`,
+  );
   await db.run(
     `INSERT INTO rb_themes VALUES (1,'Star Wars',NULL),(2,'Ultimate Collector Series',1),(3,'Technic',NULL) ON CONFLICT DO NOTHING`,
   );
