@@ -279,10 +279,10 @@ test('images/sets zählt im Deckel mit und bleibt stehen', async () => {
   fs.mkdirSync(sets, { recursive: true });
   fs.writeFileSync(path.join(sets, '10294-1.jpg'), Buffer.alloc(2000));
   const jetzt = Date.now() / 1000;
-  for (const [schluessel, alterTage] of [
+  for (const [schluessel, alterTage] of /** @type {[string, number][]} */ ([
     ['a'.repeat(40), 5],
     ['b'.repeat(40), 1],
-  ]) {
+  ])) {
     const p = path.join(cacheDir, schluessel);
     fs.writeFileSync(p, Buffer.alloc(1000));
     fs.utimesSync(p, jetzt - alterTage * 86400, jetzt - alterTage * 86400);
