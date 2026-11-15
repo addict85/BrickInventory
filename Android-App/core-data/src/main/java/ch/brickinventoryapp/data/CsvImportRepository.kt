@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.CsvImportStatus
-import ch.brickinventoryapp.vertrag.GenericAdminResponse
+import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -17,10 +16,10 @@ interface CsvImportRepository {
      * Jeder Stand, solange jemand sammelt. Reisst der Strom ab, wird einmal abgefragt
      * und mit wachsendem Abstand neu verbunden; schliesst der Server sauber, sofort.
      */
-    fun beobachte(): Flow<CsvImportStatus>
+    fun beobachte(): Flow<CsvImportStandAnsicht>
 
     /** „Ab hier nicht weiter“; schon angelegte Sets bleiben. */
-    suspend fun abbrechen(): Ergebnis<GenericAdminResponse>
+    suspend fun abbrechen(): Ergebnis<Unit>
 }
 
 /** Über den SSE-Strom, mit der Statusabfrage als Rückfall. */
@@ -29,7 +28,7 @@ class CsvImportBeobachter @Inject constructor(
     private val dateien: SetDateienRepository,
 ) : CsvImportRepository {
 
-    override fun beobachte(): Flow<CsvImportStatus> = flow {
+    override fun beobachte(): Flow<CsvImportStandAnsicht> = flow {
         var rueckzugMs = RUECKZUG_START_MS
         while (true) {
             var abgerissen = false
@@ -53,12 +52,12 @@ class CsvImportBeobachter @Inject constructor(
         }
     }
 
-    private suspend fun FlowCollector<CsvImportStatus>.frageAb() {
+    private suspend fun FlowCollector<CsvImportStandAnsicht>.frageAb() {
         val stand = fangeAusserAbbruch { (dateien.getCsvImportStatus() as? Ergebnis.Success)?.data }.getOrNull()
         if (stand != null) emit(stand)
     }
 
-    override suspend fun abbrechen(): Ergebnis<GenericAdminResponse> = dateien.cancelCsvImport()
+    override suspend fun abbrechen(): Ergebnis<Unit> = dateien.cancelCsvImport()
 
     private companion object {
         const val RUECKZUG_START_MS = 5_000L

@@ -4,11 +4,11 @@ import android.content.Context
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import ch.brickinventoryapp.data.service.PdfAuftragsStrom
 import ch.brickinventoryapp.data.service.PdfFehlschlag
 import ch.brickinventoryapp.data.util.Teilelistentresor
-import ch.brickinventoryapp.vertrag.PdfAuftragStand
+import ch.brickinventoryapp.model.fach.PdfAuftragsstand
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import ch.brickinventoryapp.model.fach.PdfSchritt
@@ -54,7 +54,7 @@ internal class PdfExportManager @Inject constructor(
     private var auftrag: Job? = null
 
     /** Ein neuer Auftrag ersetzt einen laufenden; der Zustand steht sofort auf „startet“. */
-    fun beauftrage(anfrage: PdfAuftragAnfrage) {
+    fun beauftrage(anfrage: Teilelistenauftrag) {
         auftrag?.cancel()
         _state.value = PdfExportState.Running(PdfFortschritt(PdfSchritt.STARTET))
         auftrag = bereiche.anwendung.launch(bereiche.io) { fuehreAus(anfrage) }
@@ -72,7 +72,7 @@ internal class PdfExportManager @Inject constructor(
         return ergebnis
     }
 
-    suspend fun fuehreAus(anfrage: PdfAuftragAnfrage) {
+    suspend fun fuehreAus(anfrage: Teilelistenauftrag) {
         fangeAusserAbbruch {
             val jobId = when (val r = dateien.startPdfJob(anfrage)) {
                 is Ergebnis.Success -> r.data
@@ -126,15 +126,15 @@ internal class PdfExportManager @Inject constructor(
     }
 
     /** Null: läuft noch. */
-    private fun wendeAn(stand: PdfAuftragStand, lauf: Lauf): Ausgang? {
-        lauf.merkeFrist(stand.etaSeconds)
+    private fun wendeAn(stand: PdfAuftragsstand, lauf: Lauf): Ausgang? {
+        lauf.merkeFrist(stand.restSekunden)
         return when (stand.status) {
             Laufstatus.FERTIG -> {
                 lauf.erstellt = false
                 _state.value = PdfExportState.Running(PdfFortschritt(PdfSchritt.ABSCHLUSS))
                 Ausgang(null)
             }
-            Laufstatus.FEHLER -> { lauf.erstellt = false; Ausgang(PdfFehlschlag.Auftrag(stand.error)) }
+            Laufstatus.FEHLER -> { lauf.erstellt = false; Ausgang(PdfFehlschlag.Auftrag(stand.fehler)) }
             Laufstatus.LAEUFT -> { lauf.erstellt = true; null }
             Laufstatus.RUHT, Laufstatus.WARTET, Laufstatus.ABGEBROCHEN, Laufstatus.UNBEKANNT -> null
         }

@@ -71,3 +71,6 @@ data class PreisalarmAnsicht(
 ) {
     val unter: Boolean get() = richtung == Alarmrichtung.UNTER
 }
+
+/** Was seit der letzten Marke ausgelöst hat; [marke] ist die Zeit des Servers für die nächste Frage. */
+data class AlarmabrufAnsicht(val alarme: List<PreisalarmAnsicht>, val marke: String?)

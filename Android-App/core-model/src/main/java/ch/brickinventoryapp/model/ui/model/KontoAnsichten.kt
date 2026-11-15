@@ -40,10 +40,10 @@ data class CsvErgebnisAnsicht(val total: Int, val neuAngelegt: Int, val updated:
 /** Ein Stand des laufenden CSV-Imports; fehlende Zahlen sind 0. */
 data class CsvImportStandAnsicht(
     val status: Laufstatus?,
-    val total: Int,
-    val done: Int,
-    val current: String?,
-    val ok: Int,
-    val warn: Int,
-    val err: Int,
+    val total: Int = 0,
+    val done: Int = 0,
+    val current: String? = null,
+    val ok: Int = 0,
+    val warn: Int = 0,
+    val err: Int = 0,
 )

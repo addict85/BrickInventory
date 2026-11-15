@@ -7,6 +7,8 @@ import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.vertrag.AddSetResponse
+import ch.brickinventoryapp.model.fach.SetErfasst
+import ch.brickinventoryapp.data.alsErfasst
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LagerortRequest
 import ch.brickinventoryapp.vertrag.MoveSetRequest
@@ -34,12 +36,12 @@ class SetsRepositoryImpl @Inject constructor(
 
     override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Double?,
                        condition: Zustand?, ownerUserId: Int?,
-                       storage: String?): Ergebnis<AddSetResponse> {
+                       storage: String?): Ergebnis<SetErfasst> {
         val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.schreibe(Bearbeitung.SetErfassen(anfrage),
             { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) { schluessel ->
             sicherAufrufen { api.addSet(anfrage, schluessel) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { it.alsErfasst() }
     }
 
     override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<Int?> =

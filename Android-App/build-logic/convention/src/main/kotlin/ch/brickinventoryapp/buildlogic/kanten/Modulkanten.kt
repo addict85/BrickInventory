@@ -17,7 +17,7 @@ object Modulkanten {
         // Das Wire-Format kennt Fach- und Anzeigetypen, nicht umgekehrt.
         "core-vertrag" to setOf("core-model"),
         "core-ressourcen" to emptySet(),
-        "core-netz" to setOf("core-model", "core-vertrag"),
+        "core-netz" to setOf("core-model"),
         // Tresor und TLS-Vertrauen liegen unter Room und Offlineablage.
         "core-sicherheit" to setOf("core-model", "core-netz"),
         "core-offline" to setOf("core-model", "core-vertrag", "core-sicherheit"),
@@ -56,6 +56,9 @@ object Modulkanten {
         "core-sitzung", "core-zustand",
     )
 
+    /** Wer core-vertrag einbindet: Die Repositories übersetzen, die Ablage legt noch Antworten ab. */
+    val wireKenner: Set<String> = setOf("core-data", "core-offline")
+
     private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
 
     /** Der Verstoss, wenn [modul] mit [plugins] (Katalognamen wie im Modulskript) Compose einschaltet. */
@@ -85,10 +88,12 @@ object Modulkanten {
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
     fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {
-            // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
-            k.konfiguration == "api" && k.nach !in setOf("core-model", "core-vertrag") ->
-                "Modulkanten per api nur zu core-model und core-vertrag: ${k.von} → ${k.nach}"
+            // api reicht ein Modul an jeden weiter, der dieses kennt; nur core-model ist gemeinsame Sprache.
+            k.konfiguration == "api" && k.nach != "core-model" ->
+                "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
             k.nurTest -> null
+            k.nach == "core-vertrag" && k.von !in wireKenner ->
+                "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bilden es ab"
             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
             k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->

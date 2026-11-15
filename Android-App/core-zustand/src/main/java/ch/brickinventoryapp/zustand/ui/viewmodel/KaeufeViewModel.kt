@@ -209,10 +209,7 @@ class KaeufeViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             val r = if (type == Postenart.FIG) figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
-                is Ergebnis.Success -> {
-                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
-                    filter.eigeneLagerorteNeu()
-                }
+                is Ergebnis.Success -> filter.eigeneLagerorteNeu()
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }

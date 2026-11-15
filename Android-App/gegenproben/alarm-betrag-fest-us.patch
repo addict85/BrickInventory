@@ -6,9 +6,9 @@ Rot: die Betraege stehen in der Zahlenform der App-Sprache
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
 --- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
 +++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
-@@ -73,7 +73,7 @@
+@@ -72,7 +72,7 @@
       */
-     fun text(a: Preisalarm, unter: String, ueber: String, zahlen: Locale): String {
+     fun text(a: PreisalarmAnsicht, unter: String, ueber: String, zahlen: Locale): String {
          val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
 -        val format = NumberFormat.getCurrencyInstance(zahlen).apply {
 +        val format = NumberFormat.getCurrencyInstance(Locale.US).apply {

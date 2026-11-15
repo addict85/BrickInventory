@@ -88,6 +88,13 @@ class UiModellAbbildungTest {
         assertEquals(Laufstatus.LAEUFT, stand.status)
     }
 
+    @Test
+    fun `die Verwendung eines Teils traegt den Posten als Kopf`() {
+        val v = VerwendendeSetsResponse(item = BestandteilKopf(nummer = "3001"), sets = listOf(VerwendendesSet(setNumber = "10294-1"))).alsAnsicht()
+        assertEquals("3001", v.kopf?.nummer)
+        assertEquals(listOf("10294-1"), v.sets.map { it.setNumber })
+    }
+
     /**
      * Jede Abbildung `alsAnsicht()` in ui/model, gegen ein Server-Modell, in dem
      * jedes Feld einen eigenen Wert trägt: Jedes Feld der Ansicht mit gleichem
@@ -130,6 +137,7 @@ class UiModellAbbildungTest {
             "StartupStatus.getGesamt", "StartupStatus.getSchritt", "StartupStatus.getUnterschritt",
             "PortfolioHistoryResponse.getPunkte", "PortfolioHistoryResponse.getTage", "PortfolioHistoryResponse.getVeraenderungProzent",
             "PortfolioHistoryResponse.getWaehrung-lSQNSqI", "PortfolioHistoryResponse.getYAchse",
+            "VerwendendeSetsResponse.getKopf",
         )
     }
 }

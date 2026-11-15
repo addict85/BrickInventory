@@ -8,7 +8,6 @@ import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -26,10 +25,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.vertrag.LagerortEintragResponse
-import ch.brickinventoryapp.vertrag.LagerortResponse
-import ch.brickinventoryapp.vertrag.LagerortVorgabeResponse
-import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
@@ -163,7 +158,7 @@ class EinstellungenViewModel @Inject constructor(
             if (r is Ergebnis.Error) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             val lokal = alarme.beobachteAlarme().first()
             if (r is Ergebnis.Success || lokal.stand != null)
-                _alarmUebersicht.value = AlarmUebersichtUiState(alarme = lokal.liste.map { it.alsAnsicht() }, geladen = true)
+                _alarmUebersicht.value = AlarmUebersichtUiState(alarme = lokal.liste, geladen = true)
         }
     }
 
@@ -205,10 +200,10 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     /** Ändern und Löschen: rufen, melden, die Übersicht neu, wenn sie schon dasteht. */
-    private fun alarmSchleuse(tun: suspend () -> Ergebnis<PreisalarmResponse>) {
+    private fun alarmSchleuse(tun: suspend () -> Ergebnis<Unit>) {
         viewModelScope.launch {
             when (val r = tun()) {
-                is Ergebnis.Success -> if (!r.data.success) meldungen.zeige(r.data.error)
+                is Ergebnis.Success -> Unit
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
             alarmeNeu()
@@ -242,17 +237,10 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    /** Erfolg und Satz einer Lagerort-Antwort; ein Fehler ohne Satz bleibt still. */
-    private fun <T> Ergebnis<T>.auswerten(): Pair<Boolean, String?> = when (this) {
-        is Ergebnis.Success -> erfolgUndSatz(data)
+    /** Eine Absage trägt den Satz des Servers; ein Fehler ohne Satz bleibt still. */
+    private fun Ergebnis<Unit>.auswerten(): Pair<Boolean, String?> = when (this) {
+        is Ergebnis.Success -> true to null
         is Ergebnis.Error -> false to meldungen.meldungFuerSnackbar(this)
-    }
-
-    private fun erfolgUndSatz(antwort: Any?): Pair<Boolean, String?> = when (antwort) {
-        is LagerortEintragResponse -> antwort.success to antwort.error
-        is LagerortVorgabeResponse -> antwort.success to antwort.error
-        is LagerortResponse -> antwort.success to antwort.error
-        else -> true to null
     }
 
     private fun zuruecksetzen() {

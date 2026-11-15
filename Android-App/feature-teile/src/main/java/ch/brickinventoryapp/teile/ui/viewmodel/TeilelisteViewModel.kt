@@ -4,9 +4,7 @@ import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.vertrag.PdfAuftragTeil
-import ch.brickinventoryapp.vertrag.PdfAuftragSet
-import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -191,16 +189,16 @@ class TeilelisteViewModel @Inject constructor(
     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }
     fun pdfFehlerGesehen() = _zustand.update { it.copy(pdfFehler = null) }
 
-    private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): PdfAuftragAnfrage {
+    private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): Teilelistenauftrag {
         val serverUrl = sitzung.state.value.serverUrl.trimEnd('/')
-        return PdfAuftragAnfrage(
-            sets = sets.map { PdfAuftragSet(setNumber = it.setNumber, name = it.name) },
-            parts = parts.map { p ->
+        return Teilelistenauftrag(
+            sets = sets.map { Teilelistenauftrag.Set(nummer = it.setNumber, name = it.name) },
+            zeilen = parts.map { p ->
                 val imgUrl = p.imageUrl ?: ""
-                PdfAuftragTeil(partNumber = p.partNumber, blPartNumber = p.blPartNumber ?: p.partNumber, partName = p.partName,
-                    colorName = p.colorName, colorHex = p.colorHex ?: "", colorId = p.colorId, quantity = p.quantity,
-                    imageLocal = p.imageLocal ?: "",
-                    imageUrl = if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl, isFig = p.isFig)
+                Teilelistenauftrag.Zeile(nummer = p.partNumber, blNummer = p.blPartNumber ?: p.partNumber, name = p.partName,
+                    farbname = p.colorName, farbHex = p.colorHex ?: "", farbId = p.colorId, menge = p.quantity,
+                    bildLokal = p.imageLocal ?: "",
+                    bild = if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl, figur = p.isFig)
             },
         )
     }

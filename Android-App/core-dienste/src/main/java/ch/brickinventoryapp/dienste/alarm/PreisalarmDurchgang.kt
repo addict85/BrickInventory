@@ -13,7 +13,7 @@ import ch.brickinventoryapp.data.Startziel
 import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.model.util.zahlenLocale
-import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -74,7 +74,7 @@ internal class PreisalarmDurchgang @Inject constructor(
      * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
      * ist.
      */
-    private fun zeige(meldungen: List<Preisalarm>) {
+    private fun zeige(meldungen: List<PreisalarmAnsicht>) {
         if (meldungen.isEmpty()) return
         // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung.
         // Ohne sie wirft notify() nicht, es passiert schlicht nichts —

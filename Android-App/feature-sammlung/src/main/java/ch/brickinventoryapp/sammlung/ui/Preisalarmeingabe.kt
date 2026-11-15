@@ -40,8 +40,7 @@ internal class Preisalarmeingabe(
             val r = if (schwelle == null) alarme.deletePreisalarm(setNumber, zustand)
                     else alarme.setPreisalarm(setNumber, richtung, schwelle, zustand)
             when (r) {
-                is Ergebnis.Success ->
-                    if (r.data.success) gespeichert(setNumber) else melde(r.data.error ?: "")
+                is Ergebnis.Success -> gespeichert(setNumber)
                 is Ergebnis.Error -> melde(beschreibe(r))
             }
         }

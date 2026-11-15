@@ -10,7 +10,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
-import ch.brickinventoryapp.vertrag.AddSetResponse
+import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -266,7 +266,7 @@ class ErfassungViewModel @Inject constructor(
             val sn = if (eingabe.contains("-")) eingabe else "$eingabe-1"
             val gestreamt = try {
                 erfassung.zeige(sn, Pruefphase.BESTAND)
-                var letzte: Ergebnis<AddSetResponse> = Ergebnis.Error.LeereAntwort()
+                var letzte: Ergebnis<SetErfasst> = Ergebnis.Error.LeereAntwort()
                 anleger.anlegen(eingabe, wunsch.menge, wunsch.kaufpreis, wunsch.zustand, wunsch.besitzer, lagerort)
                     .collect { schritt ->
                         when (schritt) {
@@ -277,7 +277,7 @@ class ErfassungViewModel @Inject constructor(
                             SetAnlegenSchritt.KeineVerbindung -> letzte = Ergebnis.Error.Netz()
                             is SetAnlegenSchritt.Fehler -> letzte =
                                 if (schritt.meldung.isBlank()) Ergebnis.Error.Abgebrochen
-                                else Ergebnis.Success(AddSetResponse(success = false, error = schritt.meldung))
+                                else Ergebnis.Error.Absage(schritt.meldung)
                         }
                     }
                 letzte
@@ -292,17 +292,15 @@ class ErfassungViewModel @Inject constructor(
             when (r) {
                 is Ergebnis.Success -> when {
                     r.gepuffert -> Unit
-                    r.data.success && r.data.action == "exists" ->
-                        _barcodeState.update { it.copy(gefundenesSet = r.data.setNumber ?: sn) }
-                    r.data.success -> {
+                    r.data.vorhanden -> _barcodeState.update { it.copy(gefundenesSet = r.data.nummer ?: sn) }
+                    else -> {
                         meldungen.zeige(meldungen.text(when {
                             r.data.katalogOffen -> R.string.vm_set_added_no_catalog
-                            r.data.action == "added" -> R.string.vm_added
+                            r.data.angelegt -> R.string.vm_added
                             else -> R.string.vm_updated
-                        }, if (r.data.katalogOffen) r.data.setNumber else r.data.name ?: r.data.setNumber))
+                        }, if (r.data.katalogOffen) r.data.nummer else r.data.name ?: r.data.nummer))
                         ergaenzeAblage(r.data)
                     }
-                    else -> meldeFehlgeschlageneErfassung(sn, r.data.error)
                 }
                 is Ergebnis.Error -> meldeFehlgeschlageneErfassung(sn, meldungen.meldung(r))
             }
@@ -313,9 +311,9 @@ class ErfassungViewModel @Inject constructor(
      * In der Ablage steht das Set schon mit Nummer und Menge; Name, Bild und Preise
      * kennt erst der Server. Steht dort noch eine Ergänzung aus, erst nach ihr holen.
      */
-    private fun ergaenzeAblage(antwort: AddSetResponse) {
+    private fun ergaenzeAblage(antwort: SetErfasst) {
         viewModelScope.launch {
-            if (antwort.ergaenzung == "ausstehend") delay(ERGAENZUNG_NACH_MS)
+            if (antwort.ergaenzungAusstehend) delay(ERGAENZUNG_NACH_MS)
             sets.aktualisiereSets()
         }
     }

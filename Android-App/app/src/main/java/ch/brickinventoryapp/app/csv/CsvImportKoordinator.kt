@@ -4,7 +4,6 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +42,7 @@ class CsvImportKoordinator @Inject constructor(
             angemeldet.distinctUntilChanged().collectLatest { an ->
                 if (!an && _zustand.value.running) dienst.stop()
                 _zustand.value = CsvImportUiState()
-                if (an) csvImport.beobachte().collect { verarbeite(it.alsAnsicht()) }
+                if (an) csvImport.beobachte().collect { verarbeite(it) }
             }
         } finally {
             folgt.set(false)

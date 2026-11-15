@@ -12,10 +12,10 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.api.alsAbfrage
 import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.Minifig
-import ch.brickinventoryapp.vertrag.Part
-import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.model.ui.model.FigurAnsicht
+import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.ui.model.TeilAnsicht
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -112,26 +112,28 @@ class Kontosicht @Inject constructor(
         }.abgebildet { r -> r.merkposten.map { it.alsAnsicht() } }
     }
 
-    val teileliste = Serversicht<TeileAbfrage, Part>(ablage, arrayOf(Faecher.TEILE)) { a ->
+    val teileliste = Serversicht<TeileAbfrage, TeilAnsicht>(ablage, arrayOf(Faecher.TEILE)) { a ->
         alleSeiten({ it.parts }, { "${it.partNumber}|${it.colorId}|${it.isSpare}" }, { it.total }, wiederholung) { seite ->
             sicherAufrufen {
                 teile.getParts(search = a.suche, color = a.farbe, category = a.kategorie, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten?.anfrage,
                     spare = a.ersatzteile.alsAbfrage(), withSets = mitSetsAlsAbfrage(a.mitSets), storage = a.lagerort)
             }
-        }
+        }.abgebildet { l -> l.map { it.alsAnsicht() } }
     }
 
-    val manuelleTeile = Serversicht<ManuelleAbfrage, PartValuationItem>(ablage, arrayOf(Faecher.MANUELLE_TEILE)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }.abgebildet { it.parts }
+    val manuelleTeile = Serversicht<ManuelleAbfrage, ManuellesTeilAnsicht>(ablage, arrayOf(Faecher.MANUELLE_TEILE)) { a ->
+        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }
+            .abgebildet { r -> r.parts.map { it.alsAnsicht() } }
     }
 
-    val figurenliste = Serversicht<FigurenAbfrage, Minifig>(ablage, arrayOf(Faecher.FIGUREN)) { a ->
+    val figurenliste = Serversicht<FigurenAbfrage, FigurAnsicht>(ablage, arrayOf(Faecher.FIGUREN)) { a ->
         wiederholung.wiederhole {
             sicherAufrufen { figuren.getMinifigs(source = "set", accounts = a.konten.anfrage, search = a.suche) }
-        }.abgebildet { it.figs }
+        }.abgebildet { r -> r.figs.map { it.alsAnsicht() } }
     }
 
-    val manuelleFiguren = Serversicht<FigurenAbfrage, FigValuationItem>(ablage, arrayOf(Faecher.MANUELLE_FIGUREN)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }.abgebildet { it.figs }
+    val manuelleFiguren = Serversicht<FigurenAbfrage, ManuelleFigurAnsicht>(ablage, arrayOf(Faecher.MANUELLE_FIGUREN)) { a ->
+        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }
+            .abgebildet { r -> r.figs.map { it.alsAnsicht() } }
     }
 }

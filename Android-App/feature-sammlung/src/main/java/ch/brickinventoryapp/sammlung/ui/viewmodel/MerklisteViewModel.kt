@@ -12,7 +12,6 @@ import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.sitzung.abgeleitet
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
@@ -271,7 +270,7 @@ class MerklisteViewModel @Inject constructor(
     fun loadPreisalarme(setNumber: String) {
         viewModelScope.launch {
             alarme.aktualisiereAlarme()
-            val liste = alarme.beobachteAlarme(setNumber).first().liste.map { it.alsAnsicht() }
+            val liste = alarme.beobachteAlarme(setNumber).first().liste
             _merkpostenDetailState.update { if (it.setNumber == setNumber) it.copy(preisalarme = liste) else it }
         }
     }

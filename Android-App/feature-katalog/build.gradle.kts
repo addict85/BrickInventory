@@ -20,4 +20,6 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
+    // Die Testserver antworten im Wire-Format.
+    testImplementation(project(":core-vertrag"))
 }
