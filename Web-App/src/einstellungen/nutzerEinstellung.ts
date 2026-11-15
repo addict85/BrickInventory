@@ -32,7 +32,7 @@ async function setzeHaushaltswaehrung(k: EinstellungenKontext, userId: number, w
     k.transaktion(async t => {
       await sperreHaushaltswaehrung(t.db);
       const alt = await repo.waehrungIn(t.db, userId);
-      const unterkonto = await repo.hatHauptkonto(t.db, userId);
+      const unterkonto = await repo.hatHauptkonto(t.db, t.lesevertrag, userId);
       if (alt !== waehrung) {
         if (unterkonto) fachfehler('verboten', 'waehrung_nur_hauptkonto');
         // Jeder Wechsel stösst einen vollen Preislauf an.
@@ -43,8 +43,8 @@ async function setzeHaushaltswaehrung(k: EinstellungenKontext, userId: number, w
           });
       }
       if (unterkonto) return alt;
-      const haushalt = await repo.eigenerHaushalt(t.db, userId);
-      if ((await repo.fremdGeteilt(t.db, haushalt, waehrung)).length) {
+      const haushalt = await repo.eigenerHaushalt(t.db, t.lesevertrag, userId);
+      if ((await repo.fremdGeteilt(t.db, t.lesevertrag, haushalt, waehrung)).length) {
         if (alt !== waehrung) fachfehler('konflikt', 'waehrung_geteiltes_unterkonto');
         return alt;
       }

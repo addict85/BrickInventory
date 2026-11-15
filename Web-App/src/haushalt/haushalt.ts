@@ -105,7 +105,7 @@ export async function schreibbereich(k: HaushaltKontext, uid: number): Promise<n
 export async function haushaltsMitglieder(k: HaushaltKontext, uid: number) {
   const h = await haushaltVon(k, uid);
   const self = parseInt(String(uid), 10);
-  const rows = await repo.kontoNamen(k.db, h.memberIds);
+  const rows = await repo.kontoNamen(k.db, k.lesevertrag, h.memberIds);
   return h.memberIds
     .map(id => rows.find(r => r.id === id))
     .filter((r): r is repo.KontoName => !!r)
@@ -137,7 +137,7 @@ export async function pruefeEinladung(k: HaushaltKontext, uid: number, code: str
   if (mainId === subId) fachfehler('konflikt', 'konto_mit_sich_selbst');
   if (await repo.istVerknuepft(k.db, mainId, subId)) fachfehler('konflikt', 'konto_bereits_verknuepft');
   if (await repo.istVerknuepft(k.db, subId, mainId)) fachfehler('konflikt', 'verknuepfung_erzeugt_kreis');
-  return { inviter: { id: mainId, username: (await repo.kontoName(k.db, mainId)) || String(mainId) } };
+  return { inviter: { id: mainId, username: (await repo.kontoName(k.db, k.lesevertrag, mainId)) || String(mainId) } };
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
@@ -320,7 +320,7 @@ export async function umzugsQuelle(
   kind: ErfassungsArt,
   acqId: number,
 ): Promise<number> {
-  const owner = await repo.besitzerDerErfassung(k.db, kind, acqId);
+  const owner = await repo.besitzerDerErfassung(k.db, k.lesevertrag, kind, acqId);
   if (owner === null || !(await darfSchreibenFuer(k, actorId, owner)))
     fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
   return owner;
@@ -330,7 +330,7 @@ export async function umzugsQuelle(
 // biome-ignore lint/suspicious/noExplicitAny: Die Aufrufer reichen Zeilen verschiedener Form und brauchen ihre Form zurück; owner_ids und user_id liest die Funktion ungeprüft.
 export async function besitzerAnhaengen(k: HaushaltKontext, uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
-  const owners = await repo.benutzerNamen(k.db, uids);
+  const owners = await repo.benutzerNamen(k.db, k.lesevertrag, uids);
   const nameById = new Map<number, string>(owners.map(u => [parseInt(String(u.id), 10), u.username]));
   const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
   return rows.map(r => {
