@@ -13,6 +13,14 @@ export function mit<Z>(zugang: Z, f?: (z: Z, ...a: unknown[]) => unknown): unkno
   return f ? an(f) : an;
 }
 
+/** Wie mit(), dazu der Lesevertrag als zweiter Parameter: Was ein Bereich aus Tabellen höherer
+ * liest, bekommt er gereicht (docs/architektur.md), sein Repository nimmt es nach dem Zugang. */
+export function mitVertrag<Z, L>(zugang: Z, l: L) {
+  return <A extends unknown[], R>(f: (z: Z, l: L, ...a: A) => R) =>
+    (...a: A) =>
+      f(zugang, l, ...a);
+}
+
 /** In einer Transaktion gehört die Verbindung schon einer Rolle: Still ohne Systemrahmen liefe
  * der Aufruf unter Zeilenschutz, wo er alle Konten erwartet. Den Rahmen vorher betreten. */
 export class SystemrahmenInTransaktion extends Error {

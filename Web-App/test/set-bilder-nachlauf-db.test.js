@@ -37,6 +37,7 @@ const db = testDaten();
 test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const repo = _req('src/katalog/repository/bildlage.js');
+  const { LESEVERTRAG } = _req('src/dienste.js');
   const { setBilderNachladen } = _req('src/katalog/bildlage.js');
   const IM = _req('src/bilder/imageMisses.js');
 
@@ -59,7 +60,8 @@ test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, as
      ON CONFLICT (cache_key) DO UPDATE SET checked_at = NOW()`,
     ['set:' + gemerkt],
   );
-  const eigene = async () => (await repo.setBilderOhneDatei(db)).map(r => r.set_number).filter(sn => sn.startsWith(P));
+  const eigene = async () =>
+    (await repo.setBilderOhneDatei(db, LESEVERTRAG)).map(r => r.set_number).filter(sn => sn.startsWith(P));
 
   try {
     await t.test('Auswahl: gehaltene Sets ja, reine Katalogsätze und frische 404 nein', async () => {

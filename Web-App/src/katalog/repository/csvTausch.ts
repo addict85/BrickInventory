@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { pflegeTabelle } from '../../../db/tabellePflegen';
-import { setZaehlt } from '../../../db/bestandSicht';
+import type { KatalogLesevertrag } from '../lesevertrag';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { logAndContinue } from '../../infra/fehler';
 
@@ -81,10 +81,15 @@ export function tausche(c: PoolClient, tabelle: string, schatten: string, spalte
 /** rb_sets bildet den Dump nach: einfügen, ändern, entfernen. Nur ein Set, an dem
  * Bestand, Merkliste oder Preisalarm hängt, bleibt als 'api'-Zeile, sonst verlöre
  * ein Konto Name und Bild. Danach hat jede Zeile ihren set_catalog-Eintrag (0105). */
-export async function gleicheSetsAb(c: PoolClient, schatten: string, spalten: string[]): Promise<void> {
+export async function gleicheSetsAb(
+  c: PoolClient,
+  l: Pick<KatalogLesevertrag, 'setZaehlt'>,
+  schatten: string,
+  spalten: string[],
+): Promise<void> {
   const neu = spalten.filter(s => s !== 'set_num');
   const verschwunden = `NOT EXISTS (SELECT 1 FROM ${schatten} n WHERE n.set_num = rb_sets.set_num)`;
-  const bezug = setZaehlt('rb_sets.set_num');
+  const bezug = l.setZaehlt('rb_sets.set_num');
   await imSchritt(c, async () => {
     await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, herkunft) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
                    ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, herkunft='csv'

@@ -279,7 +279,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Unabhängig von der Set-Zeile: backfillSets() sieht nur Sets mit NULL-Preis
   assert.match(
     job,
-    /FROM \$\{setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
+    /FROM \$\{l\.setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
     'Der Nachtrag muss alle preislosen Erfassungen finden',
   );
   // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
