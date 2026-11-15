@@ -18,9 +18,15 @@
  *   E  warteAufAltbestand() kehrt sofort zurück → rot: „… wartet auf die Umschlüsselung“
  *   F  in src/teile/partsSummary.ts katalogEinmalNachziehen() ohne den Zweig für `web` →
  *      rot: „eine Anfrage zieht den Katalog nicht selbst nach …“
+ *   G  in 0120 die Schleife mit REVOKE gestrichen → rot: „jede Sicht liest …“ (die neue Sicht
+ *      steht mit `web` in der Liste)
+ *   H  in 0120 `security_invoker = true` gestrichen → rot im selben Test (alle drei Sichten
+ *      „ohne security_invoker“; ohne den Listenvergleich: „durch die Sicht nur das eigene
+ *      Konto“, a sah auch b)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -33,7 +39,7 @@ const { keineDb } = require('./helpers/db');
 const { warte } = require('./helpers/zeit');
 const { portVon } = require('./helpers/server');
 const db = quellen.testDaten();
-const { alsWebAnfrage, imSystemkontext } = _req('src/infra/kontoKontext.js');
+const { alsAnfrage, alsWebAnfrage, imSystemkontext } = _req('src/infra/kontoKontext.js');
 
 const WEB = process.env.PGSYSTEM_WEB_USER;
 const VOLL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].join(', ');
@@ -111,6 +117,42 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       [WEB],
     );
     assert.deepEqual(fn, { kopien: true, zahl: true, aufraeumen: false, bypass: true });
+  });
+
+  await t.test('jede Sicht liest mit den Rechten der Abfragenden, die Web-Rolle nur die genannten', async tt => {
+    const name = `sicht_test_${process.pid}`;
+    const a = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
+    const b = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`${name}b`]))
+      .id;
+    tt.after(async () => {
+      await db.run(`DROP VIEW IF EXISTS ${name}`);
+      await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
+    });
+    await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1'), ($2, '10002-1')`, [a, b]);
+    // Eine neue Sicht über eine Kontotabelle, danach 0119 erneut (UPGRADE.md, Abschnitt 65) und 0120.
+    await db.run(`CREATE VIEW ${name} AS SELECT user_id, set_number FROM sets`);
+    await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0119-systemrolle-web.sql'), 'utf8'));
+    await db.run(
+      fs.readFileSync(path.join(ROOT, 'db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql'), 'utf8'),
+    );
+    const sichten = await db.all(
+      `SELECT c.relname AS v, coalesce('security_invoker=true' = ANY (c.reloptions), false) AS invoker,
+              has_table_privilege($1, c.oid, 'SELECT') AS web
+         FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'v' ORDER BY c.relname::text COLLATE "C"`,
+      [WEB],
+    );
+    assert.deepEqual(
+      sichten.map(s => `${s.v}${s.invoker ? '' : ' ohne security_invoker'}${s.web ? ' web' : ''}`),
+      ['set_minifigs_catalog web', 'set_parts_catalog web', name],
+    );
+    const sieht = await alsAnfrage({ session: { userId: a } }, () =>
+      zugang.all(`SELECT DISTINCT user_id FROM ${name} WHERE user_id = ANY($1)`, [[a, b]]),
+    );
+    assert.deepEqual(
+      sieht.map(z => z.user_id),
+      [a],
+      'durch die Sicht nur das eigene Konto',
+    );
   });
 
   await t.test('Anfragen nehmen im Systemrahmen die Web-Systemrolle, sonst die Systemrolle', async () => {

@@ -43,6 +43,7 @@ import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.MengenKnopf
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.farbUebersetzer
@@ -407,18 +408,12 @@ private fun MengenZeile(menge: Int, onWeniger: () -> Unit, onMehr: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
             MitTooltip(stringResource(R.string.cd_qty_decrease)) {
-                FilledTonalIconButton(
-                    onClick = onWeniger,
-                    shape = Formen.etikett
-                ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(mitSchrift(14.dp))) }
+                MengenKnopf(onClick = onWeniger) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(mitSchrift(14.dp))) }
             }
             Text("$menge", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
             MitTooltip(stringResource(R.string.cd_qty_increase)) {
-                FilledTonalIconButton(
-                    onClick = onMehr,
-                    shape = Formen.etikett
-                ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(mitSchrift(14.dp))) }
+                MengenKnopf(onClick = onMehr) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(mitSchrift(14.dp))) }
             }
         }
     }
