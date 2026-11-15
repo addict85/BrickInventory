@@ -149,12 +149,12 @@ function antwortFelder(o) {
 test('Antwortfelder sind Pflicht, wo der Server sie immer liefert: freiwillige und nullbare werden weniger', () => {
   // Ein freiwilliges oder nullbares Feld wird in OpenAPI, den Typen der Oberfläche und in Kotlin nullbar.
   // Je Vertragsdatei, damit sichtbar ist, wo der Vertrag noch weich ist; gesamt 1728 → 1449 Felder,
-  // freiwillig 719 → 321 (41,6 % → 22,2 %), nullbar 700 → 484.
+  // freiwillig 719 → 329 (41,6 % → 22,7 %), nullbar 700 → 484.
   const SCHRANKE = {
     bestand: { frei: 10, nullbar: 12 },
     einstellungen: { frei: 14, nullbar: 11 },
     figuren: { frei: 21, nullbar: 27 },
-    finanzen: { frei: 54, nullbar: 125 },
+    finanzen: { frei: 62, nullbar: 125 },
     gemeinsam: { frei: 35, nullbar: 50 },
     geraet: { frei: 0, nullbar: 0 },
     gutscheine: { frei: 10, nullbar: 17 },

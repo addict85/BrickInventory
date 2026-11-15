@@ -87,10 +87,11 @@ const STUECK = {
   owners: z.array(KontoName).optional(),
 };
 const BEWERTET = {
-  ausstehend: z.boolean(),
-  from_cache: z.boolean(),
-  max_price: z.number().nullable(),
-  min_price: z.number().nullable(),
+  /** Die Preisangaben fehlen ohne Erfassung (kein Zustand zu bewerten); ausstehend nur, solange einer fehlt. */
+  ausstehend: z.boolean().optional(),
+  from_cache: z.boolean().optional(),
+  max_price: z.number().nullable().optional(),
+  min_price: z.number().nullable().optional(),
   qty_avg_price: veraltet(z.number().nullable(), 'avg_price'),
   pnl_pct: PROZENT_TEXT,
   pnl_prozent: z.number().nullable(),
