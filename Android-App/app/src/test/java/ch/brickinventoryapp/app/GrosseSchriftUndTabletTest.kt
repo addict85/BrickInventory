@@ -198,13 +198,14 @@ class GrosseSchriftUndTabletTest {
     }
 
     /**
-     * Eine Beschriftung, die auch in Normalgrösse nicht passt („Hintergrundarbeiten“ in
-     * einem Fünftel der Breite bei 130 %), wird nicht kleiner als ohne Vergrösserung:
-     * Dann stehen nur Symbole da, jedes mit seinem Namen für TalkBack.
+     * Eine Beschriftung, die auch in Normalgrösse nicht passt („Einstellungen“ in einem
+     * Fünftel der Breite bei 130 %), wird nicht kleiner als ohne Vergrösserung: Dann stehen
+     * nur Symbole da, jedes mit seinem Namen für TalkBack. Klein genug für 7 sp muss sie
+     * sein, sonst fiele auch eine tiefere Untergrenze nie ins Gewicht.
      */
     @Test
     fun `Reiterleiste schrumpft nie unter die normale Schriftgroesse`() {
-        val ziele = listOf(SammlungZiel.Gallery to R.string.nav_collection, FinanzZiel.Finance to R.string.nav_monitoring,
+        val ziele = listOf(SammlungZiel.Gallery to R.string.nav_collection, FinanzZiel.Finance to R.string.nav_settings,
             SammlungZiel.Wanted to R.string.nav_wanted, KatalogZiel.Catalog to R.string.nav_catalog, AppZiel.Mehr to R.string.nav_more)
             .map { (ziel, text) -> ziel to ctx.getString(text) }
         val schrift = 1.3f
