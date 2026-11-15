@@ -6,9 +6,9 @@ Rot: kein Verweis auf das Begruendungsarchiv
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
 --- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
 +++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
-@@ -10,6 +10,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
+@@ -14,6 +14,7 @@
   */
- typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
+ typealias Frage = suspend (String?) -> Abrufergebnis<AlarmabrufAnsicht>
  
 +/** Ein verwaister Block. */
  /**

@@ -120,8 +120,9 @@ Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund
 core-zustand (`zustandsViewModels`).
 Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt), als ein Satz
 Typen, erzeugt aus `Web-App/docs/openapi.json` (`vertrag/Vertrag.kt`, nie von Hand; Namen und
-Fachtypen in `Web-App/scripts/vertrag-kotlin-zuordnung.js`). Bereiche nehmen Ansichten, ihre
-Importe aus core-vertrag sind eine Ratsche.
+Fachtypen in `Web-App/scripts/vertrag-kotlin-zuordnung.js`). Nur core-data und core-offline binden
+es ein (`implementation`, `Modulkanten.wireKenner`); jedes Repository gibt Fach- und Ansichtstypen
+zurück, ein `success: false` ist eine `Absage`.
 Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`
 
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht

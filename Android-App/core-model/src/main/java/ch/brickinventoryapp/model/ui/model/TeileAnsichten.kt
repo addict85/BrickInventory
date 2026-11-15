@@ -141,6 +141,18 @@ data class ManuelleFigurAnsicht(
     val storage: String? = null,
 )
 
+/** In welchen Sets ein Teil oder eine Figur steckt; [kopf] beschreibt den Posten selbst. */
+data class VerwendungAnsicht(
+    val kopf: BestandteilKopfAnsicht? = null,
+    val sets: List<VerwendendesSetAnsicht> = emptyList(),
+)
+
+/** Wonach die Teileliste den eigenen Bestand fragt: Rebrickable-Nummer und Farbe. */
+data class Teilschluessel(val nummer: String, val farbe: Int)
+
+/** Wie viele Stück da sind; [lose] zählt nur, was in keinem Set steckt. */
+data class TeilBestand(val gesamt: Int = 0, val lose: Int = 0)
+
 data class BewertungsKaufAnsicht(
     val id: Int = 0,
     val condition: Zustand = Zustand.NEU,

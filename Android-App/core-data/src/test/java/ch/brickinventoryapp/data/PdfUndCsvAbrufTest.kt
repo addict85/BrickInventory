@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.testing.testSetDateienRepository
 import ch.brickinventoryapp.testing.TestApi
@@ -49,7 +49,7 @@ class PdfUndCsvAbrufTest {
     @Test
     fun `ein Netzfehler ist vorübergehend, für jeden Abruf von Auftrag und Status`() = runBlocking {
         repeat(4) { server.enqueue(abriss()) }
-        val alle = listOf(sets.startPdfJob(PdfAuftragAnfrage()), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
+        val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in alle) {
             val f = fehler(r)
             assertTrue("$f ist nicht vorübergehend", f.transient)
@@ -59,7 +59,7 @@ class PdfUndCsvAbrufTest {
     @Test
     fun `ein 401 ist eine Abweisung mit dem Satz des Servers`() = runBlocking {
         repeat(4) { server.enqueue(abgewiesen()) }
-        val alle = listOf(sets.startPdfJob(PdfAuftragAnfrage()), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
+        val alle = listOf(sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())), sets.getPdfJobStatus("j1"), sets.downloadPdf("j1"), sets.getCsvImportStatus())
         for (r in alle) {
             val f = fehler(r)
             assertTrue("$f ist keine Abweisung", f is Ergebnis.Error.Abgewiesen)
@@ -73,12 +73,12 @@ class PdfUndCsvAbrufTest {
         server.enqueue(TestApi.antwort("""{"success":true,"status":"running","etaSeconds":12,"missingImages":3}"""))
         server.enqueue(TestApi.antwort("""{"success":true,"jobId":""}"""))
 
-        assertEquals(Ergebnis.Success("j7"), sets.startPdfJob(PdfAuftragAnfrage()))
+        assertEquals(Ergebnis.Success("j7"), sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())))
         val stand = (sets.getPdfJobStatus("j7") as Ergebnis.Success).data
         assertEquals(Laufstatus.LAEUFT, stand.status)
-        assertEquals(12.0, stand.etaSeconds)
-        assertNull(stand.error)
-        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(PdfAuftragAnfrage()) is Ergebnis.Error.LeereAntwort)
+        assertEquals(12.0, stand.restSekunden)
+        assertNull(stand.fehler)
+        assertTrue("ohne Nummer kein Auftrag", sets.startPdfJob(Teilelistenauftrag(emptyList(), emptyList())) is Ergebnis.Error.LeereAntwort)
 
         val pfade = List(3) { server.takeRequest().path }
         assertEquals(listOf("/api/v1/sets/partslist-pdf", "/api/v1/sets/partslist-pdf/status/j7", "/api/v1/sets/partslist-pdf"), pfade)

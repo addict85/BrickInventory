@@ -6,11 +6,11 @@ Rot: der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -291,7 +291,6 @@ class TeileViewModel @Inject constructor(
+@@ -309,7 +309,6 @@
      override fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
          lagerJob?.cancel()
          lagerJob = viewModelScope.launch {
 -            delay(Alarmeingabe.RUHE_MS)
              when (val r = repo.setPartStorage(nummer, farbe, ort)) {
-                 is Ergebnis.Success -> {
-                     if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
+                 is Ergebnis.Success -> _setItemState.update { z -> z.copy(kopf = z.kopf?.copy(storage = r.data)) }
+                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))

@@ -5,8 +5,8 @@ import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.vertrag.MinifigsResponse
-import ch.brickinventoryapp.vertrag.PartsResponse
+import ch.brickinventoryapp.model.ui.model.FigurAnsicht
+import ch.brickinventoryapp.model.ui.model.TeilAnsicht
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,9 +27,10 @@ interface SetKatalogRepository {
     /** Setname aus dem gemeinsamen Katalog, auch für fremde Sets. */
     suspend fun getSetInfo(setNumber: String): Ergebnis<String?>
 
-    suspend fun getSetPartsList(setNumber: String): Ergebnis<PartsResponse>
+    /** Die Teile eines Sets aus dem Katalog, je Teil und Farbe eine Zeile. */
+    suspend fun getSetPartsList(setNumber: String): Ergebnis<List<TeilAnsicht>>
 
-    suspend fun getSetMinifigsList(setNumber: String): Ergebnis<MinifigsResponse>
+    suspend fun getSetMinifigsList(setNumber: String): Ergebnis<List<FigurAnsicht>>
 
     suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeAnsicht>
 }
@@ -44,8 +45,10 @@ class SetKatalogRepositoryImpl @Inject constructor(private val api: SetsApi) : S
     override suspend fun getSetInfo(setNumber: String) = sicherAufrufen { api.getSetInfo(setNumber) }.abgebildet { it.name }
 
     override suspend fun getSetPartsList(setNumber: String) = sicherAufrufen { api.getSetPartsList(setNumber) }
+        .zugesagt({ it.success }, { it.error }) { r -> r.parts.map { it.alsAnsicht() } }
 
     override suspend fun getSetMinifigsList(setNumber: String) = sicherAufrufen { api.getSetMinifigsList(setNumber) }
+        .zugesagt({ it.success }, { it.error }) { r -> r.figs.map { it.alsAnsicht() } }
 
     override suspend fun resolveBarcode(barcode: String) = sicherAufrufen { api.getBarcodeSet(barcode) }.abgebildet {
         BarcodeAnsicht(it.setNumber, it.name, it.year, it.pieces, it.theme, it.minifigs, it.imageUrl, it.imageLocal, it.unsicher)

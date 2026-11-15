@@ -4,10 +4,9 @@ Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: die Kantenregel verbietet
 
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
-index 8632c80..38ed4e2 100644
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
-@@ -53,7 +53,7 @@ object Modulkanten {
+@@ -53,7 +53,7 @@
       */
      val ohneOberflaeche: Set<String> = setOf(
          "core-model", "core-vertrag", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
@@ -15,4 +14,4 @@ index 8632c80..38ed4e2 100644
 +        "core-sitzung",
      )
  
-     private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
+     /** Wer core-vertrag einbindet: Die Repositories übersetzen, die Ablage legt noch Antworten ab. */

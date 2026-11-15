@@ -27,6 +27,8 @@ dependencies {
     implementation(libs.mlkit.textrec)
 
     testImplementation(project(":core-testing"))
+    // Die Testserver antworten im Wire-Format.
+    testImplementation(project(":core-vertrag"))
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

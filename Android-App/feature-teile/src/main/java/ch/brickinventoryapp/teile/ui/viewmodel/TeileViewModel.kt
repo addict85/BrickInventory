@@ -19,7 +19,6 @@ import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.teile.ui.Teile
 import ch.brickinventoryapp.teile.ui.TeileLokal
 import ch.brickinventoryapp.teile.ui.TeileQuelle
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,7 +28,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.vertrag.GenericResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.model.ui.ScrollMemory
@@ -209,11 +207,7 @@ class TeileViewModel @Inject constructor(
             when (val r = repo.addPart(e.nummer.trim(), e.farbId, e.farbname, e.farbHex, e.menge,
                                        e.stueckpreis, e.zustand, e.besitzer,
                                        e.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        meldungen.zeige(erfassungsMeldung(
-                            r.data.action == "added", r.data.partNumber, r.data.priceFromCondition))
-                    } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown))
+                is Ergebnis.Success -> meldungen.zeige(erfassungsMeldung(r.data.angelegt, r.data.nummer, r.data.preisAusZustand))
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
@@ -225,11 +219,7 @@ class TeileViewModel @Inject constructor(
             when (val r = figuren.addMinifig(e.nummer.trim(), e.blNummer, e.menge, e.stueckpreis,
                                           e.zustand, e.besitzer,
                                           e.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        meldungen.zeige(erfassungsMeldung(
-                            r.data.action == "added", r.data.figNumber, r.data.priceFromCondition))
-                    } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown))
+                is Ergebnis.Success -> meldungen.zeige(erfassungsMeldung(r.data.angelegt, r.data.nummer, r.data.preisAusZustand))
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
@@ -266,10 +256,7 @@ class TeileViewModel @Inject constructor(
                        owner: Int?, onFertig: (Int) -> Unit) {
         if (neueFarbe == colorId) return
         aendere(meldungen.text(R.string.vm_saved), danach = { onFertig(neueFarbe) }) {
-            when (val r = repo.setPartColor(partNumber, colorId, neueFarbe, farbName, farbHex, owner)) {
-                is Ergebnis.Success -> r.data.success to (r.data.error ?: meldungen.text(R.string.err_unknown))
-                is Ergebnis.Error -> false to meldungen.meldungFuerSnackbar(r)
-            }
+            repo.setPartColor(partNumber, colorId, neueFarbe, farbName, farbHex, owner).erfolg()
         }
     }
 
@@ -291,9 +278,9 @@ class TeileViewModel @Inject constructor(
         }
     }
 
-    private fun Ergebnis<GenericResponse>.erfolg(): Pair<Boolean, String?> =
+    private fun Ergebnis<Unit>.erfolg(): Pair<Boolean, String?> =
         when (this) {
-            is Ergebnis.Success -> data.success to (data.error ?: meldungen.text(R.string.err_unknown))
+            is Ergebnis.Success -> true to null
             is Ergebnis.Error -> false to meldungen.meldungFuerSnackbar(this)
         }
 
@@ -309,10 +296,7 @@ class TeileViewModel @Inject constructor(
             val jetzt = _setItemState.value
             if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
             when (r) {
-                is Ergebnis.Success -> _setItemState.update {
-                    it.copy(laedt = false, kopf = r.data.item?.alsAnsicht(), sets = r.data.sets.map { s -> s.alsAnsicht() },
-                            fehler = if (r.data.success) null else r.data.error)
-                }
+                is Ergebnis.Success -> _setItemState.update { it.copy(laedt = false, kopf = r.data.kopf, sets = r.data.sets) }
                 is Ergebnis.Error -> _setItemState.update { it.copy(laedt = false, fehler = meldungen.meldung(r)) }
             }
         }
@@ -327,10 +311,7 @@ class TeileViewModel @Inject constructor(
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = repo.setPartStorage(nummer, farbe, ort)) {
-                is Ergebnis.Success -> {
-                    if (!r.data.success) { meldungen.zeige(r.data.error ?: ""); return@launch }
-                    _setItemState.update { z -> z.copy(kopf = z.kopf?.copy(storage = r.data.storage)) }
-                }
+                is Ergebnis.Success -> _setItemState.update { z -> z.copy(kopf = z.kopf?.copy(storage = r.data)) }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }

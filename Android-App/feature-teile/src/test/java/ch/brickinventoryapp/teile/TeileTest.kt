@@ -1,16 +1,15 @@
 package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.vertrag.BrickColorsResponse
-import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.model.ui.model.FigurAnsicht
 import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.vertrag.MinifigStatsResponse
-import ch.brickinventoryapp.vertrag.Part
-import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.vertrag.PartsCategoriesResponse
-import ch.brickinventoryapp.vertrag.PartsFilterColorsResponse
-import ch.brickinventoryapp.vertrag.PartsStatsResponse
+import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.ui.model.TeilAnsicht
+import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
+import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.teile.ui.PartsUiState
 import ch.brickinventoryapp.teile.ui.Teile
@@ -59,11 +58,11 @@ class TeileTest {
     private class Kennzahlen : TeileQuelle {
         var figurAbrufe = 0
         var figurDauer = 0L
-        override suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse> = Ergebnis.Error.Server(503, "aus")
-        override suspend fun filterFarben() = Ergebnis.Success(PartsFilterColorsResponse(success = true))
-        override suspend fun kategorien() = Ergebnis.Success(PartsCategoriesResponse(success = true))
-        override suspend fun alleFarben() = Ergebnis.Success(BrickColorsResponse(success = true))
-        override suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse> {
+        override suspend fun teileKennzahlen(): Ergebnis<TeileKennzahlenAnsicht?> = Ergebnis.Error.Server(503, "aus")
+        override suspend fun filterFarben() = Ergebnis.Success(emptyList<FilterFarbeAnsicht>())
+        override suspend fun kategorien() = Ergebnis.Success(emptyList<KategorieAnsicht>())
+        override suspend fun alleFarben() = Ergebnis.Success(emptyList<FarbeAnsicht>())
+        override suspend fun figurKennzahlen(): Ergebnis<FigurenKennzahlenAnsicht> {
             figurAbrufe++
             delay(figurDauer)
             return Ergebnis.Error.Server(500, "Zählung gescheitert")
@@ -71,11 +70,11 @@ class TeileTest {
     }
 
     private val kennzahlen = Kennzahlen()
-    private val teile = MutableStateFlow(Lokal(listOf(Part(partNumber = "3001", partName = "Brick", colorName = "Red"),
-        Part(partNumber = "3023", partName = "Plate", colorName = "Blue")), 1L))
-    private val manuelleTeile = MutableStateFlow(Lokal(emptyList<PartValuationItem>(), 1L))
-    private val figuren = MutableStateFlow(Lokal(listOf(Minifig(figNumber = "sw0001")), 4L))
-    private val manuelleFiguren = MutableStateFlow(Lokal(emptyList<FigValuationItem>(), 4L))
+    private val teile = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "3001", partName = "Brick", colorName = "Red"),
+        TeilAnsicht(partNumber = "3023", partName = "Plate", colorName = "Blue")), 1L))
+    private val manuelleTeile = MutableStateFlow(Lokal(emptyList<ManuellesTeilAnsicht>(), 1L))
+    private val figuren = MutableStateFlow(Lokal(listOf(FigurAnsicht(figNumber = "sw0001")), 4L))
+    private val manuelleFiguren = MutableStateFlow(Lokal(emptyList<ManuelleFigurAnsicht>(), 4L))
     private val teileAbrufe = mutableListOf<PartsUiState>()
     private val manuelleSuchen = mutableListOf<String>()
     private val figurAbrufe = mutableListOf<String>()
@@ -133,7 +132,7 @@ class TeileTest {
         // Vorgabe ist „nach Farbe“ (TeileOrdnung): Blue vor Red, nicht die Reihenfolge der Quelle.
         assertEquals(listOf("3023", "3001"), t.state.value.parts.map { it.partNumber })
         // Offline erfasst: Die Ablage ändert sich, die Liste folgt.
-        manuelleTeile.value = Lokal(listOf(PartValuationItem(partNumber = "neu", quantity = 3)), 2L)
+        manuelleTeile.value = Lokal(listOf(ManuellesTeilAnsicht(partNumber = "neu", quantity = 3)), 2L)
         runCurrent()
         assertEquals(listOf("neu" to 3), t.state.value.manualParts!!.map { it.partNumber to it.quantity })
         t.laden(seite = 2); runCurrent()
@@ -142,15 +141,15 @@ class TeileTest {
 
     @Test
     fun `nach einem Filterwechsel schreibt die alte Quelle nicht mehr hinein`() = runTest {
-        val alt = MutableStateFlow(Lokal(listOf(Part(partNumber = "alt")), 1L))
-        val neu = MutableStateFlow(Lokal(listOf(Part(partNumber = "neu")), 1L))
+        val alt = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "alt")), 1L))
+        val neu = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "neu")), 1L))
         val t = Teile(scope = vordergrund(), quelle = kennzahlen, meldeFehler = {}, vergissScroll = {},
             listen = TeileLokal(teile = { st -> if (st.partsColorFilter.isBlank()) alt else neu },
                 manuelleTeile = { manuelleTeile }, figuren = { figuren }, manuelleFiguren = { manuelleFiguren },
                 aktualisiereTeile = { Ergebnis.Success(Unit) }, aktualisiereFiguren = { Ergebnis.Success(Unit) }))
         t.laden(); runCurrent()
         t.setzeFarbe("Red"); runCurrent()
-        alt.value = Lokal(listOf(Part(partNumber = "spaet")), 2L)
+        alt.value = Lokal(listOf(TeilAnsicht(partNumber = "spaet")), 2L)
         runCurrent()
         assertEquals(listOf("neu"), t.state.value.parts.map { it.partNumber })
     }
@@ -189,11 +188,11 @@ class TeileTest {
 
     @Test
     fun `eine nie geladene Quelle zeigt nichts und leert nichts`() = runTest {
-        figuren.value = Lokal(listOf(Minifig(figNumber = "alt")), null)
+        figuren.value = Lokal(listOf(FigurAnsicht(figNumber = "alt")), null)
         val t = teile()
         t.ladeFiguren(); runCurrent()
         assertEquals(emptyList<String>(), t.state.value.minifigs.map { it.figNumber })
-        figuren.value = Lokal(listOf(Minifig(figNumber = "sw0002")), 5L)
+        figuren.value = Lokal(listOf(FigurAnsicht(figNumber = "sw0002")), 5L)
         runCurrent()
         assertEquals(listOf("sw0002"), t.state.value.minifigs.map { it.figNumber })
     }

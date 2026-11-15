@@ -17,6 +17,12 @@ data class Teilerfassung(
     val lagerort: String? = null,
 )
 
+/**
+ * Was der Server zu einem erfassten Teil oder einer Figur meldet: neu angelegt oder zur
+ * Menge gezählt, und aus welchem Zustand der Kaufpreis stammt, wo BrickLink nur einen kennt.
+ */
+data class Erfasst(val angelegt: Boolean, val nummer: String?, val preisAusZustand: Zustand? = null)
+
 /** Eine Minifigur, wie es der Erfassungsdialog einsammelt; siehe [Teilerfassung]. */
 data class Figurenerfassung(
     val nummer: String,

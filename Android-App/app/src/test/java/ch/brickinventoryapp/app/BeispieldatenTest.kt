@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
+import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.testing.testFigurenRepository
@@ -324,7 +324,7 @@ object Beispiele {
                 override fun sortiert(teile: Collection<PlPart>) = teile.toList()
             }, object : TeilelistenExport {
                 override val fortschritt = flowOf<PdfFortschritt?>(null)
-                override suspend fun erzeuge(auftrag: PdfAuftragAnfrage): ExportErgebnis =
+                override suspend fun erzeuge(auftrag: Teilelistenauftrag): ExportErgebnis =
                     ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))
             }, SavedStateHandle()))
 

@@ -1,0 +1,16 @@
+Gegenprobe: die JSON-Form (Set schon da) gilt wieder als Abbruch
+Modul: core-data
+Test: ch.brickinventoryapp.data.SetAnlegenStromTest
+Rot: die JSON-Form ist ein fertiges Anlegen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
+@@ -111,7 +111,6 @@
+         val code = e.code
+         return when {
+             code == null -> if (e.keineVerbindung) SetAnlegenSchritt.KeineVerbindung else SetAnlegenSchritt.Fehler("")
+-            code in HTTP_ERFOLG && e.rumpf != null -> fertig(e.rumpf)
+             else -> SetAnlegenSchritt.Fehler(fehlertextAus(e.rumpf))
+         }
+     }
