@@ -12,6 +12,8 @@
  *      rot: „nur src/http bildet Arten auf Status ab …“
  *   D  in src/infra/geld.ts dem fachfehler() eine Statuszahl 400 angehängt → rot:
  *      dieselbe Prüfung, Liste `status`
+ *   E  (15.11.2026) in sendeFehler `res.status(500)` statt STATUS_DER_ART[art] → rot:
+ *      „jede Art ergibt ihren Status“ (sendeFehler ungueltig: 500 statt 400)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +23,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const ohneKommentare = require('./helpers/sources').ohneKommentare;
-const { handleRouteError } = _req('src/http/httpAntwort.js');
+const { handleRouteError, sendeFehler } = _req('src/http/httpAntwort.js');
 const { STATUS_DER_ART } = _req('src/http/fehlerArt.js');
 const { fachfehler, alsDoppelt } = _req('src/infra/fehlerTexte.js');
 
@@ -79,6 +81,8 @@ test('jede Art ergibt ihren Status', () => {
     fremddienst: 502,
     nicht_verfuegbar: 503,
     zeitueberschreitung: 504,
+    falscher_host: 421,
+    zu_alt: 426,
   };
   assert.deepEqual(Object.keys(STATUS_DER_ART).sort(), Object.keys(erwartet).sort());
   for (const [art, status] of Object.entries(erwartet)) {
@@ -87,6 +91,16 @@ test('jede Art ergibt ihren Status', () => {
       { status, code: 'set_nicht_gefunden' },
       art,
     );
+    // Wer selbst antwortet (Wächter, HTTP-Seiten), nennt die Art; den Status wählt dieselbe Tabelle.
+    let gesendet = 0;
+    const res = {
+      status: c => {
+        gesendet = c;
+        return { json: () => {} };
+      },
+    };
+    sendeFehler({ headers: {} }, res, art, 'set_nicht_gefunden');
+    assert.equal(gesendet, status, `sendeFehler ${art}`);
   }
 });
 

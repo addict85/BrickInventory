@@ -25,14 +25,10 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const express = require('express');
   const bildDurchreichen = (...a) =>
     _req('src/bilder/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-  // Ein Objekt für alle Bereiche (test/helpers/sources.js): die Methode darin ersetzen.
-  const nacharbeit = require('./helpers/sources').testNacharbeit();
   const { proxyAdresse, proxyCacheSchluessel } = _req('src/bilder/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-  const vorher = nacharbeit.bildVormerken;
-  const notizen = [];
-  nacharbeit.bildVormerken = (url, sn) => notizen.push([url, sn]);
+  const { notizen, ende } = require('./helpers/sources').bildNotizen();
 
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -57,7 +53,7 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const server = app.listen(0);
   t.after(() => {
     server.close();
-    nacharbeit.bildVormerken = vorher;
+    ende();
     for (const f of angelegt) fs.rmSync(f, { force: true });
   });
   const hole = async url => {

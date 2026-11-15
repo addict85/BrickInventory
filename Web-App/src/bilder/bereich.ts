@@ -43,17 +43,15 @@ export function erzeugeBilder(
       merkeGebraucht: mit(k)(bildbedarfDienst.merkeGebraucht),
       bildEinmalVormerken: mit(k)(bildbedarfDienst.bildEinmalVormerken),
       bildbedarfAbarbeiten: mit(k)(bildbedarfLauf.bildbedarfAbarbeiten),
-      initImageQueue: mit(k)(bildbedarfLauf.initImageQueue),
+      starteBildbedarf: mit(k)(bildbedarfLauf.initImageQueue),
       stoppeBildbedarf: mit(k)(bildbedarfLauf.stoppeBildbedarf),
-      // Über die Nacharbeit, damit ein Test sie an einer Stelle ersetzt.
-      bildVormerken: (url: string, setNummer: string) => k.nacharbeit.bildVormerken(url, setNummer),
-      setBildLokalEintragen: (setNummer: string, quelle: string | null = null) =>
-        k.nacharbeit.setBildLokalEintragen(setNummer, quelle),
+      beiSetBildGeladen: mit(k)(bildbedarfDienst.beiSetBildGeladen),
+      meldeSetBildGeladen: mit(k)(bildbedarfDienst.meldeSetBildGeladen),
       // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
       setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
       vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
       vergissFehlend: mit(k)(imageMisses.vergissFehlend),
-      initImageMisses: mit(k)(imageMisses.initImageMisses),
+      starteFehlanzeige: mit(k)(imageMisses.initImageMisses),
       stoppeFehlanzeige: mit(k)(imageMisses.stoppeFehlanzeige),
       istBekanntFehlend: mit(k)(imageMisses.istBekanntFehlend),
       merkeFehlend: mit(k)(imageMisses.merkeFehlend),

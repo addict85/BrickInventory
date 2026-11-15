@@ -38,7 +38,7 @@ const { routerServer } = require('./helpers/server');
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  sendKontoHinweisMail: async (an, _name, art, o) => {
+  mailKontoHinweis: async (an, _name, art, o) => {
     gesendet.push({ an, art, ...o });
     return { success: true };
   },

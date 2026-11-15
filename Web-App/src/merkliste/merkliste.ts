@@ -16,18 +16,18 @@ import type { MerklisteKontext } from './kontext';
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
  * trotzdem, und ein fehlender Preis ist ein Strich, kein Fehler. */
 export async function preiseBeiderZustaende(k: MerklisteKontext, uid: number, setNumber: string) {
-  const currency = String(await k.einstellungen.getSetting(uid, 'currency', 'EUR'));
+  const currency = String(await k.einstellungen.nutzerWert(uid, 'currency', 'EUR'));
   if (!moeglicheSetNummer(mitVersion(setNumber)) || !(await k.katalog.setBekanntImKatalog(setNumber)))
     return { currency, current: {} };
-  const guideType = String(await k.einstellungen.getSetting(uid, 'price_guide_type', 'sold'));
-  const ttlHours = String(await k.einstellungen.getSetting(uid, 'price_cache_ttl', '24'));
+  const guideType = String(await k.einstellungen.nutzerWert(uid, 'price_guide_type', 'sold'));
+  const ttlHours = String(await k.einstellungen.nutzerWert(uid, 'price_cache_ttl', '24'));
   const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};
   // „keiner“ nach einem Abruffehler ist nicht „BrickLink kennt keinen“.
   const ab = new Abstriche();
   for (const c of ['N', 'U']) {
     const pd = await ab.oder(
       `marktpreis_${c}`,
-      k.finanzen.fetchPrice(setNumber, c, guideType, currency, ttlHours),
+      k.finanzen.holePreis(setNumber, c, guideType, currency, ttlHours),
       null,
     );
     // Ein Ersatzpreis des anderen Zustands stünde sonst als „Marktpreis (Neuware)“ da, die Liste sagt „keiner“.
@@ -195,7 +195,7 @@ export async function merkpostenVon(
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel
     // wie beim Ablegen (src/bilder/setImages.ts).
     const lokal = resolveIfExists(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) k.nacharbeit.bildVormerken(String(r.image_url), String(r.set_number));
+    if (!lokal && r.image_url) k.bilder.merkeGebraucht(String(r.image_url), String(r.set_number));
     return {
       ...r,
       year: r.year == null ? null : Number(r.year),

@@ -40,12 +40,14 @@ Absicht, solange es nur von unten gebraucht wird:
 - Kleine Fachregeln, die mehrere Bereiche teilen und deshalb nicht in einem
   von ihnen liegen können: Setnummern (`setNummer`), Geld (`geld`),
   Passwortregel (`passwortRegel`).
-- Die HTTP-Hülle, die jede Schicht braucht: Fehlerantwort (`sendeFehler` in
-  `fehlerTexte`, `httpAntwort`), Vertrag (`vertrag/`), Datei-Ein- und -Ausgang,
-  Budget und Schranken je Konto, Sitzungskeks, Proxy-Vertrauen. Express
-  importieren nur Dateien daraus; welche, hält der Test in
-  `test/schichten.test.js` fest. Dienste kennen Express nicht; was sie von der
-  Anfrage brauchen, trägt der Aufrufrahmen (`kontoKontext`, siehe unten).
+- Die Texte der Fehler (`fehlerTexte`) und die Regel, welchen Proxys man traut
+  (`proxyVertrauen`). Express importiert `src/infra` nicht; die HTTP-Hülle
+  (`sendeFehler` in `httpAntwort`, Datei-Ein- und -Ausgang, Schranken je Konto,
+  Sitzungskeks) liegt eine Stufe höher in `src/http`, der Vertrag in `src/vertrag`
+  (Stufe 2). Dienste kennen Express nicht; was sie von der Anfrage brauchen,
+  trägt der Aufrufrahmen (`kontoKontext`, siehe unten).
+- Den Zugang kennt `src/infra` nur als Schnittstelle (`Zugang` in
+  `src/infra/zugang.ts`); `db/database.ts` erfüllt sie.
 
 - Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
   `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
@@ -214,8 +216,9 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
 
 ## Rangfolge der Bereiche
 
-Ein Bereich importiert nur Bereiche tieferer Stufen; Bereiche derselben Stufe
-kennen einander nicht. Von unten nach oben:
+Ein Bereich importiert nur Bereiche tieferer Stufen, auch mit `import type`;
+Bereiche derselben Stufe kennen einander nicht. Die Kanten löst der Übersetzer
+auf (`tsc --explainFiles`). Von unten nach oben:
 
 | Stufe | Bereiche |
 |---|---|
@@ -237,9 +240,10 @@ kennen einander nicht. Von unten nach oben:
 | 16 | `src/sets` |
 | 17 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
 | 18 | `src/sammlung`, `src/verwaltung` |
-| 19 | `jobs`, `routes` |
-| 20 | `startup` |
-| 21 | `server.ts` |
+| 19 | `src/dienste.ts` |
+| 20 | `jobs`, `routes` |
+| 21 | `startup` |
+| 22 | `server.ts` |
 
 ## Schema
 

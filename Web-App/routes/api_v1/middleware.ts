@@ -162,7 +162,7 @@ function rumpfFrist(req: Request, res: Response, next: NextFunction) {
   const uhr = setTimeout(() => {
     if (req.complete || res.headersSent) return;
     res.setHeader('Connection', 'close');
-    sendeFehler(req, res, 408, 'anfrage_zu_langsam');
+    sendeFehler(req, res, 'zu_langsam', 'anfrage_zu_langsam');
   }, RUMPF_FRIST_MS);
   res.once('close', () => clearTimeout(uhr));
   req.once('end', () => clearTimeout(uhr));

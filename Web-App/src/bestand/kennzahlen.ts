@@ -17,7 +17,7 @@ export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | n
     k.kennzahlen.teileEinzeln(uids),
   ]);
   const eigenerZustand = await k.einstellungen.wertImBlickfeld(uids, 'user_default_condition');
-  const globalCond = await k.einstellungen.getGlobalSetting('default_price_condition');
+  const globalCond = await k.einstellungen.globalerWert('default_price_condition');
   const effectiveCondition = eigenerZustand && ['N', 'U'].includes(eigenerZustand) ? eigenerZustand : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);
   const einzeln = Number(einzelnRow?.t ?? 0);

@@ -158,7 +158,7 @@ export async function katalogSet(k: KatalogKontext, userId: number, roh: string)
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
     const r = await versuche('katalog:setBildHerunterladen', k.bilder.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
-    if (image_local) k.nacharbeit.bildVormerken(String(set.image_url || ''), set.set_number);
+    if (image_local) k.bilder.merkeGebraucht(String(set.image_url || ''), set.set_number);
   }
   return {
     ...set,

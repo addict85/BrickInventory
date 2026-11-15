@@ -56,7 +56,7 @@ export class RateLimiter {
 }
 
 import { meldeFehler } from '../infra/fehler';
-import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
+import { checkAndIncrementRateLimit, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import { versuche } from '../infra/ergebnis';
 import type { FremdquellenKontext } from './kontext';
 
@@ -105,12 +105,6 @@ export async function consumeRebrickableDaily(k: FremdquellenKontext): Promise<b
   // Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
   // Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt.
   return rl.ok ? rl.wert.allowed : true;
-}
-
-export async function rebrickableDailyStatus(
-  k: FremdquellenKontext,
-): Promise<{ count: number; limit: number; remaining: number }> {
-  return getRateLimitStatus(k, 'rebrickable');
 }
 
 /** Zwei gleichzeitige Downloads, aber höchstens einer neu je Sekunde: Das CDN

@@ -28,9 +28,15 @@ export let allSets = [];
 export let curSet = null;
 /** Kachelpreis und G&V je Setnummer aus /v1/finance/pnl. @type {Record<string, { price?: number | null, pnl_pct?: number | null, quelle?: string | null }>} */
 export let _pnlCache = {};
+/** Der Marktwert der Finanz-Kopfzahl: Die Wertkurve endet auf ihm, damit beide dasselbe zeigen. */
+export let finKopfWert = 0;
 /** Zeitpunkt (ms) des letzten Set-Imports; die Auftragsanzeige wartet danach kurz. */
 export let _lastImportAt = 0;
 
+/** @param {number} v */
+export function setFinKopfWert(v) {
+  finKopfWert = v;
+}
 /** @param {typeof ME} v */
 export function set_ME(v) {
   ME = v;

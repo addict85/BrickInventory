@@ -33,6 +33,7 @@ export function baueApiRouter(
     | 'konto'
     | 'profil'
     | 'katalog'
+    | 'fremdquellen'
     | 'bilder'
     | 'finanzen'
     | 'bestand'

@@ -494,6 +494,8 @@ function updatePartsSentinel() {
   }
 }
 
+/** Ohne IntersectionObserver hängt der Lauscher am Fenster, einmal je Seite. */
+let scrollGebunden = false;
 /** @type {IntersectionObserver | null} */
 let _partsIO = null;
 function bindPartsSentinel() {
@@ -508,9 +510,9 @@ function bindPartsSentinel() {
       { rootMargin: '600px' }, // Vorlauf, damit vor dem Sichtbarwerden geladen wird
     );
     _partsIO.observe(s);
-  } else if (!window._partsScrollBound) {
+  } else if (!scrollGebunden) {
     // Fallback für Browser ohne IntersectionObserver
-    window._partsScrollBound = true;
+    scrollGebunden = true;
     window.addEventListener(
       'scroll',
       () => {

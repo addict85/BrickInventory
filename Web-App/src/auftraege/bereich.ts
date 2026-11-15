@@ -1,6 +1,7 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
+import { versuche } from '../infra/ergebnis';
 import * as anleitungsAuftrag from './anleitungsAuftrag';
 import * as bricksetAuftrag from './bricksetAuftrag';
 import * as dienst from './dienst';
@@ -17,6 +18,15 @@ import { zugang, type AuftraegeAbhaengigkeiten, type AuftraegeKontext } from './
 export type { AuftraegeAbhaengigkeiten, AuftraegeKontext } from './kontext';
 
 export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick?: Einblick<AuftraegeKontext>) {
+  const d = auftraegeDienste(a, einblick);
+  // Der Preis-Cache gilt je Währung: Ein Wechsel verlangt einen vollen Preislauf.
+  a.einstellungen.beiWaehrungswechsel(
+    () => void versuche('einstellungen:preis-job-anstossen', d.ziehePlanVor('preise')),
+  );
+  return d;
+}
+
+function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick?: Einblick<AuftraegeKontext>) {
   return baueBereich(
     { ...a, faecher: new Faecher() },
     zugang,
@@ -48,8 +58,8 @@ export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, e
       auftragWiederholen: mit(k)(hintergrund.auftragWiederholen),
       setzeErgebnis: mit(k)(importAlsAuftrag.setzeErgebnis),
       setzeFachfehler: mit(k)(importAlsAuftrag.setzeFachfehler),
-      importAlsAuftrag: mit(k)(importAlsAuftrag.importAlsAuftrag),
-      emitJobStatus: mit(k)(importAuftrag.emitJobStatus),
+      importiereAlsAuftrag: mit(k)(importAlsAuftrag.importAlsAuftrag),
+      meldeJobStand: mit(k)(importAuftrag.emitJobStatus),
       jobGet: mit(k)(importAuftrag.jobGet),
       jobSet: mit(k)(importAuftrag.jobSet),
       jobUpdate: mit(k)(importAuftrag.jobUpdate),
@@ -67,7 +77,7 @@ export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, e
       liesAuftrag: mit(k)(pdfDienste.liesAuftrag),
       loescheAuftrag: mit(k)(pdfDienste.loescheAuftrag),
       pdfAuftragStarten: mit(k)(pdfDienste.pdfAuftragStarten),
-      cleanOldPdfJobs: mit(k)(pdfDienste.cleanOldPdfJobs),
+      raeumePdfAuftraegeAuf: mit(k)(pdfDienste.cleanOldPdfJobs),
       meldeStartZustand: mit(k)(startZustand.meldeStartZustand),
       aktuellerStartZustand: mit(k)(startZustand.aktuellerStartZustand),
       zeitplanGeaendert: mit(k)(zeitplan.zeitplanGeaendert),

@@ -28,7 +28,7 @@ export function idempotenz(d: IdempotenzDienste) {
     const route = routeFuerAnfrage(req.method, req.baseUrl + req.path);
     if (!route) return next();
     if (!dienst.SCHLUESSEL_MUSTER.test(schluessel))
-      return sendeFehler(req, res, 400, 'idempotenz_schluessel_ungueltig');
+      return sendeFehler(req, res, 'ungueltig', 'idempotenz_schluessel_ungueltig');
     const uid = nutzerId(req);
     if (uid === null) return next();
 
@@ -37,12 +37,12 @@ export function idempotenz(d: IdempotenzDienste) {
       schluessel,
       dienst.fingerabdruck(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true),
     );
-    if (ausgang.art === 'anders') return sendeFehler(req, res, 422, 'idempotenz_schluessel_anders');
+    if (ausgang.art === 'anders') return sendeFehler(req, res, 'nicht_verarbeitbar', 'idempotenz_schluessel_anders');
     if (ausgang.art === 'laeuft') {
       res.set('Retry-After', '1');
-      return sendeFehler(req, res, 409, 'idempotenz_laeuft');
+      return sendeFehler(req, res, 'konflikt', 'idempotenz_laeuft');
     }
-    if (ausgang.art === 'nicht_wiederholbar') return sendeFehler(req, res, 409, 'idempotenz_nicht_wiederholbar');
+    if (ausgang.art === 'nicht_wiederholbar') return sendeFehler(req, res, 'konflikt', 'idempotenz_nicht_wiederholbar');
     if (ausgang.art === 'wiederholung') {
       res.set('Idempotent-Replay', 'true');
       return res.status(ausgang.status).type('application/json').send(ausgang.antwort);

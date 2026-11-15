@@ -8,7 +8,7 @@
  *   A  im Aufstock-Zweig die Nacharbeit nach der Transaktion eingestellt (wie das
  *      frühere addSet, Fehler mit versuche() verschluckt) → rot: „scheitert die
  *      Nacharbeit, ist nichts gebucht“
- *   B  im Aufstock-Zweig vor dem Buchen `await t.katalog.getSetInfo(sn)` → rot:
+ *   B  im Aufstock-Zweig vor dem Buchen `await t.katalog.setInfo(sn)` → rot:
  *      „ein Import stockt beim Besitzer auf, ohne Netz“
  *   C  den Aufstock-Zweig nie betreten (immer „melden“) → rot: „ein Import stockt
  *      beim Besitzer auf …“ (exists statt updated)

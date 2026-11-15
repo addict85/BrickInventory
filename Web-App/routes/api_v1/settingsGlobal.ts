@@ -101,7 +101,7 @@ export function baueSettingsGlobalRouter(
   // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
   // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
   router.endpunkt('GET /api/v1/settings/einrichtung', requireAdmin, async req => {
-    const wert = async (k: string) => !!(await d.einstellungen.getGlobalSetting(k));
+    const wert = async (k: string) => !!(await d.einstellungen.globalerWert(k));
     const passwort = await d.konto.passwortWechselFaellig(req.apiUser.user_id);
     const quellen = {
       rebrickable: await wert('rebrickable_api_key'),
@@ -119,7 +119,7 @@ export function baueSettingsGlobalRouter(
   });
 
   router.endpunkt('POST /api/v1/settings/einrichtung/fertig', requireAdmin, async _req => {
-    await d.einstellungen.setGlobalSetting('einrichtung_erledigt', '1');
+    await d.einstellungen.setzeGlobalenWert('einrichtung_erledigt', '1');
     return {};
   });
 

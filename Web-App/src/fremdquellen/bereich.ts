@@ -25,16 +25,16 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   einblick?.(k);
   const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt);
   const kontingent = {
-    checkAndIncrementRateLimit: mit(k)(apiKontingentDienst.checkAndIncrementRateLimit),
-    getRateLimitStatus: mit(k)(apiKontingentDienst.getRateLimitStatus),
+    zaehleKontingent: mit(k)(apiKontingentDienst.checkAndIncrementRateLimit),
+    kontingentStand: mit(k)(apiKontingentDienst.getRateLimitStatus),
     kontingentFrei: mit(k)(apiKontingentDienst.kontingentFrei),
     setzeKontingentZurueck: mit(k)(apiKontingentDienst.setzeKontingentZurueck),
-    getLimitForApi: mit(k)(apiKontingentDienst.getLimitForApi),
+    kontingentGrenze: mit(k)(apiKontingentDienst.getLimitForApi),
   };
   const klienten: KlientenZugang = {
-    schluessel: async name => (await k.einstellungen.getGlobalSetting(name)) || '',
-    zaehle: api => kontingent.checkAndIncrementRateLimit(api),
-    kontingentStand: api => kontingent.getRateLimitStatus(api),
+    schluessel: async name => (await k.einstellungen.globalerWert(name)) || '',
+    zaehle: api => kontingent.zaehleKontingent(api),
+    kontingentStand: api => kontingent.kontingentStand(api),
     drossel,
     bricksetVormerken: async (sn, fehler, bald) => ({
       ...(await k.auftraege.bricksetVormerken(sn, fehler, bald)),
@@ -48,7 +48,6 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     klienten,
     drossel,
     ...kontingent,
-    rebrickableDailyStatus: mit(k)(rateLimiter.rebrickableDailyStatus),
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
   };
   // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt

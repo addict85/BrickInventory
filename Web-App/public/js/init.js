@@ -500,8 +500,6 @@ async function pollPdfStatus(jobId, _btn, finish, startEta) {
 }
 
 export function plInit() {
-  // Capture server origin for local image paths
-  window._plServerUrl = window.location.origin;
   plRenderSets();
 }
 

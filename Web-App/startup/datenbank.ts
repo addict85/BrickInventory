@@ -80,6 +80,6 @@ export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
     );
   await altbestandAufruesten(d);
   await schluesselWechsel(d);
-  await d.bilder.initImageMisses();
-  await d.bilder.initImageQueue();
+  await d.bilder.starteFehlanzeige();
+  await d.bilder.starteBildbedarf();
 }

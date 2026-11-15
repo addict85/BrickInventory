@@ -17,7 +17,7 @@ import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './format.js';
 import { scopeQuery } from './scope.js';
-import { _pnlCache } from './zustand.js';
+import { _pnlCache, setFinKopfWert } from './zustand.js';
 import { kurveDa, loadPortfolioChart, setzeEinstand } from './wertkurve.js';
 import { basisAus, zeigeKennzahlen } from './finanz-kennzahlen.js';
 /** @typedef {import('./finanz-kennzahlen.js').Basis} Basis */
@@ -345,10 +345,9 @@ export async function loadFinance() {
     figs: parseFloat(figsVal?.total_value || '0'),
     alle: grandTotal,
   };
-  window._finPartsExtra = extra;
   // Diagramm, Kopfzahl und Karten zeigen denselben Marktwert und Einstand.
   const kopfWert = basis.bewertet > 0 ? basis.wert : grandTotal;
-  window._finGrandTotal = kopfWert;
+  setFinKopfWert(kopfWert);
   if (G('portfolio-current')) G('portfolio-current').textContent = kopfWert > 0 ? fmtN(kopfWert, cur) : '—';
   // Die Linie vergleicht mit der Wertkurve; fehlt Positionen der Marktpreis, nennt sie ihren Bezug.
   setzeEinstand(

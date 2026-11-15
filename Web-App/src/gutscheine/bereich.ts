@@ -4,7 +4,6 @@ import { Faecher } from '../infra/zwischenspeicher';
 import * as dienst from './dienst';
 import * as pdfTicket from './pdfTicket';
 import { verschluesseleGutscheinAltbestand } from './gutscheinDateien';
-import * as gutscheinGuthabenSchranke from './gutscheinGuthabenSchranke';
 import { zugang, type GutscheineAbhaengigkeiten, type GutscheineKontext } from './kontext';
 
 export type { GutscheineAbhaengigkeiten, GutscheineKontext } from './kontext';
@@ -21,16 +20,14 @@ export function erzeugeGutscheine(
       gutscheinBearbeiten: mit(k)(dienst.gutscheinBearbeiten),
       gutscheinKlartext: mit(k)(dienst.gutscheinKlartext),
       pdfFreigeben: mit(k)(dienst.pdfFreigeben),
-      exportFreigeben: mit(k)(dienst.exportFreigeben),
+      gibExportFrei: mit(k)(dienst.exportFreigeben),
       guthabenAbfragen: mit(k)(dienst.guthabenAbfragen),
       gutscheinListe: mit(k)(dienst.gutscheinListe),
       gutscheinErfassen: mit(k)(dienst.gutscheinErfassen),
-      stapelAnlegen: mit(k)(dienst.stapelAnlegen),
       gutscheinEntfernen: mit(k)(dienst.gutscheinEntfernen),
       gutscheinAusPdf: mit(k)(dienst.gutscheinAusPdf),
       gutscheineExportieren: mit(k)(dienst.gutscheineExportieren),
       gutscheinPdf: mit(k)(dienst.gutscheinPdf),
-      frageGuthabenAb: mit(k)(gutscheinGuthabenSchranke.frageGuthabenAb),
       loeseTicketEin: mit(k)(pdfTicket.loeseTicketEin),
       verschluesseleAltbestand: verschluesseleGutscheinAltbestand,
       // Umschlüsseln beim Start (startup/datenbank.ts): über alle Konten, ohne Anfrage.

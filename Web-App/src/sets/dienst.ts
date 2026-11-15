@@ -21,9 +21,9 @@ export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 async function preisFuerNeueErfassung(sk: SetsKontext, userId: number, setNumber: string) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', sk.haushalt.blickfeldIds(userId)), [userId]);
-  const cond = await sk.finanzen.resolveSetCondition(blickfeld, setNumber);
+  const cond = await sk.finanzen.setZustand(blickfeld, setNumber);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
-  const currency = String(await sk.einstellungen.getSetting(userId, 'currency', 'EUR'));
+  const currency = String(await sk.einstellungen.nutzerWert(userId, 'currency', 'EUR'));
   const cached = wertOder(
     await versuche('set-service:cached', sk.finanzen.marktpreisAusCache(setNumber, currency, cond)),
     null,
@@ -31,7 +31,7 @@ async function preisFuerNeueErfassung(sk: SetsKontext, userId: number, setNumber
   let pp = cached?.marktpreis || null;
   if (!pp)
     pp = wertOder(
-      await versuche('set-service:getCurrentMarketPrice', sk.finanzen.getCurrentMarketPrice(setNumber, userId, cond)),
+      await versuche('set-service:getCurrentMarketPrice', sk.finanzen.aktuellerMarktpreis(setNumber, userId, cond)),
       null,
     );
   if (!pp) {
@@ -206,7 +206,7 @@ export async function setAendern(
       // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu". Ohne Fang: Nach einem Lesefehler käme
       // sonst der Neupreis in ein gebrauchtes Set.
       const lastCond = await repo.zustandNeuesteSetErfassung(sk.db, ownerId, sn);
-      pp = await sk.finanzen.getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
+      pp = await sk.finanzen.aktuellerMarktpreis(sn, ownerId, lastCond?.condition || null);
     }
     const val = pp !== null && !Number.isNaN(pp) ? pp : null;
     await schreibeInLetzteErfassung(sk, 'purchase_price', val, ownerId, sn);

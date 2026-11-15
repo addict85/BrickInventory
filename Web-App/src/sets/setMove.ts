@@ -54,7 +54,7 @@ export async function setErfassungenUmhaengen(
   if (!dst) await repo.legeSetAn(t.db, toId, sn, src.added_at);
 
   for (const a of wanted) {
-    await t.bestand.recordAcquisitionForDay('set', toId, [sn], {
+    await t.bestand.bucheTageserfassung('set', toId, [sn], {
       quantity: a.quantity,
       price: a.purchase_price,
       condition: a.condition,
@@ -97,7 +97,7 @@ export async function manuelleErfassungUmhaengen(
   const dst = await repo.manuelleZeile(t.db, kind, toId, keyValues);
   if (!dst) await t.bestand.legeManuellAn(kind, toId, keyValues);
 
-  await t.bestand.recordAcquisitionForDay(kind, toId, keyValues, {
+  await t.bestand.bucheTageserfassung(kind, toId, keyValues, {
     quantity: movingQty,
     price: acq.unit_price,
     condition: acq.condition,

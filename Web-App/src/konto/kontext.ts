@@ -15,7 +15,7 @@ import * as zugaenge from './repository/zugaenge';
 import * as zweiterFaktor from './repository/zweiterFaktor';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
-import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { AuftraegeDienste } from '../auftraege';
 import type { MailDienste } from '../mail';
 import type { DrosselDienste } from '../drossel';
 import type { GeraeteDienste } from '../geraete';
@@ -30,7 +30,6 @@ export interface KontoAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
-  nacharbeit: Nacharbeit;
   mail: MailDienste;
   drossel: DrosselDienste;
   geraete: GeraeteDienste;

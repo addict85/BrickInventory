@@ -3,6 +3,8 @@
  *
  * Gegenprobe (durchgeführt): den findeSetImBlickfeld-Zweig aus routes/api_v1/sets.ts
  * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
+ * Gegenprobe (15.11.2026): in setVorhanden() (src/sets/erfassen.ts) die Nummer ohne
+ * normalisiereSetNummer zurückgegeben → rot „exists: false, set_number“ (ohne -1).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
  */
@@ -135,6 +137,10 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
       assert.equal(e.exists, erwartet, `exists für ${sn}`);
       if (erwartet) assert.ok(e.owner_user_id > 0, `Besitzer fehlt für ${sn}`);
     }
+    // Ohne Treffer nennt die Vorabfrage die Nummer so, wie sie angelegt würde (mit Suffix).
+    const neuOhneSuffix = NEU.replace(/-1$/, '');
+    const keins = await (await fetch(`${base}/api/v1/sets/exists/${neuOhneSuffix}`)).json();
+    assert.deepEqual([keins.exists, keins.set_number], [false, NEU], 'exists: false, set_number');
     // Das eigene Konto gewinnt, wenn beide dasselbe Set haben.
     await anlegen(subId, EIGEN);
     const beide = await (await fetch(`${base}/api/v1/sets/exists/${EIGEN}`)).json();

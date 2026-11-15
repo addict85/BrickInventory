@@ -28,11 +28,11 @@ export const hatGlobaleWerte = (e: EinstellungsEingabe) => GLOBALE_EINSTELLUNGEN
  * Ein erster API-Schlüssel lenkt nichts um; nur der Einrichtungsassistent fragt dafür nicht nach. */
 async function heikleSchluessel(k: VerwaltungKontext, e: EinstellungsEingabe): Promise<string[]> {
   const heikel: string[] = [];
-  const einrichtung = !(await k.einstellungen.getGlobalSetting('einrichtung_erledigt'));
+  const einrichtung = !(await k.einstellungen.globalerWert('einrichtung_erledigt'));
   for (const key of GLOBALE_EINSTELLUNGEN.filter(istHeikel)) {
     const neu = e[key];
     if (neu === undefined || (SECRET_KEYS.has(key) && istMaskiert(neu))) continue;
-    const alt = String((await k.einstellungen.getGlobalSetting(key)) ?? '');
+    const alt = String((await k.einstellungen.globalerWert(key)) ?? '');
     if (
       String(neu) === alt ||
       (einrichtung && alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled')
@@ -49,8 +49,8 @@ async function schreibeGlobal(kx: VerwaltungKontext, uid: number, e: Einstellung
   const geaendert: string[] = [];
   for (const key of GLOBALE_EINSTELLUNGEN) {
     if (e[key] === undefined || (SECRET_KEYS.has(key) && istMaskiert(e[key]))) continue;
-    if (String(e[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
-    await kx.einstellungen.setGlobalSetting(key, e[key]);
+    if (String(e[key]) !== String((await kx.einstellungen.globalerWert(key)) ?? '')) geaendert.push(key);
+    await kx.einstellungen.setzeGlobalenWert(key, e[key]);
   }
   if (geaendert.length) await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
@@ -71,7 +71,7 @@ export async function einstellungenSpeichern(
       fachfehler('ungueltig', 'wert_ungueltig');
     if (
       String(e.registration_enabled) === '1' &&
-      (await kx.einstellungen.getGlobalSetting('registration_enabled')) !== '1' &&
+      (await kx.einstellungen.globalerWert('registration_enabled')) !== '1' &&
       !(await kx.mail.mailBereit(e))
     )
       fachfehler('ungueltig', 'registrierung_braucht_mail');
@@ -90,7 +90,7 @@ export async function einstellungenSpeichern(
     kx.transaktion(async t => {
       const alt =
         global && e.api_limit_brickset !== undefined
-          ? parseInt((await t.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
+          ? parseInt((await t.einstellungen.globalerWert('api_limit_brickset')) || '100', 10)
           : null;
       if (global) await schreibeGlobal(t, o.uid, e);
       for (const key of KONTO_EINSTELLUNGEN)

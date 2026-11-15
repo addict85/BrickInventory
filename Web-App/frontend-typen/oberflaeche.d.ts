@@ -11,11 +11,6 @@ interface Window {
   __bimDunkelWert: (() => 'server' | 'system' | 'immer') | undefined;
   __bimNurDunkel: (theme: string) => boolean;
   __bimLabelTables: ((tabelle: Element | null) => void) | undefined;
-  _finGrandTotal: number;
-  _finPartsExtra: number;
-  _imgObserver: IntersectionObserver | null;
-  _partsScrollBound: boolean;
-  _plServerUrl: string;
   pdfjsLib: PdfJs | undefined;
 }
 

@@ -9,7 +9,7 @@ import addressparser from 'nodemailer/lib/addressparser';
 import { emailGueltig } from '../infra/validate';
 import { fehlertext } from '../infra/fehler';
 import { loeseAuf, mailserverAdresse } from '../infra/zielAdresse';
-const einstellung = (k: MailKontext, key: string) => k.einstellungen.getGlobalSetting(key, '');
+const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalerWert(key, '');
 
 function normiereFingerabdruck(wert: unknown): string {
   return String(wert ?? '')

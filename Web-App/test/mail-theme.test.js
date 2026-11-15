@@ -30,7 +30,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // kommen.
   assert.match(
     SRC,
-    /await k\.einstellungen\.getGlobalSetting\('app_theme'\)/,
+    /await k\.einstellungen\.globalerWert\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen',
   );
   // `'./settings'` ODER `'../src/einstellungen/settings'`: Der Mailer ist mit einer früheren Runde

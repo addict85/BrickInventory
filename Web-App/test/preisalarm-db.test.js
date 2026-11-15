@@ -78,7 +78,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     if (versandFehler) throw new Error(versandFehler);
     versandt.push(m);
   };
-  const pruefe = sn => A.pruefeSet(sn, { ...require('./helpers/sources').testDienste().mail, sendMail: versende });
+  const pruefe = sn => A.pruefeSet(sn, { ...require('./helpers/sources').testDienste().mail, sendeMail: versende });
 
   await t.test('die Richtung bedeutet, was sie sagt', () => {
     // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.

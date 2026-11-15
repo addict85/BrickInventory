@@ -11,7 +11,7 @@ import { alsAbrufFehler } from '../fremdquellen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import type { VerwaltungKontext } from './kontext';
 
-const QUELLEN: Record<string, (q: VerwaltungKontext['katalog']['quellen']) => Promise<void>> = {
+const QUELLEN: Record<string, (q: VerwaltungKontext['fremdquellen']['quellen']) => Promise<void>> = {
   rebrickable: q => q.pruefeRebrickableZugang(),
   brickset: q => q.pruefeBricksetZugang(),
   bricklink: q => q.pruefeBricklinkZugang(),
@@ -46,7 +46,7 @@ export async function quellePruefen(
   const pruefe = Object.hasOwn(QUELLEN, quelle) ? QUELLEN[quelle] : undefined;
   if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
   try {
-    await pruefe(k.katalog.quellen);
+    await pruefe(k.fremdquellen.quellen);
     return null;
   } catch (e) {
     return { code: quellenAbsage(e), quelle: QUELLEN_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) };
@@ -57,11 +57,11 @@ export async function cacheStatistik(k: VerwaltungKontext) {
   const leer = { count: 0, limit: 0, remaining: 0 };
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    ab.oder('cache', k.katalog.getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
+    ab.oder('cache', k.katalog.cacheStand(), { prices: 0, subsets: 0, catalog: 0 }),
     ab.oder('veraltete_preise', k.verwaltung.veraltetePreise(), 0),
-    ab.oder('kontingent_bricklink', k.katalog.getRateLimitStatus('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', k.katalog.getRateLimitStatus('rebrickable'), leer),
-    ab.oder('kontingent_brickset', k.katalog.getRateLimitStatus('brickset'), leer),
+    ab.oder('kontingent_bricklink', k.fremdquellen.kontingentStand('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.fremdquellen.kontingentStand('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.fremdquellen.kontingentStand('brickset'), leer),
   ]);
   return {
     ...stats,
@@ -75,8 +75,8 @@ export async function cacheStatistik(k: VerwaltungKontext) {
 export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
   await k.finanzen.leerePreisCache();
   if (alle) {
-    await k.katalog.clearSubsetsCache();
-    await k.katalog.clearCatalogCache();
+    await k.katalog.leereTeilmengenCache();
+    await k.katalog.leereKatalogCache();
   }
 }
 
@@ -84,7 +84,7 @@ export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
 export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('verwaltung:getRateLimitStatus', k.katalog.getRateLimitStatus('brickset'));
+  const rl = await versuche('verwaltung:getRateLimitStatus', k.fremdquellen.kontingentStand('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
@@ -134,7 +134,7 @@ export async function preisJobStand(k: VerwaltungKontext) {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { job, rate_limit: await k.katalog.getRateLimitStatus('bricklink') };
+  return { job, rate_limit: await k.fremdquellen.kontingentStand('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
@@ -148,12 +148,12 @@ export const katalogAbgleichJetzt = (k: VerwaltungKontext) => k.auftraege.zieheP
 
 /** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {
-  await k.katalog.setzeKontingentZurueck('brickset');
+  await k.fremdquellen.setzeKontingentZurueck('brickset');
   await k.auftraege.bricksetJetzt(sn);
 }
 
 export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
-  await k.katalog.quellen.ausRetryWarteschlange(sn);
+  await k.fremdquellen.quellen.ausRetryWarteschlange(sn);
   await k.auftraege.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
@@ -163,12 +163,12 @@ export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, tim
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
     if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
-    await k.einstellungen.setGlobalSetting(
+    await k.einstellungen.setzeGlobalenWert(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
     );
   } else if (name === 'priceJob') {
-    await k.einstellungen.setGlobalSetting(
+    await k.einstellungen.setzeGlobalenWert(
       'price_job_interval_minutes',
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );
@@ -189,7 +189,7 @@ export async function zeitplanNeuPlanen(k: VerwaltungKontext) {
  * werden mitgezählt. */
 export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: boolean) {
   const zuVergessen = await (alleErneut ? kx.verwaltung.setFehlanzeigen() : kx.verwaltung.setFehlanzeigenOhne404());
-  const verworfen = zuVergessen.length ? await kx.katalog.bilder.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
+  const verworfen = zuVergessen.length ? await kx.bilder.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   const vorhanden: Set<string> = new Set();
   try {
@@ -220,8 +220,8 @@ export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: 
 
   let neuEingereiht = 0;
   if (offenUrls.length) {
-    neuEingereiht = await kx.katalog.bilder.katalogBilderVormerken(offenUrls, offenSets);
-    await kx.katalog.bilder.bildbedarfAnstossen();
+    neuEingereiht = await kx.bilder.katalogBilderVormerken(offenUrls, offenSets);
+    await kx.bilder.bildbedarfAnstossen();
   }
   const offen = await kx.verwaltung.offeneBildauftraege();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
@@ -245,7 +245,7 @@ export async function bildFehlanzeigenVergessen(
   const v = k.verwaltung;
   const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setFehlanzeigen()).map(r => r.cache_key);
   if (vorschauen) schluessel.push(...(await v.vorschauFehlanzeigen()).map(r => r.cache_key));
-  return schluessel.length ? k.katalog.bilder.vergissFehlend(schluessel) : 0;
+  return schluessel.length ? k.bilder.vergissFehlend(schluessel) : 0;
 }
 
 export function serverProtokollSeit(k: VerwaltungKontext, minuten: number) {

@@ -34,9 +34,9 @@ async function meldeKontoaenderungFuer(
   if (!(await kx.mail.mailEingerichtet())) return false;
   const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
-  const lang = String(await kx.einstellungen.getSetting(uid, 'language', 'de'));
+  const lang = String(await kx.einstellungen.nutzerWert(uid, 'language', 'de'));
   const haushalt = (await kx.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
-  const r = await kx.mail.sendKontoHinweisMail(k.email, k.username, art, {
+  const r = await kx.mail.mailKontoHinweis(k.email, k.username, art, {
     lang,
     haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}),
@@ -77,10 +77,10 @@ export async function haushaltBeitreten(k: KontoKontext, uid: number, code: stri
   const ich = await k.konten.profilZeile(uid);
   if (ich?.email) {
     const sprache = await k.einstellungen
-      .getSetting(uid, 'language', 'de')
+      .nutzerWert(uid, 'language', 'de')
       .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
     void k.mail
-      .sendHaushaltVerknuepftMail(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
+      .mailHaushaltVerknuepft(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
       .catch(logAndContinue('haushalt:hinweismail'));
   }
   return r;

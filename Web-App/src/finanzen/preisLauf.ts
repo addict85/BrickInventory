@@ -57,13 +57,13 @@ async function fetchAndCachePrice(
   const vorhanden = await preisAusCache(k, setNumber, condition, currency, ttl);
   if (cacheVerwendbar(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
-  const rl = await k.katalog.kontingentFrei('bricklink');
+  const rl = await k.fremdquellen.kontingentFrei('bricklink');
   if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
-  let g: Awaited<ReturnType<typeof k.katalog.getPriceGuide>>;
+  let g: Awaited<ReturnType<typeof k.katalog.preisfuehrer>>;
   try {
-    g = await k.katalog.getPriceGuide(setNumber, condition, guideType, currency);
+    g = await k.katalog.preisfuehrer(setNumber, condition, guideType, currency);
   } catch (e) {
     if (e instanceof BricklinkNichtErreichbar) return 'nicht_erreichbar';
     log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0, 60)}`);
@@ -75,10 +75,10 @@ async function fetchAndCachePrice(
   const p = await speicherePreis(k, setNumber, condition, currency, g);
 
   if (!hatPreis({ avg_price: p.avg, qty_avg_price: p.qavg })) {
-    const rl2 = await k.katalog.kontingentFrei('bricklink');
+    const rl2 = await k.fremdquellen.kontingentFrei('bricklink');
     if (rl2.allowed) {
       try {
-        const g2 = await k.katalog.getPriceGuide(setNumber, fallback, guideType, currency);
+        const g2 = await k.katalog.preisfuehrer(setNumber, fallback, guideType, currency);
         await speicherePreis(k, setNumber, fallback, currency, g2);
       } catch (e) {
         meldeFehler('preis-job:rueckfall-zustand', e);
@@ -159,8 +159,8 @@ async function aktualisiereKonto(
   st: Laufstand,
   k?: AuftragsKontext,
 ) {
-  const currency = await kx.einstellungen.getSetting(userId, 'currency', 'EUR');
-  const ttlHours = (await kx.einstellungen.getGlobalSetting('price_cache_ttl', '24')) || '24';
+  const currency = await kx.einstellungen.nutzerWert(userId, 'currency', 'EUR');
+  const ttlHours = (await kx.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
   // Drei Abfragen je Konto statt je Set.
   const zustaende = await zustaendeJeSet(kx, userId, valid);
@@ -213,7 +213,7 @@ async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?
 
 /** Hält ein anderer Prozess die Sperre, wird der Auftrag eine Minute später neu versucht. */
 async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
-  if (!(await kx.einstellungen.getGlobalSetting('bricklink_consumer_key', ''))) {
+  if (!(await kx.einstellungen.globalerWert('bricklink_consumer_key', ''))) {
     log('BrickLink credentials not configured, skipping');
     await merkeStand(kx, {});
     return;
@@ -307,10 +307,10 @@ async function refreshPriceForSet(
     log(`Skipping invalid: ${setNumber}`);
     return;
   }
-  const ck = await k.einstellungen.getGlobalSetting('bricklink_consumer_key', '');
+  const ck = await k.einstellungen.globalerWert('bricklink_consumer_key', '');
   if (!ck) return;
   try {
-    const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
+    const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
     const guideType = 'sold';
     // Alle Zustände, die das Set führt — sonst fehlt bei gemischten Sets eine Hälfte.
     const conditions = await conditionsNeededFor(k, setNumber, userId, hintCondition);

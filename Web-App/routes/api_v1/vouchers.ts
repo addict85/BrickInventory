@@ -97,7 +97,7 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
 
   router.endpunkt('POST /api/v1/vouchers/export/pdf-freigabe', requireToken, async (req, res) => {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.gutscheine.exportFreigeben(req.apiUser.user_id), gueltig_sek: TICKET_SEK };
+    return { ticket: await d.gutscheine.gibExportFrei(req.apiUser.user_id), gueltig_sek: TICKET_SEK };
   });
 
   router.endpunkt('GET /api/v1/vouchers/export/pdf', requireToken, async (req, res) => {

@@ -76,7 +76,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
       condition,
     });
     // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
-    await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
+    await k.bestand.bucheTageserfassung('fig', uid, [num], {
       quantity,
       // In der Stammzeile ist die 0 ein Anzeigewert, in der Erfassung hiesse sie
       // „für null gekauft".
@@ -104,7 +104,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
   if (blNum) await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum);
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
   // Erfassungshistorie und G&V stimmen.
-  await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
+  await k.bestand.bucheTageserfassung('fig', uid, [num], {
     quantity,
     price: erfassungsPreis,
     geschaetzt,
@@ -137,7 +137,7 @@ async function figurBeschreibung(
   // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
   if (!fig_name || !(image_url || lokal?.hatBild)) {
     // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
-    const abruf = await versuche('figuren:getMinifigInfo', k.katalog.quellen.getMinifigInfo(num));
+    const abruf = await versuche('figuren:getMinifigInfo', k.fremdquellen.quellen.getMinifigInfo(num));
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: Was der Katalog schon wusste, bleibt stehen.
     if (gefunden) fig_name = fig_name || gefunden.fig_name;
@@ -168,7 +168,7 @@ export async function updateManualFig(
       [figNumber],
       wunsch,
       cond,
-      () => k.finanzen.getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
+      () => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, existing.bl_fig_number, cond),
       ab,
     );
   }
@@ -185,7 +185,7 @@ export async function updateManualFig(
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finanzen.getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
+      zustand => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, newBlNum, zustand),
     );
     // In die NEUESTE Erfassung, wie bei den Teilen.
     await k.manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
@@ -227,7 +227,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       let imageUrl: string | null = null;
       if (!figName) {
         // Ohne Rebrickable wird die Figur ohne Namen erfasst; der Bildnachlauf holt ihn nicht nach.
-        const abruf = await versuche('figuren:import-info', k.katalog.quellen.getMinifigInfo(figNumber));
+        const abruf = await versuche('figuren:import-info', k.fremdquellen.quellen.getMinifigInfo(figNumber));
         const info = abruf.ok ? abruf.wert : null;
         if (info) {
           figName = info.fig_name;
@@ -249,7 +249,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       };
 
       if (await manuelleFigur(k, uid, figNumber)) {
-        await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+        await k.bestand.bucheTageserfassung('fig', uid, [figNumber], erfassung);
         updated++;
         results.push({ fig_number: figNumber, action: 'updated' });
         continue;
@@ -258,7 +258,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       await k.katalog.merkeFigur(figNumber, figName, imageUrl, null, k.db, eingetippt ? uid : null);
       await k.bestand.legeFigurManuellAn(uid, figNumber);
       if (blFigNumber) await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber);
-      await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+      await k.bestand.bucheTageserfassung('fig', uid, [figNumber], erfassung);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {

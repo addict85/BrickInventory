@@ -1,4 +1,4 @@
-import type { Db, TxOptionen } from '../../db/database';
+import type { TxOptionen, Zugang } from './zugang';
 import { imSystemkontext, zeilenKontext } from './kontoKontext';
 
 /** Bindet den Zugang (Datenbank oder Kontext) an eine Funktion; der Übersetzer prüft, dass
@@ -38,7 +38,7 @@ export function imSystem<Z extends { inTransaktion(): boolean }, A extends unkno
 
 /** Gebundene Repositories, Dienste tieferer Bereiche und die Arbeitseinheit. `transaktion` reicht
  * `t`, ganz über der Verbindung der Transaktion gebaut: Alles darin fragt über sie, ohne Umweg. */
-export type Kontext<A extends { db: Db }, Z> = A &
+export type Kontext<A extends { db: object }, Z> = A &
   Z & {
     transaktion<T>(fn: (t: Kontext<A, Z>) => Promise<T>, o?: TxOptionen): Promise<T>;
   };
@@ -48,14 +48,14 @@ export type Kontext<A extends { db: Db }, Z> = A &
 export type Einblick<K> = (k: K) => void;
 
 /** Ein Satz Dienste, der sich über einer Transaktion neu baut; Zustand (Fächer, Drosseln) bleibt geteilt. */
-export type Bereich<D> = D & { ueber(db: Db): Bereich<D> };
+export type Bereich<D, Z = unknown> = D & { ueber(db: Z): Bereich<D, Z> };
 
-function istUmbaubar(w: unknown): w is { ueber(db: Db): unknown } {
+function istUmbaubar(w: unknown): w is { ueber(db: unknown): unknown } {
   return typeof w === 'object' && w !== null && typeof (w as { ueber?: unknown }).ueber === 'function';
 }
 
 /** Die Abhängigkeiten über `db`: der Zugang und jeder umbaubare Satz Dienste; alles andere bleibt. */
-function umbau<A extends { db: Db }>(a: A, db: Db): A {
+function umbau<Z, A extends { db: Z }>(a: A, db: Z): A {
   const aus: Record<string, unknown> = {};
   for (const [name, wert] of Object.entries(a)) aus[name] = istUmbaubar(wert) ? wert.ueber(db) : wert;
   aus.db = db;
@@ -64,9 +64,12 @@ function umbau<A extends { db: Db }>(a: A, db: Db): A {
 
 /** `t` entsteht je Verbindung einmal: Der Zugang der äussersten Ebene ist je Verbindung derselbe
  * (db/database.ts, verbindungsZugang), nur Sicherungspunkte bringen einen neuen. */
-export function baueKontext<A extends { db: Db }, Z extends object>(a: A, zugang: (db: Db) => Z): Kontext<A, Z> {
-  const jeDb = new WeakMap<Db, Kontext<A, Z>>();
-  const ueber = (db: Db): Kontext<A, Z> => {
+export function baueKontext<D extends Zugang<D> & object, A extends { db: D }, Z extends object>(
+  a: A,
+  zugang: (db: D) => Z,
+): Kontext<A, Z> {
+  const jeDb = new WeakMap<D, Kontext<A, Z>>();
+  const ueber = (db: D): Kontext<A, Z> => {
     const da = jeDb.get(db);
     if (da) return da;
     const t = baueKontext(umbau(a, db), zugang);
@@ -82,18 +85,18 @@ export function baueKontext<A extends { db: Db }, Z extends object>(a: A, zugang
 
 /** Die Fabrik eines Bereichs: `dienste` schliesst über den Kontext `k`. Je Verbindung
  * entsteht der Satz einmal; `ueber(tx.db)` baut ihn für eine Transaktion. */
-export function baueBereich<A extends { db: Db }, Z extends object, D extends object>(
+export function baueBereich<B extends Zugang<B> & object, A extends { db: B }, Z extends object, D extends object>(
   a: A,
-  zugang: (db: Db) => Z,
+  zugang: (db: B) => Z,
   dienste: (k: Kontext<A, Z>) => D,
   einblick?: Einblick<Kontext<A, Z>>,
-): Bereich<D> {
-  const jeDb = new WeakMap<Db, Bereich<D>>();
-  const bau = (abh: A, zeige?: Einblick<Kontext<A, Z>>): Bereich<D> => {
+): Bereich<D, B> {
+  const jeDb = new WeakMap<B, Bereich<D, B>>();
+  const bau = (abh: A, zeige?: Einblick<Kontext<A, Z>>): Bereich<D, B> => {
     const k = baueKontext(abh, zugang);
     zeige?.(k);
-    const d: Bereich<D> = Object.assign(dienste(k), {
-      ueber: (db: Db): Bereich<D> => {
+    const d: Bereich<D, B> = Object.assign(dienste(k), {
+      ueber: (db: B): Bereich<D, B> => {
         if (db === abh.db) return d;
         const da = jeDb.get(db);
         if (da) return da;

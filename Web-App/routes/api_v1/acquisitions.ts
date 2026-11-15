@@ -73,7 +73,7 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 't
   );
 
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/acquisitions', requireToken, async req => {
-    const rows = await d.teile.getPartAcquisitions(sichtVon(req), req.pfad.partNumber, req.pfad.colorId);
+    const rows = await d.teile.teilErfassungen(sichtVon(req), req.pfad.partNumber, req.pfad.colorId);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
   router.endpunkt(
@@ -88,7 +88,7 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 't
   );
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/acquisitions', requireToken, async req => {
-    const rows = await d.figuren.getFigAcquisitions(sichtVon(req), req.pfad.figNumber);
+    const rows = await d.figuren.figurErfassungen(sichtVon(req), req.pfad.figNumber);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
   router.endpunkt(

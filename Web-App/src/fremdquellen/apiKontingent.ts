@@ -20,7 +20,7 @@ const ALLE_KONTEN = -1;
 const heute = (k: FremdquellenKontext) => k.uhr.datum().toISOString().slice(0, 10);
 
 export async function getLimitForApi(k: FremdquellenKontext, apiName: ApiName): Promise<number> {
-  return parseInt(await k.einstellungen.getGlobalSetting(`api_limit_${apiName}`, ''), 10) || VORGABEN[apiName] || 4000;
+  return parseInt(await k.einstellungen.globalerWert(`api_limit_${apiName}`, ''), 10) || VORGABEN[apiName] || 4000;
 }
 
 const grenzeJeKonto = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_JE_KONTO));

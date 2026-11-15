@@ -5,7 +5,6 @@ export { BRICKSET_HOECHSTENS } from './bricksetAuftrag';
 export type { ImportEingabe } from './importAlsAuftrag';
 export { buildJobStatus, csvImportBus } from './importAuftrag';
 export type { ImportErgebnis } from './importAuftrag';
-export type { Nacharbeit } from './nacharbeit';
 export type { ImportNutzlast, Nutzlast, SetCsvNutzlast } from './nutzlasten';
 export { pdfDateiPfad } from './pdfAuftraege';
 export { DAILY_JOBS, naechsteUhrzeit } from './zeitplan';

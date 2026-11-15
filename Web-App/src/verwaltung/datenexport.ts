@@ -36,9 +36,9 @@ export async function datenZip(
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiv };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     k.sets.setsAlsCsv(uid),
-    k.bestand.buildPartsCsv(uid),
-    k.bestand.buildFigsCsv(uid),
-    k.merkliste.buildMerklisteCsv(uid),
+    k.bestand.teileAlsCsv(uid),
+    k.bestand.figurenAlsCsv(uid),
+    k.merkliste.merklisteAlsCsv(uid),
     k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
   ]);
   const archiv = new ZipArchive({ zlib: { level: 9 } });
@@ -96,8 +96,8 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
       if (SECRET_KEYS.has(key) && istMaskiert(global[key])) continue;
-      if (String(global[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
-      await kx.einstellungen.setGlobalSetting(key, global[key]);
+      if (String(global[key]) !== String((await kx.einstellungen.globalerWert(key)) ?? '')) geaendert.push(key);
+      await kx.einstellungen.setzeGlobalenWert(key, global[key]);
       imported++;
     }
     if (geaendert.length)

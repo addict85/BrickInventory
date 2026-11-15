@@ -18,6 +18,8 @@ export const STATUS_DER_ART: Readonly<Record<FehlerArt, number>> = {
   fremddienst: 502,
   nicht_verfuegbar: 503,
   zeitueberschreitung: 504,
+  falscher_host: 421,
+  zu_alt: 426,
 };
 
 /** Status eines geworfenen Fehlers: Fachfehler nach Art, Fehler von Express

@@ -44,7 +44,6 @@ const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { erzeugeDb } = _req('db/database.js');
-const N = _req('src/auftraege/nacharbeit.js');
 
 const NAME = testName('sets_zweite');
 const SN = '99877-1';
@@ -109,7 +108,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
 
   // Wie der Server (startup/verdrahtung.ts), nur über den zweiten Zugang.
   const { baueDienste } = _req('startup/verdrahtung.js');
-  const alle = baueDienste(zweite, { nacharbeit: N.OHNE_NACHARBEIT });
+  const alle = baueDienste(zweite);
   const sets = alle.sets;
   const prozess = zaehle(quellen.testZugang());
   t.after(() => prozess.zurueck());

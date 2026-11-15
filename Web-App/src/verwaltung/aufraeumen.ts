@@ -28,9 +28,9 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
       ['Anmeldezähler', k.konto.raeumeAnmeldezaehlerAuf],
       ['Verwalterübernahmen', k.konto.fuehreFaelligeUebernahmenAus],
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
-      ['PDF-Aufträge', k.auftraege.cleanOldPdfJobs],
+      ['PDF-Aufträge', k.auftraege.raeumePdfAuftraegeAuf],
       ['alte Aufträge', k.auftraege.raeumeErledigteAuf],
-      ['verfallene Bildwünsche', k.katalog.bilder.loescheVerfallene],
+      ['verfallene Bildwünsche', k.bilder.loescheVerfallene],
       ['Idempotenzschlüssel', k.idempotenz.raeumeIdempotenzAuf],
     ],
     lauf,
@@ -40,12 +40,9 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
 function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['Preisverlauf', k.finanzen.purgeAltePreise],
+      ['Preisverlauf', k.finanzen.loescheAltePreise],
       ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
-      [
-        'Bild-Cache',
-        () => k.katalog.bilder.raeumeBildCacheAuf(k.katalog.bilder.bildGrenzen().cacheMaxBytes, k.uhr.jetzt()),
-      ],
+      ['Bild-Cache', () => k.bilder.raeumeBildCacheAuf(k.bilder.bildGrenzen().cacheMaxBytes, k.uhr.jetzt())],
       ['Verwaltungsprotokoll', () => k.konto.raeumeProtokollAuf()],
       ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(k.db)],
     ],

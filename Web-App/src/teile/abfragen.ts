@@ -60,10 +60,10 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
   }
 
   // Rückfall über getAllSetParts(), nur mit Rebrickable-Schlüssel.
-  const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
+  const rbKey = await k.einstellungen.globalerWert('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
-      const items = await ab.oder('rebrickable_teile', k.katalog.getAllSetParts(sn), []);
+      const items = await ab.oder('rebrickable_teile', k.katalog.alleSetTeile(sn), []);
       if (!items?.length) continue;
       const rbParts = items
         .filter((it: RbSetTeil) => !it.is_spare)
@@ -221,7 +221,7 @@ export async function getBlColorMap(k: TeileKontext) {
     for (const [id, blId] of karte) map[id] = blId;
     return { map, source: 'db' };
   }
-  const key = await k.katalog.quellen.getRbKey();
+  const key = await k.fremdquellen.quellen.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
   // Bricht der Abruf ab, ist die Tabelle unvollständig; das sagt `degradiert`.
   const ab = new Abstriche();
@@ -232,7 +232,7 @@ export async function getBlColorMap(k: TeileKontext) {
   while (hasNext) {
     const { status, body } = await ab.oder(
       'rebrickable_farben',
-      k.katalog.quellen.httpsGetRobust(
+      k.fremdquellen.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         15000,
@@ -274,7 +274,7 @@ export async function getManualParts(
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
   const rows = await k.teileListe.manuelleTeile(uids, { search, storage }, seite);
-  const mitZustand = await k.bestand.applyManualCondition(uids, rows, 'part');
+  const mitZustand = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
   // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
   // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
   const preise = await ab.oder(

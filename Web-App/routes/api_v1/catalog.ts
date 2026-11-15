@@ -51,7 +51,7 @@ export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     if (!raw) {
       return { links: {} };
     }
-    const map = await d.katalog.resolveMany(
+    const map = await d.katalog.blLinksAufloesen(
       raw
         .split(',')
         .map(s => s.trim())

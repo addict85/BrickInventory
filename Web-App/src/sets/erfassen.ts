@@ -24,7 +24,7 @@ export interface Erfassung {
 export async function erfassungBuchen(sk: SetsKontext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
-  await sk.bestand.recordAcquisitionForDay('set', e.konto, [e.setNumber], {
+  await sk.bestand.bucheTageserfassung('set', e.konto, [e.setNumber], {
     quantity: e.menge,
     price: pp,
     condition: cond,
@@ -52,6 +52,12 @@ export async function findeSetImBlickfeld(
   const row = await repo.setImBlickfeld(sk.db, await sk.haushalt.blickfeldIds(viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
+}
+
+/** Für „gibt es das schon?“: ohne Treffer die Nummer so, wie sie angelegt würde. */
+export async function setVorhanden(sk: SetsKontext, viewerId: number, setNumber: string) {
+  const treffer = await findeSetImBlickfeld(sk, viewerId, setNumber);
+  return { exists: !!treffer, ...(treffer ?? { set_number: normalisiereSetNummer(setNumber) }) };
 }
 
 /** ergaenzen (= neu): angelegt; zweit: ein vorhandenes Set aufgestockt; csv: aus dem CSV-Import. */
@@ -168,7 +174,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.getSetInfo(sn));
+  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.setInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
     name = rb.name;
@@ -179,7 +185,10 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
-    const bs = wertOder(await versuche('set-anlegen:brickset-info', sk.katalog.quellen.brickset.getSetInfo(sn)), null);
+    const bs = wertOder(
+      await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.getSetInfo(sn)),
+      null,
+    );
     if (bs) {
       name ??= bs.name;
       year ??= bs.year;
@@ -191,12 +200,9 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche(
-    'set-anlegen:bild-laden',
-    Promise.race([sk.katalog.bilder.setBildLaden(imageUrl, sn), frist]),
-  );
+  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.bilder.setBildLaden(imageUrl, sn), frist]));
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bilder.vorschauErzeugen(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.bilder.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await sk.katalog.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
@@ -219,7 +225,7 @@ export async function setErgaenzen(
     name = k.name ?? name;
   }
   for (const z of await repo.erfassungenOhnePreisDesSets(sk.db, konto, sn)) {
-    const preis = await sk.finanzen.getCurrentMarketPrice(sn, konto, z.condition || null);
+    const preis = await sk.finanzen.aktuellerMarktpreis(sn, konto, z.condition || null);
     if (preis) await sk.bestand.setzeGeschaetztenPreis('set', z.id, preis);
   }
   return { name };

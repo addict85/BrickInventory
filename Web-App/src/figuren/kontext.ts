@@ -9,7 +9,8 @@ import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
-import type { Nacharbeit } from '../auftraege';
+import type { AuftraegeDienste } from '../auftraege';
+import type { FremdquellenDienste } from '../fremdquellen';
 import type { Uhr } from '../infra/uhr';
 
 export interface FigurenAbhaengigkeiten {
@@ -20,7 +21,8 @@ export interface FigurenAbhaengigkeiten {
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
   bestand: BestandDienste;
-  nacharbeit: Nacharbeit;
+  fremdquellen: FremdquellenDienste;
+  auftraege: AuftraegeDienste;
 }
 
 export const zugang = (db: Db) => ({

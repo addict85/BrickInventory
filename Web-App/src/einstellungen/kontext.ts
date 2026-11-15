@@ -12,8 +12,6 @@ export interface EinstellungenAbhaengigkeiten {
   /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
   faecher: Faecher;
   drossel: DrosselDienste;
-  /** Ein Währungswechsel stösst den Preislauf an (späte Bindung, startup/verdrahtung.ts). */
-  nacharbeit: { preisJobAnstossen(): void };
 }
 
 /** Mailserver, Registrierung, Schlüssel stellt keine eingeschleuste Abfrage um (0117). */

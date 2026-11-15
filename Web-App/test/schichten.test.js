@@ -154,11 +154,17 @@ test('kein Zustand auf global', () => {
       /\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g,
     ))
       treffer.push(`${d}: ${m[0].trim()}`);
+  // Die Oberfläche teilt Zustand über public/js/zustand.js, nicht über `window._…`.
+  // Gegenprobe (15.11.2026): `window._finGrandTotal = kopfWert` zurück in finance.js → rot.
+  const js = path.join(ROOT, 'public', 'js');
+  for (const f of fs.readdirSync(js).filter(f => f.endsWith('.js') && !f.includes('bundle')))
+    for (const m of ohneKommentare(fs.readFileSync(path.join(js, f), 'utf8')).matchAll(/\bwindow\._[a-zA-Z]\w*/g))
+      treffer.push(`public/js/${f}: ${m[0]}`);
   assert.deepEqual(treffer, []);
 });
 
 test('src/ und clients/ importieren nichts aus jobs/', () => {
-  // Was src/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
+  // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/auftraege);
   // die Ausführung setzt startup/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
@@ -260,7 +266,7 @@ test('keine Route führt SQL aus oder importiert aus db/', () => {
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
-  // Jobs steuert eine Route über src/auftraege/nacharbeit.ts und die Auftragstabelle,
+  // Jobs steuert eine Route über die Dienste von src/auftraege und die Auftragstabelle,
   // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in
@@ -621,10 +627,10 @@ function gebundeneDienste() {
 function routenNurUeberFabrik() {
   // Ein Import aus der index.ts liefe über die Fassade des Prozesses; die Route sähe
   // nicht, welche Dienste sie braucht. Ausgenommen: die Wächter vor allen Routern.
-  // Gegenprobe (13.11.2026): `import { getParts } from '../../src/teile'` in
-  // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: teile.getParts“.
+  // Gegenprobe (13.11.2026): `import { teileLesen } from '../../src/teile'` in
+  // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: teile.teileListe“.
   const dienste = gebundeneDienste();
-  assert.ok(dienste.get('teile')?.has('getParts') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
+  assert.ok(dienste.get('teile')?.has('teileLesen') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
   const treffer = [];
   for (const d of tsUnter('routes')) {
     if (d === 'routes/api_v1/middleware.ts') continue;
@@ -928,6 +934,7 @@ const STUFEN = [
   ['src/sets'],
   ['src/teile', 'src/figuren', 'src/merkliste', 'src/gutscheine'],
   ['src/sammlung', 'src/verwaltung'],
+  ['src/dienste.ts'],
   ['jobs', 'routes'],
   ['startup'],
   ['server.ts'],
@@ -935,21 +942,35 @@ const STUFEN = [
 const stufeVon = new Map(STUFEN.flatMap((s, i) => s.map(b => [b, i])));
 const bereichsName = rel => (rel.startsWith('src/') ? rel.split('/').slice(0, 2).join('/') : rel.split('/')[0]);
 
-/** Laufzeit-Kanten zwischen Bereichen: `import type` zählt nicht, import() und `export … from` schon. */
-function bereichsKanten() {
+/** Je Datei, wer sie importiert, wie der Übersetzer es auflöst: auch `import type`, import()
+ * und `export … from`. Eine Regex verfehlte Typimporte und Pfade über index.ts. */
+function uebersetzerKanten(ausgabe) {
   const kanten = [];
-  const alle = tsUnter('src', 'db', 'clients', 'jobs', 'routes', 'startup').concat('server.ts');
-  const bekannt = new Set(alle);
-  for (const d of alle) {
-    const von = bereichsName(d);
-    for (const z of aufgeloesteImporte(d)) {
-      const ziel = [z + '.ts', z + '/index.ts', z].find(k => bekannt.has(k));
-      if (!ziel) continue;
-      const nach = bereichsName(ziel);
-      if (nach !== von) kanten.push({ d, ziel, von, nach });
-    }
+  let ziel = null;
+  for (const z of ausgabe.split('\n')) {
+    if (/^\S/.test(z)) ziel = z.trim();
+    const m = /^\s+Imported via '[^']+' from file '([^']+)'/.exec(z);
+    if (m && ziel && !ziel.includes('node_modules')) kanten.push({ d: m[1], ziel });
   }
   return kanten;
+}
+
+let _kanten = null;
+/** Kanten zwischen Bereichen aus tsc --explainFiles über tsconfig.json; einmal je Lauf. */
+function bereichsKanten() {
+  if (!_kanten) {
+    const tsc = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
+    const r = require('node:child_process').spawnSync(
+      process.execPath,
+      [tsc, '-p', 'tsconfig.json', '--noEmit', '--explainFiles'],
+      { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+    );
+    _kanten = uebersetzerKanten(r.stdout)
+      .filter(k => !/^test\//.test(k.d) && !/^test\//.test(k.ziel))
+      .map(k => ({ ...k, von: bereichsName(k.d), nach: bereichsName(k.ziel) }))
+      .filter(k => k.von !== k.nach);
+  }
+  return _kanten;
 }
 
 test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
@@ -957,6 +978,16 @@ test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
   // in clients/brickset.ts → rot (clients → src/einstellungen); dasselbe mit
   // `import { mitVersion } from '../sets/setNummer'` in src/katalog/dienst.ts,
   // nachdem setNummer wieder unter src/sets lag → rot (katalog → sets).
+  // Gegenproben (15.11.2026, Übersetzer statt Regex): `import type { Db } from '../../db/database'`
+  // in src/infra/bereich.ts → rot (src/infra → db); die Stufe von src/dienste.ts gestrichen
+  // → rot „Bereich ohne Stufe“; die späte Bindung `d().katalog.…` zurück in verdrahtung.ts → rot.
+  assert.deepEqual(
+    uebersetzerKanten("a.ts\n   Imported via './a' from file 'b.ts'\nc.ts\n   Matched by include pattern"),
+    [{ d: 'b.ts', ziel: 'a.ts' }],
+    'Selbstbeweis: die Ausgabe von --explainFiles wird gelesen',
+  );
+  // Ein höherer Bereich horcht auf ein Ereignis des tieferen; späte Bindung umginge die Stufen.
+  assert.doesNotMatch(quelltext('startup/verdrahtung.ts'), /\bd\(\)\.\w+/, 'späte Bindung in der Verdrahtung');
   const kanten = bereichsKanten();
   assert.ok(kanten.length > 500, `nur ${kanten.length} Kanten gefunden — greift die Suche noch?`);
   const ohneStufe = [...new Set(kanten.flatMap(k => [k.von, k.nach]))].filter(b => !stufeVon.has(b));
@@ -969,7 +1000,7 @@ test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
 
 test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
   // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
-  // vorbei fände keinen Schlüssel. `import type` ist erlaubt, Ausnahmen gibt es keine.
+  // vorbei fände keinen Schlüssel. Auch `import type` zählt, Ausnahmen gibt es keine.
   // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
   // src/teile/manuelleTeile.ts → rot (05.11.2026); `import { erzeugeBrickset } from
   // '../clients/brickset'` in startup/verdrahtung.ts → rot (14.11.2026).

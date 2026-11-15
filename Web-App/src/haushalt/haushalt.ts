@@ -176,8 +176,8 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
     k.transaktion(async t => {
       await sperreHaushaltswaehrung(t.db);
       const [curMain, curSub] = await Promise.all([
-        t.einstellungen.getSetting(mainId, 'currency', 'EUR'),
-        t.einstellungen.getSetting(subId, 'currency', 'EUR'),
+        t.einstellungen.nutzerWert(mainId, 'currency', 'EUR'),
+        t.einstellungen.nutzerWert(subId, 'currency', 'EUR'),
       ]);
       if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
       await t.repository.verknuepfe(mainId, subId);
@@ -234,7 +234,7 @@ export async function haushaltsStand(k: HaushaltKontext, uid: number) {
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
     k.repository.kontoNamen(h.elternIds, 'username'),
     ab.oder('einladungen', k.repository.offeneEinladungen(id), 0),
-    k.einstellungen.getSetting(id, 'currency', 'EUR'),
+    k.einstellungen.nutzerWert(id, 'currency', 'EUR'),
     k.repository.getrennteKetten(id),
   ]);
   const elternListe = eltern;

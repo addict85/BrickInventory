@@ -13,7 +13,7 @@ const bearbeiter = (
   nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
     ausfuehren: async (n, k) => {
-      if (n.nur_bilder) await d.katalog.downloadSetImages(n.set_number);
+      if (n.nur_bilder) await d.katalog.ladeSetBilder(n.set_number);
       else await d.sets.ladeSetBilder(n.set_number, k);
     },
   },
@@ -40,7 +40,7 @@ const bearbeiter = (
   },
   nachlauf: { ausfuehren: (n, k) => d.verwaltung.nachlauf(n, k) },
   csv_sync: { ausfuehren: (n, k) => d.katalog.csvAbgleich(n, k, IMPORT_PROZESS), exklusiv: true },
-  preise: { ausfuehren: (_n, k) => d.finanzen.runPriceRefresh(k), exklusiv: true },
+  preise: { ausfuehren: (_n, k) => d.finanzen.preislauf(k), exklusiv: true },
   bild_nachlauf: { ausfuehren: (_n, k) => d.katalog.bildNachlauf(k), exklusiv: true },
   aufraeumen: { ausfuehren: (_n, k) => d.verwaltung.aufraeumen(k), exklusiv: true },
   aufraeumen_taeglich: { ausfuehren: (_n, k) => d.verwaltung.aufraeumenTaeglich(k), exklusiv: true },

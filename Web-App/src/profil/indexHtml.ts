@@ -91,7 +91,7 @@ async function currentTheme(k: ProfilKontext, userId?: number): Promise<string> 
   }
   if (Z.theme !== null && k.uhr.jetzt() - Z.themeAt < THEME_TTL_MS) return Z.theme;
   // Die Startseite kommt auch bei gestörter Datenbank, dann klassisch und ohne Zwischenspeicher.
-  const gelesen = await versuche('index-html:design', k.einstellungen.getGlobalSetting('app_theme'));
+  const gelesen = await versuche('index-html:design', k.einstellungen.globalerWert('app_theme'));
   if (!gelesen.ok) return 'classic';
   const gespeichert = gelesen.wert;
   const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
@@ -130,7 +130,7 @@ async function currentLang(k: ProfilKontext, userId?: number): Promise<string> {
 /** Das Design steckt im serverseitig gerenderten <html data-theme>; ohne Verwerfen käme
  * bis zum Neustart das alte. */
 export async function setzeGlobalesDesign(k: ProfilKontext, theme: string): Promise<void> {
-  await k.einstellungen.setGlobalSetting('app_theme', theme);
+  await k.einstellungen.setzeGlobalenWert('app_theme', theme);
   vergissDesign();
 }
 

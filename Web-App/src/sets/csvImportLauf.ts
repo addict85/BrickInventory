@@ -95,13 +95,13 @@ async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKo
     const z = rows[i]!;
     // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
     if (!(await k.lebenszeichen()) || !(await sk.auftraege.jobUpdate(userId, { current: z.sn }, lauf))) return;
-    await sk.auftraege.emitJobStatus(userId);
+    await sk.auftraege.meldeJobStand(userId);
     results.push(await importiereZeile(sk, z, userId));
     if (!(await schreibe())) return;
-    await sk.auftraege.emitJobStatus(userId);
+    await sk.auftraege.meldeJobStand(userId);
   }
   await sk.auftraege.jobUpdate(userId, { status: 'done', current: null }, lauf);
-  await sk.auftraege.emitJobStatus(userId);
+  await sk.auftraege.meldeJobStand(userId);
   console.log(
     `CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`,
   );
@@ -111,7 +111,7 @@ async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKo
 async function csvImportAufgegeben(k: SetsKontext, n: CsvNutzlast, fehler: string): Promise<void> {
   console.error(`CSV import fatal error: ${fehler}`);
   await k.auftraege.jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));
-  await k.auftraege.emitJobStatus(Number(n.user_id));
+  await k.auftraege.meldeJobStand(Number(n.user_id));
 }
 
 export { fuehreCsvImportAus, csvImportAufgegeben };

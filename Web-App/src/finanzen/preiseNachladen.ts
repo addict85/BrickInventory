@@ -21,10 +21,10 @@ async function preiseNachladen(
   n: Nutzlast<'preise_nachladen'>,
   k: AuftragsKontext,
 ): Promise<void> {
-  const ttl = (await kx.einstellungen.getGlobalSetting('price_cache_ttl', '24')) || '24';
+  const ttl = (await kx.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
   for (const [i, p] of n.posten.entries()) {
     pruefeAbbruch(k);
-    if (!(await kx.katalog.kontingentFrei('bricklink')).allowed)
+    if (!(await kx.fremdquellen.kontingentFrei('bricklink')).allowed)
       throw new AuftragVerschieben(new Date(kx.uhr.jetzt() + 6 * 3600_000), 'BrickLink-Tageskontingent erschöpft');
     await holeEinen(kx, p, n.user_id, n.waehrung, ttl).catch((e: unknown) =>
       meldeFehler(`preise-nachladen:${p.art} ${p.nummer}`, e),

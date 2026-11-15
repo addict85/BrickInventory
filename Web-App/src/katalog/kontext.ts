@@ -4,7 +4,7 @@ import type { Faecher } from '../infra/zwischenspeicher';
 import type { DrosselDienste } from '../drossel';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen';
-import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { AuftraegeDienste } from '../auftraege';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { BilderDienste } from '../bilder';
@@ -32,7 +32,6 @@ export interface KatalogAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
-  nacharbeit: Nacharbeit;
   drossel: DrosselDienste;
 }
 

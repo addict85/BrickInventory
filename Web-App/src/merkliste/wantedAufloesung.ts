@@ -132,7 +132,7 @@ export async function loeseUeberRebrickableAuf(
     // Ein Fehler ausser „unbekannt“ trifft auch alle folgenden Posten; der Bericht
     // nennt den Grund, statt sie still als „nicht gefunden“ zu zählen.
     try {
-      rbId = await k.katalog.quellen.blTeilZuRb(a.posten.blId);
+      rbId = await k.fremdquellen.quellen.blTeilZuRb(a.posten.blId);
     } catch (e) {
       if (!(e instanceof RebrickableGesperrt)) meldeFehler('wanted:rebrickable', e);
       const abgebrochen = e instanceof RebrickableGesperrt ? e.grund : 'stoerung';
@@ -140,7 +140,7 @@ export async function loeseUeberRebrickableAuf(
         auf: ergebnis,
         gefragt,
         gefunden,
-        filterWirkungslos: k.katalog.quellen.blFilterWirkungslos(),
+        filterWirkungslos: k.fremdquellen.quellen.blFilterWirkungslos(),
         abgebrochen,
       };
     }
@@ -151,7 +151,7 @@ export async function loeseUeberRebrickableAuf(
     // Nach dem Abruf: „37 von 50" heisst 37 erledigt.
     fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
-  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.katalog.quellen.blFilterWirkungslos() };
+  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.fremdquellen.quellen.blFilterWirkungslos() };
 }
 
 /** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen. */

@@ -18,7 +18,6 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { erzeugeDb, dbKonfigAusUmgebung } = _req('db/database.js');
-const N = _req('src/auftraege/nacharbeit.js');
 const { bis } = require('./helpers/zeit');
 
 test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
@@ -27,7 +26,7 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
   const { baueDienste } = _req('startup/verdrahtung.js');
   // Zwei Zugänge wie zwei Prozesse (Web und Jobs).
   const zugaenge = [erzeugeDb(dbKonfigAusUmgebung()), erzeugeDb(dbKonfigAusUmgebung())];
-  const [a, b] = zugaenge.map(z => baueDienste(z, { nacharbeit: N.OHNE_NACHARBEIT }));
+  const [a, b] = zugaenge.map(z => baueDienste(z));
   const namen = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];

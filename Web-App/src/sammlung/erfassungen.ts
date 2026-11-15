@@ -23,21 +23,21 @@ interface Art {
 const arten = (k: SammlungKontext): Record<ErfassungsArt, Art> => ({
   set: {
     notFound: 'erfassung_nicht_gefunden',
-    resolvePrice: (uid, [sn], cond) => k.finanzen.getCurrentMarketPrice(String(sn), uid, cond || null),
+    resolvePrice: (uid, [sn], cond) => k.finanzen.aktuellerMarktpreis(String(sn), uid, cond || null),
     // Wie beim ausdrücklichen Löschen: Teile und Figuren des Sets stünden sonst
     // ohne Set in Teileliste und Finanzsummen.
     cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.setZeilenLoeschen([ownerId], String(sn)),
   },
   part: {
     notFound: 'nicht_gefunden',
-    resolvePrice: (uid, [pn, cid], cond) => k.finanzen.getCurrentPartMarketPrice(String(pn), Number(cid), uid, cond),
+    resolvePrice: (uid, [pn, cid], cond) => k.finanzen.aktuellerTeilMarktpreis(String(pn), Number(cid), uid, cond),
     // Nur die manuelle Position; Set-Teile gehen mit ihrem Set.
     cleanupWhenEmpty: (t, ownerId, [pn, cid]) => t.bestand.loescheManuellesTeil(ownerId, String(pn), Number(cid)),
   },
   fig: {
     notFound: 'nicht_gefunden',
     resolvePrice: async (uid, [fn], cond) =>
-      k.finanzen.getCurrentFigMarketPrice(String(fn), uid, await k.katalog.blAbrufNummer('fig', String(fn), uid), cond),
+      k.finanzen.aktuellerFigurMarktpreis(String(fn), uid, await k.katalog.blAbrufNummer('fig', String(fn), uid), cond),
     cleanupWhenEmpty: (t, ownerId, [fn]) => t.bestand.loescheManuelleFigur(ownerId, String(fn)),
   },
 });
@@ -164,19 +164,11 @@ export async function erfassungAendern(
       const zielGeschaetzt = rawPrice !== undefined ? preisGeschaetzt && priceVal != null : !!acq.price_estimated;
       // Geprüft gegen die Werte NACH dieser Änderung.
       if (neuesDatum || rawPrice !== undefined || hatZustand) {
-        const clash = await t.bestand.findSameDayAcquisition(
-          art,
-          ownerId,
-          keys,
-          neuesDatum || acq.tag,
-          id,
-          zielZustand,
-          {
-            preis: rawPrice !== undefined ? priceVal : acq.preis,
-            geschaetzt: zielGeschaetzt,
-            waehrung: acq.currency,
-          },
-        );
+        const clash = await t.bestand.erfassungAmSelbenTag(art, ownerId, keys, neuesDatum || acq.tag, id, zielZustand, {
+          preis: rawPrice !== undefined ? priceVal : acq.preis,
+          geschaetzt: zielGeschaetzt,
+          waehrung: acq.currency,
+        });
         if (clash) fachfehler('konflikt', 'datum_belegt');
       }
       if (quantity !== undefined && quantity !== null) {

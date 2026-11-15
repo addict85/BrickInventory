@@ -16,6 +16,17 @@ export function anfragenJeMinute(): number {
   return STAPEL * (60_000 / TAKT_MS);
 }
 
+type BildHorcher = (setNummer: string, quelle: string | null) => Promise<void>;
+const bildHorcher = (k: BilderKontext) => k.faecher.fach('setBildGeladen', () => new Set<BildHorcher>());
+/** Den Eintrag beim Set macht der Katalog (höher); er horcht hier, statt dass die Bilder ihn rufen. */
+export function beiSetBildGeladen(k: BilderKontext, fn: BildHorcher): void {
+  bildHorcher(k).add(fn);
+}
+
+export async function meldeSetBildGeladen(k: BilderKontext, setNummer: string, quelle: string | null = null) {
+  await Promise.all([...bildHorcher(k)].map(fn => fn(setNummer, quelle)));
+}
+
 /** Steht er schon offen, bleibt es bei einem. */
 export async function bildbedarfAnstossen(k: BilderKontext): Promise<void> {
   await k.auftraege.stelleAuftragEin('bildbedarf', {}, { schluessel: BILDBEDARF_SCHLUESSEL, maxVersuche: 3 });
@@ -32,7 +43,7 @@ export function bildEinmalVormerken(k: BilderKontext, url: string, setNummer: st
   const gemerkt = k.faecher.fach('bildbedarf:vorgemerkt', () => new Zwischenspeicher<string, true>(5000, 15 * 60_000));
   if (gemerkt.hole(setNummer)) return;
   gemerkt.setze(setNummer, true);
-  k.nacharbeit.bildVormerken(url, setNummer);
+  merkeGebraucht(k, url, setNummer);
 }
 
 /** Hält die Anfrage nie auf. */
