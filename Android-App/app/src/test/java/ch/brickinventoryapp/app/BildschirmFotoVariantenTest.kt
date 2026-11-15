@@ -829,7 +829,7 @@ class BildschirmFotoVariantenTest {
     fun merklisteLeer() {
         welt.pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[]}"""
         val vm = welt.merkliste().also { it.ladeMerkliste() }
-        zeige("merkliste-leer", dunkel = true, bereit = { vm.merklisteState.value.let { !it.laedt && it.fehler == null } },
+        zeige("merkliste-leer", dunkel = true, bereit = { vm.merklisteState.value.let { !it.abruf.laedt && it.abruf !is Laden.Fehler } },
             zustand = { vm.merklisteState.value }) {
             MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
@@ -1084,7 +1084,7 @@ class BildschirmFotoVariantenTest {
         deutschVorDemLaden()
         welt.pfade.codes["/api/v1/wanted"] = 500
         val vm = welt.merkliste().also { it.ladeMerkliste() }
-        zeige("merkliste-fehler", bereit = { vm.merklisteState.value.let { !it.laedt && it.fehler != null } },
+        zeige("merkliste-fehler", bereit = { vm.merklisteState.value.let { !it.abruf.laedt && it.abruf is Laden.Fehler } },
             zustand = { vm.merklisteState.value }) {
             MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
