@@ -31,13 +31,13 @@ const arten = (k: SammlungKontext): Record<ErfassungsArt, Art> => ({
     notFound: 'nicht_gefunden',
     resolvePrice: (uid, [pn, cid], cond) => k.finanzen.aktuellerTeilMarktpreis(String(pn), Number(cid), uid, cond),
     // Nur die manuelle Position; Set-Teile gehen mit ihrem Set.
-    cleanupWhenEmpty: (t, ownerId, [pn, cid]) => t.bestand.loescheManuellesTeil(ownerId, String(pn), Number(cid)),
+    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.loescheManuell('part', ownerId, keys),
   },
   fig: {
     notFound: 'nicht_gefunden',
     resolvePrice: async (uid, [fn], cond) =>
       k.finanzen.aktuellerFigurMarktpreis(String(fn), uid, await k.katalog.blAbrufNummer('fig', String(fn), uid), cond),
-    cleanupWhenEmpty: (t, ownerId, [fn]) => t.bestand.loescheManuelleFigur(ownerId, String(fn)),
+    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.loescheManuell('fig', ownerId, keys),
   },
 });
 
@@ -51,9 +51,9 @@ interface Zeile {
   tag: string;
 }
 
-/** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
-async function besitzerDerZeile(k: SammlungKontext, art: ErfassungsArt, id: number, fallback: number): Promise<number> {
-  return (await k.bestand.erfassung.konto(art, id)) ?? fallback;
+/** Nur für Sperrschlüssel und Preisrückfall; die Rechte prüft die Abfrage in der Transaktion. */
+async function vorab(k: SammlungKontext, art: ErfassungsArt, uid: number, id: number, keys: Schluessel) {
+  return k.bestand.erfassung.imSchreibfeld(art, id, await k.haushalt.schreibbereich(uid), keys);
 }
 
 /** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
@@ -140,13 +140,13 @@ export async function erfassungAendern(
     let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       preisGeschaetzt = true;
-      const bisher = condition ? null : await k.bestand.erfassung.zustand(art, id);
+      const bisher = condition ? null : ((await vorab(k, art, uid, id, keys))?.condition ?? null);
       p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
   }
 
-  const besitzer = await besitzerDerZeile(k, art, id, uid);
+  const besitzer = (await vorab(k, art, uid, id, keys))?.user_id ?? uid;
   await k.transaktion(
     async t => {
       const wids = await t.haushalt.schreibbereich(uid);
@@ -170,14 +170,14 @@ export async function erfassungAendern(
         });
         if (clash) fachfehler('konflikt', 'datum_belegt');
       }
-      if (quantity !== undefined && quantity !== null) {
-        await t.bestand.erfassung.setzeMenge(art, id, bestandsMenge(quantity, 1), wids);
-        const q = await mengeDesBestands(t, art, ownerId, keys);
-        if (leer(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
-      }
-      if (rawPrice !== undefined) await t.bestand.erfassung.setzePreis(art, id, priceVal, zielGeschaetzt, wids);
-      if (hatZustand) await t.bestand.erfassung.setzeZustand(art, id, zielZustand, wids);
-      if (neuesDatum) await t.bestand.erfassung.setzeDatum(art, id, neuesDatum, wids);
+      const mitMenge = quantity !== undefined && quantity !== null;
+      await t.bestand.erfassung.aendere(art, id, wids, {
+        ...(mitMenge ? { menge: bestandsMenge(quantity, 1) } : {}),
+        ...(rawPrice !== undefined ? { preis: { wert: priceVal, geschaetzt: zielGeschaetzt } } : {}),
+        ...(hatZustand ? { zustand: zielZustand } : {}),
+        ...(neuesDatum ? { datum: neuesDatum } : {}),
+      });
+      if (mitMenge && leer(await mengeDesBestands(t, art, ownerId, keys))) await a.cleanupWhenEmpty(t, ownerId, keys);
     },
     { sperren: [{ konto: besitzer, schluessel: bestandsSchluessel(art, keys) }] },
   );
@@ -193,7 +193,7 @@ export async function erfassungLoeschen(
   keys: Schluessel,
 ) {
   const a = arten(k)[art];
-  const besitzer = await besitzerDerZeile(k, art, id, uid);
+  const besitzer = (await vorab(k, art, uid, id, keys))?.user_id ?? uid;
   const menge = await k.transaktion(
     async t => {
       const acq = await zeileImSchreibfeld(t, art, await t.haushalt.schreibbereich(uid), id, keys);
@@ -209,5 +209,5 @@ export async function erfassungLoeschen(
 }
 
 export async function setErfassungen(k: SammlungKontext, sicht: Sicht | number[], setNumber: string) {
-  return k.bestand.erfassung.setErfassungenImBlickfeld(await k.haushalt.blickfeldAus(sicht), setNumber);
+  return k.setKaeufe.imBlickfeld(await k.haushalt.blickfeldAus(sicht), setNumber);
 }

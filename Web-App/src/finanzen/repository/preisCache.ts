@@ -34,10 +34,6 @@ export function setZustandsZaehler(db: DbSchnittstelle, l: FinanzenLesevertrag, 
   );
 }
 
-export async function zaehleSetPreise(db: DbSchnittstelle): Promise<number> {
-  return Number((await db.get<{ c: string }>('SELECT COUNT(*) AS c FROM price_cache'))?.c ?? 0);
-}
-
 export async function loescheAlleSetPreise(db: DbSchnittstelle): Promise<void> {
   await db.run('DELETE FROM price_cache');
 }

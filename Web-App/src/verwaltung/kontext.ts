@@ -60,6 +60,7 @@ export const zugang = (db: Db) => ({
     teilbilderFertig: imSystem(db, 'verwaltung', verwaltung.teilbilderFertig),
     teilbilderOffen: imSystem(db, 'verwaltung', verwaltung.teilbilderOffen),
     veraltetePreise: imSystem(db, 'verwaltung', verwaltung.veraltetePreise),
+    preiseImCache: imSystem(db, 'verwaltung', verwaltung.preiseImCache),
     vorschauFehlanzeigen: imSystem(db, 'verwaltung', verwaltung.vorschauFehlanzeigen),
     zugeordneteTeile: imSystem(db, 'verwaltung', verwaltung.zugeordneteTeile),
     // Die Preisprobe sieht nur den eigenen Bestand des Verwalters: unter dem Zeilenschutz.

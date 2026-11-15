@@ -19,9 +19,7 @@ export interface Verschiebung {
  * Transaktionsverbindung. */
 async function copyContents(t: SetsKontext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const tab of ['parts', 'minifigs'] as const)
-    if (!(await t.bestand.setZeilen.hatInhalt(tab, toId, sn)))
-      n[tab] = await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
+  for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
   if (!(await repo.hatAnleitungen(t.db, toId, sn)))
     n.instructions = await repo.kopiereAnleitungen(t.db, sn, fromId, toId);
   return n;
@@ -50,7 +48,7 @@ export async function setErfassungenUmhaengen(
   // Stammdaten beschreiben das Set, nicht das Exemplar: Liegt es beim Ziel
   // schon, genügt das Umhängen der Erfassungen.
   const dst = await repo.setZeile(t.db, toId, sn);
-  if (!dst) await t.bestand.setZeilen.legeAn(toId, sn, src.added_at);
+  if (!dst) await t.bestand.legeSetAn(toId, sn, src.added_at);
 
   for (const a of wanted) {
     await t.bestand.bucheTageserfassung('set', toId, [sn], {
@@ -61,7 +59,7 @@ export async function setErfassungenUmhaengen(
       geschaetzt: a.price_estimated,
       currency: a.currency,
     });
-    await t.bestand.setZeilen.loescheErfassung(a.id, [fromId]);
+    await t.bestand.erfassung.loesche('set', a.id, fromId);
   }
 
   const counts = await copyContents(t, sn, fromId, toId);
@@ -71,7 +69,7 @@ export async function setErfassungenUmhaengen(
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
   await repo.entferneAnleitungen(t.db, fromId, sn);
-  await t.bestand.setZeilen.entferneVerschobenes(fromId, sn);
+  await t.bestand.setInhalt.entfernen([fromId], sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 

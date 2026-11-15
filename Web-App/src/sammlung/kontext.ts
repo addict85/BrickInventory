@@ -1,6 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import type { Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/bereich';
+import * as setErfassungen from './repository/setErfassungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KatalogDienste } from '../katalog';
@@ -26,6 +27,7 @@ export interface SammlungAbhaengigkeiten {
   merkliste: MerklisteDienste;
 }
 
-/** Ohne eigene Tabellen: Was die Sammlung schreibt und liest, gehört tieferen Bereichen. */
-export const zugang = (_db: Db) => ({});
+export const zugang = (db: Db) => ({
+  setKaeufe: { imBlickfeld: mit(db)(setErfassungen.setErfassungenImBlickfeld) },
+});
 export type SammlungKontext = Kontext<SammlungAbhaengigkeiten, ReturnType<typeof zugang>>;

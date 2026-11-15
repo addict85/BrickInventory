@@ -98,7 +98,7 @@ async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record
   await k.katalog.merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
 
   // Preis, Zustand und Menge stehen in der Erfassung, nicht an der Zeile.
-  await k.bestand.manuell.legeTeilAn(uid, part_number, color_id);
+  await k.bestand.manuell.legeZeileAn('part', uid, [part_number, color_id]);
   await k.bestand.bucheTageserfassung('part', uid, [part_number, color_id], {
     quantity,
     price: erfassungsPreis,
@@ -213,11 +213,11 @@ export async function manuellesTeilAendern(
     );
     // In die NEUESTE Erfassung: Dort heisst NULL „kein Preis bekannt", die 0 der
     // Anzeige bildet die Leseabfrage.
-    await k.bestand.kaeufe.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
+    await k.bestand.neuesteSetzen('part', 'preis', unitPrice, uid, [partNumber, colorId]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V0.zustand(body.condition);
-    await k.bestand.kaeufe.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
+    await k.bestand.neuesteSetzen('part', 'zustand', cond, uid, [partNumber, colorId]);
   }
   return { ...raus, ...ab.angabe() };
 }
@@ -302,7 +302,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
       else await k.katalog.merkeTeil(partNumber, partName, categoryName);
       await k.katalog.merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
       await k.katalog.merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, k.db, uid);
-      await k.bestand.manuell.legeTeilAn(uid, partNumber, colorId);
+      await k.bestand.manuell.legeZeileAn('part', uid, [partNumber, colorId]);
       await k.bestand.bucheTageserfassung('part', uid, [partNumber, colorId], erfassung);
       added++;
       results.push({ part_number: partNumber, action: 'added' });

@@ -59,7 +59,7 @@ export async function cacheStatistik(k: VerwaltungKontext) {
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     ab.oder(
       'cache',
-      Promise.all([k.katalog.cacheStand(), k.finanzen.setPreiseImCache()]).then(([c, prices]) => ({ ...c, prices })),
+      Promise.all([k.katalog.cacheStand(), k.verwaltung.preiseImCache()]).then(([c, prices]) => ({ ...c, prices })),
       { prices: 0, subsets: 0, catalog: 0 },
     ),
     ab.oder('veraltete_preise', k.verwaltung.veraltetePreise(), 0),

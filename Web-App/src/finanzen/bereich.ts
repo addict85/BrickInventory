@@ -56,7 +56,6 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
       gewinnUndVerlust: mit(k)(gewinnVerlustDienst.computePnl),
       setZustand: mit(k)(preise.resolveSetCondition),
       leerePreisCache: mit(k)(preise.leerePreisCache),
-      setPreiseImCache: k.preisCache.zaehleSetPreise,
       holePreis: mit(k)(preise.fetchPrice),
       farbkarte: mit(k)(preise.farbkarte),
       preisFuerSetHolen: mit(k)(preisLaufDienst.refreshPriceForSet),

@@ -9,7 +9,7 @@
  *      „Menge, Preis, Zustand und Datum einer fremden Erfassung bleiben“
  *   B  dasselbe in kuerzeErfassung() → rot: „eine fremde manuelle Erfassung
  *      lässt sich weder kürzen noch entfernen“
- *   C  in loescheSetErfassung() die Konten-Bedingung entfernt → rot: „eine
+ *   C  in loescheErfassung() (src/bestand/repository/erfassungen.ts) die Konten-Bedingung entfernt → rot: „eine
  *      fremde Erfassung lässt sich nicht aus einem Verschieben löschen“
  *   D  in entferneManuell() `AND user_id = $2` bei der Bestandszeile entfernt
  *      → rot: „die Bestandszeile eines fremden Kontos bleibt“
@@ -32,8 +32,8 @@ const manuell = {
   ...require('./helpers/sources').testBereich('bestand').manuelleMengen,
 };
 const versch = {
-  ..._req('src/bestand/repository/setZeilen.js'),
   ..._req('src/bestand/repository/umhaengen.js'),
+  loescheSetErfassung: (tx, id, [konto]) => erf.loescheErfassung(tx, 'set', id, konto),
   loescheManuelleErfassung: _req('src/bestand/repository/manuelleMengen.js').entferneErfassung,
 };
 

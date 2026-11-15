@@ -1,43 +1,48 @@
-import { erfassungsTagSql } from '../../../db/bestandsmenge';
+import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
 import type { DbSchnittstelle } from '../../../db/database';
 
-/** Schreibwege auf die Käufe manueller Teile und Figuren: Die Zeilen gehören dem Bestand
- * (docs/architektur.md), Teile und Figuren rufen sie über t.bestand.kaeufe. Preis und Zustand
- * stehen in der NEUESTEN Erfassung, die Stückzahl ist die Summe der Erfassungen. */
+export type NeuestesFeld = 'preis' | 'zustand';
 
-const NEUESTES_TEIL = `(SELECT a.id FROM part_acquisitions a
-                   WHERE a.user_id=$2 AND a.part_number=$3 AND a.color_id = $4
-                   ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
-
-/** 0 heisst in der Erfassung „für nichts gekauft"; ohne Preis steht NULL. */
-export async function setzeTeilpreisNeueste(
+/** Das Set wörtlich: Es gibt genau eine Stelle, die die letzte Set-Erfassung beschreibt. */
+function neuesteSetErfassung(
   db: DbSchnittstelle,
+  feld: NeuestesFeld,
+  wert: number | string | null,
   uid: number,
-  partNumber: string,
-  colorId: number,
-  preis: number | null,
-): Promise<void> {
-  await db.run(`UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTES_TEIL}`, [
-    preis,
-    uid,
-    partNumber,
-    colorId,
-  ]);
+  sn: string,
+) {
+  const spalte = feld === 'preis' ? 'purchase_price' : 'condition';
+  return db.run(
+    `UPDATE set_acquisitions SET ${spalte} = $1
+                 WHERE id = (SELECT id FROM set_acquisitions
+                              WHERE user_id=$2 AND set_number=$3
+                              ORDER BY created_at DESC, id DESC LIMIT 1)`,
+    [wert, uid, sn],
+  );
 }
 
-export async function setzeTeilzustandNeueste(
+/** 0 heisst bei Teilen und Figuren „für nichts gekauft“; ohne Preis steht NULL. */
+export async function neuesteSetzen(
   db: DbSchnittstelle,
+  art: ErfassungsArt,
+  feld: NeuestesFeld,
+  wert: number | string | null,
   uid: number,
-  partNumber: string,
-  colorId: number,
-  zustand: string,
+  schluessel: (string | number)[],
 ): Promise<void> {
-  await db.run(`UPDATE part_acquisitions SET condition=$1 WHERE id = ${NEUESTES_TEIL}`, [
-    zustand,
-    uid,
-    partNumber,
-    colorId,
-  ]);
+  if (art === 'set') {
+    await neuesteSetErfassung(db, feld, wert, uid, String(schluessel[0]));
+    return;
+  }
+  const s = SHAPES[art];
+  const wo = s.keys.map((k, i) => `a.${k} = $${i + 3}`).join(' AND ');
+  const ziel = feld === 'preis' ? `${s.price} = NULLIF($1::numeric, 0)` : 'condition = $1';
+  await db.run(
+    `UPDATE ${s.table} SET ${ziel}
+      WHERE id = (SELECT a.id FROM ${s.table} a WHERE a.user_id = $2 AND ${wo}
+                   ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`,
+    [wert, uid, ...schluessel.slice(0, s.keys.length)],
+  );
 }
 
 export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, partNumber: string, colorId: number) {
@@ -48,38 +53,11 @@ export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, pa
   ]);
 }
 
-const NEUESTE_FIGUR = `(SELECT a.id FROM minifig_acquisitions a
-                   WHERE a.user_id=$2 AND a.fig_number=$3
-                   ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
-
-export async function setzeFigurpreisNeueste(
-  db: DbSchnittstelle,
-  uid: number,
-  figNumber: string,
-  preis: number | null,
-): Promise<void> {
-  await db.run(`UPDATE minifig_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE_FIGUR}`, [
-    preis,
-    uid,
-    figNumber,
-  ]);
-}
-
-export async function setzeFigurzustandNeueste(
-  db: DbSchnittstelle,
-  uid: number,
-  figNumber: string,
-  zustand: string,
-): Promise<void> {
-  await db.run(`UPDATE minifig_acquisitions SET condition=$1 WHERE id = ${NEUESTE_FIGUR}`, [zustand, uid, figNumber]);
-}
-
 export function loescheFigurErfassungen(tx: DbSchnittstelle, besitzer: number, figNumber: string) {
   return tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, figNumber]);
 }
 
-/** Umfärben: Käufe, die es in der neuen Farbe am selben Tag gleich schon gibt, gehen darin auf
- * (der eindeutige Index erlaubt keine zweite Zeile); danach fallen die aufgegangenen weg. */
+/** Umfärben: Gleiche Käufe desselben Tags gehen in der neuen Farbe auf (eindeutiger Index). */
 export function stockeGleicheErfassungenAuf(
   tx: DbSchnittstelle,
   uid: number,

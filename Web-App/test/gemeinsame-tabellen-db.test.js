@@ -210,8 +210,22 @@ const DYNAMISCH = {
     schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
   'src/bestand/repository/gemeinsam.ts': {
-    liest: ['minifigs', 'parts', 'rb_sets', 'rb_themes', 'set_catalog', 'storage_locations', 'user_settings'],
-    schreibt: ['minifigs', 'parts'],
+    liest: [
+      'minifigs',
+      'parts',
+      'rb_sets',
+      'rb_themes',
+      'set_acquisitions',
+      'set_catalog',
+      'sets',
+      'storage_locations',
+      'user_settings',
+    ],
+    schreibt: ['minifigs', 'parts', 'set_acquisitions', 'sets'],
+  },
+  'src/bestand/repository/kaeufe.ts': {
+    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
   'src/bestand/repository/kaufErfassungen.ts': {
     liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
