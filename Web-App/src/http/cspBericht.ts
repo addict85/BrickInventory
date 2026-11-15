@@ -5,18 +5,13 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import { prozessweit } from '../infra/prozessweit';
+import { drosselAdresse } from '../infra/drosselAdresse';
 
 const FENSTER_MS = 60_000;
 const JE_ADRESSE = 10;
 /** Mehr Absender merkt sich die Minute nicht; wer danach kommt, wird verworfen. */
 const HOECHSTENS_ADRESSEN = 1000;
 const F = prozessweit('cspBericht', () => ({ seit: Date.now(), gedrosselt: 0, jeAdresse: new Map<string, number>() }));
-
-/** Ohne gemeinsame Quote: Sonst schöpfte ein Fremder sie aus, und echte Berichte
- * gingen in seiner Flut unter. IPv6 je /64, weil ein Anschluss so viele hat. */
-function absender(adresse: string): string {
-  return adresse.includes(':') ? adresse.split(':').slice(0, 4).join(':') : adresse;
-}
 
 export function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
   const _jeAdresse = F.jeAdresse;
@@ -26,7 +21,9 @@ export function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
     F.gedrosselt = 0;
     F.seit = jetzt;
   }
-  const a = absender(adresse);
+  // Ohne gemeinsame Quote: Sonst schöpfte ein Fremder sie aus, und echte Berichte
+  // gingen in seiner Flut unter. IPv6 je /64 wie bei der Anmeldung, auch verkürzt.
+  const a = drosselAdresse(adresse);
   const n = (_jeAdresse.get(a) ?? 0) + 1;
   const frei = n <= JE_ADRESSE && (_jeAdresse.has(a) || _jeAdresse.size < HOECHSTENS_ADRESSEN);
   if (_jeAdresse.has(a) || _jeAdresse.size < HOECHSTENS_ADRESSEN) _jeAdresse.set(a, n);
