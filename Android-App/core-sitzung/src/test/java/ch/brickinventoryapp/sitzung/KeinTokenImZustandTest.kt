@@ -1,6 +1,5 @@
-package ch.brickinventoryapp.zustand
+package ch.brickinventoryapp.sitzung
 
-import ch.brickinventoryapp.sitzung.AppUiState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

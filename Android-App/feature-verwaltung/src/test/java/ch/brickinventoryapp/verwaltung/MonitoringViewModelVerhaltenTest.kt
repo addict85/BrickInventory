@@ -25,30 +25,10 @@ import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
 
 /**
- * Das Monitoring-ViewModel, AUSGEFÜHRT statt gelesen.
- *
- * ── Warum dieser Test die Ausnahme ist, und warum das ein Problem war ──────
- * Von 63 Testdateien der App führte genau EINE echtes Verhalten aus
- * (BrickRepositoryErrorMappingTest); die übrigen 62 vergleichen Zeichenketten
- * gegen den Quelltext. Das hat einen guten Grund — ohne Android-SDK ging lange
- * nichts anderes — und zwei schlechte Folgen:
- *
- *   1. Ein Anker veraltet stillschweigend. In dieser Reihe sind vier Tests an
- *      einer Umbenennung oder einer Typannotation zerbrochen, einer davon
- *      OHNE zu melden, dass er nichts mehr fand.
- *
- * Möglich wurde dieser Test durch die Aufteilung: MonitoringViewModel nimmt
- * genau ein BrickRepository entgegen und ist eine gewöhnliche Klasse — keine
- * Compose-Laufzeit, kein Android. Vorher standen dieselben Abläufe in Lambdas
- * innerhalb eines `items {}`-Blocks und liefen ohne Gerät gar nicht erst an.
- *
- * ── Was hier geprüft wird ─────────────────────────────────────────────────
- * Die zwei Zusagen, die beim Umbau als „konnte niemand nachfahren" benannt
- * wurden — beide Male ein vorweggenommener Zustand mit Rücknahme bei
- * Fehlschlag. Genau die Sorte Ablauf, die man beim Lesen für richtig hält.
- *
- * MockWebServer liefert der Reihe nach, unabhängig vom Pfad; die Tests legen
- * deshalb genau so viele Antworten hin, wie das ViewModel Abrufe macht.
+ * Das Monitoring-ViewModel gegen einen MockWebServer: vorweggenommene Zustände mit
+ * Rücknahme bei Fehlschlag, der Takt, Design und Protokoll. MockWebServer liefert der
+ * Reihe nach, unabhängig vom Pfad; jeder Test legt so viele Antworten hin, wie das
+ * ViewModel Abrufe macht.
  *
  * Gegenproben: in ladeJobs() `zugriffEntzogen` nicht
  * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“;
@@ -83,17 +63,6 @@ class MonitoringViewModelVerhaltenTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        // ── BENANNT und nicht nach Stellung ──────────────────────────────
-        //
-        // Hier standen die sechs Teile positionsweise. Als BrickRepository ein
-        // siebtes bekam (GutscheineRepository, eingefuegt VOR `cache`), rutschte
-        // alles dahinter um eins — und der Uebersetzer meldete „actual type is
-        // 'ResponseCache', but 'GutscheineRepository' was expected". Gefunden
-        // hat das die Action, nicht diese Datei.
-        //
-        // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
-        // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
-        // sofort und an der richtigen Stelle.
         vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), MeldungsKanal())
     }
 

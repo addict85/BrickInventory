@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
 import ch.brickinventoryapp.zustand.ui.ladefehler
-import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Figurenerfassung

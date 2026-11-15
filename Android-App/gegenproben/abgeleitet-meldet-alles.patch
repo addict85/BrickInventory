@@ -1,6 +1,6 @@
 Gegenprobe: abgeleitet() reicht jede Änderung des Quellzustands weiter
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.AbgeleiteterZustandTest
+Modul: core-sitzung
+Test: ch.brickinventoryapp.sitzung.AbgeleiteterZustandTest
 Rot: ein abgeleiteter Zustand meldet nur echte Aenderungen
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt

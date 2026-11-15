@@ -1,6 +1,6 @@
 Gegenprobe: Der Token steht wieder als Feld im gemeinsamen UI-Zustand
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.KeinTokenImZustandTest
+Modul: core-sitzung
+Test: ch.brickinventoryapp.sitzung.KeinTokenImZustandTest
 Rot: kein Feld von AppUiState traegt einen Token
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AppUiState.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AppUiState.kt

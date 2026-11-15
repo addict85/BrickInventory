@@ -20,11 +20,7 @@ data class ManualItemDetailUiState(
     val itemType: Postenart? = null,
     val itemId: String = "",         // part_number oder fig_number
     val colorId: Int = OHNE_FARBE,
-    // `newQuantity` stand hier — die Gesamtmenge nach dem Loeschen einer
-    // Erfassung. Gelesen wurde sie nie, und sie wird auch nicht gebraucht: Die
-    // angezeigte Menge folgt der SUMME der Erfassungen
-    // (ManualItemDetailScreen), und die laedt deleteManualAcquisition()
-    // unmittelbar danach neu.
+    // Keine eigene Gesamtmenge: Die Anzeige folgt der Summe der Erfassungen.
     /** Marktpreis je Zustand und Verlauf — dieselbe Antwortform wie beim Set. */
     val priceHistory: PreisverlaufAnsicht? = null,
     val verlaufAbruf: Laden<Unit> = Laden.Daten(Unit),

@@ -1,9 +1,7 @@
-package ch.brickinventoryapp.zustand
+package ch.brickinventoryapp.sitzung
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.sitzung.AppUiState
-import ch.brickinventoryapp.sitzung.abgeleitet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update

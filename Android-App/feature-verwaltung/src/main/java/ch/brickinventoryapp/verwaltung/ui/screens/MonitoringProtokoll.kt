@@ -36,11 +36,8 @@ import ch.brickinventoryapp.ui.components.Suchfeld
  * Das Server-Protokoll, wie „Logs“ in der Webapp. Nicht von selbst geladen: bis zu
  * 5000 Zeilen, und wer die Überwachung öffnet, will meist die Job-Karten.
  */
-// ExperimentalLayoutApi gilt fuer die FlowRow der Stufenschalter weiter unten.
-// Die Annotation gehoert an die FUNKTION, nicht in den Rumpf — die Begruendung
-// steht in HouseholdComposables.kt: Ein @OptIn mitten im Rumpf hat dort
-// zusammen mit einer nachgestellten Lambda „Unresolved reference 'invoke'"
-// ergeben.
+// Für die FlowRow der Stufenschalter; an der Funktion, weil ein @OptIn im Rumpf vor einer
+// nachgestellten Lambda nicht übersetzt.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: MonitoringAktionen) {

@@ -3,6 +3,7 @@
 // Bereiche lesen die Sitzung, die Sitzung kennt weder Filter noch ViewModels.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
+    alias(libs.plugins.brickinventory.android.unittests)
     alias(libs.plugins.brickinventory.android.hilt)
 }
 
@@ -18,5 +19,5 @@ dependencies {
     implementation(project(":core-ressourcen"))
     // Eigene Flows (AbgeleiteterZustand); ohne Eintrag löst Gradle eine alte Fassung auf.
     implementation(libs.kotlinx.coroutines.android)
-    // Die Tests der Sitzung laufen in core-zustand: Sie bauen sie mit dem Blickfeld zusammen.
+    // Der SitzungsDienst wird in core-zustand geprüft: Seine Tests bauen ihn mit dem Blickfeld zusammen.
 }
