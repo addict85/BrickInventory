@@ -188,7 +188,7 @@ class KontoRepositoryImpl @Inject constructor(
                 .also { herkunft = NetworkPolicy.herkunft(it.raw().request.url.toString()) }
         }
         return when (r) {
-            is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data, herkunft), stand = r.stand, gepuffert = r.gepuffert)
+            is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data.token, herkunft), stand = r.stand, gepuffert = r.gepuffert)
             is Ergebnis.Error -> r
         }
     }
