@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.TokenRotation
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,8 +25,11 @@ internal enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KO
 /** Was der Tausch vom Speicher sieht; [generation] zählt Anmelden, Abmelden und Serverwechsel. */
 data class TokenStand(val token: String, val herkunft: String?, val generation: Long)
 
-/** Der neue Token und die Herkunft der Anfrage, die ihn brachte (nach Umschreiben und Umleitung). */
-data class GetauschterToken(val rotation: TokenRotation, val herkunft: String?)
+/**
+ * Der neue Token und die Herkunft der Anfrage, die ihn brachte (nach Umschreiben und Umleitung).
+ * Nur diese zwei Werte: Der Tausch braucht nicht mehr, und das Wire-Format bleibt in core-data.
+ */
+data class GetauschterToken(val token: String?, val herkunft: String?)
 
 /**
  * Sperre und Generation für jede Schreibung des Tokens. Ein Tausch kann bis zu
@@ -173,7 +175,7 @@ internal class TokenTausch(
 
     /** Eine Antwort ohne neuen Token ist kein Tausch; passt der Stand nicht mehr, wird verworfen. */
     private suspend fun gelungen(vorher: TokenStand, antwort: GetauschterToken): Tauschergebnis {
-        val neu = antwort.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
+        val neu = antwort.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
         return if (ersetze(vorher, neu, antwort.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
     }
 

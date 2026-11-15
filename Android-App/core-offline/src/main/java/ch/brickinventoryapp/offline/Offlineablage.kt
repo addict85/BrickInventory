@@ -6,15 +6,9 @@ import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.LagerortEintrag
 import ch.brickinventoryapp.vertrag.Preisalarm
-import ch.brickinventoryapp.vertrag.Minifig
-import ch.brickinventoryapp.vertrag.PartValuationItem
 import ch.brickinventoryapp.vertrag.AddSetRequest
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
-import ch.brickinventoryapp.vertrag.StatsResponse
 import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,21 +55,25 @@ object Faecher {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), farbe = it.colorName,
             kategorie = it.categoryName, ersatzteil = it.isSpare)
     })
-    val FIGUREN = Fach(Bestandsart.FIGUREN, Ablageform.direkt(Minifig.serializer()), { it.figNumber }, spalten = {
+    val FIGUREN = Fach(Bestandsart.FIGUREN, Ablageform(FigurZeile.serializer(), Ablagezeilen::figur, Ablagezeilen::figur),
+        { it.figNumber }, spalten = {
         Filterspalten(suchtext(it.figNumber, it.figName))
     })
-    val MANUELLE_TEILE = Fach(Bestandsart.MANUELLE_TEILE, Ablageform.direkt(PartValuationItem.serializer()),
+    val MANUELLE_TEILE = Fach(Bestandsart.MANUELLE_TEILE,
+        Ablageform(ManuellesTeilZeile.serializer(), Ablagezeilen::manuellesTeil, Ablagezeilen::manuellesTeil),
         { "${it.partNumber}|${it.colorId}|${it.userId}" }, LokaleAnwendung::manuelleTeile) {
         Filterspalten(suchtext(it.partNumber, it.partName, it.blPartNumber), lagerort = it.storage)
     }
-    val MANUELLE_FIGUREN = Fach(Bestandsart.MANUELLE_FIGUREN, Ablageform.direkt(FigValuationItem.serializer()),
+    val MANUELLE_FIGUREN = Fach(Bestandsart.MANUELLE_FIGUREN,
+        Ablageform(ManuelleFigurZeile.serializer(), Ablagezeilen::manuelleFigur, Ablagezeilen::manuelleFigur),
         { "${it.figNumber}|${it.userId}" }, LokaleAnwendung::manuelleFiguren) {
         Filterspalten(suchtext(it.figNumber, it.figName))
     }
-    val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Ablageform.direkt(Gutschein.serializer()), { it.id.toString() })
+    val GUTSCHEINE = Fach(Bestandsart.GUTSCHEINE, Ablageform(GutscheinZeile.serializer(), Ablagezeilen::gutschein, Ablagezeilen::gutschein),
+        { it.id.toString() })
 
     /** Je Set und Zustand höchstens ein Alarm, wie am Server. */
-    val PREISALARME = Fach(Bestandsart.PREISALARME, Ablageform.direkt(Preisalarm.serializer()),
+    val PREISALARME = Fach(Bestandsart.PREISALARME, Ablageform(AlarmZeile.serializer(), Ablagezeilen::alarm, Ablagezeilen::alarm),
         { "${it.setNumber}|${it.condition.kennung}" }, LokaleAnwendung::preisalarme) {
         Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)
     }
@@ -90,8 +88,10 @@ object Faecher {
      * Einzelne Antworten ohne Liste: je Bereich eine Zeile. Sie liegen wie die Listen in
      * Room, damit Abmelden, Bereich und Verschlüsselung für alles dieselben sind.
      */
-    val KENNZAHLEN = Fach(Bestandsart.KENNZAHLEN, Ablageform.direkt(StatsResponse.serializer()), { EINZELN })
-    val KATALOG_META = Fach(Bestandsart.KATALOG_META, Ablageform.direkt(CatalogMetaResponse.serializer()), { EINZELN })
+    val KENNZAHLEN = Fach(Bestandsart.KENNZAHLEN,
+        Ablageform(KennzahlenZeile.serializer(), Ablagezeilen::kennzahlen, Ablagezeilen::kennzahlen), { EINZELN })
+    val KATALOG_META = Fach(Bestandsart.KATALOG_META,
+        Ablageform(KatalogMetaZeile.serializer(), Ablagezeilen::katalogMeta, Ablagezeilen::katalogMeta), { EINZELN })
 
     private const val EINZELN = "einzeln"
 

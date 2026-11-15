@@ -91,7 +91,7 @@ class TokenTauschTest {
                 bremse?.await()
                 beimRotieren()
                 when (val r = antworten.removeFirstOrNull() ?: Ergebnis.Success(TokenRotation(success = true, token = "neu"))) {
-                    is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data, antwortHerkunft))
+                    is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data.token, antwortHerkunft))
                     is Ergebnis.Error -> r
                 }
             },
