@@ -1,14 +1,10 @@
 // Einstellungen: Konto, Haushalt, Lagerorte, CSV, Alarme und Aktualisierung.
-// Hängt nur an core-*; was ein anderer Bereich braucht, liegt in core-ui-bestand,
-// core-ui oder core-zustand, sonst kennten sich die Bereiche (ModulgrenzenTest).
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
 
 android {
     namespace = "ch.brickinventoryapp.feature.konto"
-    // Oberflächentests unter Robolectric lesen Texte und Schriften aus den Ressourcen.
-    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -25,9 +21,4 @@ dependencies {
     testImplementation(project(":core-testing"))
     // UpdateViewModelTest baut eine Vertrauensablage (PinAblage aus core-sicherheit).
     testImplementation(project(":core-sicherheit"))
-    testImplementation(platform(libs.androidx.compose.bom))
-    testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.test.ext.junit)
-    testImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.test.manifest)
 }

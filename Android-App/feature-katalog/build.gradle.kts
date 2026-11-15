@@ -1,6 +1,4 @@
 // Der Set-Katalog mit Detailansicht.
-// Hängt nur an core-*; was ein anderer Bereich braucht, liegt in core-ui-bestand,
-// core-ui oder core-zustand, sonst kennten sich die Bereiche (ModulgrenzenTest).
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }

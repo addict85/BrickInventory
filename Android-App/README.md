@@ -357,7 +357,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.unittests` | JVM-Tests ohne `isReturnDefaultValues` (Android ohne Robolectric wirft), voller Stack im Protokoll, Gruppe `unit-tests` |
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
-| `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
+| `brickinventory.android.feature` | die vier oben, `core-ktx`, Navigation, Robolectric- und Compose-Testbibliotheken samt Testressourcen — ein Bereich |
 | `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-obergrenze.txt`); kommt mit library/application/jvm.library |
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
