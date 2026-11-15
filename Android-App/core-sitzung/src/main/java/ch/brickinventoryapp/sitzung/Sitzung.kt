@@ -166,5 +166,5 @@ suspend fun Sitzung.kontoUebernehmen(
  * Fehler: Der Scanner löste doppelt aus, der erste Anlauf hat den einmaligen
  * Token verbraucht und angemeldet. Gibt die Meldung zurück, oder null.
  */
-fun qrFehler(bereitsAngemeldet: Boolean, meldung: String): String? =
+fun <T : Any> qrFehler(bereitsAngemeldet: Boolean, meldung: T): T? =
     if (bereitsAngemeldet) null else meldung
