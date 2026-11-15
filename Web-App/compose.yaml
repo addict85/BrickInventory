@@ -41,7 +41,8 @@ services:
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
       DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
       DB_SYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
-    secrets: [db_password, db_app_password, db_migration_password, db_system_password]
+      DB_SYSTEM_WEB_PASSWORD_FILE: /run/secrets/db_system_web_password
+    secrets: [db_password, db_app_password, db_migration_password, db_system_password, db_system_web_password]
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Ein Prozess je Verbindung: 200 Verbindungen plus Hintergrundprozesse.
     mem_limit: ${DB_MEM_LIMIT:-1g}
@@ -104,9 +105,10 @@ services:
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
       DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
       DB_SYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
+      DB_SYSTEM_WEB_PASSWORD_FILE: /run/secrets/db_system_web_password
       # Leserolle brickinventory_lesen (psql, README „Datenbank ansehen“); leere Datei = Rolle ohne Anmeldung.
       PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
-    secrets: [db_password, db_app_password, db_migration_password, db_system_password, pgweb_db_password]
+    secrets: [db_password, db_app_password, db_migration_password, db_system_password, db_system_web_password, pgweb_db_password]
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
@@ -318,10 +320,11 @@ services:
       # PGPORT:     5432
       PGUSER:     brickinventory_app
       PGPASSWORD_FILE: /run/secrets/db_app_password
-      # Die Systemrolle für Verwaltung, Anmeldung und Aufträge (UPGRADE.md#systemrolle):
-      # Den Zeilenschutz hebt nur sie auf, keine Einstellung der Laufzeitrolle.
-      PGSYSTEM_USER: brickinventory_system
-      PGSYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
+      # Die Systemrolle für Verwaltung und Anmeldung (UPGRADE.md#systemrolle-web): Den
+      # Zeilenschutz hebt nur sie auf, und sie erreicht nur die Zugangstabellen. Gutscheine,
+      # Sammlung und Finanzen über Kontogrenzen bearbeitet allein der Dienst jobs.
+      PGSYSTEM_USER: brickinventory_system_web
+      PGSYSTEM_PASSWORD_FILE: /run/secrets/db_system_web_password
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
@@ -333,7 +336,7 @@ services:
       # PG_IDLE_MS:   30000  # Idle-Timeout in ms (Standard: 30 s)
       # PG_CONN_MS:   5000   # Verbindungs-Timeout in ms (Standard: 5 s)
       # PG_STMT_MS:   30000  # Max. Query-Laufzeit in ms (Standard: 30 s)
-    secrets: [session_secret, db_app_password, db_system_password]
+    secrets: [session_secret, db_app_password, db_system_web_password]
 
     healthcheck:
       test: ["CMD", "node", "-e",
@@ -600,6 +603,8 @@ secrets:
     file: ./geheimnisse/db_migration_password
   db_system_password:
     file: ./geheimnisse/db_system_password
+  db_system_web_password:
+    file: ./geheimnisse/db_system_web_password
   pgweb_db_password:
     file: ./geheimnisse/pgweb_db_password
 

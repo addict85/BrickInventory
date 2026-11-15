@@ -302,7 +302,9 @@ test('kein Dienst hat ein Ersatz-Datenbankpasswort', () => {
 // Abhängigkeit auf migration gestrichen → rot „jobs wartet nicht auf migration“;
 // migration zusätzlich in brickinventory-net → rot „migration braucht nur das
 // interne Netz …“; schluessel bekommt db_migration_password → rot „ein
-// Laufzeitdienst kennt das Passwort der Migrationsrolle“.
+// Laufzeitdienst kennt das Passwort der Migrationsrolle“. (15.11.2026) app wieder mit
+// db_system_password → rot „app kennt mehr als die Web-Systemrolle“; bei db-rolle
+// DB_SYSTEM_WEB_PASSWORD_FILE gestrichen → rot „db-rolle legt die Rolle system_web …“.
 const geheimnisse = block =>
   (block.match(/^\s*secrets:\s*\[([^\]]*)\]/m)?.[1] ?? '')
     .split(',')
@@ -313,11 +315,11 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs'];
   const mitSuperuser = dienste.filter(d => geheimnisse(leseDienst(compose, d)).includes('db_password'));
   assert.deepEqual(mitSuperuser, ['postgres', 'db-rolle']);
-  assert.deepEqual(geheimnisse(leseDienst(compose, 'app')), [
-    'db_app_password',
-    'db_system_password',
-    'session_secret',
-  ]);
+  assert.deepEqual(
+    geheimnisse(leseDienst(compose, 'app')),
+    ['db_app_password', 'db_system_web_password', 'session_secret'],
+    'app kennt mehr als die Web-Systemrolle',
+  );
   assert.deepEqual(
     geheimnisse(leseDienst(compose, 'jobs')),
     ['db_app_password', 'db_system_password'],
@@ -331,15 +333,17 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
       /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_app_password\s*$/m,
       `${d}: PGPASSWORD_FILE nicht aus db_app_password`,
     );
-    assert.match(block, /^\s*PGSYSTEM_USER:\s*brickinventory_system\s*$/m, `${d} ohne Systemrolle`);
-    assert.match(block, /^\s*PGSYSTEM_PASSWORD_FILE:\s*\/run\/secrets\/db_system_password\s*$/m);
+    const rolle = d === 'app' ? 'system_web' : 'system';
+    assert.match(block, new RegExp(`^\\s*PGSYSTEM_USER:\\s*brickinventory_${rolle}\\s*$`, 'm'), `${d} ohne Systemrolle`);
+    assert.match(block, new RegExp(`^\\s*PGSYSTEM_PASSWORD_FILE:\\s*/run/secrets/db_${rolle}_password\\s*$`, 'm'));
   }
   for (const d of ['postgres', 'db-rolle'])
-    assert.match(
-      leseDienst(compose, d),
-      /^\s*DB_SYSTEM_PASSWORD_FILE:\s*\/run\/secrets\/db_system_password\s*$/m,
-      `${d} legt die Systemrolle ohne Passwort an`,
-    );
+    for (const rolle of ['system', 'system_web'])
+      assert.match(
+        leseDienst(compose, d),
+        new RegExp(`^\\s*DB_${rolle.toUpperCase()}_PASSWORD_FILE:\\s*/run/secrets/db_${rolle}_password\\s*$`, 'm'),
+        `${d} legt die Rolle ${rolle} ohne Passwort an`,
+      );
   assert.match(
     leseDienst(compose, 'db-rolle'),
     /^\s*PGWEB_DB_PASSWORD_FILE:\s*\/run\/secrets\/pgweb_db_password\s*$/m,

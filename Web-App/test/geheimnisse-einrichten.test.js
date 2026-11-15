@@ -28,6 +28,7 @@ const NAMEN = [
   'db_migration_password',
   'db_password',
   'db_system_password',
+  'db_system_web_password',
   'pgweb_db_password',
   'session_secret',
 ];
@@ -84,6 +85,7 @@ test('eine bestehende Installation übernimmt die Werte aus .env', t => {
   // Die Migrationsrolle kam später dazu; db-rolle setzt ihr Passwort, ein neues passt also.
   assert.match(s.lies('db_migration_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('db_system_password'), /^[0-9a-f]{48}$/);
+  assert.match(s.lies('db_system_web_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
   assert.match(r.stderr, /aus \.env löschen.*SESSION_SECRET DB_PASSWORD DB_APP_PASSWORD PGWEB_PASSWORD/);
 });
@@ -104,7 +106,7 @@ test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', t => {
   fs.chmodSync(path.join(s.ort, 'geheimnisse'), 0o755);
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
-  for (const n of ['session_secret', 'db_password', 'db_app_password', 'db_migration_password', 'db_system_password'])
+  for (const n of NAMEN.filter(n => n !== 'pgweb_db_password'))
     assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
   assert.equal(fs.statSync(path.join(s.ort, 'geheimnisse')).mode & 0o777, 0o700, 'ein offener Ordner bleibt offen');

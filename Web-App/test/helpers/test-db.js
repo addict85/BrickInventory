@@ -22,6 +22,7 @@ const id = s => `"${String(s).replace(/"/g, '""')}"`;
       await c.query(`CREATE DATABASE ${id(name)} TEMPLATE ${id(vorlage)} OWNER ${id(r.eigen.name)}`);
       await c.query(`REVOKE TEMPORARY ON DATABASE ${id(name)} FROM PUBLIC`);
       await c.query(`GRANT CONNECT, TEMPORARY ON DATABASE ${id(name)} TO ${id(r.app.name)}, ${id(r.system.name)}`);
+      await c.query(`GRANT CONNECT ON DATABASE ${id(name)} TO ${id(r.systemweb.name)}`);
     } else if (was === 'loeschen') await c.query(`DROP DATABASE IF EXISTS ${id(name)} WITH (FORCE)`);
     else throw new Error(`unbekannt: ${was}`);
   } finally {

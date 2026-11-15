@@ -26,6 +26,7 @@ aus_datei PGPASSWORD
 aus_datei DB_APP_PASSWORD
 aus_datei DB_MIGRATION_PASSWORD
 aus_datei DB_SYSTEM_PASSWORD
+aus_datei DB_SYSTEM_WEB_PASSWORD
 aus_datei PGWEB_DB_PASSWORD
 : "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md}"
 : "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md#migrationsrolle}"
@@ -45,9 +46,18 @@ for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD"; do
     exit 1
   fi
 done
+export DB_SYSTEM_WEB_PASSWORD="${DB_SYSTEM_WEB_PASSWORD:-}"
+if [ -n "$DB_SYSTEM_WEB_PASSWORD" ]; then
+  for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD" "$DB_SYSTEM_PASSWORD"; do
+    if [ "$DB_SYSTEM_WEB_PASSWORD" = "$anderes" ]; then
+      echo "[db-rolle] DB_SYSTEM_WEB_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD, DB_MIGRATION_PASSWORD und DB_SYSTEM_PASSWORD unterscheiden." >&2
+      exit 1
+    fi
+  done
+fi
 export PGWEB_DB_PASSWORD="${PGWEB_DB_PASSWORD:-}"
 if [ -n "$PGWEB_DB_PASSWORD" ]; then
-  for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD" "$DB_SYSTEM_PASSWORD"; do
+  for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD" "$DB_SYSTEM_PASSWORD" "$DB_SYSTEM_WEB_PASSWORD"; do
     if [ "$PGWEB_DB_PASSWORD" = "$anderes" ]; then
       echo "[db-rolle] PGWEB_DB_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD, DB_MIGRATION_PASSWORD und DB_SYSTEM_PASSWORD unterscheiden." >&2
       exit 1
@@ -58,6 +68,36 @@ export DB_APP_USER="${DB_APP_USER:-brickinventory_app}"
 export DB_MIGRATION_USER="${DB_MIGRATION_USER:-brickinventory_migration}"
 export DB_LESEN_USER="${DB_LESEN_USER:-brickinventory_lesen}"
 export DB_SYSTEM_USER="${DB_SYSTEM_USER:-brickinventory_system}"
+export DB_SYSTEM_WEB_USER="${DB_SYSTEM_WEB_USER:-brickinventory_system_web}"
+
+# Die Systemrolle des Web-Prozesses (BYPASSRLS wie die Systemrolle), je Tabelle nur
+# diese Rechte: Ein vergessener user_id-Filter in einem Systemrahmen einer Anfrage
+# erreicht so weder Gutscheine noch Sammlung oder Finanzen. Alles Übrige über
+# Kontogrenzen bleibt beim Dienst jobs; eine neue Tabelle fehlt hier, bis sie bewusst steht.
+export SYSTEM_WEB_RECHTE='
+users: SELECT, INSERT, UPDATE, DELETE
+user_sessions: SELECT, INSERT, UPDATE, DELETE
+api_tokens: SELECT, INSERT, UPDATE, DELETE
+api_tokens_verbraucht: SELECT, INSERT, UPDATE, DELETE
+passkeys: SELECT, INSERT, UPDATE, DELETE
+webauthn_challenges: SELECT, INSERT, UPDATE, DELETE
+zweiter_faktor: SELECT, INSERT, UPDATE, DELETE
+zweiter_faktor_codes: SELECT, INSERT, UPDATE, DELETE
+qr_login_tokens: SELECT, INSERT, UPDATE, DELETE
+geraete_schluessel: SELECT, INSERT, UPDATE, DELETE
+geraete_nonces: SELECT, INSERT, UPDATE, DELETE
+schritt_challenges: SELECT, INSERT, UPDATE, DELETE
+schritt_freigaben: SELECT, INSERT, UPDATE, DELETE
+rate_limit_attempts: SELECT, INSERT, UPDATE, DELETE
+account_links: SELECT, INSERT, UPDATE, DELETE
+account_link_invites: SELECT, INSERT, UPDATE, DELETE
+household_former_links: SELECT, INSERT, UPDATE, DELETE
+verwalter_uebernahmen: SELECT, INSERT, UPDATE, DELETE
+global_settings: SELECT, INSERT, UPDATE, DELETE
+verwaltungsprotokoll: SELECT, INSERT
+auftraege: SELECT, INSERT
+laufzustand: SELECT
+'
 
 # Was die Leserolle (pgweb) lesen darf, je Tabelle: eine Allowlist. Eine neue
 # Tabelle oder Spalte bleibt unlesbar, bis sie hier bewusst steht; eine neue
@@ -148,6 +188,9 @@ SET ROLE NONE;
 \getenv lesen_spalten LESEN_SPALTEN
 \getenv system_rolle DB_SYSTEM_USER
 \getenv system_passwort DB_SYSTEM_PASSWORD
+\getenv systemweb_rolle DB_SYSTEM_WEB_USER
+\getenv systemweb_passwort DB_SYSTEM_WEB_PASSWORD
+\getenv systemweb_rechte SYSTEM_WEB_RECHTE
 SELECT pg_catalog.set_config('brickinventory.app_rolle', :'app_rolle', false) AS r,
        pg_catalog.set_config('brickinventory.app_passwort', :'app_passwort', false) AS p,
        pg_catalog.set_config('brickinventory.migration_rolle', :'migration_rolle', false) AS mr,
@@ -156,13 +199,19 @@ SELECT pg_catalog.set_config('brickinventory.app_rolle', :'app_rolle', false) AS
        pg_catalog.set_config('brickinventory.lesen_passwort', :'lesen_passwort', false) AS lp,
        pg_catalog.set_config('brickinventory.lesen_spalten', :'lesen_spalten', false) AS ls,
        pg_catalog.set_config('brickinventory.system_rolle', :'system_rolle', false) AS sr,
-       pg_catalog.set_config('brickinventory.system_passwort', :'system_passwort', false) AS sp \gset
+       pg_catalog.set_config('brickinventory.system_passwort', :'system_passwort', false) AS sp,
+       pg_catalog.set_config('brickinventory.systemweb_rolle', :'systemweb_rolle', false) AS wr,
+       pg_catalog.set_config('brickinventory.systemweb_passwort', :'systemweb_passwort', false) AS wp,
+       pg_catalog.set_config('brickinventory.systemweb_rechte', :'systemweb_rechte', false) AS wl \gset
 DO $$
 DECLARE
   rolle text := pg_catalog.current_setting('brickinventory.app_rolle');
   migration text := pg_catalog.current_setting('brickinventory.migration_rolle');
   lesen text := pg_catalog.current_setting('brickinventory.lesen_rolle');
   sysrolle text := pg_catalog.current_setting('brickinventory.system_rolle');
+  sysweb text := pg_catalog.current_setting('brickinventory.systemweb_rolle');
+  sysweb_pw text := pg_catalog.current_setting('brickinventory.systemweb_passwort');
+  sysweb_liste text := pg_catalog.current_setting('brickinventory.systemweb_rechte');
   schreiber text;
   lesen_pw text := pg_catalog.current_setting('brickinventory.lesen_passwort');
   liste text := pg_catalog.current_setting('brickinventory.lesen_spalten');
@@ -179,9 +228,9 @@ BEGIN
   IF NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
     RAISE EXCEPTION 'db-rolle muss als Superuser laufen, nicht als %', current_user;
   END IF;
-  IF (SELECT pg_catalog.count(DISTINCT n) FROM pg_catalog.unnest(ARRAY[rolle, migration, lesen, sysrolle, current_user::text]) n) <> 5 THEN
-    RAISE EXCEPTION 'Laufzeitrolle %, Migrationsrolle %, Leserolle %, Systemrolle % und Superuser % müssen verschieden sein',
-      rolle, migration, lesen, sysrolle, current_user;
+  IF (SELECT pg_catalog.count(DISTINCT n) FROM pg_catalog.unnest(ARRAY[rolle, migration, lesen, sysrolle, sysweb, current_user::text]) n) <> 6 THEN
+    RAISE EXCEPTION 'Laufzeitrolle %, Migrationsrolle %, Leserolle %, Systemrolle %, Web-Systemrolle % und Superuser % müssen verschieden sein',
+      rolle, migration, lesen, sysrolle, sysweb, current_user;
   END IF;
   -- Event-Trigger feuern bei jedem ALTER … OWNER unten mit Superuser-Rechten.
   IF EXISTS (SELECT FROM pg_catalog.pg_event_trigger WHERE evtenabled <> 'D') THEN
@@ -319,6 +368,50 @@ BEGIN
     EXECUTE pg_catalog.format('ALTER TABLE %s ENABLE ROW LEVEL SECURITY', r.name);
   END LOOP;
 
+  -- Web-Systemrolle: am Zeilenschutz vorbei, aber nur auf die Tabellen in SYSTEM_WEB_RECHTE.
+  -- Ohne Passwort ohne Anmeldung, wie die Leserolle: Wer kein getrenntes Web hat, braucht sie nicht.
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = sysweb) THEN
+    EXECUTE pg_catalog.format('CREATE ROLE %I NOLOGIN', sysweb);
+    RAISE NOTICE '[db-rolle] Rolle % angelegt', sysweb;
+  END IF;
+  EXECUTE pg_catalog.format('ALTER ROLE %I %s NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION BYPASSRLS',
+                 sysweb, CASE WHEN sysweb_pw = '' THEN 'NOLOGIN PASSWORD NULL' ELSE pg_catalog.format('LOGIN PASSWORD %L', sysweb_pw) END);
+  EXECUTE pg_catalog.format('ALTER ROLE %I RESET ALL', sysweb);
+  EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I RESET ALL', sysweb, db);
+  FOR r IN SELECT g.rolname FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles g ON g.oid = m.roleid
+            WHERE m.member = (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = sysweb) LOOP
+    EXECUTE pg_catalog.format('REVOKE %I FROM %I', r.rolname, sysweb);
+  END LOOP;
+  EXECUTE pg_catalog.format('REVOKE ALL ON DATABASE %I FROM %I', db, sysweb);
+  EXECUTE pg_catalog.format('GRANT CONNECT ON DATABASE %I TO %I', db, sysweb);
+  EXECUTE pg_catalog.format('REVOKE ALL ON SCHEMA public FROM %I', sysweb);
+  EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', sysweb);
+  EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', sysweb);
+  EXECUTE pg_catalog.format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', sysweb);
+  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON TABLES FROM %I', migration, sysweb);
+  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON SEQUENCES FROM %I', migration, sysweb);
+  FOR r IN SELECT pg_catalog.btrim(pg_catalog.split_part(z, ':', 1)) AS tabelle,
+                  pg_catalog.btrim(pg_catalog.split_part(z, ':', 2)) AS was
+             FROM pg_catalog.regexp_split_to_table(sysweb_liste, E'\n') AS z
+            WHERE pg_catalog.strpos(z, ':') > 0 LOOP
+    tab := (SELECT c.oid FROM pg_catalog.pg_class c WHERE c.relnamespace = 'public'::pg_catalog.regnamespace
+              AND c.relname = r.tabelle AND c.relkind IN ('r', 'p', 'v'));
+    CONTINUE WHEN tab IS NULL;
+    IF r.was OPERATOR(pg_catalog.!~) '^(SELECT|INSERT|UPDATE|DELETE)(, (SELECT|INSERT|UPDATE|DELETE))*$' THEN
+      RAISE EXCEPTION '[db-rolle] SYSTEM_WEB_RECHTE: % für % ist keine Liste aus SELECT, INSERT, UPDATE, DELETE', r.was, r.tabelle;
+    END IF;
+    EXECUTE pg_catalog.format('GRANT %s ON %s TO %I', r.was, tab::pg_catalog.regclass, sysweb);
+    -- Wer einfügt, zählt die Sequenzen der Tabelle weiter; setval (UPDATE) braucht er nicht.
+    IF pg_catalog.strpos(r.was, 'INSERT') > 0 THEN
+      FOR kopie IN SELECT d.objid::pg_catalog.regclass AS name FROM pg_catalog.pg_depend d
+                    WHERE d.classid = 'pg_catalog.pg_class'::pg_catalog.regclass AND d.refobjid = tab
+                      AND d.deptype IN ('a', 'i')
+                      AND (SELECT relkind FROM pg_catalog.pg_class WHERE oid = d.objid) = 'S' LOOP
+        EXECUTE pg_catalog.format('GRANT USAGE ON SEQUENCE %s TO %I', kopie.name, sysweb);
+      END LOOP;
+    END IF;
+  END LOOP;
+
   -- Leserolle für pgweb: nur SELECT auf die Allowlist oben. BYPASSRLS, weil
   -- pgweb keinen Kontext setzt und der Zeilenschutz (Migration 0111) ihr sonst
   -- jede Zeile der Kontotabellen verbärge; was sie liest, begrenzt die Allowlist.
@@ -361,4 +454,4 @@ BEGIN
   END LOOP;
 END $$;
 SQL
-echo "[db-rolle] ${DB_MIGRATION_USER} besitzt die Datenbank, ${DB_APP_USER} liest und schreibt nur Zeilen, ${DB_SYSTEM_USER} ebenso über alle Konten, ${DB_LESEN_USER} liest nur die Allowlist."
+echo "[db-rolle] ${DB_MIGRATION_USER} besitzt die Datenbank, ${DB_APP_USER} liest und schreibt nur Zeilen, ${DB_SYSTEM_USER} ebenso über alle Konten, ${DB_SYSTEM_WEB_USER} nur die Zugangstabellen, ${DB_LESEN_USER} liest nur die Allowlist."

@@ -144,7 +144,7 @@ async function starte(): Promise<void> {
 
   try {
     // Migrationen, Erststart und Umschlüsselung gehen über alle Konten.
-    await imSystemkontext('start', () => bereiteDatenbankVor(zugang, dienste));
+    await imSystemkontext('start', () => bereiteDatenbankVor(zugang, dienste, { jobs }));
   } catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
@@ -173,7 +173,7 @@ async function starte(): Promise<void> {
     ? http
         .createServer(
           { ...HTTP_FRISTEN },
-          baueApp({ pool: zugang.systemPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
+          baueApp({ pool: zugang.systemWebPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);

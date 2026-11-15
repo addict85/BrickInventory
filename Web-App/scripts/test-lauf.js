@@ -304,6 +304,8 @@ function rollenAnlegen(basis, vorlage, r) {
       DB_MIGRATION_PASSWORD: r.eigen.passwort,
       DB_SYSTEM_USER: r.system.name,
       DB_SYSTEM_PASSWORD: r.system.passwort,
+      DB_SYSTEM_WEB_USER: r.systemweb.name,
+      DB_SYSTEM_WEB_PASSWORD: r.systemweb.passwort,
       DB_LESEN_USER: r.lesen.name,
       PGWEB_DB_PASSWORD: '',
     },
