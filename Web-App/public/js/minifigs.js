@@ -425,7 +425,7 @@ export function renderManualFigsTable() {
       // geschriebene Einzelwert der Stammzeile — bei zwei Erfassungen zu verschiedenen Preisen stimmte er
       // nicht.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
-      const priceStr = figPrice != null ? fmtN(figPrice, CURRENCY) : '—';
+      const priceStr = figPrice != null ? esc(tRaw('finance.je', { preis: fmtN(figPrice, CURRENCY) })) : '—';
       const condBadge = condBadges(f);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">

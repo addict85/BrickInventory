@@ -184,7 +184,8 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
       'Anmeldemaske',
     );
     await b.auswerten(`document.getElementById('btn-login').click(); true`);
-    await bis(`(document.getElementById('lerr').textContent || '') !== ''`, 'Fehler der Anmeldung', 100);
+    // Seit Runde 26 (N4) meldet das leere Feld sich selbst, ohne den Server zu fragen.
+    await bis(`document.getElementById('lu-fehler')?.hidden === false`, 'Fehler am Feld', 100);
     assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'leere Anmeldung: Fokus ins erste Feld');
   });
 });

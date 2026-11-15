@@ -271,11 +271,13 @@ function finanzenLaedt() {
 function finanzenFehlen(d, hatteTabelle) {
   const imKasten = !hatteTabelle && !kurveDa();
   const ziel = G(imKasten ? 'portfolio-chart' : 'fin-tbl');
-  if (!listeLadefehler(ziel, d, { erneut: 'loadFinance', behalten: hatteTabelle })) return false;
+  const titel = tRaw('finance.fehler_titel');
+  if (!listeLadefehler(ziel, d, { erneut: 'loadFinance', behalten: hatteTabelle, titel })) return false;
   if (imKasten) {
     setzeHtml(G('fin-tbl'), '');
     // Wieder frei gibt sie loadPortfolioChart(), sobald ein Verlauf da ist.
     for (const b of document.querySelectorAll('.zeitraum-wahl .period-btn')) b.setAttribute('disabled', '');
+    filterBedienbar(false);
   }
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').removeAttribute('aria-busy');
@@ -283,6 +285,12 @@ function finanzenFehlen(d, hatteTabelle) {
     G('portfolio-current').textContent = '—';
   }
   return true;
+}
+
+/** Ohne Liste filtern Chips und Suche nichts; bedienbar sähen sie aus, als gäbe es etwas zu filtern.
+ * @param {boolean} frei */
+function filterBedienbar(frei) {
+  for (const el of alle('#fin-filter button, #fin-suche')) /** @type {HTMLButtonElement} */ (el).disabled = !frei;
 }
 
 export async function loadFinance() {
@@ -296,6 +304,7 @@ export async function loadFinance() {
     api('GET', `/v1/finance/pnl${scopeQuery('finance')}`),
   ]);
   if (finanzenFehlen(d, hatteTabelle) || !d?.success) return;
+  filterBedienbar(true);
   const cur = d.currency;
   const extra =
     parseFloat(partsVal.success ? partsVal.total_value || '0' : '0') +

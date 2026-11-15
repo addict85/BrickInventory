@@ -112,9 +112,12 @@
     const mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
     if (nav.dataset.mehr !== mehr) nav.dataset.mehr = mehr;
   }
-  const einstNav = /** @type {HTMLElement | null} */ (document.querySelector('.einst-nav'));
-  if (einstNav) {
+  for (const einstNav of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.einst-nav, .konto-nav'))) {
     einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
+    // Chrome rollt einen nur angeschnittenen Link beim Fokus nicht; er läge halb ausserhalb des Fensters.
+    einstNav.addEventListener('focusin', e => {
+      if (e.target instanceof HTMLElement) e.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
     if (typeof ResizeObserver === 'function')
       new ResizeObserver(() => requestAnimationFrame(() => randHinweis(einstNav))).observe(einstNav);
   }

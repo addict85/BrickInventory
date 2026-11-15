@@ -103,7 +103,21 @@ export function zeigeBenutzernamen() {
   el.textContent = ME.isAdmin && !doppelt ? `${ME.username} (${tRaw('users.admin_badge')})` : ME.username;
 }
 
+/**
+ * Sprungleiste im Konto: Die Abschnitte bleiben untereinander stehen, der Link rollt hin und gibt der Überschrift
+ * den Fokus, damit Tastatur und Vorleser dort weitermachen. Kein Hash: Der gehört dem Router.
+ * @param {string} id @param {Event} [ev]
+ */
+function kontoSprung(id, ev) {
+  ev?.preventDefault();
+  const ziel = G(id);
+  if (!ziel) return;
+  (ziel.closest('.ssec') ?? ziel).scrollIntoView({ block: 'start' });
+  ziel.focus({ preventScroll: true });
+}
+
 registerActions({
+  kontoSprung,
   rbHinweisOeffnen,
   rbHinweisWeg,
 });

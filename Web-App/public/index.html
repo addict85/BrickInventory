@@ -754,7 +754,7 @@
       </div>
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
-        <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
+        <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.col.purchase">Kaufpreis</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub"></div></div>
         <div class="fstat hi"><div class="flbl" id="fin-wert-titel" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
         <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
@@ -1007,9 +1007,17 @@
       <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg></span><span data-i18n="settings.group.profile">Konto</span></h1></div>
 
       <!-- ── KONTO (Profil) ───────────────────────────────────────────────── -->
+      <div class="konto-nav" role="navigation" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
+        <a class="einst-link" href="#konto-t-darstellung" data-click="kontoSprung" data-arg="konto-t-darstellung" data-i18n="konto.darstellung">Darstellung</a>
+        <a class="einst-link" href="#konto-t-profil" data-click="kontoSprung" data-arg="konto-t-profil" data-i18n="konto.profil">Profil</a>
+        <a class="einst-link" href="#konto-t-passwort" data-click="kontoSprung" data-arg="konto-t-passwort" data-i18n="login.password">Passwort</a>
+        <a class="einst-link" href="#konto-t-zf" data-click="kontoSprung" data-arg="konto-t-zf" data-i18n="zf.title">Zweiter Faktor</a>
+        <a class="einst-link" href="#konto-t-pk" data-click="kontoSprung" data-arg="konto-t-pk" data-i18n="pk.title">Passkeys</a>
+        <a class="einst-link" href="#konto-t-gefahr" data-click="kontoSprung" data-arg="konto-t-gefahr" data-i18n="settings.danger_zone">Gefahrenzone</a>
+      </div>
 
       <section class="ssec abstand-u-125" id="profile-settings-card" aria-labelledby="konto-t-darstellung">
-        <h2 class="stit" id="konto-t-darstellung"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg> <span data-i18n="konto.darstellung">Darstellung</span></h2>
+        <h2 class="stit" id="konto-t-darstellung" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg> <span data-i18n="konto.darstellung">Darstellung</span></h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="konto.darstellung_hint">Jede Änderung gilt sofort.</p>
         <div class="profil-raster">
           <div class="fg"><label for="design-wahl" data-i18n="settings.own_theme">Design</label>
@@ -1060,7 +1068,7 @@
       </section>
 
       <section class="ssec abstand-u-125" aria-labelledby="konto-t-profil">
-        <h2 class="stit" id="konto-t-profil"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg> <span data-i18n="konto.profil">Profil</span></h2>
+        <h2 class="stit" id="konto-t-profil" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg> <span data-i18n="konto.profil">Profil</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-prof">
           <div class="profil-raster">
             <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" autocomplete="given-name" /></div>
@@ -1077,7 +1085,7 @@
       </section>
 
       <section class="ssec abstand-u-125" aria-labelledby="konto-t-passwort">
-        <h2 class="stit" id="konto-t-passwort"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
+        <h2 class="stit" id="konto-t-passwort" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-pw">
           <div class="profil-raster">
             <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" aria-describedby="pw-n-regel" />
@@ -1093,20 +1101,20 @@
 
       <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/zweiter-faktor.js -->
       <div class="ssec abstand-u-125">
-        <h2 class="stit" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</h2>
+        <h2 class="stit" id="konto-t-zf" tabindex="-1" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="zf.hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.</p>
         <div id="zf-flaeche"></div>
       </div>
 
       <!-- Passkeys — Inhalt zeichnet js/passkeys.js -->
       <div class="ssec abstand-u-125">
-        <h2 class="stit" data-i18n="pk.title" data-ico="schluessel">Passkeys</h2>
+        <h2 class="stit" id="konto-t-pk" tabindex="-1" data-i18n="pk.title" data-ico="schluessel">Passkeys</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="pk.hint">Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.</p>
         <div id="pk-flaeche"></div>
       </div>
 
       <!-- Gefahrenzone — für alle Benutzer sichtbar -->
-      <div class="sgroup-label text-gefahr" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
+      <div class="sgroup-label text-gefahr" id="konto-t-gefahr" tabindex="-1" data-i18n="settings.danger_zone" data-ico="warnung">Gefahrenzone</div>
       <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-schreibend data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>

@@ -8,7 +8,7 @@ import { resetScopeModes } from './scope.js';
 import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';
 import { api, apiRoh, leereZwischenspeicher } from './api.js';
 import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
-import { formularFehler, passwortRegelText } from './formular.js';
+import { feldFehler, formularFehler, passwortRegelText } from './formular.js';
 import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './konto.js';
 import { toast } from './meldungen.js';
 import { setAllSets, set_ME, set_settingsCache, set_CURRENCY, ME } from './zustand.js';
@@ -50,8 +50,13 @@ abonniere('sitzungBeendet', path => {
   if (!ME) return; // war nie angemeldet — nichts zu beenden
   _abgelaufenesKonto = ME.id;
   set_ME(null);
-  showLogin({ abgelaufen: true });
+  // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Der Browser hat das Secure-Cookie
+  // verworfen. „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
+  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && window.isSecureContext === false;
+  showLogin({ abgelaufen: true, hinweis: ohneKeks ? tRaw('auth.cookie_fehlt') : undefined });
 });
+/** Zeitpunkt der letzten Anmeldung per Formular (für den Fall oben). */
+let _angemeldetUm = 0;
 
 // ── AUTH & PANELS ─────────────────────────────────────
 /** @type {string | null} */
@@ -406,7 +411,7 @@ async function bestaetigtAngemeldet() {
   toast(_verifyEmail ? tRaw('verify.bestaetigt', { email: _verifyEmail }) : tRaw('verify.bestaetigt_kurz'), 'success');
 }
 /**
- * @param {{ abgelaufen?: boolean }} [o] abgelaufen: Der Name bleibt stehen, damit
+ * @param {{ abgelaufen?: boolean, hinweis?: string }} [o] abgelaufen: Der Name bleibt stehen, damit
  *   man sich gleich wieder anmelden kann; Passwort und Code nie — sonst genügt
  *   dem Nächsten am Gerät ein Druck auf „Anmelden“.
  */
@@ -425,7 +430,7 @@ function showLogin(o = {}) {
   const hinweis = G('login-hinweis');
   if (hinweis) {
     hinweis.hidden = !o.abgelaufen;
-    hinweis.textContent = o.abgelaufen ? tRaw('auth.session_expired') : '';
+    hinweis.textContent = o.abgelaufen ? o.hinweis || tRaw('auth.session_expired') : '';
   }
   formularFehler(G('lerr'), '');
   // Der Fortschrittsbalken gehört js/fortschritt.js — dort steht auch, was „zurücksetzen“ für ihn bedeutet
@@ -579,6 +584,11 @@ function showApp() {
   routeBeimStart();
   seitennameAktualisieren();
 }
+/** @type {[string, string][]} */
+const LOGIN_PFLICHT = [
+  ['lu', 'login.user_leer'],
+  ['lp', 'login.passwort_leer'],
+];
 G('btn-login').onclick = doLogin;
 for (const id of ['lu', 'lp', 'lc'])
   G(id).addEventListener('keydown', e => {
@@ -588,6 +598,15 @@ for (const id of ['lu', 'lp', 'lc'])
     }
   });
 async function doLogin() {
+  // Leere Pflichtfelder meldet das Feld selbst, wie in den übrigen Formularen; die Sammelmeldung oben bleibt
+  // für das, was erst der Server weiss (falsche Anmeldedaten, Sperre).
+  formularFehler(G('lerr'), '');
+  const leer = LOGIN_PFLICHT.filter(([id]) => !(id === 'lp' ? G(id).value : G(id).value.trim()));
+  for (const [id, schluessel] of LOGIN_PFLICHT) feldFehler(id, leer.some(([l]) => l === id) ? tRaw(schluessel) : '');
+  if (leer.length) {
+    G(leer[0][0]).focus();
+    return;
+  }
   const b = G('btn-login');
   const frei = knopfBesetzt(b);
   const code = G('lc').value.trim();
@@ -623,12 +642,12 @@ async function doLogin() {
     resetScopeModes();
     formularFehler(G('lerr'), '');
     G('login-hinweis').hidden = true;
+    _angemeldetUm = Date.now();
     oeffneApp();
   } else {
     const err = d.error || tRaw('settings.error');
-    // Fokus ins erste leere Feld; sind beide gefüllt, stimmt meist das Passwort nicht.
-    const leer = ['lu', 'lp'].filter(id => !G(id).value);
-    formularFehler(G('lerr'), err, leer.length ? leer : ['lp', 'lu']);
+    // Beide gefüllt (siehe oben): Meist stimmt das Passwort nicht, also dorthin.
+    formularFehler(G('lerr'), err, ['lp', 'lu']);
     if (d.unverified || d.code === 'email_nicht_bestaetigt') {
       setzeHtml(
         G('lerr'),

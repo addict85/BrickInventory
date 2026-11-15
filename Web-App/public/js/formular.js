@@ -79,7 +79,7 @@ function linienNachbarn(kind) {
  */
 function fehlerPlatzieren(feld, meldung) {
   /** @type {Element} */
-  let anker = feld.closest('.preis-mit-waehrung') ?? feld;
+  let anker = feld.closest('.preis-mit-waehrung, .geheim-feld') ?? feld;
   let gruppe = anker.parentElement?.closest('.fg') ?? null;
   if (gruppe && !gruppe.contains(anker)) gruppe = null;
   /** @type {Element} */

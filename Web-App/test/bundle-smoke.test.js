@@ -168,9 +168,13 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
   assert.match(fn, /if \(!ME\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
   assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
   assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
-  assert.match(fn, /showLogin\(\{ abgelaufen: true \}\)/, 'Die Anmeldemaske muss zurückkommen');
+  assert.match(fn, /showLogin\(\{ abgelaufen: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
   // Die Meldung steht einmal in der Anmeldekarte (showLogin), nicht als Toast.
-  assert.match(core, /o\.abgelaufen \? tRaw\('auth\.session_expired'\)/, 'Ohne Meldung wüsste niemand, warum');
+  assert.match(
+    core,
+    /o\.abgelaufen \? (o\.hinweis \|\| )?tRaw\('auth\.session_expired'\)/,
+    'Ohne Meldung wüsste niemand, warum',
+  );
 
   // Der Text muss in beiden Sprachen existieren — sonst steht der Schlüssel da.
   for (const lang of ['de', 'en']) {
