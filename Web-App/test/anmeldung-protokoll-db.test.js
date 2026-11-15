@@ -45,7 +45,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
 });
 
 const db = S.testDaten();
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const protokoll = _req('src/infra/protokoll.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const P = process.pid,

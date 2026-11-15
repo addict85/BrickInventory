@@ -5,7 +5,8 @@ import { passwortMangel } from '../../src/infra/passwortRegel';
 import { fehlerText, antwortSprache, fachfehler } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei } from '../../src/konto';
+import { USERNAME_RE, emailGueltig, nameGueltig } from '../../src/konto';
+import { vertrauenspartei } from '../../src/faktoren';
 import type { Dienste } from '../../src/dienste';
 
 /** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */

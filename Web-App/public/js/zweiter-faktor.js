@@ -15,7 +15,7 @@ import {
   mitPasswortBestaetigen,
 } from './rueckfrage.js';
 
-// ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
+// ═══ Zweiter Faktor im Profil (Server: src/faktoren/zweiterFaktor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn Wiederherstellungscodes einmal
 // zeigen. Danach: abschalten oder neue Codes.
 

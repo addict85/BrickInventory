@@ -16,7 +16,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 
 test('otpauth-Link mit Logo', async t => {
   // Die Basis-URL kommt gereicht (k.konfig.appBaseUrl), nicht aus der Umgebung.
-  const { otpauthAdresse } = _req('src/konto/zweiterFaktor.js');
+  const { otpauthAdresse } = _req('src/faktoren/zweiterFaktor.js');
 
   await t.test('mit Basis-URL steht das Logo im Link', () => {
     const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco', 'https://lego.example.org'));

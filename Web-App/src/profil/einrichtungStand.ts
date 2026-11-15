@@ -3,7 +3,7 @@
  * Einrichtung abgeschlossen ist, sind das nur Schalter — keine Namen, keine
  * Adressen, keine Schlüssel. Danach antwortet die Seite nur noch „erledigt"
  * und nennt das Zertifikat, das ohnehin unter /ca.crt öffentlich ist. */
-import { Abstriche, versuche } from '../infra/ergebnis';
+import { Abstriche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
 import type { ProfilKontext } from './kontext';
 
@@ -87,16 +87,13 @@ async function berechne(kx: ProfilKontext, verwalter: boolean): Promise<Einricht
   ).every(Boolean);
 
   const schritte: Schrittzustand[] = [];
-  const datenbank = (await versuche('einrichtung:datenbank', kx.konto.datenbankErreichbar())).ok;
+  const datenbank = await kx.db.datenbankAntwortet();
   schritte.push({ id: 'datenbank', ok: datenbank, pflicht: true });
   schritte.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   schritte.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   schritte.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const konten = await ab.oder('konten', kx.konto.kontenStand(), {
-    vorhanden: false,
-    startpasswort: false,
-  });
-  schritte.push({ id: 'konto', ok: konten.vorhanden && (!verwalter || !konten.startpasswort), pflicht: true });
+  const konto = await ab.oder('konten', kx.konto.kontoEingerichtet(verwalter), false);
+  schritte.push({ id: 'konto', ok: konto, pflicht: true });
   schritte.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 
   return { ...grund, erledigt: false, konfiguriert: rebrickable || bricklink, schritte, ...ab.angabe() };

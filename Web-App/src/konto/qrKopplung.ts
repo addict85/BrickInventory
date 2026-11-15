@@ -82,8 +82,7 @@ export async function holeQrTokenAb(
     scope: 'app',
     ip,
   });
-  const familie = await k.geraete.familieDesTokens(tokenAbdruck(token));
-  const schluesselNonce = familie ? await k.geraete.neueNonce(familie, true) : null;
+  const schluesselNonce = await k.geraete.nonceFuerQrToken(tokenAbdruck(token));
   return { stand: 'fertig', token, uid: z.user_id, schluesselNonce };
 }
 

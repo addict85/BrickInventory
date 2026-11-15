@@ -37,7 +37,9 @@ export async function meldeAusstehendeAdressen(k: KontoKontext): Promise<number[
 }
 
 export async function kontenListe(k: KontoKontext) {
-  return k.konten.alleKonten();
+  const konten = await k.konten.alleKonten();
+  const mitFaktor = await k.faktoren.aktiveUnter(konten.map(z => z.id));
+  return konten.map(z => ({ ...z, zweiter_faktor: mitFaktor.has(z.id) }));
 }
 
 export async function profil(k: KontoKontext, id: number) {
@@ -59,6 +61,18 @@ export function gibtKonto(k: KontoKontext, id: number): Promise<boolean> {
 /** Für Hinweise an Verwalter: Ein gerade gelöschtes Konto heisst wenigstens nach seiner ID. */
 export async function kontoAnzeigeName(k: KontoKontext, id: number): Promise<string> {
   return (await k.konten.kontoKurz(id))?.username ?? String(id);
+}
+
+/** Verwalterrechte ohne TOTP trägt das Passwort allein nicht; ein Passkey zählt nicht, weil die
+ * Anmeldung mit Passwort nur bei aktivem TOTP einen zweiten Faktor verlangt. */
+export async function faktorPflichtOffen(k: KontoKontext, uid: number, verwalter: boolean): Promise<boolean> {
+  return verwalter && !(await k.faktoren.istAktiv(uid));
+}
+
+/** Der Schritt „Konto“ der Einrichtung: Es gibt eines, und ein Verwalter hat das Startpasswort ersetzt. */
+export async function kontoEingerichtet(k: KontoKontext, verwalter: boolean): Promise<boolean> {
+  const s = await k.einrichtung.kontenStand();
+  return s.vorhanden && (!verwalter || !s.startpasswort);
 }
 
 export function passwortWechselFaellig(k: KontoKontext, id: number): Promise<boolean> {
@@ -104,7 +118,7 @@ export async function aendereEigenesPasswort(
   await mitZugangsende(k, uid, async t => {
     await t.konten.setzeEigenesPasswort(uid, hash);
     await zugaengeBeenden(t, uid);
-    if (o.passkeysWiderrufen) await t.passkeys.loescheAlleDesKontos(uid);
+    if (o.passkeysWiderrufen) await t.faktoren.passkeysWiderrufen(uid);
   });
   await startpasswortErledigt(k, uid);
 }
@@ -130,7 +144,7 @@ export async function setzePasswortZurueck(
       const uid = (await t.konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
       if (!uid) return null;
       await zugaengeBeenden(t, uid);
-      await t.passkeys.loescheAlleDesKontos(uid);
+      await t.faktoren.passkeysWiderrufen(uid);
       const haushalt = await t.haushalt.fremdzugriffLoesen(uid);
       const adresse = await t.konten.verwirfAusstehendeAdresse(uid);
       await loescheTagesgrenze(t, uid);

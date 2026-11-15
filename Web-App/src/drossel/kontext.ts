@@ -1,10 +1,13 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
+import type { Uhr } from '../infra/uhr';
 import * as repository from './repository';
 
 export interface DrosselAbhaengigkeiten {
   db: Db;
+  /** Die Zeit des Rückfalls im Speicher. */
+  uhr: Uhr;
 }
 
 export const zugang = (db: Db) => ({

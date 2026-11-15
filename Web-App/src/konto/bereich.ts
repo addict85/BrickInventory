@@ -3,11 +3,12 @@ import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anmeldepruefung from './anmeldepruefung';
 import * as anmeldungAblauf from './anmeldungAblauf';
-import * as geheimnisAltbestand from './geheimnisAltbestand';
 import * as geraeteToken from './geraeteToken';
 import * as kontoEntfernen from './kontoEntfernen';
 import { kontoAuftragsarten } from './auftragsarten';
 import * as kontoHinweis from './kontoHinweis';
+import * as nebenlaeufe from './nebenlaeufe';
+import * as profilAendern from './profilAendern';
 import * as loginLimiter from './loginLimiter';
 import * as registrierungAblauf from './registrierungAblauf';
 import * as tokenCache from './tokenCache';
@@ -18,11 +19,9 @@ import * as zugangsende from './zugangsende';
 import * as zielDrossel from './zielDrossel';
 import * as passwortBestaetigung from './passwortBestaetigung';
 import * as sitzungsVersion from './sitzungsVersion';
-import * as zweiterFaktorDienst from './zweiterFaktor';
 import * as zugaengeDienst from './zugaenge';
 import * as startVerwalterDienst from './startVerwalter';
 import * as qrKopplungDienst from './qrKopplung';
-import * as passkeysDienst from './passkeys';
 import * as kontenDienst from './konten';
 import type { GeraeteDienste } from '../geraete';
 import { zugang, type KontoAbhaengigkeiten, type KontoKontext } from './kontext';
@@ -37,9 +36,7 @@ export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?
       ...anmeldungUndGeraete(k),
       ...konten(k),
       verwalter: verwaltung(k),
-      faktor: zweiterFaktor(k),
       sitzungen: sitzungen(k),
-      ...ausDemZugang(k),
     }),
     einblick,
   );
@@ -54,45 +51,39 @@ function anmeldungUndGeraete(k: KontoKontext) {
     anmeldeAntwort: mit(k)(anmeldungAblauf.anmeldeAntwort),
     geraeteTokenAusstellen: mit(k)(anmeldungAblauf.geraeteTokenAusstellen),
     qrZugangErzeugen: mit(k)(anmeldungAblauf.qrZugangErzeugen),
-    verschluesseleAltbestand: mit(k)(geheimnisAltbestand.verschluesseleAltbestand),
     // Der Schrittschutz (http/schrittschutz.ts) fragt das Konto, ob die Anfrage darf; die Regel steht in geraete.
     pruefeFreigabe: (...a: Parameters<GeraeteDienste['pruefeFreigabe']>) => k.geraete.pruefeFreigabe(...a),
     pruefeToken: mit(k)(geraeteToken.pruefeToken),
     rotiereToken: mit(k)(geraeteToken.rotiereToken),
     tokenLoeschen: mit(k)(geraeteToken.tokenLoeschen),
-    tokensAufraeumen: mit(k)(geraeteToken.tokensAufraeumen),
     nutzerZumToken: mit(k)(geraeteToken.nutzerZumToken),
+    tokenGilt: mit(k)(geraeteToken.tokenGilt),
   };
 }
 
 /** Konten, Zugänge, Verwaltung und Einstellungen des Kontos. */
 function konten(k: KontoKontext) {
   return {
-    meldeUngueltigeAdressen: mit(k)(kontenDienst.meldeUngueltigeAdressen),
-    meldeAusstehendeAdressen: mit(k)(kontenDienst.meldeAusstehendeAdressen),
+    aufraeumSchritte: mit(k)(nebenlaeufe.aufraeumSchritte),
+    adressHinweise: mit(k)(nebenlaeufe.adressHinweise),
     kontenListe: mit(k)(kontenDienst.kontenListe),
     profil: mit(k)(kontenDienst.profil),
+    profilAendern: mit(k)(profilAendern.profilAendern),
     kontoKurzVon: mit(k)(kontenDienst.kontoKurzVon),
     kontoVollVon: mit(k)(kontenDienst.kontoVollVon),
     gibtKonto: mit(k)(kontenDienst.gibtKonto),
     kontoAnzeigeName: mit(k)(kontenDienst.kontoAnzeigeName),
     passwortWechselFaellig: mit(k)(kontenDienst.passwortWechselFaellig),
+    kontoEingerichtet: mit(k)(kontenDienst.kontoEingerichtet),
+    faktorPflichtOffen: mit(k)(kontenDienst.faktorPflichtOffen),
     passwortPerLinkSetzen: mit(k)(kontenDienst.passwortPerLinkSetzen),
-    raeumeOffeneRegistrierungenAuf: mit(k)(kontenDienst.raeumeOffeneRegistrierungenAuf),
     legeKontoAn: mit(k)(kontenDienst.legeKontoAn),
     kontoEntfernen: mit(k)(kontoEntfernen.kontoEntfernen),
     auftragsarten: kontoAuftragsarten,
     verwalterHinweisNebenher: mit(k)(kontoHinweis.verwalterHinweisNebenher),
     hinweisNebenher: mit(k)(kontoHinweis.hinweisNebenher),
     haushaltBeitreten: mit(k)(kontoHinweis.haushaltBeitreten),
-    raeumeAnmeldezaehlerAuf: mit(k)(loginLimiter.raeumeAnmeldezaehlerAuf),
     zaehleAnfrage: mit(k)(loginLimiter.zaehleAnfrage),
-    registrierungsOptionen: mit(k)(passkeysDienst.registrierungsOptionen),
-    registrierungPruefen: mit(k)(passkeysDienst.registrierungPruefen),
-    anmeldungPruefen: mit(k)(passkeysDienst.anmeldungPruefen),
-    passkeysDesKontos: mit(k)(passkeysDienst.passkeysDesKontos),
-    loeschePasskey: mit(k)(passkeysDienst.loeschePasskey),
-    anmeldeOptionen: mit(k)(passkeysDienst.anmeldeOptionen),
     meldeGeraet: mit(k)(qrKopplungDienst.meldeGeraet),
     holeQrTokenAb: mit(k)(qrKopplungDienst.holeQrTokenAb),
     verwirfAbholung: mit(k)(qrKopplungDienst.verwirfAbholung),
@@ -112,18 +103,6 @@ function konten(k: KontoKontext) {
     bestaetigeEinrichtungGebremst: mit(k)(passwortBestaetigung.bestaetigeEinrichtungGebremst),
     pruefeBestaetigung: mit(k)(passwortBestaetigung.pruefeBestaetigung),
     pruefeCodeBestaetigung: mit(k)(passwortBestaetigung.pruefeCodeBestaetigung),
-  };
-}
-
-/** Der zweite Faktor des eigenen Kontos. */
-function zweiterFaktor(k: KontoKontext) {
-  return {
-    istAktiv: mit(k)(zweiterFaktorDienst.istAktiv),
-    stand: mit(k)(zweiterFaktorDienst.stand),
-    beginneEinrichtung: mit(k)(zweiterFaktorDienst.beginneEinrichtung),
-    otpauthFuer: mit(k)(zweiterFaktorDienst.otpauthFuer),
-    schalteAb: mit(k)(zweiterFaktorDienst.schalteAb),
-    erneuereCodes: mit(k)(zweiterFaktorDienst.erneuereCodes),
   };
 }
 
@@ -147,28 +126,9 @@ function verwaltung(k: KontoKontext) {
     verwalterRolleSetzen: mit(k)(verwalterAktionen.verwalterRolleSetzen),
     passwortDurchVerwalter: mit(k)(verwalterAktionen.passwortDurchVerwalter),
     faktorDurchVerwalter: mit(k)(verwalterAktionen.faktorDurchVerwalter),
-    fuehreFaelligeUebernahmenAus: mit(k)(verwalterAktionen.fuehreFaelligeUebernahmenAus),
     uebernahmenAbbrechen: mit(k)(verwalterAktionen.uebernahmenAbbrechen),
     verwalterAktionMerken: mit(k)(verwalterProtokoll.verwalterAktionMerken),
     verwaltungsProtokoll: mit(k)(verwalterProtokoll.verwaltungsProtokoll),
-  };
-}
-
-/** Was andere Schichten brauchen, ohne Repository oder Token-Hash zu sehen: Zugangswache,
- * Protokoll, Profil und Einrichtungsstand; users gehört dem Konto, geschrieben wird nur hier. */
-function ausDemZugang(k: KontoKontext) {
-  return {
-    gueltigerToken: k.zugaenge.gueltigerToken,
-    protokolliere: k.protokoll.protokolliere,
-    raeumeProtokollAuf: k.protokoll.raeumeProtokollAuf,
-    eigenerZugang: geraeteToken.eigenerZugang,
-    nameVergeben: k.konten.nameVergeben,
-    aendereBenutzernamen: k.konten.aendereBenutzernamen,
-    aendereNamen: k.konten.aendereNamen,
-    merkeEmailNeu: k.konten.merkeEmailNeu,
-    kontoMitEmail: k.konten.kontoMitEmail,
-    kontenStand: k.einrichtung.kontenStand,
-    datenbankErreichbar: k.einrichtung.datenbankErreichbar,
   };
 }
 

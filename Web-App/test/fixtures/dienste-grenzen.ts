@@ -65,6 +65,6 @@ export function probe(d: Dienste): unknown[] {
     // Die ausdrücklichen Dienste dagegen stehen da.
     d.bestand.lagerortDienst.lagerorte,
     d.auftraege.liesZustand,
-    d.konto.protokolliere,
+    d.konto.verwalter.verwalterAktionMerken,
   ];
 }

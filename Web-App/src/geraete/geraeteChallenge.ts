@@ -52,6 +52,12 @@ export function leseSchluessel(b64: string): KeyObject | null {
 
 /** Was die App als Attestation-Challenge einsetzt; gilt bis zum Ende von SCHLUESSEL_FRIST_S.
  * Eine Familie aus der QR-Kopplung bekommt nur die Nonce ihrer Abholung. */
+/** Nach der QR-Abholung: Die Nonce gilt nur der Familie des neuen Tokens; ohne Familie keine. */
+export async function nonceFuerQrToken(k: GeraeteKontext, tokenHash: string): Promise<string | null> {
+  const f = await k.geraeteSchluessel.familieDesTokens(tokenHash);
+  return f ? neueNonce(k, f, true) : null;
+}
+
 export async function neueNonce(k: GeraeteKontext, f: Familie, ausQr = false): Promise<string | null> {
   if (!ausQr) {
     const qr = await k.geraeteSchluessel.qrNonceDer(f);

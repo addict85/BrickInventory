@@ -35,7 +35,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
 });
 const { zugangOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const zf = _req('src/konto/zweiterFaktor.js');
+const zf = _req('src/faktoren/zweiterFaktor.js');
 const lim = _req('src/konto/loginLimiter.js');
 const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));

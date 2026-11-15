@@ -231,7 +231,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 7 | `src/mail` |
 | 8 | `src/auftraege` |
 | 9 | `src/fremdquellen` |
-| 10 | `src/haushalt`, `src/geraete` |
+| 10 | `src/haushalt`, `src/geraete`, `src/faktoren` |
 | 11 | `src/konto` |
 | 12 | `src/bilder`, `src/profil` |
 | 13 | `src/idempotenz`, `src/katalog` |
@@ -296,7 +296,8 @@ bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
 | `src/fremdquellen` | `api_aufrufe`, `api_takt` |
 | `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
 | `src/geraete` | `geraete_nonces`, `geraete_schluessel`, `schritt_challenges`, `schritt_freigaben` |
-| `src/konto` | `api_tokens`, `api_tokens_verbraucht`, `passkeys`, `qr_login_tokens`, `user_sessions`, `users`, `verwalter_uebernahmen`, `verwaltungsprotokoll`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes` |
+| `src/faktoren` | `passkeys`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes` |
+| `src/konto` | `api_tokens`, `api_tokens_verbraucht`, `qr_login_tokens`, `user_sessions`, `users`, `verwalter_uebernahmen`, `verwaltungsprotokoll` |
 | `src/bilder` | `image_misses`, `image_wanted` |
 | `src/idempotenz` | `idempotenz` |
 | `src/katalog` | `bl_zuordnung`, `bl_zuordnung_eigen`, `catalog_cache`, `figur_eigen`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_figuren`, `set_teile`, `shared_instructions`, `subsets_cache`, `teil_eigen`, `teil_farbe_eigen` |

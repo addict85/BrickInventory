@@ -16,7 +16,7 @@ export function erzeugeGeraete(a: GeraeteAbhaengigkeiten, einblick?: Einblick<Ge
       neueChallenge: mit(k)(geraeteChallenge.neueChallenge),
       loeseEin: mit(k)(geraeteChallenge.loeseEin),
       pruefeFreigabe: mit(k)(geraeteChallenge.pruefeFreigabe),
-      familieDesTokens: k.geraeteSchluessel.familieDesTokens,
+      nonceFuerQrToken: mit(k)(geraeteChallenge.nonceFuerQrToken),
     }),
     einblick,
   );

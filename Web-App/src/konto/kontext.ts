@@ -3,22 +3,20 @@ import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/zwischenspeicher';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
-import * as altgeheimnisse from './repository/altgeheimnisse';
 import * as einrichtung from './repository/einrichtung';
 import * as konten from './repository/konten';
-import * as passkeys from './repository/passkeys';
 import * as protokoll from './repository/protokoll';
 import * as qrKopplung from './repository/qrKopplung';
 import * as startVerwalter from './repository/startVerwalter';
 import * as uebernahmen from './repository/uebernahmen';
 import * as zugaenge from './repository/zugaenge';
-import * as zweiterFaktor from './repository/zweiterFaktor';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
 import type { MailDienste } from '../mail';
 import type { DrosselDienste } from '../drossel';
 import type { GeraeteDienste } from '../geraete';
+import type { FaktorenDienste } from '../faktoren';
 import type { Uhr } from '../infra/uhr';
 
 export interface KontoAbhaengigkeiten {
@@ -33,6 +31,7 @@ export interface KontoAbhaengigkeiten {
   mail: MailDienste;
   drossel: DrosselDienste;
   geraete: GeraeteDienste;
+  faktoren: FaktorenDienste;
 }
 
 /** Zugangsdaten liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer ohne Konto
@@ -44,27 +43,12 @@ const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemroll
 const UEBERNAHME = 'Verwalterübernahme: Verwalter und Ziel sind verschiedene Konten';
 const ZUGANG = 'Passwort, Rechte, Adresse und Sitzungsversion schreibt nur die Systemrolle (0117)';
 
-/** Anmeldung ohne Konto: Zähler, Schlüssel und Geheimnisse der Geräte. */
-const anmeldezugang = (db: Db) => ({
-  altgeheimnisse: {
-    alteFaktorGeheimnisse: imSystem(
-      db,
-      'Start: verschlüsselt die Geheimnisse aller Konten neu',
-      altgeheimnisse.alteFaktorGeheimnisse,
-    ),
-    ersetzeFaktorGeheimnis: imSystem(
-      db,
-      'Start: verschlüsselt die Geheimnisse aller Konten neu',
-      altgeheimnisse.ersetzeFaktorGeheimnis,
-    ),
-  },
-  einrichtung: {
-    kontenStand: mit(db)(einrichtung.kontenStand),
-    datenbankErreichbar: mit(db)(einrichtung.datenbankErreichbar),
-  },
+/** Der Einrichtungsstand der Startseite: Konten überhaupt, und ob das Startpasswort noch gilt. */
+const einrichtungszugang = (db: Db) => ({
+  einrichtung: { kontenStand: mit(db)(einrichtung.kontenStand) },
 });
 
-/** Konten, Passkeys und Protokoll. */
+/** Konten und Protokoll. */
 const kontenzugang = (db: Db) => ({
   konten: {
     kontoKurz: mit(db)(konten.kontoKurz),
@@ -83,7 +67,7 @@ const kontenzugang = (db: Db) => ({
     offeneRegistrierungen: mit(db)(konten.offeneRegistrierungen),
     schalteRegistrierungFrei: imSystem(db, ZUGANG, konten.schalteRegistrierungFrei),
     ausstehendOhneLink: mit(db)(konten.ausstehendOhneLink),
-    alleKonten: imSystem(db, 'Verwaltung: liest den zweiten Faktor aller Konten', konten.alleKonten),
+    alleKonten: imSystem(db, 'Verwaltung: liest alle Konten', konten.alleKonten),
     alleAdressen: mit(db)(konten.alleAdressen),
     aktiveVerwalter: mit(db)(konten.aktiveVerwalter),
     fuegeKontoEin: imSystem(db, ZUGANG, konten.fuegeKontoEin),
@@ -109,22 +93,6 @@ const kontenzugang = (db: Db) => ({
     loescheAndereSitzungen: imSystem(db, NUR_SYSTEMROLLE, konten.loescheAndereSitzungen),
     mussPasswortAendern: mit(db)(konten.mussPasswortAendern),
   },
-  passkeys: {
-    speichereChallenge: imSystem(
-      db,
-      'Anmeldeoptionen ohne Konto; die Obergrenze zählt alle offenen',
-      passkeys.speichereChallenge,
-    ),
-    verbraucheChallenge: imSystem(db, OHNE_KONTO, passkeys.verbraucheChallenge),
-    kennungenDesKontos: mit(db)(passkeys.kennungenDesKontos),
-    legeAn: mit(db)(passkeys.legeAn),
-    schluessel: imSystem(db, 'Anmeldung mit Passkey: Das Konto ergibt sich erst aus ihm', passkeys.schluessel),
-    zaehlerWeiter: imSystem(db, OHNE_KONTO, passkeys.zaehlerWeiter),
-    desKontos: mit(db)(passkeys.desKontos),
-    hatWelche: imSystem(db, 'Anmeldeprüfung: fragt, bevor das Konto angemeldet ist', passkeys.hatWelche),
-    loescheAlleDesKontos: imSystem(db, FREMDES_KONTO, passkeys.loescheAlleDesKontos),
-    loeschePasskeyZeile: mit(db)(passkeys.loeschePasskeyZeile),
-  },
   protokoll: {
     protokolliere: mit(db)(protokoll.protokolliere),
     letzteEintraege: mit(db)(protokoll.letzteEintraege),
@@ -132,7 +100,7 @@ const kontenzugang = (db: Db) => ({
   },
 });
 
-/** Kopplung, Startverwalter, Token und zweiter Faktor. */
+/** Kopplung, Startverwalter und Token. */
 const sitzungszugang = (db: Db) => ({
   qrKopplung: {
     raeumeQrKopplungenAuf: imSystem(db, ALLE_KONTEN, qrKopplung.raeumeQrKopplungenAuf),
@@ -191,31 +159,7 @@ const sitzungszugang = (db: Db) => ({
     passwortHash: imSystem(db, NUR_SYSTEMROLLE, zugaenge.passwortHash),
     ersetzePasswortHash: imSystem(db, NUR_SYSTEMROLLE, zugaenge.ersetzePasswortHash),
   },
-  zweiterFaktor: {
-    ersetzeCodes: mit(db)(zweiterFaktor.ersetzeCodes),
-    aktiv: imSystem(db, 'Anmeldeprüfung: fragt, bevor das Konto angemeldet ist', zweiterFaktor.aktiv),
-    faktorStand: mit(db)(zweiterFaktor.faktorStand),
-    legeGeheimnisAn: mit(db)(zweiterFaktor.legeGeheimnisAn),
-    unbestaetigtesGeheimnisSperren: mit(db)(zweiterFaktor.unbestaetigtesGeheimnisSperren),
-    aktiviere: mit(db)(zweiterFaktor.aktiviere),
-    aktivesGeheimnis: imSystem(
-      db,
-      'Anmeldung: prüft den Code, bevor das Konto angemeldet ist',
-      zweiterFaktor.aktivesGeheimnis,
-    ),
-    verbraucheSchritt: imSystem(
-      db,
-      'Anmeldung: prüft den Code, bevor das Konto angemeldet ist',
-      zweiterFaktor.verbraucheSchritt,
-    ),
-    verbraucheCode: imSystem(
-      db,
-      'Anmeldung: prüft den Code, bevor das Konto angemeldet ist',
-      zweiterFaktor.verbraucheCode,
-    ),
-    entferne: imSystem(db, FREMDES_KONTO, zweiterFaktor.entferne),
-  },
 });
 
-export const zugang = (db: Db) => ({ ...anmeldezugang(db), ...kontenzugang(db), ...sitzungszugang(db) });
+export const zugang = (db: Db) => ({ ...einrichtungszugang(db), ...kontenzugang(db), ...sitzungszugang(db) });
 export type KontoKontext = Kontext<KontoAbhaengigkeiten, ReturnType<typeof zugang>>;

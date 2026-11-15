@@ -13,6 +13,15 @@ export async function aktiv(db: DbSchnittstelle, uid: number): Promise<boolean> 
   return r?.aktiv === true;
 }
 
+/** Die Konten mit aktivem Faktor, für die Kontenliste der Verwaltung. */
+export async function aktiveUnter(db: DbSchnittstelle, ids: number[]): Promise<Set<number>> {
+  const z = await db.all<{ user_id: number }>(
+    'SELECT user_id FROM zweiter_faktor WHERE aktiv AND user_id = ANY($1::int[])',
+    [ids],
+  );
+  return new Set(z.map(r => r.user_id));
+}
+
 export async function faktorStand(db: DbSchnittstelle, uid: number): Promise<{ aktiv: boolean; uebrig: number }> {
   const r = await db.get<{ aktiv: boolean; uebrig: number }>(
     `SELECT COALESCE((SELECT aktiv FROM zweiter_faktor WHERE user_id = $1), FALSE) AS aktiv,
@@ -71,7 +80,7 @@ export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: str
   return (r.changes ?? 0) > 0;
 }
 
-/** Codes und Faktor zusammen: in der Transaktion des Aufrufers (src/konto/zweiterFaktor.ts, schalteAb). */
+/** Codes und Faktor zusammen: in der Transaktion des Aufrufers (src/faktoren/zweiterFaktor.ts, schalteAb). */
 export async function entferne(tx: DbSchnittstelle, uid: number): Promise<void> {
   await tx.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
   await tx.run('DELETE FROM zweiter_faktor WHERE user_id = $1', [uid]);

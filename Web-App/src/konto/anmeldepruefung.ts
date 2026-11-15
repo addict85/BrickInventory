@@ -18,8 +18,6 @@ import {
   type Anmeldeweg,
 } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
-import * as zf from './zweiterFaktor';
-import * as passkeys from './passkeys';
 import { doppeltAls, fachfehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { hinweisNebenher } from './kontoHinweis';
 import { tokenAbdruck } from './geraeteToken';
@@ -161,11 +159,11 @@ export async function pruefeAnmeldedaten(
   }
 
   let zugang: Anmeldeweg = 'passwort';
-  if (await zf.istAktiv(k, user.id)) {
+  if (await k.faktoren.istAktiv(user.id)) {
     // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
     const mitPasskey = passkeyAntwort !== undefined && passkeyAntwort !== null;
     zugang = mitPasskey ? 'passwort+passkey' : 'passwort+code';
-    const hatPasskey = await passkeys.hatPasskeys(k, user.id);
+    const hatPasskey = await k.faktoren.hatPasskeys(user.id);
     const ergaenzt = (e: AnmeldeErgebnis) => {
       if (!e.ok && hatPasskey) e.absage.passkey = true;
       return e;
@@ -177,8 +175,8 @@ export async function pruefeAnmeldedaten(
     }
     const nurNotweg = !mitPasskey && (await faktorCodeGesperrt(k, user.id));
     const gilt = mitPasskey
-      ? (await passkeys.anmeldungPruefen(k, passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
-      : await zf.pruefeCode(k, user.id, code, !nurNotweg);
+      ? (await k.faktoren.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
+      : await k.faktoren.pruefeCode(user.id, code, !nurNotweg);
     if (!gilt) {
       await fehlversuch(k, 'zweiter_faktor_falsch', ip, name, user.id);
       // Sofort, nicht erst mit der Kontosperre: Wer hier rät, kennt das Passwort.
@@ -206,7 +204,7 @@ async function nurNochMitFaktor(
   mitFaktor: boolean,
 ): Promise<boolean> {
   if (!(await tagesgrenzeErreicht(k, ip, name))) return false;
-  if (mitFaktor && konto !== undefined && (await zf.istAktiv(k, konto))) return false;
+  if (mitFaktor && konto !== undefined && (await k.faktoren.istAktiv(konto))) return false;
   await gibAnmeldeplatzFrei(k, ip, name);
   meldeAnmeldeereignis('anmeldung_tagesgrenze', { ip, konto: konto ?? null });
   return true;

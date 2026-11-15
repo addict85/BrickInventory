@@ -8,8 +8,6 @@ import {
   type Bremse,
 } from './loginLimiter';
 import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
-import * as zf from './zweiterFaktor';
-import * as P from './passkeys';
 import { kontoGedrosselt } from './zielDrossel';
 import { hinweisNebenher } from './kontoHinweis';
 import type { KontoKontext } from './kontext';
@@ -63,12 +61,12 @@ export async function pruefeBestaetigung(
   passwort: string | null | undefined,
   faktor: Faktor,
 ): Promise<BestaetigungsAbsage | null> {
-  const mitFaktor = await zf.istAktiv(k, uid);
+  const mitFaktor = await k.faktoren.istAktiv(uid);
   if (mitFaktor && leer(faktor.code) && leer(faktor.passkey))
     return {
       art: 'ungueltig',
       code: 'zweiter_faktor_noetig',
-      ...((await P.hatPasskeys(k, uid)) ? { passkey: true } : {}),
+      ...((await k.faktoren.hatPasskeys(uid)) ? { passkey: true } : {}),
     };
   const pw = await gebremst(
     k,
@@ -92,7 +90,7 @@ export async function pruefeBestaetigung(
         'faktor',
         uid,
         zugang,
-        async () => !!(await zf.pruefeCode(k, uid, faktor.code)),
+        async () => !!(await k.faktoren.pruefeCode(uid, faktor.code)),
         'zweiter_faktor_falsch',
       )
     : gebremst(
@@ -100,7 +98,7 @@ export async function pruefeBestaetigung(
         'faktor',
         uid,
         zugang,
-        async () => (await P.anmeldungPruefen(k, faktor.passkey, 'zweiter_faktor', uid)) === uid,
+        async () => (await k.faktoren.anmeldungPruefen(faktor.passkey, 'zweiter_faktor', uid)) === uid,
         'passkey_ungueltig',
       );
 }
@@ -112,7 +110,14 @@ export function pruefeCodeBestaetigung(
   zugang: string,
   code: string | number | null | undefined,
 ): Promise<BestaetigungsAbsage | null> {
-  return gebremst(k, 'faktor', uid, zugang, async () => !!(await zf.pruefeCode(k, uid, code)), 'zweiter_faktor_falsch');
+  return gebremst(
+    k,
+    'faktor',
+    uid,
+    zugang,
+    async () => !!(await k.faktoren.pruefeCode(uid, code)),
+    'zweiter_faktor_falsch',
+  );
 }
 
 /** Das Bestätigen der Einrichtung prüft ebenfalls einen Code; ohne Bremse
@@ -131,7 +136,7 @@ export async function bestaetigeEinrichtungGebremst(
     uid,
     zugang,
     async () => {
-      codes = await zf.bestaetigeEinrichtung(k, uid, String(code ?? ''));
+      codes = await k.faktoren.bestaetigeEinrichtung(uid, String(code ?? ''));
       return !!codes;
     },
     'zweiter_faktor_falsch',

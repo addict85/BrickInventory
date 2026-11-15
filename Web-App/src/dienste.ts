@@ -7,6 +7,7 @@ import type { DrosselDienste } from './drossel';
 import type { EinstellungenDienste } from './einstellungen';
 import type { FigurenDienste } from './figuren';
 import type { GeraeteDienste } from './geraete';
+import type { FaktorenDienste } from './faktoren';
 import type { FinanzenDienste } from './finanzen';
 import type { FremdquellenDienste } from './fremdquellen';
 import type { GutscheineDienste } from './gutscheine';
@@ -38,6 +39,7 @@ export interface Dienste {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   geraete: GeraeteDienste;
+  faktoren: FaktorenDienste;
   konto: KontoDienste;
   profil: ProfilDienste;
   idempotenz: IdempotenzDienste;

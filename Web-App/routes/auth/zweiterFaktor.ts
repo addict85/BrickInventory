@@ -1,4 +1,4 @@
-/** Der eigene zweite Faktor (src/konto/zweiterFaktor.ts). Einrichten und
+/** Der eigene zweite Faktor (src/faktoren/zweiterFaktor.ts). Einrichten und
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
 import { waechterFuer } from '../api_v1/middleware';
@@ -14,13 +14,13 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
+export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto' | 'faktoren'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
   const requireLogin = requireLoginOrToken;
 
   router.endpunkt('GET /api/v1/auth/zweiter-faktor', requireLogin, async req => {
-    return { ...(await d.konto.faktor.stand(angemeldeteNutzerId(req))) };
+    return { ...(await d.faktoren.stand(angemeldeteNutzerId(req))) };
   });
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
@@ -32,10 +32,10 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
       if (!((await zweiterFaktorPflicht(d.konto, req)) && gnadenfristVerbrauchen(req)))
         fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
     } else if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    const geheimnis = await d.konto.faktor.beginneEinrichtung(uid);
+    const geheimnis = await d.faktoren.beginneEinrichtung(uid);
     if (!geheimnis) fachfehler('konflikt', 'zweiter_faktor_schon_aktiv');
     const u = await d.konto.kontoKurzVon(uid);
-    return { geheimnis, otpauth: d.konto.faktor.otpauthFuer(geheimnis, u?.username ?? String(uid)) };
+    return { geheimnis, otpauth: d.faktoren.otpauthFuer(geheimnis, u?.username ?? String(uid)) };
   });
 
   // Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort
@@ -57,18 +57,18 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
     const uid = angemeldeteNutzerId(req);
-    if (!(await d.konto.faktor.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
+    if (!(await d.faktoren.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    await d.konto.faktor.schalteAb(uid);
+    await d.faktoren.schalteAb(uid);
     d.konto.hinweisNebenher(uid, 'zweiter_faktor_abgeschaltet');
     return {};
   });
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/codes', requireLogin, async (req, res) => {
     const uid = angemeldeteNutzerId(req);
-    if (!(await d.konto.faktor.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
+    if (!(await d.faktoren.istAktiv(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
     if (!(await bestaetigeCode(d.konto, req, res, uid, req.eingabe.code))) return;
-    return { codes: await d.konto.faktor.erneuereCodes(uid) };
+    return { codes: await d.faktoren.erneuereCodes(uid) };
   });
   return router;
 }

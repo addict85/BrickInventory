@@ -296,7 +296,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       m: 'POST',
       p: '/api/v1/auth/zweiter-faktor/bestaetigen',
       body: () => {
-        const zf = _req('src/konto/zweiterFaktor.js');
+        const zf = _req('src/faktoren/zweiterFaktor.js');
         return { code: zf.hotp(zf.ausBase32(w.geheimnis), zf.zeitschritt()) };
       },
       danach: j => {

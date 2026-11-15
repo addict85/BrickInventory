@@ -5,7 +5,7 @@
  *
  * Gezählt wird am gebauten Satz, nicht im Quelltext: Ein Schlüssel aus einem Spread
  * oder einer Hilfsfunktion (bildDienste im Katalog) zählt so mit, eine Teilfläche
- * (konto.faktor.*) mit jedem ihrer Dienste. Der Zugang ist ein Stummel; der
+ * (konto.sitzungen.*) mit jedem ihrer Dienste. Der Zugang ist ein Stummel; der
  * Bau fragt die Datenbank nicht.
  *
  * Gegenproben (15.11.2026):
@@ -17,9 +17,17 @@
  *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (teile.teileListe)
  *   D  `setzeAktiv: mit(k)(kontenDienst.setzeAktiv)` zurück in src/konto/bereich.ts → rot
  *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
- *   E  in routes/auth/zweiterFaktor.ts `d.konto.faktor.erneuereCodes` durch einen
- *      Platzhalter ersetzt → rot „ohne Aufrufer“ (konto.faktor.erneuereCodes)
+ *   E  in routes/auth/zweiterFaktor.ts `d.faktoren.erneuereCodes` durch einen
+ *      Platzhalter ersetzt → rot „ohne Aufrufer“ (faktoren.erneuereCodes)
  *   F  JE_BEREICH.konto auf 88 → rot „Schlüssel je Bereich“ (konto 89, erlaubt 88)
+ *
+ * Rohe Weitergaben (ein Dienst ist das Repository selbst, k.repo.f oder mit(k.db, repo.f)):
+ * Gegenproben (15.11.2026):
+ *   G  `gueltigerToken: k.zugaenge.gueltigerToken` zurück in src/konto/bereich.ts → rot „Zahl
+ *      der Dienstschlüssel“ (538, erlaubt 537) und „roh weiterreichen“ (konto.gueltigerToken)
+ *   H  'katalog.katalogStand' aus ROH_ERLAUBT gestrichen → rot „roh weiterreichen“ (die Form
+ *      mit(k.db, setStamm.katalogStand), über den Bau als Repository-Funktion erkannt)
+ *   I  JE_BEREICH.faktoren auf 17 → rot „Schlüssel je Bereich“ (faktoren 18, erlaubt 17)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,14 +63,15 @@ function blaetter(x, vor) {
 
 /** Je Bereich höchstens so viele; ein neuer Dienst verdrängt einen alten. */
 const JE_BEREICH = {
-  drossel: 12,
+  drossel: 10,
   einstellungen: 22,
   mail: 13,
   auftraege: 65,
   haushalt: 20,
   geraete: 6,
-  konto: 89,
-  profil: 4,
+  faktoren: 18,
+  konto: 65,
+  profil: 3,
   idempotenz: 8,
   fremdquellen: 12,
   bilder: 29,
@@ -101,7 +110,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
   const schluessel = Object.entries(d).flatMap(([b, x]) => blaetter(x, b));
   assert.ok(Object.keys(d).length > 15, `nur ${Object.keys(d).length} Bereiche gebaut`);
   assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
-  assert.ok(schluessel.includes('konto.faktor.istAktiv'), 'Selbstbeweis: Teilflächen zählen je Dienst');
+  assert.ok(schluessel.includes('konto.sitzungen.beendeAndere'), 'Selbstbeweis: Teilflächen zählen je Dienst');
 
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(s => englischerName(s.split('.').at(-1) ?? ''));
@@ -110,7 +119,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     `englische Dienstschlüssel: ${englisch.length}, erlaubt ${SCHRANKE_ENGLISCH}\n${englisch.join('\n')}`,
   );
 
-  const SCHRANKE_ZAHL = 546;
+  const SCHRANKE_ZAHL = 537;
   assert.ok(
     schluessel.length <= SCHRANKE_ZAHL,
     `Zahl der Dienstschlüssel: ${schluessel.length}, erlaubt ${SCHRANKE_ZAHL}`,
@@ -140,4 +149,93 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     return ![...q].some(([datei, text]) => datei !== fabrik && muster.test(text));
   });
   assert.deepEqual(ohne, [], 'Schlüssel ohne Aufrufer ausserhalb der Tests');
+});
+
+/** Dienste, die ein Repository roh weiterreichen, mit Grund; die Liste wird kürzer, nie länger. */
+const ROH_ERLAUBT = {
+  'auftraege.belegeAuftrag': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'auftraege.gibZurueck': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'auftraege.lebenszeichen': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'auftraege.merkeExklusive': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'auftraege.letzteJeArt': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
+  'auftraege.raeumeErledigteAuf': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
+  'auftraege.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'auftraege.pausiereArt': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'auftraege.liesZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'auftraege.loescheZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'auftraege.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'auftraege.zaehleZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'drossel.stundenStand': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
+  'drossel.zaehleStunde': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
+  'figuren.loescheFigurErfassungen': 'Erfassungen: Ihr Besitz wird gerade neu geordnet (Zweig w9-besitz)',
+  'teile.loescheTeilErfassungen': 'Erfassungen: Ihr Besitz wird gerade neu geordnet (Zweig w9-besitz)',
+  'sets.setsDesKontos': 'Erfassungen: Ihr Besitz wird gerade neu geordnet (Zweig w9-besitz)',
+  'finanzen.marktpreisAusCache': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
+  'finanzen.marktpreisAusVerlauf': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
+  'gutscheine.gutscheineNeuVerschluesseln': 'Gutscheine: Der Vertrag wird gerade neu geordnet (Zweig w9-besitz)',
+  'gutscheine.kopienVerschluesseln': 'Gutscheine: Der Vertrag wird gerade neu geordnet (Zweig w9-besitz)',
+  'gutscheine.nummernNachverschluesseln': 'Gutscheine: Der Vertrag wird gerade neu geordnet (Zweig w9-besitz)',
+  'katalog.katalogStand':
+    'Set-Stammdaten in der Transaktion der Set-Erfassung: Ihr Besitz wird gerade neu geordnet (w9-besitz)',
+  'katalog.merkeKatalogPlatzhalter':
+    'Set-Stammdaten in der Transaktion der Set-Erfassung: Ihr Besitz wird gerade neu geordnet (w9-besitz)',
+  'katalog.merkeSetKatalog':
+    'Set-Stammdaten in der Transaktion der Set-Erfassung: Ihr Besitz wird gerade neu geordnet (w9-besitz)',
+};
+
+/** Je Bereich die Funktionen seiner Repositories, wie der Bau sie lädt. */
+function repositoryFunktionen(b) {
+  const dir = path.join(ROOT, 'dist', 'src', b, 'repository');
+  const raus = new Set();
+  if (!fs.existsSync(dir)) return raus;
+  for (const n of fs.readdirSync(dir).filter(x => x.endsWith('.js')))
+    for (const f of Object.values(_req(`src/${b}/repository/${n}`))) if (typeof f === 'function') raus.add(f);
+  return raus;
+}
+
+/** `name: mit(k.db, modul.f)` in der Fabrik, mit f aus einem Repository des Bereichs. */
+function gebundeneRepositories(b, blaetterDesBereichs) {
+  const datei = path.join(ROOT, 'src', b, 'bereich.ts');
+  if (!fs.existsSync(datei)) return [];
+  const q = ohneKommentare(fs.readFileSync(datei, 'utf8'));
+  const repo = repositoryFunktionen(b);
+  const raus = [];
+  for (const m of q.matchAll(/^\s*(\w+): mit\(\w+\.db,\s*(\w+)\.(\w+)\)/gm)) {
+    const imp = new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`).exec(q);
+    const f = imp && _req(`src/${b}/${imp[1]}.js`)[m[3]];
+    if (f && repo.has(f)) raus.push(...blaetterDesBereichs.filter(s => s.endsWith(`.${m[1]}`)));
+  }
+  return raus;
+}
+
+test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
+  /** @type {Record<string, any>} */
+  const kontexte = {};
+  const d = satz(kontexte);
+  const roh = new Set();
+  for (const [b, x] of Object.entries(d)) {
+    const blaetterDesBereichs = blaetter(x, b);
+    // Derselbe Funktionswert wie im Kontext (k.repo.f, ...k.repo): Der Dienst ist das Repository.
+    const imKontext = new Set(
+      Object.entries(kontexte[b] ?? {})
+        .filter(([n, teil]) => n !== 'db' && teil && typeof teil === 'object')
+        .flatMap(([, teil]) => Object.values(teil).filter(f => typeof f === 'function')),
+    );
+    for (const s of blaetterDesBereichs) {
+      const f = s
+        .split('.')
+        .slice(1)
+        .reduce((o, n) => o?.[n], x);
+      if (typeof f === 'function' && imKontext.has(f)) roh.add(s);
+    }
+    for (const s of gebundeneRepositories(b, blaetterDesBereichs)) roh.add(s);
+  }
+  assert.ok(roh.has('auftraege.liesZustand') && roh.has('katalog.katalogStand'), 'Selbstbeweis: beide Formen gefunden');
+  assert.deepEqual(
+    [...roh].sort(),
+    Object.keys(ROH_ERLAUBT).sort(),
+    'Dienstschlüssel, die ein Repository roh weiterreichen',
+  );
+  const SCHRANKE_ROH = 25;
+  assert.ok(roh.size <= SCHRANKE_ROH, `${roh.size} rohe Weitergaben, erlaubt ${SCHRANKE_ROH}`);
 });

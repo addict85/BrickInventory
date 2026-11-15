@@ -22,7 +22,6 @@ export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'l
   email_neu: string | null;
 };
 export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & {
-  zweiter_faktor: boolean;
   wartet_auf_bestaetigung: boolean;
 };
 
@@ -199,7 +198,6 @@ export async function ausstehendOhneLink(db: DbSchnittstelle): Promise<number[]>
 export function alleKonten(db: DbSchnittstelle): Promise<KontoInListe[]> {
   return db.all<KontoInListe>(
     `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
-            EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor,
             (u.registrierung_offen AND NOT u.email_verified) AS wartet_auf_bestaetigung
        FROM users u ORDER BY u.id`,
   );

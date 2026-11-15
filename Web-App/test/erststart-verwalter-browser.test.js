@@ -138,7 +138,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
 
   await t.test('richtiger Code zeigt die Wiederherstellungscodes', async () => {
     const _req = require('./helpers/sources').buildAndRequire();
-    const zf = _req('src/konto/zweiterFaktor.js');
+    const zf = _req('src/faktoren/zweiterFaktor.js');
     await b.auswerten(
       `document.getElementById('zf-code').value = ''; document.getElementById('zf-code').focus(); true`,
     );

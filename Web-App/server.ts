@@ -160,8 +160,7 @@ async function starte(): Promise<void> {
   // Hinweise ins Protokoll: Einer, der scheitert, hält weder den Start noch die übrigen auf.
   const hinweise: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.meldeSmtpAltlast()],
-    ['start:adressen', () => dienste.konto.meldeUngueltigeAdressen()],
-    ['start:ausstehende-adressen', () => dienste.konto.meldeAusstehendeAdressen()],
+    ...dienste.konto.adressHinweise(),
   ];
   if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
   if (web) dienste.konto.horcheAufTokenWiderruf();
