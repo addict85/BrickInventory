@@ -33,7 +33,7 @@
  *   L  (15.11.2026) drei Linien zugleich: in startup/app.ts die Absage für `/` am Ende
  *      gestrichen, schrittschutzAmEingang wieder mit den Regexen `^…$` auf req.path und
  *      in vertragsRouter die Prüfung von res.locals.schritt gestrichen → rot: „auch anders
- *      geschrieben …“ (klartext/ 200 mit PIN, DELETE vouchers/n/ 200). Je eine Linie
+ *      geschrieben …“ (klartext/, DELETE vouchers/n/ und zweiter-faktor/einrichten/ 200). Je eine Linie
  *      allein fängt die anderen beiden auf (vertrag-schreibung-db, vertrag-endpunkt).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

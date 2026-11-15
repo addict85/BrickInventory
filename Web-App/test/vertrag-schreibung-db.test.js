@@ -14,7 +14,7 @@
  *   C  routeFuerAnfrage() ohne das Abschneiden des Schrägstrichs → rot nur
  *      „routeFuerAnfrage ordnet …“
  *   D  (15.11.2026) in startup/app.ts die Absage für `/` am Ende gestrichen → rot:
- *      „ein Schrägstrich am Ende ist eine andere Route“ (u. a. household/invite/
+ *      „ein Schrägstrich am Ende ist eine andere Route“ (u. a. storage/locations/
  *      200, vouchers/1/klartext/ 403 aus der zweiten Linie statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
