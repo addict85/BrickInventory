@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.zustand.ui.ladefehler
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Postenart
@@ -93,8 +95,8 @@ class TeileViewModel @Inject constructor(
      */
     private fun teileAbfrage(st: PartsUiState): Kontosicht.TeileAbfrage? =
         if (teileKonto == null && teileLager == null && st.partsView != Listenansicht.TABELLE) null
-        else Kontosicht.TeileAbfrage(teileKonto, st.partsQuery.ifBlank { null }, st.partsColorFilter.ifBlank { null },
-            st.partsCategoryFilter.ifBlank { null }, st.partsSpare, st.partsView == Listenansicht.TABELLE, teileLager)
+        else Kontosicht.TeileAbfrage(teileKonto, st.partsQuery.ifBlank { null }, st.partsColorFilter,
+            st.partsCategoryFilter, st.partsSpare, st.partsView == Listenansicht.TABELLE, teileLager)
 
     private fun manuelleAbfrage(st: PartsUiState): Kontosicht.ManuelleAbfrage? =
         if (teileKonto == null && teileLager == null) null
@@ -161,8 +163,9 @@ class TeileViewModel @Inject constructor(
                 partsSpare = gemerkt[F_ERSATZ] ?: st.partsSpare,
                 partsView = gemerkt[F_ANSICHT] ?: st.partsView,
                 partsOrdnung = gemerkt[F_ORDNUNG] ?: st.partsOrdnung,
-                partsColorFilter = gemerkt[F_FARBE] ?: st.partsColorFilter,
-                partsCategoryFilter = gemerkt[F_KATEGORIE] ?: st.partsCategoryFilter,
+                // Im SavedStateHandle liegt der Text: Ein Bundle nimmt die Wahl selbst nicht.
+                partsColorFilter = gemerkt.get<String>(F_FARBE)?.let { Farbwahl.aus(it) } ?: st.partsColorFilter,
+                partsCategoryFilter = gemerkt.get<String>(F_KATEGORIE)?.let { Kategoriewahl.aus(it) } ?: st.partsCategoryFilter,
                 minifigsQuery = gemerkt[F_FIGUR_SUCHE] ?: st.minifigsQuery,
                 minifigsView = gemerkt[F_FIGUR_ANSICHT] ?: st.minifigsView,
             )
@@ -180,8 +183,8 @@ class TeileViewModel @Inject constructor(
     override fun setPartsSpare(wert: Ersatzteilwahl) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
     override fun setPartsView(wert: Listenansicht) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
     override fun setPartsOrdnung(wert: PartsUiState.Ordnung) { gemerkt[F_ORDNUNG] = wert; teile.setzeOrdnung(wert) }
-    override fun setPartsColorFilter(wert: String) { gemerkt[F_FARBE] = wert; teile.setzeFarbe(wert) }
-    override fun setPartsCategoryFilter(wert: String) { gemerkt[F_KATEGORIE] = wert; teile.setzeKategorie(wert) }
+    override fun setPartsColorFilter(wert: Farbwahl) { gemerkt[F_FARBE] = wert.wert.orEmpty(); teile.setzeFarbe(wert) }
+    override fun setPartsCategoryFilter(wert: Kategoriewahl) { gemerkt[F_KATEGORIE] = wert.wert.orEmpty(); teile.setzeKategorie(wert) }
     override fun setMinifigsQuery(q: String) { gemerkt[F_FIGUR_SUCHE] = q; teile.setzeFigurSuche(q) }
     override fun setMinifigsView(wert: Listenansicht) { gemerkt[F_FIGUR_ANSICHT] = wert; teile.setzeFigurAnsicht(wert) }
 

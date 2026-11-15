@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
@@ -53,9 +55,9 @@ class TeileRepositoryImpl @Inject constructor(
 ) : TeileRepository {
 
     /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
-    override fun beobachteTeile(suche: String?, farbe: String?, kategorie: String?, ersatzteile: Ersatzteilwahl): Flow<Lokal<TeilAnsicht>> =
-        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe?.ifBlank { null },
-            kategorie = kategorie?.ifBlank { null }, ersatzteil = ersatzteile.alsMerkmal())).abgebildet { it.alsAnsicht() }
+    override fun beobachteTeile(suche: String?, farbe: Farbwahl, kategorie: Kategoriewahl, ersatzteile: Ersatzteilwahl): Flow<Lokal<TeilAnsicht>> =
+        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe.wert,
+            kategorie = kategorie.wert, ersatzteil = ersatzteile.alsMerkmal())).abgebildet { it.alsAnsicht() }
 
     override fun beobachteManuelleTeile(suche: String?): Flow<Lokal<ManuellesTeilAnsicht>> =
         ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null })).abgebildet { it.alsAnsicht() }

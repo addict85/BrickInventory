@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Erfasst
 import ch.brickinventoryapp.model.fach.Kontoauswahl
@@ -31,7 +33,7 @@ interface TeileRepository {
      * Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [aktualisiereTeile]
      * füllt sie. Konto, Lagerort und „In Sets“ rechnet nur der Server: Kontosicht.
      */
-    fun beobachteTeile(suche: String? = null, farbe: String? = null, kategorie: String? = null,
+    fun beobachteTeile(suche: String? = null, farbe: Farbwahl = Farbwahl.Alle, kategorie: Kategoriewahl = Kategoriewahl.Alle,
                        ersatzteile: Ersatzteilwahl = Ersatzteilwahl.ALLE): Flow<Lokal<TeilAnsicht>>
 
     fun beobachteManuelleTeile(suche: String? = null): Flow<Lokal<ManuellesTeilAnsicht>>

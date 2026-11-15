@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -95,7 +97,7 @@ class TeileTest {
         listen = TeileLokal(
             teile = { st -> teile.map { l -> l.copy(liste = l.liste.filter {
                 (st.partsQuery.isBlank() || it.partNumber.contains(st.partsQuery) || it.partName.orEmpty().contains(st.partsQuery)) &&
-                    (st.partsColorFilter.isBlank() || it.colorName == st.partsColorFilter) }) } },
+                    (st.partsColorFilter == Farbwahl.Alle || it.colorName == st.partsColorFilter.wert) }) } },
             manuelleTeile = { st -> manuelleSuchen += st.partsQuery; manuelleTeile },
             figuren = { figuren },
             manuelleFiguren = { manuelleFiguren },
@@ -107,11 +109,11 @@ class TeileTest {
     @Test
     fun `die Filter des Zustands erreichen Quelle und Abruf`() = runTest {
         val t = teile()
-        t.setzeFarbe("Red"); t.setzeKategorie("11"); t.setzeErsatzteile(Ersatzteilwahl.OHNE); t.setzeAnsicht(Listenansicht.TABELLE)
+        t.setzeFarbe(Farbwahl.Farbe("Red")); t.setzeKategorie(Kategoriewahl.Kategorie("11")); t.setzeErsatzteile(Ersatzteilwahl.OHNE); t.setzeAnsicht(Listenansicht.TABELLE)
         t.setzeSuche("30")
         advanceUntilIdle()
         val st = teileAbrufe.last()
-        assertEquals(listOf("30", "Red", "11"), listOf(st.partsQuery, st.partsColorFilter, st.partsCategoryFilter))
+        assertEquals(listOf("30", "Red", "11"), listOf(st.partsQuery, st.partsColorFilter.wert, st.partsCategoryFilter.wert))
         assertEquals(Ersatzteilwahl.OHNE to Listenansicht.TABELLE, st.partsSpare to st.partsView)
         assertEquals(listOf("3001"), t.state.value.parts.map { it.partNumber })
         assertEquals("die manuellen Teile unter demselben Suchtext", "30", manuelleSuchen.last())
@@ -120,9 +122,9 @@ class TeileTest {
     @Test
     fun `ein Filterwechsel vergisst die Scrollstelle`() = runTest {
         val t = teile()
-        t.setzeFarbe("5"); t.setzeKategorie("11"); t.setzeErsatzteile(Ersatzteilwahl.NUR); t.setzeSuche("stein")
+        t.setzeFarbe(Farbwahl.Farbe("5")); t.setzeKategorie(Kategoriewahl.Kategorie("11")); t.setzeErsatzteile(Ersatzteilwahl.NUR); t.setzeSuche("stein")
         assertEquals(4, vergessen)
-        t.setzeFarbe("5")
+        t.setzeFarbe(Farbwahl.Farbe("5"))
         assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, vergessen)
         advanceUntilIdle()
     }
@@ -146,11 +148,11 @@ class TeileTest {
         val alt = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "alt")), 1L))
         val neu = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "neu")), 1L))
         val t = Teile(scope = vordergrund(), quelle = kennzahlen, meldeFehler = {}, vergissScroll = {},
-            listen = TeileLokal(teile = { st -> if (st.partsColorFilter.isBlank()) alt else neu },
+            listen = TeileLokal(teile = { st -> if (st.partsColorFilter == Farbwahl.Alle) alt else neu },
                 manuelleTeile = { manuelleTeile }, figuren = { figuren }, manuelleFiguren = { manuelleFiguren },
                 aktualisiereTeile = { Ergebnis.Success(Unit) }, aktualisiereFiguren = { Ergebnis.Success(Unit) }))
         t.laden(); runCurrent()
-        t.setzeFarbe("Red"); runCurrent()
+        t.setzeFarbe(Farbwahl.Farbe("Red")); runCurrent()
         alt.value = Lokal(listOf(TeilAnsicht(partNumber = "spaet")), 2L)
         runCurrent()
         assertEquals(listOf("neu"), t.state.value.parts.map { it.partNumber })
@@ -202,7 +204,7 @@ class TeileTest {
     @Test
     fun `Abmelden raeumt auf, und eine spaete Antwort kommt nicht zurueck`() = runTest {
         val t = teile()
-        t.setzeFarbe("Red"); runCurrent()
+        t.setzeFarbe(Farbwahl.Farbe("Red")); runCurrent()
         t.zuruecksetzen()
         advanceUntilIdle()
         assertEquals(PartsUiState(), t.state.value)

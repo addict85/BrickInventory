@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Waehrung
@@ -58,13 +60,13 @@ data class PartsUiState(
      */
     val partsFilterColors: List<FilterFarbeAnsicht> = emptyList(),
     val partsCategories: List<KategorieAnsicht> = emptyList(),
-    /** Gewaehlte Farbe; "" = alle. Der Wert reist als `color=` mit. */
-    val partsColorFilter: String = "",
+    /** Gewählte Farbe; der Name reist als `color=` mit. */
+    val partsColorFilter: Farbwahl = Farbwahl.Alle,
     /**
-     * Gewählte Kategorie; "" = alle. Gespeichert wird der Wert (`category_name`, meist
-     * eine Katalog-ID als Text), nicht die Beschriftung — der Server filtert danach.
+     * Gewählte Kategorie. Gespeichert wird der Wert (`category_name`, meist eine Katalog-ID
+     * als Text), nicht die Beschriftung — der Server filtert danach.
      */
-    val partsCategoryFilter: String = "",
+    val partsCategoryFilter: Kategoriewahl = Kategoriewahl.Alle,
     /** Der letzte Abruf der Teile; die Liste kommt aus der Ablage und bleibt stehen. */
     val teileAbruf: Laden<Unit> = Laden.Daten(Unit),
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */

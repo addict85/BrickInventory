@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.zustand.ui.ladefehler
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -161,14 +163,14 @@ internal class Teile(
         laden()
     }
 
-    fun setzeFarbe(wert: String) {
+    fun setzeFarbe(wert: Farbwahl) {
         if (_state.value.partsColorFilter == wert) return
         vergissScroll()
         _state.update { it.copy(partsColorFilter = wert) }
         laden()
     }
 
-    fun setzeKategorie(wert: String) {
+    fun setzeKategorie(wert: Kategoriewahl) {
         if (_state.value.partsCategoryFilter == wert) return
         vergissScroll()
         _state.update { it.copy(partsCategoryFilter = wert) }

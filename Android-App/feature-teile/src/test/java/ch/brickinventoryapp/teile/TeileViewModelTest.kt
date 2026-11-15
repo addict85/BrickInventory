@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
@@ -83,8 +85,8 @@ class TeileViewModelTest {
     fun `Filter und Ansicht ueberstehen einen Prozess-Tod und reisen mit`() {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
-        erstes.setPartsColorFilter("5")
-        erstes.setPartsCategoryFilter("11")
+        erstes.setPartsColorFilter(Farbwahl.Farbe("5"))
+        erstes.setPartsCategoryFilter(Kategoriewahl.Kategorie("11"))
         erstes.setPartsSpare(Ersatzteilwahl.NUR)
         erstes.setPartsView(Listenansicht.TABELLE)
 
@@ -92,7 +94,7 @@ class TeileViewModelTest {
             val neu = vm(gemerkt, t)
             val st = neu.partsState.value
             assertEquals(listOf("5", "11", Ersatzteilwahl.NUR, Listenansicht.TABELLE),
-                listOf(st.partsColorFilter, st.partsCategoryFilter, st.partsSpare, st.partsView))
+                listOf(st.partsColorFilter.wert, st.partsCategoryFilter.wert, st.partsSpare, st.partsView))
             neu.loadParts()
             assertTrue("Liste geladen", neu.partsState.value.parts.isNotEmpty())
             val abruf = pfade.anfragenAn("GET /api/v1/parts?").single()
@@ -182,12 +184,12 @@ class TeileViewModelTest {
     fun `nach dem Abmelden ist nichts mehr da`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
-        vm.setPartsColorFilter("Red")
+        vm.setPartsColorFilter(Farbwahl.Farbe("Red"))
         vm.oeffneSetItem(Postenart.PART, "3001", 5)
         assertTrue("geladen", vm.partsState.value.parts.isNotEmpty() && !vm.setItemState.value.abruf.laedt)
         t.sitzung.abgemeldet()
         assertTrue(vm.partsState.value.parts.isEmpty())
         assertTrue(!vm.setItemState.value.offen)
-        assertEquals("", vm(gemerkt).partsState.value.partsColorFilter)
+        assertEquals(Farbwahl.Alle, vm(gemerkt).partsState.value.partsColorFilter)
     }
 }

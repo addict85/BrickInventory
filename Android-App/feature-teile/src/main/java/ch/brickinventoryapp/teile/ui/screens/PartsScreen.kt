@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
@@ -217,8 +219,8 @@ internal fun PartsScreen(
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
                     if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
                     if (partsState.partsSpare != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
-                    if (partsState.partsColorFilter.isNotBlank()) aktionen.setPartsColorFilter("")
-                    if (partsState.partsCategoryFilter.isNotBlank()) aktionen.setPartsCategoryFilter("")
+                    if (partsState.partsColorFilter != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
+                    if (partsState.partsCategoryFilter != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
                 }) { Text(stringResource(R.string.search_clear_all)) }
             }
         } else if (anzeige == Ladeanzeige.LEER) {

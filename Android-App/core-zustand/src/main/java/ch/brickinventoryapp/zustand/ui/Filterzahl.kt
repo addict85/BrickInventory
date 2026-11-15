@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.fach.LagerortAnsicht
 import ch.brickinventoryapp.model.fach.MitgliedAnsicht
@@ -28,7 +30,7 @@ object Filterzahl {
         konto(members, konto) + lager(orte, lager) + (if (thema.isNotBlank()) 1 else 0)
 
     fun teile(members: List<MitgliedAnsicht>, konto: String, orte: List<LagerortAnsicht>, lager: String,
-              ersatz: Ersatzteilwahl, farbe: String, kategorie: String): Int =
+              ersatz: Ersatzteilwahl, farbe: Farbwahl, kategorie: Kategoriewahl): Int =
         konto(members, konto) + lager(orte, lager) + (if (ersatz != Ersatzteilwahl.ALLE) 1 else 0) +
-            listOf(farbe, kategorie).count { it.isNotBlank() }
+            listOf(farbe.wert, kategorie.wert).count { it != null }
 }

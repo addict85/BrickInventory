@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Figurenerfassung
 import ch.brickinventoryapp.model.fach.Teilerfassung
@@ -23,8 +25,8 @@ internal interface TeileAktionen {
     fun setPartsSpare(wert: Ersatzteilwahl)
     fun setPartsView(wert: Listenansicht)
     fun setPartsOrdnung(wert: PartsUiState.Ordnung)
-    fun setPartsColorFilter(wert: String)
-    fun setPartsCategoryFilter(wert: String)
+    fun setPartsColorFilter(wert: Farbwahl)
+    fun setPartsCategoryFilter(wert: Kategoriewahl)
     fun setMinifigsQuery(q: String)
     fun setMinifigsView(wert: Listenansicht)
     fun setScope(view: ScopeFilter.View, value: String)
