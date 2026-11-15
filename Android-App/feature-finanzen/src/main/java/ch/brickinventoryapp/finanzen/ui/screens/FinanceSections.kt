@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.finanzen.ui.FinanzZeile
+import ch.brickinventoryapp.model.ui.model.BewertungSetAnsicht
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ui.components.AuswahlChip
 
@@ -175,6 +177,30 @@ internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht
     }
 }
 
+/** Name, Nummer, Menge und Zustand einer Set-Zeile der Finanzen. */
+@Composable
+private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZeile) {
+    val rowQty = zeile.menge
+    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+            maxLines = 2, style = MaterialTheme.typography.bodyMedium)
+        Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary)
+        if (rowQty > 1)
+            Text(mengeManuell(rowQty),
+                Modifier.vorgelesenAls(stueckzahl(rowQty)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Zustand dieser Erfassung — bei mehreren Karten
+        // desselben Sets das einzige Unterscheidungsmerkmal.
+        zeile.zustand?.let {
+            Box(Modifier.padding(top = Abstaende.haar)) {
+                ConditionBadges(listOf(it))
+            }
+        }
+    }
+}
+
 /** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
 internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Double?) -> String, onSetClick: (String) -> Unit) {
     // Section header
@@ -203,24 +229,7 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
             Row(Modifier.padding(Abstaende.mittel), verticalAlignment = Alignment.CenterVertically) {
                 FinanzBild(imageUrl, imageLoader, set.name)
                 Spacer(Modifier.width(Abstaende.mittel))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, style = MaterialTheme.typography.bodyMedium)
-                    Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary)
-                    if (rowQty > 1)
-                        Text(mengeManuell(rowQty),
-                            Modifier.vorgelesenAls(stueckzahl(rowQty)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Zustand dieser Erfassung — bei mehreren Karten
-                    // desselben Sets das einzige Unterscheidungsmerkmal.
-                    zeile.zustand?.let {
-                        Box(Modifier.padding(top = Abstaende.haar)) {
-                            ConditionBadges(listOf(it))
-                        }
-                    }
-                }
+                FinanzSetAngaben(set, zeile)
                 Spacer(Modifier.width(Abstaende.klein))
                 // Kaufpreis und Marktpreis untereinander, wie in der Webapp. Bei mehreren
                 // Erfassungen steht hier nichts: Die Zahlen stehen dann je Kaufpreis darunter,

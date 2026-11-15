@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.anmeldung.ui
 
+import ch.brickinventoryapp.ui.satz
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,14 +103,15 @@ private fun NavGraphBuilder.anmeldeZiel(navigation: AnmeldungNavigation) {
         } else LoginScreen(
             serverUrl = state.serverUrl,
             isLoading = anmeldeZustand.loginLaeuft,
-            error = anmeldeZustand.loginError,
+            error = anmeldeZustand.loginError?.satz(),
             qrBestaetigung = anmeldeZustand.qrBestaetigung,
             codeNoetig = anmeldeZustand.codeNoetig,
             formular = anmeldeZustand.formular,
             registrierungOffen = anmeldeZustand.registrierungOffen,
             kontoLaeuft = anmeldeZustand.laeuft,
-            kontoMeldung = anmeldeZustand.meldung,
-            kontoFehler = anmeldeZustand.fehler,
+            kontoMeldung = listOfNotNull(anmeldeZustand.meldung?.satz(), anmeldeZustand.hinweis?.satz())
+                .joinToString(" ").ifEmpty { null },
+            kontoFehler = anmeldeZustand.fehler?.satz(),
             onLogin = { user, pw, code -> anmeldungVm.login(user, pw, code) },
             vollerZugriff = anmeldeZustand.vollerZugriff,
             onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },

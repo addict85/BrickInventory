@@ -629,15 +629,17 @@ class QuelltextRatscheTest {
         // `laedt: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
         // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
         val ALT = 0
-        val TEXT = 3
+        val TEXT = 0
         val laden = Regex("""(?i)^(laedt|laden|.*loading|.*laedt)$""")
         val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
         val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")
         var alt = 0
+        var zustaende = 0
         var texte = 0
         for ((modul, zeilen) in zeilenJeModul()) {
             if (praesentation.none { modul.startsWith(it) }) continue
             val istZustand = zustand.containsMatchIn(zeilen.joinToString("\n"))
+            if (istZustand) zustaende++
             for (z in zeilen) {
                 val m = eigenschaft.find(z) ?: continue
                 val (name, typ) = m.destructured
@@ -645,7 +647,10 @@ class QuelltextRatscheTest {
                 if (istZustand && typ != "Boolean" && text.containsMatchIn(name)) texte++
             }
         }
-        assertTrue("Keine Ladeform gefunden — greift das Muster noch?", alt + texte > 0)
+        // Beide Zahlen stehen auf 0; dass das Muster noch greift, zeigt eine alte Form.
+        val probe = eigenschaft.find("    val galleryLoading: Boolean = false,")?.destructured?.component1()
+        assertTrue("Das Muster erkennt keine alte Ladeform mehr", probe != null && laden.matches(probe))
+        assertTrue("Nur $zustaende Zustandsdateien — greift die Suche noch?", zustaende >= 10)
         ratsche("alte Ladeformen (Boolean laedt/…Loading)", ALT, alt, "Laden<T> aus model/ui/Laden.kt nehmen.")
         ratsche("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texte,
             "Meldung (model/ui/Meldung.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")

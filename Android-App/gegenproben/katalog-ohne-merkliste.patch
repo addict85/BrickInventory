@@ -6,12 +6,12 @@ Rot: M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
-@@ -146,7 +146,7 @@ fun CatalogDetailScreen(
-                 val angaben: @Composable ColumnScope.() -> Unit = {
-                     KatalogAngaben(
-                         detail = detail,
--                        gemerkt = gemerkt,
-+                        gemerkt = null,
-                         onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
-                         onAufnehmen = { showAddDialog = true },
-                         onOpenInGallery = onOpenInGallery,
+@@ -195,7 +195,7 @@
+         val angaben: @Composable ColumnScope.() -> Unit = {
+             KatalogAngaben(
+                 detail = detail,
+-                gemerkt = gemerkt,
++                gemerkt = null,
+                 onMerken = onMerken,
+                 onAufnehmen = onAufnehmen,
+                 onOpenInGallery = onOpenInGallery,
