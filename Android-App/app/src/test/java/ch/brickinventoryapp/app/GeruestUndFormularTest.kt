@@ -97,8 +97,8 @@ import ch.brickinventoryapp.konto.ui.screens.StartpasswortMaske
 import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
 import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.Lesebreite
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.util.fmtInt
 import android.content.Context

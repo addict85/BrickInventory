@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 
 /**
  * Was das Set-Detail auslöst. Der Bildschirm kennt nur diese Schnittstelle;

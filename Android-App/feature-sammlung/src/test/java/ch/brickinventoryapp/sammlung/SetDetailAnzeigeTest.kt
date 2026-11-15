@@ -26,7 +26,7 @@ import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.zustand.ui.LagerUiState
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 import coil3.ImageLoader
 import org.junit.Assert.assertEquals
 import org.junit.Rule

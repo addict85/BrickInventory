@@ -1,9 +1,9 @@
-package ch.brickinventoryapp.zustand
+package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
-import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
-import ch.brickinventoryapp.zustand.ui.viewmodel.liesBegrenzt
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
+import ch.brickinventoryapp.model.datei.Gelesen
+import ch.brickinventoryapp.data.datei.liesBegrenzt
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
