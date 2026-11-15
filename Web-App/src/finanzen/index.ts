@@ -2,5 +2,4 @@
 
 export { erzeugeFinanzen } from './bereich';
 export type { FinanzenDienste, FinanzenKontext } from './bereich';
-export { finanzenAuftragsarten } from './auftragsarten';
-export { PREISPOSTEN_HOECHSTENS } from './preiseNachladen';
+export { PREISPOSTEN_HOECHSTENS } from './preisPosten';

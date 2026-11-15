@@ -35,7 +35,7 @@ testQuellen(null, { getSetMinifigs: stoerung });
 const still = async () => {};
 ersetze('src/katalog/partsImport.js', { blNummernNachladen: still });
 ersetze('src/sets/setInhaltImport.js', { importiereTeile: still, importiereFiguren: still });
-ersetze('src/auftraege/anleitungsAuftrag.js', { anleitungEinreihen: still });
+ersetze('src/katalog/anleitungsAuftrag.js', { anleitungEinreihen: still });
 ersetze('src/katalog/teileAnreicherung.js', {
   enrichSetParts: stoerung,
   enrichSetMinifigs: still,
@@ -81,16 +81,23 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   await t.test('die Nacharbeit nennt gescheiterte Schritte', async () => {
     rebrickable = 'gestoert';
     const staende = [];
-    const { zieheNach } = require('./helpers/sources').bereichsSeite('sets');
+    // Über die angemeldete Art, wie der Worker sie ausführt.
+    const nacharbeit = require('./helpers/sources')
+      .testDienste()
+      .auftraege.angemeldeteArten()
+      .find(a => a.art === 'nacharbeit');
     // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
     await require('./helpers/bestand').katalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
-      await zieheNach(SN, 0, 'zweit', {
-        fortschritt: async f => {
-          staende.push(f);
-          return true;
+      await nacharbeit.ausfuehren(
+        { set_number: SN, user_id: 0, art: 'zweit' },
+        {
+          fortschritt: async f => {
+            staende.push(f);
+            return true;
+          },
         },
-      });
+      );
     } finally {
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
     }

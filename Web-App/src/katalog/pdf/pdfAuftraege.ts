@@ -30,18 +30,18 @@ export type PdfAuftrag = {
 };
 
 const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
-const ganzOderNull = (x: unknown) => (typeof x === 'number' ? x : null);
 
 /** Unter Zeilenschutz und nach Konto gefiltert: Ein fremder Auftrag ist keiner. */
 export async function liesAuftrag(k: KatalogKontext, id: string, uid: number): Promise<PdfAuftrag | null> {
   const z = await k.auftraege.eigenerAuftrag('pdf', pdfSchluessel(id), uid);
+  const { fehlendeBilder, etaSekunden } = z?.fortschritt ?? {};
   return z
     ? {
         status: STATUS[z.status] ?? 'error',
         error: z.status === 'erledigt' ? null : (z.fehler ?? null),
         user_id: Number(z.user_id),
-        missingImages: ganzOderNull(z.fortschritt?.fehlendeBilder),
-        etaSeconds: ganzOderNull(z.fortschritt?.etaSekunden),
+        missingImages: typeof fehlendeBilder === 'number' ? fehlendeBilder : null,
+        etaSeconds: typeof etaSekunden === 'number' ? etaSekunden : null,
       }
     : null;
 }

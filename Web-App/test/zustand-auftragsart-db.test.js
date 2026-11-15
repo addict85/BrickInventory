@@ -9,8 +9,8 @@
  *      Schreibweise wird berichtigt …“ ('2-1' fehlt)
  *   B  im UPDATE wanted die Bedingung `w.id = (SELECT min(y.id) …)` entfernt →
  *      rot: die Migration scheitert an wanted_user_id_set_number_condition_key
- *   C  in AUFTRAGS_ARTEN eine Art 'neu' ohne Migration ergänzt → rot:
- *      „auftrags_arten kennt genau AUFTRAGS_ARTEN“
+ *   C  in startup/verdrahtung.ts eine Art 'neu' ohne Migration angemeldet → rot:
+ *      „auftrags_arten kennt genau die angemeldeten Arten“ (15.11.2026)
  *   D  das ALTER TABLE auftraege ADD CONSTRAINT auftraege_art_fkey entfernt →
  *      rot: „danach weist das Schema Unbekanntes ab“
  */
@@ -101,10 +101,14 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     await c.query('SET search_path TO public');
   });
 
-  await t.test('auftrags_arten kennt genau AUFTRAGS_ARTEN', async () => {
-    const { AUFTRAGS_ARTEN } = _req('src/auftraege/auftraege.js');
+  await t.test('auftrags_arten kennt genau die angemeldeten Arten', async () => {
+    const angemeldet = require('./helpers/sources')
+      .testDienste()
+      .auftraege.angemeldeteArten()
+      .map(a => a.art);
     const inDb = (await db.all('SELECT art FROM auftrags_arten ORDER BY art')).map(z => z.art);
-    assert.deepEqual(inDb, [...AUFTRAGS_ARTEN].sort());
+    assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);
+    assert.deepEqual(inDb, [...angemeldet].sort());
   });
 
   await t.test('ein Zustand ausser N und U wird abgewiesen', async () => {

@@ -1,7 +1,7 @@
 /** Dateien eines gelöschten Kontos, die beim Löschen liegen blieben: Der Auftrag versucht es wieder. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import type { KontoDienste } from './bereich';
+import { loescheKontoDateien } from './kontoEntfernen';
 
 const KontoDateien = z.object({ user_id: z.number().int().positive() });
 
@@ -11,8 +11,8 @@ declare module '../auftraege/auftraege' {
   }
 }
 
-export function kontoAuftragsarten(d: KontoDienste): Anmeldung[] {
+export function kontoAuftragsarten(): Anmeldung[] {
   return [
-    auftragsart({ art: 'konto_dateien', nutzlast: KontoDateien, ausfuehren: n => d.loescheKontoDateien(n.user_id) }),
+    auftragsart({ art: 'konto_dateien', nutzlast: KontoDateien, ausfuehren: n => loescheKontoDateien(n.user_id) }),
   ];
 }

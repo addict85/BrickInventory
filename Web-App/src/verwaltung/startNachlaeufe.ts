@@ -9,7 +9,14 @@ async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
 }
 
 /** Die Schritte des Nachlaufs nach dem Start; die Nutzlast der Art 'nachlauf' kennt genau diese. */
-export const NACHLAUF_SCHRITTE = ['geheimnisse', 'vorschauen', 'katalog', 'anleitungen', 'set_bilder', 'kaufpreise'] as const;
+export const NACHLAUF_SCHRITTE = [
+  'geheimnisse',
+  'vorschauen',
+  'katalog',
+  'anleitungen',
+  'set_bilder',
+  'kaufpreise',
+] as const;
 type Nachlauf = (typeof NACHLAUF_SCHRITTE)[number];
 
 /** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */

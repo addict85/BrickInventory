@@ -6,6 +6,7 @@ import * as anmeldungAblauf from './anmeldungAblauf';
 import * as geheimnisAltbestand from './geheimnisAltbestand';
 import * as geraeteToken from './geraeteToken';
 import * as kontoEntfernen from './kontoEntfernen';
+import { kontoAuftragsarten } from './auftragsarten';
 import * as kontoHinweis from './kontoHinweis';
 import * as loginLimiter from './loginLimiter';
 import * as registrierungAblauf from './registrierungAblauf';
@@ -79,7 +80,7 @@ function konten(k: KontoKontext) {
     setzeAktiv: mit(k)(kontenDienst.setzeAktiv),
     setzeVerwalterRolle: mit(k)(kontenDienst.setzeVerwalterRolle),
     kontoEntfernen: mit(k)(kontoEntfernen.kontoEntfernen),
-    loescheKontoDateien: kontoEntfernen.loescheKontoDateien,
+    auftragsarten: kontoAuftragsarten,
     verwalterHinweisNebenher: mit(k)(kontoHinweis.verwalterHinweisNebenher),
     hinweisNebenher: mit(k)(kontoHinweis.hinweisNebenher),
     haushaltBeitreten: mit(k)(kontoHinweis.haushaltBeitreten),

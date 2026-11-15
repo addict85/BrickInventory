@@ -2,7 +2,6 @@
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import { Arten, type Anmeldung } from './arten';
-import type { AuftragsArt } from './auftraege';
 import * as dienst from './dienst';
 import * as eigene from './eigene';
 import * as hintergrund from './hintergrund';
@@ -28,7 +27,7 @@ export function erzeugeAuftraege(
     (k: AuftraegeKontext) => ({
       meldeArtAn: (an: Anmeldung) => arten.melde(an),
       angemeldeteArten: () => arten.alle(),
-      pruefeNutzlast: <A extends AuftragsArt>(art: A, roh: unknown) => arten.pruefe(art, roh),
+      pruefeNutzlast: arten.pruefe.bind(arten) as Arten['pruefe'],
       ergaenzeListenAuftrag: mit(k)(dienst.ergaenzeListenAuftrag),
       setzeFortschritt: mit(k)(dienst.setzeFortschritt),
       erledigt: mit(k)(dienst.erledigt),
@@ -82,25 +81,32 @@ export function erzeugeAuftraege(
       taeglicheUhrzeit: mit(k)(zeitplan.taeglicheUhrzeit),
       meldeProzessAn: mit(k)(prozess.meldeProzessAn),
       meldeProzessAb: mit(k)(prozess.meldeProzessAb),
-      // Pacht, Belegen und Zurückgeben für den Worker (jobs/auftragsWorker.ts).
-      lebenszeichen: k.auftraege.lebenszeichen,
-      belegeAuftrag: k.auftraege.belegeAuftrag,
-      gibZurueck: k.auftraege.gibZurueck,
-      merkeExklusive: k.auftraege.merkeExklusive,
-      // Pausen einer Art (CDN, Brickset drosseln) und das Aufräumen erledigter.
-      pausiereArt: k.auftraege.pausiereArt,
-      liesPause: k.auftraege.liesPause,
-      raeumeErledigteAuf: k.auftraege.raeumeErledigteAuf,
-      // Marken über Prozessgrenzen (Lebenszeichen, Altbestand, Abgleich); gelesen von der Verwaltung.
-      liesZustand: k.laufzustand.liesZustand,
-      setzeZustand: k.laufzustand.setzeZustand,
-      loescheZustand: k.laufzustand.loescheZustand,
-      zaehleZustand: k.laufzustand.zaehleZustand,
-      // Je Art der laufende, sonst der zuletzt beendete Auftrag: die Kacheln der Verwaltung.
-      letzteJeArt: k.auftraege.letzteJeArt,
+      ...ausDerTabelle(k),
     }),
     einblick,
   );
+}
+
+/** Was ohne eigene Regel aus Tabelle und Laufzustand durchgereicht wird. */
+function ausDerTabelle(k: AuftraegeKontext) {
+  return {
+    // Pacht, Belegen und Zurückgeben für den Worker (jobs/auftragsWorker.ts).
+    lebenszeichen: k.auftraege.lebenszeichen,
+    belegeAuftrag: k.auftraege.belegeAuftrag,
+    gibZurueck: k.auftraege.gibZurueck,
+    merkeExklusive: k.auftraege.merkeExklusive,
+    // Pausen einer Art (CDN, Brickset drosseln) und das Aufräumen erledigter.
+    pausiereArt: k.auftraege.pausiereArt,
+    liesPause: k.auftraege.liesPause,
+    raeumeErledigteAuf: k.auftraege.raeumeErledigteAuf,
+    // Marken über Prozessgrenzen (Lebenszeichen, Altbestand, Abgleich); gelesen von der Verwaltung.
+    liesZustand: k.laufzustand.liesZustand,
+    setzeZustand: k.laufzustand.setzeZustand,
+    loescheZustand: k.laufzustand.loescheZustand,
+    zaehleZustand: k.laufzustand.zaehleZustand,
+    // Je Art der laufende, sonst der zuletzt beendete Auftrag: die Kacheln der Verwaltung.
+    letzteJeArt: k.auftraege.letzteJeArt,
+  };
 }
 
 export type AuftraegeDienste = ReturnType<typeof erzeugeAuftraege>;

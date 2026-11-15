@@ -11,7 +11,6 @@ export async function loescheEigenen(k: AuftraegeKontext, art: AuftragsArt, schl
   await k.eigene.loescheEigenen(art, schluessel, uid);
 }
 
-/** Ein hängengebliebener zählt nach `fristSek` nicht mehr. */
 export async function zaehleLaufende(k: AuftraegeKontext, art: AuftragsArt, uid: number, fristSek: number) {
   return (await k.eigene.zaehleLaufende(art, uid, fristSek))?.n ?? 0;
 }

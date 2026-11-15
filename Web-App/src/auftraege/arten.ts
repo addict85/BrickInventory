@@ -3,12 +3,10 @@
 import type { z } from 'zod';
 import type { AuftragsArt, AuftragsKontext, AuftragsZeile, Nutzlast, NutzlastSchema } from './auftraege';
 
-/** Je geplanter Art genau ein offener Auftrag `plan:<art>`; eine geänderte Uhrzeit verschiebt nur faellig_ab. */
 export type Zeitplan =
   | { taeglich: { einstellung: string; vorgabe: string } }
   | { minuten: { einstellung?: string; vorgabe: number; mindestens?: number } };
 
-/** Die Nutzlast kommt geprüft an. */
 export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
   ausfuehren(nutzlast: Nutzlast<A>, k: AuftragsKontext, a: AuftragsZeile): Promise<void>;
   aufgegeben?(nutzlast: Nutzlast<A>, fehler: string, a: AuftragsZeile): Promise<void>;
@@ -21,9 +19,10 @@ export interface Anmeldung<A extends AuftragsArt = AuftragsArt> extends Bearbeit
   /** Ohne Konto im Systemrahmen, am Zeilenschutz vorbei; hier steht der Grund. */
   kontouebergreifend?: string;
   zeitplan?: Zeitplan;
+  /** Trägt sie Angaben eines Kontos (Dateiinhalt, Teilelisten), bleibt nach dem Erfolg nichts davon stehen. */
+  nutzlastVerwerfen?: boolean;
 }
 
-/** Bindet Art und Nutzlast für den Übersetzer; die Liste eines Bereichs mischt Arten. */
 export function auftragsart<A extends AuftragsArt>(a: Anmeldung<A>): Anmeldung {
   return a as unknown as Anmeldung;
 }

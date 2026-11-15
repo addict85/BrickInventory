@@ -51,7 +51,6 @@ export async function bricksetJetzt(k: FremdquellenKontext, sn?: string): Promis
   await k.auftraege.wiedervorlage.jetzt('brickset', sn ? schluessel(sn) : undefined);
 }
 
-/** Nach einer Änderung der Uhrzeit: Was später fällig war, kommt bis `bis` dran. */
 export function bricksetVorziehen(k: FremdquellenKontext, bis: Date): Promise<void> {
   return k.auftraege.wiedervorlage.vorziehen('brickset', bis);
 }
@@ -60,7 +59,6 @@ export function bricksetZahlen(k: FremdquellenKontext) {
   return k.auftraege.wiedervorlage.zahlen('brickset');
 }
 
-/** Die wartenden Sets mit Zahl der Versuche, nach Fälligkeit. */
 export async function bricksetWartende(k: FremdquellenKontext) {
   return (await k.auftraege.wiedervorlage.wartende('brickset')).map(z => {
     const n = BricksetNutzlast.safeParse(z.nutzlast);

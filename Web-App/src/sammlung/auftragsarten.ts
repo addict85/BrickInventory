@@ -1,18 +1,17 @@
-/** Imports, auf die eine Anfrage wartet, und das Set-CSV der Sets unter derselben Art. */
 import { auftragsart, type Anmeldung } from '../auftraege';
-import type { SetsDienste } from '../sets';
-import { CsvImportNutzlast } from './importAuftraege';
-import type { SammlungDienste } from './bereich';
+import { CsvImportNutzlast, fuehreImportAus } from './importAuftraege';
+import type { SammlungKontext } from './kontext';
 
 /** Mit `quelle` ein Import, auf den eine Anfrage wartet; ohne das Set-CSV. */
-export function sammlungAuftragsarten(d: SammlungDienste, sets: SetsDienste): Anmeldung[] {
+export function sammlungAuftragsarten(k: SammlungKontext): Anmeldung[] {
   return [
     auftragsart({
       art: 'csv_import',
       nutzlast: CsvImportNutzlast,
-      ausfuehren: (n, k, a) => ('quelle' in n ? d.fuehreImportAus(n, k, a) : sets.fuehreCsvImportAus(n, k)),
+      nutzlastVerwerfen: true,
+      ausfuehren: (n, l, a) => ('quelle' in n ? fuehreImportAus(k, n, l, a) : k.sets.fuehreCsvImportAus(n, l)),
       aufgegeben: async (n, fehler) => {
-        if (!('quelle' in n)) await sets.csvImportAufgegeben(n, fehler);
+        if (!('quelle' in n)) await k.sets.csvImportAufgegeben(n, fehler);
       },
     }),
   ];

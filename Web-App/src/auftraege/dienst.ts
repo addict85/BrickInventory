@@ -3,9 +3,16 @@
  * findet der Worker den Auftrag in seinem Takt. */
 import { alsAnfrage, imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
-import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
-import type { NutzlastEingabe } from './auftraege';
-import { AuftragVerloren } from './auftraege';
+import {
+  AuftragVerloren,
+  type AuftragsArt,
+  type AuftragsStatus,
+  type AuftragsZeile,
+  type Belegung,
+  type Einstellen,
+  type Fortschritt,
+  type NutzlastEingabe,
+} from './auftraege';
 import { logAndContinue } from '../infra/fehler';
 import { signal } from '../infra/ereignis';
 import type { AuftraegeKontext } from './kontext';
@@ -84,8 +91,8 @@ export async function setzeFortschritt(
   return !!z;
 }
 
-export async function erledigt(k: AuftraegeKontext, a: Belegung): Promise<boolean> {
-  const z = await k.auftraege.setzeErledigt(a);
+export async function erledigt(k: AuftraegeKontext, a: Belegung & Pick<AuftragsZeile, 'art'>): Promise<boolean> {
+  const z = await k.auftraege.setzeErledigt(a, !!k.arten.von(a.art)?.nutzlastVerwerfen);
   await meldeStand(k, z);
   return !!z;
 }

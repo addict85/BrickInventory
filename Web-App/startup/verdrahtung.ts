@@ -4,7 +4,7 @@
 import path from 'node:path';
 import { erzeugeAuftraege, type Anmeldung } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
-import { erzeugeSets, setsAuftragsarten } from '../src/sets';
+import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
 import { erzeugeMail } from '../src/mail';
 import { erzeugeIdempotenz } from '../src/idempotenz';
@@ -13,12 +13,12 @@ import { erzeugeTeile } from '../src/teile';
 import { erzeugeFiguren } from '../src/figuren';
 import { erzeugeMerkliste } from '../src/merkliste';
 import { erzeugeGutscheine } from '../src/gutscheine';
-import { erzeugeSammlung, sammlungAuftragsarten } from '../src/sammlung';
-import { erzeugeVerwaltung, verwaltungAuftragsarten } from '../src/verwaltung';
-import { erzeugeKatalog, katalogAuftragsarten } from '../src/katalog';
-import { type Bildwerk, bilderAuftragsarten, erzeugeBilder } from '../src/bilder';
-import { erzeugeFinanzen, finanzenAuftragsarten } from '../src/finanzen';
-import { erzeugeKonto, kontoAuftragsarten } from '../src/konto';
+import { erzeugeSammlung } from '../src/sammlung';
+import { erzeugeVerwaltung } from '../src/verwaltung';
+import { erzeugeKatalog } from '../src/katalog';
+import { type Bildwerk, erzeugeBilder } from '../src/bilder';
+import { erzeugeFinanzen } from '../src/finanzen';
+import { erzeugeKonto } from '../src/konto';
 import { erzeugeProfil } from '../src/profil';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
@@ -59,13 +59,13 @@ export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
 /** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
 function meldeAuftragsartenAn(d: Dienste): void {
   const arten: Anmeldung[] = [
-    ...bilderAuftragsarten(d.bilder),
-    ...kontoAuftragsarten(d.konto),
-    ...katalogAuftragsarten(d.katalog, IMPORT_PROZESS),
-    ...finanzenAuftragsarten(d.finanzen),
-    ...setsAuftragsarten(d.sets, d.katalog),
-    ...sammlungAuftragsarten(d.sammlung, d.sets),
-    ...verwaltungAuftragsarten(d.verwaltung),
+    ...d.bilder.auftragsarten(),
+    ...d.konto.auftragsarten(),
+    ...d.katalog.auftragsarten(IMPORT_PROZESS),
+    ...d.finanzen.auftragsarten(),
+    ...d.sets.auftragsarten(),
+    ...d.sammlung.auftragsarten(),
+    ...d.verwaltung.auftragsarten(),
   ];
   for (const a of arten) d.auftraege.meldeArtAn(a);
 }

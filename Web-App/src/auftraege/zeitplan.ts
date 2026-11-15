@@ -3,9 +3,7 @@ import type { Zeitplan } from './arten';
 import { weckeWorker, stelleAuftragEin } from './dienst';
 import type { AuftraegeKontext } from './kontext';
 
-/** Je geplanter Art genau ein offener Auftrag `plan:<art>`; eine geänderte
- * Uhrzeit verschiebt nur faellig_ab — kein Zeitgeber muss neu gestellt werden.
- * Den Zeitplan nennt die Anmeldung der Art. */
+/** Je geplanter Art genau ein offener Auftrag `plan:<art>`: Eine geänderte Uhrzeit verschiebt nur faellig_ab. */
 export const planSchluessel = (art: AuftragsArt) => `plan:${art}`;
 
 function planVon(k: AuftraegeKontext, art: AuftragsArt): Zeitplan {
@@ -31,7 +29,6 @@ export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt: Date): 
   return z;
 }
 
-/** Die eingestellte Uhrzeit (Einstellung `job_time_<name>`), sonst die Vorgabe. */
 export async function taeglicheUhrzeit(
   k: AuftraegeKontext,
   einstellung: string,

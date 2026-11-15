@@ -15,4 +15,3 @@ export { imgProxyFailures } from './imgProxyStats';
 export { rebrickableSetBild } from './setImages';
 export { erzeugeBilder } from './bereich';
 export type { BilderAbhaengigkeiten, BilderDienste, BilderKontext, Bildwerk } from './bereich';
-export { bilderAuftragsarten } from './auftragsarten';

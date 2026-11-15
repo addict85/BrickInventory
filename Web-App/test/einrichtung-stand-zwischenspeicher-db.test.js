@@ -13,6 +13,9 @@
  *      → rot: „ein geschriebener Wert gilt sofort“
  *   E  der Zweig `if (erledigt) return …` entfernt
  *      → rot: „nach Abschluss wird kein Schlüssel gelesen“
+ *   F  (15.11.2026) in prozessEreignis() verbinde() ohne s.listen(…) → rot: „ein Wert aus einem
+ *      anderen Prozess …“ (kein LISTEN); mit listen, aber Fremdes wie das eigene Echo verworfen
+ *      → rot: dieselbe Prüfung („blieb beim alten Wert“)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -26,6 +29,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { bis } = require('./helpers/zeit');
 const db = testDaten();
 
 after(() => db.pool.end().catch(() => {}));
@@ -82,6 +86,25 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     assert.equal((await stand.einrichtungStand()).konfiguriert, false);
     await einstellungen.setGlobalSetting('rebrickable_api_key', 'probe');
     assert.equal((await stand.einrichtungStand()).konfiguriert, true);
+  });
+
+  await t.test('ein Wert aus einem anderen Prozess leert den Stand hier (NOTIFY)', async () => {
+    await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
+    const weg = require('./helpers/sources').testDienste().einstellungen.horcheAufAenderungen();
+    t.after(async () => {
+      weg();
+      await zugang.benachrichtigung.close();
+    });
+    assert.ok(await bis(() => zugang.benachrichtigung.hoertZu('globale_einstellung')), 'kein LISTEN');
+    stand.einrichtungStandVergessen();
+    assert.equal((await stand.einrichtungStand()).konfiguriert, false);
+    // Ein zweiter Satz Dienste mit eigenen Fächern schreibt wie ein anderer Prozess.
+    const anderer = _req('startup/verdrahtung.js').baueDienste(zugang);
+    await anderer.einstellungen.setzeGlobalenWert('rebrickable_api_key', 'probe2');
+    assert.ok(
+      await bis(async () => (await stand.einrichtungStand()).konfiguriert, 3000),
+      'der Stand hier blieb beim alten Wert, bis seine Frist ablief',
+    );
   });
 
   await t.test('Verwalter- und öffentliche Antwort sind getrennt', async () => {

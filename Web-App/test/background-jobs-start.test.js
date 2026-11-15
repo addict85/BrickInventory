@@ -68,7 +68,10 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   const plan = art => zeilen.find(z => z.schluessel === `plan:${art}`);
 
   await t.test('jede geplante Art hat einen Termin', () => {
-    for (const art of Object.keys(_req('src/auftraege/zeitplan.js').ZEITPLAENE))
+    for (const { art } of require('./helpers/sources')
+      .testDienste()
+      .auftraege.angemeldeteArten()
+      .filter(a => a.zeitplan))
       assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.schluessel).join(', ')}`);
     assert.ok(
       plan('csv_sync').in_sek <= 0 && plan('csv_sync').nutzlast.beimStart,

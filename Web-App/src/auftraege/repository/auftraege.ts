@@ -173,12 +173,12 @@ export function schreibeFortschritt(
   );
 }
 /** PDF und CSV tragen ganze Listen; erledigt braucht die niemand mehr. */
-export function setzeErledigt(db: DbSchnittstelle, a: Belegung): Promise<Stand> {
+export function setzeErledigt(db: DbSchnittstelle, a: Belegung, nutzlastVerwerfen: boolean): Promise<Stand> {
   return db.get(
     `UPDATE auftraege SET status = 'erledigt', belegt_von = NULL, fehler = NULL, frist_bis = NULL, aktualisiert = NOW(),
-            nutzlast = CASE WHEN art IN ('pdf', 'csv_import') THEN '{}'::jsonb ELSE nutzlast END
+            nutzlast = CASE WHEN $3 THEN '{}'::jsonb ELSE nutzlast END
       WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-    [a.id, a.belegt_von],
+    [a.id, a.belegt_von, nutzlastVerwerfen],
   );
 }
 export function setzeFehlgeschlagen(

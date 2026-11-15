@@ -36,7 +36,6 @@ export async function jetzt(k: AuftraegeKontext, art: AuftragsArt, schluessel?: 
   return zieheVor(k, art, schluessel);
 }
 
-/** Nach einer Änderung des Zeitplans: Was später fällig war, kommt bis `bis` dran. */
 export async function vorziehen(k: AuftraegeKontext, art: AuftragsArt, bis: Date): Promise<void> {
   await k.auftraege.zieheTermineVor(art, bis);
 }

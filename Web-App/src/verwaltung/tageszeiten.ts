@@ -1,4 +1,3 @@
-/** Die Läufe mit eingestellter Tageszeit, wie die Überwachungsseite sie zeigt und setzt. */
 import { BRICKSET_UHRZEIT } from '../fremdquellen';
 import { KATALOG_ABGLEICH_UHRZEIT } from '../katalog';
 

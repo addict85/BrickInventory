@@ -183,7 +183,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Brickset-Liste behält ihre Felder', async () => {
-    await _req('src/auftraege/bricksetAuftrag.js').bricksetVormerken('33333-1', 'Quota exceeded');
+    await _req('src/fremdquellen/bricksetWiedervorlage.js').bricksetVormerken('33333-1', 'Quota exceeded');
     const r = await rufe('GET', '/admin/brickset-queue');
     const e = r.body.entries.find(x => x.set_number === '33333-1');
     assert.ok(e, JSON.stringify(r.body));

@@ -11,7 +11,7 @@ import * as barcode from './barcode';
 import * as preise from './preise';
 import * as anleitungen from './anleitungen';
 import * as csvImport from './csvImport';
-import * as nachErfassung from './nachErfassung';
+import { setsAuftragsarten } from './auftragsarten';
 import * as setsRepo from './repository/sets';
 import * as csvImportLauf from './csvImportLauf';
 
@@ -63,8 +63,7 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
       setGehoertKonto: mit(sk)(dienst.setGehoertKonto),
       lagerortDesSetsSetzen: mit(sk)(dienst.lagerortDesSetsSetzen),
       lagerorteMitVorgabe: mit(sk)(dienst.lagerorteMitVorgabe),
-      zieheNach: mit(sk)(nachErfassung.zieheNach),
-      ladeSetBilder: mit(sk)(nachErfassung.ladeSetBilder),
+      auftragsarten: () => setsAuftragsarten(sk),
       fuehreCsvImportAus: mit(sk)(csvImportLauf.fuehreCsvImportAus),
       csvImportAufgegeben: mit(sk)(csvImportLauf.csvImportAufgegeben),
     }),

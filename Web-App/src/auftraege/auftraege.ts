@@ -57,8 +57,7 @@ export interface Einstellen {
 
 export type Belegung = Pick<AuftragsZeile, 'id' | 'belegt_von'>;
 
-// Drosselt eine Gegenseite oder will sie Abstand, wartet die ganze Art, nicht
-// ein Auftrag.
+/** Drosselt eine Gegenseite, wartet die ganze Art, nicht ein Auftrag. */
 
 export interface Pause {
   art: string;

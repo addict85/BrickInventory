@@ -9,7 +9,7 @@ import * as gewinnVerlustDienst from './rechnung/gewinnVerlust';
 import * as preise from './rechnung/preise';
 import * as preisLaufDienst from './preisLauf';
 import * as preisRegel from './preisRegel';
-import * as preiseNachladen from './preiseNachladen';
+import { finanzenAuftragsarten } from './auftragsarten';
 import * as wechselkurseDienst from './wechselkurse';
 import * as preisalarm from './preisalarm';
 import { zugang, type FinanzenAbhaengigkeiten, type FinanzenKontext } from './kontext';
@@ -58,13 +58,11 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
       leerePreisCache: mit(k)(preise.leerePreisCache),
       holePreis: mit(k)(preise.fetchPrice),
       farbkarte: mit(k)(preise.farbkarte),
-      preislauf: mit(k)(preisLaufDienst.runPriceRefresh),
       preisFuerSetHolen: mit(k)(preisLaufDienst.refreshPriceForSet),
       kaufpreisAusEingabe: mit(k)(preisRegel.kaufpreisAusEingabe),
       manuellerKaufpreis: mit(k)(preisRegel.manuellerKaufpreis),
-      preiseNachladen: mit(k)(preiseNachladen.preiseNachladen),
       planeKursabruf: mit(k)(wechselkurseDienst.planeKursabruf),
-      kursauftrag: mit(k)(wechselkurseDienst.kursauftrag),
+      auftragsarten: () => finanzenAuftragsarten(k),
     }),
     einblick,
   );

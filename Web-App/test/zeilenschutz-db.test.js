@@ -480,11 +480,11 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     );
     st.after(() => su.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`]));
     const anfrage = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
-    assert.equal((await anfrage(C, () => d.auftraege.liesAuftrag(kennung, C)))?.user_id, C);
+    assert.equal((await anfrage(C, () => d.katalog.pdf.lies(kennung, C)))?.user_id, C);
     // Mit der eigenen ID gefragt (wie die Route): keiner; mit der fremden: der Zeilenschutz verbirgt ihn.
-    assert.equal(await anfrage(A, () => d.auftraege.liesAuftrag(kennung, A)), null);
-    assert.equal(await anfrage(A, () => d.auftraege.liesAuftrag(kennung, C)), null);
-    await anfrage(A, () => d.auftraege.loescheAuftrag(kennung, C));
+    assert.equal(await anfrage(A, () => d.katalog.pdf.lies(kennung, A)), null);
+    assert.equal(await anfrage(A, () => d.katalog.pdf.lies(kennung, C)), null);
+    await anfrage(A, () => d.katalog.pdf.loesche(kennung, C));
     assert.equal((await su.all('SELECT 1 FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`])).length, 1);
   });
 });

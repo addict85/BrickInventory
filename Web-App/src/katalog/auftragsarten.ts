@@ -1,9 +1,15 @@
-/** Die Aufträge des Katalogs: Nutzlast und Ausführer. Die Nutzlast überlebt Deploys, Einsteller
- * und Worker prüfen gegen dasselbe Schema; nicht strikt, damit ein Altfeld keinen offenen scheitern lässt. */
+/** Nicht strikt: Die Nutzlast überlebt Deploys, ein Altfeld soll keinen offenen Auftrag scheitern lassen. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
 import { BricksetNutzlast } from '../fremdquellen';
-import type { KatalogDienste } from './bereich';
+import * as anleitungLaden from './anleitungLaden';
+import * as bildNachlauf from './bildNachlauf';
+import * as bilderNachladen from './bilderNachladen';
+import * as bricksetNachlauf from './bricksetNachlauf';
+import * as csvAbgleich from './csvAbgleich';
+import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as widerrufsliste from './widerrufsliste';
+import type { KatalogKontext } from './kontext';
 
 const SETNR = z.string().min(1).max(64);
 const LEER = z.object({});
@@ -46,33 +52,33 @@ declare module '../auftraege/auftraege' {
 
 export const KATALOG_ABGLEICH_UHRZEIT = { einstellung: 'job_time_csv_sync', vorgabe: '03:00' } as const;
 
-/** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen.
- * @param importProzess Einstieg des Katalog-Imports, der in einem eigenen Prozess läuft */
-export function katalogAuftragsarten(d: KatalogDienste, importProzess: string): Anmeldung[] {
+/** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
+export function katalogAuftragsarten(k: KatalogKontext, importProzess: string): Anmeldung[] {
   return [
     auftragsart({
       art: 'pdf',
       nutzlast: PdfNutzlast,
-      ausfuehren: (n, k) => d.erzeugePdf(n, k),
-      aufgegeben: (n, fehler) => d.pdfAufgegeben(n, fehler),
+      ausfuehren: (n, l) => pdfErzeugung.erzeugePdf(k, n, l),
+      aufgegeben: (n, fehler) => pdfErzeugung.pdfAufgegeben(n, fehler),
+      nutzlastVerwerfen: true,
     }),
     auftragsart({
       art: 'anleitung',
       nutzlast: AnleitungNutzlast,
-      ausfuehren: (n, k) => d.anleitungLaden(n, k),
+      ausfuehren: (n, l) => anleitungLaden.anleitungLaden(k, n, l),
       exklusiv: true,
     }),
     auftragsart({
       art: 'brickset',
       nutzlast: BricksetNutzlast,
-      ausfuehren: (n, k) => d.bricksetNachlauf(n, k),
+      ausfuehren: (n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l),
       exklusiv: true,
     }),
     auftragsart({
       art: 'bilder_neu_laden',
       nutzlast: LEER,
-      ausfuehren: async (_n, k) => {
-        await d.redownloadMissingImages(k);
+      ausfuehren: async (_n, l) => {
+        await bilderNachladen.redownloadMissingImages(k, l);
       },
       exklusiv: true,
       kontouebergreifend: 'fehlende Bilder aller Bestände',
@@ -80,7 +86,7 @@ export function katalogAuftragsarten(d: KatalogDienste, importProzess: string): 
     auftragsart({
       art: 'csv_sync',
       nutzlast: KatalogAbgleichNutzlast,
-      ausfuehren: (n, k) => d.csvAbgleich(n, k, importProzess),
+      ausfuehren: (n, l) => csvAbgleich.csvAbgleich(k, n, l, importProzess),
       exklusiv: true,
       kontouebergreifend: 'BrickLink-Nummern der Teile aller Konten',
       zeitplan: { taeglich: KATALOG_ABGLEICH_UHRZEIT },
@@ -88,7 +94,7 @@ export function katalogAuftragsarten(d: KatalogDienste, importProzess: string): 
     auftragsart({
       art: 'bild_nachlauf',
       nutzlast: LEER,
-      ausfuehren: (_n, k) => d.bildNachlauf(k),
+      ausfuehren: (_n, l) => bildNachlauf.bildNachlauf(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bilder aller Bestände',
       zeitplan: { minuten: { vorgabe: 60 } },
@@ -96,7 +102,7 @@ export function katalogAuftragsarten(d: KatalogDienste, importProzess: string): 
     auftragsart({
       art: 'widerrufsliste',
       nutzlast: LEER,
-      ausfuehren: (_n, k) => d.ladeWiderrufsliste(k),
+      ausfuehren: (_n, l) => widerrufsliste.ladeWiderrufsliste(k, l),
       zeitplan: { minuten: { vorgabe: 6 * 60 } },
     }),
   ];

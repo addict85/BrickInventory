@@ -1,7 +1,7 @@
-/** Der eine Auftrag der Bilder: den gemerkten Bildbedarf in Stapeln abarbeiten. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import type { BilderDienste } from './bereich';
+import { bildbedarfAbarbeiten } from './bildbedarfLauf';
+import type { BilderKontext } from './kontext';
 
 const LEER = z.object({});
 
@@ -11,12 +11,12 @@ declare module '../auftraege/auftraege' {
   }
 }
 
-export function bilderAuftragsarten(d: BilderDienste): Anmeldung[] {
+export function bilderAuftragsarten(k: BilderKontext): Anmeldung[] {
   return [
     auftragsart({
       art: 'bildbedarf',
       nutzlast: LEER,
-      ausfuehren: (_n, k) => d.bildbedarfAbarbeiten(k),
+      ausfuehren: (_n, l) => bildbedarfAbarbeiten(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bildbedarf aller Bestände',
     }),

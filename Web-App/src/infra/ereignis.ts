@@ -6,13 +6,11 @@ import { meldeFehler } from './fehler';
 type Horcher<A extends unknown[]> = (...a: A) => unknown;
 
 export interface Ereignis<A extends unknown[] = []> {
-  /** @returns das Abmelden */
   horche(f: Horcher<A>): () => void;
   /** Erfüllt sich, wenn alle Horcher fertig sind, mit false, wenn einer scheiterte; wirft nie. */
   melde(...a: A): Promise<boolean>;
 }
 
-/** Was ein Zugang an LISTEN/NOTIFY anbietet (db/pgNotify.ts); hier nur die Form. */
 export interface Signalweg {
   listen(kanal: string, h: (nutzlast?: string) => unknown): void;
   unlisten(kanal: string, h: (nutzlast?: string) => unknown): void;
@@ -20,18 +18,9 @@ export interface Signalweg {
 }
 
 async function rufe<A extends unknown[]>(name: string, horcher: Iterable<Horcher<A>>, a: A): Promise<boolean> {
-  const ok = await Promise.all(
-    [...horcher].map(async f => {
-      try {
-        await f(...a);
-        return true;
-      } catch (e) {
-        meldeFehler(`ereignis:${name}`, e);
-        return false;
-      }
-    }),
-  );
-  return ok.every(Boolean);
+  const r = await Promise.allSettled([...horcher].map(async f => f(...a)));
+  for (const x of r) if (x.status === 'rejected') meldeFehler(`ereignis:${name}`, x.reason);
+  return r.every(x => x.status === 'fulfilled');
 }
 
 /** Nur in diesem Prozess; der Bereich hält es in einem Fach, damit zwei Zugänge einander nicht hören. */
@@ -48,12 +37,10 @@ export function ereignis<A extends unknown[] = []>(name: string): Ereignis<A> {
   };
 }
 
-/** Kennzeichen „prozessübergreifend über NOTIFY“: Hier gilt die Meldung sofort, die anderen
- * Prozesse hören sie nach dem COMMIT des Signalwegs, über den gemeldet wurde. */
+/** Prozessübergreifend über NOTIFY: hier sofort, anderswo nach dem COMMIT des Signalwegs. */
 export interface ProzessEreignis {
   horche(f: () => unknown): () => void;
   melde(ueber: Signalweg): Promise<boolean>;
-  /** Ab jetzt hört dieser Prozess die Meldungen der anderen. Auch ohne Nutzlast (neu verbunden). */
   verbinde(s: Signalweg): () => void;
 }
 
@@ -63,14 +50,9 @@ export function prozessEreignis(name: string, kanal: string): ProzessEreignis {
   const absender = crypto.randomBytes(6).toString('hex');
   return {
     horche: f => hier.horche(f),
-    async melde(ueber) {
-      const ok = await hier.melde();
-      try {
-        await ueber.notify(kanal, absender);
-      } catch (e) {
-        meldeFehler(`ereignis:${name}:notify`, e);
-      }
-      return ok;
+    melde: async ueber => {
+      const [ok, gesendet] = await Promise.all([hier.melde(), rufe(name, [() => ueber.notify(kanal, absender)], [])]);
+      return ok && gesendet;
     },
     verbinde(s) {
       const h = (n?: string) => (n === absender ? undefined : hier.melde());

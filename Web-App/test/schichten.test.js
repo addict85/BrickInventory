@@ -1025,3 +1025,42 @@ test('docs/architektur.md nennt die Rangfolge der Bereiche wie STUFEN', () => {
   assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
   assert.deepEqual(stufen, STUFEN);
 });
+
+test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse laufen über ereignis.ts', () => {
+  // Gegenproben (15.11.2026): `import type { KatalogDienste } from '../katalog'` in
+  // src/auftraege/dienst.ts → rot (Kante src/auftraege → src/katalog); `const P = z.object({})` in
+  // src/auftraege/arten.ts → rot (Nutzlastform); `'brickset'` zurück in src/auftraege/dienst.ts → rot.
+  const ERLAUBT = new Set(['src/infra', 'src/einstellungen', 'db']);
+  const fremd = bereichsKanten()
+    .filter(k => k.von === 'src/auftraege' && !ERLAUBT.has(k.nach))
+    .map(k => `${k.d} -> ${k.ziel}`);
+  assert.deepEqual(fremd, [], 'src/auftraege importiert einen Fachbereich');
+
+  const dateien = tsUnter('src/auftraege');
+  const formen = dateien.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(quelltext(d)));
+  assert.deepEqual(formen, [], 'Nutzlastform in src/auftraege: in den Bereich, der die Art anmeldet');
+
+  // Die Arten stehen dort, wo die Bereiche ihre Nutzlast melden (declare module … AuftragsNutzlasten).
+  const arten = tsUnter('src')
+    .flatMap(d => [...quelltext(d).matchAll(/interface AuftragsNutzlasten \{([^}]*)\}/g)])
+    .flatMap(m => [...m[1].matchAll(/^\s*(\w+):/gm)].map(a => a[1]));
+  assert.ok(arten.length > 15, `nur ${arten.length} angemeldete Arten gefunden — greift die Suche noch?`);
+  const literale = dateien.flatMap(d =>
+    [...quelltext(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => arten.includes(m[1])).map(m => `${d}: ${m[1]}`),
+  );
+  assert.deepEqual(literale, [], 'src/auftraege nennt eine Auftragsart');
+
+  // Ereignisse laufen über src/infra/ereignis.ts, nicht über eigene Horcher.
+  // Gegenproben (15.11.2026): in src/einstellungen/nutzerEinstellung.ts wieder
+  // `fach('waehrungswechsel', () => new Set<() => void>())` → rot (eigene Horcher);
+  // in src/auftraege/importAuftrag.ts wieder `k.db.benachrichtigung.listen('csv_import_progress', f)`
+  // → rot (NOTIFY von Hand); `new EventEmitter()` zurück in importAuftrag.ts → rot.
+  const EREIGNIS = 'src/infra/ereignis.ts';
+  const alle = tsUnter('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);
+  const treffer = muster =>
+    alle.flatMap(d => [...quelltext(d).matchAll(muster)].map(m => `${d}: ${m[0].replace(/\s+/g, ' ')}`));
+  assert.ok(/new Set<Horcher<A>>/.test(quelltext(EREIGNIS)), 'Selbstbeweis: die Horcher stehen in ereignis.ts');
+  assert.deepEqual(treffer(/new Set<\s*(?:\(|\w*Horcher\b)/g), [], 'eigene Horcher: ereignis() nehmen');
+  assert.deepEqual(treffer(/\bbenachrichtigung\s*\.\s*(?:listen|unlisten|notify)\(/g), [], 'NOTIFY von Hand');
+  assert.deepEqual(treffer(/\bnew EventEmitter\b/g), [], 'eigener Ereignisbus');
+});
