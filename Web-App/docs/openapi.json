@@ -10414,7 +10414,7 @@
     "/api/v1/sets/import/csv/stream": {
       "get": {
         "tags": [
-          "sets"
+          "verwaltung"
         ],
         "parameters": [
           {
@@ -10431,7 +10431,11 @@
           "200": {
             "description": "Erfolg",
             "content": {
-              "text/event-stream": {}
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvImportStatus"
+                }
+              }
             }
           },
           "default": {
@@ -10768,7 +10772,11 @@
           "200": {
             "description": "Erfolg",
             "content": {
-              "text/event-stream": {}
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfStand"
+                }
+              }
             }
           },
           "default": {

@@ -2,7 +2,7 @@
 // wird wie bei Express zugeordnet: Platzhalter als ${string}, die Abfrage nach
 // „?“ zählt nicht. Passen mehrere Routen, gilt die genaueste; passt keine
 // (Pfad zur Laufzeit zusammengesetzt), ist die Antwort ungeprüft (any).
-import type { Route } from './vertrag';
+import type { Route, Strom } from './vertrag';
 
 type OhneAbfrage<P extends string> = P extends `${infer B}?${string}` ? B : P;
 type Genau<M, P, R = Route> = R extends { m: M; p: infer Q } ? (P extends Q ? R : never) : never;
@@ -68,3 +68,11 @@ export type ApiDaten<M extends string, P extends string> = [Treffer<M, P>] exten
   ? // biome-ignore lint/suspicious/noExplicitAny: wie bei ApiAntwort — ein Pfad ausserhalb des Vertrags hat keinen Antworttyp.
     any
   : Treffer<M, P>['a'] | null;
+
+/** strom(): ein Ereignis nach dem Vertrag; ein Pfad ausserhalb bleibt unbekannt. */
+type StromTreffer<P extends string, S = Strom> = S extends { p: infer Q; e: infer E }
+  ? OhneAbfrage<P> extends Q
+    ? E
+    : never
+  : never;
+export type StromEreignis<P extends string> = [StromTreffer<P>] extends [never] ? unknown : StromTreffer<P>;

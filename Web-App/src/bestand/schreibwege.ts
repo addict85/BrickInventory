@@ -1,6 +1,5 @@
-/** Die Schreibwege der Bereiche darüber auf Sets, Käufe und Erfassungen: Die Zeilen gehören dem
- * Bestand (docs/architektur.md), Sets, Teile, Figuren und Sammlung rufen sie in ihrer Transaktion
- * über t.bestand. */
+/** Sets, Käufe und Erfassungen gehören dem Bestand (docs/architektur.md); die Bereiche darüber
+ * schreiben sie über diese Dienste, in ihrer Transaktion über t.bestand. */
 import { mit } from '../infra/bereich';
 import * as erfassungenRepo from './repository/erfassungen';
 import * as manuelleKaeufe from './repository/manuelleKaeufe';

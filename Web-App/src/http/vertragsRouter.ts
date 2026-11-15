@@ -171,6 +171,9 @@ export type Ergebnis<K extends Schluessel> =
     : never;
 // biome-ignore lint/suspicious/noConfusingVoidType: Eine Route antwortet auch selbst (`return sendeFehler(…)`), und das ist void.
 type Rueckgabe<K extends Schluessel> = Ergebnis<K> | Response | undefined | void;
+/** Ein Ereignis eines Stroms in derselben Hülle wie die Antwort der Abfrage (Vertrag: `ereignis`). */
+export const inHuelle = <T extends object>(daten: T) => ({ success: true as const, ...daten });
+
 export type Handler<K extends Schluessel, R extends Request> = (
   req: Anfrage<K, R>,
   res: Antwort<K>,

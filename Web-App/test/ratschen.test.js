@@ -181,7 +181,7 @@ function stilleFaengeDerOberflaeche() {
   // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
-  const SCHRANKE = 91;
+  const SCHRANKE = 85;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);

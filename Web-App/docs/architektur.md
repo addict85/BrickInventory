@@ -322,6 +322,8 @@ Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige
 Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertrag schon
 umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt
 `req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/schichten.test.js`).
+Ein Ereignisstrom (`art: 'strom'`) nennt sein Ereignis (`ereignis`); die Oberfläche öffnet ihn nur
+über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-typen/vertrag.d.ts`).
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
 Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft

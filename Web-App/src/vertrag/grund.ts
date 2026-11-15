@@ -14,6 +14,8 @@ export interface Route {
   abfrage?: z.ZodType;
   /** Antworten, die kein JSON sind: Datei, Ereignisstrom oder CSV. */
   art?: 'pdf' | 'datei' | 'strom' | 'csv' | 'zip';
+  /** Bei `strom`: ein Ereignis (data: JSON); die Oberfläche liest es über strom() in js/api.js. */
+  ereignis?: z.ZodType;
   /** Die Anfrage ist ein Formular mit Datei (multipart). */
   formular?: true;
   /** Felder von Passwort und Code der erneuten Bestätigung (bestaetigeMitFaktor). */
