@@ -1,0 +1,15 @@
+Gegenprobe: beendet ohne Grund gilt als gescheitert
+Modul: core-model
+Test: ch.brickinventoryapp.model.VorgangTest
+Rot: beendet ohne Grund ist fertig, mit Grund gescheitert
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
+index 1d1e916..242b3e5 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
+@@ -19,4 +19,4 @@ val Vorgang.fehlerMeldung: Meldung? get() = (this as? Vorgang.Fehlgeschlagen)?.m
+ fun Vorgang.ohneFehler(): Vorgang = if (this is Vorgang.Fehlgeschlagen) Vorgang.Fertig else this
+ 
+ /** Ein beendeter Vorgang: mit Grund gescheitert, ohne fertig. */
+-fun beendet(fehler: Meldung?): Vorgang = fehler?.let(Vorgang::Fehlgeschlagen) ?: Vorgang.Fertig
++fun beendet(fehler: Meldung?): Vorgang = Vorgang.Fehlgeschlagen(fehler ?: Meldung.Text(""))
