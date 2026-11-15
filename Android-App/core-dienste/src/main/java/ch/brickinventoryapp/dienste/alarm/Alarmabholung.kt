@@ -54,7 +54,7 @@ internal object Alarmabholung {
      */
     suspend fun hole(marke: String?, frage: Frage): Ergebnis {
         val r = frage(marke?.takeIf { it.isNotBlank() })
-        val antwort = (r as? Abrufergebnis.Success)?.data ?: return Ergebnis.Fehlgeschlagen
+        val antwort = (r as? Abrufergebnis.Erfolg)?.data ?: return Ergebnis.Fehlgeschlagen
         // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
         // speichern, als eine falsche. Ein Server, der das Feld nicht kennt,
         // ist eine aeltere Fassung; dann bleibt es beim Mailversand.

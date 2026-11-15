@@ -14,4 +14,4 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 -        .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
      // Die manuellen Listen hat aktualisiereTeile bzw. aktualisiereFiguren schon mitgeholt.
      liste(teileKonto?.let { Kontosicht.ManuelleAbfrage(it, null, null) }, kontosicht.manuelleTeile,
-         { Ergebnis.Success(Unit) }, teile.beobachteManuelleTeile())
+         { Ergebnis.Erfolg(Unit) }, teile.beobachteManuelleTeile())

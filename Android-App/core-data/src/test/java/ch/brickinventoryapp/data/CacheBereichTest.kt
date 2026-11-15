@@ -77,14 +77,14 @@ class CacheBereichTest {
 
     private suspend fun fuellen(r: KatalogRepository, jahr: Int) {
         server.enqueue(TestApi.antwort(antwort(jahr)))
-        assertTrue(r.getCatalogMeta() is Ergebnis.Success)
+        assertTrue(r.getCatalogMeta() is Ergebnis.Erfolg)
     }
 
     private suspend fun offlineJahr(r: KatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
-            is Ergebnis.Success -> x.data.jahrMin
-            is Ergebnis.Error -> null
+            is Ergebnis.Erfolg -> x.data.jahrMin
+            is Ergebnis.Fehler -> null
         }
     }
 

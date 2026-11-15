@@ -54,8 +54,8 @@ import ch.brickinventoryapp.konto.ui.screens.LagerorteRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsListRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsListScreen
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel

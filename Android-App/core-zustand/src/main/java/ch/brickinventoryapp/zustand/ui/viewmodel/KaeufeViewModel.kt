@@ -94,10 +94,10 @@ class KaeufeViewModel @Inject constructor(
                 else  -> haushalt.getPartAcquisitions(id, colorId)
             }
             when (r) {
-                is Ergebnis.Success -> _manDetailState.update {
+                is Ergebnis.Erfolg -> _manDetailState.update {
                     it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen, kaeufeAbruf = Laden.Daten(Unit))
                 }
-                is Ergebnis.Error -> _manDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
+                is Ergebnis.Fehler -> _manDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
             }
         }
     }
@@ -107,8 +107,8 @@ class KaeufeViewModel @Inject constructor(
             _manDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
             val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
-                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
-                is Ergebnis.Error -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
+                is Ergebnis.Erfolg -> _manDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+                is Ergebnis.Fehler -> _manDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
             }
         }
     }
@@ -126,8 +126,8 @@ class KaeufeViewModel @Inject constructor(
                           quantity: Int?, date: String?) {
         viewModelScope.launch {
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
-                is Ergebnis.Success -> setGeaendert(r.data.zusammenfassung)
-                is Ergebnis.Error -> {
+                is Ergebnis.Erfolg -> setGeaendert(r.data.zusammenfassung)
+                is Ergebnis.Fehler -> {
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                     // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
                     if (date != null) loadAcquisitions(setNumber)
@@ -139,8 +139,8 @@ class KaeufeViewModel @Inject constructor(
     override fun deleteAcquisition(setNumber: String, acqId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
-                is Ergebnis.Success -> setGeaendert(r.data.zusammenfassung)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Erfolg -> setGeaendert(r.data.zusammenfassung)
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -164,9 +164,9 @@ class KaeufeViewModel @Inject constructor(
             val req = Kaufkorrektur(preis = unitPrice.alsGeld(), zustand = condition, menge = quantity, datum = tag)
             val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
-            if (r is Ergebnis.Success) {
+            if (r is Ergebnis.Erfolg) {
                 manuelleNeu(type)
-            } else if (r is Ergebnis.Error) {
+            } else if (r is Ergebnis.Fehler) {
                 meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                 if (date != null) neuLaden()
             }
@@ -178,8 +178,8 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == Postenart.FIG) haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
-                is Ergebnis.Success -> manuelleNeu(type)
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> manuelleNeu(type)
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -201,12 +201,12 @@ class KaeufeViewModel @Inject constructor(
                 else  -> haushalt.updatePartAcquisition(id, colorId, acqId, req)
             }
             when (r) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     onDone(null, r.data.teile, r.data.figuren)
                     // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
                     sets.aktualisiereSets(); teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
                 }
-                is Ergebnis.Error -> onDone(meldungen.meldung(r), 0, 0)
+                is Ergebnis.Fehler -> onDone(meldungen.meldung(r), 0, 0)
             }
         }
     }
@@ -218,8 +218,8 @@ class KaeufeViewModel @Inject constructor(
             delay(Alarmeingabe.RUHE_MS)
             val r = if (type == Postenart.FIG) figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
-                is Ergebnis.Success -> filter.eigeneLagerorteNeu()
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> filter.eigeneLagerorteNeu()
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

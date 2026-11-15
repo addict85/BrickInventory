@@ -157,9 +157,9 @@ class CsvImportService : Service() {
     /** Eine Status-Abfrage der Rückfallebene. */
     private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
         when (val resp = dateien.getCsvImportStatus()) {
-            is Ergebnis.Success ->
+            is Ergebnis.Erfolg ->
                 if (applyStatus(resp.data)) PollResult.RUNNING else PollResult.FINISHED
-            is Ergebnis.Error -> PollResult.ERROR
+            is Ergebnis.Fehler -> PollResult.ERROR
         }
     }.getOrElse { PollResult.ERROR }
 

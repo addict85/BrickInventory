@@ -51,8 +51,8 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
 import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState

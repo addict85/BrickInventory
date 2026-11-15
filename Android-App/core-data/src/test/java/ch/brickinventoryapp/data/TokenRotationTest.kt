@@ -229,7 +229,7 @@ class TokenRotationTest {
             gespeichert = ""
             umgezogen = neuer.url("/").toString().trimEnd('/')
             val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
-            assertTrue(r is Ergebnis.Error)
+            assertTrue(r is Ergebnis.Fehler)
             assertEquals(listOf<String?>(null), dort.toList())
         } finally {
             neuer.shutdown()

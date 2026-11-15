@@ -41,8 +41,8 @@ class ServerStartTest {
         // Der Server meldet Schritte samt Anteil des laufenden (2.37 von 8).
         pfade.antworten["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
-        assert(r is Ergebnis.Success) { "Startzustand nicht gelesen: $r" }
-        assertEquals(2.37f / 8, (r as Ergebnis.Success).data.anteil!!, 0.0001f)
+        assert(r is Ergebnis.Erfolg) { "Startzustand nicht gelesen: $r" }
+        assertEquals(2.37f / 8, (r as Ergebnis.Erfolg).data.anteil!!, 0.0001f)
     }
 
     @Test

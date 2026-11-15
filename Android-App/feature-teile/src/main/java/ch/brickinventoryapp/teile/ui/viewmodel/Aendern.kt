@@ -34,11 +34,11 @@ internal fun ViewModel.aendere(
 ) {
     viewModelScope.launch {
         when (val r = tun()) {
-            is Ergebnis.Success -> {
+            is Ergebnis.Erfolg -> {
                 meldungen.zeige(erfolgsSatz)
                 danach()
             }
-            is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+            is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
         }
     }
 }

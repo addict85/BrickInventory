@@ -7,12 +7,12 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 index 3300543..039ca8a 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
-@@ -27,7 +27,7 @@ fun fehlerTextId(f: Ergebnis.Error): Int = when (f) {
+@@ -27,7 +27,7 @@ fun fehlerTextId(f: Ergebnis.Fehler): Int = when (f) {
   * Auskunft des Servers (Eingabe, Recht), kein Ausfall.
   */
- fun fehlerklasse(f: Ergebnis.Error): Fehlerklasse = when (f) {
--    is Ergebnis.Error.Abgewiesen -> Fehlerklasse.ANMELDUNG
-+    is Ergebnis.Error.Abgewiesen -> Fehlerklasse.UNBEKANNT
-     is Ergebnis.Error.Netz, Ergebnis.Error.Zeitueberschreitung, Ergebnis.Error.Abgebrochen -> Fehlerklasse.OFFLINE
-     is Ergebnis.Error.LeereAntwort -> Fehlerklasse.SERVER
-     is Ergebnis.Error.Server -> if (f.status >= 500 || f.message.isBlank()) Fehlerklasse.SERVER else Fehlerklasse.UNBEKANNT
+ fun fehlerklasse(f: Ergebnis.Fehler): Fehlerklasse = when (f) {
+-    is Ergebnis.Fehler.Abgewiesen -> Fehlerklasse.ANMELDUNG
++    is Ergebnis.Fehler.Abgewiesen -> Fehlerklasse.UNBEKANNT
+     is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Zeitueberschreitung, Ergebnis.Fehler.Abgebrochen -> Fehlerklasse.OFFLINE
+     is Ergebnis.Fehler.LeereAntwort -> Fehlerklasse.SERVER
+     is Ergebnis.Fehler.Server -> if (f.status >= 500 || f.message.isBlank()) Fehlerklasse.SERVER else Fehlerklasse.UNBEKANNT

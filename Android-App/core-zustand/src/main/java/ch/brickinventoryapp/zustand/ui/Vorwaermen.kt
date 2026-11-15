@@ -51,9 +51,9 @@ internal suspend fun bildAdressenDerSammlung(
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     // Die manuellen Listen hat aktualisiereTeile bzw. aktualisiereFiguren schon mitgeholt.
     liste(teileKonto?.let { Kontosicht.ManuelleAbfrage(it, null, null) }, kontosicht.manuelleTeile,
-        { Ergebnis.Success(Unit) }, teile.beobachteManuelleTeile())
+        { Ergebnis.Erfolg(Unit) }, teile.beobachteManuelleTeile())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-    liste(figurenAbfrage, kontosicht.manuelleFiguren, { Ergebnis.Success(Unit) }, figuren.beobachteManuelleFiguren())
+    liste(figurenAbfrage, kontosicht.manuelleFiguren, { Ergebnis.Erfolg(Unit) }, figuren.beobachteManuelleFiguren())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     return roh.filterNotNull()
 }

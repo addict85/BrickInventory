@@ -81,7 +81,7 @@ class NachzugTest {
 
     @Test
     fun `Menge, Lagerort und Besitzer eines Sets stehen nach der Antwort in der Ablage`() = runBlocking {
-        sets.updateQuantity("10001-1", 5)
+        sets.setzeMenge("10001-1", 5)
         assertEquals("die Zahl des Servers, nicht die gewünschte", 3, set().quantity)
         sets.setSetStorage("10001-1", "kiste 2")
         assertEquals("der Ort, wie der Server ihn schreibt", "Kiste 2", set().storage)
@@ -127,7 +127,7 @@ class NachzugTest {
             runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() }) }
             null
         }
-        sets.updateQuantity("10001-1", 5)
+        sets.setzeMenge("10001-1", 5)
         assertEquals("die Ablage des neuen Kontos", 1, set().quantity)
     }
 

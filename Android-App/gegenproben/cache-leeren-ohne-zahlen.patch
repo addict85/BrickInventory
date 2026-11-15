@@ -9,7 +9,7 @@ diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/v
 @@ -261,7 +261,6 @@
       */
      internal suspend fun leereCache(alles: Boolean): Boolean {
-         val ok = verwaltung.clearCache(alles) is Ergebnis.Success
+         val ok = verwaltung.clearCache(alles) is Ergebnis.Erfolg
 -        if (ok) ladeCacheUndGrenzen()
          return ok
      }

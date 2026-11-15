@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.finanzen
 
 import ch.brickinventoryapp.testing.testGutscheineRepository
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
@@ -11,7 +11,7 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheineRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiLeser
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
 import org.junit.Assert.assertFalse

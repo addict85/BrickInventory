@@ -105,8 +105,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.remember
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.hasContentDescription

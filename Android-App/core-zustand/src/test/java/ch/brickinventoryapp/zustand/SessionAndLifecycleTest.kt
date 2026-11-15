@@ -47,10 +47,10 @@ class SessionAndLifecycleTest {
         pfade.codes["/api/v1/finance/pnl"] = 500
         try {
             val finanzen = testFinanzenRepository(TestApi.fuer(pfade.server))
-            val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Error
-            val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Error
-            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen is Ergebnis.Error.Abgewiesen)
-            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt is Ergebnis.Error.Abgewiesen)
+            val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Fehler
+            val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Fehler
+            assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen is Ergebnis.Fehler.Abgewiesen)
+            assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt is Ergebnis.Fehler.Abgewiesen)
         } finally {
             pfade.server.shutdown()
         }

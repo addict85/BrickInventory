@@ -18,8 +18,8 @@ import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,7 +41,7 @@ import ch.brickinventoryapp.testing.TestDienste
  * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen SetDetailViewModel.kt):
  *   A  setNumber nicht aus dem SavedStateHandle, sondern "" → alle vier rot,
  *      zuerst „das Set kommt aus dem SavedStateHandle …“
- *   B  in SetsRepositoryImpl.updateQuantity `r.quantity ?: quantity` durch `quantity`
+ *   B  in SetsRepositoryImpl.setzeMenge `r.quantity ?: quantity` durch `quantity`
  *      ersetzt → rot „eine geänderte Menge steht sofort da und in der Ablage“ (5 statt 3)
  *   C  im init von SetDetailViewModel `firstOrNull { it.setNumber == setNumber }`
  *      durch die ganze Liste ersetzt → rot „ein geänderter Kauf eines anderen Sets lädt hier nichts“
@@ -119,7 +119,7 @@ class SetDetailViewModelTest {
         serverHatDanachDrei()
         // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
         // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
-        vm.updateQuantity("75192-1", 5)
+        vm.setzeMenge("75192-1", 5)
         assertTrue("Menge da", vm.setDetailState.value.setDetail?.quantity == 3)
         val abgelegt = runBlocking { t.sets().beobachteSets().first().liste.single() }
         assertEquals("die Galerie liest dieselbe Zahl aus der Ablage", 3, abgelegt.quantity)

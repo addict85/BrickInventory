@@ -35,7 +35,7 @@ class PdfAuftragsStrom @Inject internal constructor(
         data object Weg : Ereignis
 
         /** Der Server weist den Strom ab; [fehler] wie bei jedem Abruf, mit seinem Satz und Code. */
-        data class Abgelehnt(val fehler: Ergebnis.Error) : Ereignis
+        data class Abgelehnt(val fehler: Ergebnis.Fehler) : Ereignis
     }
 
     fun beobachte(jobId: String): Flow<Ereignis> {
@@ -57,12 +57,12 @@ class PdfAuftragsStrom @Inject internal constructor(
     }
 
     /** Ohne Antwort oder mit 404 gibt es keinen Strom; jeder andere Status ist eine Absage. */
-    private fun abgelehnt(e: SseEreignis.Gescheitert): Ergebnis.Error? {
+    private fun abgelehnt(e: SseEreignis.Gescheitert): Ergebnis.Fehler? {
         val code = e.code
         if (code == null || code == 0 || code == HTTP_NICHT_GEFUNDEN) return null
         val rumpf = Fehlerrumpf.lies(e.rumpf)
-        return if (code == HTTP_ABGEWIESEN) Ergebnis.Error.Abgewiesen(rumpf.text.orEmpty(), rumpf.fehlercode)
-        else Ergebnis.Error.Server(code, rumpf.text.orEmpty(), rumpf.fehlercode)
+        return if (code == HTTP_ABGEWIESEN) Ergebnis.Fehler.Abgewiesen(rumpf.text.orEmpty(), rumpf.fehlercode)
+        else Ergebnis.Fehler.Server(code, rumpf.text.orEmpty(), rumpf.fehlercode)
     }
 
     private companion object {

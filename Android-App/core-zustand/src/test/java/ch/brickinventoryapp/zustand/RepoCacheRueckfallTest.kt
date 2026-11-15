@@ -56,9 +56,9 @@ class RepoCacheRueckfallTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun erfolg(r: Ergebnis<*>): Ergebnis.Success<*> {
-        assert(r is Ergebnis.Success) { "Erwartet wurde ein Erfolg, kam aber: $r" }
-        return r as Ergebnis.Success<*>
+    private fun erfolg(r: Ergebnis<*>): Ergebnis.Erfolg<*> {
+        assert(r is Ergebnis.Erfolg) { "Erwartet wurde ein Erfolg, kam aber: $r" }
+        return r as Ergebnis.Erfolg<*>
     }
 
     private suspend fun cacheFuellen(jahr: Int = 1999) {
@@ -89,7 +89,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(MockResponse().setResponseCode(500))
         val r = repo.getCatalogMeta()
-        assert(r == Ergebnis.Error.Server(500)) {
+        assert(r == Ergebnis.Fehler.Server(500)) {
             "Ein 500 ist eine Auskunft des Servers, kein Netzausfall — er muss " +
                 "durchkommen. Bekommen: $r"
         }
@@ -100,7 +100,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(TestApi.antwort("""{"success":false,"error":"Nicht gefunden"}""", 404))
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Error && r.message == "Nicht gefunden") { "Bekommen: $r" }
+        assert(r is Ergebnis.Fehler && r.message == "Nicht gefunden") { "Bekommen: $r" }
     }
 
     @Test
@@ -108,7 +108,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen()
         server.enqueue(MockResponse().setResponseCode(401))
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Error.Abgewiesen) {
+        assert(r is Ergebnis.Fehler.Abgewiesen) {
             "Bei 401 darf der Cache NICHT einspringen, sonst läuft die Abmeldung ins Leere: $r"
         }
     }
@@ -127,7 +127,7 @@ class RepoCacheRueckfallTest {
     fun `ohne gespeicherte Daten bleibt ein Netzfehler ein Fehler`() = runTest {
         server.shutdown()
         val r = repo.getCatalogMeta()
-        assert(r is Ergebnis.Error && r.transient) {
+        assert(r is Ergebnis.Fehler && r.transient) {
             "Ohne Cache-Eintrag gibt es nichts zurückzufallen. Bekommen: $r"
         }
     }
