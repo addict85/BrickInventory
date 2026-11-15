@@ -6,7 +6,7 @@ mlkitBarcode                = "18.3.1"   # unbundled: das Modell liefern die Pla
 mlkitTextRec                = "16.0.1"
 # 9.5.0 bleibt aus: Dem Release-APK fehlten damit Texte, die erreichbarer Code benutzt
 # („APK gegen R8-Verluste“ rot, mit 9.4.1 grün). Erst heben, wenn das geklärt ist.
-agp                         = "9.4.1"
+agp                         = "9.5.1"
 # KSP 2 läuft eigenständig und muss nicht zur Kotlin-Nummer passen (das galt für KSP 1).
 # Compose-Compiler und Serialisierung tragen die Kotlin-Nummer (version.ref = "kotlin").
 kotlin                      = "2.4.21"
@@ -19,7 +19,7 @@ lifecycleRuntimeKtx         = "2.11.0"
 # Prüfsummenverzeichnis stehen; activity-ktx nimmt die Fassung von activityCompose.
 archCore                    = "2.2.0"
 tracing                     = "2.0.5"
-emoji2                      = "1.4.0"
+emoji2                      = "1.7.0"
 activityCompose             = "1.13.0"
 # Setzt die Fassungen der Compose-Artefakte; graphics-path steht unten eigens.
 composeBom                  = "2026.09.00"
@@ -34,7 +34,7 @@ retrofit                    = "3.0.0"
 # Für okhttp, okhttp-sse, logging-interceptor und mockwebserver. Ab 5.5 verlangt
 # okhttp-android compileSdk 37 (siehe build-logic, Sdk.kt).
 okhttp                      = "5.5.1"
-kotlinxSerializationJson    = "1.12.0"
+kotlinxSerializationJson    = "1.13.0"
 retrofitKotlinxSerialization = "1.0.0"
 graphicsPath                = "1.1.0"   # 16 KB, siehe app/build.gradle.kts
 # Die 16-KB-Ausrichtung prüft tools/apk-ausrichtung.py am gebauten APK, nicht die Nummer.
@@ -56,13 +56,13 @@ work                        = "2.12.0"
 room                        = "2.8.5"
 # Verschlüsselte Ablage des Bestands; Maven Central, signiert von Zetetic
 # (verification-keyring.keys), .so auf 16 KB ausgerichtet.
-sqlcipher                   = "4.19.1"
+sqlcipher                   = "4.20.0"
 junit                       = "4.13.2"
 # org.json steckt in android.jar nur als Attrappe, die im JVM-Test wirft. Die echte
 # Fassung liegt im Testklassenpfad davor.
 orgJson                     = "20260814"
 robolectric                 = "4.17"
-roborazzi                   = "1.77.0"
+roborazzi                   = "1.79.0"
 androidxTestJunit           = "1.3.0"
 # Gerätetests (Gradle Managed Devices, android.yml Job geraetetests); passt zu ext-junit 1.3.0.
 androidxTestRunner          = "1.7.0"
