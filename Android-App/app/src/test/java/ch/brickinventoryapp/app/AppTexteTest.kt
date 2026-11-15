@@ -3,6 +3,7 @@ package ch.brickinventoryapp.app
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.Anmeldestand
+import ch.brickinventoryapp.model.util.Textquelle
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
@@ -31,20 +32,23 @@ import org.robolectric.annotation.Config
 class AppTexteTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
-    private val texte = AppTexte(ctx, object : Anmeldestand {
+    private val texte = AppTexte(object : Textquelle {
+        override fun text(id: Int, vararg args: Any?) = ctx.getString(id, *args)
+        override fun menge(id: Int, anzahl: Int, vararg args: Any?) = ctx.resources.getQuantityString(id, anzahl, *args)
+    }, object : Anmeldestand {
         override val authTokenState: StateFlow<String?> = MutableStateFlow("token")
     })
 
     @Test
     fun `der Satz des Servers hat Vorrang vor jedem eigenen`() {
         val satz = "Für dieses Datum gibt es schon einen Kaufpreis"
-        assertEquals(satz, texte.meldung(Ergebnis.Error.Server(409, satz)))
+        assertEquals(satz, texte.meldung(Ergebnis.Fehler.Server(409, satz)))
         assertEquals("Auch bei 401", "Benutzername oder Passwort falsch",
-            texte.meldung(Ergebnis.Error.Abgewiesen("Benutzername oder Passwort falsch")))
-        assertEquals("Auch mit Fehlercode", satz, texte.meldung(Ergebnis.Error.Server(429, satz, Fehlercode.ZU_VIELE_VERBINDUNGEN)))
+            texte.meldung(Ergebnis.Fehler.Abgewiesen("Benutzername oder Passwort falsch")))
+        assertEquals("Auch mit Fehlercode", satz, texte.meldung(Ergebnis.Fehler.Server(429, satz, Fehlercode.ZU_VIELE_VERBINDUNGEN)))
 
-        val eigen = texte.meldung(Ergebnis.Error.Server(500))
+        val eigen = texte.meldung(Ergebnis.Fehler.Server(500))
         assertTrue("Ohne Satz des Servers steht keiner da", eigen.isNotBlank())
-        assertNotEquals(eigen, texte.meldung(Ergebnis.Error.Server(429, "", Fehlercode.ZU_VIELE_VERBINDUNGEN)))
+        assertNotEquals(eigen, texte.meldung(Ergebnis.Fehler.Server(429, "", Fehlercode.ZU_VIELE_VERBINDUNGEN)))
     }
 }

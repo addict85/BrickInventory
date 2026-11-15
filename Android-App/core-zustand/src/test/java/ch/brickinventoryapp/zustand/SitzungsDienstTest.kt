@@ -115,7 +115,7 @@ class SitzungsDienstTest {
             override suspend fun getSettings(): Ergebnis<Kontoeinstellungen> {
                 val (dauer, waehrung) = einstellungen.removeFirstOrNull() ?: return echt.getSettings()
                 delay(dauer)
-                return Ergebnis.Success(Kontoeinstellungen(waehrung, Zustand.NEU, Zustand.NEU, Zustand.NEU))
+                return Ergebnis.Erfolg(Kontoeinstellungen(waehrung, Zustand.NEU, Zustand.NEU, Zustand.NEU))
             }
         }
         val dienst = SitzungsDienst(

@@ -107,7 +107,7 @@ class TeilelisteViewModelTest {
 
     private fun vm(
         quelle: Quelle = Quelle(),
-        export: Export = Export(ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))),
+        export: Export = Export(ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Fehler.Netz()))),
         gemerkt: SavedStateHandle = SavedStateHandle(),
     ) = TeilelisteViewModel(t.sitzung, t.hinweise, quelle, export, gemerkt).also { erzeugt += it }
 
@@ -219,7 +219,7 @@ class TeilelisteViewModelTest {
             PdfFehlschlag.Auftrag(null) to "t${R.string.pdfexp_server_error}",
             PdfFehlschlag.Auftrag("") to "t${R.string.pdfexp_server_error}",
             PdfFehlschlag.Auftrag("Bild fehlt") to "Bild fehlt",
-            PdfFehlschlag.Abruf(Ergebnis.Error.Abgewiesen()) to "t${R.string.err_session_expired}",
+            PdfFehlschlag.Abruf(Ergebnis.Fehler.Abgewiesen()) to "t${R.string.err_session_expired}",
         )) {
             val vm = vm(Quelle(mapOf("10294-1" to listOf(teil("3001", 2)))), Export(ExportErgebnis.Fehler(grund)))
             vm.erstelle("10294")

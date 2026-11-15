@@ -44,7 +44,7 @@ class AlarmabholungTest {
                    zuletztPreis = preis.alsGeld(), name = null, imageLocal = null, imageUrl = null, setImgUrl = null, besitzt = false)
 
     private fun antwort(vararg a: PreisalarmAnsicht, now: String? = "2026-09-19T18:00:00.000Z") =
-        Ergebnis.Success(AlarmabrufAnsicht(alarme = a.toList(), marke = now))
+        Ergebnis.Erfolg(AlarmabrufAnsicht(alarme = a.toList(), marke = now))
 
     @Test
     fun `der erste Durchgang markiert nur und meldet nichts`() = runTest {
@@ -98,12 +98,12 @@ class AlarmabholungTest {
     @Test
     fun `ohne brauchbare Antwort bleibt die Marke, wie sie war`() = runTest {
         val kaputt = listOf<Pair<String, Ergebnis<AlarmabrufAnsicht>>>(
-            "Netz weg" to Ergebnis.Error.Netz("offline"),
-            "Server sagt nein" to Ergebnis.Error.Absage(),
+            "Netz weg" to Ergebnis.Fehler.Netz("offline"),
+            "Server sagt nein" to Ergebnis.Fehler.Absage(),
             // Eine aeltere Serverfassung kennt das Feld nicht. Dann lieber gar
             // keine Marke als eine falsche — es bleibt beim Mailversand.
-            "kein Zeitpunkt" to Ergebnis.Success(AlarmabrufAnsicht(emptyList(), marke = null)),
-            "leerer Zeitpunkt" to Ergebnis.Success(AlarmabrufAnsicht(emptyList(), marke = "")),
+            "kein Zeitpunkt" to Ergebnis.Erfolg(AlarmabrufAnsicht(emptyList(), marke = null)),
+            "leerer Zeitpunkt" to Ergebnis.Erfolg(AlarmabrufAnsicht(emptyList(), marke = "")),
         )
         for ((warum, r) in kaputt) {
             val e = Alarmabholung.hole("2026-09-19T17:30:00.000Z") { r }

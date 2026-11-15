@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
+import ch.brickinventoryapp.ui.components.KleinerKnopf
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.model.fach.KaufAnsicht
@@ -72,11 +73,13 @@ fun AcquisitionSummarySection(
                 acquisitions.forEach { acq -> KaufZeile(acq, currency) }
             }
             Spacer(Modifier.height(Abstaende.winzig))
-            OutlinedButton(onClick = onEditPrices,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                modifier = Modifier.heightIn(min = 28.dp),
-                colors = nebenKnopfFarben(),
-                border = nebenKnopfRand()) {
+            // Sichtbar klein unter den Käufen, getippt in 48 dp.
+            KleinerKnopf(onClick = onEditPrices,
+                form = ButtonDefaults.outlinedShape,
+                flaeche = Modifier.heightIn(min = 28.dp),
+                inhaltFarbe = nebenKnopfFarben().contentColor,
+                rand = nebenKnopfRand(),
+                innen = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar)) {
                 Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(14.dp)))
                 Spacer(Modifier.width(Abstaende.winzig))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)

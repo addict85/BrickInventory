@@ -11,7 +11,7 @@ import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
-import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
+import ch.brickinventoryapp.model.datei.DateiRef
 import ch.brickinventoryapp.ui.components.Unterseite
 import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.finanzen.ui.GutscheinUiState

@@ -44,18 +44,18 @@ class TeileFachwerteTest {
 
     @Test
     fun `ein success false ist eine Absage mit dem Satz des Servers`() = runBlocking {
-        assertEquals(Ergebnis.Error.Absage("Den Ort gibt es schon"), teile.legeLagerortAn("Keller"))
+        assertEquals(Ergebnis.Fehler.Absage("Den Ort gibt es schon"), teile.legeLagerortAn("Keller"))
     }
 
     @Test
     fun `der Bestand steht je gefragtem Teil, was fehlt, hat keinen Eintrag`() = runBlocking {
         val r = teile.getOwnedParts(listOf(Teilschluessel("3001", 5), Teilschluessel("3002", 1)))
-        assertEquals(Ergebnis.Success(mapOf(Teilschluessel("3001", 5) to TeilBestand(gesamt = 7, lose = 2))), r)
+        assertEquals(Ergebnis.Erfolg(mapOf(Teilschluessel("3001", 5) to TeilBestand(gesamt = 7, lose = 2))), r)
     }
 
     @Test
     fun `das Erfassen einer Figur meldet neu und den Zustand des Kaufpreises`() = runBlocking {
         val r = figuren.addMinifig("sw0001")
-        assertEquals(Ergebnis.Success(Erfasst(angelegt = true, nummer = "sw0001", preisAusZustand = Zustand.GEBRAUCHT)), r)
+        assertEquals(Ergebnis.Erfolg(Erfasst(angelegt = true, nummer = "sw0001", preisAusZustand = Zustand.GEBRAUCHT)), r)
     }
 }

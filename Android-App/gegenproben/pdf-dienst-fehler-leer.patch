@@ -14,4 +14,4 @@ diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste
 +    is PdfFehlschlag.Abruf -> grund.fehler.message.takeIf { true }
          ?: fehlerTextZuCode(grund.fehler.code)?.let { satz(it, emptyList()) }
          ?: when (val f = grund.fehler) {
-             is Ergebnis.Error.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))
+             is Ergebnis.Fehler.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))

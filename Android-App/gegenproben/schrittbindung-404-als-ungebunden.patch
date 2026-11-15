@@ -10,9 +10,9 @@ index 1262215..3a4085f 100644
 @@ -27,7 +27,8 @@ internal class SchrittbindungImpl @Inject constructor(
          val kennung = aktion.kennung ?: return Schrittantwort.NichtGebunden
          return when (val r = sicherAufrufen { api.schrittChallenge(SchrittChallengeAnfrage(kennung)) }) {
-             is Ergebnis.Success -> Schrittantwort.Challenge(r.data.challenge, r.data.nachricht)
--            is Ergebnis.Error -> Schrittantwort.Abgelehnt(r.message.ifBlank { null })
-+            is Ergebnis.Error -> if (r is Ergebnis.Error.Server && r.status == 404) Schrittantwort.NichtGebunden
+             is Ergebnis.Erfolg -> Schrittantwort.Challenge(r.data.challenge, r.data.nachricht)
+-            is Ergebnis.Fehler -> Schrittantwort.Abgelehnt(r.message.ifBlank { null })
++            is Ergebnis.Fehler -> if (r is Ergebnis.Fehler.Server && r.status == 404) Schrittantwort.NichtGebunden
 +                else Schrittantwort.Abgelehnt(r.message.ifBlank { null })
          }
      }

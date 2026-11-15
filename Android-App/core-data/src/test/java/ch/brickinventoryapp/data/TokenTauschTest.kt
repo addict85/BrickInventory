@@ -90,9 +90,9 @@ class TokenTauschTest {
                 protokoll += "rotiere $alt"
                 bremse?.await()
                 beimRotieren()
-                when (val r = antworten.removeFirstOrNull() ?: Ergebnis.Success(TokenRotation(success = true, token = "neu"))) {
-                    is Ergebnis.Success -> Ergebnis.Success(GetauschterToken(r.data.token, antwortHerkunft))
-                    is Ergebnis.Error -> r
+                when (val r = antworten.removeFirstOrNull() ?: Ergebnis.Erfolg(TokenRotation(success = true, token = "neu"))) {
+                    is Ergebnis.Erfolg -> Ergebnis.Erfolg(GetauschterToken(r.data.token, antwortHerkunft))
+                    is Ergebnis.Fehler -> r
                 }
             },
             pausen = listOf(1, 1, 1),
@@ -102,7 +102,7 @@ class TokenTauschTest {
         )
     }
 
-    private val verloren: Ergebnis.Error = Ergebnis.Error.Netz()
+    private val verloren: Ergebnis.Fehler = Ergebnis.Fehler.Netz()
 
     @Test
     fun `bei gesperrtem Geraet wird nicht getauscht, nach dem Entsperren schon`() = runTest {
@@ -145,7 +145,7 @@ class TokenTauschTest {
 
     @Test
     fun `gilt der alte nicht mehr, muss neu gekoppelt werden`() = runTest {
-        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Error.Abgewiesen(code = Fehlercode.TOKEN_UNGUELTIG)) }
+        val w = Welt().apply { antworten = mutableListOf(verloren, Ergebnis.Fehler.Abgewiesen(code = Fehlercode.TOKEN_UNGUELTIG)) }
         assertEquals(Tauschergebnis.NEU_KOPPELN, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
     }

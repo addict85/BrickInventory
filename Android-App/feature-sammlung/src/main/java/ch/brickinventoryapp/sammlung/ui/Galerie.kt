@@ -37,7 +37,7 @@ internal class Galerie(
     /** Füllt die Quelle des Zustands; die Antwort selbst zeigt niemand. */
     private val aktualisiere: suspend (GalleryUiState) -> Ergebnis<Unit>,
     private val holeKennzahlen: suspend () -> Ergebnis<KennzahlenAnsicht?>,
-    private val meldeFehler: (Ergebnis.Error) -> Unit,
+    private val meldeFehler: (Ergebnis.Fehler) -> Unit,
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
@@ -73,12 +73,12 @@ internal class Galerie(
             _state.update { it.copy(abruf = Laden.Laedt) }
             val r = aktualisiere(st)
             // Ohne Netz zählt, was die Quelle schon hält; sie hat sich durch den Fehlschlag nicht geändert.
-            val stand = if (r is Ergebnis.Error && r.transient) liste.first().stand else null
+            val stand = if (r is Ergebnis.Fehler && r.transient) liste.first().stand else null
             when {
-                r is Ergebnis.Success -> _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = null) }
-                r is Ergebnis.Error && r.transient && stand != null ->
+                r is Ergebnis.Erfolg -> _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = null) }
+                r is Ergebnis.Fehler && r.transient && stand != null ->
                     _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStand = stand) }
-                r is Ergebnis.Error -> {
+                r is Ergebnis.Fehler -> {
                     _state.update { it.copy(abruf = ladefehler(r)) }
                     meldeFehler(r)
                 }
@@ -110,7 +110,7 @@ internal class Galerie(
     fun ladeKennzahlen() {
         scope.launch {
             val r = holeKennzahlen()
-            if (r is Ergebnis.Success) _state.update { it.copy(stats = r.data) }
+            if (r is Ergebnis.Erfolg) _state.update { it.copy(stats = r.data) }
         }
     }
 

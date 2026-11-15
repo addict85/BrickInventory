@@ -9,18 +9,18 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 @@ -152,7 +152,7 @@
          _setDetailState.update { it.copy(preisAbruf = Laden.Laedt) }
          when (val r = finanzen.getSetPrice(setNumber)) {
-             is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data, preisAbruf = Laden.Daten(Unit)) }
--            is Ergebnis.Error -> _setDetailState.update { it.copy(preisAbruf = ladefehler(r)) }
-+            is Ergebnis.Error -> _setDetailState.update { it.copy(preisAbruf = Laden.Daten(Unit)) }
+             is Ergebnis.Erfolg -> _setDetailState.update { it.copy(setPrice = r.data, preisAbruf = Laden.Daten(Unit)) }
+-            is Ergebnis.Fehler -> _setDetailState.update { it.copy(preisAbruf = ladefehler(r)) }
++            is Ergebnis.Fehler -> _setDetailState.update { it.copy(preisAbruf = Laden.Daten(Unit)) }
          }
      }
  
 @@ -160,7 +160,7 @@
          _setDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
          when (val r = finanzen.getSetPriceHistory(setNumber)) {
-             is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
--            is Ergebnis.Error -> _setDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
-+            is Ergebnis.Error -> _setDetailState.update { it.copy(verlaufAbruf = Laden.Daten(Unit)) }
+             is Ergebnis.Erfolg -> _setDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+-            is Ergebnis.Fehler -> _setDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
++            is Ergebnis.Fehler -> _setDetailState.update { it.copy(verlaufAbruf = Laden.Daten(Unit)) }
          }
      }
  

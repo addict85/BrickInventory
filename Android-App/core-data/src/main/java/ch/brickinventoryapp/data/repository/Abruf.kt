@@ -36,16 +36,16 @@ internal suspend fun <R, T : Any> Offlineablage.abgeglichen(
     val vorher = bereich()
     val frisch = call()
     val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
-    if (frisch is Ergebnis.Success) {
+    if (frisch is Ergebnis.Erfolg) {
         uebernimm(fach, liste(frisch.data), bereich)
         // Wartet noch etwas im Ausgang, liegt es lokal schon über der Serverantwort.
         if (!wartet(fach.art)) return frisch
-        return Ergebnis.Success(ausLokal(lies(fach)?.liste.orEmpty()))
+        return Ergebnis.Erfolg(ausLokal(lies(fach)?.liste.orEmpty()))
     }
-    if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
+    if (frisch !is Ergebnis.Fehler || !frisch.transient) return frisch
     val lokal = lies(fach) ?: return frisch
     val stand = lokal.stand ?: return frisch
-    return Ergebnis.Success(ausLokal(lokal.liste), stand = stand)
+    return Ergebnis.Erfolg(ausLokal(lokal.liste), stand = stand)
 }
 
 /**
@@ -60,11 +60,11 @@ internal suspend fun <R, T : Any> Offlineablage.aktualisiereSeitenweise(
     wiederholung: Wiederholung,
     seite: suspend (nummer: Int) -> Ergebnis<R>,
 ): Ergebnis<Unit> {
-    val vorher = bereich() ?: return Ergebnis.Success(Unit)
+    val vorher = bereich() ?: return Ergebnis.Erfolg(Unit)
     val r = alleSeiten(liste, fach.schluessel, gesamt, wiederholung, seite)
-    if (r is Ergebnis.Error) return r
-    if (bereich() == vorher) uebernimm(fach, (r as Ergebnis.Success).data, bereich = vorher)
-    return Ergebnis.Success(Unit)
+    if (r is Ergebnis.Fehler) return r
+    if (bereich() == vorher) uebernimm(fach, (r as Ergebnis.Erfolg).data, bereich = vorher)
+    return Ergebnis.Erfolg(Unit)
 }
 
 /** Alle Seiten einer blätternden Antwort, jede mit der [wiederholung]; doppelte Schlüssel gewinnt die spätere. */
@@ -78,13 +78,13 @@ internal suspend fun <R, T> alleSeiten(
     val alle = LinkedHashMap<String, T>()
     for (nummer in 1..MAX_SEITEN) {
         val r = wiederholung.wiederhole { seite(nummer) }
-        if (r is Ergebnis.Error) return r
-        val antwort = (r as Ergebnis.Success).data
+        if (r is Ergebnis.Fehler) return r
+        val antwort = (r as Ergebnis.Erfolg).data
         val neu = liste(antwort)
         neu.forEach { alle[schluessel(it)] = it }
         if (neu.isEmpty() || alle.size >= gesamt(antwort)) break
     }
-    return Ergebnis.Success(alle.values.toList())
+    return Ergebnis.Erfolg(alle.values.toList())
 }
 
 /** Obergrenze für [alleSeiten], falls der Server eine falsche Gesamtzahl nennt. */
@@ -93,7 +93,7 @@ private const val MAX_SEITEN = 500
 /**
  * Schreiben mit Ausgang: online direkt; ohne Verbindung — oder wenn schon
  * etwas wartet, damit die Reihenfolge hält — in den Ausgang und lokal
- * angewandt. Dann ist das Ergebnis [Ergebnis.Success.gepuffert] mit [ersatz].
+ * angewandt. Dann ist das Ergebnis [Ergebnis.Erfolg.gepuffert] mit [ersatz].
  * Der direkte Versuch und der gepufferte tragen denselben Idempotency-Key:
  * Kam der erste an und nur die Antwort nicht, wirkt der zweite nicht doppelt.
  */
@@ -103,12 +103,12 @@ internal suspend fun <T> Offlineablage.schreibe(
     direkt: suspend (schluessel: String) -> Ergebnis<T>,
 ): Ergebnis<T> {
     val schluessel = neuerSchluessel()
-    if (wartet() && puffere(bearbeitung, schluessel)) return Ergebnis.Success(ersatz(), gepuffert = true)
+    if (wartet() && puffere(bearbeitung, schluessel)) return Ergebnis.Erfolg(ersatz(), gepuffert = true)
     val vorher = bereich()
     val r = direkt(schluessel)
-    if (r is Ergebnis.Error && r.transient && puffere(bearbeitung, schluessel))
-        return Ergebnis.Success(ersatz(), gepuffert = true)
-    if (r is Ergebnis.Success) wendeImSelbenBereichAn(bearbeitung, vorher)
+    if (r is Ergebnis.Fehler && r.transient && puffere(bearbeitung, schluessel))
+        return Ergebnis.Erfolg(ersatz(), gepuffert = true)
+    if (r is Ergebnis.Erfolg) wendeImSelbenBereichAn(bearbeitung, vorher)
     return r
 }
 
@@ -123,7 +123,7 @@ internal suspend fun <T> Offlineablage.nachgezogen(
 ): Ergebnis<T> {
     val vorher = bereich()
     val r = call()
-    if (r is Ergebnis.Success) wirkung(r.data)?.let { wendeImSelbenBereichAn(it, vorher) }
+    if (r is Ergebnis.Erfolg) wirkung(r.data)?.let { wendeImSelbenBereichAn(it, vorher) }
     return r
 }
 
@@ -143,15 +143,15 @@ internal suspend fun <T : Any, E : T?> Offlineablage.abgeglichenEinzeln(fach: Fa
     val vorher = bereich()
     val frisch = call()
     val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
-    if (frisch is Ergebnis.Success) {
+    if (frisch is Ergebnis.Erfolg) {
         // Ohne Wert (eine Antwort ohne stats) bleibt die Ablage, wie sie ist.
         frisch.data?.let { uebernimm(fach, listOf(it as T), bereich) }
         return frisch
     }
-    if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
+    if (frisch !is Ergebnis.Fehler || !frisch.transient) return frisch
     val lokal = lies(fach) ?: return frisch
     val wert = lokal.liste.firstOrNull() ?: return frisch
-    return Ergebnis.Success(wert as E, stand = lokal.stand ?: return frisch)
+    return Ergebnis.Erfolg(wert as E, stand = lokal.stand ?: return frisch)
 }
 
 /**
@@ -164,8 +164,8 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
     return try {
         val response = call()
         if (response.isSuccessful) {
-            response.body()?.let { Ergebnis.Success(it) }
-                ?: Ergebnis.Error.LeereAntwort()
+            response.body()?.let { Ergebnis.Erfolg(it) }
+                ?: Ergebnis.Fehler.LeereAntwort()
         } else {
             // Satz und Code des Servers: der Satz zum Anzeigen, der Code zum Verzweigen.
             // Fehlt der Satz, formuliert die Anzeige ihn nach der Art.
@@ -173,8 +173,8 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
                 .getOrElse { Fehlerrumpf(null, null) }
             val text = rumpf.text ?: ""
             val code = Fehlercode.aus(rumpf.code)
-            if (response.code() == 401) Ergebnis.Error.Abgewiesen(text, code)
-            else Ergebnis.Error.Server(response.code(), text, code)
+            if (response.code() == 401) Ergebnis.Fehler.Abgewiesen(text, code)
+            else Ergebnis.Fehler.Server(response.code(), text, code)
         }
     } catch (e: kotlinx.coroutines.CancellationException) {
         // Abgebrochene Coroutines (z.B. Suche-Debounce ersetzt Request) dürfen
@@ -183,24 +183,24 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
     } catch (_: java.net.UnknownHostException) {
         // Netz ist vorübergehend schon nach seiner Art; die Wiederholung muss es nicht
         // an der Fehlermeldung erraten.
-        Ergebnis.Error.Netz()
+        Ergebnis.Fehler.Netz()
     } catch (_: java.net.ConnectException) {
-        Ergebnis.Error.Netz()
+        Ergebnis.Fehler.Netz()
     } catch (_: java.net.SocketTimeoutException) {
-        Ergebnis.Error.Zeitueberschreitung
+        Ergebnis.Fehler.Zeitueberschreitung
     } catch (_: KlartextAbgelehnt) {
         // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
-        Ergebnis.Error.Klartext
+        Ergebnis.Fehler.Klartext
     } catch (e: java.io.IOException) {
         // Jede übrige IOException ist ein Transportproblem und wiederholbar, gleich
         // welchen Untertyp OkHttp wählt. Fehler beim Auswerten der Antwort sind
         // keine IOException und laufen unten als Unbekannt durch.
-        Ergebnis.Error.Netz(technisch = e.message)
+        Ergebnis.Fehler.Netz(technisch = e.message)
     } catch (e: Exception) {
         // e.message ist hier durchweg englischer Bibliothekstext ("Socket
         // closed", "unexpected end of stream") — kein Satz an einen Menschen,
         // deshalb nur im technischen Feld fürs Protokoll.
-        Ergebnis.Error.Unbekannt(technisch = e.message)
+        Ergebnis.Fehler.Unbekannt(technisch = e.message)
     }
 }
 
@@ -210,9 +210,9 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
  */
 internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, satz: (T) -> String?, f: (T) -> R): Ergebnis<R> =
     when (this) {
-        is Ergebnis.Success -> if (erfolg(data)) Ergebnis.Success(f(data), stand, gepuffert)
-            else Ergebnis.Error.Absage(satz(data).orEmpty())
-        is Ergebnis.Error -> this
+        is Ergebnis.Erfolg -> if (erfolg(data)) Ergebnis.Erfolg(f(data), stand, gepuffert)
+            else Ergebnis.Fehler.Absage(satz(data).orEmpty())
+        is Ergebnis.Fehler -> this
     }
 
 /** Für Aktionen, deren Antwort niemand liest. */

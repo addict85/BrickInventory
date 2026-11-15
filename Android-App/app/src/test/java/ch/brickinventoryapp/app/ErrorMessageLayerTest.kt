@@ -7,7 +7,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Fehlermeldungen entstehen an EINER Stelle, und die kann übersetzen.
  *
  * Gegenprobe: gegenproben/fehler-satz-in-datenschicht.patch — sicherAufrufen()
- * legt einen festen Satz in Ergebnis.Error.Server → rot „die Datenschicht baut
+ * legt einen festen Satz in Ergebnis.Fehler.Server → rot „die Datenschicht baut
  * keine Meldung …“.
  */
 class ErrorMessageLayerTest {
@@ -37,7 +37,7 @@ class ErrorMessageLayerTest {
         // Gesucht: ein fester Satz als Meldung — Server(status, "…"), Abgewiesen("…")
         // oder message = "…". Erlaubt ist nur der leere Text — dann entscheidet die
         // Anzeige — oder eine durchgereichte Servermeldung (eine Variable).
-        val satz = Regex("""Ergebnis\.Error\.(?:Abgewiesen\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
+        val satz = Regex("""Ergebnis\.Fehler\.(?:Abgewiesen\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
         val fehler = mutableListOf<String>()
         for (rel in datenschicht) {
             val s = Quellen.ohneKommentare(Quellen.lies(rel))

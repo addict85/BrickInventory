@@ -39,8 +39,8 @@ class CsvImportViewModel @Inject constructor(
     fun cancelCsvImport() {
         viewModelScope.launch {
             when (val r = csvImport.abbrechen()) {
-                is Ergebnis.Success -> meldungen.zeige(Meldung.Ressource(R.string.csv_cancel_requested))
-                is Ergebnis.Error -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> meldungen.zeige(Meldung.Ressource(R.string.csv_cancel_requested))
+                is Ergebnis.Fehler -> meldungen.zeige(texte.meldungFuerSnackbar(r))
             }
         }
     }
