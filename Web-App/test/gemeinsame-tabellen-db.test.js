@@ -63,7 +63,7 @@ const { testServer } = require('./helpers/server');
 testQuellen(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
-  getSetInfo: async () => null,
+  setAngaben: async () => null,
 });
 
 const KATALOG = 'katalog'; // geprüfte Quellen (Rebrickable, BrickLink, Brickset, EZB)
@@ -429,11 +429,11 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
     await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
 
-    const { addManualPart } = _req('src/teile/manuelleTeile.js');
-    const { addManualFig, updateManualFig, importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
+    const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+    const { manuelleFigurAnlegen, manuelleFigurAendern, importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
     const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
     await alsKonto(A, async () => {
-      await addManualPart(A, {
+      await manuellesTeilAnlegen(A, {
         part_number: '3005',
         color_id: 4,
         part_name: `${MARKE} Teil`,
@@ -443,7 +443,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
         quantity: 1,
         unit_price: 1,
       });
-      await addManualFig(A, {
+      await manuelleFigurAnlegen(A, {
         fig_number: 'fig-000002',
         fig_name: `${MARKE} Figur`,
         image_url: bild,
@@ -453,8 +453,8 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       });
     });
     await alsKonto(B, async () => {
-      await addManualFig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
-      await updateManualFig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
+      await manuelleFigurAnlegen(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+      await manuelleFigurAendern(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
       await importiereFigurenCsv(
         B,
         `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`,

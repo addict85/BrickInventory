@@ -14,7 +14,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
-const { getOwnedQuantities } = _req('src/teile/abfragen.js');
+const { besesseneMengenAbfrage } = _req('src/teile/abfragen.js');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 let UID = 0;
@@ -91,7 +91,7 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
     { part_number: 'trn241', color_id: 0 },
     { part_number: 'cty0500', color_id: 0 },
   ];
-  const bestand = await getOwnedQuantities([UID], frage);
+  const bestand = await besesseneMengenAbfrage([UID], frage);
 
   await t.test('ein zweimal besessenes Set liefert seine Teile doppelt', () => {
     assert.equal(

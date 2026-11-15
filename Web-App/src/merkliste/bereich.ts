@@ -16,7 +16,7 @@ export function erzeugeMerkliste(a: MerklisteAbhaengigkeiten, einblick?: Einblic
       verschiebeMerkposten: mit(k)(merklisteDienst.verschiebeMerkposten),
       merkpostenVon: mit(k)(merklisteDienst.merkpostenVon),
       uebernimm: mit(k)(merklisteDienst.uebernimm),
-      merklisteAlsCsv: mit(k)(merklisteDienst.buildMerklisteCsv),
+      merklisteAlsCsv: mit(k)(merklisteDienst.merklisteCsv),
       preiseBeiderZustaende: mit(k)(merklisteDienst.preiseBeiderZustaende),
       importiereMerklisteCsv: mit(k)(merklisteDienst.importiereMerklisteCsv),
       importiereWantedListe: mit(k)(wantedListeDienst.importiereWantedListe),

@@ -194,10 +194,10 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
                   VALUES ($1,$2,1,1,'N'), ($1,$2,1,1,'U')`,
       [uid, FN],
     );
-    const { getManualParts } = _req('src/teile/abfragen.js');
-    const { getManualMinifigs } = _req('src/figuren/abfragen.js');
-    const teil = (await getManualParts([uid], uid, {})).find((/** @type {any} */ p) => p.part_number === PN);
-    const figur = (await getManualMinifigs([uid], uid, {})).find((/** @type {any} */ f) => f.fig_number === FN);
+    const { manuelleTeileListe } = _req('src/teile/abfragen.js');
+    const { manuelleFigurenAbfrage } = _req('src/figuren/abfragen.js');
+    const teil = (await manuelleTeileListe([uid], uid, {})).find((/** @type {any} */ p) => p.part_number === PN);
+    const figur = (await manuelleFigurenAbfrage([uid], uid, {})).find((/** @type {any} */ f) => f.fig_number === FN);
     assert.equal(teil?.condition, 'U', 'Teil mit gebrauchter Erfassung steht als neu da');
     assert.equal(figur?.condition, 'U', 'Figur mit gebrauchter Erfassung steht als neu da');
   });

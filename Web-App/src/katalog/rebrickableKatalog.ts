@@ -19,7 +19,7 @@ function ausCache<T>(json: string | undefined): T | undefined {
   }
 }
 
-export async function getSetInfo(k: KatalogKontext, setNumber: string) {
+export async function setAngaben(k: KatalogKontext, setNumber: string) {
   const n = mitVersion(setNumber);
   const cached = await k.rebrickableCache.katalogSetZu(n);
   // "Set <Nummer>" ist ein Platzhalter, kein Name; als Treffer überschrieb er
@@ -72,7 +72,7 @@ const LEER_MS = 10 * 60 * 1000;
 const leer = (k: KatalogKontext) =>
   k.faecher.fach('rebrickable:leer', () => new Zwischenspeicher<string, true>(5000, LEER_MS));
 
-export async function getAllSetParts(k: KatalogKontext, setNumber: string) {
+export async function alleTeileDesSets(k: KatalogKontext, setNumber: string) {
   const csvParts = await setTeileAusCsv(k, setNumber);
   if (csvParts) return csvParts;
   const n = mitVersion(setNumber);
@@ -89,7 +89,7 @@ export async function getAllSetParts(k: KatalogKontext, setNumber: string) {
 }
 
 /** Geteilter Zwischenspeicher: Die Daten ändern sich selten, das Kontingent ist knapp. */
-export async function getMinifigParts(k: KatalogKontext, figNumber: string) {
+export async function figurTeileAbfrage(k: KatalogKontext, figNumber: string) {
   const gemerkt = ausCache<NonNullable<Awaited<ReturnType<Quellen['holeFigurTeile']>>>>(
     await k.rebrickableCache.figurenteileAusCache(figNumber),
   );

@@ -196,7 +196,7 @@ let _datenFabrik = null;
 const _bildwerk = {
   setBildLaden: (...a) =>
     require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testKontext('bilder'), ...a),
-  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).generateThumb(...a),
+  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
 };
 
 /** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */

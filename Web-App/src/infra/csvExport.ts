@@ -52,7 +52,7 @@ export function toCsv(headers: string[], rows: Record<string, unknown>[]) {
 }
 
 /** @returns ISO-Datum oder null, wenn nichts Brauchbares drinsteht */
-export function parseCsvDate(raw: unknown) {
+export function csvDatum(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
 
@@ -143,7 +143,7 @@ export function csvGemeinsameFelder(row: CsvZeile): {
   return {
     menge: parseInt(String(row.quantity || row.Anzahl || '1').replace(/[^0-9]/g, ''), 10) || 1,
     preis,
-    erfasstAm: parseCsvDate(row.acquired_at || row.erfassungsdatum),
+    erfasstAm: csvDatum(row.acquired_at || row.erfassungsdatum),
     zustand: (row.condition || row.zustand || '').trim().toUpperCase(),
   };
 }

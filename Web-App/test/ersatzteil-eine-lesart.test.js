@@ -100,8 +100,8 @@ test('die Antwort traegt einen echten Wahrheitswert', async t => {
   await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
   await haeltTeil(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
 
-  const { getParts } = _req('src/teile/abfragen.js');
-  const parts = (await getParts([uid], { page_size: 60 })).parts || [];
+  const { teileAbfrage } = _req('src/teile/abfragen.js');
+  const parts = (await teileAbfrage([uid], { page_size: 60 })).parts || [];
   assert.equal(parts.length, 2, 'Vorlage');
   for (const p of parts) {
     assert.equal(

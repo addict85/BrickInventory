@@ -12,7 +12,7 @@ import * as imgCacheServe from './imgCacheServe';
 import * as bildDatei from './bildDatei';
 import * as vorschauenEinpassen from './vorschauenEinpassen';
 import { setBildHerunterladen } from './setImages';
-import { generateThumb } from './thumbs';
+import { vorschauErzeugenAus } from './thumbs';
 import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
 
 export type { Bildwerk, BilderAbhaengigkeiten, BilderKontext } from './kontext';
@@ -24,7 +24,7 @@ export function erzeugeBilder(
 ) {
   const bildwerk = a.bildwerk ?? {
     setBildLaden: (url: string, sn: string, info?: { status?: number }) => setBildHerunterladen(a, url, sn, info),
-    vorschauErzeugen: generateThumb,
+    vorschauErzeugen: vorschauErzeugenAus,
   };
   return baueBereich(
     { ...a, bildwerk, faecher: new Faecher() },
@@ -43,7 +43,7 @@ export function erzeugeBilder(
       merkeGebraucht: mit(k)(bildbedarfDienst.merkeGebraucht),
       bildEinmalVormerken: mit(k)(bildbedarfDienst.bildEinmalVormerken),
       bildbedarfAbarbeiten: mit(k)(bildbedarfLauf.bildbedarfAbarbeiten),
-      starteBildbedarf: mit(k)(bildbedarfLauf.initImageQueue),
+      starteBildbedarf: mit(k)(bildbedarfLauf.bildbedarfEinrichten),
       stoppeBildbedarf: mit(k)(bildbedarfLauf.stoppeBildbedarf),
       beiSetBildGeladen: mit(k)(bildbedarfDienst.beiSetBildGeladen),
       meldeSetBildGeladen: mit(k)(bildbedarfDienst.meldeSetBildGeladen),
@@ -51,7 +51,7 @@ export function erzeugeBilder(
       setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
       vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
       vergissFehlend: mit(k)(imageMisses.vergissFehlend),
-      starteFehlanzeige: mit(k)(imageMisses.initImageMisses),
+      starteFehlanzeige: mit(k)(imageMisses.bildFehlstellenEinrichten),
       stoppeFehlanzeige: mit(k)(imageMisses.stoppeFehlanzeige),
       istBekanntFehlend: mit(k)(imageMisses.istBekanntFehlend),
       merkeFehlend: mit(k)(imageMisses.merkeFehlend),

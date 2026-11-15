@@ -76,7 +76,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
     );
 
     // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
-    await _req('src/bilder/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
+    await _req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(
       d.hinweise.some(h => /Alles vorhanden/.test(h)),

@@ -17,7 +17,7 @@ import {
   asIds,
   einladungsHash,
   neuerCode,
-  parseScopeMode,
+  blickfeldArt,
   type Blickfeld,
   type BlickfeldEingabe,
   type Household,
@@ -270,7 +270,7 @@ export async function blickfeldIds(k: HaushaltKontext, uid: number, mode: ScopeM
 
 /** IDs kommen nur von innen (Jobs, andere Dienste); von aussen kommt eine Sicht. */
 export async function blickfeldAus(k: HaushaltKontext, v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
-  return typeof v === 'object' && !Array.isArray(v) ? blickfeldIds(k, v.nutzer, parseScopeMode(v.konten)) : asIds(v);
+  return typeof v === 'object' && !Array.isArray(v) ? blickfeldIds(k, v.nutzer, blickfeldArt(v.konten)) : asIds(v);
 }
 
 export async function schreibbereichAus(k: HaushaltKontext, v: Schreiber | number[]): Promise<number[]> {

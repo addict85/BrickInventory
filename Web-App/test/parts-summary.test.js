@@ -140,11 +140,11 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
   // Live-Abfrage bedient, während der Aufbau im Hintergrund anläuft. Für die
   // Inhaltsprüfung hier wird einmal explizit aufgebaut.
-  const first = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const first = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(first.source, 'db', 'ohne vorhandene Zusammenfassung muss die Live-Abfrage einspringen statt zu warten');
   await PS.rebuildNow(U);
 
-  const r1 = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const r1 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(r1.source, 'summary', 'die Zusammenfassung wurde nicht benutzt');
   assert.equal(r1.total, 2, 'zwei Teil/Farb-Gruppen erwartet');
   const rot = r1.parts.find(p => p.color_name === 'Rot');
@@ -157,10 +157,10 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   );
   // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
   // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
-  const stale = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const stale = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(stale.total, 2, 'der Lesezugriff soll den alten Stand liefern, nicht warten');
   await PS.rebuildNow(U);
-  const r2 = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const r2 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(r2.total, 3, 'nach dem Aufbau muss die neue Gruppe enthalten sein');
 
   // Änderung an der SETMENGE → ebenfalls. Sie steht seit Migration 0036 in
@@ -169,7 +169,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   // Ohne ihn bliebe die Zahl hier stehen und sähe dabei plausibel aus.
   await db.run("UPDATE set_acquisitions SET quantity=3 WHERE user_id=$1 AND set_number='B-1'", [U]);
   await PS.rebuildNow(U);
-  const r3 = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const r3 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
   const rot3 = r3.parts.find(p => p.color_name === 'Rot');
   assert.equal(rot3.total_quantity, 3 * 1 + 4 * 3, 'eine geänderte Set-Menge muss durchschlagen');
 
@@ -229,14 +229,14 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   await PS.rebuildNow(U);
 
   // Statistik und Farbfilter kommen aus derselben Quelle
-  const stats = await H.getPartsStats(U);
+  const stats = await H.teileKennzahlenLesen(U);
   assert.equal(stats.unique_parts, 3);
-  const colors = await H.getPartsColors(U);
+  const colors = await H.teileFarbenAbfrage(U);
   assert.equal(colors.length, 3);
 
   // Seitengrenzen
-  const p1 = await H.getParts(U, { exclude_manual: '1', page: 1, page_size: 2 });
-  const p2 = await H.getParts(U, { exclude_manual: '1', page: 2, page_size: 2 });
+  const p1 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 2 });
+  const p2 = await H.teileAbfrage(U, { exclude_manual: '1', page: 2, page_size: 2 });
   assert.equal(p1.parts.length, 2);
   assert.equal(p2.parts.length, 1);
   assert.equal(p1.total, 3, 'total muss die Gesamtzahl sein, nicht die der Seite');
@@ -295,7 +295,7 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   assert.match(
     h,
     /await zusammenfassungFrisch\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uids, \{ strict: true \}\)/,
-    'getPartsStats muss strict aufrufen',
+    'teileKennzahlenLesen muss strict aufrufen',
   );
   // Die Liste darf weiterhin den veralteten Stand nehmen — dort ist es egal
   assert.match(
@@ -330,13 +330,13 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
 
   // Weg 1: aus der Zusammenfassung.
   await PS.rebuildNow(U);
-  const ausSummary = await H.getPartsStats([U]);
+  const ausSummary = await H.teileKennzahlenLesen([U]);
 
   // Weg 2: der Rückfall. Die Zusammenfassung wird dafür entfernt — dann
-  // liefert zusammenfassungFrisch(strict) false, und getPartsStats geht live.
+  // liefert zusammenfassungFrisch(strict) false, und teileKennzahlenLesen geht live.
   await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
-  const ausLive = await H.getPartsStats([U]);
+  const ausLive = await H.teileKennzahlenLesen([U]);
 
   assert.deepEqual(
     ausLive,

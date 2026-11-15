@@ -4,8 +4,8 @@
  * ganz oder gar nicht.
  *
  * Gegenproben (13.11.2026):
- *   A  in src/teile/abfragen.ts getPartsStats() wieder über teileBereich() statt k
- *      → rot: „getPartsStats fragt über den übergebenen Zugang“.
+ *   A  in src/teile/abfragen.ts teileKennzahlenLesen() wieder über teileBereich() statt k
+ *      → rot: „teileKennzahlenLesen fragt über den übergebenen Zugang“.
  *   B  in src/infra/bereich.ts baueKontext(): transaktion ruft fn mit dem äusseren
  *      Kontext statt in a.db.transaction → rot: „ein Fehler nimmt alles zurück“.
  */
@@ -54,7 +54,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   const d = baueDienste(zugang);
   const stats = await alsAnfrage({ session: { userId: uid } }, () => d.teile.teileKennzahlen(uid));
   assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
-  assert.ok(zaehler.n > 0, 'getPartsStats fragt über den übergebenen Zugang');
+  assert.ok(zaehler.n > 0, 'teileKennzahlenLesen fragt über den übergebenen Zugang');
 });
 
 test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht', async t => {

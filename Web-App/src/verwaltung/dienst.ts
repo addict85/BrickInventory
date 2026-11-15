@@ -84,7 +84,7 @@ export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
 export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('verwaltung:getRateLimitStatus', k.fremdquellen.kontingentStand('brickset'));
+  const rl = await versuche('verwaltung:kontingentUebersicht', k.fremdquellen.kontingentStand('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;

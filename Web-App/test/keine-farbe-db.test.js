@@ -138,9 +138,21 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
-      const { addManualPart } = _req('src/teile/manuelleTeile.js');
-      await addManualPart(uid, { part_number: 'KF9', part_name: 'Probe', color_id: null, quantity: 2, unit_price: 1 });
-      await addManualPart(uid, { part_number: 'KF9', part_name: 'Probe', color_id: 0, quantity: 1, unit_price: 1 });
+      const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+      await manuellesTeilAnlegen(uid, {
+        part_number: 'KF9',
+        part_name: 'Probe',
+        color_id: null,
+        quantity: 2,
+        unit_price: 1,
+      });
+      await manuellesTeilAnlegen(uid, {
+        part_number: 'KF9',
+        part_name: 'Probe',
+        color_id: 0,
+        quantity: 1,
+        unit_price: 1,
+      });
       const zeilen = await db.all(
         `SELECT p.color_id, SUM(a.quantity)::int AS menge FROM parts p
         JOIN part_acquisitions a ON a.user_id = p.user_id AND a.part_number = p.part_number AND a.color_id = p.color_id

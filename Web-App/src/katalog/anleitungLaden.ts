@@ -3,7 +3,7 @@
  * Minuten und dann bis zum nächsten Tag. */
 import { mitSitzungsSperre } from '../../db/txLock';
 import {
-  downloadSetInstructions,
+  setAnleitungenLaden,
   letzterAbrufWarExtern,
   anzahlAnleitungen,
   scrapeInstructionsFromFallback,
@@ -59,7 +59,7 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
   await mitSperre(k, async () => {
     try {
       // Den Abstand hält die Pause der Art, nicht die Funktion.
-      const anzahl = await downloadSetInstructions(k, sn, true);
+      const anzahl = await setAnleitungenLaden(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await k.auftraege.liesPause('anleitung')) await k.auftraege.beendePause('anleitung');
       if (letzterAbrufWarExtern(k))

@@ -67,7 +67,7 @@ async function erfassungenAnMengeAngleichen(
   if (delta > 0) {
     if (rows.length) {
       {
-        // Aufstocken oder neue Tageszeile entscheidet recordAcquisitionForDay(), damit die Regel nur einmal
+        // Aufstocken oder neue Tageszeile entscheidet kaufAmTagErfassen(), damit die Regel nur einmal
         // existiert.
         const plan = pricePlan ?? (await preisFuerNeueErfassung(sk, userId, setNumber));
         await erfassungBuchen(sk, {

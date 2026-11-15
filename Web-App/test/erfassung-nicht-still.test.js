@@ -30,10 +30,10 @@ test('kein stiller catch an einer Erfassung', () => {
   let aufrufe = 0;
   for (const datei of dateien) {
     const src = fs.readFileSync(datei, 'utf8');
-    // Innen heisst die Buchung recordAcquisitionForDay, im Dienstsatz bucheTageserfassung.
-    for (const m of src.matchAll(/\b(?:recordAcquisitionForDay|bucheTageserfassung)\(/g)) {
+    // Innen heisst die Buchung kaufAmTagErfassen, im Dienstsatz bucheTageserfassung.
+    for (const m of src.matchAll(/\b(?:kaufAmTagErfassen|bucheTageserfassung)\(/g)) {
       const i = m.index ?? 0;
-      if (!/\bfunction\s+recordAcquisitionForDay/.test(src.slice(Math.max(0, i - 40), i + 24))) {
+      if (!/\bfunction\s+kaufAmTagErfassen/.test(src.slice(Math.max(0, i - 40), i + 24))) {
         aufrufe++;
         // Das Fenster nach dem Aufruf: bis zum Ende der Anweisung.
         const fenster = src.slice(i, i + 400);
@@ -47,7 +47,7 @@ test('kein stiller catch an einer Erfassung', () => {
 
   // Selbstbeweis: Findet das Muster keine Aufrufe, sagt ein leeres Ergebnis
   // nichts. Es gibt derer deutlich mehr als fünf.
-  assert.ok(aufrufe >= 5, `nur ${aufrufe} Aufruf(e) von recordAcquisitionForDay gefunden — Muster veraltet?`);
+  assert.ok(aufrufe >= 5, `nur ${aufrufe} Aufruf(e) von kaufAmTagErfassen gefunden — Muster veraltet?`);
 
   assert.deepEqual(
     verstoesse,

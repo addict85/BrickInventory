@@ -38,7 +38,7 @@ async function downloadImage(
   fs.mkdirSync(IMG_DIR, { recursive: true });
   if (!(await k.bilder.ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
   try {
-    await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('teile-enrich:generateThumb'));
+    await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   } catch (e) {
     meldeFehler('teile-enrich:vorschau', e);
   }

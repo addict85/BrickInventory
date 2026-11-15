@@ -25,7 +25,7 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
-  const { checkAndIncrementRateLimit } = _req('src/fremdquellen/apiKontingent.js');
+  const { kontingentPruefenUndZaehlen } = _req('src/fremdquellen/apiKontingent.js');
   const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
 
   const uid = (
@@ -34,7 +34,7 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   for (const sn of ['10305-1', '21318-1', '75192-1']) await haeltSet(db, uid, sn);
   await setGlobalSetting('bricklink_consumer_key', 'schluessel');
   await setGlobalSetting('api_limit_bricklink', '1');
-  await checkAndIncrementRateLimit('bricklink');
+  await kontingentPruefenUndZaehlen('bricklink');
 
   const zeilen = [];
   t.mock.method(console, 'log', (...teile) => {

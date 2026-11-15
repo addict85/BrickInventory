@@ -13,7 +13,7 @@ import { fachfehler } from '../infra/fehlerTexte';
 import type { TeileKontext } from './kontext';
 
 // Eine Rechnung für Anlegen, Bearbeiten und CSV-Import; ohne Angabe bleibt Preis/Stk leer.
-export async function resolveManualPartPurchase(
+export async function manuellerTeilekauf(
   k: TeileKontext,
   uid: number,
   {
@@ -41,7 +41,7 @@ export async function resolveManualPartPurchase(
 
 /** Eine Umsetzung für Webapp und App, damit Kaufpreis und Lagerort überall
  * gleich behandelt werden. */
-export async function addManualPart(k: TeileKontext, uid: number, rawBody: Record<string, unknown>) {
+export async function manuellesTeilAnlegen(k: TeileKontext, uid: number, rawBody: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (src/bestand/lagerort.ts).
   const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, rawBody?.storage);
   // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann nicht
@@ -58,7 +58,7 @@ async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record
   // Alle Felder geprüft: Sie werden später gerendert, ungeprüft waren sie die
   // Server-Hälfte einer Stored-XSS-Kette. image_url ist zwingend https.
   const V = V0;
-  const part_number = V.requireItemNumber(rawBody?.part_number, 'part_number');
+  const part_number = V.nummerPflicht(rawBody?.part_number, 'part_number');
   const color_id = V.colorId(rawBody?.color_id);
   const color_name = V.optionalText(rawBody?.color_name, 100);
   const color_hex = V.optionalHex(rawBody?.color_hex);
@@ -82,7 +82,7 @@ async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record
   }
 
   // Eine Rechnung an einer Stelle, dieselbe wie im CSV-Import.
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualPartPurchase(k, uid, {
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await manuellerTeilekauf(k, uid, {
     partNumber: part_number,
     colorId: color_id,
     unitPrice: unit_price,
@@ -176,7 +176,7 @@ async function weitereErfassung(
 
 /** Für Webapp und App derselbe Weg.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function updateManualPart(
+export async function manuellesTeilAendern(
   k: TeileKontext,
   uid: number,
   partNumber: string,
@@ -222,7 +222,7 @@ export async function updateManualPart(
   return { ...raus, ...ab.angabe() };
 }
 
-export async function getPartAcquisitions(
+export async function teilekaeufe(
   k: TeileKontext,
   uidWahl: Sicht | number[],
   partNumber: string,
@@ -276,7 +276,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
           categoryName = info.category_name;
         }
       }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualPartPurchase(k, uid, {
+      const { erfassungsPreis, effectiveCondition, geschaetzt } = await manuellerTeilekauf(k, uid, {
         partNumber,
         colorId,
         unitPrice,

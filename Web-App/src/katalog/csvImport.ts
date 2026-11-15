@@ -15,7 +15,7 @@ export type Meldung = { type: 'progress'; total: number; pct: number; filename: 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
 // Verdoppeltes " bleibt ein Zeichen.
-export function parseCsvLine(line: string): string[] {
+export function csvZeile(line: string): string[] {
   const result: string[] = [];
   let cur = '',
     inQuotes = false;
@@ -60,7 +60,7 @@ async function streamInsert(
   });
   for await (const line of rl) {
     if (!line.trim()) continue;
-    const cols = parseCsvLine(line);
+    const cols = csvZeile(line);
     if (!headers) {
       headers = cols;
       continue;

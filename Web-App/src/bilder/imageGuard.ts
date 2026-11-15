@@ -9,7 +9,7 @@ export const MAX_PIXELS = 40_000_000;
 const HEADER_BYTES = 65536;
 
 /** Ohne die Bilddaten zu dekodieren — genau das soll ja verhindert werden. */
-export function readDimensions(buf: Buffer) {
+export function bildmasse(buf: Buffer) {
   // PNG: Breite/Höhe als 32-Bit-Big-Endian an Offset 16 bzw. 20.
   if (buf.length >= 24 && buf.readUInt32BE(0) === 0x89504e47) {
     return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
@@ -48,7 +48,7 @@ export function readDimensions(buf: Buffer) {
 }
 
 /** @returns false, wenn das Bild zu gross ist */
-export async function isDecodable(filePath: string) {
+export async function lesbaresBild(filePath: string) {
   let fh: fs.promises.FileHandle | undefined;
   try {
     fh = await fs.promises.open(filePath, 'r');
@@ -64,7 +64,7 @@ export async function isDecodable(filePath: string) {
       );
       return false;
     }
-    const dim = readDimensions(buf.subarray(0, bytesRead));
+    const dim = bildmasse(buf.subarray(0, bytesRead));
     // Unbekanntes Format: durchlassen. Jimp wirft bei allem, was es nicht kennt —
     // der harmlose Ausgang.
     if (!dim) return true;
