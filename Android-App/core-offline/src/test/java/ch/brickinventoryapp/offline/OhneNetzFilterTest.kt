@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.Kategoriewahl
 import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -41,6 +43,7 @@ import java.net.ConnectException
  *   ohne-netz-filter-spalte    die Spalte thema bekommt den Lagerort → rot „Suche, Thema …“
  *   galerie-ablage-ungefiltert beobachteSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
  *   teile-nur-seite-eins       aktualisiereSeitenweise bricht nach Seite 1 ab → rot „alle Seiten der Teile …“
+ *   teile-farbwahl-verloren    beobachteTeile reicht die Farbwahl nicht weiter → rot „Farbe, Kategorie, Ersatzteile …“
  */
 @RunWith(RobolectricTestRunner::class)
 class OhneNetzFilterTest {
@@ -105,7 +108,7 @@ class OhneNetzFilterTest {
 
     private fun teileOffline(search: String? = null, color: String? = null, category: String? = null,
                              spare: Ersatzteilwahl = Ersatzteilwahl.ALLE) =
-        runBlocking { teileRepo.beobachteTeile(search, color, category, spare).first() }
+        runBlocking { teileRepo.beobachteTeile(search, Farbwahl.aus(color), Kategoriewahl.aus(category), spare).first() }
             .liste.map { "${it.partNumber}/${it.colorName}" }
 
     private fun ladeSetsOnline() = runBlocking { assertTrue(setsRepo.aktualisiereSets() is Ergebnis.Success) }
@@ -160,7 +163,7 @@ class OhneNetzFilterTest {
         assertTrue(teileRepo.aktualisiereTeile() is Ergebnis.Success)
         assertEquals("alle Seiten der Teile in der Ablage", teile.size, teileRepo.beobachteTeile().first().liste.size)
         assertEquals("die manuellen Teile ebenso", listOf("m1"), teileRepo.beobachteManuelleTeile().first().liste.map { it.partNumber })
-        val rot = teileRepo.beobachteTeile(farbe = "Red", ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
+        val rot = teileRepo.beobachteTeile(farbe = Farbwahl.Farbe("Red"), ersatzteile = Ersatzteilwahl.OHNE).first().liste.map { it.partNumber }
         assertEquals("Farbe und Ersatzteile filtern in Room", listOf("3001"), rot)
     }
 

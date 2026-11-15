@@ -1,22 +1,25 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Erfasst
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilBestand
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.Teilschluessel
-import ch.brickinventoryapp.model.ui.model.VerwendungAnsicht
-import ch.brickinventoryapp.model.ui.model.VorratsOrtAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilBestand
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.Teilschluessel
+import ch.brickinventoryapp.model.fach.VerwendungAnsicht
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
@@ -30,7 +33,7 @@ interface TeileRepository {
      * Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [aktualisiereTeile]
      * füllt sie. Konto, Lagerort und „In Sets“ rechnet nur der Server: Kontosicht.
      */
-    fun beobachteTeile(suche: String? = null, farbe: String? = null, kategorie: String? = null,
+    fun beobachteTeile(suche: String? = null, farbe: Farbwahl = Farbwahl.Alle, kategorie: Kategoriewahl = Kategoriewahl.Alle,
                        ersatzteile: Ersatzteilwahl = Ersatzteilwahl.ALLE): Flow<Lokal<TeilAnsicht>>
 
     fun beobachteManuelleTeile(suche: String? = null): Flow<Lokal<ManuellesTeilAnsicht>>
@@ -82,7 +85,7 @@ interface TeileRepository {
     suspend fun getBrickColors(): Ergebnis<List<FarbeAnsicht>>
 
     suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
-                         quantity: Int = 1, unitPrice: Double? = null,
+                         quantity: Int = 1, unitPrice: Geld? = null,
                          condition: Zustand? = null, ownerUserId: Int? = null,
                          storage: String? = null): Ergebnis<Erfasst>
 

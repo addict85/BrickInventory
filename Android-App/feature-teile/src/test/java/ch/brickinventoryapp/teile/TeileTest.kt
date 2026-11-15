@@ -1,17 +1,19 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.teile.ui.Figuren
 import ch.brickinventoryapp.teile.ui.FigurenLokal
@@ -98,7 +100,7 @@ class TeileTest {
         listen = TeileLokal(
             teile = { st -> val f = st.filter; teile.map { l -> l.copy(liste = l.liste.filter {
                 (f.suche.isBlank() || it.partNumber.contains(f.suche) || it.partName.orEmpty().contains(f.suche)) &&
-                    (f.farbe.isBlank() || it.colorName == f.farbe) }) } },
+                    (f.farbe == Farbwahl.Alle || it.colorName == f.farbe.wert) }) } },
             manuelleTeile = { st -> manuelleSuchen += st.filter.suche; manuelleTeile },
             aktualisiere = { st -> teileAbrufe += st; Ergebnis.Success(Unit) },
         ),
@@ -119,12 +121,12 @@ class TeileTest {
     @Test
     fun `die Filter des Zustands erreichen Quelle und Abruf`() = runTest {
         val t = teile()
-        t.filtere { it.copy(farbe = "Red") }; t.filtere { it.copy(kategorie = "11") }
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
         t.filtere { it.copy(ersatz = Ersatzteilwahl.OHNE) }; t.filtere { it.copy(ansicht = Listenansicht.TABELLE) }
         t.filtere { it.copy(suche = "30") }
         advanceUntilIdle()
         val st = teileAbrufe.last().filter
-        assertEquals(listOf("30", "Red", "11"), listOf(st.suche, st.farbe, st.kategorie))
+        assertEquals(listOf("30", "Red", "11"), listOf(st.suche, st.farbe.wert, st.kategorie.wert))
         assertEquals(Ersatzteilwahl.OHNE to Listenansicht.TABELLE, st.ersatz to st.ansicht)
         assertEquals(listOf("3001"), t.state.value.parts.map { it.partNumber })
         assertEquals("die manuellen Teile unter demselben Suchtext", "30", manuelleSuchen.last())
@@ -133,10 +135,10 @@ class TeileTest {
     @Test
     fun `ein Filterwechsel vergisst die Scrollstelle`() = runTest {
         val t = teile()
-        t.filtere { it.copy(farbe = "5") }; t.filtere { it.copy(kategorie = "11") }
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("5")) }; t.filtere { it.copy(kategorie = Kategoriewahl.Kategorie("11")) }
         t.filtere { it.copy(ersatz = Ersatzteilwahl.NUR) }; t.filtere { it.copy(suche = "stein") }
         assertEquals(4, vergessen)
-        t.filtere { it.copy(farbe = "5") }
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("5")) }
         assertEquals("Dieselbe Farbe noch einmal ist kein Wechsel", 4, vergessen)
         advanceUntilIdle()
     }
@@ -160,10 +162,10 @@ class TeileTest {
         val alt = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "alt")), 1L))
         val neu = MutableStateFlow(Lokal(listOf(TeilAnsicht(partNumber = "neu")), 1L))
         val t = Teile(scope = vordergrund(), quelle = kennzahlen, meldeFehler = {}, vergissScroll = {},
-            listen = TeileLokal(teile = { st -> if (st.filter.farbe.isBlank()) alt else neu },
+            listen = TeileLokal(teile = { st -> if (st.filter.farbe == Farbwahl.Alle) alt else neu },
                 manuelleTeile = { manuelleTeile }, aktualisiere = { Ergebnis.Success(Unit) }))
         t.laden(); runCurrent()
-        t.filtere { it.copy(farbe = "Red") }; runCurrent()
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; runCurrent()
         alt.value = Lokal(listOf(TeilAnsicht(partNumber = "spaet")), 2L)
         runCurrent()
         assertEquals(listOf("neu"), t.state.value.parts.map { it.partNumber })
@@ -215,7 +217,7 @@ class TeileTest {
     @Test
     fun `Abmelden raeumt auf, und eine spaete Antwort kommt nicht zurueck`() = runTest {
         val t = teile()
-        t.filtere { it.copy(farbe = "Red") }; runCurrent()
+        t.filtere { it.copy(farbe = Farbwahl.Farbe("Red")) }; runCurrent()
         t.zuruecksetzen()
         advanceUntilIdle()
         assertEquals(TeileUiState(), t.state.value)

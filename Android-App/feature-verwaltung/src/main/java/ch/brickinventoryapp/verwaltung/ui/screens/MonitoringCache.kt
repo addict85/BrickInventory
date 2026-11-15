@@ -21,7 +21,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.CacheKennzahlenAnsicht
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState

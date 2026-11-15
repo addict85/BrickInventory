@@ -13,7 +13,7 @@ import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.SavedStateHandle
@@ -97,8 +99,8 @@ class TeileViewModelTest {
         val gemerkt = SavedStateHandle()
         val erstes = vm(gemerkt)
         erstes.setScope(ScopeFilter.View.PARTS, "own")
-        erstes.setPartsColorFilter("5")
-        erstes.setPartsCategoryFilter("11")
+        erstes.setPartsColorFilter(Farbwahl.Farbe("5"))
+        erstes.setPartsCategoryFilter(Kategoriewahl.Kategorie("11"))
         erstes.setPartsSpare(Ersatzteilwahl.NUR)
         erstes.setPartsView(Listenansicht.TABELLE)
         erstes.setPartsOrdnung(Teilefilter.Ordnung.MENGE)
@@ -107,7 +109,7 @@ class TeileViewModelTest {
 
         pfade.neuerProzess(io = takt) { pfade, t ->
             val neu = vm(gemerkt, t)
-            assertEquals(Teilefilter("stein", Ersatzteilwahl.NUR, Listenansicht.TABELLE, Teilefilter.Ordnung.MENGE, "5", "11"),
+            assertEquals(Teilefilter("stein", Ersatzteilwahl.NUR, Listenansicht.TABELLE, Teilefilter.Ordnung.MENGE, Farbwahl.Farbe("5"), Kategoriewahl.Kategorie("11")),
                 neu.teileState.value.filter)
             assertNull("der Kontofilter lebt nur im Speicher", neu.kontoFuer(ScopeFilter.View.PARTS))
             neu.loadParts()
@@ -237,7 +239,7 @@ class TeileViewModelTest {
     fun `nach dem Abmelden ist nichts mehr da`() {
         val gemerkt = SavedStateHandle()
         val vm = vm(gemerkt)
-        vm.setPartsColorFilter("Red")
+        vm.setPartsColorFilter(Farbwahl.Farbe("Red"))
         vm.oeffneSetItem("3001", 5)
         assertTrue("geladen", vm.teileState.value.parts.isNotEmpty() && !vm.setItemState.value.abruf.laedt)
         t.sitzung.abgemeldet()

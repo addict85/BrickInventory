@@ -4,12 +4,12 @@ import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
-import ch.brickinventoryapp.model.ui.model.HaushaltStatusAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
-import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.CsvErgebnisAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportArt
+import ch.brickinventoryapp.model.fach.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.HaushaltStatusAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
 import ch.brickinventoryapp.update.util.UpdateBeschreibung
 import ch.brickinventoryapp.update.util.UpdateFrische
 

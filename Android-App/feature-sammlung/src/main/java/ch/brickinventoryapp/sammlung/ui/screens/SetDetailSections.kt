@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import java.time.Instant
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
@@ -14,10 +16,10 @@ import ch.brickinventoryapp.model.fach.Zustand
  * Inhalte darin sind Composables.
  */
 
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -60,7 +62,7 @@ import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
@@ -127,13 +129,13 @@ private fun PreisKarteInhalt(
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
-internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: Waehrung, fmtDate: (String?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
+internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: Waehrung, fmtDate: (Instant?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
             // Ohne Datum keine Zeile: „Hinzugefügt —“ sagt nichts.
-            if (!set.addedAt.isNullOrBlank()) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
+            if (set.addedAt != null) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
             // ── Lagerort ──
             //
             // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
@@ -238,7 +240,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
 }
 
 /** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
-internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
+internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Geld?) -> String) {
     item(key = "wertkacheln") {
         // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
         val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
@@ -248,7 +250,7 @@ internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisA
             markt = fmtPrice(marktpreis),
             kauf = fmtPrice(kaufpreis),
             pnl = pnlPct,
-            pnlBetrag = differenz?.let { (if (it > 0) "+" else "") + fmtPrice(it) },
+            pnlBetrag = differenz?.let { (if (it.positiv) "+" else "") + fmtPrice(it) },
             modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
         )
     }
@@ -376,7 +378,7 @@ internal fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.richtung ?: Alarmrichtung.UNTER)
             }
             var schwelle by rememberSaveable(alarm?.schwelle) {
-                mutableStateOf(alarm?.let { if (it.schwelle > 0) fmtEingabe(it.schwelle) else "" } ?: "")
+                mutableStateOf(alarm?.let { if (it.schwelle.positiv) fmtEingabe(it.schwelle) else "" } ?: "")
             }
 
             // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne

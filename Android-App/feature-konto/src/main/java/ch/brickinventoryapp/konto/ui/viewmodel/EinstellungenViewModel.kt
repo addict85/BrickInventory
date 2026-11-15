@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
 import ch.brickinventoryapp.zustand.ui.LagerUiState
@@ -12,7 +13,7 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
+import ch.brickinventoryapp.model.fach.CsvImportArt
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -174,9 +175,9 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Double) {
+    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld) {
         wartendeSchwellen.remove(setNumber to condition)?.cancel()
-        if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+        if (!schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { alarme.setPreisalarm(setNumber, richtung, schwelle, condition) }
     }
 
@@ -207,7 +208,7 @@ class EinstellungenViewModel @Inject constructor(
     override fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
         val schwelle = Alarmeingabe.zahl(roh)
-        if (nummer.isBlank() || schwelle == null || schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+        if (nummer.isBlank() || schwelle == null || !schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { alarme.setPreisalarm(nummer, richtung, schwelle, condition) }
     }
 

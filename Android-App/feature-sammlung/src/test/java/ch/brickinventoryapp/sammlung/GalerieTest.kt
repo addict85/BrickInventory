@@ -3,7 +3,7 @@ package ch.brickinventoryapp.sammlung
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.fehlerMeldung
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.sammlung.ui.Galerie

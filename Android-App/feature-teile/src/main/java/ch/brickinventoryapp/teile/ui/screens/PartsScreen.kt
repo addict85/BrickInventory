@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.teile.ui.Teilefilter
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
@@ -10,7 +12,7 @@ import androidx.compose.material3.OutlinedButton
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
@@ -217,8 +219,8 @@ internal fun PartsScreen(
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
                     if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
                     if (partsState.filter.ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
-                    if (partsState.filter.farbe.isNotBlank()) aktionen.setPartsColorFilter("")
-                    if (partsState.filter.kategorie.isNotBlank()) aktionen.setPartsCategoryFilter("")
+                    if (partsState.filter.farbe != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
+                    if (partsState.filter.kategorie != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
                 }) { Text(stringResource(R.string.search_clear_all)) }
             }
         } else if (anzeige == Ladeanzeige.LEER) {

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.zustand.ui
 
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.Kategoriewahl
 import ch.brickinventoryapp.sitzung.Vorwaermung
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FigurenRepository
@@ -40,7 +42,7 @@ internal suspend fun bildAdressenDerSammlung(
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
 
     val teileKonto = blickfeld.kontoFuer(ScopeFilter.View.PARTS)
-    val teileAbfrage = teileKonto?.let { Kontosicht.TeileAbfrage(it, null, null, null, Ersatzteilwahl.ALLE, false, null) }
+    val teileAbfrage = teileKonto?.let { Kontosicht.TeileAbfrage(it, null, Farbwahl.Alle, Kategoriewahl.Alle, Ersatzteilwahl.ALLE, false, null) }
     liste(teileAbfrage, kontosicht.teileliste, teile::aktualisiereTeile, teile.beobachteTeile())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
 

@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.KontoAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KontoAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -226,7 +227,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
-fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
+fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
         style = MaterialTheme.typography.bodySmall,
@@ -325,7 +326,7 @@ fun ManuelleKachel(
     zustaende: List<Zustand>,
     zustand: Zustand?,
     besitzer: List<KontoAnsicht>,
-    preis: Double?,
+    preis: Geld?,
     waehrung: Waehrung,
     onEdit: () -> Unit,
     farbe: Color? = null,

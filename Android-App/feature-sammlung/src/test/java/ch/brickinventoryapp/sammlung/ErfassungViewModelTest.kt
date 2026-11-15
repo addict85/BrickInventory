@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
@@ -95,7 +96,7 @@ class ErfassungViewModelTest {
     private class Anleger(val schritte: List<SetAnlegenSchritt>) : SetAnleger {
         var vm: ErfassungViewModel? = null
         val gesehen = mutableListOf<Pruefphase?>()
-        override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+        override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                              ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = flow {
             for (s in schritte) {
                 emit(s)

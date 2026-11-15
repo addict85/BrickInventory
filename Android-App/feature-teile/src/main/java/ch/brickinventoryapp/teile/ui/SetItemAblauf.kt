@@ -3,7 +3,7 @@ package ch.brickinventoryapp.teile.ui
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.model.VerwendungAnsicht
+import ch.brickinventoryapp.model.fach.VerwendungAnsicht
 import ch.brickinventoryapp.zustand.ui.ladefehler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

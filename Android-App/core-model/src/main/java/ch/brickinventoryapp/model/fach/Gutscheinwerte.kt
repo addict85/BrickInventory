@@ -1,11 +1,9 @@
 package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-
 // Was das Gutschein-Repository nimmt und liefert, in Fachwerten statt Wire-Typen.
 
 /** Ein Gutschein, wie ihn das Formular anlegt oder ändert; [pin] null heisst keine. */
-data class Gutscheinangabe(val nummer: String, val pin: String?, val betrag: Double, val waehrung: Waehrung)
+data class Gutscheinangabe(val nummer: String, val pin: String?, val betrag: Geld, val waehrung: Waehrung)
 
 /** Was das Speichern ergab: gespeichert (bei einer Sammel-PDF mit Zahlen) oder unvollständig gelesen. */
 sealed interface Gutscheinspeicherung {
@@ -16,7 +14,7 @@ sealed interface Gutscheinspeicherung {
     data class Unvollstaendig(
         val nummer: String? = null,
         val pin: String? = null,
-        val betrag: Double? = null,
+        val betrag: Geld? = null,
         val waehrung: Waehrung? = null,
     ) : Gutscheinspeicherung
 }

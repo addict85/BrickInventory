@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.teile.TeileViewModelTest
 Rot: der Kontofilter der Teile reist mit
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-index ea8ae02..2fc5f46 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -87,7 +87,7 @@ class TeileViewModel @Inject constructor(
+@@ -89,7 +89,7 @@
       */
      private fun teileAbfrage(st: TeileUiState): Kontosicht.TeileAbfrage? {
          val f = st.filter
 -        return if (teileKonto == null && teileLager == null && f.ansicht != Listenansicht.TABELLE) null
 +        return if (f.ansicht != Listenansicht.TABELLE) null
-         else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe.ifBlank { null },
-             f.kategorie.ifBlank { null }, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
+         else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe,
+             f.kategorie, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
      }

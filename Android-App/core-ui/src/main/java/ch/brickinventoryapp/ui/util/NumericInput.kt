@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.util
 
+import ch.brickinventoryapp.model.fach.Geld
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -64,6 +65,10 @@ object NumericInput {
      */
     fun leseBetrag(roh: String, gruppe: Char = gruppenzeichen()): Double? =
         zerlege(roh, gruppe)?.let { (ganz, _, nach) -> (ganz.ifEmpty { "0" } + if (nach.isEmpty()) "" else ".$nach").toDouble() }
+
+    /** Wie [leseBetrag], als Geld ohne Umweg über Double. */
+    fun leseGeld(roh: String, gruppe: Char = gruppenzeichen()): Geld? =
+        zerlege(roh, gruppe)?.let { (ganz, _, nach) -> Geld.ausText(ganz.ifEmpty { "0" } + if (nach.isEmpty()) "" else ".$nach") }
 
     /** Ein Preisfeld darf leer sein (kein Preis); was drinsteht, muss ein Betrag sein. */
     fun preisUngueltig(text: String, gruppe: Char = gruppenzeichen()): Boolean =

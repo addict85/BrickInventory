@@ -1,13 +1,18 @@
 package ch.brickinventoryapp.vertrag
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.Herkunft
+import ch.brickinventoryapp.model.util.zeitpunkt
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
+import java.time.Instant
 
 /**
  * Baut Server-Modelle, in denen jedes Feld einen eigenen Wert hat, und
@@ -76,27 +81,44 @@ object Beispielfueller {
      * Getter ohne Gegenstück landen in [ohne]. Gibt die Zahl der verglichenen Felder.
      */
     fun vergleiche(dto: Any?, ansicht: Any?, pfad: String, ohne: MutableSet<String>): Int {
-        if (ansicht == null || dto == null || !ansicht.javaClass.name.startsWith("ch.brickinventoryapp.model.ui.model.")) {
+        if (ansicht == null || dto == null || !ansicht.javaClass.name.startsWith("ch.brickinventoryapp.model.fach.")) {
             assertEquals(pfad, dto, ansicht)
             return 1
         }
         val k = ansicht.javaClass
         var n = 0
-        val getter = k.methods.filter {
-            it.parameterCount == 0 && it.declaringClass == k && (it.name.startsWith("get") || it.name.startsWith("is"))
-        }
-        for (g in getter) {
-            val gegen = dto.javaClass.methods.firstOrNull { it.name == g.name && it.parameterCount == 0 }
+        for (g in getter(k)) {
+            val gegen = gegenstueck(dto, g)
             // Abgeleitete Werte der erzeugten Typen stehen als Erweiterung in Ergaenzungen.kt.
-            val erweitert = ergaenzungen.firstOrNull { it.name == g.name && it.parameterTypes.singleOrNull() == dto.javaClass }
+            val erweitert = ergaenzungen.firstOrNull { it.name == g.name.substringBefore('-') && it.parameterTypes.singleOrNull() == dto.javaClass }
             val wert = when {
                 gegen != null -> gegen.invoke(dto)
                 erweitert != null -> erweitert.invoke(null, dto)
                 else -> { ohne += "${dto.javaClass.simpleName}.${g.name}"; continue }
             }
-            n += vergleicheWert(wert, g.invoke(ansicht), "$pfad.${g.name}", ohne)
+            n += vergleicheWert(fachwert(wert, g.returnType), g.invoke(ansicht), "$pfad.${g.name}", ohne)
         }
         return n
+    }
+
+    /** Statische Getter (Herkunft.getEntries) gehören zur Klasse, nicht zum Wert. */
+    private fun getter(k: Class<*>): List<Method> = k.methods.filter {
+        it.parameterCount == 0 && it.declaringClass == k && !Modifier.isStatic(it.modifiers) &&
+            (it.name.startsWith("get") || it.name.startsWith("is"))
+    }
+
+    /** Ein Getter auf eine value class trägt einen Anhang (getAmount-…); Geld und Double haben verschiedene. */
+    private fun gegenstueck(dto: Any, g: Method): Method? =
+        dto.javaClass.methods.firstOrNull { it.name == g.name && it.parameterCount == 0 }
+            ?: dto.javaClass.methods.firstOrNull { it.parameterCount == 0 && "-" in g.name && it.name == g.name.substringBefore('-') }
+
+    /** Der Wert des Server-Modells, wie die Abbildung ihn lesen soll: Betrag als Geld, Zeit als Instant. */
+    private fun fachwert(d: Any?, typ: Class<*>): Any? = when {
+        d is Double && typ == Geld::class.java -> Geld.aus(d)
+        d is Double && typ == Long::class.javaPrimitiveType -> Geld.aus(d)?.zehntausendstel
+        typ == Instant::class.java -> zeitpunkt(d as String?)
+        typ == Herkunft::class.java -> Herkunft.aus(d as String?)
+        else -> d
     }
 
     /** Listen und Maps Eintrag für Eintrag, alles andere über [vergleiche]. */

@@ -1,7 +1,6 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Laufstatus
-import ch.brickinventoryapp.model.fach.Waehrung
+import java.time.Instant
 
 // Konto, Haushalt, Server-Protokoll und CSV in den Einstellungen.
 
@@ -32,7 +31,7 @@ data class HaushaltStatusAnsicht(
 )
 
 /** Eine Zeile des Server-Protokolls. */
-data class ProtokollZeileAnsicht(val id: Int?, val level: String?, val message: String?, val loggedAt: String?)
+data class ProtokollZeileAnsicht(val id: Int?, val level: String?, val message: String?, val loggedAt: Instant?)
 
 /** Was ein CSV-Hochladen ergab; [neuAngelegt] gilt für beide Antwortformen des Servers. */
 data class CsvErgebnisAnsicht(val total: Int, val neuAngelegt: Int, val updated: Int, val errors: Int)

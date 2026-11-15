@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
-import ch.brickinventoryapp.model.ui.model.KontingentAnsicht
+import ch.brickinventoryapp.model.fach.KontingentAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.ui.model.KontingenteAnsicht
+import ch.brickinventoryapp.model.fach.KontingenteAnsicht
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState

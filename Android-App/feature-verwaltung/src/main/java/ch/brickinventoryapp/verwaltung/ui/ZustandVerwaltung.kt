@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.verwaltung.ui
 
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
 
 /**
  * Das Server-Protokoll — eigener Zustand für Verwalter: Es liest genau ein

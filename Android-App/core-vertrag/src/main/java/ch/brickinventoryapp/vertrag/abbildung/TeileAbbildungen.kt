@@ -13,19 +13,22 @@ import ch.brickinventoryapp.vertrag.ValuationAcquisition
 import ch.brickinventoryapp.vertrag.VerwendendesSet
 import ch.brickinventoryapp.vertrag.VerwendendeSetsResponse
 import ch.brickinventoryapp.vertrag.VorratsOrt
-import ch.brickinventoryapp.model.ui.model.VerwendungAnsicht
-import ch.brickinventoryapp.model.ui.model.VorratsOrtAnsicht
-import ch.brickinventoryapp.model.ui.model.BestandteilKopfAnsicht
-import ch.brickinventoryapp.model.ui.model.BewertungsKaufAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.VerwendendesSetAnsicht
+import ch.brickinventoryapp.model.fach.VerwendungAnsicht
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
+import ch.brickinventoryapp.model.fach.BestandteilKopfAnsicht
+import ch.brickinventoryapp.model.fach.BewertungsKaufAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.VerwendendesSetAnsicht
+import ch.brickinventoryapp.model.fach.Herkunft
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.util.zeitpunkt
 
 fun Part.alsAnsicht() = TeilAnsicht(
     partNumber = partNumber,
@@ -60,14 +63,14 @@ fun Minifig.alsAnsicht() = FigurAnsicht(
     condition = condition,
     conditions = conditions,
     owners = owners.map { it.alsAnsicht() },
-    avgPurchasePrice = avgPurchasePrice,
+    avgPurchasePrice = avgPurchasePrice.alsGeld(),
     figName = figName,
     quantity = quantity,
     totalQuantity = totalQuantity,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    source = source,
-    setAddedAt = setAddedAt,
+    source = Herkunft.aus(source),
+    setAddedAt = zeitpunkt(setAddedAt),
 )
 
 fun MinifigStats.alsAnsicht() = FigurenKennzahlenAnsicht(
@@ -125,15 +128,15 @@ fun PartValuationItem.alsAnsicht() = ManuellesTeilAnsicht(
     quantity = quantity,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    unitPrice = unitPrice,
-    purchasePrice = purchasePrice,
-    avgPurchasePrice = avgPurchasePrice,
-    qtyAvgPrice = qtyAvgPrice,
-    avgPrice = avgPrice,
+    unitPrice = unitPrice.alsGeld(),
+    purchasePrice = purchasePrice.alsGeld(),
+    avgPurchasePrice = avgPurchasePrice.alsGeld(),
+    qtyAvgPrice = qtyAvgPrice.alsGeld(),
+    avgPrice = avgPrice.alsGeld(),
     pnlPct = pnlPct,
     pnlProzent = pnlProzent,
     displayValue = displayValue,
-    wertGesamt = wertGesamt,
+    wertGesamt = wertGesamt.alsGeld(),
     condition = condition,
     conditions = conditions,
     userId = userId,
@@ -150,15 +153,15 @@ fun FigValuationItem.alsAnsicht() = ManuelleFigurAnsicht(
     quantity = quantity,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    unitPrice = unitPrice,
-    purchasePrice = purchasePrice,
-    avgPurchasePrice = avgPurchasePrice,
-    qtyAvgPrice = qtyAvgPrice,
-    avgPrice = avgPrice,
+    unitPrice = unitPrice.alsGeld(),
+    purchasePrice = purchasePrice.alsGeld(),
+    avgPurchasePrice = avgPurchasePrice.alsGeld(),
+    qtyAvgPrice = qtyAvgPrice.alsGeld(),
+    avgPrice = avgPrice.alsGeld(),
     pnlPct = pnlPct,
     pnlProzent = pnlProzent,
     displayValue = displayValue,
-    wertGesamt = wertGesamt,
+    wertGesamt = wertGesamt.alsGeld(),
     condition = condition,
     conditions = conditions,
     userId = userId,
@@ -171,13 +174,13 @@ fun ValuationAcquisition.alsAnsicht() = BewertungsKaufAnsicht(
     id = id,
     condition = condition,
     quantity = quantity,
-    purchasePrice = purchasePrice,
-    avgPrice = avgPrice,
+    purchasePrice = purchasePrice.alsGeld(),
+    avgPrice = avgPrice.alsGeld(),
     totalAvg = totalAvg,
-    wertGesamt = wertGesamt,
+    wertGesamt = wertGesamt.alsGeld(),
     pnlPct = pnlPct,
     pnlProzent = pnlProzent,
-    createdAt = createdAt,
+    createdAt = zeitpunkt(createdAt),
     ownerUserId = ownerUserId,
 )
 

@@ -1,8 +1,6 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Zustand
+import java.time.Instant
 
 // Sets und Merkposten, wie Galerie, Set-Detail und Merkliste sie zeigen.
 
@@ -16,20 +14,20 @@ data class SetAnsicht(
     val quantity: Int = 1,
     val imageUrl: String? = null,
     val imageLocal: String? = null,
-    val addedAt: String? = null,
+    val addedAt: Instant? = null,
     val condition: Zustand? = null,
     val storage: String? = null,
     val conditions: List<Zustand> = emptyList(),
     val owners: List<KontoAnsicht> = emptyList(),
-    val maxPurchasePrice: Double? = null,
-    val avgPurchasePrice: Double? = null,
+    val maxPurchasePrice: Geld? = null,
+    val avgPurchasePrice: Geld? = null,
     val usedCount: Int? = null,
     val instructions: List<AnleitungAnsicht> = emptyList(),
     val bricklink: BrickLinkAnsicht? = null,
     val preisvergleichUrl: String? = null,
 ) {
     /** Der angezeigte Kaufpreis, mengengewichtet — Kachel und Detail zeigen denselben. */
-    val anzeigeKaufpreis: Double? get() = avgPurchasePrice
+    val anzeigeKaufpreis: Geld? get() = avgPurchasePrice
 }
 
 data class AnleitungAnsicht(
@@ -51,14 +49,14 @@ data class BrickLinkAnsicht(
 data class MerkpostenAnsicht(
     val setNumber: String = "",
     val condition: Zustand = Zustand.NEU,
-    val createdAt: String? = null,
+    val createdAt: Instant? = null,
     val userId: Int = 0,
     val name: String? = null,
     val year: Int? = null,
     val numParts: Int? = null,
     val imageUrl: String? = null,
     val imageLocal: String? = null,
-    val marktpreis: Double? = null,
+    val marktpreis: Geld? = null,
     val waehrung: Waehrung = Waehrung.EUR,
     val owned: Boolean = false,
     val alarm: MerkpostenAlarmAnsicht? = null,
@@ -67,6 +65,6 @@ data class MerkpostenAnsicht(
 
 data class MerkpostenAlarmAnsicht(
     val richtung: Alarmrichtung = Alarmrichtung.UNTER,
-    val schwelle: Double = 0.0,
+    val schwelle: Geld = Geld.NULL,
     val ausgeloest: Boolean = false,
 )

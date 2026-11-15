@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.katalog.ui
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.model.ui.model.KatalogThemaAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.KatalogThemaAnsicht
 import ch.brickinventoryapp.model.ui.Laden
 
 /**

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Gutscheinangabe
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Bestaetigung
@@ -85,7 +86,7 @@ class GutscheineContractTest {
      */
     @Test
     fun `die App ruft dieselben Adressen wie die Webapp`() = mitServer { pfade, repo, _ ->
-        val g = Gutscheinangabe(nummer = "1234-5678", pin = "9876", betrag = 50.0, waehrung = Waehrung.CHF)
+        val g = Gutscheinangabe(nummer = "1234-5678", pin = "9876", betrag = Geld.aus(50.0)!!, waehrung = Waehrung.CHF)
         val b = Bestaetigung(passwort = "geheim")
         runBlocking {
             repo.liste()

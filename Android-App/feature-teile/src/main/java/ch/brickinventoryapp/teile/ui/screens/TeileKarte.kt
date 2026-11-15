@@ -4,8 +4,8 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.material3.Button
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.theme.farbeAusHex
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable

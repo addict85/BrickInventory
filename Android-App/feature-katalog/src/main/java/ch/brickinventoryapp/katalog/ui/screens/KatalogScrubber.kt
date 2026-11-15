@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures

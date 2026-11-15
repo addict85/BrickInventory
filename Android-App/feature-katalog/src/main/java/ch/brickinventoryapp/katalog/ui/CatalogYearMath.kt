@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.katalog.ui
 
-import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
 import kotlin.math.roundToInt
 
 /**

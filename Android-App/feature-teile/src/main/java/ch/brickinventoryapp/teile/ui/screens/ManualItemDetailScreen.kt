@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
 import androidx.compose.runtime.remember
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
@@ -46,7 +47,7 @@ import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
@@ -205,7 +206,7 @@ internal fun ManualItemDetailScreen(
 
             // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
             item {
-                fun fmt(v: Double?) = if (v == null) "—"
+                fun fmt(v: Geld?) = if (v == null) "—"
                     else fmtMoney(v, currency)
                 WertKacheln(
                     markt = fmt(fig?.avgPrice ?: part?.avgPrice),
@@ -234,14 +235,14 @@ internal fun ManualItemDetailScreen(
                                 // der manuelle Bereich die Eintraege aller
                                 // Konten; ohne die Angabe schreibt der Server
                                 // in die Zeile des Aufrufers.
-                                if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                                else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                                if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
+                                else teile.updatePart(id, colorId, qty, part?.unitPrice?.alsDouble(), part?.condition, owner = part?.userId)
                             }
                         },
                         onMehr = {
                             qty++
-                            if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice, fig?.blFigNumber, owner = fig?.userId)
-                            else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
+                            if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
+                            else teile.updatePart(id, colorId, qty, part?.unitPrice?.alsDouble(), part?.condition, owner = part?.userId)
                         },
                     )
 

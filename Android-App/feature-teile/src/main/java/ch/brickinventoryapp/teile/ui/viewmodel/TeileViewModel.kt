@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.fach.Teilerfassung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
@@ -88,8 +90,8 @@ class TeileViewModel @Inject constructor(
     private fun teileAbfrage(st: TeileUiState): Kontosicht.TeileAbfrage? {
         val f = st.filter
         return if (teileKonto == null && teileLager == null && f.ansicht != Listenansicht.TABELLE) null
-        else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe.ifBlank { null },
-            f.kategorie.ifBlank { null }, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
+        else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe,
+            f.kategorie, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
     }
 
     private fun manuelleAbfrage(st: TeileUiState): Kontosicht.ManuelleAbfrage? =
@@ -156,8 +158,8 @@ class TeileViewModel @Inject constructor(
     override fun setPartsSpare(wert: Ersatzteilwahl) = filtere { it.copy(ersatz = wert) }
     override fun setPartsView(wert: Listenansicht) = filtere { it.copy(ansicht = wert) }
     override fun setPartsOrdnung(wert: Teilefilter.Ordnung) = filtere { it.copy(ordnung = wert) }
-    override fun setPartsColorFilter(wert: String) = filtere { it.copy(farbe = wert) }
-    override fun setPartsCategoryFilter(wert: String) = filtere { it.copy(kategorie = wert) }
+    override fun setPartsColorFilter(wert: Farbwahl) = filtere { it.copy(farbe = wert) }
+    override fun setPartsCategoryFilter(wert: Kategoriewahl) = filtere { it.copy(kategorie = wert) }
 
     // ── Erfassen und Ändern ──────────────────────────────────────────────────
 

@@ -1,6 +1,4 @@
-package ch.brickinventoryapp.model.ui.model
-
-import ch.brickinventoryapp.model.fach.Laufstatus
+package ch.brickinventoryapp.model.fach
 
 // Jobs, Brickset-Warteschlange, Zwischenspeicher und Kontingente im Monitoring.
 

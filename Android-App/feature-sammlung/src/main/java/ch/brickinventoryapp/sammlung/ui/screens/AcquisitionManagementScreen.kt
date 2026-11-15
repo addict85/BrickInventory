@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.util.kalendertag
+import java.time.Instant
+import java.time.ZoneOffset
 import androidx.compose.runtime.remember
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
@@ -11,7 +14,7 @@ import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -42,7 +45,7 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
@@ -232,7 +235,7 @@ internal fun AcquisitionManagementScreen(
  * dass Antippen es ändert. Die Form folgt der App-Sprache wie jedes Datum (fmtTag).
  */
 @Composable
-internal fun Kaufdatum(createdAt: String?, onAendern: () -> Unit) {
+internal fun Kaufdatum(createdAt: Instant?, onAendern: () -> Unit) {
     Row(
         // heightIn statt minimumInteractiveComponentSize: Diese vergrössert nur die Tippfläche um den
         // Knopf, die Knopf-Fläche selbst blieb 44 dp (KaufdatumTest).
@@ -310,10 +313,7 @@ private fun AcquisitionManagementRow(
     Kaufdatum(acquisition.createdAt) { showDatePicker = true }
     if (showDatePicker) {
         val initialMillis = remember(acquisition.createdAt) {
-            runCatching {
-                java.time.LocalDate.parse(acquisition.createdAt!!.take(10))
-                    .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
-            }.getOrNull()
+            acquisition.createdAt?.kalendertag()?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
         }
         val dpState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
         DatePickerDialog(

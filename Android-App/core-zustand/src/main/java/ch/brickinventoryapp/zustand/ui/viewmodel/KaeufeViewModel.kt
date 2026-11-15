@@ -2,6 +2,8 @@ package ch.brickinventoryapp.zustand.ui.viewmodel
 
 import ch.brickinventoryapp.zustand.ui.ladefehler
 import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.fach.alsGeld
+import java.time.LocalDate
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
@@ -158,7 +160,8 @@ class KaeufeViewModel @Inject constructor(
         unitPrice: Double?, condition: Zustand?, quantity: Int?, date: String?,
     ) {
         viewModelScope.launch {
-            val req = Kaufkorrektur(preis = unitPrice, zustand = condition, menge = quantity, datum = date)
+            val tag = date?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
+            val req = Kaufkorrektur(preis = unitPrice.alsGeld(), zustand = condition, menge = quantity, datum = tag)
             val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
             if (r is Ergebnis.Success) {

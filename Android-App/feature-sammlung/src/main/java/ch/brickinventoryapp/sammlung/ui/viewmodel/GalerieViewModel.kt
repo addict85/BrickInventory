@@ -5,8 +5,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.sitzung.abgeleitet
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R

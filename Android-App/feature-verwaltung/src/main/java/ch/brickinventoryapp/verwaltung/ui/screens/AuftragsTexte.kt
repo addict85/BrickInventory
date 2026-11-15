@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.AuftragStatus
+import ch.brickinventoryapp.model.fach.AuftragStatus
 
 // Die Texte zu Aufträgen gehören zur Anzeige: Das UI-Modell in core-model kennt
 // keine Android-Ressourcen.

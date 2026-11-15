@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.teile.TeileViewModelTest
 Rot: Filter und Ansicht ueberstehen einen Prozess-Tod und reisen mit
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-index ea8ae02..d4b5092 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -87,7 +87,7 @@ class TeileViewModel @Inject constructor(
+@@ -89,7 +89,7 @@
       */
      private fun teileAbfrage(st: TeileUiState): Kontosicht.TeileAbfrage? {
          val f = st.filter
 -        return if (teileKonto == null && teileLager == null && f.ansicht != Listenansicht.TABELLE) null
 +        return if (teileKonto == null && teileLager == null) null
-         else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe.ifBlank { null },
-             f.kategorie.ifBlank { null }, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
+         else Kontosicht.TeileAbfrage(teileKonto, f.suche.ifBlank { null }, f.farbe,
+             f.kategorie, f.ersatz, f.ansicht == Listenansicht.TABELLE, teileLager)
      }

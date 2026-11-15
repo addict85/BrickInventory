@@ -2,8 +2,8 @@ package ch.brickinventoryapp.sammlung.ui.screens
 
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.runtime.LaunchedEffect
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import androidx.compose.foundation.layout.*
 import ch.brickinventoryapp.ui.components.ansagen
 import androidx.compose.material3.*

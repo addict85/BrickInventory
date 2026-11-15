@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.model.ui
 
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
 
 /**
  * Die Farbliste ohne ihren Eintrag für KEINE_FARBE („[No Color/Any Color]“):

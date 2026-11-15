@@ -1,7 +1,4 @@
-package ch.brickinventoryapp.model.ui.model
-
-import ch.brickinventoryapp.model.fach.GUTSCHEIN_PIN_MASKE
-import ch.brickinventoryapp.model.fach.istGutscheinMaske
+package ch.brickinventoryapp.model.fach
 
 /** Nummer und PIN im Klartext für die Anzeige; der Bildschirm kennt das Server-Modell nicht. */
 data class KlartextAnsicht(val id: Int, val number: String, val pin: String?)

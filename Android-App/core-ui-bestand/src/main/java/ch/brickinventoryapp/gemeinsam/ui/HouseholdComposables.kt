@@ -2,10 +2,10 @@ package ch.brickinventoryapp.gemeinsam.ui
 
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.ui.model.kontoOptionen
-import ch.brickinventoryapp.model.ui.model.KontoAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.kontoOptionen
+import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

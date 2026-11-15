@@ -3,7 +3,7 @@ package ch.brickinventoryapp.verwaltung
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.model.ui.model.AuftragStatus
+import ch.brickinventoryapp.model.fach.AuftragStatus
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.screens.auftragsArtText

@@ -12,7 +12,7 @@ import javax.inject.Singleton
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.StartzustandAnsicht
 
 /**
  * Die Sitzung der App: Server, Anmeldung, Einstellungen des Kontos. Geändert wird sie

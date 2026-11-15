@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.zustand.ui
 
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 /*

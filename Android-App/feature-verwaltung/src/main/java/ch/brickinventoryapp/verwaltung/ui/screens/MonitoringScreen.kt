@@ -10,9 +10,9 @@ import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.zustand.ui.viewmodel.GeraeteEinstellungenViewModel
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.JobZustandAnsicht
-import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
+import ch.brickinventoryapp.model.fach.BricksetEintragAnsicht
+import ch.brickinventoryapp.model.fach.JobZustandAnsicht
+import ch.brickinventoryapp.model.fach.ZeitplanAnsicht
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.animation.AnimatedVisibility

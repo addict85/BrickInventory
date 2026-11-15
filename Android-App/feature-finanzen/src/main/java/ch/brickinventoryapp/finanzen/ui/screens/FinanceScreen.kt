@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
@@ -42,7 +43,6 @@ import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
-import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
 import ch.brickinventoryapp.model.util.zahlenLocale
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
@@ -130,7 +130,7 @@ internal fun FinanceScreen(
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
-    fun fmtWert(v: Double?): String = v?.let { fmtMoney(it, currencyCode) } ?: "—"
+    fun fmtWert(v: Geld?): String = fmtMoneyOrDash(v, currencyCode)
 
     // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
     // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
@@ -328,8 +328,8 @@ internal fun ManualFinanceRow(
 }
 
 /** Gewinn als Betrag mit Vorzeichen, wie die Prozentzahl daneben (fmtProzent). */
-internal fun gewinnText(betrag: Double, fmtWert: (Double?) -> String): String =
-    if (betrag >= 0.005) "+" + fmtWert(betrag) else fmtWert(betrag)
+internal fun gewinnText(betrag: Geld, fmtWert: (Geld?) -> String): String =
+    if (betrag.aufRappen().signum() > 0) "+" + fmtWert(betrag) else fmtWert(betrag)
 
 @Composable
 internal fun SubtotalRow(label: String, value: String) {

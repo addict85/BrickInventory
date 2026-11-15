@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.model.ui.model.KatalogMetaAnsicht
+import ch.brickinventoryapp.model.fach.KatalogMetaAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest

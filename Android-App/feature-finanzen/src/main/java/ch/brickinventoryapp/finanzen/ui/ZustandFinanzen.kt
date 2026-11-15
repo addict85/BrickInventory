@@ -2,14 +2,14 @@ package ch.brickinventoryapp.finanzen.ui
 
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
-import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.DiagrammAchse
-import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
-import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.DiagrammPunkt
+import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.fach.GewinnAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
 import ch.brickinventoryapp.model.ui.Laden
 
 /**
@@ -123,7 +123,7 @@ data class GutscheinUiState(
  */
 internal fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
-    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
+    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + g.amount.alsBigDecimal() }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung
 }
 

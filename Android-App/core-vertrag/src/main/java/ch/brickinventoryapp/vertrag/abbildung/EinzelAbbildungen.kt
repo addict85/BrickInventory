@@ -7,13 +7,16 @@ import ch.brickinventoryapp.vertrag.CsvArt
 import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.Preisalarm
 import ch.brickinventoryapp.vertrag.StartupStatus
-import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.model.ui.model.DiagrammAchse
-import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
-import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportArt
+import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.DiagrammPunkt
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.alsGeldPflicht
+import ch.brickinventoryapp.model.util.zeitpunkt
 
 fun CsvImportArt.alsDaten(): CsvArt = when (this) {
     CsvImportArt.SETS -> CsvArt.SETS
@@ -28,13 +31,14 @@ fun CsvArt.alsAnsicht(): CsvImportArt = CsvImportArt.valueOf(name)
 fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
     fortschritt = progress, gesamt = total)
 
-fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value, yFrac)
+fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.alsGeldPflicht(), yFrac)
 
-fun ChartYAxis.alsAnsicht() = DiagrammAchse(label, value, frac)
+fun ChartYAxis.alsAnsicht() = DiagrammAchse(label, value.alsGeldPflicht(), frac)
 
 fun BrickColor.alsAnsicht() = FarbeAnsicht(id, name, hex)
 
-fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount, currency, hatPdf, createdAt, guthabenGeprueftAm)
+fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount.alsGeldPflicht(), currency, hatPdf,
+    zeitpunkt(createdAt), zeitpunkt(guthabenGeprueftAm))
 
-fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, richtung, schwelle, currencyCode, ausgeloest,
-    zuletztAm, zuletztPreis, name, imageLocal, imageUrl, setImgUrl, besitzt)
+fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, richtung, schwelle.alsGeldPflicht(), currencyCode,
+    ausgeloest, zeitpunkt(zuletztAm), zuletztPreis.alsGeld(), name, imageLocal, imageUrl, setImgUrl, besitzt)

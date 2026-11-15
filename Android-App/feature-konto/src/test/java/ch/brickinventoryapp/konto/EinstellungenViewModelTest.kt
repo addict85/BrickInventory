@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -98,7 +99,7 @@ class EinstellungenViewModelTest {
     @Test
     fun `eine Schwelle von null geht nicht hinaus`() {
         val vm = vm()
-        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, 0.0)
+        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, Geld.NULL)
         assertEquals("t${R.string.alerts_bad_value}", t.meldungen.text)
         assertTrue(pfade.anfragenAn("/alert").isEmpty())
     }
@@ -108,7 +109,7 @@ class EinstellungenViewModelTest {
         val vm = vm()
         vm.ladeAlarmUebersicht()
         assertTrue("Übersicht", vm.alarmUebersicht.value.geladen)
-        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, 450.0)
+        vm.aendereAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, Geld.aus(450.0)!!)
         assertEquals("neu geladen", 2, pfade.anfragenAn("GET /api/v1/alerts").size)
         assertTrue(pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").isNotEmpty())
     }

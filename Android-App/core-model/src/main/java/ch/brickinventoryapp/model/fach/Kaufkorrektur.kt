@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.model.fach
 
+import java.time.LocalDate
+
 /** Was an einem Kauf geändert wird; null heisst unverändert. [besitzer] verschiebt den Kauf in ein anderes Konto. */
 data class Kaufkorrektur(
-    val preis: Double? = null,
+    val preis: Geld? = null,
     val zustand: Zustand? = null,
     val menge: Int? = null,
-    val datum: String? = null,
+    val datum: LocalDate? = null,
     val besitzer: Int? = null,
 )
 

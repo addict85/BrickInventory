@@ -111,7 +111,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                 aktionen.confirmAddBarcode(Erfassungswunsch(
                     setNumber = barcodeState.result,
                     menge = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
-                    kaufpreis = NumericInput.leseBetrag(barcodePriceText),
+                    kaufpreis = NumericInput.leseGeld(barcodePriceText),
                     zustand = barcodeCondition,
                     // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim
                     // eigenen Konto (gleiche Regel wie im Galerie-Dialog).

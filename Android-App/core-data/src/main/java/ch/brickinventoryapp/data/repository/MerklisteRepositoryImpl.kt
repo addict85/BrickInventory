@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenPreiseAnsicht
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenPreiseAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
@@ -69,13 +70,13 @@ class MerklisteRepositoryImpl @Inject constructor(
         sicherAufrufen { api.getMerkpostenPreise(setNumber) }.zugesagt({ it.success }, { null }) { it.alsAnsicht() }
 
     override suspend fun uebernimmMerkposten(setNumber: String, condition: Zustand, quantity: Int,
-                                             purchasePrice: Double?, erfasstAls: Zustand?,
+                                             purchasePrice: Geld?, erfasstAls: Zustand?,
                                              ownerUserId: Int?,
                                              storage: String?): Ergebnis<Boolean> {
-        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = erfasstAls ?: condition, ownerUserId = ownerUserId, storage = storage)
+        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = erfasstAls ?: condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.nachgezogen({ r -> Nachzug.MerkpostenUebernommen(setNumber, condition, ownerUserId, anfrage).takeIf { r.success } }) {
             sicherAufrufen { api.uebernimmMerkposten(setNumber, condition.kennung,
-                MerkpostenUebernahmeRequest(quantity = quantity, purchasePrice = purchasePrice, condition = erfasstAls, ownerUserId = ownerUserId, storage = storage)) }
+                MerkpostenUebernahmeRequest(quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = erfasstAls, ownerUserId = ownerUserId, storage = storage)) }
         }.abgebildet { it.action == "exists" }
     }
 }

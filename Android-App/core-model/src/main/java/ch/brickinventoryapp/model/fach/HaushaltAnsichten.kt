@@ -1,7 +1,7 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Zustand
+import java.time.Instant
+
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 // Konten, Käufe und Lagerorte, wie die Oberfläche sie zeigt.
@@ -34,16 +34,16 @@ data class KontoAnsicht(
 data class KaufAnsicht(
     val id: Int,
     val quantity: Int,
-    val purchasePrice: Double? = null,
-    val unitPrice: Double? = null,
+    val purchasePrice: Geld? = null,
+    val unitPrice: Geld? = null,
     val condition: Zustand = Zustand.NEU,
-    val createdAt: String? = null,
+    val createdAt: Instant? = null,
     val ownerUserId: Int? = null,
     val priceEstimated: Boolean = false,
     val currency: Waehrung? = null,
 ) {
     /** Sets tragen purchase_price, Teile und Figuren unit_price. */
-    val effectivePrice: Double? get() = purchasePrice ?: unitPrice
+    val effectivePrice: Geld? get() = purchasePrice ?: unitPrice
 }
 
 /** Die Käufe eines Eintrags samt Summen, aus einer Antwort. */
@@ -54,7 +54,7 @@ data class EinladungAnsicht(val code: String, val gueltigSekunden: Int?)
 
 data class KaufSummenAnsicht(
     val quantity: Int = 0,
-    val amount: Double? = null,
+    val amount: Geld? = null,
 )
 
 data class LagerortAnsicht(

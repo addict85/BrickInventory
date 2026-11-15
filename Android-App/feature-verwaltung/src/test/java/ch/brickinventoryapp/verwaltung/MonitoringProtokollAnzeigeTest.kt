@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.verwaltung
 
+import java.time.Instant
 import ch.brickinventoryapp.model.ui.theme.Design
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.SemanticsMatcher
@@ -12,7 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
 import ch.brickinventoryapp.model.util.fmtUhrzeit
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import android.text.format.DateFormat
@@ -57,8 +58,8 @@ class MonitoringProtokollAnzeigeTest {
         override fun waehleProtokoll(minuten: Int) { protokollAbrufe++ }
     }
 
-    private val info = ProtokollZeileAnsicht(1, "info", "Preislauf gestartet", "2026-11-10T08:15:30Z")
-    private val fehler = ProtokollZeileAnsicht(2, "error", "Abruf bei BrickLink gescheitert", "2026-11-10T09:42:07Z")
+    private val info = ProtokollZeileAnsicht(1, "info", "Preislauf gestartet", Instant.parse("2026-11-10T08:15:30Z"))
+    private val fehler = ProtokollZeileAnsicht(2, "error", "Abruf bei BrickLink gescheitert", Instant.parse("2026-11-10T09:42:07Z"))
 
     /** Zeichnet die Überwachung mit zwei Protokollzeilen und klappt das Protokoll auf. */
     private fun zeigeOffen() {

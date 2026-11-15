@@ -4,10 +4,9 @@ Test: ch.brickinventoryapp.data.ServerStartTest
 Rot: ein Fortschritt mit Anteil wird gelesen
 
 diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
-index 7bc71ec..e37caa9 100644
 --- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
 +++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
-@@ -2283,7 +2283,7 @@ data class StartupStatus(
+@@ -2290,7 +2290,7 @@
      @SerialName("pfad") val pfad: String? = null,
      @SerialName("ready") val ready: Boolean = false,
      @SerialName("step") val step: String? = null,
@@ -17,15 +16,14 @@ index 7bc71ec..e37caa9 100644
      @SerialName("sub") val sub: String? = null,
  )
 diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
-index 17a5ac2..cd78688 100644
 --- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
 +++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
-@@ -26,7 +26,7 @@ fun CsvImportArt.alsDaten(): CsvArt = when (this) {
+@@ -29,7 +29,7 @@
  fun CsvArt.alsAnsicht(): CsvImportArt = CsvImportArt.valueOf(name)
  
  fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
 -    fortschritt = progress, gesamt = total)
 +    fortschritt = progress.toDouble(), gesamt = total)
  
- fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value, yFrac)
+ fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.alsGeldPflicht(), yFrac)
  

@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.SetErfasst
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
  * ein Bildschirm hängt nur an dem, was er braucht.
  */
 interface SetsRepository {
-    suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
+    suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Geld? = null,
                        condition: Zustand? = null, ownerUserId: Int? = null,
                        storage: String? = null): Ergebnis<SetErfasst>
 

@@ -6,12 +6,14 @@ import ch.brickinventoryapp.vertrag.HouseholdMember
 import ch.brickinventoryapp.vertrag.KontoName
 import ch.brickinventoryapp.vertrag.Lagerort
 import ch.brickinventoryapp.vertrag.LagerortEintrag
-import ch.brickinventoryapp.model.ui.model.KaufAnsicht
-import ch.brickinventoryapp.model.ui.model.KaufSummenAnsicht
-import ch.brickinventoryapp.model.ui.model.KontoAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.KaufAnsicht
+import ch.brickinventoryapp.model.fach.KaufSummenAnsicht
+import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.util.zeitpunkt
 
 fun HouseholdMember.alsAnsicht() = MitgliedAnsicht(
     id = id,
@@ -27,10 +29,10 @@ fun KontoName.alsAnsicht() = KontoAnsicht(
 fun Acquisition.alsAnsicht() = KaufAnsicht(
     id = id,
     quantity = quantity,
-    purchasePrice = purchasePrice,
-    unitPrice = unitPrice,
+    purchasePrice = purchasePrice.alsGeld(),
+    unitPrice = unitPrice.alsGeld(),
     condition = condition,
-    createdAt = createdAt,
+    createdAt = zeitpunkt(createdAt),
     ownerUserId = ownerUserId,
     priceEstimated = priceEstimated,
     currency = currency,
@@ -38,7 +40,7 @@ fun Acquisition.alsAnsicht() = KaufAnsicht(
 
 fun AcquisitionTotals.alsAnsicht() = KaufSummenAnsicht(
     quantity = quantity,
-    amount = amount,
+    amount = amount.alsGeld(),
 )
 
 fun Lagerort.alsAnsicht() = LagerortAnsicht(

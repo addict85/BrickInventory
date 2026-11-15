@@ -1,23 +1,25 @@
 package ch.brickinventoryapp.teile.ui
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.BestandteilKopfAnsicht
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.VerwendendesSetAnsicht
+import ch.brickinventoryapp.model.fach.BestandteilKopfAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.OHNE_FARBE
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.VerwendendesSetAnsicht
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 import java.io.Serializable
@@ -36,10 +38,10 @@ data class Teilefilter(
     val ansicht: Listenansicht = Listenansicht.KARTEN,
     /** Sortiert wird in der Ansicht, die Liste liegt ganz vor. */
     val ordnung: Ordnung = Ordnung.FARBE,
-    /** Farb-ID als Text, "" = alle; reist als `color=` mit. */
-    val farbe: String = "",
-    /** Der Wert (`category_name`), nicht die Beschriftung, "" = alle: Der Server filtert danach. */
-    val kategorie: String = "",
+    /** Der Farbname reist als `color=` mit. */
+    val farbe: Farbwahl = Farbwahl.Alle,
+    /** Der Wert (`category_name`), nicht die Beschriftung: Der Server filtert danach. */
+    val kategorie: Kategoriewahl = Kategoriewahl.Alle,
 ) : Serializable {
     /** Die drei Reihenfolgen der Webapp; die Regeln stehen in sortiert() (TeileOrdnung.kt). */
     enum class Ordnung { FARBE, NAME, MENGE }
@@ -47,7 +49,7 @@ data class Teilefilter(
     private companion object {
         // Fest, sonst rechnet die JVM die Kennung aus der Klassenform, und jede neue Fassung
         // der App verwürfe den gemerkten Filter.
-        private const val serialVersionUID: Long = 1L
+        private const val serialVersionUID: Long = 2L
     }
 }
 

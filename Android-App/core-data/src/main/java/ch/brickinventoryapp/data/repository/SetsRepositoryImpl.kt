@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
@@ -34,10 +35,10 @@ class SetsRepositoryImpl @Inject constructor(
     private val wiederholung: Wiederholung,
 ) : SetsRepository {
 
-    override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Double?,
+    override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Geld?,
                        condition: Zustand?, ownerUserId: Int?,
                        storage: String?): Ergebnis<SetErfasst> {
-        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage)
+        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.schreibe(Bearbeitung.SetErfassen(anfrage),
             { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) { schluessel ->
             sicherAufrufen { api.addSet(anfrage, schluessel) }

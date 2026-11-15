@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
-import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
+import ch.brickinventoryapp.model.fach.BricksetEintragAnsicht
+import ch.brickinventoryapp.model.fach.ZeitplanAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*

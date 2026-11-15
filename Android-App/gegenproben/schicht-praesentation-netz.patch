@@ -12,7 +12,7 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
  import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 +import retrofit2.Response
  import ch.brickinventoryapp.ui.components.nebenKnopfRand
- import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
+ import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
  import androidx.compose.foundation.Image
 diff --git a/Android-App/feature-sammlung/build.gradle.kts b/Android-App/feature-sammlung/build.gradle.kts
 --- a/Android-App/feature-sammlung/build.gradle.kts

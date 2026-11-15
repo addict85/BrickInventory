@@ -1,0 +1,17 @@
+Gegenprobe: Geld.aus rundet schon beim Lesen auf Rappen
+Modul: core-vertrag
+Test: ch.brickinventoryapp.vertrag.UiModellAbbildungTest
+Rot: Betraege kommen als Geld
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+@@ -34,7 +34,7 @@
+         val NULL = Geld(0)
+ 
+         /** Wie inZehntel4() des Servers; was keine endliche Zahl ist, ist kein Betrag. */
+-        fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld(Math.round(betrag * FAKTOR)) else null
++        fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld(Math.round(betrag * 100) * 100) else null
+ 
+         fun aus(betrag: BigDecimal): Geld = Geld(betrag.setScale(STELLEN, RoundingMode.HALF_UP).unscaledValue().toLong())
+ 

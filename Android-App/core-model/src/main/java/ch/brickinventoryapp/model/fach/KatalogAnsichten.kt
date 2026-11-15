@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
 // Der Katalog aller Sets.
 

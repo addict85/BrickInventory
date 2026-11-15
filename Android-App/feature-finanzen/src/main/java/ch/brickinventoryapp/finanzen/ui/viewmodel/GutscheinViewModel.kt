@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.zustand.ui.fehlerMeldung
@@ -13,8 +14,8 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
-import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
-import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
 import ch.brickinventoryapp.model.fach.Bestaetigung
 import ch.brickinventoryapp.model.fach.Gutscheinangabe
 import ch.brickinventoryapp.data.repository.GutscheineRepository
@@ -243,7 +244,7 @@ class GutscheinViewModel @Inject constructor(
             try {
                 val bearbeitet = s.bearbeitet
                 if (bearbeitet != null) {
-                    val betrag = s.betrag.replace(',', '.').toDoubleOrNull()
+                    val betrag = Geld.ausText(s.betrag.replace(',', '.'))
                         ?: return@launch melde(R.string.vouchers_amount_invalid)
                     behandleAntwort(repo.aendern(bearbeitet, Gutscheinangabe(
                         nummer = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
@@ -281,7 +282,7 @@ class GutscheinViewModel @Inject constructor(
                     return@launch
                 }
 
-                val betrag = s.betrag.replace(',', '.').toDoubleOrNull()
+                val betrag = Geld.ausText(s.betrag.replace(',', '.'))
                     ?: return@launch melde(R.string.vouchers_amount_invalid)
                 behandleAntwort(repo.anlegen(Gutscheinangabe(
                     nummer = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
@@ -446,8 +447,7 @@ private val FAKTOR_CODES = setOf(Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.ZW
 private const val ABSTAND_VERSUCHE = 4
 
 /** Ganze Beträge ohne „.0": Der Gutschein lautet auf 400, nicht auf 400.0. */
-internal fun betragAlsText(betrag: Double): String =
-    if (betrag % 1.0 == 0.0) betrag.toLong().toString() else betrag.toString()
+internal fun betragAlsText(betrag: Geld): String = betrag.alsBigDecimal().stripTrailingZeros().toPlainString()
 
 /**
  * Eine Eingabe in ein Feld, das die Maske des Servers trägt: Die Maske ist ein

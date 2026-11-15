@@ -7,7 +7,7 @@ import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.model.ui.model.kontoOptionen
+import ch.brickinventoryapp.model.fach.kontoOptionen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

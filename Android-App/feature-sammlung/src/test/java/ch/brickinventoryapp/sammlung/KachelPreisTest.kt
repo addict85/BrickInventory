@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.vertrag.PnlSetZeile
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import org.junit.Assert.assertEquals
@@ -45,14 +46,14 @@ class KachelPreisTest {
                         kachelPreis = 812.5, kachelPnlPct = 16.1),
             PnlSetZeile(setNumber = "10294-1", quantity = 1, currentPrice = 0.0, baselinePrice = null, kachelPreis = null, kachelPnlPct = -3.0),
         ))
-        assertEquals(KachelPreis(812.5, 16.1), p["75192-1"])
+        assertEquals(KachelPreis(Geld.aus(812.5), 16.1), p["75192-1"])
         assertEquals(KachelPreis(null, -3.0), p["10294-1"])
     }
 
     @Test
     fun `Uebergang - eine Zeile ohne Kaufpreis nimmt den Basiswert des Servers`() {
         val p = kachelPreise(listOf(PnlSetZeile(setNumber = "75192-1", quantity = 1, currentPrice = 800.0, baselinePrice = 700.0, pnlPct = null, baselinePnlPct = "14.3")))
-        assertEquals(KachelPreis(800.0, 14.3), p["75192-1"])
+        assertEquals(KachelPreis(Geld.aus(800.0), 14.3), p["75192-1"])
     }
 
     @Test
@@ -64,28 +65,28 @@ class KachelPreisTest {
         ))
         // (2·100 + 1·160) / 3 = 120 → (350 − 120) / 120 = 191,7 %
         assertEquals(191.7, p["10294-1"]?.pnlPct ?: -1.0, 1e-9)
-        assertEquals(350.0, p["10294-1"]?.betrag ?: -1.0, 1e-9)
+        assertEquals(Geld.aus(350.0), p["10294-1"]?.betrag)
     }
 
     @Test
     fun `der Marktpreis geht vor, sonst der gewichtete Kaufpreis`() {
-        val set = SetAnsicht(setNumber = "1-1", avgPurchasePrice = 40.0, maxPurchasePrice = 60.0)
-        assertEquals(55.0, kachelBetrag(set, KachelPreis(55.0, 37.5)) ?: -1.0, 1e-9)
-        assertEquals(40.0, kachelBetrag(set, KachelPreis(0.0, null)) ?: -1.0, 1e-9)
-        assertEquals(40.0, kachelBetrag(set, null) ?: -1.0, 1e-9)
+        val set = SetAnsicht(setNumber = "1-1", avgPurchasePrice = Geld.aus(40.0), maxPurchasePrice = Geld.aus(60.0))
+        assertEquals(Geld.aus(55.0), kachelBetrag(set, KachelPreis(Geld.aus(55.0), 37.5)))
+        assertEquals(Geld.aus(40.0), kachelBetrag(set, KachelPreis(Geld.aus(0.0), null)))
+        assertEquals(Geld.aus(40.0), kachelBetrag(set, null))
         assertNull(kachelBetrag(SetAnsicht(setNumber = "2-1"), null))
     }
 
     @Test
     fun `die Quelle des Servers bestimmt die Beschriftung der Kachel`() {
         val p = kachelPreise(listOf(PnlSetZeile(setNumber = "21318-1", quantity = 1, currentPrice = null, baselinePrice = 180.0, kachelPreis = 180.0, kachelQuelle = "kauf")))
-        assertEquals(KachelPreis(180.0, null, "kauf"), p["21318-1"])
+        assertEquals(KachelPreis(Geld.aus(180.0), null, "kauf"), p["21318-1"])
         val set = SetAnsicht(setNumber = "21318-1")
         assertEquals(KachelQuelle.KAUF, kachelQuelle(set, p["21318-1"]))
-        assertEquals(KachelQuelle.MARKT, kachelQuelle(set, KachelPreis(812.5, 16.1, "markt")))
+        assertEquals(KachelQuelle.MARKT, kachelQuelle(set, KachelPreis(Geld.aus(812.5), 16.1, "markt")))
         // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
-        assertEquals(KachelQuelle.MARKT, kachelQuelle(set, KachelPreis(812.5, 16.1)))
-        assertEquals(KachelQuelle.KAUF, kachelQuelle(SetAnsicht(setNumber = "1-1", avgPurchasePrice = 40.0), null))
+        assertEquals(KachelQuelle.MARKT, kachelQuelle(set, KachelPreis(Geld.aus(812.5), 16.1)))
+        assertEquals(KachelQuelle.KAUF, kachelQuelle(SetAnsicht(setNumber = "1-1", avgPurchasePrice = Geld.aus(40.0)), null))
         assertNull(kachelQuelle(set, null))
     }
 }

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -22,18 +25,18 @@ import ch.brickinventoryapp.vertrag.LagerortVorgabeRequest
 import ch.brickinventoryapp.vertrag.TeilFarbeRequest
 import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
-import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilBestand
-import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.Teilschluessel
-import ch.brickinventoryapp.model.ui.model.VerwendungAnsicht
-import ch.brickinventoryapp.model.ui.model.VorratsOrtAnsicht
+import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.fach.KategorieAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilBestand
+import ch.brickinventoryapp.model.fach.TeileKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.Teilschluessel
+import ch.brickinventoryapp.model.fach.VerwendungAnsicht
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
 import ch.brickinventoryapp.vertrag.AddPartResponse
 import ch.brickinventoryapp.vertrag.GenericResponse
 import kotlinx.coroutines.flow.Flow
@@ -52,9 +55,9 @@ class TeileRepositoryImpl @Inject constructor(
 ) : TeileRepository {
 
     /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
-    override fun beobachteTeile(suche: String?, farbe: String?, kategorie: String?, ersatzteile: Ersatzteilwahl): Flow<Lokal<TeilAnsicht>> =
-        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe?.ifBlank { null },
-            kategorie = kategorie?.ifBlank { null }, ersatzteil = ersatzteile.alsMerkmal())).abgebildet { it.alsAnsicht() }
+    override fun beobachteTeile(suche: String?, farbe: Farbwahl, kategorie: Kategoriewahl, ersatzteile: Ersatzteilwahl): Flow<Lokal<TeilAnsicht>> =
+        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe.wert,
+            kategorie = kategorie.wert, ersatzteil = ersatzteile.alsMerkmal())).abgebildet { it.alsAnsicht() }
 
     override fun beobachteManuelleTeile(suche: String?): Flow<Lokal<ManuellesTeilAnsicht>> =
         ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null })).abgebildet { it.alsAnsicht() }
@@ -167,12 +170,12 @@ class TeileRepositoryImpl @Inject constructor(
 
     /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
     override suspend fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
-                         quantity: Int, unitPrice: Double?,
+                         quantity: Int, unitPrice: Geld?,
                          condition: Zustand?, ownerUserId: Int?,
                          storage: String?): Ergebnis<Erfasst> {
         val ohne = colorId == KEINE_FARBE
         val anfrage = AddPartRequest(partNumber = partNumber, colorId = colorId, colorName = colorName.takeUnless { ohne },
-            colorHex = colorHex.takeUnless { ohne }, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage)
+            colorHex = colorHex.takeUnless { ohne }, quantity = quantity, unitPrice = unitPrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.schreibe(Bearbeitung.TeilErfassen(anfrage),
             { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
             sicherAufrufen { api.addPart(anfrage, schluessel) }

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.dienste.alarm
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.ui.model.AlarmabrufAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.AlarmabrufAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
 import java.text.NumberFormat
 import java.util.Currency
@@ -78,10 +78,10 @@ internal object Alarmabholung {
             maximumFractionDigits = 2
         }
         val preis = a.zuletztPreis
-        val schwelle = format.format(a.schwelle)
+        val schwelle = format.format(a.schwelle.alsBigDecimal())
         return if (preis == null)
             "${a.setNumber}: $richtung $schwelle"
         else
-            "${a.setNumber}: ${format.format(preis)} ($richtung $schwelle)"
+            "${a.setNumber}: ${format.format(preis.alsBigDecimal())} ($richtung $schwelle)"
     }
 }

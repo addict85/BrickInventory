@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.ui.util
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.appcompat.app.AppCompatDelegate
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import java.text.NumberFormat
+import java.time.Instant
 import java.util.Currency
 import java.util.Locale
 import ch.brickinventoryapp.model.util.DatumJahr
@@ -52,6 +54,14 @@ fun fmtMoney(amount: Double, currencyCode: Waehrung?): String {
     }
 }
 
+/** Ein Geldbetrag, erst auf Rappen gerundet wie am Server (halbe von der Null weg). */
+fun fmtMoney(betrag: Geld, currencyCode: Waehrung?): String = fmtMoney(betrag.aufRappen().toDouble(), currencyCode)
+
+/** Wie [fmtMoney], „—“ ohne Betrag. */
+fun fmtMoneyOrDash(betrag: Geld?, currencyCode: Waehrung?): String = betrag?.let { fmtMoney(it, currencyCode) } ?: "—"
+
+fun fmtMoneyGanz(betrag: Geld, currencyCode: Waehrung?): String = fmtMoneyGanz(betrag.alsDouble(), currencyCode)
+
 /** Ganzer Betrag mit Währung („CHF 1'720“) — für Diagrammachsen, wie sie der Server liefert. */
 fun fmtMoneyGanz(amount: Double, currencyCode: Waehrung?): String = try {
     val nf = NumberFormat.getCurrencyInstance(appNumberLocale())
@@ -74,6 +84,8 @@ fun mitWaehrungsAbstand(text: String): String =
 /** Ein Tag aus der Serverantwort in der Form der App-Sprache — siehe fmtDatum. */
 fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(iso, appNumberLocale(), jahr)
 
+fun fmtTag(zeit: Instant?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(zeit, appNumberLocale(), jahr)
+
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */
 fun fmtMoneyOrDash(amount: String?, currencyCode: Waehrung?): String {
     val v = amount?.toDoubleOrNull() ?: return "—"
@@ -88,6 +100,9 @@ fun fmtAmount(v: Double, minFractionDigits: Int = 2, maxFractionDigits: Int = 2)
     return nf.format(v)
 }
 
+fun fmtAmount(betrag: Geld, minFractionDigits: Int = 2, maxFractionDigits: Int = 2): String =
+    fmtAmount(betrag.aufRappen().toDouble(), minFractionDigits, maxFractionDigits)
+
 /**
  * Betrag für ein Eingabefeld: zwei Nachkommastellen im Dezimalzeichen der
  * App-Sprache, ohne Tausendertrennung — die liesse sich beim Speichern nicht
@@ -100,6 +115,8 @@ fun fmtEingabe(v: Double): String {
     nf.maximumFractionDigits = 2
     return nf.format(v)
 }
+
+fun fmtEingabe(betrag: Geld): String = fmtEingabe(betrag.aufRappen().toDouble())
 
 /** Ganze Zahl mit Tausendertrennung (Stückzahlen, Teilezahlen). */
 fun fmtInt(v: Int): String {

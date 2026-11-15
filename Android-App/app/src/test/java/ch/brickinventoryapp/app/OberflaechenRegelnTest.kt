@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -51,7 +52,7 @@ import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.SetCard
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
@@ -381,7 +382,7 @@ class OberflaechenRegelnTest {
         val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
             testKatalogRepository(welt.t.api),
             object : SetAnleger {
-                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
             }))
@@ -587,7 +588,7 @@ class OberflaechenRegelnTest {
             val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
                 testKatalogRepository(welt.t.api),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
@@ -867,10 +868,10 @@ class OberflaechenRegelnTest {
             val zeile = setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
-            val gesamt = BigDecimal.valueOf(zeile.kaufpreis!!).multiply(BigDecimal(zeile.menge)).toDouble()
+            val gesamt = zeile.kaufpreis!! * zeile.menge
             val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, Waehrung("CHF")))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
-            val gewinn = BigDecimal.valueOf(zeile.wert!!).subtract(BigDecimal.valueOf(gesamt)).toDouble()
+            val gewinn = zeile.wert!! - gesamt
             compose.onAllNodesWithText(fmtMoney(gewinn, Waehrung("CHF")), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
@@ -925,12 +926,12 @@ class OberflaechenRegelnTest {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
-                        preis = KachelPreis(180.0, null, "kauf"), waehrung = Waehrung("CHF"))
+                        preis = KachelPreis(Geld.aus(180.0), null, "kauf"), waehrung = Waehrung("CHF"))
                 }
                 // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
-                        preis = KachelPreis(812.5, 16.1), waehrung = Waehrung("CHF"))
+                        preis = KachelPreis(Geld.aus(812.5), 16.1), waehrung = Waehrung("CHF"))
                 }
             }
         }

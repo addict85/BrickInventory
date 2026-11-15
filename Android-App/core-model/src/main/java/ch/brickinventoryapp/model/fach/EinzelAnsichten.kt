@@ -1,9 +1,6 @@
-package ch.brickinventoryapp.model.ui.model
+package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.KEINE_FARBE
+import java.time.Instant
 
 /** „Keine Farbe“ für die Oberfläche — derselbe Wert wie im Server-Modell, ein Name. */
 const val OHNE_FARBE: Int = KEINE_FARBE
@@ -26,9 +23,9 @@ data class StartzustandAnsicht(
 }
 
 /** Ein Punkt der Wertentwicklung; [yFrac] ist die Höhe 0..1, wie sie der Server schon gerechnet hat. */
-data class DiagrammPunkt(val xLabel: String, val value: Double, val yFrac: Double)
+data class DiagrammPunkt(val xLabel: String, val wert: Geld, val yFrac: Double)
 
-data class DiagrammAchse(val label: String, val value: Double, val frac: Double)
+data class DiagrammAchse(val label: String, val wert: Geld, val frac: Double)
 
 /** Der Verlauf des Sammlungswerts: je Tag ein Punkt, die Achse und die Veränderung im Zeitraum. */
 data class WertverlaufAnsicht(
@@ -46,11 +43,11 @@ data class GutscheinAnsicht(
     val id: Int,
     val number: String,
     val pin: String?,
-    val amount: Double,
+    val amount: Geld,
     val currency: Waehrung,
     val hatPdf: Boolean,
-    val createdAt: String?,
-    val guthabenGeprueftAm: String?,
+    val createdAt: Instant?,
+    val guthabenGeprueftAm: Instant?,
 )
 
 /** Ein Preisalarm; [unter] ist die Richtung als Wahrheitswert statt als Wort. */
@@ -58,11 +55,11 @@ data class PreisalarmAnsicht(
     val setNumber: String,
     val condition: Zustand,
     val richtung: Alarmrichtung,
-    val schwelle: Double,
+    val schwelle: Geld,
     val currencyCode: Waehrung,
     val ausgeloest: Boolean,
-    val zuletztAm: String?,
-    val zuletztPreis: Double?,
+    val zuletztAm: Instant?,
+    val zuletztPreis: Geld?,
     val name: String?,
     val imageLocal: String?,
     val imageUrl: String?,

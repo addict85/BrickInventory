@@ -1,11 +1,13 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import java.time.Instant
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -116,12 +118,12 @@ internal fun SetDetailScreen(
 
     val acquisitions = detailState.acquisitions
 
-    fun fmtPrice(v: Double?) = if (v == null) "—"
+    fun fmtPrice(v: Geld?) = if (v == null) "—"
         else fmtMoney(v, currency)
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
     // MinifigsScreen in einer zweiten, abweichenden Fassung.
-    fun fmtDate(iso: String?) = fmtTag(iso) ?: iso ?: "—"
+    fun fmtDate(zeit: Instant?) = fmtTag(zeit) ?: "—"
 
     val akzent = LocalAkzentflaechen.current
     // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.

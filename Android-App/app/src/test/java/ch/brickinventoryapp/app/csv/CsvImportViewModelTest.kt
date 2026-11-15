@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.vertrag.CsvImportStatus
-import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
 import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst

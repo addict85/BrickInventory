@@ -24,8 +24,8 @@ import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.finanzen.ui.viewmodel.eingabeUeberMaske
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.ui.model.PIN_MASKE_ANZEIGE
-import ch.brickinventoryapp.model.ui.model.istMaskierteNummer
+import ch.brickinventoryapp.model.fach.PIN_MASKE_ANZEIGE
+import ch.brickinventoryapp.model.fach.istMaskierteNummer
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester

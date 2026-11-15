@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -44,9 +45,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
-import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht
+import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
+import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsRoute
 import ch.brickinventoryapp.gemeinsam.ui.PriceChart
@@ -252,7 +253,7 @@ class GrosseSchriftUndTabletTest {
             val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
                 testKatalogRepository(welt.t.api),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
@@ -271,7 +272,7 @@ class GrosseSchriftUndTabletTest {
 
     private fun verlauf(punkte: Int) = PreisDiagrammAnsicht(
         values = listOf(PreisReiheAnsicht("N",
-            (1..punkte).map { PreisPunktAnsicht("2026-0$it-01", 700.0 + 10 * it) })))
+            (1..punkte).map { PreisPunktAnsicht("2026-0$it-01", Geld.aus(700.0 + 10 * it)!!) })))
 
     /** Zwei Punkte ohne Achse lasen sich wie ein Trend; erst ab drei steht eine Linie da. */
     @Test

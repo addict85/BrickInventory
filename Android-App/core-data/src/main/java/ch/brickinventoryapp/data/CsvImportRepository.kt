@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch

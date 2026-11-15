@@ -36,7 +36,7 @@ import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.DesignWahl
 import ch.brickinventoryapp.konto.ui.KontoUiState
-import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.ProfilAnsicht
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.ui.components.AuswahlFeld
 import ch.brickinventoryapp.ui.components.SettingsCard

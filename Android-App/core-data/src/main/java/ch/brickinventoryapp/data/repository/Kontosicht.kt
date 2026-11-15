@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
@@ -12,10 +14,10 @@ import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.api.alsAbfrage
 import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.ui.model.FigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
-import ch.brickinventoryapp.model.ui.model.TeilAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -95,7 +97,7 @@ class Kontosicht @Inject constructor(
     data class SetsAbfrage(val konten: Kontoauswahl?, val suche: String?, val thema: String?,
                            val sort: Setsortierung?, val lagerort: String?)
     data class MerkAbfrage(val konten: Kontoauswahl, val suche: String?, val zustand: Zustand?, val sort: Merksortierung?)
-    data class TeileAbfrage(val konten: Kontoauswahl?, val suche: String?, val farbe: String?, val kategorie: String?,
+    data class TeileAbfrage(val konten: Kontoauswahl?, val suche: String?, val farbe: Farbwahl, val kategorie: Kategoriewahl,
                             val ersatzteile: Ersatzteilwahl, val mitSets: Boolean, val lagerort: String?)
     data class ManuelleAbfrage(val konten: Kontoauswahl?, val suche: String?, val lagerort: String?)
     data class FigurenAbfrage(val konten: Kontoauswahl, val suche: String?)
@@ -115,7 +117,7 @@ class Kontosicht @Inject constructor(
     val teileliste = Serversicht<TeileAbfrage, TeilAnsicht>(ablage, arrayOf(Faecher.TEILE)) { a ->
         alleSeiten({ it.parts }, { "${it.partNumber}|${it.colorId}|${it.isSpare}" }, { it.total }, wiederholung) { seite ->
             sicherAufrufen {
-                teile.getParts(search = a.suche, color = a.farbe, category = a.kategorie, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten?.anfrage,
+                teile.getParts(search = a.suche, color = a.farbe.wert, category = a.kategorie.wert, page = seite, pageSize = 500, excludeManual = "1", accounts = a.konten?.anfrage,
                     spare = a.ersatzteile.alsAbfrage(), withSets = mitSetsAlsAbfrage(a.mitSets), storage = a.lagerort)
             }
         }.abgebildet { l -> l.map { it.alsAnsicht() } }

@@ -113,7 +113,7 @@ class NumberFormatTest {
 
     @Test
     fun `fehlender Betrag ergibt einen Gedankenstrich`() {
-        assertEquals("—", fmtMoneyOrDash(null, Waehrung("CHF")))
+        assertEquals("—", fmtMoneyOrDash(null as String?, Waehrung("CHF")))
         assertEquals("—", fmtMoneyOrDash("keine Zahl", Waehrung("CHF")))
         assert(fmtMoneyOrDash("12.5", Waehrung("CHF")).contains("12")) { "gültiger Wert muss durchkommen" }
     }

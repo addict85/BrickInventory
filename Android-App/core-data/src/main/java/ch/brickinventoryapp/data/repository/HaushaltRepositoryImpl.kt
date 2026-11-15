@@ -2,10 +2,10 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Kaufaenderung
 import ch.brickinventoryapp.model.fach.Kaufkorrektur
-import ch.brickinventoryapp.model.ui.model.EinladungAnsicht
-import ch.brickinventoryapp.model.ui.model.HaushaltStatusAnsicht
-import ch.brickinventoryapp.model.ui.model.KaeufeAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.EinladungAnsicht
+import ch.brickinventoryapp.model.fach.HaushaltStatusAnsicht
+import ch.brickinventoryapp.model.fach.KaeufeAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.vertrag.AcquisitionsResponse
@@ -116,4 +116,5 @@ class HaushaltRepositoryImpl @Inject constructor(
 private fun AcquisitionsResponse.alsKaeufe() = KaeufeAnsicht(acquisitions.map { it.alsAnsicht() }, totals.alsAnsicht())
 
 private fun Kaufkorrektur.fuerStueck() =
-    aenderungFuerStueck(preis = preis, condition = zustand, quantity = menge, date = datum, ownerUserId = besitzer)
+    aenderungFuerStueck(preis = preis?.alsDouble(), condition = zustand, quantity = menge, date = datum?.toString(),
+        ownerUserId = besitzer)

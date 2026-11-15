@@ -5,11 +5,14 @@ import ch.brickinventoryapp.vertrag.Instruction
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.MerkpostenAlarm
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.model.ui.model.AnleitungAnsicht
-import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAlarmAnsicht
-import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
-import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.fach.AnleitungAnsicht
+import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAlarmAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.alsGeldPflicht
+import ch.brickinventoryapp.model.util.zeitpunkt
 
 fun SetItem.alsAnsicht() = SetAnsicht(
     setNumber = setNumber,
@@ -21,13 +24,13 @@ fun SetItem.alsAnsicht() = SetAnsicht(
     quantity = quantity,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    addedAt = addedAt,
+    addedAt = zeitpunkt(addedAt),
     condition = condition,
     storage = storage,
     conditions = conditions,
     owners = owners.map { it.alsAnsicht() },
-    maxPurchasePrice = maxPurchasePrice,
-    avgPurchasePrice = avgPurchasePrice,
+    maxPurchasePrice = maxPurchasePrice.alsGeld(),
+    avgPurchasePrice = avgPurchasePrice.alsGeld(),
     usedCount = usedCount,
     instructions = instructions.map { it.alsAnsicht() },
     bricklink = bricklink?.alsAnsicht(),
@@ -53,14 +56,14 @@ fun BrickLinkRef.alsAnsicht() = BrickLinkAnsicht(
 fun Merkposten.alsAnsicht() = MerkpostenAnsicht(
     setNumber = setNumber,
     condition = condition,
-    createdAt = createdAt,
+    createdAt = zeitpunkt(createdAt),
     userId = userId,
     name = name,
     year = year,
     numParts = numParts,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    marktpreis = marktpreis,
+    marktpreis = marktpreis.alsGeld(),
     waehrung = waehrung,
     owned = owned,
     alarm = alarm?.alsAnsicht(),
@@ -69,6 +72,6 @@ fun Merkposten.alsAnsicht() = MerkpostenAnsicht(
 
 fun MerkpostenAlarm.alsAnsicht() = MerkpostenAlarmAnsicht(
     richtung = richtung,
-    schwelle = schwelle,
+    schwelle = schwelle.alsGeldPflicht(),
     ausgeloest = ausgeloest,
 )

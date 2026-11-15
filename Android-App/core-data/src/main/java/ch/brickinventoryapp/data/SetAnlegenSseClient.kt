@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.di.SseClient
@@ -42,7 +43,7 @@ internal class SetAnlegenSseClient @Inject constructor(
      * keinen Abbrechen-Knopf. Der letzte Schritt ist immer Fertig, Fehler oder KeineVerbindung.
      */
     override fun anlegen(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetAnlegenSchritt> {
         // Adresse und Token setzt der Wächter des Clients, wie bei jedem Abruf.
@@ -73,7 +74,7 @@ internal class SetAnlegenSseClient @Inject constructor(
      * Text geht durch den Serialisierer, sonst zerbräche ein Anführungszeichen den Rumpf.
      */
     private fun anlegeRumpf(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): RequestBody {
         val felder = buildList {

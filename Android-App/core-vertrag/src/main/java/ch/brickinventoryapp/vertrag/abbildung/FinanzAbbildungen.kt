@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.vertrag.abbildung
 
-import ch.brickinventoryapp.model.ui.model.WertverlaufAnsicht
+import ch.brickinventoryapp.model.fach.WertverlaufAnsicht
 import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
 
 import ch.brickinventoryapp.vertrag.DashboardStats
@@ -12,15 +12,17 @@ import ch.brickinventoryapp.vertrag.PnlTotals
 import ch.brickinventoryapp.vertrag.Totals
 import ch.brickinventoryapp.vertrag.ValuationResponse
 import ch.brickinventoryapp.vertrag.ValuationSet
-import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.BewertungSetAnsicht
-import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnSummenAnsicht
-import ch.brickinventoryapp.model.ui.model.GewinnZeileAnsicht
-import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
-import ch.brickinventoryapp.model.ui.model.SummenAnsicht
-import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
+import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.fach.GewinnAnsicht
+import ch.brickinventoryapp.model.fach.GewinnSummenAnsicht
+import ch.brickinventoryapp.model.fach.GewinnZeileAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.SummenAnsicht
+import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.util.zeitpunkt
 
 /** total_parts ist hier schon die Summe; set_parts fehlt bei älteren Servern, dann aus der Differenz. */
 fun DashboardStats.alsAnsicht() = KennzahlenAnsicht(
@@ -56,14 +58,14 @@ fun PnlResponse.alsAnsicht() = GewinnAnsicht(
 fun PnlSetZeile.alsAnsicht() = GewinnZeileAnsicht(
     setNumber = setNumber,
     quantity = quantity,
-    currentPrice = currentPrice,
-    baselinePrice = baselinePrice,
+    currentPrice = currentPrice.alsGeld(),
+    baselinePrice = baselinePrice.alsGeld(),
     pnlPct = pnlPct,
     baselinePnlPct = baselinePnlPct,
-    pnlBetrag = pnlBetrag,
+    pnlBetrag = pnlBetrag.alsGeld(),
     pnlProzent = pnlProzent,
     baselinePnlProzent = baselinePnlProzent,
-    kachelPreis = kachelPreis,
+    kachelPreis = kachelPreis.alsGeld(),
     kachelPnlPct = kachelPnlPct,
     kachelQuelle = kachelQuelle,
 )
@@ -97,19 +99,19 @@ fun ValuationResponse.alsAnsicht() = BewertungAnsicht(
 
 fun ValuationSet.alsAnsicht() = BewertungSetAnsicht(
     setNumber = setNumber,
-    addedAt = addedAt,
+    addedAt = zeitpunkt(addedAt),
     name = name,
     year = year,
     quantity = quantity,
     imageLocal = imageLocal,
     imageUrl = imageUrl,
-    avgPrice = avgPrice,
-    qtyAvgPrice = qtyAvgPrice,
+    avgPrice = avgPrice.alsGeld(),
+    qtyAvgPrice = qtyAvgPrice.alsGeld(),
     totalQtyAvg = totalQtyAvg,
     totalAvg = totalAvg,
-    wertGesamt = wertGesamt,
+    wertGesamt = wertGesamt.alsGeld(),
     pnlProzent = pnlProzent,
-    purchasePrice = purchasePrice,
+    purchasePrice = purchasePrice.alsGeld(),
     noPrice = noPrice,
     acquisitions = acquisitions.map { it.alsAnsicht() },
     mixed = mixed,

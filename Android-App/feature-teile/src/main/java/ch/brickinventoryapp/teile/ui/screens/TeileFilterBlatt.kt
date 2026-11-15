@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Kategoriewahl
+import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -11,8 +13,8 @@ import ch.brickinventoryapp.teile.ui.TeileUiState
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
-import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.gemeinsam.ui.AnsichtAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.FilterAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen
@@ -44,8 +46,8 @@ internal fun TeileFilterBlatt(
         if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
         if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
         if (ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
-        if (farbe.isNotBlank()) aktionen.setPartsColorFilter("")
-        if (kategorie.isNotBlank()) aktionen.setPartsCategoryFilter("")
+        if (farbe != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
+        if (kategorie != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
     }
     val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
     FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
@@ -67,10 +69,10 @@ internal fun TeileFilterBlatt(
                 TeileFilterZeile(
                     farben = farbEintraege,
                     kategorien = kategorieEintraege,
-                    farbeGewaehlt = farbe,
-                    kategorieGewaehlt = kategorie,
-                    onFarbe = { aktionen.setPartsColorFilter(it) },
-                    onKategorie = { aktionen.setPartsCategoryFilter(it) },
+                    farbeGewaehlt = farbe.wert.orEmpty(),
+                    kategorieGewaehlt = kategorie.wert.orEmpty(),
+                    onFarbe = { aktionen.setPartsColorFilter(Farbwahl.aus(it)) },
+                    onKategorie = { aktionen.setPartsCategoryFilter(Kategoriewahl.aus(it)) },
                 )
             }
         }

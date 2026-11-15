@@ -29,7 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import androidx.compose.foundation.text.KeyboardActions
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.ui.util.NumericInput
@@ -237,7 +237,7 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
         keyboardOptions = NumericInput.preisTastatur(), shape = Formen.feld,
         modifier = Modifier.betragsbreite(),
     )
-    val bereit = nummer.isNotBlank() && (Alarmeingabe.zahl(schwelle) ?: 0.0) > 0.0
+    val bereit = nummer.isNotBlank() && Alarmeingabe.zahl(schwelle) != null
     if (!bereit) SperrGrund(stringResource(R.string.alerts_anlegen_sperrgrund))
     Button(
         onClick = { aktionen.legeAlarmAn(nummer, zustand, richtung, schwelle); nummer = ""; schwelle = "" },

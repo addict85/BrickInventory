@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sitzung
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.StartzustandAnsicht
 import ch.brickinventoryapp.model.ui.theme.Design
 
 /**
