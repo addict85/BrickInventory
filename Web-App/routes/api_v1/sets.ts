@@ -1,7 +1,6 @@
 /** /api/v1/sets — Anlegen, Lesen, Ändern und Löschen eines Sets. Lager und Alarme,
  * Import und Anleitungen hängen als eigene Router daneben (index.ts). Die Arbeit liegt in src/sets/. */
 import { sichtVon, waechterFuer } from './middleware';
-import { normalisiereSetNummer } from '../../src/infra/setNummer';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
@@ -19,13 +18,11 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
 
   /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt). */
   router.endpunkt('GET /api/v1/sets/exists/:setNumber', requireToken, async req => {
-    const sn = req.pfad.setNumber;
-    const treffer = await d.sets.findeSetImBlickfeld(req.apiUser.user_id, sn);
-    return { exists: !!treffer, ...(treffer || { set_number: normalisiereSetNummer(sn) }) };
+    return d.sets.setVorhanden(req.apiUser.user_id, req.pfad.setNumber);
   });
 
   router.endpunkt('GET /api/v1/sets/barcode/:barcode', requireToken, async req => {
-    const barcode = req.pfad.barcode.trim();
+    const barcode = req.pfad.barcode;
     return { ...((await d.sets.setZumBarcode(barcode)) ?? nichtGefunden('barcode_kein_set', { barcode })) };
   });
 

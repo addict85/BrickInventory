@@ -21,7 +21,7 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
     () => ({}),
     (sk: SetsKontext) => ({
       erfassungBuchen: mit(sk)(erfassen.erfassungBuchen),
-      findeSetImBlickfeld: mit(sk)(erfassen.findeSetImBlickfeld),
+      setVorhanden: mit(sk)(erfassen.setVorhanden),
       setsDesKontos: mit(sk.db, setsRepo.setsDesKontos),
       setErfassen: mit(sk)(erfassen.setErfassen),
       setErgaenzen: mit(sk)(erfassen.setErgaenzen),

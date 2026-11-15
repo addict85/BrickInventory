@@ -54,6 +54,12 @@ export async function findeSetImBlickfeld(
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
 
+/** Für „gibt es das schon?“: ohne Treffer die Nummer so, wie sie angelegt würde. */
+export async function setVorhanden(sk: SetsKontext, viewerId: number, setNumber: string) {
+  const treffer = await findeSetImBlickfeld(sk, viewerId, setNumber);
+  return { exists: !!treffer, ...(treffer ?? { set_number: normalisiereSetNummer(setNumber) }) };
+}
+
 /** ergaenzen (= neu): angelegt; zweit: ein vorhandenes Set aufgestockt; csv: aus dem CSV-Import. */
 export type NacharbeitArt = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
