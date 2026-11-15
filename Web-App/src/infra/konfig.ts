@@ -273,9 +273,15 @@ export const ALTSCHLUESSEL_STICHTAG = '2027-02-01';
 function altschluesselBis(env: Umgebung, fehler: string[]): Date {
   const roh = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || ALTSCHLUESSEL_STICHTAG;
   const d = /^\d{4}-\d{2}-\d{2}$/.test(roh) ? new Date(`${roh}T00:00:00Z`) : new Date(Number.NaN);
-  if (!Number.isNaN(d.getTime())) return d;
-  fehler.push(`GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`);
-  return new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
+  const stichtag = new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
+  // Nur früher, nie später: Ein Datum in ferner Zukunft liesse unattestierte Schlüssel auf Dauer gelten.
+  if (d.getTime() <= stichtag.getTime()) return d;
+  fehler.push(
+    Number.isNaN(d.getTime())
+      ? `GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`
+      : `GERAETESCHLUESSEL_ALT_BIS="${roh}" liegt nach ${ALTSCHLUESSEL_STICHTAG}; nur ein früheres Datum ist erlaubt`,
+  );
+  return stichtag;
 }
 
 function patchMindestens(env: Umgebung, fehler: string[]): number | null {

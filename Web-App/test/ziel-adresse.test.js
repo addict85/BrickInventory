@@ -18,6 +18,8 @@
  *   G  in normalisiert() die IPv4-kompatiblen (::/96) nicht erkannt → rot:
  *      „IPv4-kompatible Adressen …“ (::127.0.0.1 galt als öffentlich und
  *      erreichte den Mailserver im Container)
+ *   H  (15.11.2026) die Dokumentationsnetze, 192.88.99.0/24 und fec0::/10 aus INTERN
+ *      gestrichen → rot: „Dokumentations-, 6to4-Relais- und Site-Local-Netze …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -74,6 +76,23 @@ test('öffentlich heisst: nicht privat, Loopback, Link-Local, ULA oder CGNAT', (
   ])
     assert.equal(Z.oeffentlicheAdresse(ip), false, ip);
   for (const ip of ['104.20.1.1', '1.1.1.1', '2606:4700::1111']) assert.equal(Z.oeffentlicheAdresse(ip), true, ip);
+});
+
+test('Dokumentations-, 6to4-Relais- und Site-Local-Netze sind kein öffentliches Ziel', () => {
+  for (const ip of [
+    '192.0.2.10',
+    '198.51.100.7',
+    '203.0.113.200',
+    '192.88.99.1',
+    'fec0::1',
+    'feff::1',
+    '2001:db8::5',
+    '::ffff:203.0.113.5',
+  ])
+    assert.equal(Z.oeffentlicheAdresse(ip), false, ip);
+  // Die Nachbarn bleiben öffentlich: Die Netze sind nicht zu weit gefasst.
+  for (const ip of ['192.0.3.1', '198.51.101.1', '203.0.114.1', '192.88.100.1', 'fe00::1'])
+    assert.equal(Z.oeffentlicheAdresse(ip), true, ip);
 });
 
 test('der Mailserver darf im eigenen Netz stehen, nur nicht in dem des Containers', () => {

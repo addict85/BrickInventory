@@ -20,11 +20,23 @@ const liste = (v4: string[], v6: string[]) => {
 /** Nie ein Ziel: Selbst, Link-Local (Metadatendienste der Clouds), Multicast. */
 const NIE = liste(['0.0.0.0/8', '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4'], ['::/128', 'fe80::/10', 'ff00::/8']);
 const LOOPBACK = liste(['127.0.0.0/8'], ['::1/128']);
-/** Privat, CGNAT, ULA und Dokumentation: Für einen öffentlichen Dienst gibt es dort nichts zu holen.
- * 6to4 und Teredo tragen eine IPv4-Adresse, die ein Relais beliebig ansteuert; beide sind veraltet. */
+/** Privat, CGNAT, ULA, Site-Local und Dokumentation: Für einen öffentlichen Dienst gibt es dort nichts
+ * zu holen, ein Betreiber kann sie aber intern vergeben. 6to4 (samt Relais-Anycast 192.88.99.0/24) und
+ * Teredo tragen eine IPv4-Adresse, die ein Relais beliebig ansteuert; beide sind veraltet. */
 const INTERN = liste(
-  ['10.0.0.0/8', '100.64.0.0/10', '172.16.0.0/12', '192.168.0.0/16', '192.0.0.0/24', '198.18.0.0/15'],
-  ['fc00::/7', '64:ff9b:1::/48', '2002::/16', '2001::/32'],
+  [
+    '10.0.0.0/8',
+    '100.64.0.0/10',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+    '192.0.0.0/24',
+    '198.18.0.0/15',
+    '192.0.2.0/24',
+    '198.51.100.0/24',
+    '203.0.113.0/24',
+    '192.88.99.0/24',
+  ],
+  ['fc00::/7', 'fec0::/10', '64:ff9b:1::/48', '2002::/16', '2001::/32', '2001:db8::/32'],
 );
 
 /** Die acht 16-Bit-Gruppen einer gültigen IPv6-Adresse (Zone und IPv4-Schreibweise am Ende erlaubt). */

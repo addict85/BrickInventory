@@ -9,8 +9,8 @@
  *      rot: „der Proxy legt die Rückfall-Adresse lokal ab“
  *   B  in 0101 die Zeile für images.brickset.com gestrichen → rot:
  *      „BrickLink und Brickset zeigen danach auf Rebrickable“
- *   C  in setNummerAusBildAdresse() den Unterordner `(?:\/\d{1,12})?` gestrichen
- *      → rot: „auch die Adresse mit Bild-Nummer wird lokal abgelegt“
+ *   C  (15.11.2026, umgekehrt) in setNummerAusBildAdresse() den Unterordner
+ *      `(?:\/\d{1,12})?` wieder zugelassen → rot: „nur das Hauptbild …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -39,13 +39,10 @@ test('der Proxy legt die Rückfall-Adresse lokal ab', () => {
   assert.equal(setNummerAusBildAdresse(adresse), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
 });
 
-test('auch die Adresse mit Bild-Nummer wird lokal abgelegt, fremde nicht', () => {
-  assert.equal(
-    setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg'),
-    '75192-1',
-    'auch die Adresse mit Bild-Nummer wird lokal abgelegt',
-  );
+test('nur das Hauptbild wird lokal abgelegt, kein Zusatzbild und nichts Fremdes', () => {
   for (const fremd of [
+    'https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg',
+    'https://cdn.rebrickable.com/media/sets/75192-1.png',
     'https://cdn.rebrickable.com/media/parts/elements/300121.jpg',
     'https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg?x=1',
     'https://img.bricklink.com/ItemImage/SN/0/75192-1.png',

@@ -65,7 +65,8 @@ import java.util.Locale
  * Ersetzt die Quelltextsuche nach kleinen IconButtons (TouchTargetSizeTest).
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   tippziel-klein         Schalterzeile „Vorschau verbergen“ nur 40 dp hoch → rot „einstellungen“
+ *   tippziel-klein         „Nach Update suchen“ ohne heightIn, Material-Knopf 40 dp → rot „einstellungen“
+ *                          (eine 40-dp-Zeile ohne eigene Form blieb grün: touchBoundsInRoot dehnt sie auf 48 dp)
  *   tippziel-ohne-namen    Erfassen-Knopf ohne Beschreibung → rot „galerie“ (ohne Namen)
  */
 @RunWith(RobolectricTestRunner::class)
