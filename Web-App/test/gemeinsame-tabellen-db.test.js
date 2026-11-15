@@ -46,8 +46,8 @@
  *      rot: „… aufwärts über db/“ ['src/bilder → price_alerts', 'src/bilder → sets', 'src/bilder → wanted']
  *   N  src/katalog/repository/katalogSuche.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
  *      dieselbe Prüfung, ['src/katalog → set_acquisitions']
- *   O  setBestand in db/bestandSicht.ts liest `sets` über eine Konstante statt im Text → rot am
- *      Selbstbeweis (setBestand liest sets)
+ *   O  setBestand in db/bestandSicht.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
+ *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
  *
  * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
  * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
@@ -283,8 +283,14 @@ async function lesebausteine(_req) {
         for (const m of String(sql).matchAll(LESE)) tabellen.add(m[1]);
       };
       const zugang = {
-        get: async sql => (merke(sql), null),
-        all: async sql => (merke(sql), []),
+        get: async sql => {
+          merke(sql);
+          return null;
+        },
+        all: async sql => {
+          merke(sql);
+          return [];
+        },
         run: async sql => merke(sql),
         toString: () => '$9',
       };
@@ -292,6 +298,8 @@ async function lesebausteine(_req) {
       else if (typeof wert === 'function')
         for (const art of ['part', 'fig', 'set']) {
           const proben = [
+            [],
+            ['= ANY($1)'],
             [art, '$1', ['3001', 4], zugang],
             ['s', art, 'tm', '= ANY($1)'],
             ['$1', '$2', zugang],
