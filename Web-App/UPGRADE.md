@@ -2251,3 +2251,22 @@ wird). Hinweise:
 - **Bedrohungsmodell:** `docs/SICHERHEIT.md` hält fest, dass Web- und
   Jobs-Prozess beide Rollen halten: Zeilenschutz und Rollenrechte fangen
   Logikfehler, keine Codeausführung im Prozess.
+
+## 64. Runde 26 – Attestation-Kette, Tagesgrenze je Adresse, Host-Filter ohne Basis-URL
+
+- **Attestation:** Den Geräteschlüssel des Schrittschutzes nimmt der Server nur
+  noch mit einer Kette an, in der jedes Glied ausser dem Blatt ein CA-Zertifikat
+  ist und keines ausser dem Blatt eine KeyDescription trägt. Echte Keystore-Ketten
+  erfüllen das. Nichts zu tun.
+- **Tagesgrenze der Anmeldung:** Die 50 Fehlversuche je Tag zählen an Adressen,
+  von denen sich das Konto in den letzten 30 Tagen angemeldet hat, je Adresse für
+  sich, an allen anderen gemeinsam. Ein Fremder sperrt den Inhaber so nicht mehr an
+  dessen eigenen Geräten aus. Zähler von vor dem Update gelten als gemeinsame.
+  Nichts zu tun.
+- **Ohne `APP_BASE_URL` nur IP-Adressen:** Wer bewusst mit
+  `APP_BASE_URL_FEHLT_OK=1` startet, bekommt unter einem Namen (etwa
+  `http://nas.local:3000`) jetzt 421 `fremder_host`; Loopback und IP-Adressen gehen
+  weiter. **Zu tun**, falls die App unter einem Namen erreichbar sein soll:
+  `APP_BASE_URL` in `.env` setzen (compose setzt sie aus `BRICK_HOST` ohnehin).
+- **Systemrolle:** Der Web-Prozess behält die Zugangsdaten der Systemrolle; warum,
+  steht in `docs/SICHERHEIT.md` („Was der Zeilenschutz nicht leistet“).
