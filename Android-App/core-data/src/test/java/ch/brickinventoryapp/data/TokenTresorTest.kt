@@ -53,6 +53,7 @@ import java.io.IOException
  *                                   rot „gesperrt bleibt die fruehere Form liegen …“
  *   hochstufen-erst-beim-start      stufeTokenHoch() ohne Wirkung → rot „nach dem Entsperren kommt
  *                                   ein Token …“
+ *   token-alter-alias-bleibt        stufeTokenHoch() ohne vergissAltbestand → rot, derselbe Test
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -60,6 +61,9 @@ class TokenTresorTest {
 
     /** Umkehrbar, aber erkennbar anders als der Klartext; [kaputt]: Schlüssel weg. */
     private class Attrappe(val kaputt: Boolean = false) : TokenVerschluesselung {
+        /** Wie oft der Schlüssel selbst gelöscht wurde. */
+        var vergessen = 0
+        override fun vergiss() { vergessen++ }
         override fun verschluessle(klartext: String) = "ENC(" + klartext.reversed() + ")"
         override fun entschluessle(gespeichert: String): String? =
             if (kaputt || !gespeichert.startsWith("ENC(") || !gespeichert.endsWith(")")) null
@@ -241,15 +245,18 @@ class TokenTresorTest {
     fun `nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter den strengen`() {
         lege(geheim = "ENC(tla)")
         var gesperrt = true
-        val tresor = EntsperrTresor(Streng { gesperrt }, Attrappe())
+        val alt = Attrappe()
+        val tresor = EntsperrTresor(Streng { gesperrt }, alt)
         val prefs = start(tresor)
         runBlocking { prefs.stufeTokenHoch() }
         assertEquals("Gesperrt bleibt es, wie es ist", "ENC(tla)", platte()[TokenAblage.AUTH_TOKEN_ENC])
+        assertEquals("Gesperrt bleibt der alte Schlüssel", 0, alt.vergessen)
 
         gesperrt = false
         runBlocking { prefs.stufeTokenHoch() }
         val geheim = platte()[TokenAblage.AUTH_TOKEN_ENC]!!
         assertFalse("Hochgestuft ohne Neustart: $geheim", tresor.veraltet(geheim))
         assertEquals("alt", runBlocking { prefs.tokenJetzt() })
+        assertEquals("Der alte Schlüssel ist danach gelöscht", 1, alt.vergessen)
     }
 }
