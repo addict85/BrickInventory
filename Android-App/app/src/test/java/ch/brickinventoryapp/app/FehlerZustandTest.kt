@@ -124,10 +124,10 @@ class FehlerZustandTest {
         assertTrue("Teilefehler", vm.teileState.value.teileAbruf is Laden.Fehler)
         val fig = t.merke(FigurenViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
         fig.loadMinifigs()
-        assertTrue("Figurenfehler", fig.figurenState.value.figurenAbruf is Laden.Fehler)
+        assertTrue("Figurenfehler", fig.figurenZustand.value.figurenAbruf is Laden.Fehler)
         assertTrue(vm.teileState.value.teileAbruf.fehlerMeldung != null)
         assertEquals(Fehlerklasse.SERVER, vm.teileState.value.teileAbruf.fehlerArt)
-        assertEquals(Fehlerklasse.SERVER, fig.figurenState.value.figurenAbruf.fehlerArt)
+        assertEquals(Fehlerklasse.SERVER, fig.figurenZustand.value.figurenAbruf.fehlerArt)
     }
 
     @Test

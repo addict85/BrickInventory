@@ -117,7 +117,7 @@ class ManualItemsFirstTest {
         welt.pfade.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
         val vm = welt.figuren().also { it.loadMinifigs() }
-        warte("Figuren") { vm.figurenState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
+        warte("Figuren") { vm.figurenZustand.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
         zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
         val kopf = oben(ctx.getString(R.string.minifigs_manual_section))
         val kachel = oben("Prinzessin Leia manuell")

@@ -128,7 +128,7 @@ class TeileViewModelTest {
 
         pfade.neuerProzess(io = takt) { _, t ->
             val neu = figurenVm(gemerkt, t)
-            assertEquals("han" to Listenansicht.TABELLE, neu.figurenState.value.let { it.minifigsQuery to it.minifigsView })
+            assertEquals("han" to Listenansicht.TABELLE, neu.figurenZustand.value.let { it.minifigsQuery to it.minifigsView })
             assertNull(neu.kontoFuer(ScopeFilter.View.MINIFIGS))
         }
     }
@@ -147,10 +147,10 @@ class TeileViewModelTest {
             assertTrue(pfad, pfade.anfragenAn(pfad).isNotEmpty())
         seite.cancel()
 
-        CoroutineScope(takt).launch { fig.figurenState.collect {} }.cancel()
+        CoroutineScope(takt).launch { fig.figurenZustand.collect {} }.cancel()
         val figurenAbrufe = pfade.anfragenAn("GET /api/v1/minifigs").size
-        assertTrue("die Figuren geladen", figurenAbrufe > 0 && fig.figurenState.value.minifigs.isNotEmpty())
-        CoroutineScope(takt).launch { fig.figurenState.collect {} }.cancel()
+        assertTrue("die Figuren geladen", figurenAbrufe > 0 && fig.figurenZustand.value.minifigs.isNotEmpty())
+        CoroutineScope(takt).launch { fig.figurenZustand.collect {} }.cancel()
         assertEquals("schon da: nicht noch einmal", figurenAbrufe, pfade.anfragenAn("GET /api/v1/minifigs").size)
     }
 

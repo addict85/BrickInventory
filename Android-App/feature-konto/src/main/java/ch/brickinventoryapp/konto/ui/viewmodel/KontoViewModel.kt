@@ -64,11 +64,11 @@ class KontoViewModel @Inject constructor(
      * Der Kontozustand, wie ihn die Kontoseite liest: Nur wer sie öffnet, lädt Profil und
      * Design. Die Startpasswort-Maske liest [kontoState] und lädt nichts.
      */
-    private val kontoSeite = Beobachtet(kontoState)
-    val kontoSeitenState: StateFlow<KontoUiState> = kontoSeite
+    private val seiteBeobachtet = Beobachtet(kontoState)
+    val kontoSeite: StateFlow<KontoUiState> = seiteBeobachtet
 
     init {
-        ladeBeimBeobachten(kontoSeite) { ladeProfil(); ladeDesign() }
+        ladeBeimBeobachten(seiteBeobachtet) { ladeProfil(); ladeDesign() }
         ladeBeimBeobachten(_geraeteState) { ladeGeraete() }
         ladeBeimBeobachten(_zweiterFaktorState) { ladeZweitenFaktor() }
     }

@@ -47,7 +47,7 @@ class FigurenViewModel @Inject constructor(
     private val gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter, FigurenAktionen, MitSetItem {
 
-    internal val state: StateFlow<TeileSitzungUiState> =
+    internal val sitzungsWerte: StateFlow<TeileSitzungUiState> =
         sitzung.state.abgeleitet { TeileSitzungUiState(it.serverUrl, it.currency, it.userDefaultCondition) }
 
     init {
@@ -85,19 +85,19 @@ class FigurenViewModel @Inject constructor(
         return if (r is Ergebnis.Error) r else kontosicht.manuelleFiguren.aktualisiere(a)
     }
 
-    private val figurenBeobachtet = Beobachtet(liste.state)
-    val figurenState: StateFlow<FigurenUiState> = figurenBeobachtet
+    private val figurenBeobachtet = Beobachtet(liste.zustand)
+    val figurenZustand: StateFlow<FigurenUiState> = figurenBeobachtet
 
-    private val setItem = SetItemAblauf(viewModelScope, Postenart.FIG,
+    private val inSets = SetItemAblauf(viewModelScope, Postenart.FIG,
         abfrage = { nummer, _ -> figuren.getSetsMitFigur(nummer, konto) },
         nachKopf = filter::loadLagerortVorrat)
-    override val setItemState: StateFlow<SetItemUiState> = setItem.state
+    override val setItemState: StateFlow<SetItemUiState> = inSets.zustand
 
     init {
         viewModelScope.launch { aenderungen.figurenGeaendert().collect { liste.ladeKennzahlen() } }
         liste.stelleWieder(gemerkt[F_SUCHE] ?: "", gemerkt[F_ANSICHT] ?: Listenansicht.KARTEN)
         // Nur eine leere Liste holen: Die Ablage hält sie danach selbst aktuell.
-        ladeJeServer(sitzung, figurenBeobachtet) { if (liste.state.value.minifigs.isEmpty()) loadMinifigs() }
+        ladeJeServer(sitzung, figurenBeobachtet) { if (liste.zustand.value.minifigs.isEmpty()) loadMinifigs() }
     }
 
     override fun loadMinifigs(debounce: Boolean) = liste.laden(entprellt = debounce)
@@ -128,15 +128,15 @@ class FigurenViewModel @Inject constructor(
             figuren.deleteMinifig(figNumber, owner)
         }
 
-    override fun oeffneSetItem(nummer: String, colorId: Int) = setItem.oeffne(nummer, colorId)
+    override fun oeffneSetItem(nummer: String, colorId: Int) = inSets.oeffne(nummer, colorId)
 
-    override fun schliesseSetItem() = setItem.schliesse()
+    override fun schliesseSetItem() = inSets.schliesse()
 
     override fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) = Unit
 
     private fun zuruecksetzen() {
         liste.zuruecksetzen()
-        setItem.schliesse()
+        inSets.schliesse()
         gemerkt.remove<String>(F_SUCHE)
         gemerkt.remove<Listenansicht>(F_ANSICHT)
     }

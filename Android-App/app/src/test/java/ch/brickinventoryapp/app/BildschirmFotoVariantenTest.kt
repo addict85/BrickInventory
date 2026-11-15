@@ -411,8 +411,8 @@ class BildschirmFotoVariantenTest {
     @Test
     fun figurenSchrift200() {
         val vm = welt.figuren().also { it.loadMinifigs() }
-        zeige("figuren-schrift200", schrift = 2.0f, bereit = { vm.figurenState.value.minifigs.isNotEmpty() },
-            zustand = { vm.figurenState.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        zeige("figuren-schrift200", schrift = 2.0f, bereit = { vm.figurenZustand.value.minifigs.isNotEmpty() },
+            zustand = { vm.figurenZustand.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
         foto("figuren-schrift200")
     }
 
@@ -744,8 +744,8 @@ class BildschirmFotoVariantenTest {
         val teile = if (figur) null else welt.teile().also { it.loadParts() }
         val figuren = if (figur) welt.figuren().also { it.loadMinifigs() } else null
         zeige(name, schrift = schrift,
-            bereit = { figuren?.figurenState?.value?.minifigs?.isNotEmpty() ?: teile!!.teileState.value.parts.isNotEmpty() },
-            zustand = { figuren?.figurenState?.value ?: teile!!.teileState.value }) {
+            bereit = { figuren?.figurenZustand?.value?.minifigs?.isNotEmpty() ?: teile!!.teileState.value.parts.isNotEmpty() },
+            zustand = { figuren?.figurenZustand?.value ?: teile!!.teileState.value }) {
             if (figuren != null) MinifigsRoute(vm = figuren, imageLoader = bilder) else PartsRoute(vm = teile!!, imageLoader = bilder)
         }
         val knopf = ApplicationProvider.getApplicationContext<Context>()

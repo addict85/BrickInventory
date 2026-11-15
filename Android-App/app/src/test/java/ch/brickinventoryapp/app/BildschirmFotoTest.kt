@@ -162,7 +162,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun figuren() {
         val vm = welt.figuren().also { it.loadMinifigs() }
-        foto("figuren", { vm.figurenState.value.minifigs.isNotEmpty() }, { vm.figurenState.value }) {
+        foto("figuren", { vm.figurenZustand.value.minifigs.isNotEmpty() }, { vm.figurenZustand.value }) {
             MinifigsRoute(vm = vm, imageLoader = bilder)
         }
     }

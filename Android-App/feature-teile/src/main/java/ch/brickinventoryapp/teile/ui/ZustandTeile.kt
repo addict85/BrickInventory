@@ -20,6 +20,7 @@ import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
 import ch.brickinventoryapp.model.ui.model.VerwendendesSetAnsicht
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
+import java.io.Serializable
 
 /**
  * Was die Teileliste filtert und wie sie sie zeigt — ein Wert, der als Ganzes im
@@ -39,7 +40,7 @@ data class Teilefilter(
     val farbe: String = "",
     /** Der Wert (`category_name`), nicht die Beschriftung, "" = alle: Der Server filtert danach. */
     val kategorie: String = "",
-) : java.io.Serializable {
+) : Serializable {
     /** Die drei Reihenfolgen der Webapp; die Regeln stehen in sortiert() (TeileOrdnung.kt). */
     enum class Ordnung { FARBE, NAME, MENGE }
 }

@@ -81,7 +81,7 @@ fun ManualItemDetailRoute(
     val state by vm.state.collectAsStateWithLifecycle()
     // Nur die Liste des Eintrags beobachten: Sie lädt beim Beobachten, die andere bliebe ungenutzt.
     val teileZustand = if (type == Postenart.FIG) TeileUiState() else teile.teileState.collectAsStateWithLifecycle().value
-    val figurenZustand = if (type == Postenart.FIG) figuren.figurenState.collectAsStateWithLifecycle().value else FigurenUiState()
+    val figurenZustand = if (type == Postenart.FIG) figuren.figurenZustand.collectAsStateWithLifecycle().value else FigurenUiState()
     val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     ManualItemDetailScreen(

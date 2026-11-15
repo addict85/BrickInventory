@@ -127,7 +127,7 @@ class KontoViewModelTest {
         assertEquals("die Maske lädt nichts", 0, server.requestCount)
         server.enqueue(antwort("""{"success":false,"error":"aus"}""", 500))
         server.enqueue(antwort("""{"success":false,"error":"aus"}""", 500))
-        val seite = CoroutineScope(takt).launch { vm.kontoSeitenState.collect {} }
+        val seite = CoroutineScope(takt).launch { vm.kontoSeite.collect {} }
         bis("Profil und Design geholt") { server.requestCount == 2 }
         maske.cancel()
         seite.cancel()

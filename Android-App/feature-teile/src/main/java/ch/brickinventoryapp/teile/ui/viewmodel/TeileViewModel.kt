@@ -127,10 +127,10 @@ class TeileViewModel @Inject constructor(
     private val teileBeobachtet = Beobachtet(teile.state)
     val teileState: StateFlow<TeileUiState> = teileBeobachtet
 
-    private val setItem = SetItemAblauf(viewModelScope, Postenart.PART,
+    private val inSets = SetItemAblauf(viewModelScope, Postenart.PART,
         abfrage = { nummer, farbe -> repo.getSetsMitTeil(nummer, farbe, teileKonto) },
         nachKopf = filter::loadLagerortVorrat)
-    override val setItemState: StateFlow<SetItemUiState> = setItem.state
+    override val setItemState: StateFlow<SetItemUiState> = inSets.zustand
 
     // Entprellt wie der Preisalarm: Wer „Kiste 3“ tippt, soll nicht fünf halbe
     // Orte im Vorrat hinterlassen, und der Auftrag überlebt das Zurückgehen.
@@ -199,16 +199,16 @@ class TeileViewModel @Inject constructor(
 
     // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
 
-    override fun oeffneSetItem(nummer: String, colorId: Int) = setItem.oeffne(nummer, colorId)
+    override fun oeffneSetItem(nummer: String, colorId: Int) = inSets.oeffne(nummer, colorId)
 
-    override fun schliesseSetItem() = setItem.schliesse()
+    override fun schliesseSetItem() = inSets.schliesse()
 
     override fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) {
         lagerJob?.cancel()
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = repo.setPartStorage(nummer, farbe, ort)) {
-                is Ergebnis.Success -> setItem.mitOrt(r.data)
+                is Ergebnis.Success -> inSets.mitOrt(r.data)
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
@@ -217,7 +217,7 @@ class TeileViewModel @Inject constructor(
     private fun zuruecksetzen() {
         lagerJob?.cancel()
         teile.zuruecksetzen()
-        setItem.schliesse()
+        inSets.schliesse()
         gemerkt.remove<Teilefilter>(F_FILTER)
     }
 

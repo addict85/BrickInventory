@@ -115,7 +115,7 @@ fun KontoRoute(
     konto: KontoViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
-    val kontoZustand by konto.kontoSeitenState.collectAsStateWithLifecycle()
+    val kontoZustand by konto.kontoSeite.collectAsStateWithLifecycle()
     val geraeteZustand by konto.geraeteState.collectAsStateWithLifecycle()
     val zfZustand by konto.zweiterFaktorState.collectAsStateWithLifecycle()
     // Profil, Design, Geräte und zweiter Faktor laden beim Beobachten ihres Zustands (KontoViewModel).

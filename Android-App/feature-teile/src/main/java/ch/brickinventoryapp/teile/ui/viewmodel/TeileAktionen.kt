@@ -9,7 +9,7 @@ import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 import ch.brickinventoryapp.teile.ui.SetItemUiState
-import ch.brickinventoryapp.zustand.ui.LagerUiState
+import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -25,9 +25,8 @@ internal interface SetItemAktionen {
 }
 
 /** Ein ViewModel mit dem Detail „in welchen Sets steckt das“, wie es Liste und Detail lesen. */
-internal interface MitSetItem : SetItemAktionen {
+internal interface MitSetItem : SetItemAktionen, Filterwahl {
     val setItemState: StateFlow<SetItemUiState>
-    val lagerState: StateFlow<LagerUiState>
 }
 
 internal interface TeileAktionen : SetItemAktionen {

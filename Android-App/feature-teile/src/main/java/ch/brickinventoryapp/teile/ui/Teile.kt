@@ -199,13 +199,13 @@ internal class Figuren(
     suchPause: Long = 350,
     private val listen: FigurenLokal,
 ) {
-    private val _state = MutableStateFlow(FigurenUiState())
-    val state: StateFlow<FigurenUiState> = _state.asStateFlow()
-    private val folge = Listenfolge(scope, _state, meldeFehler, suchPause)
+    private val _zustand = MutableStateFlow(FigurenUiState())
+    val zustand: StateFlow<FigurenUiState> = _zustand.asStateFlow()
+    private val folge = Listenfolge(scope, _zustand, meldeFehler, suchPause)
 
     suspend fun ladeKennzahlen() {
         (listen.kennzahlen() as? Ergebnis.Success)
-            ?.let { r -> _state.update { it.copy(minifigStats = r.data) } }
+            ?.let { r -> _zustand.update { it.copy(minifigStats = r.data) } }
     }
 
     /**
@@ -219,12 +219,12 @@ internal class Figuren(
     }
 
     private suspend fun folgeFiguren() {
-        val st = _state.value
+        val st = _zustand.value
         folge.folgeAllen(listOf(
             folge.folge(listen.figuren(st)) { s, l -> s.copy(minifigs = l) },
             folge.folge(listen.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l) },
         ))
-        _state.update { it.copy(figurenAbruf = Laden.Laedt) }
+        _zustand.update { it.copy(figurenAbruf = Laden.Laedt) }
         val r = listen.aktualisiere(st)
         folge.ausgang(r, listen.figuren(st).first().stand,
             { s, stand -> s.copy(figurenAbruf = Laden.Daten(Unit), figurenOfflineStand = stand) },
@@ -232,19 +232,19 @@ internal class Figuren(
     }
 
     fun setzeSuche(q: String) {
-        _state.update { it.copy(minifigsQuery = q) }
+        _zustand.update { it.copy(minifigsQuery = q) }
         laden(entprellt = true)
     }
 
     /** Karten oder Tabelle; ohne Neuladen, die Felder sind schon da. */
-    fun setzeAnsicht(wert: Listenansicht) = _state.update { it.copy(minifigsView = wert) }
+    fun setzeAnsicht(wert: Listenansicht) = _zustand.update { it.copy(minifigsView = wert) }
 
     /** Gemerkte Suche und Ansicht übernehmen, ohne zu laden. */
     fun stelleWieder(suche: String, ansicht: Listenansicht) =
-        _state.update { it.copy(minifigsQuery = suche, minifigsView = ansicht) }
+        _zustand.update { it.copy(minifigsQuery = suche, minifigsView = ansicht) }
 
     fun zuruecksetzen() {
         folge.abbrechen()
-        _state.value = FigurenUiState()
+        _zustand.value = FigurenUiState()
     }
 }

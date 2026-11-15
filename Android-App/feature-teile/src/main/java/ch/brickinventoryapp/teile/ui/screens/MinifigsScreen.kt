@@ -57,10 +57,10 @@ import ch.brickinventoryapp.model.ui.Listenansicht
 
 /** Was der Figuren-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 internal data class FigurenZustand(
-    val state: TeileSitzungUiState,
+    val sitzung: TeileSitzungUiState,
     val blick: BlickfeldUiState,
     val figuren: FigurenUiState,
-    val lagerState: LagerUiState,
+    val lager: LagerUiState,
 )
 
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
@@ -71,9 +71,9 @@ fun MinifigsRoute(
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    val state by vm.state.collectAsStateWithLifecycle()
+    val state by vm.sitzungsWerte.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val figuren by vm.figurenState.collectAsStateWithLifecycle()
+    val figuren by vm.figurenZustand.collectAsStateWithLifecycle()
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
     MinifigsScreen(FigurenZustand(state, blick, figuren, lagerState), vm, imageLoader, onOpenDetail, gridState)
 }
@@ -89,7 +89,7 @@ internal fun MinifigsScreen(
     /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    val state = zustand.state
+    val state = zustand.sitzung
     val blick = zustand.blick
     val partsState = zustand.figuren
 
@@ -105,7 +105,7 @@ internal fun MinifigsScreen(
     val scopeMode = blick.scopeModes[ScopeFilter.View.MINIFIGS]
         ?: ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
-    val lagerState = zustand.lagerState
+    val lagerState = zustand.lager
     // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
     val gewaehlt = LocalOffenesDetail.current
 

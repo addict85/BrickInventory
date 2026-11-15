@@ -23,30 +23,30 @@ internal class SetItemAblauf(
     private val abfrage: suspend (nummer: String, farbe: Int) -> Ergebnis<VerwendungAnsicht>,
     private val nachKopf: (besitzer: List<Int>) -> Unit,
 ) {
-    private val _state = MutableStateFlow(SetItemUiState())
-    val state: StateFlow<SetItemUiState> = _state.asStateFlow()
+    private val _zustand = MutableStateFlow(SetItemUiState())
+    val zustand: StateFlow<SetItemUiState> = _zustand.asStateFlow()
 
     fun oeffne(nummer: String, colorId: Int) {
-        _state.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, abruf = Laden.Laedt)
+        _zustand.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, abruf = Laden.Laedt)
         scope.launch {
             val r = abfrage(nummer, colorId)
             // Inzwischen ein anderes geöffnet? Dann gehört die Antwort nicht mehr hierher.
-            val jetzt = _state.value
+            val jetzt = _zustand.value
             if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
             when (r) {
                 is Ergebnis.Success -> {
-                    _state.update { it.copy(abruf = Laden.Daten(Unit), kopf = r.data.kopf, sets = r.data.sets) }
+                    _zustand.update { it.copy(abruf = Laden.Daten(Unit), kopf = r.data.kopf, sets = r.data.sets) }
                     // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer, nicht dem Betrachter.
                     nachKopf(r.data.kopf?.ownerIds ?: emptyList())
                 }
-                is Ergebnis.Error -> _state.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Error -> _zustand.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }
 
-    fun mitOrt(ort: String?) = _state.update { z -> z.copy(kopf = z.kopf?.copy(storage = ort)) }
+    fun mitOrt(ort: String?) = _zustand.update { z -> z.copy(kopf = z.kopf?.copy(storage = ort)) }
 
     fun schliesse() {
-        _state.value = SetItemUiState()
+        _zustand.value = SetItemUiState()
     }
 }

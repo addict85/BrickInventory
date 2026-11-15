@@ -102,7 +102,7 @@ class BeispieldatenTest {
         val detail = welt.setDetail()
         da("Galerie") { galerie.galleryState.value.sets.size == 3 }
         da("Teile") { teile.teileState.value.parts.isNotEmpty() }
-        da("Figuren") { figuren.figurenState.value.minifigs.isNotEmpty() }
+        da("Figuren") { figuren.figurenZustand.value.minifigs.isNotEmpty() }
         da("Finanzen") { finanzen.financeState.value.valuation != null }
         da("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
         da("Detail") { detail.setDetailState.value.setDetail != null }
@@ -115,10 +115,10 @@ class BeispieldatenTest {
     fun `Teile und Figuren tragen echte Namen`() {
         val teile = welt.teile().also { it.loadParts() }
         val figuren = welt.figuren().also { it.loadMinifigs() }
-        da("Teile und Figuren") { teile.teileState.value.parts.isNotEmpty() && figuren.figurenState.value.let {
+        da("Teile und Figuren") { teile.teileState.value.parts.isNotEmpty() && figuren.figurenZustand.value.let {
             it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
         val z = teile.teileState.value
-        val f = figuren.figurenState.value
+        val f = figuren.figurenZustand.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
         assertTrue(f.minifigs.toString(), f.minifigs.all { !it.figName.isNullOrBlank() })
         assertTrue("Ein Name ist lang genug zum Kürzen", f.minifigs.any { (it.figName?.length ?: 0) > 30 })
@@ -182,12 +182,12 @@ class BeispieldatenTest {
         val finanzen = welt.finanzen().also { it.loadValuation() }
         da("alles") {
             galerie.galleryState.value.sets.isNotEmpty() && teile.teileState.value.parts.isNotEmpty() &&
-                figuren.figurenState.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
+                figuren.figurenZustand.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
                 finanzen.financeState.value.valuation != null
         }
         val adressen = galerie.galleryState.value.sets.map { it.setNumber to it.imageLocal } +
             teile.teileState.value.parts.map { it.partNumber to it.imageLocal } +
-            figuren.figurenState.value.minifigs.map { it.figNumber to it.imageLocal } +
+            figuren.figurenZustand.value.minifigs.map { it.figNumber to it.imageLocal } +
             merkliste.merklisteState.value.merkposten.map { it.setNumber to it.imageLocal } +
             finanzen.financeState.value.valuation!!.sets.map { it.setNumber to it.imageLocal }
         val ohne = adressen.filter { (_, a) -> a == null || Beispielbilder.ressource(a) == null }

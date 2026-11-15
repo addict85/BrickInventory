@@ -113,8 +113,8 @@ private fun NavGraphBuilder.figurenZiel(navigation: TeileNavigation) {
     composable<TeileZiel.Minifigs> {
         val minifigsGridState = remember { LazyGridState() }
         val figurenVm: FigurenViewModel = hiltViewModel()
-        val state by figurenVm.state.collectAsStateWithLifecycle()
-        val figuren by figurenVm.figurenState.collectAsStateWithLifecycle()
+        val state by figurenVm.sitzungsWerte.collectAsStateWithLifecycle()
+        val figuren by figurenVm.figurenZustand.collectAsStateWithLifecycle()
         navigation.Reiter(stringResource(R.string.nav_minifigs)) {
             ScrollPositionKeeper(
                 TeileZiel.Minifigs.rollSchluessel, minifigsGridState,
