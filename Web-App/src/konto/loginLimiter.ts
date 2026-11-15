@@ -249,21 +249,26 @@ export async function anmeldungGescheitert(
   await _bump(k, _key(ip, kennung), WINDOW_MIN);
   const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
   await _bump(k, _adressKey(ip), WINDOW_MIN);
-  const tag = await _bump(k, _tagKey(kennung), KONTO_FENSTER_MIN);
+  const tag = await _bump(k, await _tagKey(k, ip, kennung), KONTO_FENSTER_MIN);
   return { n, tagesgrenze: tag === MAX_JE_KONTO_TAG };
 }
 
 /** Eine bekannte Adresse umgeht die Bremse je Konto; wer dort sitzt, riete sonst 480 Mal am Tag.
- * Darüber (alle Adressen) gilt das Passwort nur mit zweitem Faktor; Passkey und „Passwort
- * vergessen“ bleiben offen, das Zurücksetzen leert den Zähler. */
+ * Darüber gilt das Passwort nur mit zweitem Faktor; Passkey und „Passwort vergessen“ bleiben
+ * offen, das Zurücksetzen leert den Zähler. Bekannte Adressen zählen je für sich: Sonst
+ * sperrte ein Fremder mit 50 Versuchen den Inhaber auch an seinen eigenen Geräten aus. */
 export const MAX_JE_KONTO_TAG = 50;
-const _tagKey = (kennung: string) => `login-tag|${kennung}`;
-export async function tagesgrenzeErreicht(k: KontoKontext, username: string): Promise<boolean> {
-  const kennung = await kontoKennung(k, username);
-  return ((await _read(k, _tagKey(kennung), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
+async function _tagKey(k: KontoKontext, ip: string, kennung: string): Promise<string> {
+  const bekannt = !!(await _read(k, _bekanntKey(ip, kennung), BEKANNT_MIN));
+  return bekannt ? `login-tag|${kennung}|${adressAbdruck(ip)}` : `login-tag|${kennung}`;
+}
+export async function tagesgrenzeErreicht(k: KontoKontext, ip: string, username: string): Promise<boolean> {
+  const key = await _tagKey(k, ip, await kontoKennung(k, username));
+  return ((await _read(k, key, KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
 }
 export async function loescheTagesgrenze(k: KontoKontext, uid: number): Promise<void> {
-  await _clear(k, _tagKey(`konto:${uid}`));
+  await _clear(k, `login-tag|konto:${uid}`);
+  await k.drossel.loescheZaehlerMitPraefix(`login-tag|konto:${uid}|`);
 }
 
 export type Anmeldeereignis =

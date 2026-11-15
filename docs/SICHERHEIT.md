@@ -98,6 +98,11 @@ nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
   Adresse — `konto-deaktivieren-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
+- Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
+  mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
+  Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
+  sperrt den Inhaber so nicht an seinen Geräten aus. „Passwort vergessen“ leert
+  alle Zähler: `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
 - Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
   `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
@@ -613,6 +618,11 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **„Unbegrenzt“** endet nur durch Widerruf oder fehlenden Tausch: Ein
   gestohlenes Gerät, das weiter tauscht, bleibt angemeldet, bis es in der
   Geräteliste entfernt wird.
+- **Tagesgrenze von unbekannten Adressen**: 50 Fehlversuche eines Fremden
+  sperren die Passwortanmeldung ohne zweiten Faktor für einen Tag an jeder
+  Adresse, an der sich der Inhaber noch nicht angemeldet hat (neues Gerät,
+  neues Netz). Bekannte Adressen, Passkey und „Passwort vergessen“ bleiben
+  offen; die Mail an den Inhaber meldet die Grenze.
 - **Passkeys ohne zweiten Faktor**: Ein Konto ohne TOTP kann sich mit Passkey
   ODER Passwort anmelden; der Passkey verschärft die Passwortanmeldung nicht.
   Passkeys brauchen einen Namen in `APP_BASE_URL` (keine IP-Adresse).
