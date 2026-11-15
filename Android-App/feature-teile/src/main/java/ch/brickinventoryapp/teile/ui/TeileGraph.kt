@@ -256,8 +256,8 @@ internal fun ListeUndDetailRoute(
                     } else if (offen != null) key(offen) {
                         ManualItemDetailRoute(
                             vm = hiltViewModel<KaeufeViewModel>(),
-                            teile = detailVm as? TeileViewModel ?: hiltViewModel(),
-                            figuren = detailVm as? FigurenViewModel ?: hiltViewModel(),
+                            teile = detailVm as? TeileViewModel ?: hiltViewModel<TeileViewModel>(),
+                            figuren = detailVm as? FigurenViewModel ?: hiltViewModel<FigurenViewModel>(),
                             type = Postenart.aus(offen[0]),
                             id = offen[1],
                             colorId = offen[2].toInt(),
