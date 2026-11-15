@@ -26,7 +26,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.model.util.otpauthAdresse
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
+import ch.brickinventoryapp.zustand.ui.ladefehler
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
 /**
@@ -39,7 +42,6 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 @HiltViewModel
 class KontoViewModel @Inject constructor(
     private val konto: KontoRepository,
-    private val texte: Texte,
     private val meldungen: MeldungsKanal,
     private val sitzung: Sitzung,
     private val sitzungsDienst: SitzungsRepository,
@@ -62,7 +64,7 @@ class KontoViewModel @Inject constructor(
 
     fun ladeProfil() {
         viewModelScope.launch {
-            _kontoState.update { it.copy(laedt = true, fehler = null) }
+            _kontoState.update { it.copy(abruf = Laden.Laedt, fehler = null) }
             holeProfil()
         }
     }
@@ -71,9 +73,9 @@ class KontoViewModel @Inject constructor(
     private suspend fun holeProfil() {
         when (val r = konto.getProfil()) {
             is Ergebnis.Success -> _kontoState.update {
-                it.copy(laedt = false, profil = r.data)
+                it.copy(abruf = Laden.Daten(Unit), profil = r.data)
             }
-            is Ergebnis.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+            is Ergebnis.Error -> _kontoState.update { it.copy(abruf = ladefehler(r)) }
         }
     }
 
@@ -83,7 +85,7 @@ class KontoViewModel @Inject constructor(
     ) {
         // Der Server verlangt das Passwort für jede Profiländerung; ohne es gar nicht erst fragen.
         if (passwort.isNullOrBlank()) {
-            _kontoState.update { it.copy(fehler = texte.text(R.string.konto_profil_password_needed), meldung = null) }
+            _kontoState.update { it.copy(fehler = Meldung.Ressource(R.string.konto_profil_password_needed), meldung = null) }
             return
         }
         viewModelScope.launch {
@@ -106,10 +108,10 @@ class KontoViewModel @Inject constructor(
                         _kontoState.update { it.copy(speichert = false, codeNoetig = false,
                             meldung = when {
                                 ohneMail -> null
-                                neueAdresse -> texte.text(R.string.konto_email_link_gesendet, aenderung.email)
-                                else -> texte.text(R.string.konto_saved)
+                                neueAdresse -> Meldung.Ressource(R.string.konto_email_link_gesendet, listOf(aenderung.email))
+                                else -> Meldung.Ressource(R.string.konto_saved)
                             },
-                            fehler = if (ohneMail) texte.text(R.string.konto_email_nicht_gesendet) else null) }
+                            fehler = if (ohneMail) Meldung.Ressource(R.string.konto_email_nicht_gesendet) else null) }
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
                         holeProfil()
                     }
@@ -124,7 +126,7 @@ class KontoViewModel @Inject constructor(
      * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
      */
     private fun abgelehnt(r: Ergebnis.Error) = _kontoState.update {
-        it.copy(speichert = false, fehler = texte.meldung(r),
+        it.copy(speichert = false, fehler = fehlerMeldung(r),
             codeNoetig = it.codeNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_NOETIG || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH)
     }
 
@@ -168,7 +170,7 @@ class KontoViewModel @Inject constructor(
                     r.data.wirksam?.let(sitzung::setzeDesign)
                     _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
                 }
-                is Ergebnis.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _kontoState.update { it.copy(fehler = fehlerMeldung(r)) }
             }
         }
     }
@@ -184,10 +186,10 @@ class KontoViewModel @Inject constructor(
 
     fun ladeGeraete() {
         viewModelScope.launch {
-            _geraeteState.update { it.copy(laedt = true, fehler = null) }
+            _geraeteState.update { it.copy(abruf = Laden.Laedt) }
             when (val r = konto.getTokens()) {
-                is Ergebnis.Success -> _geraeteState.update { it.copy(laedt = false, geraete = r.data, fehler = null) }
-                is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Success -> _geraeteState.update { it.copy(abruf = Laden.Daten(Unit), geraete = r.data) }
+                is Ergebnis.Error -> _geraeteState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }
@@ -201,12 +203,12 @@ class KontoViewModel @Inject constructor(
         val liste = _geraeteState.value.geraete
         if (tokenId == null) {
             if (liste.none { it.aktuell }) {
-                _geraeteState.update { it.copy(fehler = texte.text(R.string.tokens_self_unknown)) }
+                _geraeteState.update { it.copy(abruf = Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Ressource(R.string.tokens_self_unknown))) }
                 return
             }
             if (liste.none { !it.aktuell }) { meldungen.zeige(Meldung.Ressource(R.string.tokens_no_others)); return }
         }
-        _geraeteState.update { it.copy(rueckfrage = GeraeteRueckfrage(tokenId), fehler = null) }
+        _geraeteState.update { it.copy(rueckfrage = GeraeteRueckfrage(tokenId), abruf = Laden.Daten(Unit)) }
     }
 
     fun entwertenAbbrechen() = _geraeteState.update { it.copy(rueckfrage = null) }
@@ -241,7 +243,7 @@ class KontoViewModel @Inject constructor(
                 _geraeteState.update { it.copy(rueckfrage = null) }
                 ladeGeraete()
             } else _geraeteState.update {
-                it.copy(rueckfrage = it.rueckfrage?.copy(laeuft = false, fehler = texte.meldung(fehler),
+                it.copy(rueckfrage = it.rueckfrage?.copy(laeuft = false, fehler = fehlerMeldung(fehler),
                     codeNoetig = it.rueckfrage.codeNoetig || fehler.code == Fehlercode.ZWEITER_FAKTOR_NOETIG ||
                         fehler.code == Fehlercode.ZWEITER_FAKTOR_FALSCH))
             }
@@ -273,7 +275,7 @@ class KontoViewModel @Inject constructor(
         }
 
     fun zweiterFaktorZurueck() =
-        _zweiterFaktorState.update { it.copy(geheimnis = null, otpauth = null, codes = emptyList(), fehler = null) }
+        _zweiterFaktorState.update { it.copy(geheimnis = null, otpauth = null, codes = emptyList(), abruf = Laden.Daten(Unit)) }
 
     /** Ein Schritt: laden anzeigen, fragen, Ergebnis eintragen oder Fehler zeigen. */
     private fun <T> zweiterFaktor(
@@ -282,13 +284,13 @@ class KontoViewModel @Inject constructor(
         danach: (ZweiterFaktorUiState, T) -> ZweiterFaktorUiState,
     ) {
         viewModelScope.launch {
-            _zweiterFaktorState.update { it.copy(laedt = true, fehler = null) }
+            _zweiterFaktorState.update { it.copy(abruf = Laden.Laedt) }
             when (val r = abruf()) {
                 is Ergebnis.Success -> {
                     erfolgText?.let { meldungen.zeige(Meldung.Ressource(it)) }
-                    _zweiterFaktorState.update { danach(it, r.data).copy(laedt = false) }
+                    _zweiterFaktorState.update { danach(it, r.data).copy(abruf = Laden.Daten(Unit)) }
                 }
-                is Ergebnis.Error -> _zweiterFaktorState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+                is Ergebnis.Error -> _zweiterFaktorState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }

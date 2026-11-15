@@ -6,12 +6,12 @@ Rot: ohne Passwort fragt das Profil den Server nicht
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
-@@ -82,10 +82,7 @@
+@@ -84,10 +84,7 @@
          code: String? = null,
      ) {
          // Der Server verlangt das Passwort für jede Profiländerung; ohne es gar nicht erst fragen.
 -        if (passwort.isNullOrBlank()) {
--            _kontoState.update { it.copy(fehler = texte.text(R.string.konto_profil_password_needed), meldung = null) }
+-            _kontoState.update { it.copy(fehler = Meldung.Ressource(R.string.konto_profil_password_needed), meldung = null) }
 -            return
 -        }
 +        if (passwort == null) return

@@ -501,7 +501,7 @@ class QuelltextRatscheTest {
         // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
         val GRENZE = 46
         // Ebenso die Abstände zwischen Geschwistern: spacedBy und Spacer.
-        val ZWISCHEN = 44
+        val ZWISCHEN = 40
         val fest = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
         val zwischen = Regex("""\bspacedBy\(\d+(?:\.\d+)?\.dp\)|\bSpacer\(Modifier\.(?:height|width)\(\d+(?:\.\d+)?\.dp\)\)""")
         val code = hauptcode()
@@ -580,7 +580,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 196
+        val HAUPT = 193
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
@@ -616,7 +616,7 @@ class QuelltextRatscheTest {
     fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
         // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
-        val LADEND = 17
+        val LADEND = 14
         val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
         val funde = produktivDateien().flatMap { f ->
@@ -628,8 +628,8 @@ class QuelltextRatscheTest {
         // Ein Bildschirmzustand trägt Laden<T> (model/ui/Laden.kt) statt eines Paars aus
         // `laedt: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
         // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
-        val ALT = 24
-        val TEXT = 24
+        val ALT = 16
+        val TEXT = 13
         val laden = Regex("""(?i)^(laedt|laden|.*loading|.*laedt)$""")
         val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
         val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")

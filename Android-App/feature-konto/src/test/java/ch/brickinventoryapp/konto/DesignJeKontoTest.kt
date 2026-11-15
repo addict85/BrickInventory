@@ -18,7 +18,6 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TestDienste
@@ -60,7 +59,7 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(testKontoRepository(t.api), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
+    private fun vm() = t.merke(KontoViewModel(testKontoRepository(t.api), t.meldungen, t.sitzung, SitzungsAttrappe()))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {

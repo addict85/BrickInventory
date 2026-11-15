@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogThemaAnsicht
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
 
 /**
  * Katalog-Zustand — eigener Flow (wie SetDetail/CsvImport): Suche und
@@ -13,10 +13,8 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
  * Katalog-Seite die gesamte App rekomponieren.
  */
 data class CatalogUiState(
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    /** Welche Art Fehler: bestimmt Symbol, Überschrift und Rat im Fehlerzustand wie in der Galerie. */
-    val fehlerKlasse: Fehlerklasse? = null,
+    /** Der letzte Abruf der ersten Seite; geladene Seiten bleiben stehen, solange neu geholt wird. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     /**
      * Geladene Seiten, nach Seitennummer. Eine Karte statt einer Liste, weil die
      * Zeitleiste rechts schnell scrollt statt filtert: Wer auf 2005 springt, landet
@@ -51,9 +49,6 @@ data class CatalogUiState(
      */
     val jahrVerteilung: List<JahrAnzahlAnsicht> = emptyList(),
     // Detail
-    val detail: KatalogDetailAnsicht? = null,
-    val detailLoading: Boolean = false,
-    /** Warum das Detail fehlt; ohne ihn bliebe der Bildschirm nach einem Fehler beim Kringel stehen. */
-    val detailFehler: String? = null,
-    val detailFehlerKlasse: Fehlerklasse? = null,
+    /** Ein Fehler steht hier statt des Kringels, mit Grund und „Erneut versuchen“. */
+    val detail: Laden<KatalogDetailAnsicht> = Laden.Laedt,
 )

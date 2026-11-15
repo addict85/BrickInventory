@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.katalog.ui.screens
 
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import ch.brickinventoryapp.ui.components.HinweisText
@@ -125,12 +128,13 @@ fun CatalogScreen(
     val rasterRand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
         end = if (mitJahresleiste) 30.dp else Abstaende.mittel)
     val gefiltert = state.query.isNotBlank() || state.themeId != null || state.year != null
-    val fehlertext = state.error
+    val fehler = state.abruf as? Laden.Fehler
+    val laedt = state.abruf.laedt
     Column(Modifier.fillMaxSize()) {
         CatalogSearchField(state, onQueryChange, onSortChange)
         CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
         // Trefferzahl — nicht im Fehlerfall: „0 Sets im Katalog“ stand dort neben dem Fehler.
-        if (fehlertext == null || state.total > 0) Text(
+        if (fehler == null || state.total > 0) Text(
             // pluralStringResource statt stringResource: „1 Set im Katalog",
             // nicht „1 Sets".
             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
@@ -140,18 +144,18 @@ fun CatalogScreen(
         )
 
         androidx.compose.material3.pulltorefresh.PullToRefreshBox(
-            isRefreshing = state.isLoading && state.total > 0,
+            isRefreshing = laedt && state.total > 0,
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()
         ) {
             when {
                 // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
-                state.isLoading && state.total == 0 -> SkelettRaster(
+                laedt && state.total == 0 -> SkelettRaster(
                     LesbareSpalten(160.dp), kachelHoehe = 200.dp, innenabstand = rasterRand,
                 )
                 // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
-                fehlertext != null && state.total == 0 -> ZustandsHinweis {
-                    FehlerHinweis(fehlertext, onRefresh, state.fehlerKlasse)
+                fehler != null && state.total == 0 -> ZustandsHinweis {
+                    FehlerHinweis(fehler.meldung.satz(), onRefresh, fehler.art)
                 }
                 // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
                 state.total == 0 && gefiltert -> ZustandsHinweis {

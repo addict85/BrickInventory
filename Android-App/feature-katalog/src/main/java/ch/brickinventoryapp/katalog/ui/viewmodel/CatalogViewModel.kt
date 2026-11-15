@@ -1,7 +1,11 @@
 package ch.brickinventoryapp.katalog.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.zustand.ui.fehlerklasse
+import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
@@ -59,6 +63,14 @@ class CatalogViewModel @Inject constructor(
     private val _catalogState = MutableStateFlow(CatalogUiState())
     val state = _catalogState.asStateFlow()
 
+    init {
+        // Erst wer den Katalog sieht, lädt ihn; ein Zurückkehren lädt nur, was noch fehlt.
+        ladeBeimBeobachten(_catalogState) {
+            val s = _catalogState.value
+            if (s.loadedPages.isEmpty() && !s.abruf.laedt) { loadCatalogMeta(); loadCatalogSets() }
+        }
+    }
+
     // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
     // abgebrochen, geladen wird erst 350ms nach dem letzten.
     private var catalogSearchJob: Job? = null
@@ -99,7 +111,7 @@ class CatalogViewModel @Inject constructor(
             // Sets, die es in der neuen Liste nicht mehr gibt.
             rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
             _catalogState.update {
-                it.copy(isLoading = true, error = null, fehlerKlasse = null,
+                it.copy(abruf = Laden.Laedt,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
                         jahrVerteilung = emptyList())
             }
@@ -114,11 +126,11 @@ class CatalogViewModel @Inject constructor(
             when (r) {
                 is Ergebnis.Success -> {
                     _catalogState.update {
-                        it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets), total = r.data.gesamt)
+                        it.copy(abruf = Laden.Daten(Unit), loadedPages = mapOf(1 to r.data.sets), total = r.data.gesamt)
                     }
                 }
                 is Ergebnis.Error -> {
-                    _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r), fehlerKlasse = fehlerklasse(r)) }
+                    _catalogState.update { it.copy(abruf = ladefehler(r)) }
                     if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
                 }
             }
@@ -243,18 +255,17 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob = viewModelScope.launch {
             // Die Merkliste in die Ablage, damit [gemerkt] den Posten kennt; still, das Detail zählt.
             launch { merkliste.aktualisiereMerkliste() }
-            _catalogState.update { it.copy(detailLoading = true, detail = null, detailFehler = null, detailFehlerKlasse = null) }
+            _catalogState.update { it.copy(detail = Laden.Laedt) }
             // Der Fehler gehört in den Zustand, nicht in eine Snackbar: Der Bildschirm hat
             // ohne Detail nichts zu zeigen und braucht einen Grund und „Erneut versuchen“.
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Success -> {
                     val detail = r.data
-                    if (detail != null) _catalogState.update { it.copy(detailLoading = false, detail = detail) }
-                    else _catalogState.update { it.copy(detailLoading = false, detailFehler = texte.text(R.string.err_set_not_found)) }
+                    val geladen = if (detail != null) Laden.Daten(detail)
+                    else Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Ressource(R.string.err_set_not_found))
+                    _catalogState.update { it.copy(detail = geladen) }
                 }
-                is Ergebnis.Error -> _catalogState.update {
-                    it.copy(detailLoading = false, detailFehler = texte.meldung(r), detailFehlerKlasse = fehlerklasse(r))
-                }
+                is Ergebnis.Error -> _catalogState.update { it.copy(detail = ladefehler(r)) }
             }
         }
     }
@@ -274,8 +285,9 @@ class CatalogViewModel @Inject constructor(
             }
             st.copy(
                 loadedPages = st.loadedPages.mapValues { (_, seite) -> seite.map(markiere) },
-                detail = st.detail?.let {
-                    if (it.setNumber == setNumber) it.copy(owned = true, ownedQuantity = it.ownedQuantity + quantity) else it
+                detail = st.detail.let {
+                    if (it is Laden.Daten && it.wert.setNumber == setNumber)
+                        Laden.Daten(it.wert.copy(owned = true, ownedQuantity = it.wert.ownedQuantity + quantity)) else it
                 }
             )
         }

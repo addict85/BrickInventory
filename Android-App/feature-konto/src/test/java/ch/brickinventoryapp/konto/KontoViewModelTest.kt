@@ -21,11 +21,13 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.ReihenServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 
 /**
  * Das Konto-ViewModel, ausgeführt gegen einen Testserver.
@@ -88,7 +90,7 @@ class KontoViewModelTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-konto-${System.nanoTime()}")
         cacheDir.mkdirs()
         kanal = MeldungsKanal()
-        vm = KontoViewModel(testKontoRepository(server.api, takt), NummernTexte, kanal,
+        vm = KontoViewModel(testKontoRepository(server.api, takt), kanal,
                             Sitzung(), SitzungsAttrappe { abgemeldet = true })
     }
 
@@ -106,7 +108,7 @@ class KontoViewModelTest {
         assertEquals("ohne Beobachter kein Abruf", 0, server.requestCount)
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         val geraeteSeite = CoroutineScope(takt).launch { vm.geraeteState.collect {} }
-        bis("Geräte") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        bis("Geräte") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
         server.enqueue(antwort("""{"success":true,"aktiv":true,"codes_uebrig":8}"""))
         val faktorSeite = CoroutineScope(takt).launch { vm.zweiterFaktorState.collect {} }
         bis("zweiter Faktor") { vm.zweiterFaktorState.value.aktiv == true && vm.zweiterFaktorState.value.codesUebrig == 8 }
@@ -124,7 +126,7 @@ class KontoViewModelTest {
     fun `andere Geraete gehen in einer bestaetigten Anfrage, das eigene bleibt`() {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.ladeGeraete()
-        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
         server.takeRequest()
 
         vm.frageEntwerten(null)
@@ -132,7 +134,7 @@ class KontoViewModelTest {
         server.enqueue(antwort("""{"success":true,"deleted":0,"zugaenge":2}"""))
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.bestaetigeEntwerten("geheim", null)
-        bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.laedt }
+        bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.abruf.laedt }
 
         val r = server.takeRequest()
         assertTrue(r.path.orEmpty(), r.path.orEmpty().endsWith("/settings/sessions/andere-beenden"))
@@ -146,7 +148,7 @@ class KontoViewModelTest {
     fun `ein fremdes Geraet verlangt Passwort und bei Bedarf den Code`() {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.ladeGeraete()
-        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
         server.takeRequest()
 
         vm.frageEntwerten("b2")
@@ -190,12 +192,12 @@ class KontoViewModelTest {
     fun `ein schon entwertetes Gerät zählt nicht`() {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.ladeGeraete()
-        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
         vm.frageEntwerten(null)
         server.enqueue(antwort("""{"success":true,"deleted":1,"zugaenge":0}"""))
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.bestaetigeEntwerten("geheim", null)
-        bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.laedt }
+        bis("neu geladen") { server.requestCount == 3 && !vm.geraeteState.value.abruf.laedt }
         assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.text)
     }
 
@@ -203,11 +205,11 @@ class KontoViewModelTest {
     fun `ohne erkanntes eigenes Geraet wird nichts entwertet`() {
         server.enqueue(antwort(geraete(aktuellDabei = false)))
         vm.ladeGeraete()
-        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        bis("Liste") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.abruf.laedt }
 
         vm.frageEntwerten(null)
-        bis("Fehler") { vm.geraeteState.value.fehler != null }
-        assertEquals("t${R.string.tokens_self_unknown}", vm.geraeteState.value.fehler)
+        bis("Fehler") { vm.geraeteState.value.abruf.fehlerMeldung != null }
+        assertEquals("t${R.string.tokens_self_unknown}", vm.geraeteState.value.abruf.fehlerMeldung.text)
         assertNull(vm.geraeteState.value.rueckfrage)
         assertEquals(1, server.requestCount)
     }
@@ -230,8 +232,8 @@ class KontoViewModelTest {
         bis("Fehler") { vm.kontoState.value.fehler != null }
 
         assertFalse(abgemeldet)
-        // Die Absage kommt als Fehler; den Satz bildet Texte.meldung (hier „fehler“).
-        assertEquals("fehler", vm.kontoState.value.fehler)
+        // Die Absage kommt als Fehler mit dem Satz des Servers.
+        assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.fehler.text)
         assertNull(kanal.text)
     }
 
@@ -245,7 +247,7 @@ class KontoViewModelTest {
         assertEquals(true, z.aktiv)
         assertEquals(2, z.codesUebrig)
         assertNull(z.geheimnis)
-        assertFalse(z.laedt)
+        assertFalse(z.abruf.laedt)
         assertEquals("t${R.string.zf_enabled}", kanal.text)
         // Der Code geht ohne Leerzeichen hinaus.
         assertTrue(server.takeRequest().body.readUtf8().contains("\"123456\""))
@@ -285,7 +287,7 @@ class KontoViewModelTest {
     @Test
     fun `ohne Passwort fragt das Profil den Server nicht`() {
         vm.speichereProfil("marco2", "marco@example.org", "", "", null)
-        assertEquals("t${R.string.konto_profil_password_needed}", vm.kontoState.value.fehler)
+        assertEquals("t${R.string.konto_profil_password_needed}", vm.kontoState.value.fehler.text)
         vm.speichereProfil("marco2", "marco@example.org", "", "", "  ")
         assertEquals(0, server.requestCount)
         assertFalse(vm.kontoState.value.speichert)
@@ -323,7 +325,7 @@ class KontoViewModelTest {
             "email_verified":true,"email_neu":"neu@example.org"}}"""))
         vm.speichereProfil("marco", " neu@example.org ", "", "", "pw")
         bis("neu geladen") { vm.kontoState.value.profil != null }
-        assertEquals("t${R.string.konto_email_link_gesendet}", vm.kontoState.value.meldung)
+        assertEquals(R.string.konto_email_link_gesendet, (vm.kontoState.value.meldung as Meldung.Ressource).id)
         assertNull(vm.kontoState.value.fehler)
         assertEquals("Es gilt die alte Adresse", "alt@example.org", vm.kontoState.value.profil?.email)
         assertEquals("neu@example.org", vm.kontoState.value.profil?.emailNeu)
@@ -336,7 +338,7 @@ class KontoViewModelTest {
             "email_verified":true,"email_neu":"neu@example.org"}}"""))
         vm.speichereProfil("marco", "neu@example.org", "", "", "pw")
         bis("neu geladen") { vm.kontoState.value.profil != null }
-        assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.konto_email_nicht_gesendet}", vm.kontoState.value.fehler)
+        assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.konto_email_nicht_gesendet}", vm.kontoState.value.fehler.text)
         assertNull("Kein „gespeichert“", vm.kontoState.value.meldung)
     }
 }

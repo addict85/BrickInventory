@@ -22,6 +22,10 @@ import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,6 +63,7 @@ import ch.brickinventoryapp.testing.text
  *   katalog-verteilung-ohne-filter ladeJahrVerteilung() ohne `themeId` → rot „die Jahresverteilung …“
  *   katalog-detail-fehler-verschluckt loadCatalogDetail() legt den Fehler nicht in den
  *                                  Zustand → rot „scheitert das Detail, steht der Grund …“
+ *   katalog-laedt-nicht-beim-beobachten  beim Beobachten nur die Metadaten geladen → rot „wer den Katalog sieht …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
@@ -146,15 +151,14 @@ class CatalogViewModelTest {
         fake.codes["getCatalogSets"] = 500
         vm.loadCatalogSets()
         advanceUntilIdle()
-        assertEquals("fehler", vm.state.value.error)
+        assertEquals(Meldung.Ressource(R.string.err_server, listOf(500)), vm.state.value.abruf.fehlerMeldung)
         assertNull("Ohne geladene Liste keine zweite Meldung", t.meldungen.text)
 
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = false)
         vm.loadCatalogDetail("99999-1")
         advanceUntilIdle()
-        assertEquals("t${R.string.err_set_not_found}", vm.state.value.detailFehler)
+        assertEquals(Meldung.Ressource(R.string.err_set_not_found), vm.state.value.detail.fehlerMeldung)
         assertNull("Der Bildschirm zeigt den Fehler selbst", t.meldungen.text)
-        assertNull(vm.state.value.detail)
     }
 
     @Test
@@ -162,20 +166,28 @@ class CatalogViewModelTest {
         fake.codes["getCatalogSetDetail"] = 503
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        val gescheitert = vm.state.value
-        assertEquals(false, gescheitert.detailLoading)
-        assertNull(gescheitert.detail)
-        assertEquals("Ohne Grund bliebe der Kringel stehen", "fehler", gescheitert.detailFehler)
-        assertEquals(Fehlerklasse.SERVER, gescheitert.detailFehlerKlasse)
+        assertEquals("Ohne Grund bliebe der Kringel stehen",
+            Laden.Fehler(Fehlerklasse.SERVER, Meldung.Ressource(R.string.err_server, listOf(503))), vm.state.value.detail)
 
         fake.codes.remove("getCatalogSetDetail")
         fake.antworten["getCatalogSetDetail"] = CatalogSetDetailResponse(success = true,
             set = CatalogSetDetail(setNumber = "10305-1", name = "Lion Knights' Castle"))
         vm.loadCatalogDetail("10305-1")
         advanceUntilIdle()
-        assertEquals("10305-1", vm.state.value.detail?.setNumber)
-        assertNull("Der neue Versuch räumt den alten Fehler ab", vm.state.value.detailFehler)
-        assertNull(vm.state.value.detailFehlerKlasse)
+        assertEquals("Der neue Versuch räumt den alten Fehler ab", "10305-1", vm.state.value.detail.datenOderNull()?.setNumber)
+    }
+
+    @Test
+    fun `wer den Katalog sieht, laedt ihn, ein Zurueckkehren laedt nicht noch einmal`() = mitVm { vm ->
+        fake.antworten["getCatalogSets"] = seite("10294-1")
+        val erster = backgroundScope.launch { vm.state.collect {} }
+        advanceUntilIdle()
+        assertEquals(setOf(1), vm.state.value.loadedPages.keys)
+        erster.cancel()
+        advanceUntilIdle()
+        backgroundScope.launch { vm.state.collect {} }
+        advanceUntilIdle()
+        assertEquals("Die Liste ist da, ein zweiter Abruf wäre nur Last", 1, gesucht().size)
     }
 
     /** Die Jahre liegen nur auf dem Server; geholt mit denselben Filtern wie die Liste. */

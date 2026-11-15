@@ -55,12 +55,15 @@ import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
 
 /** Die angezeigte Meldung als Satz, wie NummernTexte ihn bildet; null ohne Meldung. */
-val MeldungsKanal.text: String?
-    get() = when (val m = meldung.value) {
+val MeldungsKanal.text: String? get() = meldung.value.text
+
+/** Eine Meldung als prüfbarer Satz: „t<id>(werte)“, „m<id>:<anzahl>“ oder der Text selbst. */
+val Meldung?.text: String?
+    get() = when (this) {
         null -> null
-        is Meldung.Text -> m.text
-        is Meldung.Ressource -> "t${m.id}" + if (m.werte.isEmpty()) "" else m.werte.joinToString(", ", "(", ")")
-        is Meldung.Menge -> "m${m.id}:${m.anzahl}"
+        is Meldung.Text -> text
+        is Meldung.Ressource -> "t$id" + if (werte.isEmpty()) "" else werte.joinToString(", ", "(", ")")
+        is Meldung.Menge -> "m$id:$anzahl"
     }
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */

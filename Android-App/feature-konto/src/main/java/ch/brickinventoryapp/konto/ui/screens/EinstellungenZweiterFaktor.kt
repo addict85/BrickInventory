@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
@@ -134,8 +136,8 @@ internal fun ZweiterFaktorCard(
     SettingsCard(title = stringResource(R.string.zf_title), icon = Icons.Default.Security) {
         Text(stringResource(R.string.zf_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (zfZustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (zfZustand.fehler != null) FehlerZeile(zfZustand.fehler)
+        if (zfZustand.abruf.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
+        zfZustand.abruf.fehlerMeldung?.let { FehlerZeile(it) }
 
         val passwortFeld: @Composable () -> Unit = {
             PasswortFeld(zfPasswort, { zfPasswort = it }, stringResource(R.string.konto_password_current),
@@ -190,7 +192,7 @@ internal fun ZweiterFaktorCard(
                 }
                 codeFeld(stringResource(R.string.zf_confirm_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_confirm)) }
+                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.abruf.laedt) { Text(stringResource(R.string.zf_confirm)) }
                     OutlinedButton(onClick = onZurueck, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.common_cancel)) }
                 }
             }
@@ -201,17 +203,17 @@ internal fun ZweiterFaktorCard(
                 passwortFeld()
                 codeFeld(stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt, colors = nebenKnopfFarben(), border = nebenKnopfRand(zfCode.isNotBlank() && !zfZustand.laedt)) { Text(stringResource(R.string.zf_new_codes)) }
+                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.abruf.laedt, colors = nebenKnopfFarben(), border = nebenKnopfRand(zfCode.isNotBlank() && !zfZustand.abruf.laedt)) { Text(stringResource(R.string.zf_new_codes)) }
                     OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
-                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
+                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.abruf.laedt,
                         colors = nebenKnopfFarben(),
-                        border = nebenKnopfRand(zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt)) { Text(stringResource(R.string.zf_disable)) }
+                        border = nebenKnopfRand(zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.abruf.laedt)) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
             // 4. Nicht eingerichtet.
             zfZustand.aktiv == false -> {
                 passwortFeld()
-                Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
+                Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.abruf.laedt,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }

@@ -18,7 +18,6 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
-import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
@@ -132,10 +131,7 @@ internal fun ZeitplanZeile(
     jobKey: String,
     plan: ZeitplanAnsicht,
     aktionen: MonitoringAktionen,
-    onSnack: (String) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val gespeichert = stringResource(R.string.monitoring_cache_saved)
     val taeglich = plan.type == "daily"
     var bearbeiten by rememberSaveable(jobKey) { mutableStateOf(false) }
     val gezeigt = if (taeglich) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
@@ -155,12 +151,9 @@ internal fun ZeitplanZeile(
         if (bearbeiten) {
             ZeitplanEingabe(taeglich, eingabe, onEingabe = { eingabe = it },
                 onSpeichern = {
-                    scope.launch {
-                        val ok = if (taeglich) aktionen.setzeJobZeitplan(jobKey, zeit = eingabe.trim())
-                                 else aktionen.setzeJobZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
-                        if (ok) onSnack(gespeichert)
-                        bearbeiten = false
-                    }
+                    if (taeglich) aktionen.setzeZeitplan(jobKey, zeit = eingabe.trim())
+                    else aktionen.setzeZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
+                    bearbeiten = false
                 },
                 onAbbrechen = { bearbeiten = false })
         } else {

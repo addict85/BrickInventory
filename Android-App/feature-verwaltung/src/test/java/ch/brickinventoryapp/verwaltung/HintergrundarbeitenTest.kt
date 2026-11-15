@@ -2,13 +2,12 @@ package ch.brickinventoryapp.verwaltung
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.model.AuftragStatus
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.screens.auftragsArtText
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,7 +37,7 @@ import ch.brickinventoryapp.testing.text
  *      einem Auftrag tun darf, steht schon fest“
  *   B  in MonitoringViewModel.nachAuftrag das Neuladen entfernt → rot „Abbrechen
  *      meldet Erfolg und lädt neu“ (nur eine GET-Anfrage)
- *   C  bei Ergebnis.Error den Erfolgssatz statt texte.meldung → rot „ein 409
+ *   C  bei Ergebnis.Error den Erfolgssatz statt fehlerMeldung → rot „ein 409
  *      zeigt den Satz des Servers“
  *   D  `jobProzessLaeuft = true` fest → rot „ohne Job-Prozess steht die Warnung an“
  * Gegenprobe: melde()
@@ -46,13 +45,6 @@ import ch.brickinventoryapp.testing.text
  *   laeuft im ViewModel …“
  */
 class HintergrundarbeitenTest {
-
-    private object Saetze : Texte {
-        override fun text(id: Int, vararg args: Any?) = "t$id(${args.joinToString()})"
-        override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
-        override fun meldung(fehler: Ergebnis.Error) = "Server: ${fehler.message}"
-        override fun angemeldet() = true
-    }
 
     private val liste = """{"success":true,
         "auftraege":[
@@ -71,7 +63,7 @@ class HintergrundarbeitenTest {
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
     private val kanal = MeldungsKanal()
     private val vm = TestApi.fuer(pfade.server).let { api ->
-        MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), Saetze, kanal)
+        MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), kanal)
     }
 
     @After
@@ -109,7 +101,7 @@ class HintergrundarbeitenTest {
         try {
             vm.auftragAbbrechen("17")
             withTimeout(5_000) { kanal.meldung.first { it != null } }
-            assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", kanal.text)
+            assertEquals("t${R.string.hintergrund_abgebrochen_ok}", kanal.text)
         } finally {
             vm.viewModelScope.cancel()
             Dispatchers.resetMain()
@@ -121,7 +113,7 @@ class HintergrundarbeitenTest {
         pfade.antworten["/api/v1/admin/auftraege/17/abbrechen"] = """{"success":true,"id":"17","status":"abgebrochen"}"""
         vm.ladeHintergrund()
         val satz = vm.brichAuftragAb("17")
-        assertEquals("t${R.string.hintergrund_abgebrochen_ok}()", satz)
+        assertEquals(Meldung.Ressource(R.string.hintergrund_abgebrochen_ok), satz)
         assertEquals(listOf("POST /api/v1/admin/auftraege/17/abbrechen"), pfade.anfragenAn("/abbrechen"))
         assertEquals(2, pfade.anfragenAn("GET /api/v1/admin/auftraege").size)
     }
@@ -132,7 +124,7 @@ class HintergrundarbeitenTest {
             """{"success":false,"code":"auftrag_nicht_aenderbar","error":"Der Auftrag lässt sich nicht mehr ändern."}"""
         pfade.codes["/api/v1/admin/auftraege/17/wiederholen"] = 409
         val satz = vm.wiederholeAuftrag("17")
-        assertEquals("Server: Der Auftrag lässt sich nicht mehr ändern.", satz)
+        assertEquals(Meldung.Text("Der Auftrag lässt sich nicht mehr ändern."), satz)
         assertEquals("Auch nach dem Fehlschlag gilt der Stand des Servers", 1,
             pfade.anfragenAn("GET /api/v1/admin/auftraege").size)
     }
@@ -141,8 +133,8 @@ class HintergrundarbeitenTest {
     fun `Leeren meldet die Zahl, Starten den Namen`() = runBlocking {
         pfade.antworten["/api/v1/admin/auftraege/art/bilder"] = """{"success":true,"art":"bilder","entfernt":4}"""
         pfade.antworten["/api/v1/admin/auftraege/art/preise/jetzt"] = """{"success":true,"art":"preise","gestartet":false}"""
-        assertEquals("m${R.plurals.hintergrund_geleert}:4", vm.leereAuftragsArt("bilder"))
-        assertEquals("t${R.string.hintergrund_nichts_gestartet}(Preise)", vm.starteAuftragsArt("preise", "Preise"))
+        assertEquals(Meldung.Menge(R.plurals.hintergrund_geleert, 4), vm.leereAuftragsArt("bilder"))
+        assertEquals(Meldung.Ressource(R.string.hintergrund_nichts_gestartet, listOf("Preise")), vm.starteAuftragsArt("preise", "Preise"))
         assertEquals(listOf("DELETE /api/v1/admin/auftraege/art/bilder"), pfade.anfragenAn("DELETE"))
     }
 }

@@ -10,9 +10,9 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
          topBar = { DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
      ) { padding ->
          when {
--            fehler != null && !isLoading && detail == null -> ZustandsHinweis(Modifier.padding(padding)) {
--                FehlerHinweis(fehler, { onLoad(setNumber) }, fehlerKlasse)
+-            geladen is Laden.Fehler -> ZustandsHinweis(Modifier.padding(padding)) {
+-                FehlerHinweis(geladen.meldung.satz(), { onLoad(setNumber) }, geladen.art)
 -            }
-             isLoading || detail == null -> LadeKreis(Modifier.padding(padding))
+             detail == null -> LadeKreis(Modifier.padding(padding))
              else -> BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
                  // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht

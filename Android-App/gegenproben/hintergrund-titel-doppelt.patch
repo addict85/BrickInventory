@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.app.UxPruefungZweiTest
 Rot: M4
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
-index 19368b8..5d0463e 100644
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
-@@ -47,7 +47,7 @@ internal fun HintergrundSection(
+@@ -50,7 +50,7 @@
          Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
              // „Aufträge“, nicht noch einmal der Name der Seite: Er steht schon darüber.
              Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
 -                Abschnittstitel(stringResource(R.string.hintergrund_auftraege))
 +                Text(stringResource(R.string.monitoring_title))
-                 if (zustand.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                 if (zustand.abruf.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
              }
-             zustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+             zustand.abruf.fehlerMeldung?.let { Text(it.satz(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

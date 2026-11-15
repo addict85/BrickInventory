@@ -53,7 +53,9 @@ import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.LadeKreis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
-import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
@@ -77,8 +79,8 @@ import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 @Composable
 fun CatalogDetailScreen(
     setNumber: String,
-    detail: KatalogDetailAnsicht?,
-    isLoading: Boolean,
+    /** Ein Fehler steht mit „Erneut versuchen“ statt des Kringels. */
+    geladen: Laden<KatalogDetailAnsicht>,
     imageLoader: ImageLoader,
     serverUrl: String,
     defaultCondition: Zustand = Zustand.NEU,
@@ -98,10 +100,8 @@ fun CatalogDetailScreen(
     gemerkt: MerkpostenAnsicht? = null,
     /** Den Merkposten öffnen — Setnummer und Zustand. */
     onOeffneMerkposten: (String, Zustand) -> Unit = { _, _ -> },
-    /** Warum kein Detail da ist; dann steht der Fehler mit „Erneut versuchen“ statt des Kringels. */
-    fehler: String? = null,
-    fehlerKlasse: Fehlerklasse? = null,
 ) {
+    val detail = geladen.datenOderNull()
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showWishDialog by rememberSaveable { mutableStateOf(false) }
@@ -125,10 +125,10 @@ fun CatalogDetailScreen(
         topBar = { DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
     ) { padding ->
         when {
-            fehler != null && !isLoading && detail == null -> ZustandsHinweis(Modifier.padding(padding)) {
-                FehlerHinweis(fehler, { onLoad(setNumber) }, fehlerKlasse)
+            geladen is Laden.Fehler -> ZustandsHinweis(Modifier.padding(padding)) {
+                FehlerHinweis(geladen.meldung.satz(), { onLoad(setNumber) }, geladen.art)
             }
-            isLoading || detail == null -> LadeKreis(Modifier.padding(padding))
+            detail == null -> LadeKreis(Modifier.padding(padding))
             else -> BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
                 // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
                 // vor, derselbe Server-Check wie in der Katalog-Liste.

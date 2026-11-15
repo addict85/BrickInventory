@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
 import androidx.compose.foundation.layout.Box
@@ -519,8 +520,8 @@ class GeruestUndFormularTest {
     fun `Detailkarten stehen auf dem Tablet in Lesebreite`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
-            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
-                isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(katalogDetail),
+                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
@@ -540,8 +541,8 @@ class GeruestUndFormularTest {
     fun `Katalog-Detail steht auf dem Tablet in zwei Spalten, Aufnehmen vor BrickLink`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige {
-            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
-                isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(katalogDetail),
+                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }

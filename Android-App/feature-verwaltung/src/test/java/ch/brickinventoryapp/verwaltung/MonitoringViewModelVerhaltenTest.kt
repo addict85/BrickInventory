@@ -20,7 +20,9 @@ import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.testing.NummernTexte
+import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
 
 /**
  * Das Monitoring-ViewModel, AUSGEFÜHRT statt gelesen.
@@ -92,7 +94,7 @@ class MonitoringViewModelVerhaltenTest {
         // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
         // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
         // sofort und an der richtigen Stelle.
-        vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), NummernTexte, MeldungsKanal())
+        vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), MeldungsKanal())
     }
 
     @After
@@ -132,7 +134,7 @@ class MonitoringViewModelVerhaltenTest {
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         vm.ladeWarteschlange()
-        assert(vm.state.value.queue.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
+        assert(vm.state.value.queue.datenOderNull()?.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
 
         // Nur EINE Antwort: Bei Erfolg wird bewusst NICHT neu geladen — der
         // vorweggenommene Zustand ist dann schon der richtige, und ein zweiter
@@ -145,8 +147,8 @@ class MonitoringViewModelVerhaltenTest {
             "Erwartet: Laden + Löschen. Es waren ${server.requestCount} Abrufe — " +
                 "wird bei Erfolg unnötig neu geladen?"
         }
-        assert(vm.state.value.queue.map { it.setNumber } == listOf("10294")) {
-            "Nach dem Löschen steht: ${vm.state.value.queue.map { it.setNumber }}"
+        assert(vm.state.value.queue.datenOderNull()?.map { it.setNumber } == listOf("10294")) {
+            "Nach dem Löschen steht: ${vm.state.value.queue.datenOderNull()?.map { it.setNumber }}"
         }
     }
 
@@ -165,9 +167,9 @@ class MonitoringViewModelVerhaltenTest {
 
         assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
         // DAS ist die Zusage: Der vorweggenommene Zustand wurde zurückgenommen.
-        assert(vm.state.value.queue.map { it.setNumber } == listOf("75192", "10294")) {
+        assert(vm.state.value.queue.datenOderNull()?.map { it.setNumber } == listOf("75192", "10294")) {
             "Der Eintrag bleibt verschwunden, obwohl der Server abgelehnt hat: " +
-                "${vm.state.value.queue.map { it.setNumber }}"
+                "${vm.state.value.queue.datenOderNull()?.map { it.setNumber }}"
         }
     }
 
@@ -183,10 +185,10 @@ class MonitoringViewModelVerhaltenTest {
             {"set_number":"75192","attempts":1},{"set_number":"42100","attempts":1}]}"""))
         vm.entferneEintrag("75192")
 
-        assert(vm.state.value.queue.map { it.setNumber } == listOf("75192", "42100")) {
+        assert(vm.state.value.queue.datenOderNull()?.map { it.setNumber } == listOf("75192", "42100")) {
             "Der zwischenzeitlich hinzugekommene Eintrag fehlt — es wurde eine " +
                 "alte Kopie zurückgeschrieben statt neu geladen: " +
-                "${vm.state.value.queue.map { it.setNumber }}"
+                "${vm.state.value.queue.datenOderNull()?.map { it.setNumber }}"
         }
     }
 
@@ -282,8 +284,8 @@ class MonitoringViewModelVerhaltenTest {
 
     // ── Das Server-Protokoll (aus MainViewModel hierher gezogen) ────────────
     //
-    // Gegenprobe: in ladeProtokoll() den Fehlerzweig ohne `protokollLaden =
-    // false` → „ein Fehler beim Protokoll beendet das Laden" rot.
+    // Gegenprobe: in ladeProtokoll() den Fehlerzweig ohne `abruf =
+    // ladefehler(r)` → „ein Fehler beim Protokoll beendet das Laden" rot.
 
     @Test
     fun `das Protokoll kommt mit dem gewaehlten Zeitraum`() = runTest {
@@ -291,16 +293,16 @@ class MonitoringViewModelVerhaltenTest {
         vm.ladeProtokoll(30)
         val v = vm.verwaltungState.value
         assert(v.protokoll.size == 1 && v.protokoll[0].message == "Probe") { "Protokoll: ${v.protokoll}" }
-        assert(v.protokollMinuten == 30 && !v.protokollLaden)
+        assert(v.protokollMinuten == 30 && !v.abruf.laedt)
         assert(server.takeRequest().path?.contains("30") == true) { "Der Zeitraum ging nicht mit" }
     }
 
     @Test
     fun `ein Fehler beim Protokoll beendet das Laden`() = runTest {
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
-        vm.ladeProtokoll()
+        vm.ladeProtokoll(15)
         val v = vm.verwaltungState.value
-        assert(!v.protokollLaden) { "Der Kreisel bleibt nach einem Fehler stehen" }
-        assert(v.fehler != null) { "Der Fehler wird nicht gezeigt" }
+        assert(!v.abruf.laedt) { "Der Kreisel bleibt nach einem Fehler stehen" }
+        assert(v.abruf.fehlerMeldung != null) { "Der Fehler wird nicht gezeigt" }
     }
 }

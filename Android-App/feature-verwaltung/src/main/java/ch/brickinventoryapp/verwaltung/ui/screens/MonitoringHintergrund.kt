@@ -28,6 +28,9 @@ import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.HintergrundUiState
 import ch.brickinventoryapp.ui.util.fmtTag
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.ui.satz
 
 /**
  * Die Hintergrundarbeiten aus der Auftragstabelle, wie in der Webapp. Die
@@ -48,9 +51,9 @@ internal fun HintergrundSection(
             // „Aufträge“, nicht noch einmal der Name der Seite: Er steht schon darüber.
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Abschnittstitel(stringResource(R.string.hintergrund_auftraege))
-                if (zustand.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                if (zustand.abruf.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
-            zustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            zustand.abruf.fehlerMeldung?.let { Text(it.satz(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (ansicht != null && !ansicht.jobProzessLaeuft) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)

@@ -27,6 +27,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Formen
 
@@ -51,6 +53,9 @@ fun FehlerZeile(text: String, modifier: Modifier = Modifier) {
     Text(text, modifier.ansagen(), color = MaterialTheme.colorScheme.error,
         style = MaterialTheme.typography.bodyMedium)
 }
+
+@Composable
+fun FehlerZeile(meldung: Meldung, modifier: Modifier = Modifier) = FehlerZeile(meldung.satz(), modifier)
 
 /** Was ins Feld gehört — davon hängt ab, was der Passwortmanager anbietet. */
 enum class PasswortArt {

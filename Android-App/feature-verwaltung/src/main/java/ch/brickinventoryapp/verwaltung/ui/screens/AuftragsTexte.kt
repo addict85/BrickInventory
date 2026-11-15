@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.ui.model.AuftragStatus
 // keine Android-Ressourcen.
 
 /** Text eines Auftragszustands; ERLEDIGT und UNBEKANNT zeigen keinen. */
-val AuftragStatus.statusText: Int?
+internal val AuftragStatus.statusText: Int?
     get() = when (this) {
         AuftragStatus.OFFEN -> R.string.hintergrund_offen
         AuftragStatus.LAEUFT -> R.string.hintergrund_laeuft

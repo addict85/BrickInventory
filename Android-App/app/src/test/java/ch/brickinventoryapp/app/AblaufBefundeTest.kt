@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -180,7 +182,7 @@ class AblaufBefundeTest {
     @Test
     fun `M2 der Katalog zeigt im Fehler denselben Zustand wie die Galerie, ohne Trefferzahl`() {
         zeige {
-            CatalogScreen(CatalogUiState(error = "Serverfehler (500)", fehlerKlasse = Fehlerklasse.SERVER),
+            CatalogScreen(CatalogUiState(abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Serverfehler (500)"))),
                 serverUrl = "", katalog = KeineKatalogAktionen, imageLoader = bilder, onSetClick = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode("Fehler ohne Klasse")
@@ -238,8 +240,8 @@ class AblaufBefundeTest {
             alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = 349.0))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
-                detail = KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022),
-                isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
+                geladen = Laden.Daten(KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022)),
+                imageLoader = bilder, serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {},
                 gemerkt = gemerkt, onOeffneMerkposten = { sn, z -> geoeffnet = sn to z })
         }
@@ -253,7 +255,7 @@ class AblaufBefundeTest {
     fun `M8 die Einladung laesst sich teilen und kopieren, mit Gueltigkeit und Sperrgrund`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
             testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api)))
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }

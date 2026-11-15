@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import android.os.Looper
@@ -255,7 +256,7 @@ class UmbruchWaechterTest {
             bricklink = BrickLinkAnsicht(number = "10305-1",
                 url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
         pruefe("Katalog-Detail $schrift", schrift) {
-            CatalogDetailScreen(setNumber = "10305-1", detail = detail, isLoading = false, imageLoader = bilder,
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(detail), imageLoader = bilder,
                 serverUrl = "", onLoad = {}, onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
@@ -290,7 +291,7 @@ class UmbruchWaechterTest {
                "fortschritt":{"erledigt":3,"gesamt":12,"text":"Bilder"},"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
             "zusammenfassung":[],"pausen":[],"bildbedarf":7,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
-        val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), KontextTexte(), welt.t.meldungen)
+        val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         pruefe("Hintergrundarbeiten $schrift", schrift) {

@@ -38,6 +38,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
@@ -121,12 +123,12 @@ class EinstellungenViewModel @Inject constructor(
             _csvHochladenState.value = CsvHochladenUiState(laeuft = true, art = art)
             val bytes = when (val g = leser.liesHoechstens(datei, CSV_MAX_BYTES)) {
                 null -> {
-                    _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.text(R.string.csv_upload_unreadable))
+                    _csvHochladenState.value = CsvHochladenUiState(fehler = Meldung.Ressource(R.string.csv_upload_unreadable))
                     return@launch
                 }
                 Gelesen.ZuGross -> {
                     _csvHochladenState.value = CsvHochladenUiState(
-                        fehler = meldungen.text(R.string.csv_upload_too_big, CSV_MAX_BYTES / 1024 / 1024))
+                        fehler = Meldung.Ressource(R.string.csv_upload_too_big, listOf(CSV_MAX_BYTES / 1024 / 1024)))
                     return@launch
                 }
                 is Gelesen.Inhalt -> g.bytes
@@ -143,7 +145,7 @@ class EinstellungenViewModel @Inject constructor(
                         CsvImportArt.SETS -> abgleich.sets()
                     }
                 }
-                is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.meldung(r))
+                is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = fehlerMeldung(r))
             }
         }
     }

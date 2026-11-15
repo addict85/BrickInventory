@@ -295,8 +295,7 @@ class UxPruefungZweiTest {
                "aktualisiert":null,"fortschritt":null,"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
             "zusammenfassung":[],"pausen":[],"bildbedarf":0,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
-        val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io),
-            KontextTexte(), welt.t.meldungen)
+        val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val netze = mapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false)
         zeige {

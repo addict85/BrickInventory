@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.beschreibung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -71,15 +74,15 @@ internal fun KontoCard(
 
     // „Profil“, nicht „Konto“: Die Leiste der Seite heisst schon so.
     SettingsCard(title = stringResource(R.string.konto_profil_titel), icon = Icons.Default.AccountCircle) {
-        if (kontoZustand.laedt && profil == null) {
+        if (kontoZustand.abruf.laedt && profil == null) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
-        if (kontoZustand.meldung != null) {
-            Text(kontoZustand.meldung, style = MaterialTheme.typography.bodySmall,
+        kontoZustand.meldung?.let { meldung ->
+            Text(meldung.satz(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary, modifier = Modifier.ansagen())
         }
-        if (kontoZustand.fehler != null) FehlerZeile(kontoZustand.fehler)
+        (kontoZustand.fehler ?: kontoZustand.abruf.fehlerMeldung)?.let { FehlerZeile(it) }
         // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
         if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 

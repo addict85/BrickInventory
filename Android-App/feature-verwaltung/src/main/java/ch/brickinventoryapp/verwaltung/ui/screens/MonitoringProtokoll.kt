@@ -24,7 +24,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
-import kotlinx.coroutines.launch
+import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.laedt
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.SegmentWahl
@@ -42,7 +44,6 @@ import ch.brickinventoryapp.ui.components.Suchfeld
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: MonitoringAktionen) {
-    val protokollScope = rememberCoroutineScope()
     var offen by rememberSaveable { mutableStateOf(false) }
     // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
     // Zeilen selbst kommen ohnehin vom Server nach.
@@ -51,11 +52,11 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
 
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            ProtokollKopf(verwaltung.protokollLaden, offen,
-                onNeuLaden = { protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) } },
+            ProtokollKopf(verwaltung.abruf.laedt, offen,
+                onNeuLaden = { aktionen.waehleProtokoll(verwaltung.protokollMinuten) },
                 onUmschalten = {
                     offen = !offen
-                    if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) }
+                    if (offen && verwaltung.protokoll.isEmpty()) aktionen.waehleProtokoll(verwaltung.protokollMinuten)
                 })
 
             AnimatedVisibility(offen) {
@@ -65,7 +66,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                     SegmentWahl(
                         optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
                         gewaehlt = verwaltung.protokollMinuten,
-                        onWahl = { min -> protokollScope.launch { aktionen.ladeProtokoll(min) } },
+                        onWahl = aktionen::waehleProtokoll,
                     )
                     ProtokollFehlerOderLeer(verwaltung)
                     // ── Stufen und Suche, wie in der Weboberfläche ──
@@ -109,10 +110,11 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
 /** Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der Abruf scheiterte. */
 @Composable
 private fun ProtokollFehlerOderLeer(verwaltung: VerwaltungUiState) {
-    if (verwaltung.fehler != null) {
-        Text(verwaltung.fehler, style = MaterialTheme.typography.bodySmall,
+    val fehler = verwaltung.abruf.fehlerMeldung
+    if (fehler != null) {
+        Text(fehler.satz(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error)
-    } else if (verwaltung.protokoll.isEmpty() && !verwaltung.protokollLaden) {
+    } else if (verwaltung.protokoll.isEmpty() && !verwaltung.abruf.laedt) {
         Text(stringResource(R.string.admin_log_empty),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)

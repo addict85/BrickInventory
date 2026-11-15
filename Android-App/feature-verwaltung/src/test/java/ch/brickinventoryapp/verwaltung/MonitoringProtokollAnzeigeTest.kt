@@ -23,7 +23,6 @@ import ch.brickinventoryapp.verwaltung.ui.screens.CacheEreignisse
 import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringScreen
 import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringZustand
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.HintergrundUiState
-import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -54,23 +53,8 @@ class MonitoringProtokollAnzeigeTest {
 
     private var protokollAbrufe = 0
 
-    private val aktionen = object : MonitoringAktionen {
-        override suspend fun ladeJobs() = Unit
-        override suspend fun ladeWarteschlange() = Unit
-        override suspend fun ladeProtokoll(minuten: Int) { protokollAbrufe++ }
-        override suspend fun wiederholeEintrag(setNummer: String) = true
-        override suspend fun entferneEintrag(setNummer: String) = true
-        override suspend fun leseAnleitungenNeuEin(): Int? = null
-        override suspend fun starteCsvAbgleich() = true
-        override suspend fun startePreislauf() = true
-        override suspend fun ladeFehlendeBilderNach() = true
-        override suspend fun reiheKatalogbilderEin() = true
-        override suspend fun setzeJobZeitplan(name: String, zeit: String?, minuten: Int?) = true
-        override fun auftragAbbrechen(id: String) = Unit
-        override fun auftragWiederholen(id: String) = Unit
-        override fun auftragsArtStarten(art: String, name: String) = Unit
-        override fun auftragsArtLeeren(art: String) = Unit
-        override fun melde(satz: String) = Unit
+    private val aktionen = object : StilleAktionen() {
+        override fun waehleProtokoll(minuten: Int) { protokollAbrufe++ }
     }
 
     private val info = ProtokollZeileAnsicht(1, "info", "Preislauf gestartet", "2026-11-10T08:15:30Z")

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.ui.satz
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -111,8 +112,8 @@ private fun CsvRueckmeldung(csvZustand: CsvHochladenUiState, onSchliessen: () ->
             color = MaterialTheme.colorScheme.primary)
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
     }
-    if (csvZustand.fehler != null) {
-        Text(csvZustand.fehler, style = MaterialTheme.typography.bodySmall,
+    csvZustand.fehler?.let { fehler ->
+        Text(fehler.satz(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error)
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
     }

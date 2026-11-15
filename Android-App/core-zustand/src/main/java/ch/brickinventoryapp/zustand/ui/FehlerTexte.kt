@@ -3,6 +3,7 @@ package ch.brickinventoryapp.zustand.ui
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 
@@ -52,6 +53,15 @@ fun fehlerMeldung(f: Ergebnis.Error): Meldung {
     if (f.message.isNotBlank()) return Meldung.Text(f.message)
     fehlerTextZuCode(f.code)?.let { return Meldung.Ressource(it) }
     return Meldung.Ressource(fehlerTextId(f), listOfNotNull(fehlerTextArgument(f)))
+}
+
+/** Ein gescheiterter Abruf für den Zustand: Art für Symbol und Rat, Meldung für den Satz. */
+fun ladefehler(f: Ergebnis.Error): Laden.Fehler = Laden.Fehler(fehlerklasse(f), fehlerMeldung(f))
+
+/** Ein Abruf als [Laden]; der Stand der Ablage geht mit, damit „offline“ sichtbar bleibt. */
+fun <T> Ergebnis<T>.alsLaden(): Laden<T> = when (this) {
+    is Ergebnis.Success -> Laden.Daten(data, stand)
+    is Ergebnis.Error -> ladefehler(this)
 }
 
 /**

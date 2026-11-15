@@ -204,7 +204,7 @@ class UnterseitenTest {
     fun `Haushalt gliedert Einladen und Annehmen und entfernt erst nach Rueckfrage`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
             testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
@@ -266,7 +266,7 @@ class UnterseitenTest {
     fun `Entfernen nennt das Konto im Haushalt`() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
             testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
@@ -301,7 +301,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
-            testKontoRepository(welt.t.api, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -328,7 +328,7 @@ class UnterseitenTest {
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "email_neu":"neu@example.org"}}"""
         val konto = welt.t.merke(KontoViewModel(
-            testKontoRepository(welt.t.api, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -346,7 +346,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(KontoViewModel(
-            testKontoRepository(welt.t.api, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
@@ -691,7 +694,7 @@ class BildschirmFotoVariantenTest {
     fun haushalt() {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
             testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
@@ -841,8 +844,8 @@ class BildschirmFotoVariantenTest {
 
     private fun katalogDetailFoto(dunkel: Boolean, geraet: String, schrift: Float = 1f, name: String = "katalog-detail") {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
-            CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
-                isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
+            CatalogDetailScreen(setNumber = "10305-1", geladen = Laden.Daten(katalogDetail),
+                imageLoader = bilder, serverUrl = "", onLoad = {},
                 onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
@@ -875,7 +878,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(KontoViewModel(
-            testKontoRepository(welt.t.api, welt.t.io), KontextTexte(),
+            testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -1072,7 +1075,7 @@ class BildschirmFotoVariantenTest {
     @Test fun katalogSchrift200() = katalogFoto(false, "telefon", "katalog-schrift200", 2f)
     @Test fun katalogLeer() = katalogFoto(false, "telefon", "katalog-leer", zustand = CatalogUiState())
     @Test fun katalogFehler() = katalogFoto(true, "telefon", "katalog-fehler",
-        zustand = CatalogUiState(error = "Serverfehler (500)"))
+        zustand = CatalogUiState(abruf = Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Text("Serverfehler (500)"))))
 
     @Test
     fun merklisteFehler() {
@@ -1306,7 +1309,7 @@ class BildschirmFotoVariantenTest {
             "bildbedarf":7,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val api = welt.t.api
-        val vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), KontextTexte(), welt.t.meldungen)
+        val vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
@@ -1345,7 +1348,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
-        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
             testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})

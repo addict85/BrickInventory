@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.katalog.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import ch.brickinventoryapp.model.ui.Laden
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
@@ -45,12 +45,6 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
         composable<KatalogZiel.Catalog> { eintrag ->
             val katalog = katalogViewModel(navController, eintrag)
             val state by navigation.sitzung.collectAsStateWithLifecycle()
-            val catalogState by katalog.state.collectAsStateWithLifecycle()
-            LaunchedEffect(state.serverUrl) {
-                if (state.serverUrl.isNotBlank() && catalogState.loadedPages.isEmpty() && !catalogState.isLoading) {
-                    katalog.loadCatalogMeta(); katalog.loadCatalogSets()
-                }
-            }
             navigation.Reiter(stringResource(R.string.nav_catalog)) {
                 CatalogRoute(
                     katalog = katalog,
@@ -82,8 +76,8 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
     // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
     CatalogDetailScreen(
         setNumber = catSetNumber,
-        detail = catalogState.detail?.takeIf { it.setNumber == catSetNumber },
-        isLoading = catalogState.detailLoading,
+        // Bis das Detail dieses Sets da ist, nicht das zuletzt geöffnete zeigen.
+        geladen = catalogState.detail.let { if (it is Laden.Daten && it.wert.setNumber != catSetNumber) Laden.Laedt else it },
         imageLoader = navigation.bilder,
         serverUrl = state.serverUrl,
         defaultCondition = state.userDefaultCondition ?: Zustand.NEU,
@@ -102,8 +96,6 @@ private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackS
         onBack = { navController.popBackStack() },
         gemerkt = gemerkt,
         onOeffneMerkposten = navigation::oeffneMerkposten,
-        fehler = catalogState.detailFehler,
-        fehlerKlasse = catalogState.detailFehlerKlasse,
     )
 }
 

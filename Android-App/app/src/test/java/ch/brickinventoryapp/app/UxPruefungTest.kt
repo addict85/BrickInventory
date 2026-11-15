@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Laden
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -66,10 +68,10 @@ class UxPruefungTest {
     fun `H1 scheitert das Katalog-Detail, steht der Grund mit Erneut versuchen statt des Kringels`() {
         val geladen = mutableListOf<String>()
         zeige {
-            CatalogDetailScreen(setNumber = "10305-1", detail = null, isLoading = false,
+            CatalogDetailScreen(setNumber = "10305-1",
+                geladen = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text("Server antwortet mit 503")),
                 imageLoader = Beispielbilder.loader(ctx), serverUrl = "", onLoad = { geladen += it },
-                onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {},
-                fehler = "Server antwortet mit 503", fehlerKlasse = Fehlerklasse.SERVER)
+                onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode("Keine Überschrift der Fehlerklasse")
         compose.onNodeWithText("Server antwortet mit 503").fetchSemanticsNode("Der Grund fehlt")
