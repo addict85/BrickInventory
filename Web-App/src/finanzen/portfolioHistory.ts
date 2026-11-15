@@ -90,18 +90,14 @@ export async function getPortfolioHistory(
   if (verdichtet) rawPoints = aufMonate(rawPoints);
   const downsampled = monatsAufloesung || verdichtet;
 
-  if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal, k.uhr.datum());
+  const jetzt = k.uhr.datum();
+  if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal, jetzt);
 
   if (!rawPoints.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }
 
-  const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(
-    rawPoints,
-    currency,
-    downsampled,
-    k.uhr.datum(),
-  );
+  const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled, jetzt);
 
   return {
     currency,

@@ -121,7 +121,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
   10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
   `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-anmeldebremse`,
-  `sicherheit-runde11-db`.
+  `sicherheit-server-grenzen-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
   (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
@@ -242,10 +242,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb; ohne
   `APP_BASE_URL` (nur mit `APP_BASE_URL_FEHLT_OK=1`) unter keinem Namen. Frei
   bleiben Loopback, IP-Adressen, `/ca.crt` und die Gesundheitspfade:
-  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-runde11-db`, `herkunft`.
+  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-server-grenzen-db`, `herkunft`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
   `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
-  — `sicherheit-runde11-db`.
+  — `sicherheit-server-grenzen-db`.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
@@ -253,7 +253,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
 - Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
   (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
-  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-runde11-db`.
+  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-server-grenzen-db`.
 - Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
@@ -341,7 +341,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
   zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
   `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
-  `handleRouteError` — `sicherheit-runde11-db`.
+  `handleRouteError` — `sicherheit-server-grenzen-db`.
 - Aktions-Dispatcher kein Skript-Gadget: kein `mouseenter`, je Ereignis nur
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus

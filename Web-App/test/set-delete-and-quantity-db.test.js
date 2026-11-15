@@ -39,7 +39,7 @@ test('das Löschen fragt genau einmal', () => {
   assert.match(handler, /await delSet\(/, 'Er muss über delSet() gehen');
 
   // …und delSet fragt genau einmal: über loeschWahl(), je nach Haushalt mit oder ohne Kontenwahl
-  // (UX-Prüfung 23, M1; das Verhalten prüft oberflaeche-runde23-browser).
+  // (UX-Prüfung 23, M1; das Verhalten prüft abmelden-loeschen-kontrast-browser).
   const fn = src.slice(src.indexOf('async function loeschWahl'), src.indexOf('export async function reimportParts'));
   assert.equal((fn.match(/confirmDelete\(/g) || []).length, 1, 'delSet() muss GENAU EINE Rückfrage stellen');
   assert.equal((fn.match(/loeschenMitWahl\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
