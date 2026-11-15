@@ -162,7 +162,6 @@ internal data class BewertungsKaufZeile(
     @SerialName("pnl_pct") val pnlPct: String? = null,
     @SerialName("pnl_prozent") val pnlProzent: Double? = null,
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("owner_user_id") val besitzerId: Int? = null,
     @SerialName("kaufpreis_original") val kaufpreisOriginal: Double = 0.0,
     @SerialName("kaufpreis_waehrung") val kaufpreisWaehrung: String = "",
     @SerialName("price_estimated") val preisGeschaetzt: Boolean = false,
@@ -361,12 +360,11 @@ internal object Ablagezeilen {
 
     private fun kauf(a: BewertungsKaufAnsicht) = BewertungsKaufZeile(id = a.id, condition = a.condition, quantity = a.quantity,
         kaufpreis = a.purchasePrice?.alsDouble(), preisSchnitt = a.avgPrice?.alsDouble(), totalAvg = a.totalAvg,
-        wertGesamt = a.wertGesamt?.alsDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt),
-        besitzerId = a.ownerUserId)
+        wertGesamt = a.wertGesamt?.alsDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt))
 
     private fun kauf(z: BewertungsKaufZeile) = BewertungsKaufAnsicht(id = z.id, condition = z.condition, quantity = z.quantity,
         purchasePrice = z.kaufpreis.alsGeld(), avgPrice = z.preisSchnitt.alsGeld(), totalAvg = z.totalAvg, wertGesamt = z.wertGesamt.alsGeld(),
-        pnlPct = z.pnlPct, pnlProzent = z.pnlProzent, createdAt = zeitpunkt(z.createdAt), ownerUserId = z.besitzerId)
+        pnlPct = z.pnlPct, pnlProzent = z.pnlProzent, createdAt = zeitpunkt(z.createdAt))
 
     fun manuellesTeil(p: ManuellesTeilAnsicht) = ManuellesTeilZeile(id = p.id, partNumber = p.partNumber, blPartNumber = p.blPartNumber,
         partName = p.partName, farbId = p.colorId, farbname = p.colorName, farbHex = p.colorHex, quantity = p.quantity, bildUrl = p.imageUrl,

@@ -243,12 +243,12 @@ class KontoViewModelTest {
 
     @Test
     fun `ein abgelehnter Passwortwechsel meldet abzumelden nicht`() {
-        server.enqueue(antwort("""{"success":false,"error":"Aktuelles Passwort falsch"}"""))
+        server.enqueue(antwort("""{"success":false,"error":"Aktuelles Passwort falsch","code":"passwort_falsch"}""", 400))
         vm.aenderePasswort("falsch", "neuNeuNeu123!")
         bis("Fehler") { vm.kontoState.value.speichern.fehlerMeldung != null }
 
         assertFalse(abgemeldet)
-        // Die Absage kommt als Fehler mit dem Satz des Servers.
+        // Die Absage kommt als Fehlerstatus mit dem Satz des Servers.
         assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.speichern.fehlerMeldung.text)
         assertNull(kanal.text)
     }

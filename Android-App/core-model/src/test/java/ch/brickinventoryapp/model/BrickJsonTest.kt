@@ -34,6 +34,6 @@ class BrickJsonTest {
 
     @Test
     fun `Vorgaben werden mitgeschrieben`() {
-        assertEquals("""{"success":false,"vorgabe":null,"error":null}""", BrickJson.encodeToString(LagerortVorgabeResponse()))
+        assertEquals("""{"success":false,"vorgabe":null}""", BrickJson.encodeToString(LagerortVorgabeResponse()))
     }
 }

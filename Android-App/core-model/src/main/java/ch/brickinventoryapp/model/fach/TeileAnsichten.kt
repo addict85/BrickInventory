@@ -164,5 +164,4 @@ data class BewertungsKaufAnsicht(
     val pnlPct: String? = null,
     val pnlProzent: Double? = null,
     val createdAt: Instant? = null,
-    val ownerUserId: Int? = null,
 )

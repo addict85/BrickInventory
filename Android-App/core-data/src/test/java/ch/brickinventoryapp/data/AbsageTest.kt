@@ -8,19 +8,19 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Ein 2xx mit `success: false` kommt als Ergebnis.Fehler.Absage mit dem Satz des Servers an,
+ * Ein 2xx mit `success: false` kommt als Ergebnis.Fehler.Absage an (den Satz schickt der Server mit einem Fehlerstatus),
  * ein 2xx mit `success: true` als Ansicht: Kein Aufrufer prüft das Feld des Wire-Formats.
  *
  * Gegenprobe (gegenproben/absage-als-erfolg.patch): `zugesagt` gibt immer Erfolg zurück
- * → rot „eine Absage des Servers ist ein Fehler mit seinem Satz“.
+ * → rot „eine Absage des Servers ist ein Fehler“.
  */
 class AbsageTest {
 
     @Test
-    fun `eine Absage des Servers ist ein Fehler mit seinem Satz`() = mitRepo(::testVerwaltungRepository) { pfade, admin ->
-        pfade.antworten["/api/v1/admin/logs"] = """{"success":false,"error":"Protokoll gesperrt"}"""
+    fun `eine Absage des Servers ist ein Fehler`() = mitRepo(::testVerwaltungRepository) { pfade, admin ->
+        pfade.antworten["/api/v1/admin/logs"] = """{"success":false}"""
         val r = runBlocking { admin.getProtokoll(15) }
-        assertEquals(Ergebnis.Fehler.Absage("Protokoll gesperrt"), r)
+        assertEquals(Ergebnis.Fehler.Absage(), r)
     }
 
     @Test
