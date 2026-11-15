@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import java.time.Instant
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -53,7 +54,7 @@ class KaufdatumTest {
         var geoeffnet = 0
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
-                Surface(color = MaterialTheme.colorScheme.background) { Kaufdatum("2026-09-03T15:00:32.194Z") { geoeffnet++ } }
+                Surface(color = MaterialTheme.colorScheme.background) { Kaufdatum(Instant.parse("2026-09-03T15:00:32.194Z")) { geoeffnet++ } }
             }
         }
         compose.waitForIdle()

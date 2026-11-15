@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -54,9 +55,9 @@ class AlarmUndVorratAblageTest {
         assertEquals(listOf("75192-1", "10294-1"), alarme.beobachteAlarme().first().liste.map { it.setNumber })
         assertEquals(listOf(Alarmrichtung.UNTER), alarme.beobachteAlarme("75192-1").first().liste.map { it.richtung })
 
-        alarme.setPreisalarm("75192-1", Alarmrichtung.UEBER, 800.0, Zustand.NEU)
+        alarme.setPreisalarm("75192-1", Alarmrichtung.UEBER, Geld.aus(800.0)!!, Zustand.NEU)
         val gesetzt = alarme.beobachteAlarme("75192-1").first().liste.single()
-        assertEquals(Alarmrichtung.UEBER to 800.0, gesetzt.richtung to gesetzt.schwelle)
+        assertEquals(Alarmrichtung.UEBER to Geld.aus(800.0), gesetzt.richtung to gesetzt.schwelle)
         assertEquals("der Name der Übersicht bleibt", "Falcon", gesetzt.name)
 
         alarme.deletePreisalarm("10294-1", Zustand.GEBRAUCHT)

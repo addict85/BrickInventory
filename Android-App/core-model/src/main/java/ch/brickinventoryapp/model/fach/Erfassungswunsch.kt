@@ -9,7 +9,7 @@ package ch.brickinventoryapp.model.fach
 data class Erfassungswunsch(
     val setNumber: String,
     val menge: Int = 1,
-    val kaufpreis: Double? = null,
+    val kaufpreis: Geld? = null,
     /** null: Der Server nimmt die Vorgabe des Kontos. */
     val zustand: Zustand? = null,
     /** null: das eigene Konto. Ob ein anderes erlaubt ist, prüft der Server. */

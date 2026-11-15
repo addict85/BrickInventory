@@ -7,7 +7,7 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/Widge
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/widget/WidgetZahlen.kt
 @@ -39,7 +39,7 @@
-         ?: verlauf?.punkte?.lastOrNull()?.value
+         ?: verlauf?.punkte?.lastOrNull()?.wert?.alsDouble()
      val kauf = t?.purchase?.toDoubleOrNull()
      val gesamt = when {
 -        mitBasis -> t.basisGuvBetrag?.toDoubleOrNull()

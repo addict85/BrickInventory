@@ -237,7 +237,7 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
         keyboardOptions = NumericInput.preisTastatur(), shape = Formen.feld,
         modifier = Modifier.betragsbreite(),
     )
-    val bereit = nummer.isNotBlank() && (Alarmeingabe.zahl(schwelle) ?: 0.0) > 0.0
+    val bereit = nummer.isNotBlank() && Alarmeingabe.zahl(schwelle) != null
     if (!bereit) SperrGrund(stringResource(R.string.alerts_anlegen_sperrgrund))
     Button(
         onClick = { aktionen.legeAlarmAn(nummer, zustand, richtung, schwelle); nummer = ""; schwelle = "" },

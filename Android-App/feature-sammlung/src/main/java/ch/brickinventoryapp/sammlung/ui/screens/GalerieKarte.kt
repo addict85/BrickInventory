@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import ch.brickinventoryapp.model.fach.SetAnsicht
@@ -255,7 +256,7 @@ private fun KachelTexte(
     guv: (@Composable () -> Unit)?,
     menge: (@Composable () -> Unit)?,
     preis: KachelPreis?,
-    betrag: Double?,
+    betrag: Geld?,
     waehrung: Waehrung,
     /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
     ansagen: List<String>,
@@ -306,7 +307,7 @@ private fun KachelTexte(
 /** Woher der Betrag kommt, darunter der Betrag und, bei mehreren Stück, „je Stück“. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Double?, waehrung: Waehrung) {
+private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Geld?, waehrung: Waehrung) {
     // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
     // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
     // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben; in der

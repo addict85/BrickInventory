@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.model.fach
 
-
 // Jobs, Brickset-Warteschlange, Zwischenspeicher und Kontingente im Monitoring.
 
 data class JobZustandAnsicht(

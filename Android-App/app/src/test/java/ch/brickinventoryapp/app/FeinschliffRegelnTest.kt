@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -252,7 +253,7 @@ class FeinschliffRegelnTest {
             val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
                 testKatalogRepository(welt.t.api),
                 object : SetAnleger {
-                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
@@ -271,7 +272,7 @@ class FeinschliffRegelnTest {
 
     private fun verlauf(punkte: Int) = PreisDiagrammAnsicht(
         values = listOf(PreisReiheAnsicht("N",
-            (1..punkte).map { PreisPunktAnsicht("2026-0$it-01", 700.0 + 10 * it) })))
+            (1..punkte).map { PreisPunktAnsicht("2026-0$it-01", Geld.aus(700.0 + 10 * it)!!) })))
 
     /** Zwei Punkte ohne Achse lasen sich wie ein Trend; erst ab drei steht eine Linie da. */
     @Test

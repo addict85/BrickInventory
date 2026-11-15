@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.model.fach
 
+import java.time.Instant
 
 // Bewertung, Gewinn und Kennzahlen; Beträge kommen fertig vom Server.
 
@@ -36,14 +37,14 @@ data class GewinnAnsicht(
 data class GewinnZeileAnsicht(
     val setNumber: String,
     val quantity: Int = 1,
-    val currentPrice: Double? = null,
-    val baselinePrice: Double? = null,
+    val currentPrice: Geld? = null,
+    val baselinePrice: Geld? = null,
     val pnlPct: String? = null,
     val baselinePnlPct: String? = null,
-    val pnlBetrag: Double? = null,
+    val pnlBetrag: Geld? = null,
     val pnlProzent: Double? = null,
     val baselinePnlProzent: Double? = null,
-    val kachelPreis: Double? = null,
+    val kachelPreis: Geld? = null,
     val kachelPnlPct: Double? = null,
     val kachelQuelle: String? = null,
 )
@@ -77,19 +78,19 @@ data class BewertungAnsicht(
 
 data class BewertungSetAnsicht(
     val setNumber: String,
-    val addedAt: String? = null,
+    val addedAt: Instant? = null,
     val name: String? = null,
     val year: Int? = null,
     val quantity: Int = 1,
     val imageLocal: String? = null,
     val imageUrl: String? = null,
-    val avgPrice: Double? = null,
-    val qtyAvgPrice: Double? = null,
+    val avgPrice: Geld? = null,
+    val qtyAvgPrice: Geld? = null,
     val totalQtyAvg: String? = null,
     val totalAvg: String? = null,
-    val wertGesamt: Double? = null,
+    val wertGesamt: Geld? = null,
     val pnlProzent: Double? = null,
-    val purchasePrice: Double? = null,
+    val purchasePrice: Geld? = null,
     val noPrice: Boolean = false,
     val acquisitions: List<BewertungsKaufAnsicht> = emptyList(),
     val mixed: Boolean = false,

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
 import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
@@ -32,7 +33,7 @@ class PriceChartMathTest {
     private fun series(name: String, first: Int, vararg pts: Pair<String, Double>) =
         PreisReiheAnsicht(
             name = name,
-            values = pts.map { PreisPunktAnsicht(it.first, it.second) },
+            values = pts.map { PreisPunktAnsicht(it.first, Geld.aus(it.second)!!) },
             firstRealIndex = first
         )
 

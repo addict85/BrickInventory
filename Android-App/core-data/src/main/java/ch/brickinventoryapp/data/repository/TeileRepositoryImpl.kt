@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -167,12 +168,12 @@ class TeileRepositoryImpl @Inject constructor(
 
     /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
     override suspend fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
-                         quantity: Int, unitPrice: Double?,
+                         quantity: Int, unitPrice: Geld?,
                          condition: Zustand?, ownerUserId: Int?,
                          storage: String?): Ergebnis<Erfasst> {
         val ohne = colorId == KEINE_FARBE
         val anfrage = AddPartRequest(partNumber = partNumber, colorId = colorId, colorName = colorName.takeUnless { ohne },
-            colorHex = colorHex.takeUnless { ohne }, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage)
+            colorHex = colorHex.takeUnless { ohne }, quantity = quantity, unitPrice = unitPrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.schreibe(Bearbeitung.TeilErfassen(anfrage),
             { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
             sicherAufrufen { api.addPart(anfrage, schluessel) }

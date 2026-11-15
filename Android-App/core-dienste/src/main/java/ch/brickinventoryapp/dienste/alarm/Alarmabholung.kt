@@ -78,10 +78,10 @@ internal object Alarmabholung {
             maximumFractionDigits = 2
         }
         val preis = a.zuletztPreis
-        val schwelle = format.format(a.schwelle)
+        val schwelle = format.format(a.schwelle.alsBigDecimal())
         return if (preis == null)
             "${a.setNumber}: $richtung $schwelle"
         else
-            "${a.setNumber}: ${format.format(preis)} ($richtung $schwelle)"
+            "${a.setNumber}: ${format.format(preis.alsBigDecimal())} ($richtung $schwelle)"
     }
 }

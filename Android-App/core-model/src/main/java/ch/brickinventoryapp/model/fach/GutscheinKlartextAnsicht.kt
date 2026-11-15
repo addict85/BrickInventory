@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.model.fach
 
-
 /** Nummer und PIN im Klartext für die Anzeige; der Bildschirm kennt das Server-Modell nicht. */
 data class KlartextAnsicht(val id: Int, val number: String, val pin: String?)
 

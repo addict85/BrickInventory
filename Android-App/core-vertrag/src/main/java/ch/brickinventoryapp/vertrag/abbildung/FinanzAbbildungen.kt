@@ -21,6 +21,8 @@ import ch.brickinventoryapp.model.fach.GewinnZeileAnsicht
 import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
 import ch.brickinventoryapp.model.fach.SummenAnsicht
 import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.util.zeitpunkt
 
 /** total_parts ist hier schon die Summe; set_parts fehlt bei älteren Servern, dann aus der Differenz. */
 fun DashboardStats.alsAnsicht() = KennzahlenAnsicht(
@@ -56,14 +58,14 @@ fun PnlResponse.alsAnsicht() = GewinnAnsicht(
 fun PnlSetZeile.alsAnsicht() = GewinnZeileAnsicht(
     setNumber = setNumber,
     quantity = quantity,
-    currentPrice = currentPrice,
-    baselinePrice = baselinePrice,
+    currentPrice = currentPrice.alsGeld(),
+    baselinePrice = baselinePrice.alsGeld(),
     pnlPct = pnlPct,
     baselinePnlPct = baselinePnlPct,
-    pnlBetrag = pnlBetrag,
+    pnlBetrag = pnlBetrag.alsGeld(),
     pnlProzent = pnlProzent,
     baselinePnlProzent = baselinePnlProzent,
-    kachelPreis = kachelPreis,
+    kachelPreis = kachelPreis.alsGeld(),
     kachelPnlPct = kachelPnlPct,
     kachelQuelle = kachelQuelle,
 )
@@ -97,19 +99,19 @@ fun ValuationResponse.alsAnsicht() = BewertungAnsicht(
 
 fun ValuationSet.alsAnsicht() = BewertungSetAnsicht(
     setNumber = setNumber,
-    addedAt = addedAt,
+    addedAt = zeitpunkt(addedAt),
     name = name,
     year = year,
     quantity = quantity,
     imageLocal = imageLocal,
     imageUrl = imageUrl,
-    avgPrice = avgPrice,
-    qtyAvgPrice = qtyAvgPrice,
+    avgPrice = avgPrice.alsGeld(),
+    qtyAvgPrice = qtyAvgPrice.alsGeld(),
     totalQtyAvg = totalQtyAvg,
     totalAvg = totalAvg,
-    wertGesamt = wertGesamt,
+    wertGesamt = wertGesamt.alsGeld(),
     pnlProzent = pnlProzent,
-    purchasePrice = purchasePrice,
+    purchasePrice = purchasePrice.alsGeld(),
     noPrice = noPrice,
     acquisitions = acquisitions.map { it.alsAnsicht() },
     mixed = mixed,

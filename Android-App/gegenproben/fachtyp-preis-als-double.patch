@@ -1,0 +1,16 @@
+Gegenprobe: ein Betrag in einem Fachtyp wieder als Double
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: Fachtypen tragen Betraege
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
+@@ -55,6 +55,7 @@
+ data class KaufSummenAnsicht(
+     val quantity: Int = 0,
+     val amount: Geld? = null,
++    val betragAlt: Double? = null,
+ )
+ 
+ data class LagerortAnsicht(

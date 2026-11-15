@@ -123,7 +123,7 @@ data class GutscheinUiState(
  */
 internal fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
-    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + java.math.BigDecimal.valueOf(g.amount) }
+    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + g.amount.alsBigDecimal() }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung
 }
 

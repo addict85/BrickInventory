@@ -40,7 +40,6 @@ import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
 import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 import ch.brickinventoryapp.finanzen.ui.setZeilen
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
-import java.math.BigDecimal
 import java.util.Locale
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
@@ -218,7 +217,7 @@ class BeispieldatenTest {
         assertTrue(bewertet.toString(), bewertet.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
         assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
         val kopf = finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
-        assertEquals(0, kopf.compareTo(bewertet.sumOf { BigDecimal.valueOf(it.wert!!) }))
+        assertEquals(0, kopf.compareTo(bewertet.sumOf { it.wert!!.alsBigDecimal() }))
     }
 }
 

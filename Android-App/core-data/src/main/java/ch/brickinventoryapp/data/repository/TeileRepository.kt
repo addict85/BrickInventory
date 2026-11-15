@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Erfasst
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand
@@ -82,7 +83,7 @@ interface TeileRepository {
     suspend fun getBrickColors(): Ergebnis<List<FarbeAnsicht>>
 
     suspend fun addPart(partNumber: String, colorId: Int = KEINE_FARBE, colorName: String? = null, colorHex: String? = null,
-                         quantity: Int = 1, unitPrice: Double? = null,
+                         quantity: Int = 1, unitPrice: Geld? = null,
                          condition: Zustand? = null, ownerUserId: Int? = null,
                          storage: String? = null): Ergebnis<Erfasst>
 

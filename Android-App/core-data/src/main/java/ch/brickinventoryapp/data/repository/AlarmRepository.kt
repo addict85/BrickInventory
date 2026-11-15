@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.AlarmabrufAnsicht
 import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
 import ch.brickinventoryapp.model.fach.Alarmrichtung
@@ -25,7 +26,7 @@ interface AlarmRepository {
     /** Alle Alarme des Kontos vom Server in die Ablage. */
     suspend fun aktualisiereAlarme(): Ergebnis<Unit>
 
-    suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Double,
+    suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,
                               condition: Zustand = Zustand.NEU): Ergebnis<Unit>
 
     suspend fun deletePreisalarm(setNumber: String, condition: Zustand = Zustand.NEU): Ergebnis<Unit>

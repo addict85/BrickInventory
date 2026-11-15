@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import android.content.Context
 import android.graphics.Color as Farbe
@@ -221,7 +222,7 @@ class UxPruefungZweiTest {
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise,
         testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(), testKatalogRepository(welt.t.api),
         object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 

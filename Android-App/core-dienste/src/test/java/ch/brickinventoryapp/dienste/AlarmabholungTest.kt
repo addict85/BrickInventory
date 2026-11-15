@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.dienste
 
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.Geld
+import java.time.Instant
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -36,9 +39,9 @@ class AlarmabholungTest {
     private fun alarm(sn: String = "10179-1", richtung: Alarmrichtung = Alarmrichtung.UNTER,
                       schwelle: Double = 200.0, preis: Double? = 100.0) =
         PreisalarmAnsicht(setNumber = sn, condition = Zustand.NEU, richtung = richtung,
-                   schwelle = schwelle, currencyCode = Waehrung("EUR"),
-                   ausgeloest = true, zuletztAm = "2026-09-19T17:00:00.000Z",
-                   zuletztPreis = preis, name = null, imageLocal = null, imageUrl = null, setImgUrl = null, besitzt = false)
+                   schwelle = Geld.aus(schwelle)!!, currencyCode = Waehrung("EUR"),
+                   ausgeloest = true, zuletztAm = Instant.parse("2026-09-19T17:00:00.000Z"),
+                   zuletztPreis = preis.alsGeld(), name = null, imageLocal = null, imageUrl = null, setImgUrl = null, besitzt = false)
 
     private fun antwort(vararg a: PreisalarmAnsicht, now: String? = "2026-09-19T18:00:00.000Z") =
         Ergebnis.Success(AlarmabrufAnsicht(alarme = a.toList(), marke = now))

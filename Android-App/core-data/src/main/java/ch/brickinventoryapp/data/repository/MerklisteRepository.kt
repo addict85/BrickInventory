@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import ch.brickinventoryapp.model.fach.MerkpostenPreiseAnsicht
 
@@ -39,7 +40,7 @@ interface MerklisteRepository {
      * true, wenn das Set schon im Bestand war und nur die Menge stieg.
      */
     suspend fun uebernimmMerkposten(setNumber: String, condition: Zustand, quantity: Int = 1,
-                                    purchasePrice: Double? = null, erfasstAls: Zustand? = null,
+                                    purchasePrice: Geld? = null, erfasstAls: Zustand? = null,
                                     ownerUserId: Int? = null,
                                     storage: String? = null): Ergebnis<Boolean>
 }

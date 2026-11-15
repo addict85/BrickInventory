@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.theme.mittigBis
@@ -94,7 +95,7 @@ internal fun MerkpostenDetailScreen(
         if (merkposten == null && !liste.abruf.laedt && liste.merkposten.isNotEmpty()) onBack()
     }
 
-    fun preis(v: Double?) = if (v == null) "—"
+    fun preis(v: Geld?) = if (v == null) "—"
         else fmtMoney(v, appState.currency)
 
     Scaffold(

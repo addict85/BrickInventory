@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.fach.Geld
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.model.fach.Alarmrichtung
@@ -162,9 +163,9 @@ class EinstellungenViewModel @Inject constructor(
         }
     }
 
-    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Double) {
+    override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld) {
         wartendeSchwellen.remove(setNumber to condition)?.cancel()
-        if (schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+        if (!schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { alarme.setPreisalarm(setNumber, richtung, schwelle, condition) }
     }
 
@@ -195,7 +196,7 @@ class EinstellungenViewModel @Inject constructor(
     override fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
         val schwelle = Alarmeingabe.zahl(roh)
-        if (nummer.isBlank() || schwelle == null || schwelle <= 0.0) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+        if (nummer.isBlank() || schwelle == null || !schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
         alarmSchleuse { alarme.setPreisalarm(nummer, richtung, schwelle, condition) }
     }
 

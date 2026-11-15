@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
@@ -226,7 +227,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
-fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
+fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else "—",
         style = MaterialTheme.typography.bodySmall,
@@ -325,7 +326,7 @@ fun ManuelleKachel(
     zustaende: List<Zustand>,
     zustand: Zustand?,
     besitzer: List<KontoAnsicht>,
-    preis: Double?,
+    preis: Geld?,
     waehrung: Waehrung,
     onEdit: () -> Unit,
     farbe: Color? = null,

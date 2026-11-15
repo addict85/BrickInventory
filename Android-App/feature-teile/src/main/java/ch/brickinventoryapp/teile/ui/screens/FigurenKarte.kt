@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.fach.Herkunft
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.material3.Button
 import ch.brickinventoryapp.ui.components.fokusRahmen
@@ -124,10 +125,10 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // zurück. Column statt Box: zwei Plaketten übereinander, nicht am selben Punkt.
                 Column(Modifier.align(Alignment.BottomStart).padding(Abstaende.winzig),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                    if (fig.source == "manual") ConditionBadges(fig.conditions, fig.condition)
+                    if (fig.source == Herkunft.MANUELL) ConditionBadges(fig.conditions, fig.condition)
                     OwnerBadges(fig.owners)
                 }
-                if (fig.source == "manual") {
+                if (fig.source == Herkunft.MANUELL) {
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer,
                         shape = Formen.marke,

@@ -417,7 +417,7 @@ private fun CatalogAddDialog(
         onBestaetigen = { onAdd(Erfassungswunsch(
             setNumber = "",
             menge = quantity.toIntOrNull() ?: 1,
-            kaufpreis = NumericInput.leseBetrag(purchasePrice),
+            kaufpreis = NumericInput.leseGeld(purchasePrice),
             zustand = condition,
             // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
             // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).

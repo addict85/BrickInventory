@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.fehlerArt
@@ -165,7 +166,7 @@ class SetDetailViewModelTest {
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").size)
         // Der Zustand liest die Ablage nur beim Laden: ohne Nachladen bliebe er leer.
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
-        assertEquals(listOf(450.0), vm.setDetailState.value.preisalarme.map { it.schwelle })
+        assertEquals(listOf(Geld.aus(450.0)), vm.setDetailState.value.preisalarme.map { it.schwelle })
     }
 
     private fun preisAbrufe() = pfade.anfragen.count { Regex("""^GET /api/v1/sets/75192-1/price(\?|$)""").containsMatchIn(it) }

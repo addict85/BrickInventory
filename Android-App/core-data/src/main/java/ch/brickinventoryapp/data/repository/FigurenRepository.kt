@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Erfasst
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand
@@ -28,7 +29,7 @@ interface FigurenRepository {
     suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<String?>
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,
-                           unitPrice: Double? = null, condition: Zustand? = null,
+                           unitPrice: Geld? = null, condition: Zustand? = null,
                            ownerUserId: Int? = null,
                            storage: String? = null): Ergebnis<Erfasst>
 

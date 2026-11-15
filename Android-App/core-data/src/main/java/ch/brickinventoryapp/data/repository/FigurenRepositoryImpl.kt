@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -60,10 +61,10 @@ class FigurenRepositoryImpl @Inject constructor(
         }.zugesagt({ it.success }, { it.error }) { it.storage }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
-                           unitPrice: Double?, condition: Zustand?,
+                           unitPrice: Geld?, condition: Zustand?,
                            ownerUserId: Int?,
                            storage: String?): Ergebnis<Erfasst> =
-        AddMinifigRequest(figNumber = figNumber, blFigNumber = blFigNumber, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage).let { anfrage ->
+        AddMinifigRequest(figNumber = figNumber, blFigNumber = blFigNumber, quantity = quantity, unitPrice = unitPrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage).let { anfrage ->
             ablage.schreibe(Bearbeitung.FigurErfassen(anfrage),
                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
                 sicherAufrufen { api.addMinifig(anfrage, schluessel) }

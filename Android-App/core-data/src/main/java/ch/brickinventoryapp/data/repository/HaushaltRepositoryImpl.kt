@@ -116,4 +116,5 @@ class HaushaltRepositoryImpl @Inject constructor(
 private fun AcquisitionsResponse.alsKaeufe() = KaeufeAnsicht(acquisitions.map { it.alsAnsicht() }, totals.alsAnsicht())
 
 private fun Kaufkorrektur.fuerStueck() =
-    aenderungFuerStueck(preis = preis, condition = zustand, quantity = menge, date = datum, ownerUserId = besitzer)
+    aenderungFuerStueck(preis = preis?.alsDouble(), condition = zustand, quantity = menge, date = datum?.toString(),
+        ownerUserId = besitzer)

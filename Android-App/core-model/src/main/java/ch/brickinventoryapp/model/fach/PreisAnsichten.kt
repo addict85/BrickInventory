@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.model.fach
 
-
 // Marktpreise und ihr Verlauf je Zustand.
 
 data class PreisDiagrammAnsicht(
@@ -16,7 +15,7 @@ data class PreisReiheAnsicht(
 
 data class PreisPunktAnsicht(
     val x: String = "",
-    val y: Double = 0.0,
+    val preis: Geld = Geld.NULL,
 )
 
 data class PreisJeZustandAnsicht(
@@ -31,8 +30,8 @@ data class PreisJeZustandAnsicht(
 }
 
 data class ZustandsBewertungAnsicht(
-    val marketPrice: Double? = null,
-    val purchasePrice: Double? = null,
+    val marketPrice: Geld? = null,
+    val purchasePrice: Geld? = null,
     val pnlPct: Double? = null,
 )
 
@@ -44,25 +43,25 @@ data class PreisverlaufAnsicht(
     val chart: PreisDiagrammAnsicht = PreisDiagrammAnsicht(),
     val pnlPct: String? = null,
     val pnlProzent: Double? = null,
-    val purchasePrice: Double? = null,
+    val purchasePrice: Geld? = null,
 )
 
 data class PreisverlaufPunktAnsicht(
-    val qtyAvgPrice: Double? = null,
-    val avgPrice: Double? = null,
+    val qtyAvgPrice: Geld? = null,
+    val avgPrice: Geld? = null,
 )
 
 data class SetPreisAnsicht(
     val setNumber: String = "",
     val currency: Waehrung = Waehrung.KEINE,
-    val avgPrice: Double? = null,
-    val qtyAvgPrice: Double? = null,
+    val avgPrice: Geld? = null,
+    val qtyAvgPrice: Geld? = null,
     val noPrice: Boolean = false,
 )
 
 data class AktuellerPreisAnsicht(
     val condition: Zustand? = null,
-    val avgPrice: Double? = null,
+    val avgPrice: Geld? = null,
 )
 
 data class AktuellJeZustandAnsicht(

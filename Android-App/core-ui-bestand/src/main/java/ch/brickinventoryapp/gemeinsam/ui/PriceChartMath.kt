@@ -82,15 +82,15 @@ object PriceChartMath {
      * Diagrammdaten des Servers in zeichenbare Linien überführen.
      *
      * Verworfen werden: die aufgefüllten Nullen vor `firstRealIndex`, danach
-     * jeder Punkt ohne Preis (y <= 0) und jede Reihe, die dann leer ist.
+     * jeder Punkt ohne Preis (preis <= 0) und jede Reihe, die dann leer ist.
      */
     fun buildLines(chart: PreisDiagrammAnsicht?): List<ChartLine> {
         val series = chart?.values ?: return emptyList()
         return series.mapNotNull { s ->
             val start = s.firstRealIndex.coerceIn(0, s.values.size)
             val pts = s.values.drop(start)
-                .filter { it.y > 0.0 }
-                .mapNotNull { p -> dayNumber(p.x)?.let { ChartPointXY(it, p.y) } }
+                .filter { it.preis.positiv }
+                .mapNotNull { p -> dayNumber(p.x)?.let { ChartPointXY(it, p.preis.alsDouble()) } }
             if (pts.isEmpty()) null else ChartLine(Zustand.aus(s.name) ?: Zustand.NEU, pts)
         }
     }

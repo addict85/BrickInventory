@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
@@ -157,7 +158,7 @@ class MerklisteViewModelTest {
         val vm = vm()
         vm.ladeMerkpostenDetail("10294-1")
         assertTrue("Detail geladen", !vm.merkpostenDetailState.value.abruf.laedt)
-        assertEquals(500.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        assertEquals(Geld.aus(500.0), vm.merkpostenDetailState.value.preisalarme.single().schwelle)
         val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
 
         vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "4", Zustand.NEU)
@@ -168,9 +169,9 @@ class MerklisteViewModelTest {
         uhr.advanceTimeBy(900)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
         assertTrue("nachgeladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
-        assertEquals("gespeichert und nachgeladen", 450.0, vm.merkpostenDetailState.value.preisalarme.single().schwelle, 0.0)
+        assertEquals("gespeichert und nachgeladen", Geld.aus(450.0), vm.merkpostenDetailState.value.preisalarme.single().schwelle)
         val abgelegt = runBlocking { t.alarme().beobachteAlarme("10294-1").first().liste }
-        assertEquals("in der Ablage", listOf(450.0), abgelegt.map { it.schwelle })
+        assertEquals("in der Ablage", listOf(Geld.aus(450.0)), abgelegt.map { it.schwelle })
     }
 
     @Test

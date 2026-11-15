@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.model.fach.SetErfasst
@@ -16,7 +17,7 @@ import javax.inject.Inject
  */
 interface SetAnleger {
     fun anlegen(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String? = null,
     ): Flow<SetAnlegenSchritt>
 }
@@ -42,7 +43,7 @@ internal class AnlegenMitAblage @Inject constructor(
     private val ablage: Offlineablage,
 ) : SetAnleger {
     override fun anlegen(
-        setNumber: String, quantity: Int, purchasePrice: Double?,
+        setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetAnlegenSchritt> = flow {
         val vorher = ablage.bereich()
@@ -50,7 +51,7 @@ internal class AnlegenMitAblage @Inject constructor(
             val e = (s as? SetAnlegenSchritt.Fertig)?.ergebnis
             if (e != null && !e.vorhanden && vorher != null && ablage.bereich() == vorher) {
                 val nummer = e.nummer ?: setNumber
-                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(setNumber = nummer, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage)), vorher)
+                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(setNumber = nummer, quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)), vorher)
             }
             emit(s)
         }

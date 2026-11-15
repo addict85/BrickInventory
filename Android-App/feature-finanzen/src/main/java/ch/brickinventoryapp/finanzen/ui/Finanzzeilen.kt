@@ -2,6 +2,7 @@ package ch.brickinventoryapp.finanzen.ui
 
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.BewertungAnsicht
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
 import ch.brickinventoryapp.model.fach.BewertungsKaufAnsicht
 import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
@@ -13,15 +14,14 @@ import java.math.BigDecimal
 
 /**
  * Was eine Karte der Finanzliste zeigt. Die Zahlen kommen fertig gerundet vom
- * Server (wert_gesamt, pnl_prozent); hier wird nur gewählt, nicht gerechnet,
- * deshalb genügt Double für die Anzeige.
+ * Server (wert_gesamt, pnl_prozent); gerechnet wird nur Kauf mal Menge, in Geld.
  */
 data class FinanzZeile(
     val schluessel: String,
     val menge: Int,
     /** Marktwert der Zeile; null = kein Marktpreis. */
-    val wert: Double?,
-    val kaufpreis: Double?,
+    val wert: Geld?,
+    val kaufpreis: Geld?,
     /** Zustand der Erfassung; null bei einem Eintrag ohne Erfassungen. */
     val zustand: Zustand?,
     val pnlProzent: Double?,
@@ -31,15 +31,15 @@ data class FinanzZeile(
      * Marktwert aber für die ganze Zeile (wert_gesamt); nebeneinander gestellt las sich
      * „Kauf: 400“ neben „899.90“ bei zwei Stück wie ein Gewinn von 125 %.
      */
-    val kaufGesamt: Double?
-        get() = kaufpreis?.let { BigDecimal.valueOf(it).multiply(BigDecimal(menge.coerceAtLeast(1))).toDouble() }
+    val kaufGesamt: Geld?
+        get() = kaufpreis?.let { it * menge.coerceAtLeast(1) }
 
     /** Gewinn oder Verlust in Geld, auf derselben Grundlage wie [pnlProzent]. */
-    val gewinn: Double?
+    val gewinn: Geld?
         get() {
             val w = wert ?: return null
             val k = kaufGesamt ?: return null
-            return BigDecimal.valueOf(w).subtract(BigDecimal.valueOf(k)).toDouble()
+            return w - k
         }
 }
 

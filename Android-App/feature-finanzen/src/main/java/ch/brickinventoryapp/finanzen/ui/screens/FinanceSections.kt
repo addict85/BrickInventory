@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.finanzen.ui.FinanzZeile
 import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
 import ch.brickinventoryapp.model.fach.Postenart
@@ -98,7 +99,7 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
 }
 
 /** Manuell erfasste Minifiguren, einzeln aufgelistet. */
-internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
+internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Minifiguren — einzeln auflisten, analog zu den Sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
@@ -136,7 +137,7 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
 }
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
-internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Double?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
+internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Teile — einzeln auflisten, analog zu den Sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
@@ -202,7 +203,7 @@ private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZei
 }
 
 /** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
-internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Double?) -> String, onSetClick: (String) -> Unit) {
+internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Geld?) -> String, onSetClick: (String) -> Unit) {
     // Section header
     if (showSets) {
     item {

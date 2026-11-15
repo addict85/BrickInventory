@@ -36,7 +36,7 @@ fun widgetZahlen(pnl: GewinnAnsicht?, verlauf: WertverlaufAnsicht?, jetzt: Long)
     val t = pnl?.totals
     val mitBasis = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
     val wert = (if (mitBasis) t.basisMarktwert else t?.current)?.toDoubleOrNull()
-        ?: verlauf?.punkte?.lastOrNull()?.value
+        ?: verlauf?.punkte?.lastOrNull()?.wert?.alsDouble()
     val kauf = t?.purchase?.toDoubleOrNull()
     val gesamt = when {
         mitBasis -> t.basisGuvBetrag?.toDoubleOrNull()
@@ -46,8 +46,8 @@ fun widgetZahlen(pnl: GewinnAnsicht?, verlauf: WertverlaufAnsicht?, jetzt: Long)
     }
     val punkte = verlauf?.punkte.orEmpty()
     val (heute, heuteProzent) = if (punkte.size >= 2) {
-        val vorher = punkte[punkte.size - 2].value
-        val diff = punkte.last().value - vorher
+        val vorher = punkte[punkte.size - 2].wert.alsDouble()
+        val diff = punkte.last().wert.alsDouble() - vorher
         diff to (if (vorher != 0.0) diff / vorher * 100 else null)
     } else null to null
     return WidgetZahlen(waehrung, wert, gesamt, pnl?.totals?.pnlProzent, heute, heuteProzent, jetzt)

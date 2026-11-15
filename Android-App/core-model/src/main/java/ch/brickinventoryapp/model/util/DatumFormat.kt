@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.model.util
 
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -55,17 +56,37 @@ fun fmtUhrzeit(
     iso: String?,
     locale: Locale = Locale.getDefault(),
     vierundzwanzig: Boolean = true,
-): String? {
+): String? = fmtUhrzeit(zeitstempel(iso), locale, vierundzwanzig)
+
+/** Wie [fmtUhrzeit] für einen schon gelesenen Zeitpunkt. */
+fun fmtUhrzeit(zeitpunkt: Instant?, locale: Locale = Locale.getDefault(), vierundzwanzig: Boolean = true): String? =
+    zeitpunkt?.let { uhrzeitFormat(locale, vierundzwanzig, sekunden = true).withZone(ZoneId.systemDefault()).format(it) }
+
+/**
+ * Ein Zeitpunkt des Servers; ohne Zone gilt UTC, ein blosser Tag ist dessen Beginn in UTC
+ * (Kaufdaten setzt der Nutzer als Tag). Unlesbar heisst null.
+ */
+fun zeitpunkt(iso: String?): Instant? = zeitstempel(iso)
+    ?: iso?.trim()?.let { runCatching { LocalDate.parse(it).atStartOfDay(ZoneOffset.UTC).toInstant() }.getOrNull() }
+
+/** Nur mit Uhrzeit: Ein blosser Tag hat keine, [fmtUhrzeit] zeigt dann nichts statt Mitternacht. */
+private fun zeitstempel(iso: String?): Instant? {
     if (iso.isNullOrBlank()) return null
-    val zeitpunkt = runCatching { OffsetDateTime.parse(iso).toInstant() }
-        .recoverCatching {
-            LocalDateTime.parse(iso).toInstant(ZoneOffset.UTC)
-        }
-        .getOrNull() ?: return null
-    return uhrzeitFormat(locale, vierundzwanzig, sekunden = true)
-        .withZone(ZoneId.systemDefault())
-        .format(zeitpunkt)
+    val text = iso.trim().replace(' ', 'T')
+    return runCatching { OffsetDateTime.parse(text).toInstant() }
+        .recoverCatching { LocalDateTime.parse(text).toInstant(ZoneOffset.UTC) }
+        .getOrNull()
 }
+
+/**
+ * Der Kalendertag in UTC, wie der Server ihn schreibt: [fmtDatum] rechnet nicht in die Zone
+ * des Geräts um, weil Stunden aus einem Erfassungstag sonst den Vortag machten.
+ */
+fun Instant.kalendertag(): LocalDate = atOffset(ZoneOffset.UTC).toLocalDate()
+
+/** Wie [fmtDatum] für einen schon gelesenen Zeitpunkt oder Tag. */
+fun fmtDatum(zeit: Instant?, locale: Locale, jahr: DatumJahr = DatumJahr.VOLL): String? =
+    zeit?.let { fmtDatum(it.kalendertag().toString(), locale, jahr) }
 
 /**
  * Zeitpunkt eines zwischengespeicherten Stands, auf der Uhr dessen, der ihn

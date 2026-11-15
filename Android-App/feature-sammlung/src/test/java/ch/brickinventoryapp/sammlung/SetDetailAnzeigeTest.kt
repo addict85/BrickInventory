@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,8 +66,8 @@ class SetDetailAnzeigeTest {
     }
 
     private val falke = SetAnsicht("75192-1", name = "Millennium Falcon", quantity = 5,
-        avgPurchasePrice = 712.5, maxPurchasePrice = 800.0)
-    private val preis = SetPreisAnsicht("75192-1", Waehrung.CHF, avgPrice = 1249.9)
+        avgPurchasePrice = Geld.aus(712.5), maxPurchasePrice = Geld.aus(800.0))
+    private val preis = SetPreisAnsicht("75192-1", Waehrung.CHF, avgPrice = Geld.aus(1249.9))
 
     private fun zustand(set: SetAnsicht) = SetDetailZustand(AppUiState(currency = Waehrung.CHF),
         SetDetailUiState(setDetail = set, setPrice = preis), LagerUiState())

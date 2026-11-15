@@ -50,6 +50,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   merkliste-fehler-als-text  MerklisteUiState mit `fehlerText: String?` → rot, derselbe Test
  *   galerie-fehler-als-text    GalleryUiState mit `galleryFehlerSatz: String?` → rot, derselbe Test
  *   englischer-bezeichner      `fun loadMerklisteNeu()` in MerklisteViewModel → rot „… englische Bezeichner auch“
+ *   fachtyp-preis-als-double   `val betragAlt: Double?` in KaufSummenAnsicht → rot „Beträge als Double …“
+ *   fachtyp-datum-als-text     `val geaendertAm: String?` in KaufAnsicht → rot „Daten als String …“
  */
 class QuelltextRatscheTest {
 
@@ -580,7 +582,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 191
+        val HAUPT = 188
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
@@ -654,6 +656,28 @@ class QuelltextRatscheTest {
         ratsche("alte Ladeformen (Boolean laedt/…Loading)", ALT, alt, "Laden<T> aus model/ui/Laden.kt nehmen.")
         ratsche("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texte,
             "Meldung (model/ui/Meldung.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
+    }
+
+    @Test
+    fun `Fachtypen tragen Betraege als Geld und Zeitpunkte als Instant, nicht als Double und String`() {
+        // Ziel 0, beide erreicht: Gezählt werden Eigenschaften in core-model, deren Name einen Betrag
+        // oder ein Datum nennt. Prozente sind keine Beträge.
+        val BETRAEGE = 0
+        val DATEN = 0
+        val eigenschaftTyp = Regex("""\bva[lr]\s+(\w+)\s*:\s*(Double|String)\b""")
+        val betrag = Regex("""(?i)(price|preis|betrag|amount|wert|schwelle|value|kosten)""")
+        val anteil = Regex("""(?i)(prozent|pct|frac)""")
+        val datum = Regex("""(At|Am|Datum|Date)$|^(datum|date|tag)$""")
+        fun zaehle(zeilen: List<String>): Pair<List<String>, List<String>> {
+            val treffer = zeilen.flatMap { z -> eigenschaftTyp.findAll(z).map { it.groupValues[1] to it.groupValues[2] }.toList() }
+            return treffer.filter { (n, t) -> t == "Double" && betrag.containsMatchIn(n) && !anteil.containsMatchIn(n) }.map { it.first } to
+                treffer.filter { (n, t) -> t == "String" && datum.containsMatchIn(n) }.map { it.first }
+        }
+        val probe = zaehle(listOf("    val avgPrice: Double? = null,", "    val createdAt: String? = null,", "    val pnlProzent: Double? = null,"))
+        assertEquals("Das Muster erkennt die alten Formen nicht mehr", listOf("avgPrice") to listOf("createdAt"), probe)
+        val (geld, tage) = zaehle(zeilenJeModul().filter { it.first == "core-model" }.flatMap { it.second })
+        ratsche("Beträge als Double in core-model", BETRAEGE, geld.size, "Geld nehmen (model/fach/Geld.kt): $geld")
+        ratsche("Daten als String in core-model", DATEN, tage.size, "Instant nehmen, gelesen mit zeitpunkt(): $tage")
     }
 
     /** Die Hauptquellen eines Moduls, Zeile für Zeile; die Regeln unten lesen nur Zeilenanfänge. */

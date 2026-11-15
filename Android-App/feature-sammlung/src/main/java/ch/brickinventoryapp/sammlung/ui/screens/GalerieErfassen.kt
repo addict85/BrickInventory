@@ -122,7 +122,7 @@ fun AddSetDialog(
             onAdd(Erfassungswunsch(
                 setNumber = setNumber,
                 menge = quantity.toIntOrNull() ?: 1,
-                kaufpreis = NumericInput.leseBetrag(purchasePrice),
+                kaufpreis = NumericInput.leseGeld(purchasePrice),
                 zustand = condition,
                 besitzer = eigentuemerFuerErfassung(householdMembers, owner),
                 lagerort = lagerort.trim().takeIf { it.isNotEmpty() },

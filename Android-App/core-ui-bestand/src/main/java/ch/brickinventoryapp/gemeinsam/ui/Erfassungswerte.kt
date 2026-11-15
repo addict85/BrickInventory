@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.ui.util.NumericInput
@@ -13,7 +14,7 @@ import ch.brickinventoryapp.ui.util.NumericInput
  */
 data class ErfassungsWerte(
     val anzahl: Int,
-    val preis: Double?,
+    val preis: Geld?,
     val zustand: Zustand,
     val besitzer: Int?,
 )
@@ -30,7 +31,7 @@ fun erfassungsWerte(
     haushalt: List<MitgliedAnsicht>,
 ): ErfassungsWerte = ErfassungsWerte(
     anzahl = anzahl.toIntOrNull() ?: 1,
-    preis = NumericInput.leseBetrag(preis),
+    preis = NumericInput.leseGeld(preis),
     zustand = zustand,
     besitzer = if (haushalt.size > 1) besitzer else null,
 )

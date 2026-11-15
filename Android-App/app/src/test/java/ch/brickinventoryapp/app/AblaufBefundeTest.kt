@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Meldung
@@ -210,7 +211,7 @@ class AblaufBefundeTest {
     @Test
     fun `M4 die Erfassung nach dem Scan hat eine Anzahl und behaelt Eingaben ueber eine Drehung`() {
         var menge = 0
-        var preis: Double? = null
+        var preis: Geld? = null
         val aktionen = object : ErfassungAktionen {
             override fun confirmAddBarcode(wunsch: Erfassungswunsch) { menge = wunsch.menge; preis = wunsch.kaufpreis }
             override fun cancelBarcode() = Unit
@@ -232,14 +233,14 @@ class AblaufBefundeTest {
         }
         compose.onNodeWithText(ctx.getString(R.string.barcode_add)).performClick()
         assertEquals(2, menge)
-        assertEquals(650.0, preis)
+        assertEquals(Geld.aus(650.0), preis)
     }
 
     @Test
     fun `M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
         var geoeffnet: Pair<String, Zustand>? = null
         val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
-            alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = 349.0))
+            alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = Geld.aus(349.0)!!))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
                 geladen = Laden.Daten(KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022)),

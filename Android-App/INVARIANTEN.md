@@ -123,7 +123,7 @@ core-zustand (`zustandsViewModels`).
 Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt), als ein Satz
 Typen, erzeugt aus `Web-App/docs/openapi.json` (`vertrag/Vertrag.kt`, nie von Hand; Namen und
 Fachtypen in `Web-App/scripts/vertrag-kotlin-zuordnung.js`). Nur core-data und core-offline binden
-es ein (`implementation`, `Modulkanten.wireKenner`); jedes Repository gibt Fach- und Ansichtstypen
+es ein (`implementation`, `Modulkanten.wireKenner`); jedes Repository gibt Fachtypen (`model.fach`)
 zurück, ein `success: false` ist eine `Absage`.
 Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`
 
@@ -195,6 +195,11 @@ Test: `PriceChartMathTest`
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
 rechnet, die App rechnet nicht nach. Dateien: `finanzen/ui/screens/FinanceScreen.kt`,
 `vertrag/Vertrag.kt` · Test: `PriceHistorySerializationTest`
+
+**Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
+(Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als
+`Instant`, der Kalendertag ist der in UTC. Double und Text gibt es nur auf der Leitung.
+Dateien: `model/fach/Geld.kt`, `model/util/DatumFormat.kt` · Tests: `GeldTest`, `QuelltextRatscheTest`
 
 ## Bau und Plattform
 

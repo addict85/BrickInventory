@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.vertrag.abbildung
 
+import ch.brickinventoryapp.model.util.zeitpunkt
 import ch.brickinventoryapp.vertrag.CsvImportErgebnis
 import ch.brickinventoryapp.vertrag.CsvImportStatus
 import ch.brickinventoryapp.vertrag.GetrenntesKonto
@@ -35,7 +36,7 @@ fun HouseholdStatusResponse.alsAnsicht() = HaushaltStatusAnsicht(
     formerLinks = formerLinks.map { it.alsAnsicht() },
 )
 
-fun ProtokollZeile.alsAnsicht() = ProtokollZeileAnsicht(id, level, message, loggedAt)
+fun ProtokollZeile.alsAnsicht() = ProtokollZeileAnsicht(id, level, message, zeitpunkt(loggedAt))
 
 fun CsvImportErgebnis.alsAnsicht() = CsvErgebnisAnsicht(total, neuAngelegt, updated, errors)
 

@@ -23,6 +23,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
+import ch.brickinventoryapp.model.fach.alsGeld
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -137,7 +138,7 @@ class GutscheineRepositoryImpl @Inject constructor(
             } else antwort
         }.abgebildet { a ->
             if (a.success) Gutscheinspeicherung.Gespeichert(a.mehrere?.added, a.mehrere?.updated)
-            else a.gelesen.let { g -> Gutscheinspeicherung.Unvollstaendig(g?.number, g?.pin, g?.amount, g?.currency) }
+            else a.gelesen.let { g -> Gutscheinspeicherung.Unvollstaendig(g?.number, g?.pin, g?.amount.alsGeld(), g?.currency) }
         }
     }
 
@@ -170,6 +171,6 @@ class GutscheineRepositoryImpl @Inject constructor(
 private fun Ergebnis<GutscheinAntwort>.gespeichert(): Ergebnis<Gutscheinspeicherung> =
     zugesagt({ it.success }, { it.error }) { Gutscheinspeicherung.Gespeichert(it.mehrere?.added, it.mehrere?.updated) }
 
-private fun Gutscheinangabe.alsAnfrage() = GutscheinRequest(number = nummer, pin = pin, amount = betrag, currency = waehrung)
+private fun Gutscheinangabe.alsAnfrage() = GutscheinRequest(number = nummer, pin = pin, amount = betrag.alsDouble(), currency = waehrung)
 
 private fun Bestaetigung.alsAnfrage() = ZweiterFaktorAnfrage(password = passwort, code = code)

@@ -22,6 +22,8 @@ import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
 import ch.brickinventoryapp.model.fach.PreisverlaufPunktAnsicht
 import ch.brickinventoryapp.model.fach.SetPreisAnsicht
 import ch.brickinventoryapp.model.fach.ZustandsBewertungAnsicht
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.alsGeldPflicht
 
 fun PriceChartData.alsAnsicht() = PreisDiagrammAnsicht(
     values = values.map { it.alsAnsicht() },
@@ -36,7 +38,7 @@ fun PriceChartSeries.alsAnsicht() = PreisReiheAnsicht(
 
 fun PriceChartPoint.alsAnsicht() = PreisPunktAnsicht(
     x = x,
-    y = y,
+    preis = y.alsGeldPflicht(),
 )
 
 fun PriceByCondition.alsAnsicht() = PreisJeZustandAnsicht(
@@ -45,8 +47,8 @@ fun PriceByCondition.alsAnsicht() = PreisJeZustandAnsicht(
 )
 
 fun ConditionValuation.alsAnsicht() = ZustandsBewertungAnsicht(
-    marketPrice = marketPrice,
-    purchasePrice = purchasePrice,
+    marketPrice = marketPrice.alsGeld(),
+    purchasePrice = purchasePrice.alsGeld(),
     pnlPct = pnlPct,
 )
 
@@ -58,25 +60,25 @@ fun PriceHistoryResponse.alsAnsicht() = PreisverlaufAnsicht(
     chart = chart.alsAnsicht(),
     pnlPct = pnlPct,
     pnlProzent = pnlProzent,
-    purchasePrice = purchasePrice,
+    purchasePrice = purchasePrice.alsGeld(),
 )
 
 fun PriceHistoryPoint.alsAnsicht() = PreisverlaufPunktAnsicht(
-    qtyAvgPrice = qtyAvgPrice,
-    avgPrice = avgPrice,
+    qtyAvgPrice = qtyAvgPrice.alsGeld(),
+    avgPrice = avgPrice.alsGeld(),
 )
 
 fun SetPriceResponse.alsAnsicht() = SetPreisAnsicht(
     setNumber = setNumber,
     currency = currency,
-    avgPrice = avgPrice,
-    qtyAvgPrice = qtyAvgPrice,
+    avgPrice = avgPrice.alsGeld(),
+    qtyAvgPrice = qtyAvgPrice.alsGeld(),
     noPrice = noPrice,
 )
 
 fun CurrentPrice.alsAnsicht() = AktuellerPreisAnsicht(
     condition = condition,
-    avgPrice = avgPrice,
+    avgPrice = avgPrice.alsGeld(),
 )
 
 fun CurrentByCondition.alsAnsicht() = AktuellJeZustandAnsicht(

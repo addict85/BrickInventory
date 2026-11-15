@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.DiagrammAchse
 import ch.brickinventoryapp.model.fach.DiagrammPunkt
@@ -25,9 +26,9 @@ import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
 class DiagrammAchsenTest {
 
     private val punkte = listOf(
-        DiagrammPunkt("03.10", 100.0, 0.0),
-        DiagrammPunkt("", 110.0, 0.5),
-        DiagrammPunkt("05.10", 120.0, 1.0),
+        DiagrammPunkt("03.10", Geld.aus(100.0)!!, 0.0),
+        DiagrammPunkt("", Geld.aus(110.0)!!, 0.5),
+        DiagrammPunkt("05.10", Geld.aus(120.0)!!, 1.0),
     )
     private val tage = listOf("2026-10-03", "2026-10-04", "2026-10-05")
 
@@ -45,7 +46,7 @@ class DiagrammAchsenTest {
 
     @Test
     fun `Monatsaufloesung zeigt Monat und Jahr`() {
-        val monat = listOf(DiagrammPunkt("10/25", 1.0, 0.0), DiagrammPunkt("11/25", 2.0, 1.0))
+        val monat = listOf(DiagrammPunkt("10/25", Geld.aus(1.0)!!, 0.0), DiagrammPunkt("11/25", Geld.aus(2.0)!!, 1.0))
         val l = lokaleAchse(monat, listOf("2025-10-01", "2025-11-01"), Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("Oct 25", "Nov 25"), l.map { it.xLabel })
     }
@@ -57,7 +58,7 @@ class DiagrammAchsenTest {
 
     @Test
     fun `y-Achse ganze Betraege mit Tausendern der Sprache`() {
-        val achse = listOf(DiagrammAchse("CHF 1'234", 1234.0, 0.0), DiagrammAchse("CHF 2'000", 2000.4, 1.0))
+        val achse = listOf(DiagrammAchse("CHF 1'234", Geld.aus(1234.0)!!, 0.0), DiagrammAchse("CHF 2'000", Geld.aus(2000.4)!!, 1.0))
         val en = lokaleWerte(achse, Waehrung("CHF"), Locale.forLanguageTag("en-GB")).map { it.label }
         assertTrue(en.toString(), en[0].contains("1,234") && en[1].contains("2,000") && en.none { "." in it })
         assertEquals("CHF\u00A01,234", en[0])

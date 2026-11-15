@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -99,7 +100,7 @@ class GalerieViewModelTest {
         val vm = vm()
         vm.loadStats()
         assertTrue("Preise da", vm.preise.value.containsKey("75192-1"))
-        assertEquals(812.5, vm.preise.value["75192-1"]?.betrag ?: -1.0, 1e-9)
+        assertEquals(Geld.aus(812.5), vm.preise.value["75192-1"]?.betrag)
         assertEquals(16.1, vm.preise.value["75192-1"]?.pnlPct ?: -1.0, 1e-9)
     }
 

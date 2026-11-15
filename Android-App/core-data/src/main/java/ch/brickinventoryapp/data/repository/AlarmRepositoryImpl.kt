@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.vertrag.PreisalarmRequest
@@ -39,10 +40,10 @@ class AlarmRepositoryImpl @Inject constructor(
             sicherAufrufen { api.getAlleAlarme() }
         }
 
-    override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Double,
+    override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,
                                        condition: Zustand): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it) } }) {
-            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle, condition = condition)) }
+            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
         }.zugesagt({ it.success }, { it.error }) { }
 
     override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<Unit> =

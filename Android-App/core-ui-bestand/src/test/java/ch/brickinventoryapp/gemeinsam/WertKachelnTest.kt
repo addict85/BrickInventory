@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.gemeinsam
 
+import ch.brickinventoryapp.model.fach.Geld
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -124,7 +125,7 @@ class WertKachelnTest {
     fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
-                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = 700.0)), Waehrung.CHF) {}
+                AcquisitionSummarySection(listOf(KaufAnsicht(id = 1, quantity = 1, purchasePrice = Geld.aus(700.0))), Waehrung.CHF) {}
             }
         }
         val betrag = compose.onNodeWithText(fmtMoney(700.0, Waehrung.CHF), useUnmergedTree = true)

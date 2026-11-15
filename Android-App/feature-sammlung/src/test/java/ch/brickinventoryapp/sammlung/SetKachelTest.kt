@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Geld
 import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -94,7 +95,7 @@ class SetKachelTest {
             Box(Modifier.width(188.dp)) {
                 SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
                     serverUrl = "", imageLoader = bilder, onClick = {},
-                    preis = KachelPreis(812.5, 16.1), waehrung = Waehrung.CHF)
+                    preis = KachelPreis(Geld.aus(812.5), 16.1), waehrung = Waehrung.CHF)
             }
         }
         assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
@@ -110,7 +111,7 @@ class SetKachelTest {
         zeige {
             Row(Modifier.width(380.dp)) {
                 Box(Modifier.weight(1f)) {
-                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = Waehrung.CHF)
+                    SetCard(voll, "", bilder, {}, preis = KachelPreis(Geld.aus(449.95), 12.5), waehrung = Waehrung.CHF)
                 }
                 Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = Waehrung.CHF) }
             }
