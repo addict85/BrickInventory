@@ -175,11 +175,11 @@ class TeileTest {
         val t = figurenliste()
         t.laden()
         advanceTimeBy(10); runCurrent()
-        assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertFalse(t.state.value.figurenAbruf.laedt)
+        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
+        assertFalse(t.zustand.value.figurenAbruf.laedt)
         advanceUntilIdle()
-        assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertEquals(FigurenKennzahlenAnsicht(), t.state.value.minifigStats)
+        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
+        assertEquals(FigurenKennzahlenAnsicht(), t.zustand.value.minifigStats)
     }
 
     @Test
@@ -196,9 +196,9 @@ class TeileTest {
         figurenAntwort = Ergebnis.Error.Netz()
         val t = figurenliste()
         t.laden(); runCurrent()
-        assertEquals(listOf("sw0001"), t.state.value.minifigs.map { it.figNumber })
-        assertNull("ohne Netz bleiben die Figuren stehen", t.state.value.figurenAbruf.fehlerMeldung)
-        assertEquals(4L, t.state.value.figurenOfflineStand)
+        assertEquals(listOf("sw0001"), t.zustand.value.minifigs.map { it.figNumber })
+        assertNull("ohne Netz bleiben die Figuren stehen", t.zustand.value.figurenAbruf.fehlerMeldung)
+        assertEquals(4L, t.zustand.value.figurenOfflineStand)
     }
 
     @Test
@@ -206,10 +206,10 @@ class TeileTest {
         figuren.value = Lokal(listOf(FigurAnsicht(figNumber = "alt")), null)
         val t = figurenliste()
         t.laden(); runCurrent()
-        assertEquals(emptyList<String>(), t.state.value.minifigs.map { it.figNumber })
+        assertEquals(emptyList<String>(), t.zustand.value.minifigs.map { it.figNumber })
         figuren.value = Lokal(listOf(FigurAnsicht(figNumber = "sw0002")), 5L)
         runCurrent()
-        assertEquals(listOf("sw0002"), t.state.value.minifigs.map { it.figNumber })
+        assertEquals(listOf("sw0002"), t.zustand.value.minifigs.map { it.figNumber })
     }
 
     @Test
