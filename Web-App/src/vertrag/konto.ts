@@ -330,10 +330,20 @@ export const routen = {
       'current',
     ),
   },
-  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, ...bestaetigt(), geheim: true },
+  'POST /api/v1/auth/zweiter-faktor/einrichten': {
+    antwort: ZweiterFaktorEinrichtung,
+    ...bestaetigt(),
+    geheim: true,
+    schritt: 'zweiter_faktor',
+  },
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
   'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, ...bestaetigt() },
-  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
+  'POST /api/v1/auth/zweiter-faktor/codes': {
+    antwort: ZweiterFaktorCodes,
+    eingabe: NurCode,
+    geheim: true,
+    schritt: 'zweiter_faktor',
+  },
   // Bestätigt wird nur der Widerruf eines FREMDEN Zugangs; den eigenen beendet jedes Gerät selbst.
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf, ...bestaetigt() },
   'POST /api/v1/auth/token-rotieren': { eingabe: OHNE_RUMPF, antwort: TokenRotation, geheim: true },

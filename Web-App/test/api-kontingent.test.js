@@ -7,6 +7,8 @@
  *   C  Schlüssel im Zähler ist die feste 0    → rot: „ein Konto verbraucht nicht das Budget des anderen“
  *   D  apiDrossel nicht in der Kette          → rot: „ohne Budget antwortet die Route 200“
  *   E  KOSTEN.preis = 1                       → rot: „Routen mit BrickLink- oder Fremdabruf …“
+ *   F  (15.11.2026) einordnung() wieder über Regexe `^…$` auf den Pfad → rot:
+ *      „ein Schrägstrich am Ende kostet …“ (partslist-pdf/ kostet 1 statt 25)
  *
  * Ohne Datenbank: Der Zähler liegt im Prozess, die Route wird mit einer
  * Sitzung im Request nachgebildet.
@@ -76,6 +78,18 @@ test('Katalogabrufe kosten mehr als Lesen', () => {
   assert.equal(einordnung('GET', '/sets').kosten, KOSTEN.normal);
   assert.equal(einordnung('POST', '/minifigs/import/csv').auftrag, true);
   assert.equal(einordnung('GET', '/settings/export/data').auftrag, true);
+});
+
+test('ein Schrägstrich am Ende kostet so viel wie die Route, die Express findet', () => {
+  for (const [m, p, k] of [
+    ['POST', '/sets/partslist-pdf/', KOSTEN.auftrag],
+    ['POST', '/sets/import/csv//', KOSTEN.auftrag],
+    ['GET', '/wanted/10294-1/preise/', KOSTEN.preis],
+    ['POST', '/vouchers/3/guthaben/', KOSTEN.abruf],
+    ['GET', '/catalog/sets/', KOSTEN.abruf],
+    ['HEAD', '/settings/export/data/', KOSTEN.auftrag],
+  ])
+    assert.equal(einordnung(m, p).kosten, k, `${m} ${p}`);
 });
 
 test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
