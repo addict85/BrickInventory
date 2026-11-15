@@ -49,6 +49,16 @@
  *   O  setBestand in db/bestandSicht.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
  *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
  *
+ * Wählt eine Datei den Tabellennamen zur Laufzeit, zählt, was sie beim Aufruf über einen mitschreibenden
+ * Zugang liest und schreibt (DYNAMISCH, messeDatei). Gegenproben (15.11.2026 gemessen, je einzeln):
+ *   P  src/bestand/repository/lagerort.ts: TABELLEN.set = 'instructions' → rot: „gemessen, wie
+ *      eingetragen“, „nur er schreibt hinein“ ['…/lagerort.ts → instructions'] und „lesen nie
+ *      aufwärts“ ['src/bestand → instructions']; die Regex auf wörtliche Namen sah beides nicht
+ *   Q  cacheZahlen() in src/katalog/repository/katalogCache.ts zählt wieder zaehle('price_cache') →
+ *      rot: „gemessen, wie eingetragen“ und „lesen nie aufwärts“ ['src/katalog → price_cache']
+ *   R  src/merkliste/repository/merkliste.ts liest wieder `FROM sets s` statt setBestand() → rot:
+ *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
+ *
  * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
  * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
  *
@@ -95,15 +105,24 @@ const GEMEINSAM = {
       'src/katalog/repository/bildlage.ts',
       'src/katalog/repository/csvTausch.ts',
       'src/katalog/repository/setStamm.ts',
+      'src/katalog/repository/teileAnreicherung.ts',
     ],
   },
   part_catalog: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   part_color_catalog: {
     art: KATALOG,
     eingabe: false,
-    schreiber: ['src/katalog/repository/csvKatalog.ts', 'src/katalog/repository/katalogStamm.ts'],
+    schreiber: [
+      'src/katalog/repository/csvKatalog.ts',
+      'src/katalog/repository/katalogStamm.ts',
+      'src/katalog/repository/teileAnreicherung.ts',
+    ],
   },
-  minifigs_catalog: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
+  minifigs_catalog: {
+    art: KATALOG,
+    eingabe: false,
+    schreiber: ['src/katalog/repository/katalogStamm.ts', 'src/katalog/repository/teileAnreicherung.ts'],
+  },
   set_teile: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   set_figuren: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   subsets_cache: {
@@ -113,12 +132,16 @@ const GEMEINSAM = {
   },
   minifig_parts_cache: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/rebrickableCache.ts'] },
   shared_instructions: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/anleitungen.ts'] },
-  rb_colors: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
-  rb_inventories: { art: KATALOG, eingabe: false, schreiber: [] },
-  rb_inventory_minifigs: { art: KATALOG, eingabe: false, schreiber: [] },
-  rb_inventory_parts: { art: KATALOG, eingabe: false, schreiber: [] },
-  rb_part_categories: { art: KATALOG, eingabe: false, schreiber: [] },
-  rb_parts: { art: KATALOG, eingabe: false, schreiber: [] },
+  rb_colors: {
+    art: KATALOG,
+    eingabe: false,
+    schreiber: ['src/katalog/repository/blZuordnung.ts', 'src/katalog/repository/csvTausch.ts'],
+  },
+  rb_inventories: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_inventory_minifigs: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_inventory_parts: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_part_categories: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_parts: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
   rb_sets: {
     art: KATALOG,
     eingabe: false,
@@ -128,7 +151,7 @@ const GEMEINSAM = {
       'src/katalog/repository/setStamm.ts',
     ],
   },
-  rb_themes: { art: KATALOG, eingabe: false, schreiber: [] },
+  rb_themes: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
   price_cache: { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
   price_history: {
     art: KATALOG,
@@ -178,18 +201,238 @@ const GEMEINSAM = {
   verwalter_uebernahmen: { art: KONTO, eingabe: 'angekündigte Änderung an einem Verwalterkonto (ziel_id)' },
 };
 
-/** Dateien mit Tabellennamen aus einer Variablen: Wohin sie schreiben, steht daneben. */
+/** Dateien, die einen Tabellennamen zur Laufzeit wählen (nicht über den Lesevertrag `l.`): was sie
+ * lesen und schreiben, gemessen (messeDatei). Steht es hier, ist die Messung vollständig; Besitzer
+ * und Stufen gelten für das Gemessene wie für wörtliche Namen. */
 const DYNAMISCH = {
-  'src/bestand/repository/kaufErfassungen.ts': 'set_/part_/minifig_acquisitions (user_id)',
-  'src/bestand/repository/lagerort.ts': 'sets/parts/minifigs (user_id)',
-  'src/bestand/repository/manuelleMengen.ts': 'part_/minifig_acquisitions (user_id)',
-  'src/bestand/repository/papierkorb.ts': 'Bestandstabellen (user_id)',
-  'src/gutscheine/repository/gutscheine.ts': 'vouchers (user_id)',
-  'src/katalog/repository/csvTausch.ts': 'rb_* aus den Rebrickable-CSV-Dateien',
-  'src/katalog/repository/teileAnreicherung.ts': 'part_catalog/part_color_catalog aus Rebrickable',
-  'src/sammlung/repository/erfassungen.ts': 'set_/part_/minifig_acquisitions (user_id)',
-  'src/sets/repository/verschieben.ts': 'Bestand und Erfassungen (user_id)',
+  'src/bestand/repository/erfassungen.ts': {
+    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+  },
+  'src/bestand/repository/gemeinsam.ts': {
+    liest: [
+      'minifigs',
+      'parts',
+      'rb_sets',
+      'rb_themes',
+      'set_acquisitions',
+      'set_catalog',
+      'sets',
+      'storage_locations',
+      'user_settings',
+    ],
+    schreibt: ['minifigs', 'parts', 'set_acquisitions', 'sets'],
+  },
+  'src/bestand/repository/kaeufe.ts': {
+    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+  },
+  'src/bestand/repository/kaufErfassungen.ts': {
+    liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+    schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
+  },
+  'src/bestand/repository/lagerort.ts': {
+    liest: ['minifigs', 'parts', 'sets', 'storage_locations', 'users'],
+    schreibt: ['minifigs', 'parts', 'sets', 'storage_locations'],
+  },
+  'src/bestand/repository/manuelleMengen.ts': {
+    liest: ['minifig_acquisitions', 'part_acquisitions'],
+    schreibt: ['minifig_acquisitions', 'part_acquisitions'],
+  },
+  'src/bestand/repository/papierkorb.ts': {
+    liest: [
+      'figur_eigen',
+      'minifig_acquisitions',
+      'minifigs',
+      'minifigs_catalog',
+      'papierkorb',
+      'part_acquisitions',
+      'part_catalog',
+      'part_color_catalog',
+      'parts',
+      'rb_sets',
+      'set_acquisitions',
+      'sets',
+      'teil_eigen',
+      'teil_farbe_eigen',
+    ],
+    schreibt: [
+      'minifig_acquisitions',
+      'minifigs',
+      'papierkorb',
+      'part_acquisitions',
+      'parts',
+      'set_acquisitions',
+      'sets',
+    ],
+  },
+  'src/bestand/repository/umhaengen.ts': {
+    liest: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
+    schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
+  },
+  'src/finanzen/repository/preisverlauf.ts': {
+    liest: [
+      'minifig_price_cache',
+      'minifig_price_history',
+      'part_price_cache',
+      'part_price_history',
+      'price_cache',
+      'price_history',
+    ],
+    schreibt: ['price_history'],
+  },
+  'src/gutscheine/repository/gutscheine.ts': { liest: ['vouchers'], schreibt: ['vouchers'] },
+  'src/katalog/repository/csvTausch.ts': {
+    liest: [
+      'rb_colors',
+      'rb_inventories',
+      'rb_inventory_minifigs',
+      'rb_inventory_parts',
+      'rb_part_categories',
+      'rb_parts',
+      'rb_sets',
+      'rb_themes',
+    ],
+    schreibt: [
+      'rb_colors',
+      'rb_inventories',
+      'rb_inventory_minifigs',
+      'rb_inventory_parts',
+      'rb_part_categories',
+      'rb_parts',
+      'rb_sets',
+      'rb_themes',
+      'set_catalog',
+    ],
+  },
+  'src/katalog/repository/katalogCache.ts': {
+    liest: ['catalog_cache', 'rb_sets', 'set_catalog', 'subsets_cache'],
+    schreibt: ['catalog_cache', 'subsets_cache'],
+  },
+  'src/katalog/repository/teileAnreicherung.ts': {
+    liest: [
+      'bl_zuordnung',
+      'minifigs_catalog',
+      'part_color_catalog',
+      'rb_inventories',
+      'rb_inventory_parts',
+      'set_catalog',
+    ],
+    schreibt: ['minifigs_catalog', 'part_color_catalog', 'set_catalog'],
+  },
+  'src/sets/repository/sets.ts': {
+    liest: [
+      'instructions',
+      'rb_sets',
+      'rb_themes',
+      'set_acquisitions',
+      'set_catalog',
+      'sets',
+      'shared_instructions',
+      'storage_locations',
+      'user_settings',
+    ],
+    schreibt: [],
+  },
 };
+
+const SCHREIBE =
+  /\b(?:INSERT INTO|DELETE FROM|TRUNCATE(?: TABLE)?)\s+(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)|(?<!DO )\bUPDATE\s+(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)[^;`'"]*?\bSET\b/g;
+const LIES = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)\b/g;
+const NAME_ZUR_LAUFZEIT =
+  /\b(?:FROM|JOIN|USING|INSERT INTO|DELETE FROM|UPDATE|TRUNCATE(?: TABLE)?)\s+(?:ONLY\s+)?\$\{\s*([\w$]+)(\s*[.[(])?/g;
+
+/** Dateien unter src/, deren SQL einen Tabellennamen aus einer eigenen Variablen nimmt. Ausgenommen:
+ * der Lesevertrag (`l.…`) und Lesebausteine aus db/, deren Ergebnis die Prüfung über db/ misst. */
+function dateienMitNamenZurLaufzeit() {
+  const aus = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) lauf(p);
+      else if (n.endsWith('.ts')) {
+        const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
+        const ausDb = new Set(
+          [...s.matchAll(/^import\s+\{([^}]*)\}\s+from\s+'(?:\.\.?\/)+db\/\w+'/gm)].flatMap(m =>
+            m[1].split(',').map(x =>
+              x
+                .trim()
+                .split(/\s+as\s+/)
+                .pop(),
+            ),
+          ),
+        );
+        const eigen = [...s.matchAll(NAME_ZUR_LAUFZEIT)].some(
+          m => !(m[1] === 'l' && /[.[]/.test(m[2] ?? '')) && !(ausDb.has(m[1]) && (m[2] ?? '').trim() === '('),
+        );
+        if (eigen) aus.push(path.relative(ROOT, p).split(path.sep).join('/'));
+      }
+    }
+  })(path.join(ROOT, 'src'));
+  return aus.sort();
+}
+
+/** Ein Wert, der für jede Probe passt: Zahl, Text, Liste, Objekt, Lesevertrag. */
+function chamaeleon() {
+  const c = new Proxy(() => c, {
+    get(_, p) {
+      if (p === Symbol.toPrimitive) return h => (h === 'number' ? 1 : 'x');
+      if (p === Symbol.iterator)
+        return function* () {
+          yield 'x';
+          yield 1;
+        };
+      if (p === 'then' || p === 'toJSON') return undefined;
+      if (p === 'length') return 2;
+      return c;
+    },
+    has: () => true,
+    apply: () => c,
+  });
+  return c;
+}
+
+const ARTEN = ['set', 'part', 'fig', 'teil', 'figur'];
+
+/** Ruft jeden Export der Datei je Art über einen Zugang, der die Abfragen nur mitschreibt. Wählt der
+ * Aufrufer den Namen, dann aus einer exportierten Liste der Datei: Ihre Werte sind weitere Proben.
+ * @returns gelesene und geschriebene Tabellen, soweit das Schema sie kennt */
+async function messeDatei(datei, bekannt) {
+  const liest = new Set(),
+    schreibt = new Set();
+  const c = chamaeleon();
+  const merke = sql => {
+    for (const m of String(sql).matchAll(LIES)) if (bekannt.has(m[1])) liest.add(m[1]);
+    for (const m of String(sql).matchAll(SCHREIBE)) if (bekannt.has(m[1] ?? m[2])) schreibt.add(m[1] ?? m[2]);
+  };
+  const antwort = wert => async sql => {
+    merke(sql);
+    return wert;
+  };
+  const zugang = {
+    get: antwort(c),
+    all: antwort([c]),
+    run: antwort({ changes: 1 }),
+    query: antwort({ rows: [c], rowCount: 1 }),
+  };
+  const modul = _req(datei.replace(/\.ts$/, '.js'));
+  const listen = Object.values(modul).filter(Array.isArray).flat();
+  const arten = [...ARTEN, ...listen.filter(x => typeof x === 'string')];
+  for (const f of Object.values(modul))
+    if (typeof f === 'function')
+      for (const art of arten)
+        for (const probe of [
+          [zugang, art, c, c, c, c, c, c],
+          [zugang, c, art, c, c, c, c, c],
+        ])
+          try {
+            const r = f(...probe);
+            if (r && typeof r.then === 'function') await r.catch(() => {});
+          } catch {
+            // Eine Probe, die nicht passt, fragt nichts.
+          }
+  return { liest: [...liest].sort(), schreibt: [...schreibt].sort() };
+}
 
 /** Je Bereich die Tabellen, in die nur er schreibt: die Tabelle in docs/architektur.md. */
 function besitzerAusDoku() {
@@ -214,8 +457,7 @@ const FREMDSCHREIBER = [
  * Ziel“ und warum das nicht über den Dienst des Ziels geht. Eine Ratsche wie FREMDSCHREIBER. */
 const TRIGGER_FREMDZIELE = {
   'src/bestand → parts_version_user':
-    'Der Teilezähler muss jede Änderung an Teilen und Lagerorten sehen, auch aus Schreibwegen ohne src/teile',
-  'src/sets → parts_version_user': 'dasselbe für Sets und Käufe: Sie bringen Teile mit',
+    'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/teile',
   'src/katalog → parts_katalog_offen':
     'Katalogänderungen merken nur die Nummer vor; src/teile zieht die Zusammenfassung nach und leert die Liste',
 };
@@ -224,8 +466,8 @@ const TRIGGER_FREMDZIELE = {
  * in db/ oder den Dienst des Besitzers? Paare „Bereich → Tabelle“; db/ selbst ist der Lesebaustein.
  * Aufwärts (Besitzer auf höherer Stufe) ist verboten; Katalogtabellen sind gemeinsame Stammdaten
  * und werden getrennt gezählt; der Rest liest abwärts und darf nur weniger werden. */
-const KATALOG_LESER_HOECHSTENS = 50;
-const ABWAERTS_LESER_HOECHSTENS = 26;
+const KATALOG_LESER_HOECHSTENS = 49;
+const ABWAERTS_LESER_HOECHSTENS = 24;
 
 /** Je Bereich seine Stufe aus docs/architektur.md („Rangfolge der Bereiche“). */
 function stufenAusDoku() {
@@ -426,9 +668,27 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(ohne.sort(), Object.keys(GEMEINSAM).sort());
   });
 
+  // Gemessen einmal, für die Prüfungen auf Schreiber, Besitzer und Stufen unten.
+  const gemessen = {};
+  await t.test('Tabellennamen zur Laufzeit: gemessen, wie eingetragen', async () => {
+    const bekannt = new Set(Object.values(BESITZER).flat());
+    const dateien = dateienMitNamenZurLaufzeit();
+    assert.ok(dateien.length > 5, `nur ${dateien.length} Dateien — greift die Suche noch?`);
+    for (const d of dateien) gemessen[d] = await messeDatei(d, bekannt);
+    assert.deepEqual(gemessen, DYNAMISCH, 'Neue Datei oder neue Tabelle zur Laufzeit: in DYNAMISCH eintragen');
+  });
+
   await t.test('jede schreibende Stelle auf eine Katalogtabelle ist eingetragen', () => {
     const { tabellen, dynamisch } = schreibendeStellen();
     assert.ok(tabellen.size > 40, `nur ${tabellen.size} Tabellen beschrieben — greift die Suche noch?`);
+    assert.ok(dynamisch.size > 0, 'Selbstbeweis: Schreibstellen mit Namen zur Laufzeit werden erkannt');
+    assert.deepEqual(
+      [...dynamisch].filter(d => !gemessen[d]),
+      [],
+      'Schreibstelle mit Namen zur Laufzeit ohne Messung',
+    );
+    for (const [d, { schreibt }] of Object.entries(gemessen))
+      for (const name of schreibt) (tabellen.get(name) ?? tabellen.set(name, new Set()).get(name)).add(d);
     const ist = {},
       soll = {};
     for (const [name, e] of Object.entries(GEMEINSAM)) {
@@ -442,7 +702,6 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       'Eine Katalogtabelle bekommt einen neuen Schreiber: Kommt der Wert aus einer ' +
         'geprüften Quelle, hier eintragen; ist es eine Eingabe, gehört sie in eine Tabelle des Kontos.',
     );
-    assert.deepEqual([...dynamisch].sort(), Object.keys(DYNAMISCH).sort());
   });
 
   await t.test('jede Tabelle hat einen Besitzer, nur er schreibt hinein', async () => {
@@ -467,6 +726,11 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     for (const [tabelle, dateien] of schreibendeStellen().tabellen)
       for (const d of dateien)
         if (besitzer.has(tabelle) && bereichVon(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
+    assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
+    for (const [d, { schreibt }] of Object.entries(gemessen))
+      for (const tabelle of schreibt)
+        if (bereichVon(d) !== besitzer.get(tabelle) && !fremd.includes(`${d} → ${tabelle}`))
+          fremd.push(`${d} → ${tabelle}`);
     assert.deepEqual(
       fremd.sort(),
       [...FREMDSCHREIBER].sort(),
@@ -495,13 +759,22 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
   });
 
-  await t.test('fremde Bereiche lesen nie aufwärts, sonst weniger Tabellen direkt', () => {
+  await t.test('fremde Bereiche lesen nie aufwärts, sonst weniger Tabellen direkt', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architektur.md — greift die Suche noch?`);
     const stufen = stufenAusDoku();
     assert.ok(stufen.size > 20, `nur ${stufen.size} Stufen in docs/architektur.md — greift die Suche noch?`);
     const je = { aufwärts: [], katalog: [], abwärts: [] };
-    for (const paar of fremdeLeser(besitzer)) {
+    const paare = new Set(fremdeLeser(besitzer));
+    assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
+    // Was die Messung über einen importierten Lesebaustein sieht, zählt die Prüfung über db/ unten.
+    const ueberDb = new Set(leserUeberDb(await lesebausteine(_req)));
+    for (const [d, { liest }] of Object.entries(gemessen))
+      for (const tabelle of liest) {
+        const paar = `${bereichVon(d)} → ${tabelle}`;
+        if (besitzer.get(tabelle) !== bereichVon(d) && !ueberDb.has(paar)) paare.add(paar);
+      }
+    for (const paar of [...paare].sort()) {
       const [b, tabelle] = paar.split(' → ');
       assert.ok(stufen.has(b), `${b} hat keine Stufe`);
       je[leseRichtung(stufen, b, besitzer.get(tabelle))].push(paar);

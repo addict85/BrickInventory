@@ -114,6 +114,42 @@ export async function api(method, path, body, o = {}) {
 }
 
 /**
+ * Ein Ereignisstrom der eigenen API: EventSource mit dem Sitzungscookie, jedes Ereignis als Objekt nach dem
+ * Vertrag (`Strom` in frontend-typen/vertrag.d.ts). Ohne EventSource null; dann fragt der Aufrufer ab.
+ * Bricht der Strom ab, ist er geschlossen, und `fehler` entscheidet über den Rückfall.
+ * @template {string} P
+ * @param {P} path  ohne `/api`, z. B. `/v1/sets/import/csv/stream`
+ * @param {{ ereignis: (e: import('../../frontend-typen/api').StromEreignis<P>) => void, fehler: () => void }} o
+ * @returns {{ schliesse: () => void } | null}
+ */
+export function strom(path, o) {
+  if (typeof EventSource === 'undefined') return null;
+  let es;
+  try {
+    es = new EventSource('/api' + path, { withCredentials: true });
+  } catch (e) {
+    console.warn('[strom]', path, e);
+    return null;
+  }
+  const quelle = es;
+  quelle.onmessage = m => {
+    let e;
+    try {
+      e = JSON.parse(m.data);
+    } catch (_) {
+      console.warn('[strom]', path, 'Ereignis ist kein JSON');
+      return;
+    }
+    o.ereignis(e);
+  };
+  quelle.onerror = () => {
+    quelle.close();
+    o.fehler();
+  };
+  return { schliesse: () => quelle.close() };
+}
+
+/**
  * Meldetext für eine Ausnahme aus fetch(). Der Browser sagt „Failed to fetch“ oder „NetworkError…“; der
  * Nutzer soll lesen, was es heisst.
  * @param {unknown} e

@@ -1,6 +1,6 @@
 import { registerActions } from './registry.js';
 import { LANG, t, tRaw } from '../i18n.js';
-import { fehlerMeldung, api, apiDaten } from './api.js';
+import { fehlerMeldung, api, apiDaten, strom } from './api.js';
 import { G } from './dom.js';
 import { fmtPct } from './format.js';
 import { toast } from './meldungen.js';
@@ -79,7 +79,6 @@ async function startSetCsvImport() {
     const ctx = { total: total ?? 0, prevDone: /** @type {number | null | undefined} */ (-1), prevResultCount: 0 };
     // Ohne `?token=`: Das Cookie trägt den Kanal, der Token in der Adresse wäre nur der Sitzungstoken im
     // Protokoll.
-    const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
     await /** @type {Promise<void>} */ (
       new Promise(resolve => {
@@ -91,35 +90,19 @@ async function startSetCsvImport() {
           }
         };
 
-        if (typeof EventSource !== 'undefined') {
-          try {
-            const es = new EventSource(url, { withCredentials: true });
-            es.onmessage = e => {
-              let s;
-              try {
-                s = JSON.parse(e.data);
-              } catch (_) {
-                return;
-              }
-              const finished = csvApplyOverlayStatus(s, ctx, fi);
-              if (finished) {
-                es.close();
-                finish();
-              }
-            };
-            es.onerror = () => {
-              es.close();
-              if (!settled) {
-                // SSE weg → auf Polling zurückfallen
-                csvPollLoop(ctx, fi).then(finish);
-              }
-            };
-          } catch (_) {
-            csvPollLoop(ctx, fi).then(finish);
-          }
-        } else {
-          csvPollLoop(ctx, fi).then(finish);
-        }
+        const s = strom(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
+          ereignis: stand => {
+            if (csvApplyOverlayStatus(stand, ctx, fi)) {
+              s?.schliesse();
+              finish();
+            }
+          },
+          // Strom weg → auf Polling zurückfallen
+          fehler: () => {
+            if (!settled) csvPollLoop(ctx, fi).then(finish);
+          },
+        });
+        if (!s) csvPollLoop(ctx, fi).then(finish);
       })
     );
   } catch (e) {

@@ -339,9 +339,8 @@ export const routen = {
   'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfEingabe },
   'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
   'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
-  'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom' },
+  'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom', ereignis: PdfStand },
   'POST /api/v1/sets/add-stream': { art: 'strom', eingabe: NeuesSet },
-  'GET /api/v1/sets/import/csv/stream': { art: 'strom', abfrage: abfrage({ sprache: Q.text(2) }) },
   'GET /api/v1/sets/export/rebrickable': { art: 'csv' },
   'POST /api/v1/sets/:setNumber/parts': { eingabe: OHNE_RUMPF, antwort: TeileGeladen },
 } satisfies Record<string, Route>;

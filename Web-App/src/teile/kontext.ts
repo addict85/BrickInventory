@@ -34,8 +34,6 @@ export const zugang = (db: Db) => ({
     teilZeileManuell: mit(db)(manuelleTeile.teilZeileManuell),
     teilZeileMitZustand: mit(db)(manuelleTeile.teilZeileMitZustand),
     rbFarbcode: mit(db)(manuelleTeile.rbFarbcode),
-    setzeTeilpreisNeueste: mit(db)(manuelleTeile.setzeTeilpreisNeueste),
-    setzeTeilzustandNeueste: mit(db)(manuelleTeile.setzeTeilzustandNeueste),
     teilErfassungen: mit(db)(manuelleTeile.teilErfassungen),
   },
   teileListe: {

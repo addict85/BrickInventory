@@ -286,6 +286,12 @@ begründet in `TRIGGER_FREMDZIELE` desselben Tests. Einzige schreibende
 Ausnahme: Der Schemastart (`db/schemaStart.ts`) setzt die Zeitzone in `global_settings`,
 bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
 
+Die Bestandszeilen eines Kontos (Sets, Teile, Figuren, ihre Käufe, Orte, Papierkorb) gehören
+`src/bestand`: Papierkorb, Lagerorte und Tageserfassung arbeiten über alle drei Arten, und nur der
+tiefste Bereich, der sie schreibt, kann von den anderen gerufen werden. Sets, Teile und Figuren
+schreiben über `t.bestand`. Wählt eine Datei den Tabellennamen zur Laufzeit, misst der Test, was sie
+liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
+
 | Besitzer | Tabellen |
 |---|---|
 | `db` | `schema_migrations` |
@@ -302,10 +308,9 @@ bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
 | `src/idempotenz` | `idempotenz` |
 | `src/katalog` | `bl_zuordnung`, `bl_zuordnung_eigen`, `catalog_cache`, `figur_eigen`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_figuren`, `set_teile`, `shared_instructions`, `subsets_cache`, `teil_eigen`, `teil_farbe_eigen` |
 | `src/finanzen` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `wechselkurse` |
-| `src/bestand` | `minifigs`, `papierkorb`, `parts`, `storage_locations` |
-| `src/sets` | `instructions`, `set_acquisitions`, `sets` |
-| `src/teile` | `part_acquisitions`, `parts_katalog_offen`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
-| `src/figuren` | `minifig_acquisitions` |
+| `src/bestand` | `minifig_acquisitions`, `minifigs`, `papierkorb`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
+| `src/sets` | `instructions` |
+| `src/teile` | `parts_katalog_offen`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
 | `src/merkliste` | `wanted` |
 | `src/gutscheine` | `gutschein_guthaben_schranke`, `vouchers` |
 
@@ -318,6 +323,8 @@ Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige
 Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertrag schon
 umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt
 `req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/schichten.test.js`).
+Ein Ereignisstrom (`art: 'strom'`) nennt sein Ereignis (`ereignis`); die Oberfläche öffnet ihn nur
+über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-typen/vertrag.d.ts`).
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
 Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft

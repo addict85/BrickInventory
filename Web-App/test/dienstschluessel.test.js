@@ -77,10 +77,10 @@ const JE_BEREICH = {
   bilder: 29,
   katalog: 64,
   finanzen: 36,
-  bestand: 40,
-  sets: 42,
-  teile: 14,
-  figuren: 9,
+  bestand: 43, // mit den Schreibwegen, die sets, teile und figuren abgaben (Tabellenbesitz)
+  sets: 41,
+  teile: 13,
+  figuren: 8,
   merkliste: 9,
   gutscheine: 16,
   sammlung: 8,
@@ -167,20 +167,21 @@ const ROH_ERLAUBT = {
   'auftraege.zaehleZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'drossel.stundenStand': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
   'drossel.zaehleStunde': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
-  'figuren.loescheFigurErfassungen': 'Erfassungen: Ihr Besitz wird gerade neu geordnet (Zweig w9-besitz)',
-  'teile.loescheTeilErfassungen': 'Erfassungen: Ihr Besitz wird gerade neu geordnet (Zweig w9-besitz)',
-  'sets.setsDesKontos': 'Erfassungen: Ihr Besitz wird gerade neu geordnet (Zweig w9-besitz)',
+  'sets.setsDesKontos': 'Setnummern eines Kontos für das Löschen der Sammlung (src/sammlung), ohne Regel davor',
   'finanzen.marktpreisAusCache': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
   'finanzen.marktpreisAusVerlauf': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
-  'gutscheine.gutscheineNeuVerschluesseln': 'Gutscheine: Der Vertrag wird gerade neu geordnet (Zweig w9-besitz)',
-  'gutscheine.kopienVerschluesseln': 'Gutscheine: Der Vertrag wird gerade neu geordnet (Zweig w9-besitz)',
-  'gutscheine.nummernNachverschluesseln': 'Gutscheine: Der Vertrag wird gerade neu geordnet (Zweig w9-besitz)',
+  'gutscheine.gutscheineNeuVerschluesseln':
+    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
+  'gutscheine.kopienVerschluesseln':
+    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
+  'gutscheine.nummernNachverschluesseln':
+    'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
   'katalog.katalogStand':
-    'Set-Stammdaten in der Transaktion der Set-Erfassung: Ihr Besitz wird gerade neu geordnet (w9-besitz)',
+    'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
   'katalog.merkeKatalogPlatzhalter':
-    'Set-Stammdaten in der Transaktion der Set-Erfassung: Ihr Besitz wird gerade neu geordnet (w9-besitz)',
+    'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
   'katalog.merkeSetKatalog':
-    'Set-Stammdaten in der Transaktion der Set-Erfassung: Ihr Besitz wird gerade neu geordnet (w9-besitz)',
+    'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
 };
 
 /** Je Bereich die Funktionen seiner Repositories, wie der Bau sie lädt. */
@@ -235,6 +236,6 @@ test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
     Object.keys(ROH_ERLAUBT).sort(),
     'Dienstschlüssel, die ein Repository roh weiterreichen',
   );
-  const SCHRANKE_ROH = 25;
+  const SCHRANKE_ROH = 23;
   assert.ok(roh.size <= SCHRANKE_ROH, `${roh.size} rohe Weitergaben, erlaubt ${SCHRANKE_ROH}`);
 });

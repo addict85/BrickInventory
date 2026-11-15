@@ -23,4 +23,4 @@ export { ConcurrentRateLimiter, REBRICKABLE_DEFAULT_DAILY } from './rateLimiter'
 export type { ApiName } from './apiKontingent';
 export { erzeugeFremdquellen } from './bereich';
 export type { FremdquellenAbhaengigkeiten, FremdquellenDienste, FremdquellenKontext } from './bereich';
-export { BRICKSET_HOECHSTENS, BRICKSET_UHRZEIT, BricksetNutzlast } from './bricksetWiedervorlage';
+export { BRICKSET_HOECHSTENS, BRICKSET_UHRZEIT, bricksetAuftragsart } from './bricksetWiedervorlage';

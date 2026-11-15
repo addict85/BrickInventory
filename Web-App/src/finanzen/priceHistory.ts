@@ -139,7 +139,6 @@ export async function preisverlaufSet(
 /** Nur für Zustände mit Erfassung, sonst fehlte der Prozentangabe die Basis. */
 export async function conditionRows(
   k: FinanzenKontext,
-  cacheTable: string,
   art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
@@ -151,7 +150,7 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
-  const cacheRows = await k.preisverlauf.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
+  const cacheRows = await k.preisverlauf.cachePreiseNachSchluessel(art, keySql, keyVals, currency);
   const acqRows = await k.preisverlauf.kaufschnitteNachSchluessel(art, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, ZustandsVergleich> = {};
@@ -177,8 +176,6 @@ async function manualPriceHistory(
   k: FinanzenKontext,
   uid: number | number[],
   currency: string,
-  historyTable: string,
-  cacheTable: string,
   art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
@@ -186,9 +183,9 @@ async function manualPriceHistory(
   acqKeyVals: unknown[] = keyVals,
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
-    k.preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
-    k.preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
-    conditionRows(k, cacheTable, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
+    k.preisverlauf.manualSeries(art, keySql, keyVals, currency, 'N'),
+    k.preisverlauf.manualSeries(art, keySql, keyVals, currency, 'U'),
+    conditionRows(k, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung; die Rohreihen bleiben vollständig.
   const zustaende = zustaendeFuerVerlauf(Object.keys(by_condition), ['N', 'U']);
@@ -218,8 +215,6 @@ export async function preisverlaufTeil(
     k,
     uid,
     currency,
-    'part_price_history',
-    'part_price_cache',
     'part',
     'part_number = ANY($1) AND color_id = $2',
     [nummern, blFarbe],
@@ -241,8 +236,6 @@ export async function preisverlaufFigur(
     k,
     uid,
     currency,
-    'minifig_price_history',
-    'minifig_price_cache',
     'fig',
     'fig_number = ANY($1)',
     [nummern],

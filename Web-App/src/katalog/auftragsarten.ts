@@ -1,7 +1,7 @@
 /** Nicht strikt: Die Nutzlast überlebt Deploys, ein Altfeld soll keinen offenen Auftrag scheitern lassen. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { BricksetNutzlast } from '../fremdquellen';
+import { bricksetAuftragsart } from '../fremdquellen';
 import * as anleitungLaden from './anleitungLaden';
 import * as bildNachlauf from './bildNachlauf';
 import * as bilderNachladen from './bilderNachladen';
@@ -68,12 +68,7 @@ export function katalogAuftragsarten(k: KatalogKontext, importProzess: string): 
       ausfuehren: (n, l) => anleitungLaden.anleitungLaden(k, n, l),
       exklusiv: true,
     }),
-    auftragsart({
-      art: 'brickset',
-      nutzlast: BricksetNutzlast,
-      ausfuehren: (n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l),
-      exklusiv: true,
-    }),
+    bricksetAuftragsart((n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l)),
     auftragsart({
       art: 'bilder_neu_laden',
       nutzlast: LEER,
