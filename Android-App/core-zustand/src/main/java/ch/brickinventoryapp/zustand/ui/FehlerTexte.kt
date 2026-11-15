@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 
 /**
@@ -57,6 +58,9 @@ fun fehlerMeldung(f: Ergebnis.Error): Meldung {
 
 /** Ein gescheiterter Abruf für den Zustand: Art für Symbol und Rat, Meldung für den Satz. */
 fun ladefehler(f: Ergebnis.Error): Laden.Fehler = Laden.Fehler(fehlerklasse(f), fehlerMeldung(f))
+
+/** Eine gescheiterte Handlung für den Zustand; der Satz entsteht beim Zeichnen. */
+fun gescheitert(f: Ergebnis.Error): Vorgang.Fehlgeschlagen = Vorgang.Fehlgeschlagen(fehlerMeldung(f))
 
 /** Ein Abruf als [Laden]; der Stand der Ablage geht mit, damit „offline“ sichtbar bleibt. */
 fun <T> Ergebnis<T>.alsLaden(): Laden<T> = when (this) {

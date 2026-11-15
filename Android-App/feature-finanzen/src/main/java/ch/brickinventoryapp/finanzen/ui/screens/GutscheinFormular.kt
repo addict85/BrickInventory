@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.layout.*
@@ -130,9 +131,9 @@ internal fun GutscheinFormularBlatt(
 
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onSpeichern, enabled = !zustand.speichert) { Text(stringResource(R.string.settings_save)) }
+            Button(onClick = onSpeichern, enabled = !zustand.speichern.laeuft) { Text(stringResource(R.string.settings_save)) }
             TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_cancel)) }
-            if (zustand.speichert) {
+            if (zustand.speichern.laeuft) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
         }

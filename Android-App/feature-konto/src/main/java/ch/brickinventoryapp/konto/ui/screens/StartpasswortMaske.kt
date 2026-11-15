@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,10 +18,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
@@ -89,13 +91,13 @@ fun StartpasswortMaske(
                     Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
                     hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
                     fehlerhaft = verschieden)
-                kontoZustand.fehler?.let { FehlerZeile(it) }
+                kontoZustand.speichern.fehlerMeldung?.let { FehlerZeile(it) }
                 if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
                 if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
                     SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                 Button(
                     onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                    enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),
+                    enabled = ersetzenMoeglich(kontoZustand.speichern.laeuft, pwAktuell, pwNeu, pwWiederholt, zuKurz),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.konto_password_button)) }
             }

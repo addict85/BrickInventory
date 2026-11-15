@@ -42,7 +42,7 @@ import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 /** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
 @Composable
-internal fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
+internal fun PdfKnopf(exportLaeuft: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
     if (pdfError != null) {
         val titel = stringResource(R.string.partslist_pdf_error_title)
         androidx.compose.material3.AlertDialog(
@@ -56,12 +56,12 @@ internal fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> U
     // Umrandet wie jede Nebenaktion: Die getönte Fläche lag im hellen Design kaum über dem Grund.
     OutlinedButton(
         onClick = onExport,
-        enabled = !isExporting,
+        enabled = !exportLaeuft,
         colors = nebenKnopfFarben(),
-        border = nebenKnopfRand(!isExporting),
+        border = nebenKnopfRand(!exportLaeuft),
     ) {
         // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
-        if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
+        if (exportLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
             strokeWidth = 2.dp)
         else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
         Spacer(Modifier.width(Abstaende.winzig))

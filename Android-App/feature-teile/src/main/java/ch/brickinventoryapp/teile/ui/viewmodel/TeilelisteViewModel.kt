@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.ohneFehler
 import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Meldung
@@ -135,12 +138,12 @@ class TeilelisteViewModel @Inject constructor(
     /** „Kann ich das bauen?“ — trägt den eigenen Bestand in die fertige Liste ein. */
     fun ladeBestand() {
         val z = _zustand.value
-        if (z.bestandLaeuft || z.parts.isEmpty()) return
-        _zustand.update { it.copy(bestandLaeuft = true) }
+        if (z.bestand.laeuft || z.parts.isEmpty()) return
+        _zustand.update { it.copy(bestand = Vorgang.Laeuft) }
         viewModelScope.launch {
             val neu = quelle.mitBestand(z.parts, z.nurLose, z.mitUnterkonten)
             if (neu == null) {
-                _zustand.update { it.copy(bestandLaeuft = false, status = Meldung.Ressource(R.string.partslist_owned_error)) }
+                _zustand.update { it.copy(bestand = Vorgang.Fertig, status = Meldung.Ressource(R.string.partslist_owned_error)) }
                 return@launch
             }
             val fehlen = neu.filter { (it.vorhanden ?: 0) < it.quantity }
@@ -150,21 +153,21 @@ class TeilelisteViewModel @Inject constructor(
             val status = if (fehlen.isEmpty()) Meldung.Ressource(R.string.partslist_owned_complete)
             else Meldung.Menge(R.plurals.partslist_owned_missing, fehlendeStueck,
                 listOf(fehlendeStueck, Meldung.Menge(R.plurals.partslist_owned_missing_distinct, fehlen.size)))
-            _zustand.update { it.copy(parts = neu, bestandLaeuft = false, status = status) }
+            _zustand.update { it.copy(parts = neu, bestand = Vorgang.Fertig, status = status) }
         }
     }
 
     /** Startet den Export als Dienst; das fertige PDF bietet der Bildschirm zum Öffnen an. */
     fun exportiere() {
         val z = _zustand.value
-        if (z.isExporting || z.parts.isEmpty()) return
-        _zustand.update { it.copy(isExporting = true, pdfFehler = null) }
+        if (z.pdf.laeuft || z.parts.isEmpty()) return
+        _zustand.update { it.copy(pdf = Vorgang.Laeuft) }
         viewModelScope.launch {
             val ergebnis = export.erzeuge(exportAuftrag(z.sets, z.parts))
             _zustand.update {
                 when (ergebnis) {
-                    is ExportErgebnis.Datei -> it.copy(isExporting = false, pdfDatei = ergebnis.datei)
-                    is ExportErgebnis.Fehler -> it.copy(isExporting = false, pdfFehler = fehlerText(ergebnis.grund))
+                    is ExportErgebnis.Datei -> it.copy(pdf = Vorgang.Fertig, pdfDatei = ergebnis.datei)
+                    is ExportErgebnis.Fehler -> it.copy(pdf = Vorgang.Fehlgeschlagen(fehlerText(ergebnis.grund)))
                 }
             }
         }
@@ -187,7 +190,7 @@ class TeilelisteViewModel @Inject constructor(
     }
 
     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }
-    fun pdfFehlerGesehen() = _zustand.update { it.copy(pdfFehler = null) }
+    fun pdfFehlerGesehen() = _zustand.update { it.copy(pdf = it.pdf.ohneFehler()) }
 
     private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): Teilelistenauftrag {
         val serverUrl = sitzung.state.value.serverUrl.trimEnd('/')

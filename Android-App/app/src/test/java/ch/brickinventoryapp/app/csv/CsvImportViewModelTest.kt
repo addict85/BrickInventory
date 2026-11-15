@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app.csv
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
@@ -124,7 +125,7 @@ class CsvImportViewModelTest {
             zweiter.cancel()
             assertEquals("Der Dienst startet beim Anlaufen, nicht je Zeile", 1, dienst.starts)
             assertEquals(3, vm.csvImportState.value.done)
-            assertFalse(vm.csvImportState.value.running)
+            assertFalse(vm.csvImportState.value.lauf.laeuft)
 
             advanceTimeBy(4_999)
             assertEquals("Der Balken steht noch", 3, vm.csvImportState.value.done)
@@ -146,7 +147,7 @@ class CsvImportViewModelTest {
             runCurrent()
             assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatus"))
             assertEquals("Die Abfrage füllt den Balken", 2, vm.csvImportState.value.done)
-            assertTrue(vm.csvImportState.value.running)
+            assertTrue(vm.csvImportState.value.lauf.laeuft)
             assertEquals(1, dienst.starts)
 
             advanceTimeBy(60_000)
@@ -160,12 +161,12 @@ class CsvImportViewModelTest {
         val dienst = Dienst()
         mitVm(strom, dienst) { vm ->
             runCurrent()
-            assertTrue(vm.csvImportState.value.running)
+            assertTrue(vm.csvImportState.value.lauf.laeuft)
             assertEquals(1, dienst.starts)
             val vorher = strom.verbindungen.size
             t.sitzung.abgemeldet()
             advanceUntilIdle()
-            assertFalse(vm.csvImportState.value.running)
+            assertFalse(vm.csvImportState.value.lauf.laeuft)
             assertEquals(0, vm.csvImportState.value.done)
             assertEquals("Der Dienst läuft nicht für das abgemeldete Konto weiter", 1, dienst.stops)
             advanceTimeBy(120_000)
@@ -186,7 +187,7 @@ class CsvImportViewModelTest {
             t.sitzung.angemeldet(admin = false)
             runCurrent()
             assertEquals(1, strom.verbindungen.size)
-            assertTrue(vm.csvImportState.value.running)
+            assertTrue(vm.csvImportState.value.lauf.laeuft)
         } finally {
             vm.viewModelScope.cancel()
         }

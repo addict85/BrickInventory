@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.fehlerMeldung
@@ -82,7 +83,7 @@ internal fun KontoCard(
             Text(meldung.satz(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary, modifier = Modifier.ansagen())
         }
-        (kontoZustand.fehler ?: kontoZustand.abruf.fehlerMeldung)?.let { FehlerZeile(it) }
+        (kontoZustand.speichern.fehlerMeldung ?: kontoZustand.abruf.fehlerMeldung)?.let { FehlerZeile(it) }
         // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
         if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 
@@ -99,7 +100,7 @@ internal fun KontoCard(
             val fokus = LocalFocusManager.current
             Button(
                 onClick = { fokus.clearFocus(); fragtPasswort = true },
-                enabled = geaendert && !kontoZustand.speichert,
+                enabled = geaendert && !kontoZustand.speichern.laeuft,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
         }
@@ -112,7 +113,7 @@ internal fun KontoCard(
             pwAktuell = pwAktuell, onPwAktuell = { pwAktuell = it },
             pwNeu = pwNeu, onPwNeu = { pwNeu = it },
             pwWiederholt = pwWiederholt, onPwWiederholt = { pwWiederholt = it },
-            speichert = kontoZustand.speichert,
+            speichert = kontoZustand.speichern.laeuft,
             onAendern = { onPasswort(pwAktuell, pwNeu, code) },
         )
     }
@@ -123,7 +124,7 @@ internal fun KontoCard(
         titel = stringResource(R.string.konto_save),
         text = stringResource(R.string.konto_profil_password_needed),
         bestaetigen = stringResource(R.string.konto_save),
-        codeNoetig = false, fehler = null, laeuft = kontoZustand.speichert,
+        codeNoetig = false, fehler = null, laeuft = kontoZustand.speichern.laeuft,
         onBestaetigen = { pw, _ -> fragtPasswort = false; onSpeichern(benutzername, email, vorname, nachname, pw, code) },
         onAbbrechen = { fragtPasswort = false },
     )

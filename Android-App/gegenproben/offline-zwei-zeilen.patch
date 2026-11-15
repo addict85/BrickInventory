@@ -12,6 +12,6 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
                      // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
 -                    if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
 +                    AusgangLeiste(offeneAenderungen)
-                     if (csvImport.running) {
+                     if (csvImport.lauf.laeuft) {
                          CsvImportBanner(
                              done = csvImport.done, total = csvImport.total, current = csvImport.current,

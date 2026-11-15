@@ -8,10 +8,10 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
 @@ -91,8 +91,6 @@ fun StartpasswortMaske(
                      fehlerhaft = verschieden)
-                 kontoZustand.fehler?.let { FehlerZeile(it) }
+                 kontoZustand.speichern.fehlerMeldung?.let { FehlerZeile(it) }
                  if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 -                if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
 -                    SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                  Button(
                      onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                     enabled = ersetzenMoeglich(kontoZustand.speichert, pwAktuell, pwNeu, pwWiederholt, zuKurz),
+                     enabled = ersetzenMoeglich(kontoZustand.speichern.laeuft, pwAktuell, pwNeu, pwWiederholt, zuKurz),

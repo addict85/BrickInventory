@@ -25,7 +25,7 @@ ML-Kit-Client), braucht `DisposableEffect { onDispose { … } }`. Test: `Resourc
 
 ## Barcode und Erfassung
 
-**Doppelklick-Sperre.** `confirmAddBarcode()` prüft `adding` zuerst und setzt es synchron
+**Doppelklick-Sperre.** `confirmAddBarcode()` prüft `hinzufuegen` zuerst und setzt es synchron
 **vor** `viewModelScope.launch`; jeder Ausgang und `cancelBarcode()` setzt es zurück. Der
 gesperrte Knopf ist nur Rückmeldung, kein Schutz.
 Dateien: `sammlung/ui/viewmodel/ErfassungViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`,
@@ -79,9 +79,10 @@ Datei: `data/repository/Ergebnis.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
-`technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` und eine
-`Meldung` (`fehlerMeldung()`), keinen fertigen Satz; alte Formen zählt `QuelltextRatscheTest`.
-Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `QuelltextRatscheTest`
+`technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` für Abrufe,
+`Vorgang` für Handlungen (läuft, fertig, gescheitert mit `Meldung`), keinen fertigen Satz und
+kein `laeuft: Boolean`; alte Formen zählt `QuelltextRatscheTest`.
+Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `VorgangTest`, `QuelltextRatscheTest`
 
 **Eine Json-Konfiguration.** Server, Ablage und Cache lesen und schreiben mit `BrickJson`
 (per DI als `Json`); keine zweite `Json { }`.

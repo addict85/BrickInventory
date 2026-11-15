@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Fehlerklasse
@@ -283,7 +284,7 @@ class GeruestUndFormularTest {
                     kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
                     onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
                 )
-                1 -> StartpasswortMaske(KontoUiState(fehler = Meldung.Text(fehler[1])), { _, _, _ -> }, {})
+                1 -> StartpasswortMaske(KontoUiState(speichern = Vorgang.Fehlgeschlagen(Meldung.Text(fehler[1]))), { _, _, _ -> }, {})
                 else -> ZweiterFaktorPflichtMaske(
                     ZweiterFaktorUiState(aktiv = false, abruf = Laden.Fehler(Fehlerklasse.SERVER, Meldung.Text(fehler[2]))),
                     {}, {}, {}, {})

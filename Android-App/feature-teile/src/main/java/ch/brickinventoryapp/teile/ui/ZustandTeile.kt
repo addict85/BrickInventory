@@ -2,6 +2,7 @@ package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -128,9 +129,9 @@ data class TeilelisteUiState(
     val status: Meldung? = null,
     val nurLose: Boolean = false,
     val mitUnterkonten: Boolean = false,
-    val bestandLaeuft: Boolean = false,
-    val isExporting: Boolean = false,
-    val pdfFehler: Meldung? = null,
+    /** Der Abgleich mit dem eigenen Bestand; sein Ergebnis nennt [status]. */
+    val bestand: Vorgang = Vorgang.Fertig,
+    val pdf: Vorgang = Vorgang.Fertig,
     /** Fertiges PDF, das der Bildschirm einmal zum Öffnen anbietet. */
     val pdfDatei: java.io.File? = null,
 )

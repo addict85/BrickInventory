@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.app.csv
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
@@ -40,7 +42,7 @@ class CsvImportKoordinator @Inject constructor(
         if (!folgt.compareAndSet(false, true)) return
         try {
             angemeldet.distinctUntilChanged().collectLatest { an ->
-                if (!an && _zustand.value.running) dienst.stop()
+                if (!an && _zustand.value.lauf.laeuft) dienst.stop()
                 _zustand.value = CsvImportUiState()
                 if (an) csvImport.beobachte().collect { verarbeite(it) }
             }
@@ -51,10 +53,10 @@ class CsvImportKoordinator @Inject constructor(
 
     private suspend fun verarbeite(s: CsvImportStandAnsicht) {
         // Vor dem Überschreiben entscheiden — danach wäre „vorher“ schon der neue Zustand.
-        val folge = csvFolge(warVorherAktiv = _zustand.value.running, status = s.status)
+        val folge = csvFolge(warVorherAktiv = _zustand.value.lauf.laeuft, status = s.status)
         if (folge == CsvFolge.DIENST_STARTEN) dienst.start()
         _zustand.value = CsvImportUiState(
-            running = importLaeuft(s.status),
+            lauf = if (importLaeuft(s.status)) Vorgang.Laeuft else Vorgang.Fertig,
             done = s.done,
             total = s.total,
             current = s.current,

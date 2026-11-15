@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import androidx.compose.ui.semantics.contentDescription
@@ -210,10 +211,10 @@ fun MainScaffold(
                     }
                     // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
                     if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
-                    if (csvImport.running) {
+                    if (csvImport.lauf.laeuft) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
-                            ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.running,
+                            ok = csvImport.ok, warn = csvImport.warn, err = csvImport.err, running = csvImport.lauf.laeuft,
                             onAbbrechen = onCsvAbbrechen,
                         )
                     }

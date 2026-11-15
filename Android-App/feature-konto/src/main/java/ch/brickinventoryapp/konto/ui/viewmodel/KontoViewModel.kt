@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.ohneFehler
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.beendet
+import ch.brickinventoryapp.zustand.ui.gescheitert
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Fehlercode
@@ -28,7 +33,6 @@ import javax.inject.Inject
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 import ch.brickinventoryapp.zustand.ui.ladefehler
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
@@ -64,7 +68,7 @@ class KontoViewModel @Inject constructor(
 
     fun ladeProfil() {
         viewModelScope.launch {
-            _kontoState.update { it.copy(abruf = Laden.Laedt, fehler = null) }
+            _kontoState.update { it.copy(abruf = Laden.Laedt, speichern = it.speichern.ohneFehler()) }
             holeProfil()
         }
     }
@@ -85,11 +89,11 @@ class KontoViewModel @Inject constructor(
     ) {
         // Der Server verlangt das Passwort für jede Profiländerung; ohne es gar nicht erst fragen.
         if (passwort.isNullOrBlank()) {
-            _kontoState.update { it.copy(fehler = Meldung.Ressource(R.string.konto_profil_password_needed), meldung = null) }
+            _kontoState.update { it.copy(speichern = Vorgang.Fehlgeschlagen(Meldung.Ressource(R.string.konto_profil_password_needed)), meldung = null) }
             return
         }
         viewModelScope.launch {
-            _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
+            _kontoState.update { it.copy(speichern = Vorgang.Laeuft, meldung = null) }
             val aenderung = Profilaenderung(
                 benutzer = benutzername.trim(),
                 email = email.trim(),
@@ -105,13 +109,13 @@ class KontoViewModel @Inject constructor(
                         // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
                         val neueAdresse = r.data.neueAdresse
                         val ohneMail = neueAdresse && !r.data.mailGesendet
-                        _kontoState.update { it.copy(speichert = false, codeNoetig = false,
+                        _kontoState.update { it.copy(codeNoetig = false,
                             meldung = when {
                                 ohneMail -> null
                                 neueAdresse -> Meldung.Ressource(R.string.konto_email_link_gesendet, listOf(aenderung.email))
                                 else -> Meldung.Ressource(R.string.konto_saved)
                             },
-                            fehler = if (ohneMail) Meldung.Ressource(R.string.konto_email_nicht_gesendet) else null) }
+                            speichern = beendet(if (ohneMail) Meldung.Ressource(R.string.konto_email_nicht_gesendet) else null)) }
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
                         holeProfil()
                     }
@@ -126,7 +130,7 @@ class KontoViewModel @Inject constructor(
      * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
      */
     private fun abgelehnt(r: Ergebnis.Error) = _kontoState.update {
-        it.copy(speichert = false, fehler = fehlerMeldung(r),
+        it.copy(speichern = gescheitert(r),
             codeNoetig = it.codeNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_NOETIG || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH)
     }
 
@@ -137,7 +141,7 @@ class KontoViewModel @Inject constructor(
      */
     fun aenderePasswort(aktuell: String, neu: String, code: String? = null) {
         viewModelScope.launch {
-            _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
+            _kontoState.update { it.copy(speichern = Vorgang.Laeuft, meldung = null) }
             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
                 is Ergebnis.Success -> {
                     sitzungsDienst.abmelden()
@@ -168,9 +172,9 @@ class KontoViewModel @Inject constructor(
             when (val r = konto.setzeEigenesDesign(eigenes)) {
                 is Ergebnis.Success -> {
                     r.data.wirksam?.let(sitzung::setzeDesign)
-                    _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
+                    _kontoState.update { it.copy(design = designWahl(r.data), speichern = it.speichern.ohneFehler()) }
                 }
-                is Ergebnis.Error -> _kontoState.update { it.copy(fehler = fehlerMeldung(r)) }
+                is Ergebnis.Error -> _kontoState.update { it.copy(speichern = gescheitert(r)) }
             }
         }
     }
@@ -180,7 +184,7 @@ class KontoViewModel @Inject constructor(
         a.vorgabe?.let { DesignWahl(a.wirksam ?: it, it, a.eigenes) }
 
     /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
-    fun kontoMeldungWeg() = _kontoState.update { it.copy(meldung = null, fehler = null) }
+    fun kontoMeldungWeg() = _kontoState.update { it.copy(meldung = null, speichern = it.speichern.ohneFehler()) }
 
     // ── Angemeldete Geräte ───────────────────────────────────────────────────
 
@@ -216,8 +220,8 @@ class KontoViewModel @Inject constructor(
     /** Passwort und, wenn der Server ihn verlangt hat, Code; eine Absage lässt die Rückfrage offen. */
     fun bestaetigeEntwerten(passwort: String, code: String?) {
         val frage = _geraeteState.value.rueckfrage ?: return
-        if (frage.laeuft) return
-        _geraeteState.update { it.copy(rueckfrage = frage.copy(laeuft = true, fehler = null)) }
+        if (frage.vorgang.laeuft) return
+        _geraeteState.update { it.copy(rueckfrage = frage.copy(vorgang = Vorgang.Laeuft)) }
         val anfrage = Bestaetigung(passwort = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
             val fehler: Ergebnis.Error? = if (frage.tokenId != null) {
@@ -243,7 +247,7 @@ class KontoViewModel @Inject constructor(
                 _geraeteState.update { it.copy(rueckfrage = null) }
                 ladeGeraete()
             } else _geraeteState.update {
-                it.copy(rueckfrage = it.rueckfrage?.copy(laeuft = false, fehler = fehlerMeldung(fehler),
+                it.copy(rueckfrage = it.rueckfrage?.copy(vorgang = gescheitert(fehler),
                     codeNoetig = it.rueckfrage.codeNoetig || fehler.code == Fehlercode.ZWEITER_FAKTOR_NOETIG ||
                         fehler.code == Fehlercode.ZWEITER_FAKTOR_FALSCH))
             }
