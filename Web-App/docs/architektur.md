@@ -265,9 +265,22 @@ Jede Tabelle hat genau einen Besitzer: Nur sein Bereich schreibt hinein (INSERT,
 DELETE). Andere Bereiche rufen dessen Dienst, in einer Transaktion über den Kontext `t`.
 Fremde Bereiche lesen über Lesebausteine in `db/` (`katalogSicht.ts`, `haushaltSicht.ts`,
 `zugangSicht.ts`, `bestandSicht.ts`, `kontoSicht.ts`, `bestandsmenge.ts`) oder über den Dienst
-des Besitzers. `test/gemeinsame-tabellen-db.test.js` teilt die direkten Lesestellen ein:
-Aufwärts (die Tabelle gehört einem Bereich höherer Stufe) gibt es keine; Lesen des Katalogs
-und abwärts zählen je eine Ratsche, die nur sinken darf. Ein Trigger schreibt nur in Tabellen
+des Besitzers. Ein Lesebaustein ist keine eigene Stufe: Sein SQL zählt beim Bereich, der ihn
+einbindet. Die Stufen gelten deshalb auch für Daten:
+
+- Liegt der Leser über dem Besitzer, importiert er den Baustein.
+- Liegt er darunter (Einstellungen, Aufträge, Haushalt, Geräte, Bilder, Katalog, Finanzen,
+  Bestand), nennt er in `src/<bereich>/lesevertrag.ts` die Form, die er braucht (Unterabfragen
+  mit festen Spalten), und bekommt sie als `lesevertrag` im Kontext. Gefüllt wird der Vertrag
+  aus `LESEVERTRAG` in `src/dienste.ts` (Stufe 19, über jedem Besitzer); die Repositories nehmen
+  ihn nach dem Zugang (`mitVertrag`). Wer eine Tabelle umbaut, passt den Baustein an, der
+  Vertrag des Lesers bleibt.
+- Die Kontobedingung eines Bausteins ist nur ein Platzhalter (`Konten` in `db/konten.ts`:
+  `= $n` oder `= ANY($n)`).
+
+`test/gemeinsame-tabellen-db.test.js` teilt die Lesestellen ein: Aufwärts gibt es keine, weder
+direkt noch über `db/` (was ein Baustein liest, zeigt sein Ergebnis); Lesen des Katalogs und
+direkt abwärts zählen je eine Ratsche, die nur sinken darf. Ein Trigger schreibt nur in Tabellen
 seines Besitzers; die Ausnahmen (Teilezähler, Vormerkung für die Teile-Zusammenfassung) stehen
 begründet in `TRIGGER_FREMDZIELE` desselben Tests. Einzige schreibende
 Ausnahme: Der Schemastart (`db/schemaStart.ts`) setzt die Zeitzone in `global_settings`,

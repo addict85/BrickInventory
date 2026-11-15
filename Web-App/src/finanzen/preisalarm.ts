@@ -78,7 +78,7 @@ export async function loescheAlarm(k: FinanzenKontext, userId: number, setNumber
 
 export async function alarmeFuer(k: FinanzenKontext, userId: number, setNumber: string): Promise<Preisalarm[]> {
   // Ohne Fang: Eine leere Liste hiesse „kein Alarm“, und setzeAlarm() lieferte nichts.
-  const rows = await repo.alarmeDesSets(k.db, userId, setNumber, await k.haushalt.blickfeldIds(userId));
+  const rows = await repo.alarmeDesSets(k.db, k.lesevertrag, userId, setNumber, await k.haushalt.blickfeldIds(userId));
   return rows.map(alsAlarm);
 }
 
@@ -98,7 +98,7 @@ export async function alleAlarme(k: FinanzenKontext, userId: number): Promise<Al
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
   const blickfeld = await k.haushalt.blickfeldIds(userId);
-  return (await repo.alarmeImBlickfeld(k.db, userId, blickfeld)).map(alsAlarm);
+  return (await repo.alarmeImBlickfeld(k.db, k.lesevertrag, userId, blickfeld)).map(alsAlarm);
 }
 
 /** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server. */
@@ -120,7 +120,7 @@ export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: 
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
   // Ohne Fang: Die App rückte sonst ihre Marke vor und verlöre die Meldungen dazwischen.
-  const rows = await repo.alarmeDesKontos(k.db, userId, marke, await k.haushalt.blickfeldIds(userId));
+  const rows = await repo.alarmeDesKontos(k.db, k.lesevertrag, userId, marke, await k.haushalt.blickfeldIds(userId));
   return { alerts: rows.map(alsAlarm), now: jetzt };
 }
 

@@ -1,10 +1,10 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
-import { figurErfassungen, teilErfassungen } from '../../../db/bestandSicht';
+import { inKontowaehrung, kontowaehrungJoin, teilmengeAus } from '../../../db/bestandsmenge';
+import type { BestandLesevertrag } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
-export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', uids: number[]) {
+export function erfassungsKennzahlen(db: DbSchnittstelle, l: BestandLesevertrag, art: 'part' | 'fig', uids: number[]) {
   return db.all<{
     part_number?: string;
     color_id?: number | null;
@@ -19,14 +19,14 @@ export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', u
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')}), 0) AS avg_purchase_price
-           FROM ${teilErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
+           FROM ${l.teilErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
           GROUP BY part_number, color_id`
       : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('e')}), 0) AS avg_purchase_price
-           FROM ${figurErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
+           FROM ${l.figurErfassungen('= ANY($1)')} e ${kontowaehrungJoin('e')}
           GROUP BY fig_number`,
     [uids],
   );
@@ -86,6 +86,7 @@ export interface VerwendungsZeile {
 
 export async function setsMitBestandteil(
   db: DbSchnittstelle,
+  l: BestandLesevertrag,
   uids: number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
@@ -115,7 +116,7 @@ export async function setsMitBestandteil(
             c.image_url          AS set_image_url,
             ${KOPFFELDER[tabelle]}
        FROM ${tabelle} x
-       ${teilmengeJoin('x', ART[tabelle])}
+       ${l.teilmengeJoin('x', ART[tabelle])}
        -- Name und Bild haengen nur an der Setnummer, nicht am Konto.
        LEFT JOIN set_catalog c ON c.set_number = x.set_number
        ${setStammJoin('x.set_number')}

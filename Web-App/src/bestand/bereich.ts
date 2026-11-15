@@ -1,4 +1,5 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
@@ -19,7 +20,7 @@ export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
 export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<BestandKontext>) {
   return baueBereich(
     a,
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: BestandKontext) => ({
       bucheTageserfassung: mit(k)(acquisitions.recordAcquisitionForDay),
       erfassungAmSelbenTag: mit(k)(acquisitions.findSameDayAcquisition),

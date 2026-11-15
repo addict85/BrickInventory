@@ -1,5 +1,6 @@
 /** Die Fabrik der Bilder. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern
  * dieses Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess teilen nichts. */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as bildbedarfDienst from './bildbedarf';
@@ -28,7 +29,7 @@ export function erzeugeBilder(
   };
   return baueBereich(
     { ...a, bildwerk, faecher: new Faecher() },
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: BilderKontext) => ({
       /** Grenzen des Bild-Proxys und des Caches aus der gereichten Konfiguration. */
       bildGrenzen: () => ({

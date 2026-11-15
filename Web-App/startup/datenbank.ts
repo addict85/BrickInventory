@@ -61,12 +61,22 @@ export async function schluesselWechsel(d: Dienste): Promise<number | null> {
   return n;
 }
 
+/** Der Web-Prozess allein darf Gutscheine nicht anfassen (Web-Systemrolle): Er wartet,
+ * bis der Dienst jobs den Altbestand umgestellt hat, statt alte Zeilen zu lesen. */
+export async function warteAufAltbestand(d: Dienste, takt = 2000): Promise<void> {
+  for (let n = 0; !(await d.auftraege.liesZustand(ALTBESTAND_MARKE)); n++) {
+    if (n % 15 === 0) console.log('[geheimnis] warte, bis der Dienst jobs die Geheimnisse auf v2 umgestellt hat');
+    await new Promise(r => setTimeout(r, takt));
+  }
+}
+
 /**
  * Schema und Migrationen, danach die Bild-Hilfsdienste — in JEDEM
  * Arbeitsprozess, weil sie prozess-lokal sind (Bestand im Speicher, Takt des
  * Puffers). Hier und nicht in db/: Die Datenbankschicht kennt keine Jobs.
+ * Umschlüsseln nur mit `jobs`: Allein dessen Systemrolle erreicht die Gutscheine.
  */
-export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
+export async function bereiteDatenbankVor(db: Db, d: Dienste, o: { jobs?: boolean } = {}): Promise<void> {
   // Beim Start statt bei der ersten Verschlüsselung: Ein falscher oder alter
   // Ort des Schlüssels soll im Startprotokoll stehen.
   datenSchluessel();
@@ -78,8 +88,11 @@ export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
       'Die Rolle für Arbeit über Kontogrenzen unterliegt dem Zeilenschutz: PGSYSTEM_USER und ' +
         'PGSYSTEM_PASSWORD(_FILE) auf die Systemrolle setzen (postgres/app-rolle.sh, UPGRADE.md#systemrolle).',
     );
-  await altbestandAufruesten(d);
-  await schluesselWechsel(d);
+  if (o.jobs === false) await warteAufAltbestand(d);
+  else {
+    await altbestandAufruesten(d);
+    await schluesselWechsel(d);
+  }
   await d.bilder.starteFehlanzeige();
   await d.bilder.starteBildbedarf();
 }

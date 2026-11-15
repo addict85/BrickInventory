@@ -1,6 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, mitVertrag, type Kontext } from '../infra/bereich';
+import type { BestandLesevertrag } from './lesevertrag';
 import * as bestandExport from './repository/bestandExport';
 import * as gemeinsam from './repository/gemeinsam';
 import * as kaufErfassungen from './repository/kaufErfassungen';
@@ -24,46 +25,47 @@ export interface BestandAbhaengigkeiten {
   konto: KontoDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
+  lesevertrag: BestandLesevertrag;
 }
 
-export const zugang = (db: Db) => ({
+export const zugang = (db: Db, l: BestandLesevertrag) => ({
   bestandExport: {
-    teileFuerCsv: mit(db)(bestandExport.teileFuerCsv),
-    figurenFuerCsv: mit(db)(bestandExport.figurenFuerCsv),
+    teileFuerCsv: mitVertrag(db, l)(bestandExport.teileFuerCsv),
+    figurenFuerCsv: mitVertrag(db, l)(bestandExport.figurenFuerCsv),
   },
   gemeinsam: {
-    erfassungsKennzahlen: mit(db)(gemeinsam.erfassungsKennzahlen),
-    setsMitBestandteil: mit(db)(gemeinsam.setsMitBestandteil),
+    erfassungsKennzahlen: mitVertrag(db, l)(gemeinsam.erfassungsKennzahlen),
+    setsMitBestandteil: mitVertrag(db, l)(gemeinsam.setsMitBestandteil),
   },
   kaufErfassungen: {
     inWaehrungDesKontos: mit(db)(kaufErfassungen.inWaehrungDesKontos),
   },
   kennzahlen: {
-    setZahlen: mit(db)(kennzahlen.setZahlen),
-    anleitungsZahlen: mit(db)(kennzahlen.anleitungsZahlen),
-    teileImBestand: mit(db)(kennzahlen.teileImBestand),
-    teileEinzeln: mit(db)(kennzahlen.teileEinzeln),
-    figurenImBestand: mit(db)(kennzahlen.figurenImBestand),
+    setZahlen: mitVertrag(db, l)(kennzahlen.setZahlen),
+    anleitungsZahlen: mitVertrag(db, l)(kennzahlen.anleitungsZahlen),
+    teileImBestand: mitVertrag(db, l)(kennzahlen.teileImBestand),
+    teileEinzeln: mitVertrag(db, l)(kennzahlen.teileEinzeln),
+    figurenImBestand: mitVertrag(db, l)(kennzahlen.figurenImBestand),
   },
   lagerort: {
     andererOrtGleichenNamens: mit(db)(lagerort.andererOrtGleichenNamens),
     entferneOrt: mit(db)(lagerort.entferneOrt),
     fuegeOrtEin: mit(db)(lagerort.fuegeOrtEin),
-    ortBelegung: mit(db)(lagerort.ortBelegung),
+    ortBelegung: mitVertrag(db, l)(lagerort.ortBelegung),
     ortDesKontos: mit(db)(lagerort.ortDesKontos),
     ortNachName: mit(db)(lagerort.ortNachName),
     ortName: mit(db)(lagerort.ortName),
     orteDerKonten: mit(db)(lagerort.orteDerKonten),
-    orteMitBestand: mit(db)(lagerort.orteMitBestand),
+    orteMitBestand: mitVertrag(db, l)(lagerort.orteMitBestand),
     schreibeOrtNamen: mit(db)(lagerort.schreibeOrtNamen),
   },
   manuelleMengen: {
     summeDerErfassungen: mit(db)(manuelleMengen.summeDerErfassungen),
   },
   nachtrag: {
-    setErfassungenOhnePreis: mit(db)(nachtrag.setErfassungenOhnePreis),
-    teilErfassungenOhnePreis: mit(db)(nachtrag.teilErfassungenOhnePreis),
-    figurErfassungenOhnePreis: mit(db)(nachtrag.figurErfassungenOhnePreis),
+    setErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.setErfassungenOhnePreis),
+    teilErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.teilErfassungenOhnePreis),
+    figurErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.figurErfassungenOhnePreis),
   },
   papierkorb: {
     eintraege: mit(db)(papierkorb.eintraege),

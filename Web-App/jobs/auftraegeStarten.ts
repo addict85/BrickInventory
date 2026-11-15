@@ -5,11 +5,11 @@ import type { Dienste } from '../src/dienste';
 
 // Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.
 const IMPORT_PROZESS = path.join(__dirname, 'csvImportWorker.js');
+type Grund = 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'konto';
+type Bereiche = Grund | 'sets' | 'sammlung' | 'teile' | 'verwaltung';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
-const bearbeiter = (
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'konto' | 'sets' | 'sammlung' | 'verwaltung'>,
-): Bearbeitertabelle => ({
+const bearbeiter = (d: Pick<Dienste, Bereiche>): Bearbeitertabelle => ({
   nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
     ausfuehren: async (n, k) => {
@@ -47,14 +47,12 @@ const bearbeiter = (
   preise_nachladen: { ausfuehren: (n, k) => d.finanzen.preiseNachladen(n, k), exklusiv: true },
   konto_dateien: { ausfuehren: n => d.konto.loescheKontoDateien(n.user_id) },
   widerrufsliste: { ausfuehren: (_n, k) => d.katalog.ladeWiderrufsliste(k) },
+  katalog_nachzug: { ausfuehren: async () => void (await d.teile.zieheKatalogNach()) },
 });
 
 /** Der Worker gehört dem, der ihn startet (startup/jobsProzess.ts, Testhilfen): Er hält ihn
  * und beendet ihn mit stoppe(); ein Speicher im Modul liesse zwei Starts einander sehen. */
-function starteAuftragsWorker(
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'konto' | 'sets' | 'sammlung' | 'verwaltung'>,
-  o: WorkerOptionen & { arten?: AuftragsArt[] } = {},
-) {
+function starteAuftragsWorker(d: Pick<Dienste, Bereiche>, o: WorkerOptionen & { arten?: AuftragsArt[] } = {}) {
   const alle = bearbeiter(d);
   const tabelle: Bearbeitertabelle = o.arten ? Object.fromEntries(o.arten.map(a => [a, alle[a]])) : alle;
   const worker = erzeugeWorker(d.auftraege, tabelle, o);

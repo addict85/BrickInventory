@@ -60,6 +60,7 @@ export const LoginResponse = z.looseObject({
   zweiter_faktor: z.boolean().optional(),
   never_expires: z.boolean(),
   token_info: TokenAngaben.nullable().optional(),
+  keks_fehlt: z.boolean().optional(),
 });
 
 export const MeResponse = z.looseObject({

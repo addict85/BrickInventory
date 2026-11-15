@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { setBestand } from '../../../db/bestandSicht';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 import type { Spalten, Tabellen } from '../../../db/zeilen';
 
@@ -21,7 +21,8 @@ export async function uebertrageAlarm(db: DbSchnittstelle, zuId: number, vonId: 
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [vonId, sn, c]);
 }
 
-const BESITZT = `EXISTS (SELECT 1 FROM ${setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
+const besitzt = (l: FinanzenLesevertrag) =>
+  `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
 
 export function schreibeAlarm(
   db: DbSchnittstelle,
@@ -46,16 +47,22 @@ export function entferneAlarm(db: DbSchnittstelle, userId: number, setNumber: st
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function alarmeDesSets(db: DbSchnittstelle, userId: number, setNumber: string, blickfeld: number[]) {
+export function alarmeDesSets(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  userId: number,
+  setNumber: string,
+  blickfeld: number[],
+) {
   return db.all<AlarmZeile>(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
+            ausgeloest, zuletzt_am, zuletzt_preis, ${besitzt(l)}
        FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
     [userId, setNumber, blickfeld],
   );
 }
 
-export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld: number[]) {
+export function alarmeImBlickfeld(db: DbSchnittstelle, l: FinanzenLesevertrag, userId: number, blickfeld: number[]) {
   return db.all<
     AlarmZeile & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
   >(
@@ -68,7 +75,7 @@ export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number
        -- sets sagt, ob der Haushalt das Set BESITZT (daran haengt die Spalte
        -- besitzt und der Detaildialog), set_catalog liefert das Bild.
-       LEFT JOIN ${setBestand('= ANY($2)')} s ON s.set_number = a.set_number
+       LEFT JOIN ${l.setBestand('= ANY($2)')} s ON s.set_number = a.set_number
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
       ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
@@ -80,10 +87,16 @@ export function datenbankJetzt(db: DbSchnittstelle) {
   return db.get<{ jetzt: Date }>('SELECT NOW() AS jetzt');
 }
 
-export function alarmeDesKontos(db: DbSchnittstelle, userId: number, marke: Date, blickfeld: number[]) {
+export function alarmeDesKontos(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  userId: number,
+  marke: Date,
+  blickfeld: number[],
+) {
   return db.all<AlarmZeile>(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
+            ausgeloest, zuletzt_am, zuletzt_preis, ${besitzt(l)}
        FROM price_alerts a
       WHERE user_id = $1 AND ausgeloest = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung

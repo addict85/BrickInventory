@@ -73,7 +73,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('die Transaktion geht über den übergebenen Zugang', async () => {
     sql.length = 0;
-    const r = await fremdquellen.zaehleKontingent('brickset');
+    const r = await fremdquellen.klienten.zaehle('brickset');
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_aufrufe/.test(s)),

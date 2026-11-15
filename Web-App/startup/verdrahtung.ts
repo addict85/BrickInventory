@@ -25,7 +25,7 @@ import { erzeugeDrossel } from '../src/drossel';
 import { erzeugeGeraete } from '../src/geraete';
 import { konfig, type Konfig } from '../src/infra/konfig';
 import { systemUhr, type Uhr } from '../src/infra/uhr';
-import type { Dienste } from '../src/dienste';
+import { LESEVERTRAG, type Dienste } from '../src/dienste';
 
 export type { Dienste } from '../src/dienste';
 
@@ -65,11 +65,11 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
 function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
   const drossel = erzeugeDrossel({ db }, zeige('drossel'));
-  const einstellungen = erzeugeEinstellungen({ db, uhr, drossel }, zeige('einstellungen'));
+  const einstellungen = erzeugeEinstellungen({ db, uhr, drossel, lesevertrag: LESEVERTRAG }, zeige('einstellungen'));
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
-  const auftraege = erzeugeAuftraege({ db, uhr, einstellungen }, zeige('auftraege'));
-  const haushalt = erzeugeHaushalt({ db, uhr, einstellungen }, zeige('haushalt'));
-  const geraete = erzeugeGeraete({ db, konfig, auftraege }, zeige('geraete'));
+  const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
+  const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
+  const geraete = erzeugeGeraete({ db, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
   const konto = erzeugeKonto(
     { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete },
     zeige('konto'),
@@ -80,9 +80,12 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
     zeige('fremdquellen'),
   );
-  const bilder = erzeugeBilder({ db, uhr, konfig, auftraege, haushalt, fremdquellen, bildwerk }, zeige('bilder'));
+  const bilder = erzeugeBilder(
+    { db, uhr, konfig, auftraege, haushalt, fremdquellen, bildwerk, lesevertrag: LESEVERTRAG },
+    zeige('bilder'),
+  );
   const katalog = erzeugeKatalog(
-    { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, drossel },
+    { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, drossel, lesevertrag: LESEVERTRAG },
     zeige('katalog'),
   );
   return {
@@ -107,16 +110,19 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   const { drossel, einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog } = grund;
   const { konfig, uhr } = bauteile;
   const finanzen = erzeugeFinanzen(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, fremdquellen, mail },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, fremdquellen, mail, lesevertrag: LESEVERTRAG },
     zeige('finanzen'),
   );
-  const bestand = erzeugeBestand({ db, uhr, einstellungen, haushalt, konto, katalog, finanzen }, zeige('bestand'));
+  const bestand = erzeugeBestand(
+    { db, uhr, einstellungen, haushalt, konto, katalog, finanzen, lesevertrag: LESEVERTRAG },
+    zeige('bestand'),
+  );
   const sets = erzeugeSets(
     { db, uhr, konfig, katalog, fremdquellen, bilder, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
   const teile = erzeugeTeile(
-    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, finanzen, bestand },
+    { db, uhr, einstellungen, auftraege, haushalt, katalog, fremdquellen, finanzen, bestand },
     zeige('teile'),
   );
   const figuren = erzeugeFiguren(

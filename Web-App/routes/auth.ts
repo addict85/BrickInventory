@@ -1,6 +1,6 @@
 /** Anmeldung, Token und Profil unter /api/v1/auth; die Teilrouter aus routes/auth/ hängen dahinter. */
 import { waechterFuer } from './api_v1/middleware';
-import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
+import { keksBleibtAus, sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 import { meldeFehler } from '../src/infra/fehler';
 import {
   anmelden,
@@ -35,8 +35,8 @@ import {
 import { emailWirdGeaendert } from '../src/profil';
 import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
-/** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
- * ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei. */
+/** Derselbe Weg nach Passwort und Passkey. Token ODER Sitzung: Die Sitzung trüge die Rechte am Scope des Tokens
+ * vorbei. keks_fehlt auch als false: Dann rät die Oberfläche bei einem 401 nicht auf „ohne HTTPS“. */
 async function angemeldetAntworten(
   d: Pick<Dienste, 'konto'>,
   req: Request,
@@ -56,11 +56,14 @@ async function angemeldetAntworten(
       // Nur nach einem Passwort, nicht nach einem Passkey allein: Grundlage der Gnadenfrist.
       ...(mitPasswort ? { passwortBestaetigtAm: Date.now() } : {}),
     });
-  res.json({ success: true, ...(await d.konto.anmeldeAntwort(user, wunsch, mitToken, req.ip)) });
+  res.json({
+    success: true,
+    ...(await d.konto.anmeldeAntwort(user, wunsch, mitToken, req.ip)),
+    ...(mitToken ? {} : { keks_fehlt: keksBleibtAus(req) }),
+  });
 }
 
-/** `zweiter_faktor` zeigt das Codefeld (oder `passkey`), `unverified` blendet
- * „E-Mail erneut senden?" ein. */
+/** `zweiter_faktor` zeigt das Codefeld (oder `passkey`), `unverified` blendet „E-Mail erneut senden?" ein. */
 function anmeldungAbsagen(absage: Absage): never {
   const { art, code, vars, unverified, zweiterFaktor, passkey } = absage;
   const zusatz = zweiterFaktor

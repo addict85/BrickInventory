@@ -1,7 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
-import { figurBestand, figurErfassungen, setBestand, teilBestand, teilErfassungen } from '../../../db/bestandSicht';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
+import { mengeAus, teilmengeAus } from '../../../db/bestandsmenge';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
@@ -22,17 +22,23 @@ export interface ManuelleErfassung {
   created_at: Date;
 }
 
-export function manuelleErfassungen(db: DbSchnittstelle, art: 'part' | 'fig', uids: number[], waehrung: string) {
+export function manuelleErfassungen(
+  db: DbSchnittstelle,
+  l: FinanzenLesevertrag,
+  art: 'part' | 'fig',
+  uids: number[],
+  waehrung: string,
+) {
   return db.all<ManuelleErfassung>(
     art === 'part'
       ? `SELECT id, user_id, part_number, color_id, quantity,
               ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
-         FROM ${teilErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
+         FROM ${l.teilErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`
       : `SELECT id, user_id, fig_number, quantity,
               ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
-         FROM ${figurErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
+         FROM ${l.figurErfassungen('= ANY($1)')} e ORDER BY created_at ASC, id ASC`,
     [uids, waehrung],
   );
 }
@@ -49,15 +55,15 @@ export interface BewertetesSet {
 }
 
 /** Kaufpreis und Zustand stehen in den Erfassungen. */
-export function setsZurBewertung(db: DbSchnittstelle, uids: number[]) {
+export function setsZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
   return db.all<BewertetesSet>(
     `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
             ${mengeAus('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
-       FROM ${setBestand('= ANY($1)')} s
+       FROM ${l.setBestand('= ANY($1)')} s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
        ${setStammJoin('s.set_number')}
-       ${mengeJoin('s', 'sm', '= ANY($1)')}
+       ${l.mengeJoin('s', 'sm', '= ANY($1)')}
       WHERE s.user_id = ANY($1)`,
     [uids],
   );
@@ -85,7 +91,7 @@ export interface ManuelleFigur {
   image_local: string | null;
 }
 
-export function manuelleFigurenZurBewertung(db: DbSchnittstelle, uids: number[]) {
+export function manuelleFigurenZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
   return db.all<ManuelleFigur>(
     `
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
@@ -93,8 +99,8 @@ export function manuelleFigurenZurBewertung(db: DbSchnittstelle, uids: number[])
            ${teilmengeAus('m', 'fig')} AS quantity,
            m.source, m.storage_id,
            ${FIGUR.name} AS fig_name, ${FIGUR.bild} AS image_url, ${FIGUR.bildDatei} AS image_local
-      FROM ${figurBestand('= ANY($1)')} m
-      ${teilmengeJoin('m', 'fig')}
+      FROM ${l.figurBestand('= ANY($1)')} m
+      ${l.teilmengeJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'm.user_id', 'blzf')}
       ${figurSichtJoin('m.user_id', 'm.fig_number')}
      WHERE m.user_id = ANY($1) AND m.source='manual'`,
@@ -121,7 +127,7 @@ export interface ManuellesTeil {
   image_local: string | null;
 }
 
-export function manuelleTeileZurBewertung(db: DbSchnittstelle, uids: number[]) {
+export function manuelleTeileZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
   return db.all<ManuellesTeil>(
     `
     SELECT p.id, p.user_id, p.set_number, p.part_number,
@@ -133,8 +139,8 @@ export function manuelleTeileZurBewertung(db: DbSchnittstelle, uids: number[]) {
            ${TEIL.name} AS part_name, ${TEIL.kategorie} AS category_name,
            ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
            ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local
-      FROM ${teilBestand('= ANY($1)')} p
-      ${teilmengeJoin('p', 'part')}
+      FROM ${l.teilBestand('= ANY($1)')} p
+      ${l.teilmengeJoin('p', 'part')}
       ${blJoin('p.part_number', 'part', 'p.user_id')}
       ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`,

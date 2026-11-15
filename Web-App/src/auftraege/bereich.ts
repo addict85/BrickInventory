@@ -1,4 +1,5 @@
 /** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import type { Db } from '../../db/database';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import { versuche } from '../infra/ergebnis';
@@ -29,7 +30,7 @@ export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, e
 function auftraegeDienste(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, einblick?: Einblick<AuftraegeKontext>) {
   return baueBereich(
     { ...a, faecher: new Faecher() },
-    zugang,
+    (db: Db) => zugang(db, a.lesevertrag),
     (k: AuftraegeKontext) => ({
       bricksetVormerken: mit(k)(bricksetAuftrag.bricksetVormerken),
       bricksetAusWiedervorlage: mit(k)(bricksetAuftrag.bricksetAusWiedervorlage),

@@ -86,14 +86,21 @@ test('Set ohne Bild: kein Knopf „Bild vergrössern“', async () => {
   const o = await oeffneOberflaeche(SET);
   try {
     const bild = o.d.getElementById('m-img');
-    const stand = () => ({ role: bild.getAttribute('role'), tab: bild.tabIndex, klick: bild.dataset.click ?? null });
-    assert.deepEqual(stand(), { role: null, tab: -1, klick: null }, 'vor dem ersten Öffnen');
+    // Seit Runde 27 liegt das Bild in einem Knopf; ohne Bild ist der gesperrt.
+    const knopf = /** @type {HTMLButtonElement} */ (bild.parentElement);
+    const stand = () => ({
+      role: bild.getAttribute('role'),
+      tab: bild.tabIndex,
+      klick: bild.dataset.click ?? knopf.dataset.click ?? null,
+      gesperrt: knopf.disabled,
+    });
+    assert.deepEqual(stand(), { role: null, tab: -1, klick: null, gesperrt: true }, 'vor dem ersten Öffnen');
     await reiter(o.w, 'gallery');
     assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
     assert.ok(await warte(() => o.d.getElementById('set-modal').classList.contains('open')));
     assert.ok(await warte(() => /set-placeholder/.test(bild.getAttribute('src') || '')));
-    assert.deepEqual(stand(), { role: null, tab: -1, klick: null }, 'mit Platzhalter');
+    assert.deepEqual(stand(), { role: null, tab: -1, klick: null, gesperrt: true }, 'mit Platzhalter');
   } finally {
     o.w.close();
   }

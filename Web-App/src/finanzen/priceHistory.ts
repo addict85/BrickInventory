@@ -140,7 +140,7 @@ export async function preisverlaufSet(
 export async function conditionRows(
   k: FinanzenKontext,
   cacheTable: string,
-  acqTable: string,
+  art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   uid: number | number[],
@@ -152,7 +152,7 @@ export async function conditionRows(
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
   const cacheRows = await k.preisverlauf.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
-  const acqRows = await k.preisverlauf.kaufschnitteNachSchluessel(acqTable, acqKeySql, acqKeyVals, uids, currency);
+  const acqRows = await k.preisverlauf.kaufschnitteNachSchluessel(art, acqKeySql, acqKeyVals, uids, currency);
 
   const out: Record<string, ZustandsVergleich> = {};
   for (const cond of ['N', 'U'] as const) {
@@ -179,7 +179,7 @@ async function manualPriceHistory(
   currency: string,
   historyTable: string,
   cacheTable: string,
-  acqTable: string,
+  art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
   acqKeySql: string = keySql,
@@ -188,7 +188,7 @@ async function manualPriceHistory(
   const [historyNew, historyUsed, by_condition] = await Promise.all([
     k.preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'N'),
     k.preisverlauf.manualSeries(historyTable, keySql, keyVals, currency, 'U'),
-    conditionRows(k, cacheTable, acqTable, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
+    conditionRows(k, cacheTable, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung; die Rohreihen bleiben vollständig.
   const zustaende = zustaendeFuerVerlauf(Object.keys(by_condition), ['N', 'U']);
@@ -220,7 +220,7 @@ export async function preisverlaufTeil(
     currency,
     'part_price_history',
     'part_price_cache',
-    'part_acquisitions',
+    'part',
     'part_number = ANY($1) AND color_id = $2',
     [nummern, blFarbe],
     'part_number = $1 AND color_id = $2',
@@ -243,7 +243,7 @@ export async function preisverlaufFigur(
     currency,
     'minifig_price_history',
     'minifig_price_cache',
-    'minifig_acquisitions',
+    'fig',
     'fig_number = ANY($1)',
     [nummern],
     // Die Erfassungen tragen nur die Nummer des Benutzers.

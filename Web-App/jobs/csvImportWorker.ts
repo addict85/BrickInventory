@@ -1,6 +1,7 @@
 /** Eigener Prozess für den Katalog-Import, damit der grosse Heap des Imports
  * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
+import { LESEVERTRAG } from '../src/dienste';
 import { erzeugeImportZugang, erzeugeKatalogImporte, parseCsvLine } from '../src/katalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
@@ -11,7 +12,7 @@ function send(msg: Record<string, unknown>) {
 
 const db = erzeugeImportZugang();
 const pool = db.pool;
-const TASKS = erzeugeKatalogImporte(db, send);
+const TASKS = erzeugeKatalogImporte(db, send, LESEVERTRAG);
 
 type Aufgabe = keyof typeof TASKS;
 

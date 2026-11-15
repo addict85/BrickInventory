@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { familieLebt, tokenFamilieSql } from '../../../db/zugangSicht';
+import type { GeraeteLesevertrag } from '../lesevertrag';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {
@@ -7,12 +7,14 @@ export interface Familie {
   seit: string;
 }
 
-const FAMILIE_LEBT = familieLebt('$1', '$2');
-
 /** Ein unbestätigter Schlüssel (vor der Attestation hinterlegt) gilt nur bis [altBis]. */
-/** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie FAMILIE_LEBT. */
-export async function familieDesTokens(db: DbSchnittstelle, hash: string): Promise<Familie | null> {
-  const z = await db.get<{ uid: number; seit: Date }>(tokenFamilieSql('$1'), [hash]);
+/** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie familieLebt. */
+export async function familieDesTokens(
+  db: DbSchnittstelle,
+  l: GeraeteLesevertrag,
+  hash: string,
+): Promise<Familie | null> {
+  const z = await db.get<{ uid: number; seit: Date }>(l.tokenFamilieSql('$1'), [hash]);
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
 }
 
@@ -42,17 +44,18 @@ export async function eintragDer(
  * @returns ob er jetzt gilt */
 export async function legeSchluesselAn(
   db: DbSchnittstelle,
+  l: GeraeteLesevertrag,
   f: Familie,
   oeffentlich: string,
   fristS: number,
 ): Promise<boolean> {
   await db.run(
-    `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT ${familieLebt('g.user_id', 'g.familie')}`,
+    `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT ${l.familieLebt('g.user_id', 'g.familie')}`,
     [f.uid],
   );
   return !!(await db.get(
     `INSERT INTO geraete_schluessel (user_id, familie, oeffentlich, attestiert)
-     SELECT $1, $2::timestamptz, $3, true WHERE ${FAMILIE_LEBT} AND $2::timestamptz > NOW() - make_interval(secs => $4)
+     SELECT $1, $2::timestamptz, $3, true WHERE ${l.familieLebt('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4)
      ON CONFLICT (user_id, familie) DO UPDATE SET oeffentlich = EXCLUDED.oeffentlich, attestiert = true,
        angelegt_am = NOW() WHERE NOT geraete_schluessel.attestiert
      RETURNING user_id`,
@@ -63,6 +66,7 @@ export async function legeSchluesselAn(
 /** Eine Nonce für die Attestation-Challenge; höchstens [offen] je Familie, nur für eine junge Familie. */
 export async function legeNonceAn(
   db: DbSchnittstelle,
+  l: GeraeteLesevertrag,
   f: Familie,
   nonce: string,
   o: { fristS: number; offen: number; ausQr: boolean },
@@ -76,7 +80,7 @@ export async function legeNonceAn(
   return !!(await db.get<{ nonce: string }>(
     `INSERT INTO geraete_nonces (nonce, user_id, familie, aus_qr, ablauf)
      SELECT $3, $1, $2::timestamptz, $5, $2::timestamptz + make_interval(secs => $4)
-      WHERE ${FAMILIE_LEBT} AND $2::timestamptz > NOW() - make_interval(secs => $4) RETURNING nonce`,
+      WHERE ${l.familieLebt('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4) RETURNING nonce`,
     [f.uid, f.seit, nonce, o.fristS, o.ausQr],
   ));
 }

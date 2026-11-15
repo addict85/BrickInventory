@@ -1,6 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
-import { setErfassungen } from '../../../db/bestandSicht';
+import type { FinanzenLesevertrag } from '../lesevertrag';
 
 /** `id` als zweites Sortierkriterium: Zwei Erfassungen können denselben
  * Zeitstempel tragen. */
@@ -19,13 +19,13 @@ export interface SetErfassungsZeile {
   created_at: Date | null;
 }
 
-export function ladeSetErfassungen(db: DbSchnittstelle, uids: number[], waehrung: string) {
+export function ladeSetErfassungen(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[], waehrung: string) {
   return db.all<SetErfassungsZeile>(
     `SELECT id, user_id, set_number, quantity,
             ${kaufpreisSpalten('purchase_price', '$2')},
             currency, price_estimated,
             COALESCE(condition, 'N') AS condition, created_at
-       FROM ${setErfassungen('= ANY($1)')} e
+       FROM ${l.setErfassungen('= ANY($1)')} e
       WHERE user_id = ANY($1)
       ORDER BY created_at ASC, id ASC`,
     [uids, waehrung],

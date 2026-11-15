@@ -2,7 +2,7 @@
 import type { MailDienste } from '../mail';
 import type { GutscheineDienste } from '../gutscheine';
 import type { Db } from '../../db/database';
-import { imSystem, type Kontext } from '../infra/bereich';
+import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as verwaltung from './repository/verwaltung';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { AuftraegeDienste } from '../auftraege';
@@ -48,10 +48,8 @@ export const zugang = (db: Db) => ({
     katalogBilderOffen: imSystem(db, 'verwaltung', verwaltung.katalogBilderOffen),
     letzterLaufDerArt: imSystem(db, 'verwaltung', verwaltung.letzterLaufDerArt),
     offeneBildauftraege: imSystem(db, 'verwaltung', verwaltung.offeneBildauftraege),
-    probeErfassungen: imSystem(db, 'verwaltung', verwaltung.probeErfassungen),
     probePreisCache: imSystem(db, 'verwaltung', verwaltung.probePreisCache),
     probePreisVerlauf: imSystem(db, 'verwaltung', verwaltung.probePreisVerlauf),
-    probeSet: imSystem(db, 'verwaltung', verwaltung.probeSet),
     protokollSeit: imSystem(db, 'verwaltung', verwaltung.protokollSeit),
     rbInventarTeile: imSystem(db, 'verwaltung', verwaltung.rbInventarTeile),
     rbTeile: imSystem(db, 'verwaltung', verwaltung.rbTeile),
@@ -64,6 +62,9 @@ export const zugang = (db: Db) => ({
     veraltetePreise: imSystem(db, 'verwaltung', verwaltung.veraltetePreise),
     vorschauFehlanzeigen: imSystem(db, 'verwaltung', verwaltung.vorschauFehlanzeigen),
     zugeordneteTeile: imSystem(db, 'verwaltung', verwaltung.zugeordneteTeile),
+    // Die Preisprobe sieht nur den eigenen Bestand des Verwalters: unter dem Zeilenschutz.
+    probeErfassungen: mit(db)(verwaltung.probeErfassungen),
+    probeSet: mit(db)(verwaltung.probeSet),
   },
 });
 export type VerwaltungKontext = Kontext<VerwaltungAbhaengigkeiten, ReturnType<typeof zugang>>;

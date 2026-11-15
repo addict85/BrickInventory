@@ -1,14 +1,15 @@
 /**
  * Geringe Höhe (200 % Zoom = 640 × 450): Der Kopf weicht beim Rollen nach
- * unten und kommt beim Rollen nach oben zurück, die untere Leiste zeigt nur
- * Symbole (Namen bleiben für Vorleser), und das weggeklickte Rebrickable-Band
- * bleibt auch in einer neuen Sitzung weg.
+ * unten und kommt beim Rollen nach oben zurück, die untere Leiste bleibt
+ * schmal (seit Runde 27 der Name neben dem Symbol, unter 600 px nur Symbole),
+ * und das weggeklickte Rebrickable-Band bleibt auch in einer neuen Sitzung weg.
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in mobile.js die Klasse kopf-weg nie gesetzt → rot: „Kopf weicht
  *      beim Rollen“
  *   B  die Regel `.ntab .tab-label { position:absolute … }` für geringe Höhe
- *      entfernt → rot: „untere Leiste schmal, Namen bleiben“ (59 px)
+ *      entfernt → rot: „untere Leiste schmal, Namen bleiben“ (59 px); seit
+ *      15.11.2026 die Regel für 601–640 px (`flex-direction: row`) → rot: ebenda
  *   C  rbHinweisWeg/rbHinweisZeigen wieder mit sessionStorage → rot: „Band
  *      bleibt weg, auch nach neuer Sitzung“
  *

@@ -1,4 +1,4 @@
-import type { CookieOptions } from 'express';
+import type { CookieOptions, Request } from 'express';
 import { cookieSicher, konfig, type Konfig } from '../infra/konfig';
 
 const NAME_TLS = '__Host-bim.sid';
@@ -15,6 +15,11 @@ export function sitzungsKeksName(k: Konfig = konfig()): string {
  * Mail-Link angemeldet; Mail-Links selbst brauchen keine Sitzung. */
 export function sitzungsKeksOptionen(k: Konfig = konfig()): CookieOptions & { path: '/' } {
   return { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieSicher(k) };
+}
+
+/** Über http setzt express-session kein Secure-Cookie; die Antwort sagt das, statt „abgelaufen“ zu raten. */
+export function keksBleibtAus(req: Pick<Request, 'secure'>, k: Konfig = konfig()): boolean {
+  return cookieSicher(k) && !req.secure;
 }
 
 /** Beide Namen: Für die Herkunftsprüfung zählt jedes Sitzungscookie. */

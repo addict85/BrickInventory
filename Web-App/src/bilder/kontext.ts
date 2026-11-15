@@ -1,7 +1,8 @@
 /** Was die Bilddienste bekommen: Zugang, Fächer, Aufträge, Haushalt, Fremdquellen und das
  * Bildwerk. Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import type { Konfig } from '../infra/konfig';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, mitVertrag, type Kontext } from '../infra/bereich';
+import type { BilderLesevertrag } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Db } from '../../db/database';
 import type { AuftraegeDienste } from '../auftraege';
@@ -31,11 +32,12 @@ export interface BilderAbhaengigkeiten {
   fremdquellen: FremdquellenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
+  lesevertrag: BilderLesevertrag;
 }
 
-export const zugang = (db: Db) => ({
+export const zugang = (db: Db, l: BilderLesevertrag) => ({
   bildBlickfeld: {
-    setsImBlickfeld: mit(db)(bildBlickfeld.setsImBlickfeld),
+    setsImBlickfeld: mitVertrag(db, l)(bildBlickfeld.setsImBlickfeld),
   },
   bildFehlschlaege: {
     frischeFehlschlaege: mit(db)(bildFehlschlaege.frischeFehlschlaege),
