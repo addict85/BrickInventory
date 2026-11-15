@@ -21,7 +21,7 @@ class UrsacheSichtbarTest {
 
     @Test
     fun `bei unbekannter Ursache steht die technische Meldung dabei`() {
-        val satz = mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Error.Unbekannt("unexpected end of stream"))
+        val satz = mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt("unexpected end of stream"))
         assertTrue(
             "Die technische Ursache fehlt — dann sagt die Meldung wieder nichts: $satz",
             satz.contains("unexpected end of stream")
@@ -34,9 +34,9 @@ class UrsacheSichtbarTest {
     fun `ohne Ursache bleibt der Satz unveraendert`() {
         // Kein technischer Text vorhanden: Es darf keine leere Klammer entstehen.
         assertEquals("Etwas ist schiefgelaufen",
-            mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Error.Unbekannt(null)))
+            mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt(null)))
         assertEquals("Etwas ist schiefgelaufen",
-            mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Error.Unbekannt("   ")))
+            mitTechnischerUrsache("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt("   ")))
     }
 
     @Test
@@ -44,10 +44,10 @@ class UrsacheSichtbarTest {
         // Die Gegenrichtung, und sie ist die wichtigere: Ein Test, der nur
         // Punkt 1 prüft, wäre auch dann grün, wenn die Ursache ÜBERALL
         // angehängt würde — also genau die Regel bräche, um die es geht.
-        for (art in listOf(Ergebnis.Error.Netz("Socket closed"), Ergebnis.Error.Zeitueberschreitung,
-                           Ergebnis.Error.Server(500), Ergebnis.Error.Abgewiesen(),
-                           Ergebnis.Error.LeereAntwort("Socket closed"), Ergebnis.Error.Abgebrochen,
-                           Ergebnis.Error.Klartext)) {
+        for (art in listOf(Ergebnis.Fehler.Netz("Socket closed"), Ergebnis.Fehler.Zeitueberschreitung,
+                           Ergebnis.Fehler.Server(500), Ergebnis.Fehler.Abgewiesen(),
+                           Ergebnis.Fehler.LeereAntwort("Socket closed"), Ergebnis.Fehler.Abgebrochen,
+                           Ergebnis.Fehler.Klartext)) {
             // Netz und LeereAntwort tragen selbst einen technischen Text; die übrigen
             // stehen dabei, damit eine künftige Ursache mit Text hier auffällt.
             assertEquals(

@@ -62,8 +62,8 @@ class HaushaltViewModel @Inject constructor(
         viewModelScope.launch {
             _householdState.update { it.copy(abruf = Laden.Laedt) }
             when (val r = haushalt.getHousehold()) {
-                is Ergebnis.Success -> _householdState.update { it.copy(abruf = Laden.Daten(Unit), status = r.data, inviteCode = null) }
-                is Ergebnis.Error -> _householdState.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Erfolg -> _householdState.update { it.copy(abruf = Laden.Daten(Unit), status = r.data, inviteCode = null) }
+                is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }
@@ -72,9 +72,9 @@ class HaushaltViewModel @Inject constructor(
         viewModelScope.launch {
             _householdState.update { it.copy(abruf = Laden.Laedt) }
             when (val r = haushalt.createHouseholdInvite()) {
-                is Ergebnis.Success -> _householdState.update { it.copy(abruf = Laden.Daten(Unit), inviteCode = r.data.code,
+                is Ergebnis.Erfolg -> _householdState.update { it.copy(abruf = Laden.Daten(Unit), inviteCode = r.data.code,
                     inviteGueltigBis = r.data.gueltigSekunden?.let { s -> jetzt() + s * 1000L }) }
-                is Ergebnis.Error -> _householdState.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }
@@ -89,12 +89,12 @@ class HaushaltViewModel @Inject constructor(
         viewModelScope.launch {
             _householdState.update { it.copy(abruf = Laden.Laedt, passwortFalsch = false, faktorFalsch = false) }
             when (val r = haushalt.redeemHouseholdInvite(code.trim(), passwort, faktorCode)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     _householdState.update { it.copy(abruf = Laden.Daten(Unit), eingeloest = it.eingeloest + 1) }
                     kontenGeaendert(bestandGeaendert = false)
                 }
                 // Kennt die App den zweiten Faktor noch nicht, zeigt erst diese Antwort das Codefeld.
-                is Ergebnis.Error -> _householdState.update { it.copy(abruf = einloeseFehler(r),
+                is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = einloeseFehler(r),
                     passwortFalsch = r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH, faktorFalsch = r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH,
                     faktorNoetig = it.faktorNoetig || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH) }
             }
@@ -105,7 +105,7 @@ class HaushaltViewModel @Inject constructor(
     private fun pruefeZweitenFaktor() {
         viewModelScope.launch {
             val r = konto.zweiterFaktorStand()
-            if (r is Ergebnis.Success && r.data.aktiv) _householdState.update { it.copy(faktorNoetig = true) }
+            if (r is Ergebnis.Erfolg && r.data.aktiv) _householdState.update { it.copy(faktorNoetig = true) }
         }
     }
 
@@ -113,10 +113,10 @@ class HaushaltViewModel @Inject constructor(
      * Für die Sperre nach Fehlversuchen hat der Server keinen eigenen Code
      * zugesagt, nur den Status 429; sein Satz nennt die Wartezeit und geht vor.
      */
-    private fun einloeseFehler(r: Ergebnis.Error): Laden.Fehler = when {
+    private fun einloeseFehler(r: Ergebnis.Fehler): Laden.Fehler = when {
         r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH -> ladefehler(r).copy(meldung = Meldung.Ressource(R.string.household_redeem_password_wrong))
         r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH -> ladefehler(r).copy(meldung = Meldung.Ressource(R.string.household_redeem_code_wrong))
-        r.code == Fehlercode.ZU_VIELE_FEHLVERSUCHE || (r as? Ergebnis.Error.Server)?.status == 429 ->
+        r.code == Fehlercode.ZU_VIELE_FEHLVERSUCHE || (r as? Ergebnis.Fehler.Server)?.status == 429 ->
             ladefehler(r).copy(meldung = if (r.message.isBlank()) Meldung.Ressource(R.string.household_redeem_locked) else Meldung.Text(r.message))
         else -> ladefehler(r)
     }
@@ -125,9 +125,9 @@ class HaushaltViewModel @Inject constructor(
     fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null) {
         viewModelScope.launch {
             when (val r = haushalt.unlinkHousehold(subUserId, mainUserId)) {
-                is Ergebnis.Success -> kontenGeaendert(bestandGeaendert = true)
+                is Ergebnis.Erfolg -> kontenGeaendert(bestandGeaendert = true)
                 // Ohne Meldung tippt man auf „lösen“, und sichtbar geschieht nichts.
-                is Ergebnis.Error -> _householdState.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }
@@ -136,8 +136,8 @@ class HaushaltViewModel @Inject constructor(
     fun verwerfeGetrenntesKonto(subUserId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.verwerfeGetrenntesKonto(subUserId)) {
-                is Ergebnis.Success -> ladeHaushalt()
-                is Ergebnis.Error -> _householdState.update { it.copy(abruf = ladefehler(r)) }
+                is Ergebnis.Erfolg -> ladeHaushalt()
+                is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = ladefehler(r)) }
             }
         }
     }

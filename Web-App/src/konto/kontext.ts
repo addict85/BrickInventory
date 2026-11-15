@@ -116,6 +116,7 @@ const kontenzugang = (db: Db) => ({
       passkeys.speichereChallenge,
     ),
     verbraucheChallenge: imSystem(db, OHNE_KONTO, passkeys.verbraucheChallenge),
+    vermerkeVerbraucht: imSystem(db, OHNE_KONTO, passkeys.vermerkeVerbraucht),
     kennungenDesKontos: mit(db)(passkeys.kennungenDesKontos),
     legeAn: mit(db)(passkeys.legeAn),
     schluessel: imSystem(db, 'Anmeldung mit Passkey: Das Konto ergibt sich erst aus ihm', passkeys.schluessel),

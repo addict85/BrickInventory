@@ -7,15 +7,7 @@ import { meldeFehler } from '../../infra/fehler';
 import { sendeFehler } from '../../http/httpAntwort';
 import { istVerwalter } from './anmeldung';
 import type { KontoDienste } from '../bereich';
-
-/** Die Schritte, vor denen die App ihren Schrittschutz zeigt. Die Verwaltung
- * prüft requireApiAdmin selbst, damit keine Verwalter-Route an der Liste vorbeigeht. */
-const GESCHUETZT: ReadonlyArray<readonly [string, RegExp, Schrittaktion]> = [
-  ['POST', /^\/vouchers\/\d+\/(klartext|pdf-freigabe)$/, 'gutschein'],
-  ['POST', /^\/vouchers\/export\/pdf-freigabe$/, 'gutschein'],
-  ['DELETE', /^\/vouchers\/\d+$/, 'gutschein'],
-  ['POST', /^\/auth\/zweiter-faktor\/(einrichten|codes)$/, 'zweiter_faktor'],
-];
+import { routeFuerAnfrage } from '../../vertrag';
 
 /** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (nutzerIdDerAnfrage). */
 export function istAppToken(req: Request): boolean {
@@ -65,11 +57,14 @@ export async function alsVerwalter(konto: KontoDienste, req: Request): Promise<b
   return !!f && (await konto.pruefeFreigabe(f, 'verwaltung')) === 'frei';
 }
 
-/** Hinter anmeldungAmEingang, vor dem Lesen des Rumpfs. */
+/** Hinter anmeldungAmEingang, vor dem Lesen des Rumpfs. Welche Schritte geschützt sind, sagt
+ * die Marke `schritt` am Vertrag; res.locals.schritt hält fest, was hier freigegeben wurde,
+ * damit vertragsRouter an der Route selbst nachsieht (eine zweite Linie, falls die Zuordnung hier fehlgeht). */
 export function schrittschutzAmEingang(konto: KontoDienste) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const regel = GESCHUETZT.find(([m, re]) => m === req.method && re.test(req.path));
-    if (regel) verlangeFreigabe(konto, req, res, next, regel[2]);
+    const aktion = routeFuerAnfrage(req.method, req.baseUrl + req.path)?.schritt;
+    res.locals.schritt = aktion ?? null;
+    if (aktion) verlangeFreigabe(konto, req, res, next, aktion);
     else next();
   };
 }

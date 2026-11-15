@@ -118,11 +118,11 @@ class KontosichtTest {
 
     @Test
     fun `die volle Sicht steht in der Ablage und traegt bei Netzausfall`() = runBlocking {
-        assertTrue(sets.aktualisiereSets() is Ergebnis.Success)
+        assertTrue(sets.aktualisiereSets() is Ergebnis.Erfolg)
         val abruf = pfade.anfragenAn("GET /api/v1/sets?").single()
         assertTrue("ungefiltert: $abruf", "search=" !in abruf && "accounts=" !in abruf)
         pfade.codes["/api/v1/sets"] = 500
-        assertTrue(sets.aktualisiereSets() is Ergebnis.Error)
+        assertTrue(sets.aktualisiereSets() is Ergebnis.Fehler)
         val abgelegt = sets.beobachteSets(thema = null).first()
         assertTrue("mit Stand", abgelegt.stand != null)
         assertEquals("ein Fehler leert die Ablage nicht", listOf("10-1", "11-1"), abgelegt.liste.map { it.setNumber })

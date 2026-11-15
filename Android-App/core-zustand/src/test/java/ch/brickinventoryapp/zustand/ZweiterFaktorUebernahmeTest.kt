@@ -72,7 +72,7 @@ class ZweiterFaktorUebernahmeTest {
         pfade.antworten["/api/v1/auth/me"] =
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val me = konto.getMe()
-        assertTrue("aus /auth/me", me is Ergebnis.Success &&
+        assertTrue("aus /auth/me", me is Ergebnis.Erfolg &&
             me.data?.zweiterFaktorPflicht == true)
     }
 }

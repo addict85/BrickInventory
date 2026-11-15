@@ -29,6 +29,8 @@
  *      „CDN antwortete …“ auf console.info statt console.error bei 403
  *   J  in bildProbe() `looks_like` ohne den JPEG-Zweig bzw. die Probe ohne
  *      'Accept-Encoding': 'identity' → rot: „die Probe zeigt, WAS …“
+ *   K  (15.11.2026) in raeumeBildCacheAuf() die Schleife über images/sets gestrichen →
+ *      rot: „images/sets zählt im Deckel mit …“ (0 statt 1 gelöscht)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,6 +55,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
 const { portVon } = require('./helpers/server');
+// Ohne Datenbank: Kein Set liegt im Blickfeld, abgelegt wird nichts.
+require('./helpers/sources').ersetzeDienste('bilder', { setNummerImBlickfeld: async () => false });
 const bildDurchreichen = (...a) =>
   _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
 const { raeumeBildCacheAuf } = _req('src/bilder/imgCacheServe.js');
@@ -268,6 +272,28 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
       .join(''),
     'bbbccc',
   );
+});
+
+test('images/sets zählt im Deckel mit und bleibt stehen', async () => {
+  fs.rmSync(cacheDir, { recursive: true, force: true });
+  fs.mkdirSync(cacheDir, { recursive: true });
+  const sets = path.join(wurzel, 'data', 'images', 'sets');
+  fs.mkdirSync(sets, { recursive: true });
+  fs.writeFileSync(path.join(sets, '10294-1.jpg'), Buffer.alloc(2000));
+  const jetzt = Date.now() / 1000;
+  for (const [schluessel, alterTage] of /** @type {[string, number][]} */ ([
+    ['a'.repeat(40), 5],
+    ['b'.repeat(40), 1],
+  ])) {
+    const p = path.join(cacheDir, schluessel);
+    fs.writeFileSync(p, Buffer.alloc(1000));
+    fs.utimesSync(p, jetzt - alterTage * 86400, jetzt - alterTage * 86400);
+  }
+  // 2000 Bytes im Cache lägen unter 3500, mit images/sets sind es 4000.
+  assert.equal(await raeumeBildCacheAuf(3500, jetzt * 1000), 1);
+  assert.deepEqual(fs.readdirSync(cacheDir), ['b'.repeat(40)]);
+  assert.deepEqual(fs.readdirSync(sets), ['10294-1.jpg']);
+  fs.rmSync(sets, { recursive: true, force: true });
 });
 
 test('Fehler werden gezählt und protokolliert', async () => {

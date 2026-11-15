@@ -21,7 +21,7 @@ import ch.brickinventoryapp.testing.TestDienste
  * Gegenproben:
  *   A  die Abfrage `if (!state.value.isAdmin) return false` entfernt → rot
  *      „ein entzogenes Recht wird einmal nachgezogen …“ (zweiter /me-Abruf)
- *   B  ohne Antwort das Recht behalten (`me !is Success -> return false`) → rot
+ *   B  ohne Antwort das Recht behalten (`me !is Erfolg -> return false`) → rot
  *      „ohne Antwort von /auth/me gilt das 403“
  */
 class RechteNachziehenTest {

@@ -13,6 +13,10 @@
  * Gegenprobe (09.11.2026 gemessen): vomCdn() ohne `ersatz` aufgerufen → rot:
  * „weist das CDN den neuen Abruf ab, kommt die Vorschau aus dem Cache“ (403).
  *
+ * Gegenprobe (15.11.2026 gemessen): in bildDurchreichen() `ablegen` ohne die Frage nach
+ * dem Blickfeld (nur `!!setNummer`) → rot: „frisch vom CDN …“ (60000-1.jpg liegt in
+ * images/sets, obwohl das Konto das Set nicht führt).
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -41,6 +45,8 @@ const FRISCH = '11516-1';
 const NUR_VORSCHAU = '71888-1';
 /** Das CDN weist dieses Set für jede Kennung ab. */
 const GESPERRT = '10294-1';
+/** Im Katalog, aber nicht im Blickfeld des Kontos. */
+const FREMD = '60000-1';
 const bildAdresse = (/** @type {string} */ sn) => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
 
 function freierPort() {
@@ -149,7 +155,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
     cdn.close();
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db
-      .run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[FRISCH, NUR_VORSCHAU, GESPERRT]])
+      .run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[FRISCH, NUR_VORSCHAU, GESPERRT, FREMD]])
       .catch(() => {});
     await db.pool.end().catch(() => {});
     fs.rmSync(wurzel, { recursive: true, force: true });
@@ -162,7 +168,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
       [k],
     );
-  for (const sn of [FRISCH, NUR_VORSCHAU]) {
+  for (const sn of [FRISCH, NUR_VORSCHAU, FREMD]) {
     await katalogSet(db, sn, { name: 'Probe' });
     await db.run(`UPDATE set_catalog SET image_url = $2, image_local = NULL WHERE set_number = $1`, [
       sn,
@@ -174,6 +180,8 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
                                VALUES ($1, 'x', true, true) RETURNING id`,
     [NAME],
   );
+  for (const sn of [FRISCH, NUR_VORSCHAU, GESPERRT])
+    await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [nutzer.id, sn]);
   await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
     nutzer.id,
     crypto.createHash('sha256').update(TOKEN).digest('hex'),
@@ -197,11 +205,15 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
     !!(await db.get('SELECT 1 AS ja FROM image_wanted WHERE url = $1 AND set_number = $2', [bildAdresse(sn), sn]));
 
   await t.test('frisch vom CDN: der Web-Prozess legt das Bild ab und notiert es', async () => {
+    // Ein Set ausserhalb des Blickfelds kommt durch, landet aber weder in images/sets noch im Bildbedarf.
+    const fremd = await proxy(FREMD);
+    assert.deepEqual([fremd.status, fremd.bytes], [200, bild.length]);
     const r = await proxy(FRISCH);
     assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', bild.length]);
     assert.ok(await bis(() => liegt(`${FRISCH}.jpg`), 5_000), `${FRISCH}.jpg fehlt\n${web.log.slice(-1500)}`);
     // Der Puffer geht alle 10 s in die Datenbank.
     assert.ok(await bis(() => notiert(FRISCH), 15_000), `keine Notiz für ${FRISCH}\n${web.log.slice(-1500)}`);
+    assert.deepEqual([liegt(`${FREMD}.jpg`), await notiert(FREMD)], [false, false]);
   });
 
   await t.test('nur die Vorschau im Cache: der Proxy holt das Original und legt es ab', async () => {

@@ -13,5 +13,5 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
 -                q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
 +                q = s.query.ifBlank { null }, themeId = null, sort = s.sort)
              if (gen != catalogGeneration) return@launch
-             if (r is Ergebnis.Success) {
+             if (r is Ergebnis.Erfolg) {
                  // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.

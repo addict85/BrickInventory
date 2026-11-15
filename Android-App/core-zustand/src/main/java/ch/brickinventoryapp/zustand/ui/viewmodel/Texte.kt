@@ -14,10 +14,10 @@ interface Texte {
     fun text(id: Int, vararg args: Any?): String
     fun menge(id: Int, anzahl: Int, vararg args: Any?): String
     /** Für Fehlerfelder in Formularen — dort ist „nichts zu sagen" keine Antwort. */
-    fun meldung(fehler: Ergebnis.Error): String
+    fun meldung(fehler: Ergebnis.Fehler): String
     /** Null heisst: Die Sitzungsschicht hat den Fehler schon gemeldet. */
-    fun meldungFuerSnackbar(fehler: Ergebnis.Error): String? =
-        if (meldetDieSitzungsschicht(fehler is Ergebnis.Error.Abgewiesen, angemeldet())) null else meldung(fehler)
+    fun meldungFuerSnackbar(fehler: Ergebnis.Fehler): String? =
+        if (meldetDieSitzungsschicht(fehler is Ergebnis.Fehler.Abgewiesen, angemeldet())) null else meldung(fehler)
     /** Liegt ein Token vor? Dieselbe Quelle, die der Interceptor liest. */
     fun angemeldet(): Boolean
 }

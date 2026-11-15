@@ -330,7 +330,7 @@ object Beispiele {
             }, object : TeilelistenExport {
                 override val fortschritt = flowOf<PdfFortschritt?>(null)
                 override suspend fun erzeuge(auftrag: Teilelistenauftrag): ExportErgebnis =
-                    ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()))
+                    ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Fehler.Netz()))
             }, SavedStateHandle()))
 
         override fun close() {

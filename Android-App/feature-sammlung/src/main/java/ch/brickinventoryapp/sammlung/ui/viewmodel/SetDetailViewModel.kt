@@ -141,39 +141,39 @@ class SetDetailViewModel @Inject constructor(
     private fun ladeDetail() = starte(Abschnitt.DETAIL) {
         _setDetailState.update { it.copy(detailAbruf = Laden.Laedt) }
         when (val r = katalog.getSetDetail(setNumber)) {
-            is Ergebnis.Success -> {
+            is Ergebnis.Erfolg -> {
                 _setDetailState.update { it.copy(setDetail = r.data, detailAbruf = Laden.Daten(Unit)) }
                 // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer des Sets, nicht dem Betrachter.
                 filter.loadLagerortVorrat(r.data?.owners.orEmpty().map { it.id })
             }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(detailAbruf = ladefehler(r)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(detailAbruf = ladefehler(r)) }
         }
     }
 
     private fun ladePreis() = starte(Abschnitt.PREIS) {
         _setDetailState.update { it.copy(preisAbruf = Laden.Laedt) }
         when (val r = finanzen.getSetPrice(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data, preisAbruf = Laden.Daten(Unit)) }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(preisAbruf = ladefehler(r)) }
+            is Ergebnis.Erfolg -> _setDetailState.update { it.copy(setPrice = r.data, preisAbruf = Laden.Daten(Unit)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(preisAbruf = ladefehler(r)) }
         }
     }
 
     private fun ladeVerlauf() = starte(Abschnitt.VERLAUF) {
         _setDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
         when (val r = finanzen.getSetPriceHistory(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
+            is Ergebnis.Erfolg -> _setDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
         }
     }
 
     private fun ladeKaeufe() = starte(Abschnitt.KAEUFE) {
         _setDetailState.update { it.copy(kaeufeAbruf = Laden.Laedt) }
         when (val r = haushalt.getAcquisitions(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update {
+            is Ergebnis.Erfolg -> _setDetailState.update {
                 it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen,
                         kaeufeAbruf = Laden.Daten(Unit))
             }
-            is Ergebnis.Error -> _setDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
         }
     }
 
@@ -190,8 +190,8 @@ class SetDetailViewModel @Inject constructor(
      * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht; die übrigen
      * Bestandsansichten folgen der Ablage, in die das Repository sie schreibt.
      */
-    fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
-        mengeAendern(setNumber) { sets.updateQuantity(setNumber, quantity, purchasePrice, condition) }
+    fun setzeMenge(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
+        mengeAendern(setNumber) { sets.setzeMenge(setNumber, quantity, purchasePrice, condition) }
 
     /** Der Regler: ein Schritt, damit gleichzeitige Klicks auf zwei Geräten zusammenzählen. */
     override fun aendereMengeUm(setNumber: String, schritt: Int) =
@@ -200,7 +200,7 @@ class SetDetailViewModel @Inject constructor(
     private fun mengeAendern(setNumber: String, aufruf: suspend () -> Ergebnis<Int?>) {
         viewModelScope.launch {
             when (val r = aufruf()) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     r.data?.let { echt ->
                         _setDetailState.update { st ->
                             if (st.setDetail?.setNumber == setNumber)
@@ -208,7 +208,7 @@ class SetDetailViewModel @Inject constructor(
                         }
                     }
                 }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
@@ -219,8 +219,8 @@ class SetDetailViewModel @Inject constructor(
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
-                is Ergebnis.Success -> Unit
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> Unit
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -244,11 +244,11 @@ class SetDetailViewModel @Inject constructor(
             val bytes = gelesen.bytes
             val name = leser.name(datei) ?: "anleitung"
             when (val r = dateien.uploadAnleitung(setNumber, name, typ, bytes, name)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     meldungen.zeige(meldungen.text(R.string.instr_upload_done))
                     ladeDetail()
                 }
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
@@ -256,8 +256,8 @@ class SetDetailViewModel @Inject constructor(
     override fun loescheAnleitung(setNumber: String, instrId: Int) {
         viewModelScope.launch {
             when (val r = dateien.deleteAnleitung(setNumber, instrId)) {
-                is Ergebnis.Success -> ladeDetail()
-                is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> ladeDetail()
+                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }

@@ -32,7 +32,7 @@ internal class DienstExport @Inject constructor(
             is PdfExportState.Error -> ExportErgebnis.Fehler(r.grund)
             // Ohne else-Zweig, damit ein neuer Zustand hier auffällt; first{} lässt beide nicht durch.
             is PdfExportState.Idle, is PdfExportState.Running ->
-                ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Error.Unbekannt()))
+                ExportErgebnis.Fehler(PdfFehlschlag.Abruf(Ergebnis.Fehler.Unbekannt()))
         }
     }
 }

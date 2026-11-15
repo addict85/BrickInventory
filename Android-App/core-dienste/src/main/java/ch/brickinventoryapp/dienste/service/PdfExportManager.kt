@@ -65,7 +65,7 @@ internal class PdfExportManager @Inject constructor(
         var ergebnis: Ergebnis<ByteArray> = dateien.downloadPdf(jobId)
         var pause = 2000L
         repeat(4) {
-            if (ergebnis is Ergebnis.Success) return ergebnis
+            if (ergebnis is Ergebnis.Erfolg) return ergebnis
             delay(pause); pause = minOf(pause * 2, 30_000L)
             ergebnis = dateien.downloadPdf(jobId)
         }
@@ -75,8 +75,8 @@ internal class PdfExportManager @Inject constructor(
     suspend fun fuehreAus(anfrage: Teilelistenauftrag) {
         fangeAusserAbbruch {
             val jobId = when (val r = dateien.startPdfJob(anfrage)) {
-                is Ergebnis.Success -> r.data
-                is Ergebnis.Error -> { scheitere(PdfFehlschlag.Abruf(r)); return }
+                is Ergebnis.Erfolg -> r.data
+                is Ergebnis.Fehler -> { scheitere(PdfFehlschlag.Abruf(r)); return }
             }
             _state.value = PdfExportState.Running(PdfFortschritt(PdfSchritt.BILDER_LADEN))
             val lauf = Lauf()
@@ -99,15 +99,15 @@ internal class PdfExportManager @Inject constructor(
 
             _state.value = PdfExportState.Running(PdfFortschritt(PdfSchritt.HERUNTERLADEN))
             when (val r = ladePdf(jobId)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     val file = teilelistentresor.lege(context.filesDir, context.getExternalFilesDir(null), r.data)
                     // Auch verschlüsselt bleibt das Inventar nur, solange jemand es öffnen will.
                     runCatching { TeilelistenAufraeumer.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }
-                is Ergebnis.Error -> scheitere(PdfFehlschlag.Abruf(r))
+                is Ergebnis.Fehler -> scheitere(PdfFehlschlag.Abruf(r))
             }
-        }.onFailure { e -> scheitere(PdfFehlschlag.Abruf(Ergebnis.Error.Unbekannt(technisch = e.message))) }
+        }.onFailure { e -> scheitere(PdfFehlschlag.Abruf(Ergebnis.Fehler.Unbekannt(technisch = e.message))) }
     }
 
     private fun scheitere(grund: PdfFehlschlag) { _state.value = PdfExportState.Error(grund) }
@@ -144,12 +144,12 @@ internal class PdfExportManager @Inject constructor(
     private suspend fun frageAbBisFertig(jobId: String, lauf: Lauf): Ausgang {
         var fehler = 0
         val bis = System.currentTimeMillis() + 10 * 60 * 1000L
-        var zuletzt: Ergebnis.Error = Ergebnis.Error.Zeitueberschreitung
+        var zuletzt: Ergebnis.Fehler = Ergebnis.Fehler.Zeitueberschreitung
         while (System.currentTimeMillis() < bis) {
             delay(3000)
             when (val r = dateien.getPdfJobStatus(jobId)) {
-                is Ergebnis.Success -> { fehler = 0; wendeAn(r.data, lauf)?.let { return it } }
-                is Ergebnis.Error -> { zuletzt = r; if (++fehler >= 10) return Ausgang(PdfFehlschlag.Abruf(r)) }
+                is Ergebnis.Erfolg -> { fehler = 0; wendeAn(r.data, lauf)?.let { return it } }
+                is Ergebnis.Fehler -> { zuletzt = r; if (++fehler >= 10) return Ausgang(PdfFehlschlag.Abruf(r)) }
             }
         }
         return Ausgang(PdfFehlschlag.Abruf(zuletzt))

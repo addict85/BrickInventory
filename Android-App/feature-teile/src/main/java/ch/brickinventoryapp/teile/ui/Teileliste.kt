@@ -40,18 +40,18 @@ internal class Teileliste @Inject constructor(
             val figsResult  = katalog.getSetMinifigsList(setNumber)
             // Der Name kommt aus dem Katalog (/sets/info), nicht aus dem eigenen
             // Bestand: In die Teileliste trägt man gerade Sets ein, die man nicht hat.
-            val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Success)
+            val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Erfolg)
                 ?.data?.takeIf { it.isNotBlank() } ?: setNumber
             // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
             // (mitBestand) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
             // oft eine BrickLink-Nummer; nach ihr zusammengefasst galt ein vorhandenes
             // Teil als fehlend. Angezeigt wird weiterhin die BrickLink-Nummer.
             val deduped = mutableMapOf<String, PlPart>()
-            if (partsResult is Ergebnis.Success) {
+            if (partsResult is Ergebnis.Erfolg) {
                 for (p in partsResult.data) fasseZusammen(deduped, "${p.partNumber}|${p.colorId}", teilZeile(p, serverUrl))
             }
             // Figuren als Ganzes, nicht in ihre Teile zerlegt — wie in der Webapp.
-            if (figsResult is Ergebnis.Success) {
+            if (figsResult is Ergebnis.Erfolg) {
                 for (f in figsResult.data) fasseZusammen(deduped, "fig:${f.figNumber}", figurZeile(f, serverUrl))
             }
             Pair(setName, deduped.values.toList())
@@ -126,7 +126,7 @@ internal class Teileliste @Inject constructor(
         // Das Blickfeld kommt aus dieser Ansicht, nicht aus dem Kontofilter des
         // Teile-Reiters. `null` heisst „alle Konten“.
         val antwort = teileRepo.getOwnedParts(anfrage, if (mitUnterkonten) null else Kontoauswahl.Eigene)
-        val bestand = (antwort as? Ergebnis.Success)?.data ?: return null
+        val bestand = (antwort as? Ergebnis.Erfolg)?.data ?: return null
         return teile.map { p ->
             val eintrag = bestand[Teilschluessel(p.partNumber, p.colorId)]
             p.copy(vorhanden = if (eintrag == null) 0 else if (nurLose) eintrag.lose else eintrag.gesamt)
