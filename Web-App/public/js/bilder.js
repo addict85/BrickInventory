@@ -213,7 +213,9 @@ export function thumbUrl(src) {
   return src;
 }
 
-// Lazy image loading with IntersectionObserver and fade-in
+/** Einer für alle Bilder der Seite. @type {IntersectionObserver | null} */
+let bildBeobachter = null;
+
 /**
  * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten alle
  * <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand da.
@@ -228,7 +230,7 @@ export function observeLazyImages(root) {
   imgs.forEach(img => {
     if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
   });
-  window._imgObserver ??= new IntersectionObserver(
+  bildBeobachter ??= new IntersectionObserver(
     (entries, obs) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
@@ -241,7 +243,7 @@ export function observeLazyImages(root) {
     },
     { rootMargin: '200px' },
   );
-  const beobachter = window._imgObserver;
+  const beobachter = bildBeobachter;
   imgs.forEach(img => {
     img.classList.add('observed');
     beobachter.observe(img);

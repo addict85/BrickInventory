@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { scopeMode } from './scope.js';
-import { CURRENCY } from './zustand.js';
+import { CURRENCY, finKopfWert } from './zustand.js';
 import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './diagramme.js';
 
 // Wertentwicklung des Bestands: Zeitraum, Kurve und ihre Bezugslinie (Einstand) aus den Kennzahlen.
@@ -116,7 +116,7 @@ export async function loadPortfolioChart() {
   const cur = d.currency || CURRENCY;
   // New API: points has {x_label, value, y_frac}, y_axis has {label, value, frac} Convert to legacy format
   // for portfolioChartSVG: [{day, total}]
-  const grandTotal = window._finGrandTotal || d.points[d.points.length - 1].value;
+  const grandTotal = finKopfWert || d.points[d.points.length - 1].value;
   const lastVal = d.points[d.points.length - 1].value || 1;
   const scale = lastVal > 0 ? grandTotal / lastVal : 1;
   // Die Zeitpunkte stehen in d.chart (dieselbe Reihenfolge wie points); mit ihnen liegen die Punkte auf einer
@@ -153,7 +153,7 @@ export async function loadPortfolioChart() {
         ? tRaw('finance.change.seit', { datum: fmtDatum(new Date(start)) })
         : '';
     const zeitraum = zeitraumText ? html`<span class="pnl-zeitraum">${seit ? seit : tRaw(zeitraumText)}</span>` : '';
-    if (!(Number(window._finGrandTotal) > 0)) pnlEl.replaceChildren();
+    if (!(finKopfWert > 0)) pnlEl.replaceChildren();
     else if (d.period_change_pct != null) {
       setzeHtml(pnlEl, html`${pnlBadge(d.period_change_pct)}${zeitraum}`);
     } else {
