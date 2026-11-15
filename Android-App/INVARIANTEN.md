@@ -99,8 +99,10 @@ Tests: `AusgangsformTest`, `BestandDatenbankTest`, `AusgangsmelderTest`
 **Eine Ablage.** Was offline gelten soll, liegt als Fach (`Bestandsart`) in der Room-Ablage,
 auch eine einzelne Antwort ohne Liste (`abgeglichenEinzeln()`); kein zweiter Plattenspeicher
 daneben. Den früheren (`noBackupFilesDir/api-*`) räumt `raeumeAlteAntwortablage()`.
-Dateien: `offline/Offlineablage.kt`, `data/repository/Abruf.kt`, `data/cache/CacheBesitzer.kt` ·
-Tests: `CacheBereichTest`, `RepoCacheRueckfallTest`
+Jedes Fach liegt in eigener `…Zeile`-Form (`Ablagezeilen.kt`), nie als Servermodell; eine
+unverträgliche Änderung bekommt eine neue Fassung (`Ablageform.fassung`), ältere bleiben lesbar.
+Dateien: `offline/Offlineablage.kt`, `offline/Ablageform.kt`, `data/repository/Abruf.kt`,
+`data/cache/CacheBesitzer.kt` · Tests: `CacheBereichTest`, `RepoCacheRueckfallTest`, `AblageFassungTest`
 
 **Schema.** Wer das Room-Schema ändert, erhöht die Fassung, schreibt eine Migration und
 checkt das Schema unter `core-offline/schemas` ein. Test: `BestandMigrationTest`

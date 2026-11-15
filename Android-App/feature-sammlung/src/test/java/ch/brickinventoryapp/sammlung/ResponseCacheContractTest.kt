@@ -14,10 +14,8 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Ablage legt Kennzahlen und Katalog-Metadaten so ab, wie der Server sie schickt
- * (Ablageform.direkt), und liest sie zurück, wenn ein Abruf scheitert. Das trägt nur,
- * solange diese Antworten verlustfrei durch die Serialisierung gehen; die Listen
- * prüft AblageformTest mit ihrer eigenen Form.
+ * Die Antworten des Servers gehen verlustfrei durch die Serialisierung; wie sie in der
+ * Ablage liegen, prüfen AblageformTest und AblageFassungTest mit der eigenen Zeilenform.
  */
 class ResponseCacheContractTest {
 
