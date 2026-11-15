@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LagerortRequest
-import ch.brickinventoryapp.vertrag.LagerortResponse
 import ch.brickinventoryapp.vertrag.MoveSetRequest
-import ch.brickinventoryapp.vertrag.MoveSetResponse
-import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -42,26 +42,26 @@ class SetsRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
+    override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<Int?> =
         // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
         ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { it.quantity }
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
-    override suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<GenericResponse> =
+    override suspend fun aendereMengeUm(setNumber: String, schritt: Int): Ergebnis<Int?> =
         ablage.schreibe(Bearbeitung.SetMenge(setNumber, schritt), { GenericResponse(success = true) }) { schluessel ->
             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt), schluessel) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { it.quantity }
 
     /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
-    override suspend fun deleteSet(setNumber: String): Ergebnis<GenericResponse> =
-        ablage.nachgezogen({ r -> Nachzug.SetEntfernt(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }
+    override suspend fun deleteSet(setNumber: String): Ergebnis<Unit> =
+        ablage.nachgezogen({ r -> Nachzug.SetEntfernt(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }.erledigt()
 
     /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
-    override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetItem>> =
+    override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetAnsicht>> =
         ablage.beobachte(Faecher.SETS, Filterspalten(suchtext = suche?.ifBlank { null }, thema = thema?.ifBlank { null },
-            lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }
+            lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }.abgebildet { it.alsAnsicht() }
 
     override suspend fun aktualisiereSets(): Ergebnis<Unit> =
         ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }, wiederholung) { seite ->
@@ -69,13 +69,13 @@ class SetsRepositoryImpl @Inject constructor(
         }
 
     override suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
-                        acquisitionIds: List<Int>?): Ergebnis<MoveSetResponse> =
+                        acquisitionIds: List<Int>?): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> Nachzug.SetVerschoben(setNumber, fromUserId, toUserId, acquisitionIds == null).takeIf { r.success } }) {
             sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId = fromUserId, toUserId = toUserId, acquisitionIds = acquisitionIds)) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { }
 
-    override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
+    override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
             sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(storage = ort)) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { }
 }

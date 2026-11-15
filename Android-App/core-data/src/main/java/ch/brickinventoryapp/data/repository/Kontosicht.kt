@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
@@ -15,7 +16,6 @@ import ch.brickinventoryapp.vertrag.FigValuationItem
 import ch.brickinventoryapp.vertrag.Minifig
 import ch.brickinventoryapp.vertrag.Part
 import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -100,10 +100,10 @@ class Kontosicht @Inject constructor(
     data class ManuelleAbfrage(val konten: Kontoauswahl?, val suche: String?, val lagerort: String?)
     data class FigurenAbfrage(val konten: Kontoauswahl, val suche: String?)
 
-    val galerie = Serversicht<SetsAbfrage, SetItem>(ablage, arrayOf(Faecher.SETS)) { a ->
+    val galerie = Serversicht<SetsAbfrage, SetAnsicht>(ablage, arrayOf(Faecher.SETS)) { a ->
         alleSeiten({ it.sets }, { it.setNumber }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { sets.getSets(a.konten?.anfrage, a.suche, a.thema, a.sort?.kennung, seite, GALLERY_PAGE_SIZE, a.lagerort) }
-        }
+        }.abgebildet { l -> l.map { it.alsAnsicht() } }
     }
 
     val merkliste = Serversicht<MerkAbfrage, MerkpostenAnsicht>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
