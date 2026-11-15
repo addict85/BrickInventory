@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.ressourcen.R
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
@@ -285,7 +286,8 @@ class AblaufTest {
         compose.onNodeWithText(ctx.getString(R.string.konto_password_current)).assertIsDisplayed()
         compose.onNodeWithText(ctx.getString(R.string.login_code)).assertDoesNotExist()
         compose.onNodeWithText(ctx.getString(R.string.vouchers_confirm_button)).assertIsNotEnabled()
-        zustand = zustand.copy(bestaetigung = zustand.bestaetigung?.copy(codeNoetig = true, fehler = "Bitte den Code eingeben."))
+        zustand = zustand.copy(bestaetigung = zustand.bestaetigung?.copy(
+            codeNoetig = true, fehler = Meldung.Text("Bitte den Code eingeben.")))
         compose.onNodeWithText(ctx.getString(R.string.login_code)).assertIsDisplayed()
         compose.onNodeWithText("Bitte den Code eingeben.").assertIsDisplayed()
     }
