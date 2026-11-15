@@ -227,7 +227,7 @@ class TeileViewModelTest {
         vm.setzeTeilLagerort("3001", 5, "Ki")
         vm.setzeTeilLagerort("3001", 5, "Kiste 3")
         uhr.advanceTimeBy(500)
-        assertTrue("Vor der Ruhezeit geht nichts hinaus", pfade.anfragenAn("/storage").isEmpty())
+        assertTrue("Vor der Ruhezeit geht nichts hinaus", pfade.anfragenAn("PUT /api/v1/parts/3001/5/storage").isEmpty())
         uhr.advanceTimeBy(400)
         assertTrue("gespeichert", vm.setItemState.value.kopf?.storage == "Kiste 3")
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/parts/3001/5/storage").size)

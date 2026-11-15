@@ -20,7 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
  *                              eines Werkzeugs …“ und „Testfunktionen, die Quelltext lesen …“
  *   geschichte-im-testkopf     Nachtragsnummer und Melder im Kopf von TabOpensAtTopTest → rot „lange
  *                              Kommentare im Workflow und in Tests …“
- *   kuerzel-im-bau             „(sec17 B-N4)“ wieder in settings.gradle.kts → rot, derselbe Test
+ *   kuerzel-im-bau             ein Prüfkürzel wieder im Kommentar von settings.gradle.kts → rot, derselbe Test
  *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
  *   verweis-aufs-archiv        ein „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → rot „kein Verweis
