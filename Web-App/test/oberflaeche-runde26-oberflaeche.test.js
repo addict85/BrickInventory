@@ -245,7 +245,12 @@ async function anmeldenOhneKeks(sicher) {
     {
       '/v1/auth/login': () => {
         angemeldet = true;
-        return { success: true, user: { id: 1, username: 'anna', is_admin: false } };
+        // Wie ein älterer Server ohne keks_fehlt: Die Oberfläche schliesst dann selbst aufs fehlende HTTPS.
+        return {
+          $vertragswidrig: 'älterer Server ohne keks_fehlt',
+          success: true,
+          user: { id: 1, username: 'anna', is_admin: false },
+        };
       },
       '/v1/sets': () => (angemeldet ? ohneSitzung : { success: true, sets: [], count: 0, total: 0, themes: [] }),
       '/v1/stats': () => (angemeldet ? ohneSitzung : { success: true, stats: {} }),
