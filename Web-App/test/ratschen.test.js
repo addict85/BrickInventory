@@ -178,8 +178,8 @@ function stilleFaengeDerOberflaeche() {
   // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
   // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
   // (localStorage, abgebrochene Ströme); neue braucht es nicht.
-  // Gegenprobe (14.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
-  // `.catch(() => null)` → rot (128 von 127).
+  // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
+  // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
   const SCHRANKE = 91;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
