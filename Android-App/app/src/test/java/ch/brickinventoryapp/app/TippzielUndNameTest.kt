@@ -29,6 +29,7 @@ import ch.brickinventoryapp.konto.ui.screens.StartpasswortMaske
 import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateAktionen
+import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
@@ -132,7 +133,7 @@ class TippzielUndNameTest {
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise,
         testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(), testKatalogRepository(welt.t.api),
         object : SetAnleger {
-            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
+            override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Geld?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
