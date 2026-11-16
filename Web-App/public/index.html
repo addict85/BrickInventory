@@ -211,7 +211,7 @@
       </form>
       <div data-stil="display:flex;justify-content:space-between;margin-top:.85rem;font-size:var(--fs-2)">
         <a class="farbe-primaer" href="#" id="link-forgot" data-i18n="login.forgot">Passwort vergessen?</a>
-        <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Verwalter kann es zurücksetzen.</span>
+        <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Administrator kann es zurücksetzen.</span>
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
       <div class="login-fuss">
@@ -302,7 +302,7 @@
     <!-- ── STARTPASSWORT ERSETZEN (Server: 403 passwort_wechsel_noetig) ─ -->
     <div id="panel-pflichtwechsel" data-stil="display:none">
       <h1 class="login-unterzeile" data-i18n="pflicht.title">Vorläufiges Passwort ersetzen</h1>
-      <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Verwalter vergeben hat. Bitte zuerst ein eigenes setzen.</div>
+      <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Administrator vergeben hat. Bitte zuerst ein eigenes setzen.</div>
       <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
         <div class="fg" id="pflicht-alt-zeile"><label for="pflicht-alt" data-i18n="pflicht.alt">Vorläufiges Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
@@ -314,7 +314,7 @@
     </div>
     <div id="panel-zweitpflicht" data-stil="display:none">
       <h1 class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</h1>
-      <div class="text-klein abstand-u-075" id="zfpflicht-hinweis" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
+      <div class="text-klein abstand-u-075" id="zfpflicht-hinweis" data-i18n="zfpflicht.hint">Administratorkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
       <div id="zf-pflicht-flaeche" class="abstand-u-075"></div>
       <button type="button" class="btn bs knopf-breit" data-click="pflichtAbmelden" data-i18n="zfpflicht.logout">Abmelden</button>
     </div>
@@ -845,7 +845,7 @@
 
       <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
       <!-- Der Schluessel sitzt am INNEREN Feld, nicht am <div>. … -->
-      <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
+      <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Administrator)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
         <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
           <a class="einst-link" href="#einst-design" data-click="einstAbschnitt" data-arg="einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
@@ -874,7 +874,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-bl">
-          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Administratoren</span></h2>
           <div class="sform">
             <div class="fg"><label for="bl-ck" data-i18n="settings.bl.ck">Anwendungsschlüssel (Consumer Key)</label><input type="text" id="bl-ck" autocomplete="off" /></div>
             <div class="fg"><label for="bl-cs" data-i18n="settings.bl.cs">Anwendungsgeheimnis (Consumer Secret)</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -889,7 +889,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-rb">
-          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Administratoren</span></h2>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.rebrickable_link">rebrickable.com → API → Schlüssel erzeugen (Generate Key)</span></a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -902,7 +902,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-bs">
-          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Administratoren</span></h2>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Ersatzquelle für Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -915,7 +915,7 @@
           </div>
         </div>
         <div class="ssec full" id="usermgmt" data-stil="display:none">
-          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Kontenverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></h2>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Kontenverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Administrator)</span></h2>
           <div data-stil="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
             <div>
               <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
@@ -923,13 +923,13 @@
                 <input class="w-auto" type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" data-change="saveRegEnabled" />
                 <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
               </label>
-              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Verwalter neue Konten anlegen.</div>
+              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Administratoren neue Konten anlegen.</div>
               <div class="text-klein reg-mail-hinweis" id="reg-mail-hinweis" role="status" hidden></div>
             </div>
           </div>
           <div class="abstand-u-125" id="users-tbl"></div>
           <details class="abstand-u-125">
-            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Verwalter­aktionen</summary>
+            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Administrator­aktionen</summary>
             <div id="vw-protokoll"></div>
           </details>
           <div class="trenner-oben">
@@ -945,7 +945,7 @@
               <div class="fg max-130-rechts nutzer-rolle">
                 <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
-                <label><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Verwalter</span></label>
+                <label><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Administrator</span></label>
               </div>
               <button type="button" class="btn bp" id="btn-cu" data-schreibend data-i18n="settings.users_create" data-ico="plus">Erstellen</button>
             </div>
@@ -953,7 +953,7 @@
           </div>
         </div>
         <div class="ssec full" id="einst-smtp">
-          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Administratoren</span></h2>
           <div class="sform">
             <div class="ibox abstand-u-075" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
             <div class="host-port">

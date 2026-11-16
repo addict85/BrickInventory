@@ -42,7 +42,7 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
       einst: document.getElementById('tab-settings')?.classList.contains('active') })`);
     assert.deepEqual(z, { hash: '#/sammlung', sammlung: true, einst: false });
     assert.ok(
-      (await toasts()).some(x => /nur für Verwalter/.test(x)),
+      (await toasts()).some(x => /nur für Administratoren/.test(x)),
       JSON.stringify(await toasts()),
     );
   });

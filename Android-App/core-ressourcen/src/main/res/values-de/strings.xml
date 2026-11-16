@@ -482,7 +482,7 @@
     <string name="abmeldung_kanal">Abmeldung</string>
     <string name="abmeldung_gescheitert_titel">Abmeldung nicht bestätigt</string>
     <string name="abmeldung_gescheitert_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Web-App unter „Angemeldete Geräte“ widerrufen.</string>
-    <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
+    <string name="vm_rechte_entzogen">Deine Administratorrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
     <string name="notif_csv_title">BrickInventory – CSV-Import</string>
@@ -693,7 +693,7 @@
     <string name="tokens_none">Keine Zugänge.</string>
     <string name="tokens_reload">Aktualisieren</string>
     <string name="tokens_current">dieses Gerät</string>
-    <string name="login_full_access">Mit Verwalterrechten anmelden</string>
+    <string name="login_full_access">Mit Administratorrechten anmelden</string>
     <string name="login_full_access_hint">Nur nötig, um auf diesem Gerät Konten, Designs oder den Server zu verwalten. Zum Sammeln braucht es das nicht.</string>
     <string name="tokens_full_access">Vollzugriff</string>
     <string name="tokens_already_gone">Dieses Gerät war schon abgemeldet.</string>
@@ -748,7 +748,7 @@
     <string name="konto_saved">Profil gespeichert</string>
     <string name="konto_email_ausstehend">Ausstehend: %1$s. Gilt nach Bestätigung über den Link in der Mail an diese Adresse; bis dahin bleibt die bisherige.</string>
     <string name="konto_email_link_gesendet">Bestätigungslink an %1$s gesendet. Bis du ihn öffnest, gilt die bisherige Adresse.</string>
-    <string name="konto_email_nicht_gesendet">Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Verwalter fragen.</string>
+    <string name="konto_email_nicht_gesendet">Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Administrator fragen.</string>
     <string name="konto_password_title">Passwort ändern</string>
     <string name="konto_password_current">Aktuelles Passwort</string>
     <string name="konto_password_new">Neues Passwort</string>
@@ -932,7 +932,7 @@
     <string name="schritt_gutschein">Gutschein-PIN anzeigen</string>
     <string name="schritt_codes">Wiederherstellungscodes</string>
     <string name="schritt_verwaltung">Verwaltung öffnen</string>
-    <string name="schritt_voller_zugriff">Mit Verwalterrechten anmelden</string>
+    <string name="schritt_voller_zugriff">Mit Administratorrechten anmelden</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
@@ -1157,7 +1157,7 @@
         <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
     </plurals>
     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
-    <string name="zf_pflicht_kurz">Verwalterrechte brauchen einen zweiten Faktor.</string>
+    <string name="zf_pflicht_kurz">Administratorrechte brauchen einen zweiten Faktor.</string>
     <string name="zf_share">Teilen</string>
     <string name="zf_codes_speichern">Als Datei speichern</string>
     <string name="zf_share_title">Wiederherstellungscodes</string>

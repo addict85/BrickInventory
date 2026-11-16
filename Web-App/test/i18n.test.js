@@ -19,6 +19,9 @@
  *   E  (16.11.2026) in en.js „email“ einmal wieder „e-mail“ → rot: „kein Text steht in beiden Sprachen unübersetzt“ (begriffePruefen); in de.js
  *      csv.import_title wieder „CSV Import“ → rot: ebenda; settings.users_new wieder „Neuen Benutzer
  *      erstellen“ → rot: ebenda
+ *   F  (16.11.2026) users.role.user (de) wieder „Benutzer“ → rot: „kein Text … unübersetzt“ und „die
+ *      Rollen heissen …“; maillink.abbrechen.ok wieder „übrigen Verwalter“, FEHLER.nur_admins (de)
+ *      wieder „Nur für Admins“, settings.admins_only (en) wieder „Admins only“ → je rot: „die Rollen heissen …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -92,6 +95,12 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     // USA heisst auf Deutsch USA. Die übrigen sieben Ausgabeländer
     // (country_de_ch … country_en_gb) unterscheiden sich, dieses eine nicht.
     'vouchers.country_en_us',
+    // Die Rollennamen „Administrator“ und „Standard“ lauten in beiden Sprachen gleich.
+    'users.role.admin',
+    'users.role.user',
+    'users.admin_badge',
+    'users.protokoll.verwalter',
+    'settings.users_admin_badge',
     // Die Beschriftung des Knopfes, der eine BrickLink-Wanted-Liste einliest:
     // ein Eigenname und ein Dateiformat. „BrickLink XML" ist in beiden
     // Sprachen dasselbe, und eine eingedeutschte Marke wäre falsch.
@@ -129,12 +138,26 @@ function begriffePruefen(de, en) {
       .map(([k, v]) => `${k} = ${v}`);
   assert.deepEqual(fund(en, /\be-mail/i), [], 'EN schreibt email');
   assert.deepEqual(fund(de, /CSV Import/), [], 'DE schreibt CSV-Import');
-  // „Benutzer“ bleibt nur als Rolle neben „Verwalter“; ein Konto heisst Konto.
-  const ohneRolle = Object.fromEntries(
-    Object.entries(de).filter(([k]) => !/^users\.(role\.user|action\.make_user)$/.test(k)),
-  );
-  assert.deepEqual(fund(ohneRolle, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
+  // Ein Konto heisst Konto; die Rolle heisst „Standard“, nicht mehr „Benutzer“.
+  assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
 }
+
+test('die Rollen heissen Standard und Administrator, auch in Server-Fehlertexten', () => {
+  const { de, en } = loadTranslations();
+  assert.equal(de['users.role.user'], 'Standard');
+  assert.equal(de['users.role.admin'], 'Administrator');
+  assert.equal(en['users.role.user'], 'Standard');
+  assert.equal(en['users.role.admin'], 'Administrator');
+  const { FEHLER } = require('./helpers/sources').buildAndRequire()('src/infra/fehlerTexte.js');
+  assert.match(FEHLER.letzter_verwalter.de, /Administrator/, 'Server-Fehlertext ohne Rollennamen — Code umbenannt?');
+  const serverDe = Object.fromEntries(Object.entries(FEHLER).map(([k, v]) => [`fehler.${k}`, v.de]));
+  const serverEn = Object.fromEntries(Object.entries(FEHLER).map(([k, v]) => [`fehler.${k}`, v.en]));
+  const alt = [
+    ...Object.entries({ ...de, ...serverDe }).filter(([, v]) => /Verwalter|\bAdmins?\b|Admin-/.test(v)),
+    ...Object.entries({ ...en, ...serverEn }).filter(([, v]) => /\b[Aa]dmins?\b/.test(v)),
+  ].map(([k, v]) => `${k} = ${v}`);
+  assert.deepEqual(alt, [], 'Alter Rollenname „Verwalter“ bzw. „Admin“');
+});
 
 test('Katalog-Schlüssel vorhanden', () => {
   const { de } = loadTranslations();

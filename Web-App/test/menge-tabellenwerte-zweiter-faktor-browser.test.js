@@ -382,7 +382,7 @@ async function serverfehlerVerwalter(_t, a) {
     await bis(`!window.__alt && !!document.querySelector('.tab.active .fehler-zustand')`, 'Fehler', 300);
     const m = await b.auswerten(text('.tab.active .fehler-zustand'));
     assert.match(m, /Hintergrundarbeiten → „Protokoll anzeigen“/, m);
-    assert.doesNotMatch(m, /hilft der Verwalter/, 'Verwalter wird an sich selbst verwiesen');
+    assert.doesNotMatch(m, /hilft der Administrator/, 'Verwalter wird an sich selbst verwiesen');
   } finally {
     await b.tab('Page.removeScriptToEvaluateOnNewDocument', { identifier });
     await b.auswerten(`location.reload(); true`);

@@ -59,7 +59,7 @@ test('Verwalter: Neu einrichten in einem Dialog, danach Schlüssel und Link', as
     await warte(() => dialog(d).offen);
     const f = dialog(d);
     assert.deepEqual([f.titel, f.pw, f.code], ['Neu einrichten', true, true], JSON.stringify(f));
-    assert.match(f.text, /Verwalter.*neuen ein/);
+    assert.match(f.text, /Administrator.*neuen ein/);
     d.getElementById('cd-pw').value = 'geheim-Passwort-1';
     d.getElementById('cd-code').value = '123456';
     d.getElementById('cd-confirm').click();

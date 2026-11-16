@@ -8,7 +8,7 @@ export const FEHLER = {
   // ── Anmeldung und Konto ──────────────────────────────────────────────────
   nicht_angemeldet: { de: 'Nicht angemeldet', en: 'Not signed in' },
   auth_fehler: { de: 'Auth-Fehler', en: 'Authentication error' },
-  nur_admins: { de: 'Nur für Admins', en: 'Administrators only' },
+  nur_admins: { de: 'Nur für Administratoren', en: 'Administrators only' },
   tausch_laeuft: {
     de: 'Dieser Token wird gerade getauscht. Bitte in einer halben Minute erneut versuchen.',
     en: 'This token is being exchanged right now. Please try again in half a minute.',
@@ -41,7 +41,7 @@ export const FEHLER = {
     en: 'Sign-in failed: the token could not be issued.',
   },
   konto_deaktiviert: {
-    de: 'Konto deaktiviert. Bitte Administrator kontaktieren.',
+    de: 'Konto deaktiviert. Bitte einen Administrator kontaktieren.',
     en: 'Account deactivated. Please contact an administrator.',
   },
   email_nicht_bestaetigt: {
@@ -178,11 +178,11 @@ export const FEHLER = {
     en: 'Please change the temporary password first.',
   },
   letzter_verwalter: {
-    de: 'Es muss mindestens ein aktiver Verwalter bleiben. Bitte zuerst ein anderes Konto zum Verwalter machen.',
+    de: 'Es muss mindestens ein aktiver Administrator bleiben. Bitte zuerst ein anderes Konto zum Administrator machen.',
     en: 'At least one active administrator must remain. Please make another account an administrator first.',
   },
   zweiter_faktor_pflicht: {
-    de: 'Verwalterkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',
+    de: 'Administratorkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',
     en: 'Administrator accounts need a second factor. Please set up an authenticator app first.',
   },
   alle_felder_erforderlich: { de: 'Alle Felder erforderlich', en: 'All fields are required' },
@@ -196,7 +196,7 @@ export const FEHLER = {
     en: 'For your own account please use “Change password”.',
   },
   eigene_adminrolle: {
-    de: 'Eigene Admin-Rolle kann nicht entfernt werden',
+    de: 'Eigene Administratorrolle kann nicht entfernt werden',
     en: 'You cannot remove your own administrator role',
   },
   benutzer_nicht_gefunden: { de: 'Benutzer nicht gefunden', en: 'User not found' },
@@ -205,7 +205,7 @@ export const FEHLER = {
     en: 'You cannot deactivate your own account.',
   },
   bestaetigung_nicht_eingerichtet: {
-    de: 'Bestätigungs-Mails sind auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Verwalter fragen.',
+    de: 'Bestätigungs-Mails sind auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Administrator fragen.',
     en: 'Confirmation e-mails are not set up on this server (APP_BASE_URL is missing). Please ask the administrator.',
   },
   bestaetigung_gesendet: {
@@ -345,7 +345,7 @@ export const FEHLER = {
     en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first',
   },
   upload_gesamt_voll: {
-    de: 'Der Speicherplatz für hochgeladene Dateien auf dem Server ({mb} MB für alle Konten) ist belegt — bitte den Verwalter fragen',
+    de: 'Der Speicherplatz für hochgeladene Dateien auf dem Server ({mb} MB für alle Konten) ist belegt — bitte den Administrator fragen',
     en: 'The server space for uploaded files ({mb} MB for all accounts) is full — please ask the administrator',
   },
   datei_nicht_verfuegbar: { de: 'Datei nicht verfügbar', en: 'File not available' },

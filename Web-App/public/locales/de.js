@@ -46,7 +46,7 @@ window.I18N_DE = {
   'catalog.empty_ohne_schluessel':
     'Der Katalog kommt von Rebrickable, und dafür fehlt der Schlüssel. Trag ihn unter Menü → Einstellungen → Rebrickable ein; der nächste Abgleich füllt dann den Katalog.',
   'catalog.empty_hint_konto':
-    'Der Katalog füllt sich, sobald der Verwalter den Abgleich mit Rebrickable eingerichtet hat.',
+    'Der Katalog füllt sich, sobald der Administrator den Abgleich mit Rebrickable eingerichtet hat.',
   'catalog.zum_abgleich': 'Zu den Hintergrundarbeiten',
   'catalog.empty_hint':
     'Der Katalog füllt sich beim Abgleich mit Rebrickable — er läuft nachts und lässt sich unter „Hintergrundarbeiten“ von Hand starten.',
@@ -193,7 +193,7 @@ window.I18N_DE = {
   'api.unexpected': 'Unerwarteter Fehler — Einzelheiten in der Browser-Konsole.',
   'liste.fehler_titel': 'Die Liste konnte nicht geladen werden',
   'liste.server_fehler':
-    'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst hilft der Verwalter weiter.',
+    'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst hilft der Administrator weiter.',
   'liste.server_fehler_verwalter':
     'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst steht die Ursache unter Hintergrundarbeiten → „Protokoll anzeigen“.',
   'liste.details': 'Technische Details',
@@ -221,11 +221,11 @@ window.I18N_DE = {
   'pflicht.title': 'Vorläufiges Passwort ersetzen',
   'pflicht.alt': 'Vorläufiges Passwort',
   'pflicht.hint':
-    'Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Verwalter vergeben hat. Bitte zuerst ein eigenes setzen.',
+    'Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Administrator vergeben hat. Bitte zuerst ein eigenes setzen.',
   'pflicht.regel': 'Mindestens {n} Zeichen, kein häufig verwendetes Passwort.',
   'zfpflicht.title': 'Zweiten Faktor einrichten',
   'zfpflicht.hint':
-    'Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.',
+    'Administratorkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.',
   'zfpflicht.logout': 'Abmelden',
   'zfpflicht.fertig':
     'Der Code-Generator ist eingerichtet. Bitte jetzt die Wiederherstellungscodes sichern, danach öffnet sich die Anwendung.',
@@ -259,10 +259,10 @@ window.I18N_DE = {
 
   // Users
   'users.action.password': 'Passwort',
-  'users.action.make_admin': 'Zum Verwalter',
-  'users.action.make_user': 'Zum Benutzer',
-  'users.action.make_admin_title': 'Zum Verwalter machen',
-  'users.action.make_user_title': 'Verwalterrechte entziehen',
+  'users.action.make_admin': 'Zum Administrator',
+  'users.action.make_user': 'Auf Standard',
+  'users.action.make_admin_title': 'Zum Administrator machen',
+  'users.action.make_user_title': 'Administratorrechte entziehen',
   'users.action.2fa': 'Zweiter Faktor',
   'users.action.delete_title': 'Konto löschen',
   'users.action.deactivate': 'Deaktivieren',
@@ -278,11 +278,11 @@ window.I18N_DE = {
   'users.col.role': 'Rolle',
   'users.col.created': 'Erstellt',
   'users.col.actions': 'Aktionen',
-  'users.role.admin': 'Verwalter',
+  'users.role.admin': 'Administrator',
   'users.selbst': 'Dein Konto – Passwort und Löschen unter „Konto“.',
   'users.weitere': 'Weitere Aktionen für {name}',
   'users.weitere_kurz': 'Weitere',
-  'users.role.user': 'Benutzer',
+  'users.role.user': 'Standard',
   'users.name_pw_req': 'Name und Passwort erforderlich',
   'users.created': '{name} erstellt',
   'users.delete.title': 'Konto „{name}“ löschen?',
@@ -396,9 +396,9 @@ window.I18N_DE = {
   'auth.back_to_login': '← Zurück zur Anmeldung',
   'maillink.abbrechen.title': 'Angekündigte Änderung abbrechen',
   'maillink.abbrechen.text':
-    'Ein Verwalter hat eine Änderung an deinem Konto angekündigt (neues Passwort, zweiten Faktor entfernen, deaktivieren, Rechte entziehen oder löschen). Mit dem Knopf brichst du alles ab, was für dein Konto angekündigt ist.',
+    'Ein Administrator hat eine Änderung an deinem Konto angekündigt (neues Passwort, zweiten Faktor entfernen, deaktivieren, Rechte entziehen oder löschen). Mit dem Knopf brichst du alles ab, was für dein Konto angekündigt ist.',
   'maillink.abbrechen.button': 'Änderung abbrechen',
-  'maillink.abbrechen.ok': 'Abgebrochen. Die übrigen Verwalter erfahren es per Mail.',
+  'maillink.abbrechen.ok': 'Abgebrochen. Die übrigen Administratoren erfahren es per Mail.',
   'maillink.freigeben.title': 'Anmeldung von neuem Ort bestätigen',
   'maillink.freigeben.text':
     'Nach vielen Fehlversuchen ist die Anmeldung mit Passwort von neuen Orten gesperrt. Der Knopf schaltet die Adresse frei, von der die Anmeldung kam, die die Mail ausgelöst hat.',
@@ -408,7 +408,7 @@ window.I18N_DE = {
   'figs.add.hint':
     'Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.',
   'settings.public_reg': 'Öffentliche Registrierung erlauben',
-  'settings.public_reg.hint': 'Wenn deaktiviert, können nur Verwalter neue Konten anlegen.',
+  'settings.public_reg.hint': 'Wenn deaktiviert, können nur Administratoren neue Konten anlegen.',
   'settings.smtp.hint':
     'Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.',
   'settings.export_rb': 'Sets für Rebrickable exportieren',
@@ -437,7 +437,7 @@ window.I18N_DE = {
   'tokens.revoked_n_one': '{n} Zugang abgemeldet',
   'tokens.col.scope': 'Rechte',
   'tokens.col.ip': 'Netz',
-  'tokens.scope.app': 'App (ohne Verwaltung)',
+  'tokens.scope.app': 'App (ohne Administratorrechte)',
   'tokens.scope.voll': 'voll',
   'tls.title': 'Server-Zertifikat',
   'tls.hint':
@@ -467,7 +467,7 @@ window.I18N_DE = {
   'pk.delete_text': '„{name}“ kann danach nicht mehr anmelden. Bitte mit deinem Passwort bestätigen.',
   'pk.abgebrochen': 'Passkey-Dialog abgebrochen.',
   'pk.ohne_domain':
-    'Passkeys gehen nur, wenn die App über HTTPS und einen Namen (keine IP-Adresse) erreichbar ist. Bitte den Verwalter fragen.',
+    'Passkeys gehen nur, wenn die App über HTTPS und einen Namen (keine IP-Adresse) erreichbar ist. Bitte den Administrator fragen.',
   'pk.browser': 'Dieser Browser kann hier keine Passkeys benutzen (nur über HTTPS).',
   'apk.title': 'App herunterladen',
   'apk.hint':
@@ -509,34 +509,34 @@ window.I18N_DE = {
   'confirm.btn.geraet_abmelden': 'Gerät abmelden',
   'confirm.btn.abschalten': 'Abschalten',
   'confirm.btn.leeren': 'Leeren',
-  'users.protokoll': 'Protokoll der Verwalter­aktionen',
+  'users.protokoll': 'Protokoll der Administrator­aktionen',
   'users.protokoll.zeit': 'Zeit',
-  'users.protokoll.verwalter': 'Verwalter',
+  'users.protokoll.verwalter': 'Administrator',
   'users.protokoll.aktion': 'Aktion',
   'users.protokoll.konto': 'Konto',
-  'users.protokoll.leer': 'Noch keine Verwalteraktionen an fremden Konten.',
+  'users.protokoll.leer': 'Noch keine Administratoraktionen an fremden Konten.',
   'users.create_title': 'Konto anlegen',
   'users.aktion.konto_angelegt': 'Konto angelegt',
   'users.aktion.einstellungen_geaendert': 'Servereinstellungen geändert',
   'users.aktion.passwort_gesetzt': 'Passwort neu gesetzt',
   'users.aktion.zweiter_faktor_entfernt': 'Zweiten Faktor entfernt',
-  'users.aktion.verwalter_ernannt': 'Zum Verwalter ernannt',
-  'users.aktion.verwalter_entzogen': 'Verwalterrolle entzogen',
+  'users.aktion.verwalter_ernannt': 'Zum Administrator ernannt',
+  'users.aktion.verwalter_entzogen': 'Administratorrolle entzogen',
   'users.aktion.konto_geloescht': 'Konto gelöscht',
   'users.aktion.konto_deaktiviert': 'Konto deaktiviert',
   'users.aktion.konto_reaktiviert': 'Konto wieder aktiviert',
   'users.aktion.gutschein_klartext': 'Gutscheinnummer und PIN angezeigt',
   'users.aktion.gutschein_pdf': 'Gutschein-PDF freigegeben',
   'users.aktion.gutschein_export': 'Gutscheine als PDF exportiert',
-  'users.aktion.uebernahme_angekuendigt': 'Änderung an einem Verwalterkonto angekündigt',
+  'users.aktion.uebernahme_angekuendigt': 'Änderung an einem Administratorkonto angekündigt',
   'users.aktion.uebernahme_abgebrochen': 'Angekündigte Änderung vom Konto aufgehoben (Anmeldung oder Link)',
   'users.uebernahme_spaeter':
-    'Das Konto ist ein Verwalterkonto: Die Änderung gilt ab {zeit}, wenn es sich bis dahin nicht anmeldet oder über den Link in der Mail abbricht. Es und alle Verwalter wurden per Mail benachrichtigt.',
+    'Das Konto ist ein Administratorkonto: Die Änderung gilt ab {zeit}, wenn es sich bis dahin nicht anmeldet oder über den Link in der Mail abbricht. Es und alle Administratoren wurden per Mail benachrichtigt.',
   'users.angekuendigt': 'Angekündigt: {was} ab {zeit}',
   'users.angekuendigt.passwort': 'neues Passwort',
   'users.angekuendigt.zweiter_faktor': 'zweiter Faktor entfernt',
   'users.angekuendigt.deaktivieren': 'deaktivieren',
-  'users.angekuendigt.rolle_entziehen': 'Verwalterrechte entziehen',
+  'users.angekuendigt.rolle_entziehen': 'Administratorrechte entziehen',
   'users.angekuendigt.loeschen': 'löschen',
   'acq.geschaetzt': 'Kaufpreis geschätzt: Marktpreis, kein bezahlter Betrag',
   'acq.legende_geschaetzt': '≈ geschätzt: Marktpreis, kein bezahlter Betrag',
@@ -548,8 +548,8 @@ window.I18N_DE = {
   'acq.exemplare_ohne_preis_one': '{n} Exemplar ohne Kaufpreis angelegt',
   'acq.aendern': 'Ändern',
   'finance.aus_teilen_geschaetzt': 'Aus Teilepreisen geschätzt ({p} % der Teile mit Preis)',
-  'users.role_title_geben': '„{name}“ zum Verwalter machen?',
-  'users.role_title_entziehen': '„{name}“ die Verwalterrolle entziehen?',
+  'users.role_title_geben': '„{name}“ zum Administrator machen?',
+  'users.role_title_entziehen': '„{name}“ die Administratorrolle entziehen?',
   'users.reset_pw_title': 'Passwort setzen?',
   'users.admin_confirm_text': 'Diese Änderung betrifft ein fremdes Konto. Bitte bestätige sie mit deinem Passwort.',
   'confirm.admin_password': 'Dein Passwort zur Bestätigung',
@@ -622,7 +622,7 @@ window.I18N_DE = {
     'Ausstehend: {email}. Sie gilt erst, wenn du den Link in der Mail an diese Adresse öffnest; bis dahin bleibt die bisherige.',
   'profile.saved_mail': 'Gespeichert — Bestätigung an die neue Adresse gesendet',
   'profile.mail_not_sent':
-    'Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Verwalter fragen.',
+    'Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Administrator fragen.',
   'profile.save_error': 'Fehler beim Speichern',
   'figs.auto_hint': 'Minifiguren kommen mit jedem Set dazu. Einzelne Figuren erfasst du mit „Minifigur hinzufügen“.',
   'figs.deleted': 'Minifigur gelöscht',
@@ -738,7 +738,7 @@ window.I18N_DE = {
   'storage.umbenennen': 'Lagerort umbenennen: {name}',
   'storage.add': 'Hinzufügen',
   'storage.name_fehlt': 'Bitte einen Namen eingeben.',
-  'router.nur_verwalter': 'Diese Seite ist nur für Verwalter. Hier ist deine Sammlung.',
+  'router.nur_verwalter': 'Diese Seite ist nur für Administratoren. Hier ist deine Sammlung.',
   'router.unbekannt': 'Diese Seite gibt es nicht. Hier ist deine Sammlung.',
   'storage.empty': 'Noch keine Lagerorte angelegt.',
   'storage.belegt.sets': '{n} Sets',
@@ -792,7 +792,7 @@ window.I18N_DE = {
   'log.reload': '↻ Neu laden',
   'filter.all': 'Alle',
   'smtp.test_btn': 'Verbindung testen',
-  'settings.admins_only_ph': '(Nur Verwalter)',
+  'settings.admins_only_ph': '(Nur Administratoren)',
   'csv.timeout_retry': 'Timeout — erneut importieren',
   'settings.reg_saved': 'Registrierung gespeichert',
   'qr.regenerate': 'Neu generieren',
@@ -897,7 +897,7 @@ window.I18N_DE = {
   'parts.stat.unique': 'Teilesorten',
   'parts.loading_label': 'Teile laden…',
   'parts.single_parts': 'Einzel-Teile',
-  'settings.admins_only': 'Nur Verwalter',
+  'settings.admins_only': 'Nur Administratoren',
   'settings.max_calls': 'Max. Aufrufe pro Tag',
   'settings.default_n': '(Standard: {n})',
   'settings.job.h12': '12 Stunden',
@@ -1135,7 +1135,7 @@ window.I18N_DE = {
   'pl.condition.new': 'Neuware',
   'pl.condition.used': 'Gebraucht',
   'settings.users_title': 'Kontenverwaltung',
-  'settings.users_admin_badge': '(Verwalter)',
+  'settings.users_admin_badge': '(Administrator)',
   'settings.users_new': 'Neues Konto erstellen',
   'settings.users_username': 'Benutzername',
   'settings.users_password': 'Passwort',
@@ -1176,7 +1176,7 @@ window.I18N_DE = {
   'settings.theme_hochglanz': 'Hochglanz',
   'settings.kein_zugriff': 'Kein Zugriff',
   'settings.kein_zugriff_text':
-    'Diese Einstellungen gelten für alle Konten und sind dem Verwalter vorbehalten. Deine eigenen findest du im Menü unter „Konto“.',
+    'Diese Einstellungen gelten für alle Konten und sind dem Administrator vorbehalten. Deine eigenen findest du im Menü unter „Konto“.',
   'settings.theme_desc.classic': 'Hell und sachlich, blaue Akzente.',
   'settings.theme_desc.brick': 'Kräftiges Blau, Karten wie Steine mit Noppenrand.',
   'settings.theme_desc.werkbank': 'Dunkle Werkbank mit Messing-Akzenten — immer dunkel, unabhängig von hell/dunkel.',
@@ -1250,7 +1250,7 @@ window.I18N_DE = {
   'login.email_or_user': 'Benutzername oder E-Mail',
   'login.password': 'Passwort',
   'login.passwort_zeigen': 'Passwort anzeigen',
-  'login.forgot_admin': 'Passwort vergessen? Der Verwalter kann es zurücksetzen.',
+  'login.forgot_admin': 'Passwort vergessen? Der Administrator kann es zurücksetzen.',
   'login.forgot': 'Passwort vergessen?',
   'login.register_prompt': 'Neu hier?',
   'register.username': 'Benutzername *',
@@ -1288,7 +1288,7 @@ window.I18N_DE = {
   'startup.current_step': 'Aktueller Schritt',
   'startup.init': 'Initialisiere...',
   'startup.overall': 'Gesamtfortschritt',
-  'users.admin_badge': 'Verwalter',
+  'users.admin_badge': 'Administrator',
   'settings.importing': 'Importiere…',
   'qr.klartext_hinweis':
     'Die Adresse beginnt mit http://. Die Android-App nimmt nur noch HTTPS an und kann sich so nicht verbinden. Bitte HTTPS einrichten (siehe README).',
@@ -1427,7 +1427,7 @@ window.I18N_DE = {
   'zf.disable_confirm': 'Danach genügt wieder das Passwort allein.',
   'zf.neu_einrichten': 'Neu einrichten',
   'zf.neu_einrichten_text':
-    'Als Verwalter brauchst du einen zweiten Faktor. Der bisherige wird abgeschaltet, und du richtest gleich danach einen neuen ein – etwa für ein neues Telefon.',
+    'Als Administrator brauchst du einen zweiten Faktor. Der bisherige wird abgeschaltet, und du richtest gleich danach einen neuen ein – etwa für ein neues Telefon.',
   'zf.disabled': 'Zweiter Faktor abgeschaltet',
   'zf.reset_title': 'Zweiten Faktor zurücksetzen',
   'zf.reset_title_name': 'Zweiten Faktor von „{name}“ zurücksetzen?',
@@ -1458,7 +1458,7 @@ window.I18N_DE = {
   'es.hint.ca':
     'Caddy legt das Zertifikat beim ersten Start an. Es muss auf jedem Gerät installiert werden — siehe unten.',
   'es.hint.konto':
-    'Der erste Verwalter entsteht beim Start; sein Passwort steht einmalig im Protokoll und muss ersetzt werden.',
+    'Der erste Administrator entsteht beim Start; sein Passwort steht einmalig im Protokoll und muss ersetzt werden.',
   'es.hint.quelle': 'Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.',
   'es.ca_title': 'Wurzelzertifikat installieren',
   'es.ca_hint':
@@ -1648,7 +1648,7 @@ window.I18N_DE = {
   'register.gesendet':
     'Konto angelegt. Bitte bestätige deine E-Mail-Adresse über den Link in der Mail, die wir dir geschickt haben.',
   'register.nicht_gesendet':
-    'Konto angelegt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann dein Konto freischalten.',
+    'Konto angelegt, aber die Bestätigungsmail ging nicht hinaus. Der Administrator kann dein Konto freischalten.',
   'login.register_link': 'Registrieren',
   'settings.reg_braucht_mail':
     'Braucht den E-Mail-Versand: Zuerst unter „E-Mail“ den Mailserver eintragen, sonst käme kein Bestätigungslink an.',
