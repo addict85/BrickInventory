@@ -87,7 +87,7 @@ sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter
 sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt
 sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
 docker compose up -d
-docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
+docker compose logs migration | grep "Erstes Administratorkonto"   # wo das Startpasswort von admin steht
 ```
 
 → `https://<BRICK_HOST>` (Port 80 leitet um). Das Wurzelzertifikat der eigenen

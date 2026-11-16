@@ -259,10 +259,8 @@ window.I18N_DE = {
 
   // Users
   'users.action.password': 'Passwort',
-  'users.action.make_admin': 'Zum Administrator',
-  'users.action.make_user': 'Auf Standard',
-  'users.action.make_admin_title': 'Zum Administrator machen',
-  'users.action.make_user_title': 'Administratorrechte entziehen',
+  'users.rolle.ernennen': '{name} zum Administrator ernennen',
+  'users.rolle.entziehen': 'Administratorrechte von {name} entziehen',
   'users.action.2fa': 'Zweiter Faktor',
   'users.action.delete_title': 'Konto löschen',
   'users.action.deactivate': 'Deaktivieren',
