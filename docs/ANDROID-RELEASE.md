@@ -107,7 +107,8 @@ in `release` und `release-beschreibung`. Wer kein ablaufendes Token pflegen will
 legt stattdessen eine eigene GitHub App an (*Developer settings → GitHub Apps*,
 Recht *Contents: Read and write*, nur dieses Repository) und holt im Workflow mit
 `actions/create-github-app-token` ein Token, das nach einer Stunde verfällt; in der
-Environment `etikett` liegen dann App-ID und privater Schlüssel statt `ETIKETT_TOKEN`.
+Environment `etikett` liegen dann App-ID und privater Schlüssel statt `ETIKETT_TOKEN`,
+und die App steht im Tag-Ruleset (Schritt 3) in der *Bypass list*.
 Der Workflow ist heute auf das Token eingerichtet.
 
 1. *Profilbild → Settings → Developer settings → Personal access tokens →
