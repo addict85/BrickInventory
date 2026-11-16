@@ -72,7 +72,10 @@ denselben Commit), sonst meldet die App „veraltet oder manipuliert“.
 
 Damit setzt nur ein Administrator ein Etikett, und keines lässt sich auf einen
 anderen Commit umhängen oder löschen. Der Workflow signiert ohnehin nur Commits,
-die auf `main` liegen.
+die auf `main` liegen. Er liest das Ruleset vor dem Signieren über die API (Schritt
+*Etiketten sind geschützt*): Trifft kein aktives Tag-Ruleset mit *Restrict creations*,
+*Restrict updates* und *Restrict deletions* das Etikett, signiert er nicht. Ein
+Ruleset im Modus *Evaluate* zählt nicht.
 
 `apk-neuste` bleibt im Ruleset, obwohl der Workflow es nicht mehr beschreibt: Die
 Release ist eingefroren (Stand 2.11.2026; *Immutable releases* lässt keinen Anhang
@@ -97,9 +100,19 @@ Er braucht ein persönliches Token: Etiketten, die das eingebaute `GITHUB_TOKEN`
 setzt, starten keinen Bau, und das Ruleset aus Schritt 3 lässt nur Admins
 `android-v…` anlegen.
 
+Das Token kann Etiketten setzen und damit einen Release anstossen; es braucht keinen
+Prüfer. Darum so kurzlebig wie möglich: *Expiration* 7 bis 30 Tage statt 90, und
+nach einem Verdacht sofort widerrufen. Signiert wird trotzdem erst nach den Freigaben
+in `release` und `release-beschreibung`. Wer kein ablaufendes Token pflegen will,
+legt stattdessen eine eigene GitHub App an (*Developer settings → GitHub Apps*,
+Recht *Contents: Read and write*, nur dieses Repository) und holt im Workflow mit
+`actions/create-github-app-token` ein Token, das nach einer Stunde verfällt; in der
+Environment `etikett` liegen dann App-ID und privater Schlüssel statt `ETIKETT_TOKEN`.
+Der Workflow ist heute auf das Token eingerichtet.
+
 1. *Profilbild → Settings → Developer settings → Personal access tokens →
    Fine-grained tokens → Generate new token*.
-   - Name `BrickInventory Etikett`, *Expiration* z. B. 90 Tage.
+   - Name `BrickInventory Etikett`, *Expiration* höchstens 30 Tage.
    - *Repository access*: **Only select repositories** → `addict85/BrickInventory`.
    - *Permissions → Repository permissions → Contents*: **Read and write**
      (sonst nichts).
@@ -128,7 +141,7 @@ git push origin android-v2026.11.12
 
 1. `Android-App` baut das Etikett (ohne Secrets) und probesigniert.
 2. `Android-Release` startet aus `main`, prüft Etikett, Commit auf `main`, Regeln
-   von `main`, die Lückenprüfung und die Prüfsummen der Übergabe.
+   von `main`, das Tag-Ruleset, die Lückenprüfung und die Prüfsummen der Übergabe.
 3. Freigabe in `release` (APK signieren), dann in `release-beschreibung`
    (Beschreibung signieren), dann prüfen, bescheinigen, und nach einer letzten
    Freigabe in `release` veröffentlichen.
