@@ -73,7 +73,8 @@ export async function frageCode(titel, text) {
 }
 /**
  * Hauptknopf des Rückfragedialogs: Text, Art (bp blau, bd rot), Feldbeschriftung.
- * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, wahl?: { wert: string, text: string }[] }} Knopf
+ * mitCode: Passwort und Code in einem Dialog, statt zwei nacheinander.
+ * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, wahl?: { wert: string, text: string }[], mitCode?: boolean }} Knopf
  */
 /** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. @type {Knopf} */
 const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
@@ -85,19 +86,21 @@ const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.passwo
  * @template T
  * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
  * @param {string} [erklaerung] sagt, was bestätigt wird (statt nur „bitte Passwort“)
- * @returns {Promise<T | null>} die Antwort, oder null bei Abbruch
+ * @param {Knopf} [knopf] Hauptknopf; mit `mitCode` fragt derselbe Dialog den Code mit
  */
-export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen')) {
+export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen'), knopf = {}) {
   let text = erklaerung,
-    knopfArt = BESTAETIGEN;
+    knopfArt = { ...BESTAETIGEN, ...knopf };
   for (let versuch = 0; versuch < 5; versuch++) {
-    const pw = await dialogOeffnen(titel, text, 'schloss', true, false, false, knopfArt);
+    const ablage = { code: '' };
+    const pw = await dialogOeffnen(titel, text, 'schloss', true, !!knopf.mitCode, false, knopfArt, ablage);
     if (pw === null) return null;
-    const d = await mitZweitemFaktor(z => ruf(pw, z));
+    const code = ablage.code.trim();
+    const d = await mitZweitemFaktor(z => ruf(pw, code && !z.code && !z.passkey ? { code } : z));
     const a = /** @type {{ code?: unknown, error?: string } | null} */ (d);
     if (a?.code !== 'aktuelles_passwort_falsch' && a?.code !== 'aktuelles_passwort_erforderlich') return d;
     text = a.error || erklaerung;
-    knopfArt = { ...BESTAETIGEN, fehler: true };
+    knopfArt = { ...knopfArt, fehler: true };
   }
   return null;
 }
@@ -133,8 +136,18 @@ const MIT_PASSKEY = Symbol('passkey');
  * @param {string} msg
  * @param {string | undefined} icon
  * @param {boolean} mitPasswort
+ * @param {{ code: string } | null} [ablage] nimmt den Code auf, wenn Passwort und Code zusammen gefragt werden
  */
-function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasskey = false, knopf = null) {
+function dialogOeffnen(
+  title,
+  msg,
+  icon,
+  mitPasswort,
+  mitCode = false,
+  mitPasskey = false,
+  knopf = null,
+  ablage = null,
+) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
     const pwWrap = G('cd-pw-wrap'),
@@ -170,6 +183,7 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
     /** @param {string | symbol | null} result */
     function cleanup(result) {
+      if (ablage && result !== null) ablage.code = codeFeld?.value || '';
       if (pw) pw.value = '';
       if (codeFeld) codeFeld.value = '';
       modal.style.display = 'none';

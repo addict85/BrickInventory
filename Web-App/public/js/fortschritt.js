@@ -114,9 +114,7 @@ function gibApplyStatus(s) {
       G('import-detail-panel').classList.remove('open');
       // Don't clear log or close overlay — user may still be reading results
     }, 5000);
-    // Schliessen-Knopf zeigen, damit man die Überlagerung selbst schliesst
-    const btnClose = G('btn-close-import');
-    if (btnClose) btnClose.style.display = '';
+    zeigeImportAbschluss();
     melde('setsGeaendert');
     gibStop();
   }
@@ -336,8 +334,16 @@ function zeigeLetztenImport() {
     if (z) addCsvLog(z.text, z.art);
   }
   G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${importZaehler(s)}`;
+  zeigeImportAbschluss();
+}
+
+/** Fertig: „Schliessen“ statt „Minimieren“ — ein beendeter Import läuft nicht im Hintergrund weiter. */
+export function zeigeImportAbschluss() {
   const zu = G('btn-close-import');
   if (zu) zu.style.display = '';
+  const klein = /** @type {HTMLElement | null} */ (document.querySelector('#progress-overlay .prog-minimieren'));
+  if (klein && document.activeElement === klein) zu?.focus();
+  if (klein) klein.hidden = true;
 }
 /**
  * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen zurücksetzt,
@@ -389,6 +395,8 @@ export function showProgress(title, csvMode) {
   G('btn-cancel-import').style.display = 'none';
   const btnClose = G('btn-close-import');
   if (btnClose) btnClose.style.display = 'none';
+  const klein = /** @type {HTMLElement | null} */ (document.querySelector('#progress-overlay .prog-minimieren'));
+  if (klein) klein.hidden = false;
 }
 
 export function hideProgress() {

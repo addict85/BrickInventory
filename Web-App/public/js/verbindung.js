@@ -276,6 +276,7 @@ export const LESENDE_AKTIONEN = new Set([
   'zfCodesKopieren',
   'zfCodesSpeichern',
   'zfPflichtFertig',
+  'zfSchluesselKopieren',
 ]);
 
 // Datei-Wahl und Import-Menü führen immer zu einem Hochladen; Knöpfe ohne data-click (per id verdrahtet)

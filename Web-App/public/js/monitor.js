@@ -15,6 +15,21 @@ let _monitorTimer = null;
 /** Zählt die Läufe: Eine Antwort nach dem Anhalten plant keine neue Runde. */
 let _monitorLauf = 0;
 
+// Was logviewer.js zur Laufzeit schreibt, etwa die wechselnde Beschriftung des Auto-Knopfes.
+const FENSTER_TEXTE = ['common.loading', 'common.network_error', 'log.none_found', 'log.entries', 'toast.error'].concat(
+  ['log.auto', 'log.stop', 'log.stufe.info', 'log.stufe.warn', 'log.stufe.error', 'log.mehr_zeilen'],
+  ['log.mehr_zeilen_one'],
+);
+
+/** @param {'info' | 'warn' | 'error'} stufe @param {string} zeichen @param {boolean} an */
+function stufenKnopf(stufe, zeichen, an) {
+  return (
+    `<button type="button" class="lvbtn ${stufe}-btn${an ? ' active' : ''}" id="btn-${stufe}" data-click="toggleLevel"` +
+    ` data-arg="${stufe}" aria-pressed="${an}"><span aria-hidden="true">${zeichen}</span> ` +
+    `${esc(tRaw(`log.stufe.${stufe}`))}</button>`
+  );
+}
+
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
   if (!win) {
@@ -32,10 +47,17 @@ function openLogViewer() {
     })
     .join('');
 
+  // Das Fenster folgt Design und Hell/Dunkel der App; werkbank ist ohne Variante dunkel.
+  const wurzel = document.documentElement;
+  const design = wurzel.getAttribute('data-theme') || '';
+  const dunkel = wurzel.hasAttribute('data-dunkel') || design === 'werkbank';
   const markup =
     '<!DOCTYPE html><html lang="' +
     escHtmlAttr(LANG) +
-    '"><head>' +
+    '"' +
+    (design ? ' data-theme="' + escHtmlAttr(design) + '"' : '') +
+    (dunkel ? ' data-dunkel=""' : '') +
+    '><head>' +
     '<meta charset="UTF-8"><title>' +
     esc(tRaw('log.title')) +
     '</title>' +
@@ -50,18 +72,7 @@ function openLogViewer() {
     escHtmlAttr(base) +
     '"' +
     ' data-i18n="' +
-    escHtmlAttr(
-      JSON.stringify({
-        'common.loading': tRaw('common.loading'),
-        'common.network_error': tRaw('common.network_error'),
-        'log.none_found': tRaw('log.none_found'),
-        'log.entries': tRaw('log.entries'),
-        'toast.error': tRaw('toast.error'),
-        // Die Beschriftungen des Auto-Knopfes wechseln zur Laufzeit und gehören deshalb mit hinein.
-        'log.auto': tRaw('log.auto'),
-        'log.stop': tRaw('log.stop'),
-      }),
-    ) +
+    escHtmlAttr(JSON.stringify(Object.fromEntries(FENSTER_TEXTE.map(k => [k, tRaw(k)])))) +
     '">' +
     '<header>' +
     '<h1>' +
@@ -75,9 +86,9 @@ function openLogViewer() {
     spannen +
     '</select>' +
     '<span class="sep">|</span>' +
-    '<button type="button" class="lvbtn info-btn" id="btn-info" data-click="toggleLevel" data-arg="info" aria-pressed="false"><span aria-hidden="true">\u2139</span> Info</button>' +
-    '<button type="button" class="lvbtn warn-btn active" id="btn-warn" data-click="toggleLevel" data-arg="warn" aria-pressed="true"><span aria-hidden="true">\u26A0</span> Warn</button>' +
-    '<button type="button" class="lvbtn error-btn active" id="btn-error" data-click="toggleLevel" data-arg="error" aria-pressed="true"><span aria-hidden="true">\u2716</span> Error</button>' +
+    stufenKnopf('info', '\u2139', false) +
+    stufenKnopf('warn', '\u26A0', true) +
+    stufenKnopf('error', '\u2716', true) +
     '<span class="sep">|</span>' +
     '<input id="search" type="search" aria-label="' +
     escHtmlAttr(tRaw('log.search')) +
@@ -376,6 +387,7 @@ const ARTNAMEN = {
   aufraeumen_taeglich: () => tRaw('monitor.art.aufraeumen_taeglich'),
   konto_dateien: () => tRaw('monitor.art.konto_dateien'),
   widerrufsliste: () => tRaw('monitor.art.widerrufsliste'),
+  katalog_nachzug: () => tRaw('monitor.art.katalog_nachzug'),
 };
 /** @type {Record<string, () => string>} */
 const STATUSNAMEN = {

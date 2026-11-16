@@ -227,8 +227,8 @@ async function setDetail(_t, a) {
     await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
     await bis(`!!document.querySelector('#m-sparkline-content svg')`, 'Preisverlauf');
     const l = await b.auswerten(`(() => { const r = s => document.querySelector(s).getBoundingClientRect().toJSON();
-      const zeilen = [...document.querySelectorAll('#m-det > .dr')].map(z => z.getBoundingClientRect().toJSON());
-      return { bild: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det > .dr'), letzte: zeilen.at(-1) }; })()`);
+      const zeilen = [...document.querySelectorAll('#m-det .dr')].map(z => z.getBoundingClientRect().toJSON());
+      return { bild: r('#m-img'), chart: r('#m-price-chart'), det: r('#m-det .dr'), letzte: zeilen.at(-1) }; })()`);
     if (!telefon) {
       assert.ok(l.chart.right <= l.det.left, `Preisverlauf nicht in der linken Spalte: ${JSON.stringify(l)}`);
       assert.ok(l.chart.top >= l.bild.bottom, 'Preisverlauf nicht unter dem Bild');

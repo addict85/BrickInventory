@@ -3,7 +3,7 @@
 import { melde } from './ereignisse.js';
 import { stelleZielBereit } from './ziele.js';
 import { registerActions, echt } from './registry.js';
-import { kontoWaehrung, angemeldetesKonto, offenesSet, setzeOffenesSet } from './zustand.js';
+import { kontoWaehrung, angemeldetesKonto, galerieSets, offenesSet, setzeOffenesSet } from './zustand.js';
 import { escJs, esc, html, sichereUrl, ungeprueft } from './escapen.js';
 import { api } from './api.js';
 import { fullUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
@@ -85,7 +85,7 @@ function mengenBlock(set, acqs) {
       html`<button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mengeJeKonto" data-arg="${k.id}" data-arg2="${schritt}" aria-label="${tRaw(was)}: ${name}"${schritt < 0 && (k.menge === 0 || gesamt <= 1) ? html` disabled title="${tRaw(gesamt <= 1 ? 'detail.qty_letztes' : 'detail.qty_less')}"` : ''}>${zeichen}</button>`;
     return html`<div class="menge-konto" data-konto="${k.id}">
       <span class="menge-name">${name}</span>
-      ${darf ? knopf(-1, '−', 'detail.qty_less') : ''}<span class="menge-zahl">${k.menge}</span>${darf ? knopf(1, '+', 'detail.qty_more') : ''}
+      ${darf ? knopf(-1, '−', 'detail.qty_less') : ''}<output class="menge-zahl" aria-label="${tRaw('detail.qty')}: ${name}">${k.menge}</output>${darf ? knopf(1, '+', 'detail.qty_more') : ''}
     </div>`;
   });
   return html`<div class="menge-konten" data-rueckmeldung>${zeilen}
@@ -109,6 +109,8 @@ function untertitel(set) {
   return html`${nr}${nr && wem ? ' · ' : ''}${wem}`;
 }
 
+const PAAR = { paar: true };
+
 /** Inhalt des Set-Dialogs aus offenesSet und den Erfassungen: Wert und Verlauf links unter dem Bild, die Angaben
  * rechts. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
@@ -122,6 +124,7 @@ function setDetailHtml(sn, acqs) {
   const qtyRow = detailZeile(t('detail.qty'), mengenBlock(set, acqs), {
     zeilenStil: 'align-items:flex-start',
     wertId: 'm-menge',
+    paar: true,
   });
 
   // Acquisition summary: compact read-only rows + button to open full editor
@@ -135,6 +138,7 @@ function setDetailHtml(sn, acqs) {
       zeilenStil: 'align-items:flex-start',
       wertId: 'm-acq-summary',
       wertStil: 'flex-direction:column;align-items:flex-end;gap:3px',
+      paar: true,
     },
   );
 
@@ -145,13 +149,13 @@ function setDetailHtml(sn, acqs) {
     </div>`;
   // Die Figurenzahl kommt wie in der Tabelle aus dem Katalog: Die eigene Figurenliste zählt nur, was ein
   // Teileimport übernommen hat, und zeigte so für dasselbe Set eine andere Zahl.
-  const rechts = html`
+  const rechts = html`<dl>
     ${acqRows}
-    ${detailZeile(t('detail.year'), oderStrich(set.year))}
-    ${detailZeile(t('detail.theme'), esc(oderStrich(set.theme)))}
+    ${detailZeile(t('detail.year'), oderStrich(set.year), PAAR)}
+    ${detailZeile(t('detail.theme'), esc(oderStrich(set.theme)), PAAR)}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—')}
-    ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val' })}
+    ${detailZeile(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—', PAAR)}
+    ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val', paar: true })}
     ${detailZeile(
       t('detail.alert'),
       alarmBlock(
@@ -161,6 +165,7 @@ function setDetailHtml(sn, acqs) {
       ),
       {
         klasse: 'alarm-zeile',
+        paar: true,
         zeilenStil: 'align-items:flex-start',
         wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end',
       },
@@ -168,13 +173,13 @@ function setDetailHtml(sn, acqs) {
     ${detailZeile(
       t('detail.storage'),
       html`${lagerortBlock('m-storage', set.storage, `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`)}<button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="lagerorte">${tRaw('detail.lagerorte_verwalten')}</button>`,
-      { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
+      { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end', paar: true },
     )}
     ${detailZeile(
       t('detail.created'),
       html`${ico('kalender')} ${addedFmt} <span class="text-klein">(${tRaw('detail.created_hint')})</span>`,
-      { klasse: 'dr-leise' },
-    )}`;
+      { klasse: 'dr-leise', paar: true },
+    )}</dl>`;
   return { links, rechts };
 }
 
@@ -223,7 +228,10 @@ export async function openModal(sn) {
   if (hm?.success) _schreibbar = hm.members.map(m => m.id);
   // Inzwischen geschlossen oder ein anderes Set geöffnet: nichts mehr zeichnen.
   if (lauf !== _detailLauf || !G('set-modal').classList.contains('open')) return;
-  if (!d?.success) {
+  // Ohne Verbindung zeigt der Dialog, was die Sammlung schon geladen hat, statt gar nicht aufzugehen.
+  const ausListe = !d?.success && d?.networkError ? galerieSets.find(x => x.set_number === sn) : undefined;
+  if (ausListe) toast(tRaw('detail.offline_stand'), 'info');
+  if (!d?.success && !ausListe) {
     G('set-modal').classList.remove('open');
     // Meist ein Link auf ein Set, das (noch) nicht in diesem Konto ist: das sagen und das Anlegen anbieten.
     if (d?.status === 404) {
@@ -242,7 +250,7 @@ export async function openModal(sn) {
     } else toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  const set = d.set;
+  const set = d?.success ? d.set : ausListe;
   if (!set) return;
   setzeOffenesSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');

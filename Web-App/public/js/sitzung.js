@@ -83,16 +83,22 @@ let _verifyAngemeldet = false;
 
 /**
  * @param {string} name
+ * @param {boolean} [fokus] Nach einem Klick auf einen Wechsel-Link: Der Link verschwindet mit seinem Feld, und
+ *   ohne neues Ziel stünde der Fokus auf BODY — Tastatur und Vorleser fingen oben wieder an.
  */
-function showPanel(name) {
+function showPanel(name, fokus = false) {
   ['login', 'register', 'forgot', 'reset', 'verify', 'pflichtwechsel', 'zweitpflicht'].forEach(p => {
     const el = G('panel-' + p);
     if (el) el.style.display = p === name ? 'block' : 'none';
   });
-  const titel = G('panel-' + name)
-    ?.querySelector('h1')
-    ?.textContent?.trim();
+  const panel = G('panel-' + name);
+  const titel = panel?.querySelector('h1')?.textContent?.trim();
   if (titel) document.title = `${titel} – BrickInventory`;
+  if (!fokus || !panel) return;
+  const feld = [...panel.querySelectorAll('input:not([type="hidden"]):not([disabled])')].find(
+    e => !e.closest('[hidden],[style*="display: none"]'),
+  );
+  /** @type {HTMLElement | undefined} */ (feld)?.focus();
 }
 
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
@@ -175,21 +181,21 @@ addEventListener('hashchange', () => /[#&]token=/.test(location.hash) && locatio
 
 G('link-register')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('register');
+  showPanel('register', true);
   const rl = G('reg-lang');
   if (rl && (LANG === 'de' || LANG === 'en')) rl.value = LANG;
 });
 G('link-forgot')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('forgot');
+  showPanel('forgot', true);
 });
 G('link-to-login')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('login');
+  showPanel('login', true);
 });
 G('link-forgot-to-login')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('login');
+  showPanel('login', true);
 });
 
 G('btn-register')?.addEventListener('click', async () => {

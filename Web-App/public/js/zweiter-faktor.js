@@ -7,13 +7,9 @@ import { toast } from './meldungen.js';
 import { loadUsers } from './nutzerverwaltung.js';
 import { html, ungeprueft } from './escapen.js';
 import { fmtDatum } from './format.js';
-import {
-  confirmDelete,
-  bestaetigeMitPasswort,
-  frageCode,
-  mitZweitemFaktor,
-  mitPasswortBestaetigen,
-} from './rueckfrage.js';
+import { melde } from './ereignisse.js';
+import { angemeldetesKonto } from './zustand.js';
+import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/faktoren/zweiterFaktor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn Wiederherstellungscodes einmal
@@ -21,12 +17,16 @@ import {
 
 // Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/api.js meldet es).
 let pflicht = false;
+/** Die Einrichtung, die „Neu einrichten“ eines Verwalters schon begonnen hat. @type {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung | null} */
+let begonnen = null;
 const flaeche = () => (pflicht ? G('zf-pflicht-flaeche') : G('zf-flaeche'));
 if (typeof document !== 'undefined')
   document.addEventListener('zweitpflicht', () => {
     pflicht = true;
     pflichtHinweis('zfpflicht.hint');
-    void ladeZweitenFaktor();
+    const d = begonnen;
+    begonnen = null;
+    void (d ? zeigeEinrichtung(d) : ladeZweitenFaktor());
   });
 
 /**
@@ -78,7 +78,7 @@ export async function ladeZweitenFaktor() {
   zeichne(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
     <div class="zf-knoepfe">
       ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
-      ${knopf('zfAbschalten', tRaw('zf.disable'), 'bd')}
+      ${knopf('zfAbschalten', tRaw(angemeldetesKonto?.isAdmin ? 'zf.neu_einrichten' : 'zf.disable'), 'bd')}
     </div>`);
 }
 
@@ -97,12 +97,18 @@ export async function zfEinrichten() {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
+  zeigeEinrichtung(d);
+}
+
+/** @param {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung} d */
+function zeigeEinrichtung(d) {
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
   const lesbar = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
   zeichne(html`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0">${tRaw('zf.scan')}</p>
       <div id="zf-qr" class="zf-qr"></div>
-      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${lesbar}</code></div>
+      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code id="zf-schluessel" data-stil="user-select:all;font-size:var(--fs-3)">${lesbar}</code></div>
+      <div class="zf-knoepfe">${knopf('zfSchluesselKopieren', tRaw('zf.schluessel_kopieren'))}<a class="btn bs ${knopfArt()}" id="zf-otpauth" hidden>${tRaw('zf.in_app_oeffnen')}</a></div>
       <div class="lerr" id="zf-fehler" role="alert"></div>
       ${CODEFELD(tRaw('zf.confirm_code'), 6)}
       ${reihe(`<button type="button" class="btn bp ${knopfArt()}" id="zf-bestaetigen" data-click="zfBestaetigen">${t('zf.confirm')}</button>
@@ -122,7 +128,23 @@ export async function zfEinrichten() {
     qr.querySelector('img')?.setAttribute('alt', tRaw('zf.qr_alt'));
     qr.querySelector('canvas')?.setAttribute('aria-hidden', 'true');
   } else if (qr) qr.textContent = d.otpauth ?? '';
+  // Am Telefon lässt sich der eigene Bildschirm nicht scannen: Der Link öffnet die Authenticator-App direkt.
+  const link = /** @type {HTMLAnchorElement | null} */ (document.getElementById('zf-otpauth'));
+  if (link && /^otpauth:\/\/totp\//i.test(d.otpauth ?? '')) {
+    link.href = d.otpauth ?? '';
+    link.hidden = false;
+  }
   G('zf-code')?.focus();
+}
+
+export async function zfSchluesselKopieren() {
+  const text = (G('zf-schluessel')?.textContent || '').replace(/\s+/g, '');
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(tRaw('zf.schluessel_kopiert'), 'success');
+  } catch {
+    toast(tRaw('zf.copy_failed'), 'error');
+  }
 }
 
 /** @param {string[]} codes */
@@ -170,16 +192,19 @@ export async function zfNeueCodes() {
   zeigeCodes(d.codes ?? []);
 }
 
+// Ein Verwalter ohne zweiten Faktor darf nichts ausser ihn einrichten: Für ihn heisst Abschalten deshalb
+// „Neu einrichten“, und die Einrichtung beginnt mit demselben Passwort gleich im Pflichtfeld.
 export async function zfAbschalten() {
-  if (
-    !(await confirmDelete(tRaw('zf.disable'), tRaw('zf.disable_confirm'), 'schloss', {
-      knopf: 'confirm.btn.abschalten',
-      art: 'bd',
-    }))
-  )
-    return;
-  const d = await mitPasswortBestaetigen(tRaw('zf.disable'), (password, z) =>
-    api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...z }),
+  const verwalter = !!angemeldetesKonto?.isAdmin;
+  let passwort = '';
+  const d = await mitPasswortBestaetigen(
+    tRaw(verwalter ? 'zf.neu_einrichten' : 'zf.disable'),
+    (password, z) => {
+      passwort = password;
+      return api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...z });
+    },
+    tRaw(verwalter ? 'zf.neu_einrichten_text' : 'zf.disable_confirm'),
+    { knopf: verwalter ? 'zf.neu_einrichten' : 'confirm.btn.abschalten', art: 'bd', mitCode: true },
   );
   if (!d) return;
   if (!d?.success) {
@@ -187,7 +212,10 @@ export async function zfAbschalten() {
     return;
   }
   toast(tRaw('zf.disabled'), 'success');
-  await ladeZweitenFaktor();
+  if (!verwalter) return ladeZweitenFaktor();
+  const neu = await api('POST', '/v1/auth/zweiter-faktor/einrichten', { password: passwort });
+  begonnen = neu?.success ? neu : null;
+  melde('zweiterFaktorPflicht');
 }
 
 export async function zfCodesKopieren() {
@@ -250,6 +278,7 @@ registerActions({
   zfNeueCodes,
   zfAbschalten,
   zfCodesKopieren,
+  zfSchluesselKopieren,
   zfCodesSpeichern,
   zfZuruecksetzen,
 });

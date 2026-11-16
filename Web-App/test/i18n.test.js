@@ -16,6 +16,9 @@
  *      imgUrl(fullUrl(…), false) → rot: „der Kaufpreis-Detail-Dialog …“.
  *      `fullUrl(rawImgSrc)` allein bleibt grün: fullUrl() leitet eine
  *      CDN-Adresse inzwischen selbst über den Proxy (bilder-proxy-oberflaeche D).
+ *   E  (16.11.2026) in en.js „email“ einmal wieder „e-mail“ → rot: „kein Text steht in beiden Sprachen unübersetzt“ (begriffePruefen); in de.js
+ *      csv.import_title wieder „CSV Import“ → rot: ebenda; settings.users_new wieder „Neuen Benutzer
+ *      erstellen“ → rot: ebenda
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -115,7 +118,23 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     [],
     `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`,
   );
+  begriffePruefen(de, en);
 });
+
+/** Begriffe einheitlich: Konto statt Benutzer, CSV-Import, englisch email. @param {Record<string, string>} de @param {Record<string, string>} en */
+function begriffePruefen(de, en) {
+  const fund = (/** @type {Record<string, string>} */ w, /** @type {RegExp} */ r) =>
+    Object.entries(w)
+      .filter(([, v]) => r.test(v))
+      .map(([k, v]) => `${k} = ${v}`);
+  assert.deepEqual(fund(en, /\be-mail/i), [], 'EN schreibt email');
+  assert.deepEqual(fund(de, /CSV Import/), [], 'DE schreibt CSV-Import');
+  // „Benutzer“ bleibt nur als Rolle neben „Verwalter“; ein Konto heisst Konto.
+  const ohneRolle = Object.fromEntries(
+    Object.entries(de).filter(([k]) => !/^users\.(role\.user|action\.make_user)$/.test(k)),
+  );
+  assert.deepEqual(fund(ohneRolle, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
+}
 
 test('Katalog-Schlüssel vorhanden', () => {
   const { de } = loadTranslations();

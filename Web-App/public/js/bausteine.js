@@ -25,13 +25,19 @@ import { angemeldetesKonto, kontoWaehrung } from './zustand.js';
  * @param {string} [o.zeilenStil] zusätzlicher Stil (data-stil) an der Zeile
  * @param {string} [o.wertId]    id am Wert-Element, für späteres Nachfüllen
  * @param {string} [o.klasse]    zusätzliche Klasse an der Zeile
+ * @param {boolean} [o.paar]     als dt/dd, für Zeilen in einem <dl>: Vorleser nennen Name und Wert als Paar
  */
 export function detailZeile(label, wert, o = {}) {
   const zStil = o.zeilenStil ? ` data-stil="${o.zeilenStil}"` : '';
   const zKlasse = o.klasse ? ` ${o.klasse}` : '';
   const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
   const wId = o.wertId ? ` id="${o.wertId}"` : '';
-  return html`${html`<div class="dr${zKlasse}"${ungeprueft(zStil)}><span class="dl">${ungeprueft(label)}</span>`}${html`<span class="dv"${ungeprueft(wId)}${ungeprueft(wStil)}>${typeof wert === 'string' ? ungeprueft(wert) : wert}</span></div>`}`;
+  const [l, i, s] = [ungeprueft(label), ungeprueft(wId), ungeprueft(wStil)];
+  const v = typeof wert === 'string' ? ungeprueft(wert) : wert;
+  const paar = o.paar
+    ? html`<dt class="dl">${l}</dt><dd class="dv"${i}${s}>${v}</dd>`
+    : html`<span class="dl">${l}</span><span class="dv"${i}${s}>${v}</span>`;
+  return html`<div class="dr${zKlasse}"${ungeprueft(zStil)}>${paar}</div>`;
 }
 
 /**

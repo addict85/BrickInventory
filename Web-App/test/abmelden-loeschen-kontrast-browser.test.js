@@ -29,6 +29,8 @@
  *      Knopf: btn-pl-gen nicht verborgen → rot: „Bauliste“ (sichtbar ohne Set)
  *   R  beiTelefonWechsel() zeichnet die Sammlung nicht neu → rot: „Telefon nur
  *      Karten …“ (Zeitüberschreitung), in Folge „Drossel“, „Kontrastmodus“, „Abmelden …“
+ *   S  (16.11.2026) in loeschWahl() „aus allen Konten“ wieder als erste (vorgewählte) Möglichkeit →
+ *      rot: „Löschen im Haushalt“
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -354,13 +356,16 @@ async function loeschen(_t, a, name) {
   };
   await loesche('21318-1');
   const frage = await b.auswerten(
-    `({ text: ${text('#cd-msg')}, wahl: [...document.querySelectorAll('#cd-wahl label')].map(l => l.textContent.trim()) })`,
+    `({ text: ${text('#cd-msg')}, wahl: [...document.querySelectorAll('#cd-wahl label')].map(l => l.textContent.trim()),
+      gewaehlt: document.querySelector('#cd-wahl input:checked')?.closest('label')?.textContent.trim() })`,
   );
   assert.match(frage.text, new RegExp(`${name} \\(ich\\) ×1, ${name}_kind ×1`), 'Konten und Stückzahlen fehlen');
   assert.equal(frage.wahl.length, 3, `keine Auswahl: ${JSON.stringify(frage)}`);
+  assert.match(frage.gewaehlt || '', /\(ich\)/, `vorgewählt ist nicht das eigene Exemplar: ${JSON.stringify(frage)}`);
   const vorher = b.ereignisse.length;
   await b.auswerten(
-    `document.querySelectorAll('#cd-wahl input')[2].click(); document.getElementById('cd-confirm').click(); true`,
+    `[...document.querySelectorAll('#cd-wahl label')].find(l => l.textContent.includes('_kind')).querySelector('input').click();
+    document.getElementById('cd-confirm').click(); true`,
   );
   await bis(`!document.querySelector('#gallery .sc[data-arg="21318-1"] .besitzer-badge')`, 'nur noch eigenes Exemplar');
   await a.ruhig();

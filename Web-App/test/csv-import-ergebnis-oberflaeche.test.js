@@ -25,6 +25,8 @@
  *      mit Zeilen“ (api() überschreibt `status` mit 200, der Abschluss kommt nie)
  *   G  csv.import_meldung aus de.js entfernt → rot: „Ergebnisliste mit Zeilen“
  *      (die Meldung zeigt den rohen Schlüssel; 08.11.2026)
+ *   H  (16.11.2026) zeigeImportAbschluss() ohne das Verbergen von „Minimieren“ → rot: „Ergebnisliste mit
+ *      Zeilen“ (nach Abschluss noch „Minimieren“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -126,6 +128,8 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
     assert.match(d.getElementById('prog-footer').textContent, /8 Zeilen gelesen · 1 ok, 1 Warnung, 3 Fehler/);
     assert.equal(d.querySelector('#toasts .toast .toast-text')?.textContent, 'Import: 1 ok, 1 Warnung, 3 Fehler');
     assert.equal(d.getElementById('prog-bar-wrap').getAttribute('aria-valuenow'), '100');
+    assert.equal(ovl.querySelector('.prog-minimieren').hidden, true, 'nach Abschluss noch „Minimieren“');
+    assert.notEqual(d.getElementById('btn-close-import').style.display, 'none', 'kein „Schliessen“');
   } finally {
     w.close();
   }

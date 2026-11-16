@@ -3,7 +3,7 @@ import { tRaw } from '../i18n.js';
 import { api, apiRoh } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN, betragFuerFeld } from './format.js';
-import { antwortFehler, betragAusFeld } from './formular.js';
+import { antwortFehler, betragAusFeld, feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { kontoWaehrung, einstellungsStand } from './zustand.js';
@@ -266,10 +266,17 @@ export async function gutscheinSpeichern() {
   const number = el('v-number').value.trim();
   const pin = el('v-pin').value.trim();
   const betrag = betragAusFeld('v-amount', 'common.betrag_negativ');
-  if (!betrag.ok) return;
+  const datei = el('v-pdf')?.files?.[0] || null;
+  // Alle Lücken auf einmal: Der Server meldete sie eine nach der anderen. Ein PDF kann Nummer und Betrag liefern.
+  const leer = datei ? [] : [!number && 'v-number', betrag.ok && betrag.wert === null && 'v-amount'];
+  const fehlt = /** @type {string[]} */ (leer.filter(Boolean));
+  for (const id of fehlt) feldFehler(id, tRaw('vouchers.pflicht_fehlt'));
+  if (!betrag.ok || fehlt.length) {
+    el(fehlt[0] ?? 'v-amount')?.focus();
+    return;
+  }
   const amount = betrag.wert ?? '';
   const currency = el('v-currency')?.value || 'CHF';
-  const datei = el('v-pdf')?.files?.[0] || null;
 
   if (_bearbeitet) {
     const d = await api('PUT', `/v1/vouchers/${_bearbeitet}`, { number, pin, amount, currency });
