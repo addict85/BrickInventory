@@ -119,7 +119,7 @@ private fun BricksetAktionen(
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         MitTooltip(wiederholen) {
             FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                Icon(Icons.Default.Refresh, wiederholen, Modifier.size(mitSchrift(14.dp)))
+                Icon(Icons.Default.Refresh, contentDescription = wiederholen, Modifier.size(mitSchrift(14.dp)))
             }
         }
         MitTooltip(loeschen) {
@@ -129,7 +129,7 @@ private fun BricksetAktionen(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
             ) {
-                Icon(Icons.Default.Delete, loeschen, Modifier.size(mitSchrift(14.dp)),
+                Icon(Icons.Default.Delete, contentDescription = loeschen, Modifier.size(mitSchrift(14.dp)),
                     tint = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
