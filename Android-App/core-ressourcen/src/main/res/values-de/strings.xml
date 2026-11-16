@@ -6,11 +6,11 @@
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Währung</string>
     <string name="settings_price_condition">Preiszustand</string>
-    <string name="settings_default_condition">Standard-Zustand</string>
+    <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>
     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
-    <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
-    <string name="settings_default_condition_global">Globale Vorgabe</string>
-    <string name="monitoring_default_condition">Standard-Zustand</string>
+    <string name="settings_default_condition_hint">Damit beginnt ein neu hinzugefügtes Set. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
+    <string name="settings_default_condition_global">Allgemein</string>
+    <string name="monitoring_default_condition">Zustand beim Hinzufügen für alle Konten</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
     <string name="settings_condition_new">Neuware</string>
     <string name="settings_condition_used">Gebraucht</string>
@@ -96,6 +96,10 @@
     <string name="scanner_allow">Erlauben</string>
     <string name="scanner_camera_gesperrt">Die Kamera ist für diese App gesperrt, Android fragt nicht mehr nach. Erlaube sie in den App-Einstellungen unter Berechtigungen.</string>
     <string name="scanner_camera_einstellungen">In den Einstellungen erlauben</string>
+    <string name="scanner_camera_zweck_barcode">Die Kamera liest den Barcode auf der Schachtel und findet so das Set.</string>
+    <string name="scanner_camera_zweck_qr">Die Kamera liest den QR-Code mit der Adresse deines Servers.</string>
+    <string name="scanner_nummer_eintippen">Nummer eintippen</string>
+    <string name="scanner_adresse_eintippen">Adresse eintippen</string>
     <string name="scanner_close">Schliessen</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
@@ -269,6 +273,10 @@
         <item quantity="other">×%1$d  ·  %2$d Typen</item>
     </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
+    <string name="partslist_legende">Grün: genug im eigenen Bestand. Rot: Es fehlen noch Teile.</string>
+    <string name="partslist_benoetigt">Benötigt: %1$s</string>
+    <string name="partslist_vorhanden">Vorhanden: %1$s</string>
+    <string name="partslist_vorhanden_von">Vorhanden: %1$s von %2$s</string>
 
     <!-- ══════════════ Finance screen ══════════════ -->
     <string name="finance_loading">Preise werden geladen…</string>
@@ -332,7 +340,7 @@
     <string name="parts_part_number_placeholder">z. B. 3001</string>
     <string name="parts_no_color">Keine Farbe</string>
     <string name="parts_color_label">Farbe (optional)</string>
-    <string name="parts_color_unknown">Farbe %1$d</string>
+    <string name="parts_color_unknown">Unbekannte Farbe</string>
     <string name="parts_add_button">Hinzufügen</string>
     <string name="parts_ordnung_farbe">Nach Farbe</string>
     <string name="parts_ordnung_name">Nach Name</string>
@@ -366,6 +374,8 @@
     <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
     <string name="monitoring_entry_removed">%1$s entfernt</string>
+    <string name="monitoring_queue_loeschen_titel">Eintrag löschen?</string>
+    <string name="monitoring_queue_loeschen_text">%1$s wird nicht mehr bei Brickset nachgefragt.</string>
     <string name="monitoring_start_error">Fehler beim Starten</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
@@ -829,6 +839,7 @@
     <string name="update_dialog_later">Später</string>
     <string name="update_available">Version %1$s ist verfügbar</string>
     <string name="update_installed">Installiert: %1$s</string>
+    <string name="update_version_unbekannt">unbekannt</string>
     <string name="update_download">Herunterladen</string>
     <string name="update_downloading">Wird geladen… %1$d%%</string>
     <string name="update_install">Installieren</string>
@@ -884,6 +895,7 @@
     <!-- Gutscheine (LEGO-Geschenkkarten im eigenen Profil) -->
     <string name="vouchers_title">Gutscheine</string>
     <string name="vouchers_empty">Noch keine Gutscheine hinterlegt.</string>
+    <string name="vouchers_empty_hint">Lege LEGO-Geschenkkarten mit Nummer und PIN ab. Das Guthaben fragt die App bei LEGO ab, das Total steht dann hier.</string>
     <string name="vouchers_total">Total</string>
     <string name="vouchers_add">Gutschein hinzufügen</string>
     <string name="vouchers_edit">Gutschein ändern</string>
@@ -1059,6 +1071,10 @@
     <string name="widget_heute">Heute</string>
     <string name="widget_gesamt">Gesamt</string>
     <string name="widget_leer">Öffne die App einmal, um die Zahlen zu laden.</string>
+    <string name="widget_beschreibung">Wert der Sammlung, Gewinn/Verlust heute und gesamt.</string>
+    <string name="widget_vorschau_wert">CHF 112’480.00</string>
+    <string name="widget_vorschau_heute">+CHF 1’035.20</string>
+    <string name="widget_vorschau_gesamt">+CHF 21’940.50</string>
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Web-App -->
     <string name="art_nacharbeit">Nacharbeit nach dem Erfassen</string>
     <string name="art_bilder">Bilder eines Sets</string>
@@ -1088,6 +1104,12 @@
     <string name="hintergrund_jetzt">Jetzt</string>
     <string name="hintergrund_leeren">Leeren</string>
     <string name="hintergrund_wiederholen">Wiederholen</string>
+    <string name="hintergrund_abbrechen">Auftrag abbrechen</string>
+    <string name="hintergrund_auftrag_wiederholen">Auftrag wiederholen</string>
+    <string name="hintergrund_jetzt_cd">%1$s jetzt starten</string>
+    <string name="hintergrund_leeren_cd">%1$s leeren</string>
+    <string name="hintergrund_leeren_titel">Aufträge leeren?</string>
+    <string name="hintergrund_leeren_text">Die offenen Aufträge „%1$s“ werden entfernt. Laufende und geplante bleiben.</string>
     <plurals name="hintergrund_geleert">
         <item quantity="one">%1$d Auftrag entfernt</item>
         <item quantity="other">%1$d Aufträge entfernt</item>

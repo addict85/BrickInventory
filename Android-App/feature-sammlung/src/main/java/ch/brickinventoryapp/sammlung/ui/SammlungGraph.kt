@@ -256,7 +256,11 @@ private fun NavGraphBuilder.scannerZiel(navigation: SammlungNavigation) {
             // Die Texterkennung liefert die Setnummer fertig — der Umweg über die
             // EAN-Auflösung entfällt, das spart je Scan bis zu acht Rebrickable-Aufrufe.
             onSetNumberResult = { setNumber -> zurueck(setNumber, setnummer = true) },
-            onDismiss = { navController.popBackStack() }
+            onDismiss = { navController.popBackStack() },
+            onEintippen = {
+                navController.previousBackStackEntry?.savedStateHandle?.legeEintippenAb(herkunft)
+                navController.popBackStack()
+            },
         )
     }
 }

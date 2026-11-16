@@ -31,6 +31,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.finanzen.ui.GutscheinSchritt
 import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.ui.components.PasswortRueckfrage
@@ -204,16 +205,21 @@ private fun GuthabenLaufZeile(lauf: GuthabenLauf, onAbbrechen: () -> Unit) {
 }
 
 /**
- * Ohne Gutscheine: der Ladefehler mit neuem Versuch, sonst der Satz „noch keine“. Kein
- * eigener Knopf für den Stapel-Import: Die Datei geht über das Feld im Formular.
+ * Ohne Gutscheine: der Ladefehler mit Rat seiner Klasse und neuem Versuch, sonst der
+ * Leerzustand wie jede Liste (Symbol, Titel, wozu die Seite da ist). Kein eigener Knopf
+ * für den Stapel-Import: Die Datei geht über das Feld im Formular.
  */
 @Composable
 private fun LeerOderFehler(zustand: GutscheinUiState, onErneut: () -> Unit) {
     if (zustand.gutscheine.isNotEmpty() || zustand.abruf.laedt) return
     val fehler = zustand.abruf as? Laden.Fehler
-    if (fehler != null) FehlerHinweis(fehler.meldung.satz(), onErneut)
-    else Text(stringResource(R.string.vouchers_empty), style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (fehler != null) FehlerHinweis(fehler.meldung.satz(), onErneut, fehler.art)
+    else Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.mittel),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        HinweisText(Icons.Default.Redeem, stringResource(R.string.vouchers_empty),
+            stringResource(R.string.vouchers_empty_hint))
+    }
 }
 
 /** Passwort und Code vor Löschen, PDF oder Klartext ([GutscheinUiState.bestaetigung]). */

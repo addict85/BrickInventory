@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.model.fach.Kategoriewahl
 import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.teile.ui.Teilefilter
@@ -221,7 +223,7 @@ internal fun PartsScreen(
                     if (partsState.filter.ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
                     if (partsState.filter.farbe != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
                     if (partsState.filter.kategorie != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
-                }) { Text(stringResource(R.string.search_clear_all)) }
+                }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.search_clear_all)) }
             }
         } else if (anzeige == Ladeanzeige.LEER) {
             // Leer ohne Kennzahlen: „82 Stück“ neben „Keine Teile“ widersprach sich.

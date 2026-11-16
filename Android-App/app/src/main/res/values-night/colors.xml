@@ -2,4 +2,7 @@
 <resources>
     <!-- background des dunklen Designs Werkbank (Theme.kt, WerkbankColors) -->
     <color name="fenster_hintergrund">#14181D</color>
+    <color name="widget_vorschau_flaeche">#1E242B</color>
+    <color name="widget_vorschau_schrift">#E2E8F0</color>
+    <color name="widget_vorschau_neben">#A8B3C1</color>
 </resources>

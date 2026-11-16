@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.konto
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,7 +13,9 @@ import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.konto.ui.UpdateUiState
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateDialog
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateAktionen
+import ch.brickinventoryapp.model.util.AppFassung
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.update.util.UpdateBeschreibung
 import org.junit.Assert.assertEquals
@@ -31,6 +34,7 @@ import org.robolectric.annotation.Config
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
  *   update-dialog-laedt-selbst   LaunchedEffect lädt beim Zeigen → rot „der Hinweis fragt …“
  *   update-spaeter-vergessen     dialogAbgelehnt nicht beachtet → rot „nach Später …“
+ *   version-leer                 versionsName() ohne Rückfall → rot „ohne bekannte Version …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -83,5 +87,24 @@ class UpdateDialogTest {
         assertEquals(1, aktionen.geschlossen)
         assertEquals(0, aktionen.geladen)
         compose.onAllNodesWithText(text(R.string.update_dialog_title)).assertCountEquals(0)
+    }
+
+    @Test
+    fun `ohne bekannte Version steht unbekannt, sonst die Version`() {
+        var fassung by mutableStateOf(AppFassung("", 0))
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                CompositionLocalProvider(LocalAppFassung provides fassung) {
+                    UpdateDialog(UpdateUiState(neuereFassung = neu), Aktionen())
+                }
+            }
+        }
+        compose.waitForIdle()
+        val unbekannt = text(R.string.update_version_unbekannt)
+        compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", unbekannt))
+            .fetchSemanticsNode("Die installierte Version bleibt leer")
+        fassung = AppFassung("2.10", 10)
+        compose.waitForIdle()
+        compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", "2.10")).fetchSemanticsNode()
     }
 }

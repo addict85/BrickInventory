@@ -121,7 +121,8 @@ fun ZweiterFaktorPflichtMaske(
                         Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                             modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
                         val sichern = rememberCodesSichern(zustand.codes) { gesichert = true }
-                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth(),
+                            colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                             Text(stringResource(R.string.zf_codes_speichern))
                         }
                         OutlinedButton(

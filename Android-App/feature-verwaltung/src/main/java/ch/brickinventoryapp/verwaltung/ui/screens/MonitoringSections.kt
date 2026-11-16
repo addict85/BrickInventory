@@ -21,6 +21,7 @@ import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.components.mitSchrift
 
 /**
@@ -92,27 +93,43 @@ internal fun BricksetQueueRow(
     }
 }
 
-/** Erneut versuchen und Löschen eines Eintrags der Brickset-Warteschlange. */
+/**
+ * Erneut versuchen und Löschen eines Eintrags der Brickset-Warteschlange. Löschen fragt
+ * nach, und beide Symbole nennen TalkBack das Set: Untereinander stand sonst nur „Löschen“.
+ */
 @Composable
 private fun BricksetAktionen(
     entry: BricksetEintragAnsicht,
     onRetry: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
+    var loeschenFragen by rememberSaveable(entry.setNumber) { mutableStateOf(false) }
+    if (loeschenFragen) {
+        Rueckfrage(
+            titel = stringResource(R.string.monitoring_queue_loeschen_titel),
+            text = stringResource(R.string.monitoring_queue_loeschen_text, entry.setNumber),
+            bestaetigen = stringResource(R.string.common_delete),
+            onBestaetigen = { loeschenFragen = false; onDelete(entry.setNumber) },
+            onAbbrechen = { loeschenFragen = false },
+            symbol = Icons.Default.Delete,
+        )
+    }
+    val wiederholen = stringResource(R.string.aktion_fuer, stringResource(R.string.monitoring_icon_retry), entry.setNumber)
+    val loeschen = stringResource(R.string.aktion_fuer, stringResource(R.string.common_delete), entry.setNumber)
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-        MitTooltip(stringResource(R.string.monitoring_icon_retry)) {
+        MitTooltip(wiederholen) {
             FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(mitSchrift(14.dp)))
+                Icon(Icons.Default.Refresh, wiederholen, Modifier.size(mitSchrift(14.dp)))
             }
         }
-        MitTooltip(stringResource(R.string.common_delete)) {
+        MitTooltip(loeschen) {
             FilledTonalIconButton(
-                onClick = { onDelete(entry.setNumber) },
+                onClick = { loeschenFragen = true },
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
             ) {
-                Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(mitSchrift(14.dp)),
+                Icon(Icons.Default.Delete, loeschen, Modifier.size(mitSchrift(14.dp)),
                     tint = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
