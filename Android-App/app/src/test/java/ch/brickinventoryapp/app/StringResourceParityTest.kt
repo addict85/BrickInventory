@@ -304,6 +304,7 @@ class StringResourceParityTest {
             texte(datei).filterValues { t -> (muster + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
         }
         assert(funde.isEmpty()) { "Abweichender Begriff:\n  " + funde.joinToString("\n  ") }
+        rollenNamenPruefen()
     }
 
     /**
@@ -311,8 +312,7 @@ class StringResourceParityTest {
      * („Administratorrechte“); „Verwalter“ und „Benutzer“ als Rolle sind abgelöst.
      * Gegenprobe (gegenproben/rolle-verwalter.patch): zf_pflicht_kurz wieder „Verwalterrechte …“ → rot.
      */
-    @Test
-    fun `die Rollen heissen Standard und Administrator`() {
+    private fun rollenNamenPruefen() {
         val de = texte("values-de/strings.xml")
         val en = texte("values/strings.xml")
         assert(de["zf_pflicht_kurz"]?.startsWith("Administratorrechte") == true) { "zf_pflicht_kurz = ${de["zf_pflicht_kurz"]}" }

@@ -1,7 +1,7 @@
 Gegenprobe: Hinweis zum zweiten Faktor wieder mit der alten Rolle „Verwalterrechte“
 Modul: app
 Test: ch.brickinventoryapp.app.StringResourceParityTest
-Rot: die Rollen heissen Standard und Administrator
+Rot: ein Begriff je Sache in beiden Sprachen
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
 --- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
