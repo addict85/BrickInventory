@@ -1243,7 +1243,10 @@ class BildschirmFotoVariantenTest {
     fun scannerErlaubnis() {
         zeige("scanner-erlaubnis", warten = false) {
             Box(Modifier.fillMaxSize()
-                .background(Color.Black)) { KameraErlaubnisHinweis(onErlauben = {}) }
+                .background(Color.Black)) {
+                KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_barcode),
+                    stringResource(R.string.scanner_nummer_eintippen), onEintippen = {}, onErlauben = {})
+            }
         }
         anhalten()
         foto("scanner-erlaubnis", dunkel = true)

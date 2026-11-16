@@ -49,10 +49,11 @@ internal fun FarbWahlFeld(
     var offen by rememberSaveable { mutableStateOf(false) }
     // Was die Liste ueber die heutige Farbe weiss, gewinnt gegen die
     // Bestandszeile: Dort steht der Name, der beim Erfassen mitgeschickt wurde,
-    // und der kann aelter sein als der Katalog.
+    // und der kann aelter sein als der Katalog. Ohne beides kein „Farbe 5“: Die
+    // Nummer sagt niemandem etwas.
     val keineFarbe = stringResource(R.string.parts_no_color)
     val name = farbName(farben, aktuell, aktuellerName, keineFarbe)
-        ?: stringResource(R.string.parts_color_unknown, aktuell)
+        ?: stringResource(R.string.parts_color_unknown)
     val hex = if (aktuell == OHNE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: aktuellerHex
     // „Keine Farbe“ steht zur Wahl, damit sich eine falsch übernommene Farbe auch entfernen lässt.
     val wahl = listOf(FarbeAnsicht(OHNE_FARBE, keineFarbe, null)) + ohneKeineFarbe(farben)
@@ -71,7 +72,8 @@ internal fun FarbWahlFeld(
             modifier = Modifier.fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodySmall,
+            // Wie die übrigen Werte der Detailseite, nicht kleiner.
+            textStyle = MaterialTheme.typography.bodyMedium,
             shape = Formen.feld,
         )
         ExposedDropdownMenu(expanded = offen && farben.isNotEmpty(), onDismissRequest = { offen = false }) {

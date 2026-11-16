@@ -124,7 +124,7 @@ private fun PreisKarteInhalt(
             PreisLaedtZeile()
         } else if (detailState.verlaufAbruf is Laden.Fehler) {
             Spacer(Modifier.height(Abstaende.klein))
-            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut)
+            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut, detailState.verlaufAbruf.art)
         }
     }
 }

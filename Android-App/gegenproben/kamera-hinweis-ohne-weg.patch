@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.app.FehlerhinweiseTest
 Rot: ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
+index 4671faf..3404a35 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
-@@ -126,7 +126,7 @@
+@@ -137,7 +137,7 @@ fun KameraErlaubnisHinweis(
              }
              Spacer(Modifier.height(Abstaende.mittel))
              Button(onClick = onErlauben) {
 -                Text(stringResource(if (verweigert) R.string.scanner_camera_einstellungen else R.string.scanner_allow))
 +                Text(stringResource(R.string.scanner_allow))
              }
-         }
-     }
+             TextButton(onClick = onEintippen, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+                 Text(eintippen)

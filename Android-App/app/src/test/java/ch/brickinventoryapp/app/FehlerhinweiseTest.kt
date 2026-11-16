@@ -39,6 +39,7 @@ import java.util.Locale
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   katalog-detail-ewig-laden      Detail ohne Fehlerzweig, nur der Kringel → rot „scheitert das Katalog-Detail, steht …“
  *   kamera-hinweis-ohne-weg        Hinweis zeigt trotz Sperre nur „Erlauben“ → rot „ist die Kamera dauerhaft …“
+ *   kamera-hinweis-ohne-zweck      Hinweis ohne Zweck und ohne Eintippen → rot „fehlt die Kamera, sagt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
@@ -87,7 +88,7 @@ class FehlerhinweiseTest {
         var getippt = 0
         zeige {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
-                KameraErlaubnisHinweis(verweigert = true) { getippt++ }
+                KameraErlaubnisHinweis("Zweck", "Eintippen", onEintippen = {}, verweigert = true) { getippt++ }
             }
         }
         compose.onNodeWithText(ctx.getString(R.string.scanner_camera_gesperrt)).fetchSemanticsNode("Die Erklärung fehlt")
@@ -95,5 +96,20 @@ class FehlerhinweiseTest {
             .let { assertEquals("Der tote Knopf steht noch da", 0, it.size) }
         compose.onNodeWithText(ctx.getString(R.string.scanner_camera_einstellungen)).performClick()
         assertEquals(1, getippt)
+    }
+
+    @Test
+    fun `fehlt die Kamera, sagt der Hinweis wozu und bietet das Eintippen an`() {
+        var eingetippt = 0
+        val zweck = ctx.getString(R.string.scanner_camera_zweck_barcode)
+        val eintippen = ctx.getString(R.string.scanner_nummer_eintippen)
+        zeige {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                KameraErlaubnisHinweis(zweck, eintippen, onEintippen = { eingetippt++ }) {}
+            }
+        }
+        compose.onNodeWithText(zweck).fetchSemanticsNode("Der Zweck fehlt")
+        compose.onNodeWithText(eintippen).performClick()
+        assertEquals("Eintippen führt nicht weiter", 1, eingetippt)
     }
 }

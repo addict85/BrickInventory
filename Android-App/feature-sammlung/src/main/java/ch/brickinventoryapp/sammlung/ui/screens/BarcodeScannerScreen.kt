@@ -52,6 +52,8 @@ fun BarcodeScannerScreen(
     /** Per Texterkennung gelesene SETNUMMER — nur relevant, wenn ocrEnabled. */
     onSetNumberResult: (String) -> Unit = onResult,
     onDismiss: () -> Unit,
+    /** Ohne Kamera die Nummer eintippen; ohne eigenen Weg zurück zum Aufrufer, wo das Feld steht. */
+    onEintippen: () -> Unit = onDismiss,
     /** Nur die Überlagerung ohne Kamerabild — für Bildschirmfotos, wo es keine Kamera gibt. */
     ohneKamera: Boolean = false,
 ) {
@@ -155,7 +157,9 @@ fun BarcodeScannerScreen(
                 }
             }
             else -> {
-                KameraErlaubnisHinweis(cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
+                KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_barcode),
+                    stringResource(R.string.scanner_nummer_eintippen), onEintippen,
+                    cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
             }
         }
         // Oben links wie jedes Schliessen einer Vollbildseite (ZurueckKnopf).

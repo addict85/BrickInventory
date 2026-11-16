@@ -1,0 +1,21 @@
+Gegenprobe: Widget wieder ohne Beschreibung und Vorschau
+Modul: app
+Test: ch.brickinventoryapp.app.WidgetVorschauTest
+Rot: das Widget traegt Beschreibung
+
+diff --git a/Android-App/app/src/main/res/xml-v31/sammlungs_widget.xml b/Android-App/app/src/main/res/xml-v31/sammlungs_widget.xml
+index 6e867df..b860995 100644
+--- a/Android-App/app/src/main/res/xml-v31/sammlungs_widget.xml
++++ b/Android-App/app/src/main/res/xml-v31/sammlungs_widget.xml
+@@ -1,11 +1,9 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <!-- Ab Android 12 mit Beschreibung und Vorschau in der Widget-Auswahl; sonst wie xml/sammlungs_widget.xml. -->
+ <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:description="@string/widget_beschreibung"
+     android:initialLayout="@layout/glance_default_loading_layout"
+     android:minWidth="180dp"
+     android:minHeight="110dp"
+-    android:previewLayout="@layout/widget_vorschau"
+     android:resizeMode="horizontal|vertical"
+     android:updatePeriodMillis="0"
+     android:widgetCategory="home_screen" />

@@ -1,0 +1,18 @@
+Gegenprobe: Der Hinweis nennt wieder „Leer =“ statt der Wahl
+Modul: app
+Test: ch.brickinventoryapp.app.VorgabeZustandBegriffeTest
+Rot: der Hinweis nennt die Wahl
+
+diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+index c0b6003..642ddbd 100644
+--- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
++++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+@@ -8,7 +8,7 @@
+     <string name="settings_price_condition">Preiszustand</string>
+     <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>
+     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
+-    <string name="settings_default_condition_hint">Damit beginnt ein neu hinzugefügtes Set. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
++    <string name="settings_default_condition_hint">Vorbelegung beim Hinzufügen. Leer = Vorgabe für alle Konten.</string>
+     <string name="settings_default_condition_global">Allgemein</string>
+     <string name="monitoring_default_condition">Zustand beim Hinzufügen für alle Konten</string>
+     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>

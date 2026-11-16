@@ -10,6 +10,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
+import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Meldung
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
@@ -44,6 +50,7 @@ import org.robolectric.annotation.Config
  *   kaufkachel-letzter-kauf     die Kaufpreis-Kachel zeigt maxPurchasePrice → rot „die Kaufpreis-Kachel …“
  *   marktpreis-doppelt          die Preiskarte zeigt den Marktpreis noch einmal → rot „der Marktpreis …“
  *   mengenregler-ohne-kopplung  `remember(set.setNumber)` ohne set.quantity → rot „der Mengenregler …“
+ *   verlauf-fehler-ohne-klasse  FehlerHinweis des Preisverlaufs ohne verlaufAbruf.art → rot „scheitert der Preisverlauf …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1000dp-h900dp-land")
@@ -124,5 +131,27 @@ class SetDetailAnzeigeTest {
         compose.waitForIdle()
         assertEquals(1, anzahl("3"))
         assertEquals(0, anzahl("4"))
+    }
+
+    @Test
+    fun `scheitert der Preisverlauf, steht der Rat seiner Fehlerklasse`() {
+        val bilder = ImageLoader.Builder(ctx).build()
+        val ohneNetz = SetDetailZustand(AppUiState(currency = Waehrung.CHF),
+            SetDetailUiState(setDetail = falke, setPrice = preis,
+                verlaufAbruf = Laden.Fehler(Fehlerklasse.OFFLINE, Meldung.Text("Zeitüberschreitung"))), LagerUiState())
+        compose.setContent {
+            BrickInventoryManagerTheme(theme = Design.CLASSIC) {
+                SetDetailScreen(setNumber = "75192-1", zustand = ohneNetz, aktionen = Aktionen(),
+                    serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
+            }
+        }
+        compose.waitForIdle()
+        val rat = ctx.getString(R.string.fehler_offline_text)
+        // Die Preiskarte liegt unten in der Liste; welcher Rollbereich sie trägt, hängt an der Breite.
+        val bereiche = compose.onAllNodes(hasScrollToNodeAction())
+        for (i in bereiche.fetchSemanticsNodes().indices) {
+            try { bereiche[i].performScrollToNode(hasText(rat)); break } catch (_: AssertionError) { continue }
+        }
+        assertEquals("Ohne Klasse stand nur „Laden fehlgeschlagen“", 1, anzahl(rat))
     }
 }

@@ -243,6 +243,11 @@ class ErfassungViewModel @Inject constructor(
         result = null, setName = null, imageUrl = null, imageLocal = null, year = null,
         pieces = null, theme = null, minifigs = null, hinzufuegen = Vorgang.Fertig, unsicher = false, besitzMenge = 0)
 
+    /** Die Eingabe öffnen, ohne dass ein Scan voranging (Kamera nicht erlaubt). */
+    fun manuellErfassen(herkunft: Scannerherkunft) {
+        _barcodeState.update { it.copy(source = herkunft, manuelleErfassungAnfordern = true) }
+    }
+
     fun manuelleErfassungQuittieren() {
         _barcodeState.update { it.copy(manuelleErfassungAnfordern = false) }
     }

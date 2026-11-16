@@ -1,0 +1,18 @@
+Gegenprobe: Das Löschsymbol der Brickset-Warteschlange löscht wieder sofort
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.HintergrundKnoepfeTest
+Rot: Loeschen eines Brickset-Eintrags fragt erst nach
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringSections.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringSections.kt
+index 2014dcf..a0f9cf7 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringSections.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringSections.kt
+@@ -124,7 +124,7 @@ private fun BricksetAktionen(
+         }
+         MitTooltip(loeschen) {
+             FilledTonalIconButton(
+-                onClick = { loeschenFragen = true },
++                onClick = { onDelete(entry.setNumber) },
+                 colors = IconButtonDefaults.filledTonalIconButtonColors(
+                     containerColor = MaterialTheme.colorScheme.errorContainer
+                 )

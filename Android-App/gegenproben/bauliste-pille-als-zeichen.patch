@@ -1,0 +1,18 @@
+Gegenprobe: „Vorhanden“ wieder als „8/12“
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.BaulisteLegendeTest
+Rot: ueber der Liste steht die Legende
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
+index 61f82de..d949f0a 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
+@@ -164,7 +164,7 @@ private fun MengenPillen(part: PlPart) {
+             val reicht = habe >= part.quantity
+             Pille(
+                 if (reicht) stringResource(R.string.partslist_vorhanden, fmtInt(habe))
+-                else stringResource(R.string.partslist_vorhanden_von, fmtInt(habe), fmtInt(part.quantity)),
++                else "${fmtInt(habe)}/${fmtInt(part.quantity)}",
+                 if (reicht) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                 if (reicht) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+             )

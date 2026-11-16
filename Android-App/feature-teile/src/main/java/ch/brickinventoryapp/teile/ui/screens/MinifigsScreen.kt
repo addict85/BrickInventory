@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.teile.ui.FigurenUiState
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
@@ -162,7 +164,7 @@ internal fun MinifigsScreen(
                 OutlinedButton(onClick = {
                     search = ""; aktionen.setMinifigsQuery("")
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
-                }) { Text(stringResource(R.string.search_clear_all)) }
+                }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.search_clear_all)) }
             }
             Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(

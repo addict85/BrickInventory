@@ -215,7 +215,10 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                 }
             }
             else -> {
-                KameraErlaubnisHinweis(cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
+                // Eintippen heisst zurück zur Einrichtung: Dort steht das Adressfeld.
+                KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_qr),
+                    stringResource(R.string.scanner_adresse_eintippen), onDismiss,
+                    cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
             }
         }
         MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
