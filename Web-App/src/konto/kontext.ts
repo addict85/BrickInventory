@@ -42,49 +42,51 @@ const FREMDES_KONTO = 'Verwaltung oder Passwort vergessen: ändert ein Konto, da
 const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
 const UEBERNAHME = 'Verwalterübernahme: Verwalter und Ziel sind verschiedene Konten';
 const ZUGANG = 'Passwort, Rechte, Adresse und Sitzungsversion schreibt nur die Systemrolle (0117)';
+const ADRESSE = 'Adressen und Links liest nur die Systemrolle (0121)';
+const ALLE_NAMEN = 'Fremde Konten: Die Laufzeitrolle sieht nur das eigene und den Haushalt (0121)';
 
 /** Der Einrichtungsstand der Startseite: Konten überhaupt, und ob das Startpasswort noch gilt. */
 const einrichtungszugang = (db: Db) => ({
-  einrichtung: { kontenStand: mit(db)(einrichtung.kontenStand) },
+  einrichtung: { kontenStand: imSystem(db, ALLE_NAMEN, einrichtung.kontenStand) },
 });
 
 /** Konten und Protokoll. */
 const kontenzugang = (db: Db) => ({
   konten: {
-    kontoKurz: mit(db)(konten.kontoKurz),
-    kontoZumNamen: mit(db)(konten.kontoZumNamen),
-    kontoVoll: mit(db)(konten.kontoVoll),
-    profilZeile: mit(db)(konten.profilZeile),
-    nameVergeben: mit(db)(konten.nameVergeben),
+    kontoKurz: imSystem(db, ALLE_NAMEN, konten.kontoKurz),
+    kontoZumNamen: imSystem(db, OHNE_KONTO, konten.kontoZumNamen),
+    kontoVoll: imSystem(db, ADRESSE, konten.kontoVoll),
+    profilZeile: imSystem(db, ADRESSE, konten.profilZeile),
+    nameVergeben: imSystem(db, ADRESSE, konten.nameVergeben),
     aendereNamen: mit(db)(konten.aendereNamen),
     aendereBenutzernamen: imSystem(db, ZUGANG, konten.aendereBenutzernamen),
     verwirfAusstehendeAdresse: imSystem(db, ZUGANG, konten.verwirfAusstehendeAdresse),
     merkeEmailNeu: imSystem(db, ZUGANG, konten.merkeEmailNeu),
-    kontoZuEmailToken: mit(db)(konten.kontoZuEmailToken),
+    kontoZuEmailToken: imSystem(db, ADRESSE, konten.kontoZuEmailToken),
     uebernimmEmailNeu: imSystem(db, ZUGANG, konten.uebernimmEmailNeu),
     verwirfEmailNeu: imSystem(db, ZUGANG, konten.verwirfEmailNeu),
-    nameZuEmailToken: mit(db)(konten.nameZuEmailToken),
-    offeneRegistrierungen: mit(db)(konten.offeneRegistrierungen),
+    nameZuEmailToken: imSystem(db, ADRESSE, konten.nameZuEmailToken),
+    offeneRegistrierungen: imSystem(db, ADRESSE, konten.offeneRegistrierungen),
     schalteRegistrierungFrei: imSystem(db, ZUGANG, konten.schalteRegistrierungFrei),
-    ausstehendOhneLink: mit(db)(konten.ausstehendOhneLink),
+    ausstehendOhneLink: imSystem(db, ADRESSE, konten.ausstehendOhneLink),
     alleKonten: imSystem(db, 'Verwaltung: liest alle Konten', konten.alleKonten),
-    alleAdressen: mit(db)(konten.alleAdressen),
-    aktiveVerwalter: mit(db)(konten.aktiveVerwalter),
+    alleAdressen: imSystem(db, ADRESSE, konten.alleAdressen),
+    aktiveVerwalter: imSystem(db, ADRESSE, konten.aktiveVerwalter),
     fuegeKontoEin: imSystem(db, ZUGANG, konten.fuegeKontoEin),
     setzeVerwalter: imSystem(db, ZUGANG, konten.setzeVerwalter),
     schreibeAktiv: imSystem(db, ZUGANG, konten.schreibeAktiv),
     setzePasswortHash: imSystem(db, ZUGANG, konten.setzePasswortHash),
     setzeEigenesPasswort: imSystem(db, ZUGANG, konten.setzeEigenesPasswort),
-    kontoExistiert: mit(db)(konten.kontoExistiert),
+    kontoExistiert: imSystem(db, ALLE_NAMEN, konten.kontoExistiert),
     loescheKonto: imSystem(db, ZUGANG, konten.loescheKonto),
     loescheEigenesKonto: imSystem(db, ZUGANG, konten.loescheEigenesKonto),
     loescheOffeneRegistrierungen: imSystem(db, ZUGANG, konten.loescheOffeneRegistrierungen),
-    kontoMitEmail: mit(db)(konten.kontoMitEmail),
+    kontoMitEmail: imSystem(db, ADRESSE, konten.kontoMitEmail),
     registriereKonto: imSystem(db, ZUGANG, konten.registriereKonto),
-    aktivesKontoNachEmail: mit(db)(konten.aktivesKontoNachEmail),
+    aktivesKontoNachEmail: imSystem(db, ADRESSE, konten.aktivesKontoNachEmail),
     setzeRuecksetzTokenWennFrei: imSystem(db, ZUGANG, konten.setzeRuecksetzTokenWennFrei),
     erneuereEmailTokenWennFrei: imSystem(db, ZUGANG, konten.erneuereEmailTokenWennFrei),
-    kontoNachRuecksetzToken: mit(db)(konten.kontoNachRuecksetzToken),
+    kontoNachRuecksetzToken: imSystem(db, ADRESSE, konten.kontoNachRuecksetzToken),
     setzePasswortNachRuecksetzen: imSystem(db, ZUGANG, konten.setzePasswortNachRuecksetzen),
     zugaengeDesKontos: mit(db)(konten.zugaengeDesKontos),
     tokenStand: imSystem(db, 'Token-Prüfung: sucht über den Hash, ohne Konto', konten.tokenStand),
@@ -94,8 +96,8 @@ const kontenzugang = (db: Db) => ({
     mussPasswortAendern: mit(db)(konten.mussPasswortAendern),
   },
   protokoll: {
-    protokolliere: mit(db)(protokoll.protokolliere),
-    letzteEintraege: mit(db)(protokoll.letzteEintraege),
+    protokolliere: imSystem(db, ALLE_NAMEN, protokoll.protokolliere),
+    letzteEintraege: imSystem(db, ALLE_NAMEN, protokoll.letzteEintraege),
     raeumeProtokollAuf: imSystem(db, ALLE_KONTEN, protokoll.raeumeProtokollAuf),
   },
 });
@@ -124,8 +126,8 @@ const sitzungszugang = (db: Db) => ({
     brichUebernahmenAb: imSystem(db, UEBERNAHME, uebernahmen.brichUebernahmenAb),
   },
   startVerwalter: {
-    kontenVorhanden: mit(db)(startVerwalter.kontenVorhanden),
-    startpasswortOffen: mit(db)(startVerwalter.startpasswortOffen),
+    kontenVorhanden: imSystem(db, ALLE_NAMEN, startVerwalter.kontenVorhanden),
+    startpasswortOffen: imSystem(db, ALLE_NAMEN, startVerwalter.startpasswortOffen),
     legeVerwalterAn: imSystem(db, ZUGANG, startVerwalter.legeVerwalterAn),
   },
   zugaenge: {
@@ -150,7 +152,7 @@ const sitzungszugang = (db: Db) => ({
     kappeSitzungen: imSystem(db, NUR_SYSTEMROLLE, zugaenge.kappeSitzungen),
     kappeTokens: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', zugaenge.kappeTokens),
     loescheSitzungenDesKontos: imSystem(db, NUR_SYSTEMROLLE, zugaenge.loescheSitzungenDesKontos),
-    sitzungsVersion: mit(db)(zugaenge.sitzungsVersion),
+    sitzungsVersion: imSystem(db, OHNE_KONTO, zugaenge.sitzungsVersion),
     zaehleSitzungsVersionHoch: imSystem(db, ZUGANG, zugaenge.zaehleSitzungsVersionHoch),
     ziehAltzeilenNach: imSystem(db, ALLE_KONTEN, zugaenge.ziehAltzeilenNach),
     loescheAbgelaufene: imSystem(db, ALLE_KONTEN, zugaenge.loescheAbgelaufene),

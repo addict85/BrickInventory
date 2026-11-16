@@ -300,14 +300,22 @@ BEGIN
   END LOOP;
 
   -- Passwort-Hashes und Sitzungen liest nur die Systemrolle (Anmeldung, Sitzungsspeicher);
-  -- eine eingeschleuste Abfrage der Laufzeitrolle kommt an beides nicht (Migration 0115).
-  -- Kopien vor Migrationen ohne Policy: sichtbar nur für Systemrolle und Eigentümerin.
+  -- eine eingeschleuste Abfrage der Laufzeitrolle kommt an beides nicht (Migration 0115),
+  -- ebenso wenig an Adressen und Links (0121). Kopien vor Migrationen ohne Policy: sichtbar
+  -- nur für Systemrolle und Eigentümerin.
   IF pg_catalog.to_regclass('public.users') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE SELECT ON public.users FROM %I', rolle);
+    EXECUTE (SELECT pg_catalog.format('REVOKE SELECT (%s) ON public.users FROM %I',
+                    pg_catalog.string_agg(pg_catalog.quote_ident(a.attname::text), ', ' ORDER BY a.attnum), rolle)
+               FROM pg_catalog.pg_attribute a WHERE a.attrelid = 'public.users'::pg_catalog.regclass
+                AND a.attnum > 0 AND NOT a.attisdropped);
     EXECUTE (SELECT pg_catalog.format('GRANT SELECT (%s) ON public.users TO %I',
                     pg_catalog.string_agg(pg_catalog.quote_ident(a.attname::text), ', ' ORDER BY a.attnum), rolle)
                FROM pg_catalog.pg_attribute a WHERE a.attrelid = 'public.users'::pg_catalog.regclass
-                AND a.attnum > 0 AND NOT a.attisdropped AND a.attname OPERATOR(pg_catalog.<>) 'password_hash');
+                AND a.attnum > 0 AND NOT a.attisdropped
+                AND NOT a.attname::text OPERATOR(pg_catalog.=) ANY (ARRAY['password_hash', 'email',
+                  'verification_token', 'token_expires', 'reset_token', 'reset_token_expires',
+                  'email_neu', 'email_neu_token', 'email_neu_bis']));
   END IF;
   IF pg_catalog.to_regclass('public.user_sessions') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE ALL ON public.user_sessions FROM %I', rolle);
