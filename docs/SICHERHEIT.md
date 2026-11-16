@@ -583,7 +583,9 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   Hintergrundarbeit (Ausgang, Preisalarm, Widget-Abruf) nicht auf. Die Daten
   schützen der Keystore (Token und Ablagen nur bei entsperrtem Gerät) und der
   Schrittschutz am Server; das Widget verdeckt Beträge, solange die Sperre
-  greifen kann.
+  greifen kann. Ist sie eingeschaltet, zeigt die App-Übersicht kein Vorschaubild
+  (ab Android 13 `setRecentsScreenshotEnabled(false)`, darunter FLAG_SECURE),
+  unabhängig von „Vorschau verbergen“.
 - **Release-Signatur** (N5): Der Signierschlüssel liegt als Base64-Secret in der
   GitHub-Environment `release` (`.github/workflows/android-signieren.yml`); dass
   der Inhaber seine eigene Freigabe erteilen darf (`prevent_self_review` aus),
