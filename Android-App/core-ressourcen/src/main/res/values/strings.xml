@@ -365,7 +365,6 @@
     <string name="minifigs_ordnung_nummer">By number</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Background jobs</string>
     <string name="monitoring_refresh">Refresh</string>
     <string name="monitoring_retry_error">Error on retry</string>
     <string name="monitoring_delete_error">Error deleting</string>

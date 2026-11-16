@@ -13,7 +13,7 @@ index b6f8df7..4d16e87 100644
              item {
 -                Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
 +                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-+                    Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
++                    Text(stringResource(R.string.nav_monitoring), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                      if (monState.aktualisiert) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                      else MitTooltip(stringResource(R.string.monitoring_refresh)) {
                          IconButton(onClick = aktionen::aktualisiere) {
