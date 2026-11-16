@@ -249,7 +249,7 @@ class AnmeldungViewModelTest {
         pfade.vorrang = { _, pfad ->
             if (erster && pfad == "/api/v1/auth/qr-login") {
                 erster = false
-                frage.melde(ZertifikatUngeklaert("brick.example.org:443", fp, ZertifikatUngeklaert.Art.ERSTKONTAKT))
+                frage.melde(ZertifikatUngeklaert("brick.example.org:443", fp, ZertifikatUngeklaert.Art.ERSTKONTAKT, ctErzwungen = true))
                 503 to """{"success":false}"""
             } else null
         }

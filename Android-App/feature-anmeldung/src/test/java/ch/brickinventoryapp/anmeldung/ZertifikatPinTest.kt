@@ -134,6 +134,11 @@ import javax.net.ssl.SSLEngine
  *      gegenproben/schluessel-neu-ein-tipp.patch
  *   AG pruefeBlatt() reicht ctErzwungen nicht weiter → rot „mit CT-Pflicht genuegt …“;
  *      gegenproben/schluessel-neu-ohne-ct-wissen.patch
+ * Gegenproben zum Erstkontakt ohne CT-Pflicht (Tiefprüfung A-S-5; kotlinc, JUnit lokal):
+ *   AH abschriftNoetig für ERSTKONTAKT wieder `false` → rot „ohne CT-Pflicht genuegt beim
+ *      Erstkontakt kein Tipp …“; gegenproben/erstkontakt-ein-tipp-ohne-ct.patch
+ *   AI pruefe() meldet den Erstkontakt ohne ctErzwungen → rot „beim Erstkontakt mit
+ *      CT-Pflicht genuegt der Vergleich“; gegenproben/erstkontakt-ohne-ct-wissen.patch
  */
 class ZertifikatPinTest {
 
@@ -201,7 +206,7 @@ class ZertifikatPinTest {
         assertEquals("Angeboten wird die Wurzel, der das System vertraut", spkiFingerabdruck(zert(ROOT)), f.fingerabdruck)
         assertEquals(eigener(), f.schluessel)
 
-        frage.bestaetige(pins)
+        frage.bestaetige(pins, abgeschrieben())
         assertNull(frage.offen.value)
         assertTrue("Nach der Bestätigung gilt der Pin", hole(system(ROOT)))
     }
@@ -291,7 +296,7 @@ class ZertifikatPinTest {
         val f = frage.offen.value!!
         assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, f.art)
         assertEquals(OEFF_WURZEL_HEX, fingerabdruckLesbar(f.fingerabdruck))
-        assertTrue(frage.bestaetige(pins))
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
         assertTrue(hole(system(OEFF_WURZEL)))
 
         val pin = pins.pin(eigener())!!
@@ -344,11 +349,29 @@ class ZertifikatPinTest {
     }
 
     @Test
-    fun `beim Erstkontakt mit gueltiger Kette genuegt der Vergleich`() {
+    fun `beim Erstkontakt mit CT-Pflicht genuegt der Vergleich`() {
+        starte()
+        assertFalse(hole(system(ROOT), ct = true))
+        assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
+        assertFalse(frage.offen.value!!.abschriftNoetig)
+        assertTrue("Die Kette hat das System samt CT geprüft", frage.bestaetige(pins))
+    }
+
+    /** Android 11–15: Ohne CT ginge eine fehlausgestellte Kette irgendeiner öffentlichen CA mit einem Tipp durch. */
+    @Test
+    fun `ohne CT-Pflicht genuegt beim Erstkontakt kein Tipp, der Fingerabdruck wird abgeschrieben`() {
         starte()
         assertFalse(hole(system(ROOT)))
-        assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
-        assertTrue("Die Kette hat das System geprüft", frage.bestaetige(pins))
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, f.art)
+        assertTrue(f.abschriftNoetig)
+        assertFalse("Ein Tipp genügt nicht", frage.bestaetige(pins))
+        assertFalse("Falsch abgetippt", frage.bestaetige(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
+        assertNull("Nichts gemerkt", pins.pin(eigener()))
+        assertFalse(hole(system(ROOT)))
+        assertEquals(0, server.requestCount)
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
+        assertTrue(hole(system(ROOT)))
     }
 
     /** Den Vergleichswert hat openssl gerechnet, unabhängig von der App. */
@@ -412,7 +435,7 @@ class ZertifikatPinTest {
         starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
         assertFalse(hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
         assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
-        assertTrue(frage.bestaetige(pins))
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
 
         val pin = pins.pin(eigener())!!
         server.shutdown()
@@ -449,7 +472,7 @@ class ZertifikatPinTest {
         val beide = system(FAM_X1, FAM_X2, OEFF_WURZEL)
         assertFalse(hole(beide))
         assertEquals(spkiFingerabdruck(zert(FAM_X1)), frage.offen.value!!.fingerabdruck)
-        assertTrue(frage.bestaetige(pins))
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
         assertTrue(hole(beide))
 
         val pin = pins.pin(eigener())!!
@@ -682,7 +705,7 @@ class ZertifikatPinTest {
     fun `ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach`() {
         starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
         assertFalse(hole(system(OEFF_WURZEL)))
-        assertTrue(frage.bestaetige(pins))
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
         assertEquals("Mit dem Ja zur Wurzel ist auch das Blatt gemerkt",
             spkiFingerabdruck(zert(OEFF_BLATT_A)), pins.pin(blattPinSchluessel(eigener())))
         assertTrue(hole(system(OEFF_WURZEL)))
@@ -764,12 +787,12 @@ class ZertifikatPinTest {
     @Test
     fun `beim Erstkontakt darf man abtippen, falsch Abgetipptes gilt nicht`() {
         starte()
-        assertFalse(hole(system(ROOT)))
+        assertFalse(hole(system(ROOT), ct = true))
         assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
         assertFalse("Falsch abgetippt", frage.bestaetige(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
         assertNull(pins.pin(eigener()))
         assertTrue("Richtig abgetippt", frage.bestaetige(pins, abgeschrieben()))
-        assertTrue(hole(system(ROOT)))
+        assertTrue(hole(system(ROOT), ct = true))
     }
 
     private companion object {

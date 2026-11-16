@@ -594,9 +594,10 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   Menschen stärken lässt, steht im nächsten Abschnitt; umgesetzt ist davon nichts,
   der Inhaber entscheidet. Das Restrisiko steht unten („Update der Android-App per
   Sideload“).
-- **Neuer Serverschlüssel unter öffentlicher CA** (Prüfung 476e4a4, M1): Auf
-  Android 11–15 nur mit abgetipptem Fingerabdruck aus dem Browser am Rechner,
-  ab Android 16 (CT im System) mit einem bewussten Tipp. Caddy behält seinen
+- **Erstkontakt und neuer Serverschlüssel unter öffentlicher CA** (Prüfung
+  476e4a4, M1; Tiefprüfung A-S-5): Auf Android 11–15 nur mit abgetipptem
+  Fingerabdruck aus dem Browser am Rechner, ab Android 16 (CT im System) mit
+  einem bewussten Tipp. Caddy behält seinen
   Schlüssel beim Erneuern (`reuse_private_keys`, UPGRADE.md Abschnitt 62), damit
   die Frage selten und auffällig bleibt.
 - **Daten auf dem Gerät** (N1, N3): Adresse, Benutzername, Herkunft des Tokens,
