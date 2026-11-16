@@ -111,10 +111,19 @@
             android:value="barcode" />
 
         <!--
-          Kein Backend für Googles datatransport: Das Release enthält die Bibliothek nicht, ein
-          Eintrag hier wäre eine Komponente ohne Klasse (Lint MissingClass). Dass das APK keinen
-          Telemetrie-Weg hat, prüft tools/manifest-pruefen.py am fertigen APK.
+          ML Kit meldet Nutzungsdaten über Googles datatransport (Backend „cct“). Ohne den Eintrag
+          findet datatransport kein Backend und verwirft sie; Scan und Erkennung laufen weiter.
+          Lint sieht die Klasse auf seinem Klassenpfad nicht (MissingClass), im APK steckt sie
+          aber; tools/manifest-pruefen.py prüft am fertigen APK, dass kein Backend übrig ist.
         -->
+        <service
+            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+            tools:ignore="MissingClass"
+            tools:node="merge">
+            <meta-data
+                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+                tools:node="remove" />
+        </service>
 
         <service
             android:name=".dienste.service.CsvImportService"
