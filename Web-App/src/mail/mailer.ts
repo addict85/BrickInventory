@@ -295,7 +295,8 @@ export type KontoHinweis =
   | 'zugaenge_beendet'
   | 'uebernahme_angekuendigt'
   | 'verwaltung_uebernahme_angekuendigt'
-  | 'verwaltung_uebernahme_abgebrochen';
+  | 'verwaltung_uebernahme_abgebrochen'
+  | 'alte_codes_ablauf';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -363,6 +364,9 @@ function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string 
     verwaltung_uebernahme_abgebrochen: en
       ? `“${o.konto ?? ''}” signed in; the announced change (${u.was}) is dropped.`
       : `„${o.konto ?? ''}“ hat sich angemeldet; die angekündigte Änderung (${u.was}) entfällt.`,
+    alte_codes_ablauf: en
+      ? `you signed in with a recovery code from before 1 November 2026. Codes of that kind are only accepted until ${u.bis}. Create new recovery codes under Menu → Account → Two-factor authentication.`
+      : `du hast dich mit einem Wiederherstellungscode von vor dem 01.11.2026 angemeldet. Codes dieser Art gelten nur noch bis ${u.bis}. Erzeuge unter Menü → Konto → Zweiter Faktor neue Wiederherstellungscodes.`,
     passkey_neu: en
       ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
       : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,

@@ -1364,6 +1364,7 @@ window.I18N_EN = {
   'zf.enabled': 'Two-factor authentication set up',
   'zf.active': 'Set up · {n} recovery codes left',
   'zf.active_one': 'Set up · {n} recovery code left',
+  'zf.alte_codes': 'Codes from before 1 Nov 2026 are only accepted until {bis}. Create new recovery codes to be safe.',
   'zf.codes_title': 'Your recovery codes',
   'zf.codes_hint': 'Each works once if your phone is missing. Store them safely now — they will not be shown again.',
   'zf.codes_done': 'I have saved the codes',

@@ -1388,6 +1388,8 @@ window.I18N_DE = {
   'zf.enabled': 'Zweiter Faktor eingerichtet',
   'zf.active': 'Eingerichtet · {n} Wiederherstellungs\u00ADcodes übrig',
   'zf.active_one': 'Eingerichtet · {n} Wiederherstellungs\u00ADcode übrig',
+  'zf.alte_codes':
+    'Codes von vor dem 01.11.2026 gelten nur noch bis {bis}. Erzeuge vorsorglich neue Wiederherstellungscodes.',
   'zf.codes_title': 'Deine Wiederherstellungscodes',
   'zf.codes_hint':
     'Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.',

@@ -142,6 +142,8 @@ export const ZweiterFaktorStand = z.looseObject({
   success: z.boolean(),
   aktiv: z.boolean(),
   codes_uebrig: z.number().int(),
+  /** Offene Codes könnten alter Art sein (vor dem 01.11.2026) und gelten dann nur bis dahin. */
+  alte_codes_bis: zeit.nullable().optional(),
   error: z.string().nullable().optional(),
 });
 

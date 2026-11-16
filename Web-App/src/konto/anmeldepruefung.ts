@@ -24,6 +24,7 @@ import { tokenAbdruck } from './geraeteToken';
 import { zugangsTransaktion } from './zugangsende';
 import { anmeldenameGueltig } from './namensRegeln';
 import type { KontoKontext } from './kontext';
+import { imSystemkontext } from '../infra/kontoKontext';
 
 const TAG_MS = 86_400_000;
 
@@ -184,6 +185,11 @@ export async function pruefeAnmeldedaten(
       if (erreicht) hinweisNebenher(k, user.id, 'zweiter_faktor_gesperrt');
       const grund = nurNotweg || erreicht ? 'zweiter_faktor_gesperrt' : 'zweiter_faktor_falsch';
       return ergaenzt(absage('nicht_angemeldet', grund, undefined, false, true));
+    }
+    if (gilt === 'wiederherstellung_alt') {
+      // Vor der Anmeldung trägt die Anfrage noch kein Konto für den Zeilenschutz.
+      const bis = (await imSystemkontext('anmeldung: alte Codes', () => k.faktoren.stand(user.id))).alte_codes_bis;
+      if (bis) hinweisNebenher(k, user.id, 'alte_codes_ablauf', undefined, { bis });
     }
   }
   // Erst jetzt, nach Passwort und zweitem Faktor: Den Klartext gibt es nur bei einer Anmeldung.
