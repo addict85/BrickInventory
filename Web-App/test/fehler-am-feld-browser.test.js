@@ -57,7 +57,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
       { markiert: z.markiert, beschrieben: z.beschrieben, toasts: z.toasts },
       { markiert: true, beschrieben: true, toasts: [] },
     );
-    assert.match(z.meldung, /Gutscheinnummer/);
+    assert.match(z.meldung, /Bitte ausfüllen/);
   });
 
   await t.test('Passwort: ungleich am Feld', async () => {
