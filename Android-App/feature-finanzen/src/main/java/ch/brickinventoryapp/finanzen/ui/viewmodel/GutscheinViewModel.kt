@@ -421,6 +421,11 @@ class GutscheinViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Ohne „Rückgängig“, anders als Sets oder Lagerorte: Der Server verlangt dafür Passwort
+     * oder Code und kennt für Gutscheine keinen Papierkorb. Ein vorgemerktes Löschen hielte
+     * das Passwort bis zum Ende der Snackbar im Speicher; die Rückfrage ist hier der Schutz.
+     */
     fun loescheGutschein(id: Int) = verlange(GutscheinSchritt.LOESCHEN, id)
 
     /** Kopiert hat die Oberfläche (die Zwischenablage hängt an der Komposition). */

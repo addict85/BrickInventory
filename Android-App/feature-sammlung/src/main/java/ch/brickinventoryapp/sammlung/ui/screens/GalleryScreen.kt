@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +63,9 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
+import ch.brickinventoryapp.gemeinsam.ui.AktiverFilter
+import ch.brickinventoryapp.gemeinsam.ui.kontoFilter
+import ch.brickinventoryapp.gemeinsam.ui.lagerFilter
 import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
 
@@ -255,6 +259,11 @@ private fun GalerieSuche(
         onFilter = onFilter,
         onScannen = onScanBarcode,
         erfassen = erfassen,
+        aktive = listOfNotNull(
+            kontoFilter(zustand.blick.householdMembers, zustand.kontoWahl()) { ereignisse.konto(ScopeFilter.ALL) },
+            lagerFilter(zustand.lager.orte, zustand.lagerWahl()) { ereignisse.lagerort("") },
+            galerie.galleryTheme.takeIf { it.isNotBlank() }?.let { AktiverFilter(it) { ereignisse.thema("") } },
+        ),
         sortierung = {
             SortierMenue(
                 optionen = Setsortierung.entries.map { it to it.beschriftung() },
@@ -337,8 +346,16 @@ private fun GalerieRaster(
     val galerie = zustand.galerie
     val stats = galerie.stats
     val gewaehlt = LocalOffenesDetail.current
+    val spalten = LesbareSpalten(160.dp)
+    // Listenzeilen, sobald nur eine Spalte Platz hat oder die Schrift gross ist: Bei 130 %
+    // stand sonst eine Kachel über die ganze Breite, das Bild nahm zwei Drittel der Höhe
+    // und ein Set füllte den Bildschirm.
+    BoxWithConstraints {
+    val dichte = LocalDensity.current
+    val einspaltig = with(spalten) { dichte.anzahl(maxWidth - Abstaende.mittel * 2, Abstaende.klein) } <= 1
+    val zeile = grosseSchrift() || einspaltig
     LazyVerticalGrid(
-        columns = LesbareSpalten(160.dp),
+        columns = spalten,
         state = gridState,
         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
             bottom = FabPlatz),
@@ -354,9 +371,10 @@ private fun GalerieRaster(
             Bewegt {
                 SetCard(set, zustand.app.serverUrl, imageLoader, onSetClick, index,
                     preis = zustand.preise[set.setNumber], waehrung = zustand.app.currency,
-                    ausgewaehlt = set.setNumber == gewaehlt)
+                    ausgewaehlt = set.setNumber == gewaehlt, zeile = zeile)
             }
         }
+    }
     }
 }
 

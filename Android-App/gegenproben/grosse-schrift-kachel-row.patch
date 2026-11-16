@@ -15,7 +15,7 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
          GuvPlakette(pct)
      }) else null
      val menge: (@Composable () -> Unit)? = if (set.quantity > 1) ({
-@@ -317,7 +317,7 @@
+@@ -321,7 +321,7 @@
          maxLines = 1, overflow = TextOverflow.Ellipsis)
      // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
      // den Betrag, statt Zeichen für Zeichen umzubrechen.
@@ -24,8 +24,8 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
          if (zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
              color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
              modifier = Modifier.align(Alignment.CenterVertically))
-@@ -325,6 +325,7 @@
-             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+@@ -329,6 +329,7 @@
+             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface,
              maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
              modifier = Modifier.align(Alignment.CenterVertically))
 +        preis?.pnlPct?.let { Text(fmtProzent(it), style = MaterialTheme.typography.labelSmall) }

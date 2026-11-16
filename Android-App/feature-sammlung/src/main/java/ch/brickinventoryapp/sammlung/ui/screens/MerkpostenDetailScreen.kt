@@ -93,8 +93,8 @@ internal fun MerkpostenDetailScreen(
         if (merkposten == null && !liste.abruf.laedt && liste.merkposten.isNotEmpty()) onBack()
     }
 
-    fun preis(v: Geld?) = if (v == null) "—"
-        else fmtMoney(v, appState.currency)
+    val keinPreis = stringResource(R.string.detail_price_none_yet)
+    fun preis(v: Geld?) = if (v == null) keinPreis else fmtMoney(v, appState.currency)
 
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },

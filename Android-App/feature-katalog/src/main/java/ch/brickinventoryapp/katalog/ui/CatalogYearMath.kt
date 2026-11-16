@@ -64,4 +64,14 @@ internal object CatalogYearMath {
         }
         return verteilung.last().year
     }
+
+    /** Die erste laufende Nummer eines Jahrgangs; null, wenn die Verteilung ihn nicht kennt. */
+    fun nummerVonJahr(jahr: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
+        var nummer = 0
+        for (eintrag in verteilung) {
+            if (eintrag.year == jahr) return nummer
+            nummer += eintrag.n
+        }
+        return null
+    }
 }

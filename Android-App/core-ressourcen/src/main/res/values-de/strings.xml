@@ -116,8 +116,8 @@
     <!-- ══════════════ Gallery screen ══════════════ -->
     <string name="gallery_search_placeholder">Suchen…</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
-    <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel. Kommen keine Angaben dazu, fehlt dem Server vielleicht noch der kostenlose Rebrickable-Schlüssel: Trage ihn in der Web-App ein.</string>
-    <string name="gallery_add_first">Erstes Set erfassen</string>
+    <string name="gallery_empty_hint">Füge dein erstes Set über die Setnummer hinzu oder scanne den Barcode auf der Schachtel. Kommen keine Angaben dazu, fehlt dem Server vielleicht noch der kostenlose Rebrickable-Schlüssel: Trage ihn in der Web-App ein.</string>
+    <string name="gallery_add_first">Erstes Set hinzufügen</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">je Stück</string>
@@ -152,7 +152,7 @@
     <string name="minifigs_none">Keine Minifiguren</string>
     <string name="minifigs_no_results">Keine Treffer</string>
     <string name="minifigs_add">Minifigur hinzufügen</string>
-    <string name="minifigs_add_title">Minifigur erfassen</string>
+    <string name="minifigs_add_title">Minifigur hinzufügen</string>
     <string name="minifigs_fig_number">Minifigur-Nummer</string>
     <string name="minifigs_fig_number_placeholder">z. B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
@@ -240,6 +240,7 @@
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Zurücksetzen</string>
+    <string name="filter_entfernen">Filter entfernen: %1$s</string>
     <string name="sort_menu_cd">Sortieren: %1$s</string>
     <string name="filter_section_sort">Sortierung</string>
     <string name="filter_section_spare">Ersatzteile</string>
@@ -327,7 +328,7 @@
     <string name="parts_add">Teil hinzufügen</string>
     <string name="parts_delete_title">Teil löschen?</string>
     <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
-    <string name="parts_add_title">Teil erfassen</string>
+    <string name="parts_add_title">Teil hinzufügen</string>
     <string name="parts_part_number">Teilenummer</string>
     <string name="parts_part_number_placeholder">z. B. 3001</string>
     <string name="parts_no_color">Keine Farbe</string>
@@ -337,6 +338,7 @@
     <string name="parts_ordnung_farbe">Nach Farbe</string>
     <string name="parts_ordnung_name">Nach Name</string>
     <string name="parts_ordnung_menge">Nach Menge</string>
+    <string name="minifigs_ordnung_nummer">Nach Nummer</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Hintergrundarbeiten</string>
@@ -403,7 +405,7 @@
     <string name="parts_breakdown">%1$s aus Sets · %2$s einzeln</string>
     <string name="nav_partslist">Bauliste</string>
     <string name="nav_finance">Finanzen</string>
-    <string name="nav_comparison">Vergleich</string>
+    <string name="nav_comparison">Preisvergleich</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_more">Mehr</string>
     <string name="nav_group_prices">Preise und Gutscheine</string>
@@ -500,6 +502,7 @@
     <string name="condition_used">Gebraucht</string>
     <string name="acq_delete_title">Erfassung löschen</string>
     <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
+    <string name="acq_geloescht">Kauf gelöscht</string>
     <string name="common_back">Zurück</string>
     <string name="common_delete">Löschen</string>
     <string name="common_edit">Bearbeiten</string>
@@ -549,6 +552,7 @@
         <item quantity="one">%1$d Set im Katalog</item>
         <item quantity="other">%1$d Sets im Katalog</item>
     </plurals>
+    <string name="catalog_jahr_springen">Zu Jahr springen</string>
     <string name="catalog_no_results">Keine Sets gefunden</string>
     <string name="catalog_owned">Im Besitz</string>
     <string name="catalog_add_to_gallery">Zur Sammlung hinzufügen</string>

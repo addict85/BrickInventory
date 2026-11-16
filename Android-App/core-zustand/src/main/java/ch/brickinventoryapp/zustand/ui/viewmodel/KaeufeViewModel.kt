@@ -137,13 +137,25 @@ class KaeufeViewModel @Inject constructor(
     }
 
     override fun deleteAcquisition(setNumber: String, acqId: Int) {
-        viewModelScope.launch {
-            when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
-                is Ergebnis.Erfolg -> setGeaendert(r.data.zusammenfassung)
-                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
-            }
+        viewModelScope.launch { loescheSetKauf(setNumber, acqId) }
+    }
+
+    private suspend fun loescheSetKauf(setNumber: String, acqId: Int) {
+        when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
+            is Ergebnis.Erfolg -> setGeaendert(r.data.zusammenfassung)
+            is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
         }
     }
+
+    /** Ein Kauf, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    data class VorgemerkterKauf(val type: Postenart, val id: String, val colorId: Int, val kaufId: Int)
+
+    val kaufWeg = Loeschvormerkung<VorgemerkterKauf>(viewModelScope) { v ->
+        if (v.type == Postenart.SET) loescheSetKauf(v.id, v.kaufId) else loescheManuellenKauf(v.type, v.id, v.colorId, v.kaufId)
+    }
+
+    override fun kaufLoeschenVormerken(type: Postenart, id: String, colorId: Int, acqId: Int) =
+        kaufWeg.vormerken(VorgemerkterKauf(type, id, colorId, acqId))
 
     /** Hat die Ablage die neue Summe des Sets schon übernommen, folgt die Kachel; sonst wird der Stand geholt. */
     private suspend fun setGeaendert(uebernommen: Boolean) {
@@ -174,13 +186,15 @@ class KaeufeViewModel @Inject constructor(
     }
 
     override fun deleteManualAcquisition(type: Postenart, id: String, colorId: Int, acqId: Int) {
-        viewModelScope.launch {
-            val r = if (type == Postenart.FIG) haushalt.deleteFigAcquisition(id, acqId)
-                    else haushalt.deletePartAcquisition(id, colorId, acqId)
-            when (r) {
-                is Ergebnis.Erfolg -> manuelleNeu(type)
-                is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
-            }
+        viewModelScope.launch { loescheManuellenKauf(type, id, colorId, acqId) }
+    }
+
+    private suspend fun loescheManuellenKauf(type: Postenart, id: String, colorId: Int, acqId: Int) {
+        val r = if (type == Postenart.FIG) haushalt.deleteFigAcquisition(id, acqId)
+                else haushalt.deletePartAcquisition(id, colorId, acqId)
+        when (r) {
+            is Ergebnis.Erfolg -> manuelleNeu(type)
+            is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
         }
     }
 

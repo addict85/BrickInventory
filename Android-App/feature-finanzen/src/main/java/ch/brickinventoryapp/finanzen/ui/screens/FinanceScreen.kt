@@ -281,7 +281,7 @@ internal fun ManualFinanceRow(
                 Text(title, fontWeight = FontWeight.SemiBold,
                     maxLines = 2, style = MaterialTheme.typography.bodyMedium)
                 Text(blId, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (quantity > 1)
                     Text(mengeManuell(quantity),
                         Modifier.vorgelesenAls(stueckzahl(quantity)),
@@ -295,8 +295,9 @@ internal fun ManualFinanceRow(
             }
             Spacer(Modifier.width(Abstaende.klein))
             Column(horizontalAlignment = Alignment.End) {
+                // Ein Betrag, keine Handlung: Primärblau steht nur auf Links und Knöpfen.
                 Text(priceStr, fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
                 // Dieselbe Stelle und dieselbe Beschriftung wie in der
                 // Set-Zeile (FinanceSections.kt) — beide Tabellen sollen
