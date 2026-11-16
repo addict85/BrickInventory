@@ -1,0 +1,17 @@
+Gegenprobe: Der Einladungscode lässt sich auch unter Android 13 kopieren, wo die Tastatur ihn sieht
+Modul: feature-konto
+Test: ch.brickinventoryapp.konto.EinladungKopierenTest
+Rot: unter Android 13 laesst sich der Code nur teilen
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+@@ -173,7 +173,7 @@
+                     Text(stringResource(R.string.household_invite_teilen))
+                 }
+                 // Unter Android 13 sähe die Tastatur den Code; Teilen bleibt dort der Weg.
+-                if (geheimKopierbar(LocalSdkStufe.current)) OutlinedButton(
++                if (LocalSdkStufe.current > 0) OutlinedButton(
+                     onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
+                     modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                     Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)))

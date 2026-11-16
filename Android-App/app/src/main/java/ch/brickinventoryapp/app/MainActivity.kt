@@ -39,6 +39,7 @@ import ch.brickinventoryapp.model.schritt.Schrittbindung
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.AppSperre
 import ch.brickinventoryapp.ui.components.AppSperreSchirm
+import ch.brickinventoryapp.ui.components.AppUebersichtSchutz
 import ch.brickinventoryapp.ui.components.LocalAppSperre
 import ch.brickinventoryapp.ui.components.entsperreMitGeraetesperre
 import android.os.SystemClock
@@ -195,6 +196,7 @@ class MainActivity : NurLauncherStart() {
             // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
             val vorschauVerbergen by darstellung.vorschauVerbergen.collectAsStateWithLifecycle()
             if (vorschauVerbergen) Sichtschutz(ueberdeckung = false)
+            AppUebersichtSchutz(appSperre)
             val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.

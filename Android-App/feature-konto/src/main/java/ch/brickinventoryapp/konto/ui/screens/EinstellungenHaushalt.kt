@@ -40,6 +40,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import ch.brickinventoryapp.ui.components.ErklaerText
 import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.geheimKopierbar
 
 /**
  * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte
@@ -161,7 +163,7 @@ internal fun HouseholdCard(
                         fmtStand(bis, appNumberLocale(), vierundzwanzig = vierundzwanzigStunden(), jahr = DatumJahr.OHNE)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            // Der Code gehört auf ein anderes Gerät: teilen wie kopieren, beide gleich gewichtet.
+            // Der Code gehört auf ein anderes Gerät: teilen und kopieren, beide gleich gewichtet.
             val teilenTitel = stringResource(R.string.household_invite_section)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, listOf(c)) }, modifier = Modifier.weight(1f),
@@ -170,7 +172,9 @@ internal fun HouseholdCard(
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.household_invite_teilen))
                 }
-                OutlinedButton(onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
+                // Unter Android 13 sähe die Tastatur den Code; Teilen bleibt dort der Weg.
+                if (geheimKopierbar(LocalSdkStufe.current)) OutlinedButton(
+                    onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
                     modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                     Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))

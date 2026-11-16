@@ -1,0 +1,19 @@
+Gegenprobe: Der Erstkontakt unter öffentlicher CA gilt auch ohne CT-Pflicht mit einem Tipp
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ohne CT-Pflicht genuegt beim Erstkontakt kein Tipp
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -142,8 +142,8 @@
+      * zu bestätigen.
+      */
+     val abschriftNoetig: Boolean get() = when (art) {
+-        Art.CODE_ABWEICHUNG -> false
+-        Art.ERSTKONTAKT, Art.SCHLUESSEL_NEU -> !ctErzwungen
++        Art.ERSTKONTAKT, Art.CODE_ABWEICHUNG -> false
++        Art.SCHLUESSEL_NEU -> !ctErzwungen
+         Art.UNBEKANNTE_CA, Art.NUTZER_CA, Art.GEAENDERT -> true
+     }
+ 

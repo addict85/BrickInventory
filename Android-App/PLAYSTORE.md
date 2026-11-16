@@ -131,8 +131,8 @@ automatisieren:
     beim Start, solange „Beim Start nach Updates suchen“ an ist, sonst nur auf
     Knopfdruck. GitHub sieht IP-Adresse und Zeitpunkt;
   - **Google Play-Dienste** für den Barcode-Scan (ML Kit, nachgeladen) und Passkeys
-    (Credential Manager); die eingebaute Texterkennung (ML Kit) kann
-    Nutzungsstatistiken an Google senden;
+    (Credential Manager); die Texterkennung (ML Kit) läuft auf dem Gerät, ihren
+    Kanal für Nutzungsstatistiken an Google nimmt die App heraus;
   - fremde Websites (BrickLink, Hersteller-Anleitungen) nur auf Tipp, im Browser.
   Bilder laden nie direkt von einem CDN, sondern über den Proxy deines Servers.
 - **Inhaltsbewertung** (Fragebogen).

@@ -29,7 +29,8 @@ import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
-import ch.brickinventoryapp.konto.ui.screens.schluesselKopierbar
+import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.geheimKopierbar
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -94,12 +95,16 @@ class ZweiterFaktorMaskeTest {
 
     private fun text(id: Int) = compose.activity.getString(id)
 
+    /** Die Android-Stufe, nach der die Maske wählt; Robolectric selbst läuft gegen API 35. */
+    private val stufe = mutableStateOf(android.os.Build.VERSION.SDK_INT)
+
     private fun zeige(schrift: Float = 1f) {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 val d = LocalDensity.current
                 CompositionLocalProvider(
                     LocalDensity provides Density(d.density, schrift),
+                    LocalSdkStufe provides stufe.value,
                     // Die Gerätesperre gilt als bestätigt; geprüft wird die Maske.
                     LocalSchrittschutz provides Schrittschutz { _, dann -> dann() },
                 ) {
@@ -230,10 +235,15 @@ class ZweiterFaktorMaskeTest {
 
     @Test
     fun `der Schluessel ist erst ab API 33 kopierbar, und dann als vertraulich markiert`() {
-        assertTrue("Unter API 33 zeigt das System kopierte Geheimnisse an", !schluesselKopierbar(32))
-        assertTrue(schluesselKopierbar(33))
+        assertTrue("Unter API 33 zeigt das System kopierte Geheimnisse an", !geheimKopierbar(32))
+        assertTrue(geheimKopierbar(33))
         zustand.value = einrichtung
+        stufe.value = 32
         zeige()
+        assertEquals("Unter API 33 kein Knopf zum Kopieren", 0,
+            compose.onAllNodes(hasText(text(R.string.zf_copy_key))).fetchSemanticsNodes().size)
+        stufe.value = 33
+        compose.waitForIdle()
         knopf(R.string.zf_copy_key).performScrollTo().performClick()
         compose.waitForIdle()
         val clip = compose.activity.getSystemService(ClipboardManager::class.java).primaryClip

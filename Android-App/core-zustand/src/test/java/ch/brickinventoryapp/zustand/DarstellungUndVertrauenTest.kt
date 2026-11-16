@@ -116,7 +116,7 @@ class DarstellungUndVertrauenTest {
         val ablage = SpeicherVertrauen()
         var abwuerfe = 0
         val vm = VertrauenViewModel(ablage, { abwuerfe++ }, frage)
-        frage.melde(ZertifikatUngeklaert("brick.example:443", "AB:CD", ZertifikatUngeklaert.Art.ERSTKONTAKT))
+        frage.melde(ZertifikatUngeklaert("brick.example:443", "AB:CD", ZertifikatUngeklaert.Art.ERSTKONTAKT, ctErzwungen = true))
         assertEquals("AB:CD", vm.zertifikat.value?.fingerabdruck)
 
         assertTrue(vm.zertifikatVertrauen())

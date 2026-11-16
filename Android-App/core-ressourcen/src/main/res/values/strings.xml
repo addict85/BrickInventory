@@ -911,6 +911,7 @@
 
     <!-- Vouchers (LEGO gift cards in your own profile) -->
     <string name="vouchers_title">Vouchers</string>
+    <string name="geheim_kopieren_warnung">On this Android version, the keyboard and the copy preview see what you copy, including number and PIN. The app clears the clipboard again after one minute.</string>
     <string name="vouchers_empty">No vouchers stored yet.</string>
     <string name="vouchers_empty_hint">Store LEGO gift cards with number and PIN. The app asks LEGO for the balance, and the total then appears here.</string>
     <string name="vouchers_total">Total</string>
@@ -1027,6 +1028,8 @@
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. The easiest way to set it up is the QR code from the web app (Settings). If no QR code is possible: the fingerprint is an ID that belongs to this server. Compare it character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
+    <string name="zert_text_erstkontakt_abtippen">This is the first encrypted connection to %1$s. This Android version does not check whether the certificate is publicly logged (Certificate Transparency, only from Android 16). A wrongly issued certificate would therefore look exactly the same. That is why the connection only counts once you copy the fingerprint:\n1. Open the web app in the browser on your computer.\n2. Open the certificate details (padlock next to the address) and select the topmost certificate of the chain.\n3. Type the last 12 pairs of “Public key, SHA-256” into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nOnly the beginning of the fingerprint is shown here.</string>
+    <string name="zert_erstkontakt_eingabe">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from your browser\'s certificate details on the computer (topmost certificate, fingerprints → public key, SHA-256)</string>
     <string name="zert_text_unbekannt">The app cannot check who %1$s is: the server issued its certificate itself, or your own authority did. That is normal for a server at home, but it could also be someone in between.\n\nThe easiest way is to scan the QR code from the web app (Settings). If no QR code is possible, do this:\n1. Open the web app on a computer.\n2. Go to Settings → Server certificate.\n3. Copy the last 12 pairs of the fingerprint into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nThe fingerprint is an ID that belongs to this server. If it matches, it is your server. This screen only shows its beginning.</string>
     <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the web app shows the new fingerprint (Settings → Server certificate); for a public certificate authority, so does your browser (certificate details, public key SHA-256 of the top authority). Copy its last 12 pairs, e.g. 3F:A2:…</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
@@ -1249,7 +1252,7 @@
     <string name="update_beim_start">Check for updates on start</string>
     <string name="update_beim_start_hint">Asks GitHub once per start whether a newer version exists; GitHub sees the IP address of the device. Applies to this device.</string>
     <string name="datenschutz_titel">Privacy</string>
-    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; on-device text recognition (ML Kit) may send usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
+    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; text recognition (ML Kit) runs on the device, and the app has switched off its channel for usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
     <plurals name="csv_fortschritt">
         <item quantity="one">%1$d of %2$d set</item>
         <item quantity="other">%1$d of %2$d sets</item>

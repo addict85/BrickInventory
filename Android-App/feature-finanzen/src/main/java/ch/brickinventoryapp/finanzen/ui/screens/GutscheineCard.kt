@@ -38,6 +38,7 @@ import ch.brickinventoryapp.ui.components.PasswortRueckfrage
 import ch.brickinventoryapp.finanzen.ui.gutscheinSumme
 import ch.brickinventoryapp.ui.components.BezeichnungUndWert
 import ch.brickinventoryapp.ui.components.SettingsCard
+import ch.brickinventoryapp.ui.components.GeheimKopierWarnung
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar
@@ -125,6 +126,7 @@ fun GutscheineCard(
             )
         }
         GutscheinRaster(zustand.gutscheine, breit, karte)
+        if (zustand.gutscheine.isNotEmpty()) GeheimKopierWarnung()
 
         // Die Summe — nur bei EINER Waehrung (gutscheinSumme).
         val summe = gutscheinSumme(zustand.gutscheine)

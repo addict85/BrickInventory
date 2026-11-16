@@ -62,6 +62,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.geheimKopierbar
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.ErklaerText
@@ -155,7 +157,7 @@ fun ZweiterFaktorPflichtMaske(
                         }
                         Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodyLarge)
-                        if (schluesselKopierbar()) {
+                        if (geheimKopierbar(LocalSdkStufe.current)) {
                             OutlinedButton(
                                 onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },
                                 modifier = Modifier.fillMaxWidth(),
