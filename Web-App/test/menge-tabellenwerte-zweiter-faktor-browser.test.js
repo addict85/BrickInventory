@@ -305,11 +305,14 @@ async function tabellenansicht(_t, a) {
   await b.auswerten(
     `document.querySelector('#gallery thead [data-click="setsSortieren"][data-arg="num"]').click(); true`,
   );
-  await bis(
-    `/€/.test(document.querySelector('#gallery tr[data-arg="75192-1"] [data-tabwert-for]')?.textContent || '')`,
-    'Marktwert in der Tabelle',
-  );
+  // Auf die Marktwert-Spalte selbst warten: Ein späteres Neuzeichnen setzt sie kurz auf „—“ zurück.
   await a.ruhig();
+  await bis(
+    `(() => { const kopf = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
+      const z = document.querySelector('#gallery tr[data-arg="75192-1"]')?.children[kopf.indexOf('Marktwert')];
+      return /€.*%/.test(z?.textContent || ''); })()`,
+    'Marktwert mit Entwicklung in der Tabelle',
+  );
   const m =
     await b.auswerten(`(() => { const kopf = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
     const zelle = (nr, k) => { const z = document.querySelector('#gallery tr[data-arg="' + nr + '"]').children[kopf.indexOf(k)].cloneNode(true);
