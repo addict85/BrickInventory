@@ -10,8 +10,13 @@
  *   B  die Telefonregel .chip-weg { min-width: 44px … } entfernt → rot:
  *      „Telefon: X mindestens 44 px“ (24 × 24)
  *   C  .chip-weg:focus-visible{outline:none} → rot: „Rechner: sichtbarer Fokus“
- *   D  .rollen-zelle ohne flex-wrap und der Chip mit white-space:nowrap und
- *      min-width:20rem → rot: „320 px, 200 %: nichts ragt aus der Karte“
+ *   D  .rolle-chip mit min-width:20rem und white-space:nowrap → rot: „320 px,
+ *      200 %: nichts ragt aus der Karte“ (100 %: der Chip beginnt links
+ *      ausserhalb der Karte). Mit der ersten Fassung, die nur den rechten Rand
+ *      prüfte, blieb das grün.
+ *   E  die Regel .rolle-wort (Wort darf brechen) entfernt → rot: dieselbe
+ *      (200 %: das Wort ragt aus dem Chip). Ohne die Prüfung auf scrollWidth
+ *      blieb das grün.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,9 +52,9 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
   };
   const mass = () =>
     b.auswerten(`(() => { const x = ${X}, r = x.getBoundingClientRect(), karte = x.closest('tr').getBoundingClientRect();
-      const zelle = x.closest('.rollen-zelle').getBoundingClientRect();
+      const el = x.closest('.rolle-chip'), chip = el.getBoundingClientRect();
       return { b: Math.round(r.width), h: Math.round(r.height), seite: document.documentElement.scrollWidth, fenster: innerWidth,
-        ragt: zelle.right > karte.right + 0.5 || r.right > karte.right + 0.5 }; })()`);
+        ragt: chip.left < karte.left - 0.5 || chip.right > karte.right + 0.5 || el.scrollWidth > el.clientWidth + 1 }; })()`);
 
   await t.test('Rechner: X mindestens 24 px, sichtbarer Fokus, Rückfrage nennt das Konto', async () => {
     await metrik(1280, false);

@@ -866,7 +866,9 @@
     /* Rolle als Chip: Das X erbt die Schriftfarbe des Chips, damit es in jedem Design so lesbar ist wie das
        Wort; die negativen Ränder halten den Chip trotz 24-px-Tippfläche so flach wie seine Nachbarn. */
     .rollen-zelle{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-    .rolle-chip{align-items:center;gap:4px}
+    .rolle-chip{align-items:center;gap:4px;max-width:100%}
+    /* Bei 320 px und 200 % ist „Administrator“ breiter als die Karte: Dann bricht das Wort, statt zu ragen. */
+    .rolle-wort{min-width:0;overflow-wrap:anywhere;hyphens:auto}
     .rolle-chip:has(> .chip-weg){padding-right:2px}
     .chip-weg{background:none;border:none;cursor:pointer;color:inherit;padding:0;margin:-4px 0;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;border-radius:999px}
     .chip-weg:hover{background:color-mix(in srgb,currentColor 15%,transparent)}

@@ -12,7 +12,7 @@
  *   C  aria-label am X wieder ohne den Kontonamen (users.role.admin) → rot:
  *      „X am Administrator-Chip …“ (Name des Knopfs)
  *   D  in rolle() den Ernennen-Knopf weggelassen → rot: „Standard-Chip ohne X,
- *      + Administrator ernennt“
+ *      + Administrator ernennt“ und „ein einziger Administrator: kein X“
  *   E  in angekuendigt() die Liste nicht mehr ausgegeben → rot: „X am
  *      Administrator-Chip …“ (Angekündigt fehlt nach der Antwort)
  */

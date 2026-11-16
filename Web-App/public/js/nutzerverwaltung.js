@@ -49,7 +49,7 @@ function rolle(u) {
     }`;
   }
   const name = tRaw('users.rolle.entziehen', { name: u.username });
-  return html`<span class="rb rv rolle-chip">${tRaw('users.role.admin')}${
+  return html`<span class="rb rv rolle-chip"><span class="rolle-wort">${tRaw('users.role.admin')}</span>${
     selbst
       ? ''
       : html`<button type="button" class="chip-weg" ${ziel} title="${name}" aria-label="${name}">${ico('schliessen')}</button>`

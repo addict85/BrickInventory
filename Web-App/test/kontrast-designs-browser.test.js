@@ -6,12 +6,12 @@
  * mindestens 4,5:1. Gemessen in Chrome mit den …
  *
  * Gegenproben (am 03.11.2026 gemessen; C am 16.11.2026):
- *   C  .chip-weg mit color:var(--p300) statt inherit → rot: „… X am
- *      Rollen-Chip“ in den hellen Designs
  *   A  in themes/noppe.css --b600 der hellen Variante nicht überschrieben →
  *      rot: „noppe hell: Setnummer in der Tabelle 4.44:1“ (ebenso hochglanz)
  *   B  dort --gewinn nicht überschrieben → rot: „noppe hell: Gewinn in der
  *      Tabelle 4.43:1“ (ebenso hochglanz)
+ *   C  .chip-weg mit color:var(--mut) statt inherit → rot: „classic hell: X am
+ *      Rollen-Chip 4.03:1“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
