@@ -10,6 +10,8 @@
  *      Name bleibt wirkungslos“ (window.alert wurde gerufen)
  *   C  fetch wieder mit Bearer-Header statt credentials → rot: „lädt mit dem
  *      Sitzungscookie …“ (credentials undefined statt same-origin)
+ *   D  (16.11.2026) in renderLogs() die Stufe wieder roh statt tx('log.stufe.…') → rot: „Stufe übersetzt,
+ *      Stacktrace eingeklappt“ („error“ statt „Fehler“); meldung() ohne <details> → rot: ebenda
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +26,7 @@ const SKRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 
 function oeffne() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const dom = new JSDOM(
-    `<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge"}'>
+    `<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge","log.stufe.error":"Fehler","log.mehr_zeilen":"{n} weitere Zeilen"}'>
     <select id="period" data-change="loadLogs"><option value="15">15</option></select>
     <button id="btn-info" data-click="toggleLevel" data-arg="info"></button>
     <button id="btn-warn" class="active" data-click="toggleLevel" data-arg="warn"></button>
@@ -44,6 +46,11 @@ function oeffne() {
       logs: [
         { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
         { level: 'error', message: 'Abruf <b>kaputt</b>', logged_at: '2026-11-05T10:01:00Z' },
+        {
+          level: 'error',
+          message: 'Abbruch\n    at lade (a.js:1)\n    at start (b.js:2)',
+          logged_at: '2026-11-05T10:02:00Z',
+        },
       ],
     });
     return { ok: true, json: async () => daten };
@@ -65,9 +72,9 @@ test('lädt mit dem Sitzungscookie und zeigt nur die gewählten Stufen, maskiert
     assert.equal(aufrufe[0].credentials, 'same-origin');
     assert.equal(aufrufe[0].headers.Authorization, undefined, 'kein Token mehr');
     const zeilen = d.querySelectorAll('#log-wrap .ll');
-    assert.equal(zeilen.length, 1, 'info ist zu Beginn ausgeblendet');
+    assert.equal(zeilen.length, 2, 'info ist zu Beginn ausgeblendet');
     assert.match(zeilen[0].innerHTML, /&lt;b&gt;kaputt/, 'Meldungstext wird maskiert');
-    assert.equal(d.getElementById('status').textContent, '1 / 2 Einträge');
+    assert.equal(d.getElementById('status').textContent, '2 / 3 Einträge');
   } finally {
     w.close();
   }
@@ -78,9 +85,9 @@ test('Stufe info zuschalten und Suche filtern', async () => {
   try {
     await takt(10);
     d.getElementById('btn-info').click();
-    assert.equal(d.querySelectorAll('#log-wrap .ll').length, 2, 'Stufe info zuschalten');
+    assert.equal(d.querySelectorAll('#log-wrap .ll').length, 3, 'Stufe info zuschalten');
     const suche = d.getElementById('search');
-    suche.value = 'start';
+    suche.value = 'start fertig';
     suche.dispatchEvent(new w.Event('input'));
     assert.equal(d.querySelectorAll('#log-wrap .ll').length, 1);
     assert.match(d.querySelector('#log-wrap mark').textContent, /Start/);
@@ -96,6 +103,24 @@ test('fremder Name bleibt wirkungslos', async () => {
     d.getElementById('fremd').click();
     assert.equal(alarm(), 0, 'data-click="alert" darf window.alert nicht erreichen');
     assert.equal(typeof w.loadLogs, 'undefined', 'Die Handler sollen nicht global sein');
+  } finally {
+    w.close();
+  }
+});
+
+test('Stufe übersetzt, Stacktrace eingeklappt, die Suche klappt ihn auf', async () => {
+  const { w, d } = oeffne();
+  try {
+    await takt(10);
+    const stapel = [...d.querySelectorAll('#log-wrap .ll')].find(z => z.textContent.includes('Abbruch'));
+    assert.equal(stapel.querySelector('.lv').textContent, 'Fehler');
+    const auf = stapel.querySelector('details');
+    assert.ok(auf && !auf.open, 'Stacktrace nicht eingeklappt');
+    assert.match(auf.querySelector('summary').textContent, /^Abbruch \(2 weitere Zeilen\)$/);
+    const suche = d.getElementById('search');
+    suche.value = 'b.js';
+    suche.dispatchEvent(new w.Event('input'));
+    assert.equal(d.querySelector('#log-wrap details')?.open, true, 'Treffer im Stacktrace bleibt verborgen');
   } finally {
     w.close();
   }

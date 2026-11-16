@@ -90,6 +90,21 @@
     }
   }
 
+  // Ein Stacktrace füllte sonst den Bildschirm mit dutzenden Zeilen: Die erste Zeile bleibt stehen, der Rest
+  // klappt auf. Trifft die Suche im Rest, steht er offen — sonst wäre der Treffer unsichtbar.
+  /** @param {string} text @param {string} suche */
+  function meldung(text, suche) {
+    const [kopf, ...rest] = text.split('\n');
+    if (!rest.length) return `<span class="msg">${highlight(text, suche)}</span>`;
+    const offen = !!suche && rest.join('\n').toLowerCase().includes(suche);
+    const n = String(rest.length);
+    const mehr = tx(rest.length === 1 ? 'log.mehr_zeilen_one' : 'log.mehr_zeilen').replace('{n}', n);
+    return (
+      `<details class="msg"${offen ? ' open' : ''}><summary>${highlight(kopf, suche)} ` +
+      `<span class="mehr">(${esc(mehr)})</span></summary>${highlight(rest.join('\n'), suche)}</details>`
+    );
+  }
+
   function renderLogs() {
     const suche = /** @type {HTMLInputElement} */ (el('search')).value.toLowerCase().trim();
     const wrap = el('log-wrap');
@@ -110,7 +125,7 @@
           const stufe = esc(l.level);
           return (
             `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
-            `<span class="lv ${stufe}">${stufe}</span><span class="msg">${highlight(l.message, suche)}</span></div>`
+            `<span class="lv ${stufe}">${esc(tx('log.stufe.' + l.level))}</span>${meldung(l.message, suche)}</div>`
           );
         })
         .join(''),

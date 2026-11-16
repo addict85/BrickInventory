@@ -22,6 +22,8 @@
  *   L  .merk-kasten-kopf ohne display:flex/align-items:center → rot: „Merkliste zugeklappt“ (oben 9, unten 32 px)
  *   M  thumbs.ts wieder fit: 'cover' (dist neu) → rot: „Bilder verschiedener Form“ (r25breit-1: Vorschau 1:1
  *      statt 8:1)
+ *   N  (16.11.2026) in zfAbschalten() `mitCode: true` gestrichen → rot: „Zweiter Faktor: Code im Dialog“
+ *      (Neu einrichten ohne Codefeld)
  *
  * B3: Das native Datumsfeld formatiert nach der Sprache des Browsers, nicht nach `lang` (Runde 24, N16);
  * geprüft wird, dass die Seite nach dem Sprachwechsel `lang="en"` trägt und das Feld sie erbt.
@@ -442,18 +444,12 @@ async function zweiterFaktor(_t, a) {
   await bis(`!!document.getElementById('zf-codes')`, 'neue Codes');
   await b.auswerten(`document.getElementById('zf-gespeichert').click(); true`);
   await bis(`!!document.querySelector('#zf-flaeche [data-click="zfAbschalten"]')`, 'zurück');
-  // Abschalten: erst bestätigen, dann Passwort, dann der Code — jeweils im Dialog, abgebrochen vor dem Abschalten.
+  // Abschalten heisst für Verwalter „Neu einrichten“: ein Dialog mit Passwort und Code, abgebrochen.
   await b.auswerten(`document.querySelector('#zf-flaeche [data-click="zfAbschalten"]').click(); true`);
-  await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Abschalten');
-  await b.auswerten(`document.getElementById('cd-confirm').click(); true`);
-  await bis(`!document.getElementById('cd-pw-wrap').hidden`, 'Passwort');
-  await b.auswerten(
-    `document.getElementById('cd-pw').value = 'app-Passwort-1'; document.getElementById('cd-confirm').click(); true`,
-  );
-  await bis(
-    `!document.getElementById('cd-code-wrap').hidden && document.getElementById('cd-pw-wrap').hidden`,
-    'Code im Dialog',
-  );
+  await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Neu einrichten');
+  const ab = await b.auswerten(dialog);
+  assert.deepEqual([ab.code, ab.pw], [true, true], JSON.stringify(ab));
+  assert.match(ab.titel, /Neu einrichten/);
   await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
   await bis(`document.getElementById('confirm-modal').style.display !== 'flex'`, 'abgebrochen');
 }

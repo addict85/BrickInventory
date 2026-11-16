@@ -470,9 +470,13 @@ async function loeschWahl(sn, name, set) {
   }));
   const liste = konten.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
   const gesamt = konten.reduce((s, k) => s + k.n, 0);
+  // Vorgewählt ist das Wenigste, das eigene Exemplar zuerst: Enter löschte sonst auch das fremde.
+  const reihe = [...konten].sort(
+    (x, y) => Number(y.id === angemeldetesKonto?.id) - Number(x.id === angemeldetesKonto?.id),
+  );
   return loeschenMitWahl(titel, tRaw('gallery.delete.konten', { name, konten: liste }), [
+    ...reihe.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
     { wert: '', text: tRaw('gallery.delete.alle', { n: gesamt }) },
-    ...konten.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
   ]);
 }
 

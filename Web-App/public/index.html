@@ -228,7 +228,7 @@
       <div class="lerr" id="reg-err" role="alert"></div>
       <div class="erfolg-box" id="reg-success" data-stil="display:none"></div>
       <form class="sform" id="reg-form" data-submit="btn-register">
-        <div data-stil="display:flex;gap:10px">
+        <div class="reg-namen">
           <div class="fg"><label for="reg-first" data-i18n="register.firstname">Vorname</label><input type="text" id="reg-first" autocomplete="given-name" /></div>
           <div class="fg"><label for="reg-last" data-i18n="register.lastname">Nachname</label><input type="text" id="reg-last" autocomplete="family-name" /></div>
         </div>
@@ -252,13 +252,14 @@
 
     <!-- ── PASSWORT VERGESSEN ─────────────────────────────────────────── -->
     <div id="panel-forgot" data-stil="display:none">
-      <h1 class="login-unterzeile" data-i18n="reset.title">Neues Passwort</h1>
+      <h1 class="login-unterzeile" data-i18n="reset.title">Passwort vergessen</h1>
+      <p class="text-klein text-mut" id="forgot-erklaerung" data-i18n="reset.erklaerung">Gib die E-Mail-Adresse deines Kontos ein. Wir senden dir einen Link, mit dem du ein neues Passwort setzt.</p>
       <div class="lerr" id="forgot-err" role="alert"></div>
       <div class="erfolg-box" id="forgot-success" data-stil="display:none"></div>
-      <div class="sform" id="forgot-form">
-        <div class="fg"><label for="forgot-email" data-i18n="auth.email_label">E-Mail-Adresse</label><input type="email" id="forgot-email" autocomplete="email" /></div>
-        <button class="btn bp knopf-breit" id="btn-forgot" data-i18n="auth.send_reset_link">Link senden</button>
-      </div>
+      <form class="sform" id="forgot-form" data-submit="btn-forgot">
+        <div class="fg"><label for="forgot-email" data-i18n="auth.email_label">E-Mail-Adresse</label><input type="email" id="forgot-email" autocomplete="email" aria-describedby="forgot-erklaerung" /></div>
+        <button type="button" class="btn bp knopf-breit" id="btn-forgot" data-i18n="auth.send_reset_link">Link senden</button>
+      </form>
       <div class="login-fuss">
         <a class="farbe-primaer" href="#" id="link-forgot-to-login" data-i18n="auth.back_to_login">← Zurück zur Anmeldung</a>
       </div>
@@ -840,7 +841,7 @@
           <a class="einst-link" href="#einst-bl" data-click="einstAbschnitt" data-arg="einst-bl">BrickLink</a>
           <a class="einst-link" href="#einst-rb" data-click="einstAbschnitt" data-arg="einst-rb">Rebrickable</a>
           <a class="einst-link" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
-          <a class="einst-link" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
+          <a class="einst-link" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Kontenverwaltung</a>
           <a class="einst-link" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
           <a class="einst-link" href="#einst-hintergrund" data-click="einstAbschnitt" data-arg="einst-hintergrund" data-i18n="settings.hintergrund_titel">Zeitpläne und Preise</a>
           <a class="einst-link" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
@@ -903,7 +904,7 @@
           </div>
         </div>
         <div class="ssec full" id="usermgmt" data-stil="display:none">
-          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></h2>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Kontenverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></h2>
           <div data-stil="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
             <div>
               <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
@@ -911,7 +912,7 @@
                 <input class="w-auto" type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" data-change="saveRegEnabled" />
                 <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
               </label>
-              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Verwalter neue Benutzer anlegen.</div>
+              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Verwalter neue Konten anlegen.</div>
               <div class="text-klein reg-mail-hinweis" id="reg-mail-hinweis" role="status" hidden></div>
             </div>
           </div>
@@ -921,7 +922,7 @@
             <div id="vw-protokoll"></div>
           </details>
           <div class="trenner-oben">
-            <h3 class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</h3>
+            <h3 class="ctitle" data-i18n="settings.users_new">Neues Konto erstellen</h3>
             <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
                  Zeile (.frow) unveraendert. -->
             <form class="nur-inhalt" data-submit="btn-cu">
@@ -1152,7 +1153,7 @@
                 <option value="en-US" data-i18n="vouchers.country_en_us">USA</option>
               </select>
             </div>
-            <p class="text-klein voucher-land-hinweis"><span data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Benutzer.</span> <span id="gutschein-land-waehrung"></span></p>
+            <p class="text-klein voucher-land-hinweis"><span data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Konten.</span> <span id="gutschein-land-waehrung"></span></p>
           </div>
 
           <div id="vouchers-list" class="voucher-list"></div>
@@ -1184,8 +1185,8 @@
 
             <div class="sgrid2 luecke-075 voucher-felder">
               <div class="fg">
-                <label for="v-number" data-i18n="vouchers.number">Gutscheinnummer</label>
-                <input type="text" id="v-number" inputmode="numeric" autocomplete="off" />
+                <label for="v-number" data-i18n="vouchers.number">Gutscheinnummer *</label>
+                <input type="text" id="v-number" inputmode="numeric" autocomplete="off" aria-required="true" aria-describedby="v-pflicht-hinweis" />
               </div>
               <div class="fg">
                 <label for="v-pin" data-i18n="vouchers.pin">PIN</label>
@@ -1195,8 +1196,8 @@
 
             <div class="sgrid2 luecke-075 voucher-felder">
               <div class="fg">
-                <label for="v-amount" data-i18n="vouchers.amount">Betrag</label>
-                <input type="text" autocomplete="off" id="v-amount" inputmode="decimal" />
+                <label for="v-amount" data-i18n="vouchers.amount">Betrag *</label>
+                <input type="text" autocomplete="off" id="v-amount" inputmode="decimal" aria-required="true" aria-describedby="v-pflicht-hinweis" />
               </div>
               <div class="fg">
                 <label for="v-currency" data-i18n="settings.currency">Währung</label>
@@ -1225,6 +1226,7 @@
               <div class="text-klein abstand-o-3" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</div>
             </div>
 
+            <p class="text-klein" id="v-pflicht-hinweis" data-i18n="vouchers.pflicht_hinweis">* Pflichtfeld, ausser ein gewähltes PDF enthält den Wert.</p>
             <div class="konto-fuss">
               <button class="btn" id="v-cancel" data-click="gutscheinAbbrechen" data-stil="display:none" data-i18n="common.cancel">Abbrechen</button>
               <button class="btn bp btn-speichern" data-click="gutscheinSpeichern" data-i18n="settings.save" data-ico="speichern">Speichern</button>

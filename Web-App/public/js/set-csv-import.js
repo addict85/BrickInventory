@@ -15,6 +15,7 @@ import {
   setProgBar,
   showProgress,
   setzeCsvPollAktiv,
+  zeigeImportAbschluss,
 } from './fortschritt.js';
 import { confirmDelete } from './rueckfrage.js';
 
@@ -179,8 +180,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       }
       const zaehler = importZaehler(s, 'csv.warnings_n');
       G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${zaehler}`;
-      const btnClose = G('btn-close-import');
-      if (btnClose) btnClose.style.display = '';
+      zeigeImportAbschluss();
       melde('sammlungLaden');
       toast(tRaw('csv.import_meldung', { ergebnis: zaehler }), s.err ? 'error' : s.warn ? 'info' : 'success');
       if (fi) fi.value = '';

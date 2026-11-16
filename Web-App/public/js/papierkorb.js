@@ -14,24 +14,44 @@ import { melde } from './ereignisse.js';
 
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 
-/** @param {import('../../frontend-typen/vertrag').PapierkorbEintrag} e */
-function zeile(e) {
+/**
+ * Gleiche Sets zweier Konten sahen gleich aus; Konto und Menge unterscheiden sie, auch im Namen der Knöpfe.
+ * @param {import('../../frontend-typen/vertrag').PapierkorbEintrag} e
+ * @param {Map<number, string>} konten Name je Konto, leer ohne Haushalt
+ */
+function zeile(e, konten) {
   const frist = fmtDatum(e.endgueltig_am);
-  return html`<div class="pk-zeile">
+  const konto = konten.get(e.user_id);
+  const was = [e.nummer, e.bezeichnung, tRaw('trash.menge', { n: e.anzahl }), konto].filter(Boolean).join(' · ');
+  return html`<div class="pk-zeile" data-pk-id="${e.id}">
     <span aria-hidden="true">${ico(ICON[e.art] || 'loeschen')}</span>
     <span class="pk-name"><span class="pk-nr">${e.nummer}</span>
       ${e.bezeichnung ? html`${' · '}${e.bezeichnung}` : ''}
-      ${e.anzahl > 1 ? html` · ×${e.anzahl}` : ''}</span>
+      <span>${' · '}${tRaw('trash.menge', { n: e.anzahl })}</span>
+      ${konto ? html`<span>${' · '}${konto}</span>` : ''}</span>
     <span class="pk-frist">${tRaw('trash.until', { datum: frist })}</span>
-    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${tRaw('trash.restore')}</button>
-    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${tRaw('trash.delete_final')}</button>
+    <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}" aria-label="${tRaw('trash.restore_was', { was })}">${tRaw('trash.restore')}</button>
+    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}" aria-label="${tRaw('trash.delete_final_was', { was })}">${tRaw('trash.delete_final')}</button>
   </div>`;
 }
 
-export async function ladePapierkorb() {
+/** Name je Konto, nur im Haushalt: Mit einem Konto wäre der Name auf jeder Zeile derselbe. */
+async function kontenNamen() {
+  const d = await api('GET', '/v1/sets/household-members');
+  const m = d?.success ? d.members : [];
+  return new Map(
+    m.length > 1 ? m.map(k => [k.id, k.is_self ? `${k.username} ${tRaw('household.ich')}` : k.username]) : [],
+  );
+}
+
+/** @param {string} [fokusNach] Kennung des eben entfernten Eintrags: Der Fokus geht auf seinen Nachbarn. */
+export async function ladePapierkorb(fokusNach) {
   const liste = G('papierkorb-liste');
   if (!liste) return;
-  const d = await api('GET', '/v1/papierkorb');
+  const vorher = fokusNach
+    ? [...liste.querySelectorAll('.pk-zeile')].findIndex(z => z.getAttribute('data-pk-id') === fokusNach)
+    : -1;
+  const [d, konten] = await Promise.all([api('GET', '/v1/papierkorb'), kontenNamen()]);
   const leeren = G('papierkorb-leeren');
   if (!d?.success) {
     setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`);
@@ -40,9 +60,15 @@ export async function ladePapierkorb() {
   const eintraege = d.eintraege || [];
   setzeHtml(
     liste,
-    eintraege.length ? verbinde(eintraege.map(zeile)) : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`,
+    eintraege.length
+      ? verbinde(eintraege.map(e => zeile(e, konten)))
+      : html`<div class="voucher-leer" tabindex="-1">${tRaw('trash.empty')}</div>`,
   );
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
+  if (vorher < 0) return;
+  const zeilen = liste.querySelectorAll('.pk-zeile');
+  const nachbar = zeilen[Math.min(vorher, zeilen.length - 1)];
+  /** @type {HTMLElement | null} */ (nachbar?.querySelector('button') ?? liste.querySelector('.voucher-leer'))?.focus();
 }
 
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
@@ -65,9 +91,12 @@ async function wiederherstellen(ids) {
 /** @param {string} id */
 export async function papierkorbWiederherstellen(id) {
   if (!(await wiederherstellen([id]))) return;
+  // Das „Rückgängig“ desselben Löschens hätte nichts mehr zurückzuholen.
+  for (const t of document.querySelectorAll('#toasts [data-papierkorb]'))
+    if (t.getAttribute('data-papierkorb')?.split(',').includes(String(id))) t.remove();
   toast(tRaw('trash.restored'), 'success');
   bestandNeuLaden();
-  await ladePapierkorb();
+  await ladePapierkorb(String(id));
 }
 
 // Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
@@ -84,7 +113,7 @@ export async function papierkorbEndgueltig(id) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  await ladePapierkorb();
+  await ladePapierkorb(String(id));
 }
 
 export async function papierkorbLeeren() {
@@ -129,7 +158,7 @@ function fokusWennDa(sel) {
  */
 export function geloeschtMitRueckgaengig(meldung, antwort, nachher, fokus) {
   const ids = antwort?.papierkorb || [];
-  toast(
+  const el = toast(
     meldung,
     'success',
     ids.length
@@ -146,6 +175,7 @@ export function geloeschtMitRueckgaengig(meldung, antwort, nachher, fokus) {
         }
       : undefined,
   );
+  if (el && ids.length) el.dataset.papierkorb = ids.join(',');
 }
 
 registerActions({ papierkorbWiederherstellen, papierkorbEndgueltig, papierkorbLeeren });
