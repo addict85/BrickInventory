@@ -4,14 +4,12 @@ import { Faecher } from '../infra/zwischenspeicher';
 import * as anmeldepruefung from './anmeldepruefung';
 import * as anmeldungAblauf from './anmeldungAblauf';
 import * as geraeteToken from './geraeteToken';
-import * as kontoEntfernen from './kontoEntfernen';
 import { kontoAuftragsarten } from './auftragsarten';
 import * as kontoHinweis from './kontoHinweis';
 import * as nebenlaeufe from './nebenlaeufe';
 import * as profilAendern from './profilAendern';
 import * as loginLimiter from './loginLimiter';
 import * as registrierungAblauf from './registrierungAblauf';
-import * as tokenCache from './tokenCache';
 import * as tokenWunsch from './tokenWunsch';
 import * as verwalterAktionen from './verwalterAktionen';
 import * as verwalterProtokoll from './verwalterProtokoll';
@@ -72,18 +70,18 @@ function konten(k: KontoKontext) {
     kontoKurzVon: mit(k)(kontenDienst.kontoKurzVon),
     kontoVollVon: mit(k)(kontenDienst.kontoVollVon),
     gibtKonto: mit(k)(kontenDienst.gibtKonto),
-    kontoAnzeigeName: mit(k)(kontenDienst.kontoAnzeigeName),
     passwortWechselFaellig: mit(k)(kontenDienst.passwortWechselFaellig),
     kontoEingerichtet: mit(k)(kontenDienst.kontoEingerichtet),
     faktorPflichtOffen: mit(k)(kontenDienst.faktorPflichtOffen),
     passwortPerLinkSetzen: mit(k)(kontenDienst.passwortPerLinkSetzen),
     legeKontoAn: mit(k)(kontenDienst.legeKontoAn),
-    kontoEntfernen: mit(k)(kontoEntfernen.kontoEntfernen),
+    kontoEntfernen: mit(k)(verwalterAktionen.kontoEntfernenDurch),
     auftragsarten: kontoAuftragsarten,
     verwalterHinweisNebenher: mit(k)(kontoHinweis.verwalterHinweisNebenher),
     hinweisNebenher: mit(k)(kontoHinweis.hinweisNebenher),
     haushaltBeitreten: mit(k)(kontoHinweis.haushaltBeitreten),
     zaehleAnfrage: mit(k)(loginLimiter.zaehleAnfrage),
+    mailLinkEinloesen: mit(k)(verwalterAktionen.mailLinkEinloesen),
     meldeGeraet: mit(k)(qrKopplungDienst.meldeGeraet),
     holeQrTokenAb: mit(k)(qrKopplungDienst.holeQrTokenAb),
     verwirfAbholung: mit(k)(qrKopplungDienst.verwirfAbholung),
@@ -96,7 +94,7 @@ function konten(k: KontoKontext) {
     nameZuBestaetigung: mit(k)(registrierungAblauf.nameZuBestaetigung),
     kontoZumRuecksetzLink: mit(k)(registrierungAblauf.kontoZumRuecksetzLink),
     legeStartVerwalterAn: mit(k)(startVerwalterDienst.legeStartVerwalterAn),
-    horcheAufTokenWiderruf: mit(k)(tokenCache.horcheAufTokenWiderruf),
+    horcheAufWiderruf: mit(k)(zugangsende.horcheAufWiderruf),
     tokenAngaben: mit(k)(tokenWunsch.tokenAngaben),
     zielGedrosselt: mit(k)(zielDrossel.zielGedrosselt),
     kontoGedrosselt: mit(k)(zielDrossel.kontoGedrosselt),

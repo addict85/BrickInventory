@@ -1089,6 +1089,7 @@ data class KontenListe(
 data class KontoAktiv(
     @SerialName("success") val success: Boolean = false,
     @SerialName("is_active") val isActive: Boolean = false,
+    @SerialName("wirksam_ab") val wirksamAb: String = "",
 )
 
 @Serializable
@@ -1100,6 +1101,13 @@ data class KontoInListe(
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
     @SerialName("wartet_auf_bestaetigung") val wartetAufBestaetigung: Boolean = false,
+    @SerialName("angekuendigt") val angekuendigt: List<KontoInListeAngekuendigtEintrag> = emptyList(),
+)
+
+@Serializable
+data class KontoInListeAngekuendigtEintrag(
+    @SerialName("art") val art: String = "",
+    @SerialName("wirksam_ab") val wirksamAb: String = "",
 )
 
 @Serializable
@@ -2041,7 +2049,7 @@ data class RegisterRequest(
 @Serializable
 data class RegisterResponse(
     @SerialName("success") val success: Boolean,
-    @SerialName("message") val message: String? = null,
+    @SerialName("message") val message: String = "",
     @SerialName("email_sent") val emailSent: Boolean = false,
     @SerialName("console_mode") val consoleMode: Boolean = false,
     @SerialName("error") val error: String? = null,
@@ -2552,5 +2560,6 @@ data class ZweiterFaktorStand(
     @SerialName("success") val success: Boolean,
     @SerialName("aktiv") val aktiv: Boolean = false,
     @SerialName("codes_uebrig") val codesUebrig: Int = 0,
+    @SerialName("alte_codes_bis") val alteCodesBis: String? = null,
     @SerialName("error") val error: String? = null,
 )

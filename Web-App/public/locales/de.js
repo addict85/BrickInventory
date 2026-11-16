@@ -394,6 +394,16 @@ window.I18N_DE = {
   'verify.title': 'E-Mail-Adresse bestätigen',
   'verify.button': 'Adresse bestätigen',
   'auth.back_to_login': '← Zurück zur Anmeldung',
+  'maillink.abbrechen.title': 'Angekündigte Änderung abbrechen',
+  'maillink.abbrechen.text':
+    'Ein Verwalter hat eine Änderung an deinem Konto angekündigt (neues Passwort, zweiten Faktor entfernen, deaktivieren, Rechte entziehen oder löschen). Mit dem Knopf brichst du alles ab, was für dein Konto angekündigt ist.',
+  'maillink.abbrechen.button': 'Änderung abbrechen',
+  'maillink.abbrechen.ok': 'Abgebrochen. Die übrigen Verwalter erfahren es per Mail.',
+  'maillink.freigeben.title': 'Anmeldung von neuem Ort bestätigen',
+  'maillink.freigeben.text':
+    'Nach vielen Fehlversuchen ist die Anmeldung mit Passwort von neuen Orten gesperrt. Der Knopf schaltet die Adresse frei, von der die Anmeldung kam, die die Mail ausgelöst hat.',
+  'maillink.freigeben.button': 'Anmeldung freigeben',
+  'maillink.freigeben.ok': 'Freigegeben. Von dort geht die Anmeldung mit Passwort wieder.',
   'parts.add.bl_hint': 'für Marktpreis',
   'figs.add.hint':
     'Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.',
@@ -519,9 +529,15 @@ window.I18N_DE = {
   'users.aktion.gutschein_pdf': 'Gutschein-PDF freigegeben',
   'users.aktion.gutschein_export': 'Gutscheine als PDF exportiert',
   'users.aktion.uebernahme_angekuendigt': 'Änderung an einem Verwalterkonto angekündigt',
-  'users.aktion.uebernahme_abgebrochen': 'Angekündigte Änderung durch Anmeldung aufgehoben',
+  'users.aktion.uebernahme_abgebrochen': 'Angekündigte Änderung vom Konto aufgehoben (Anmeldung oder Link)',
   'users.uebernahme_spaeter':
-    'Das Konto ist ein Verwalterkonto: Die Änderung gilt ab {zeit}, wenn es sich bis dahin nicht anmeldet. Es wurde per Mail benachrichtigt.',
+    'Das Konto ist ein Verwalterkonto: Die Änderung gilt ab {zeit}, wenn es sich bis dahin nicht anmeldet oder über den Link in der Mail abbricht. Es und alle Verwalter wurden per Mail benachrichtigt.',
+  'users.angekuendigt': 'Angekündigt: {was} ab {zeit}',
+  'users.angekuendigt.passwort': 'neues Passwort',
+  'users.angekuendigt.zweiter_faktor': 'zweiter Faktor entfernt',
+  'users.angekuendigt.deaktivieren': 'deaktivieren',
+  'users.angekuendigt.rolle_entziehen': 'Verwalterrechte entziehen',
+  'users.angekuendigt.loeschen': 'löschen',
   'acq.geschaetzt': 'Kaufpreis geschätzt: Marktpreis, kein bezahlter Betrag',
   'acq.legende_geschaetzt': '≈ geschätzt: Marktpreis, kein bezahlter Betrag',
   'acq.exemplar_geschaetzt': 'Exemplar mit geschätztem Preis {preis} angelegt',
@@ -1397,6 +1413,8 @@ window.I18N_DE = {
   'zf.enabled': 'Zweiter Faktor eingerichtet',
   'zf.active': 'Eingerichtet · {n} Wiederherstellungs\u00ADcodes übrig',
   'zf.active_one': 'Eingerichtet · {n} Wiederherstellungs\u00ADcode übrig',
+  'zf.alte_codes':
+    'Codes von vor dem 01.11.2026 gelten nur noch bis {bis}. Erzeuge vorsorglich neue Wiederherstellungscodes.',
   'zf.codes_title': 'Deine Wiederherstellungscodes',
   'zf.codes_hint':
     'Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.',

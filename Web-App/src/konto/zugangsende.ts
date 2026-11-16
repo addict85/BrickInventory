@@ -1,10 +1,16 @@
 /** Sitzungen und Zugänge eines Kontos beenden, wenn sich an seinem Schutz etwas ändert. */
-import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
+import { erhoeheSitzungsVersion, horcheAufSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersion';
 import { tokenAbdruck, ZUGAENGE_HOECHSTENS } from './geraeteToken';
-import { leereTokenCache } from './tokenCache';
+import { horcheAufTokenWiderruf, leereTokenCache } from './tokenCache';
 import { imSystemkontext } from '../infra/kontoKontext';
 import { imSystemrahmen } from '../infra/bereich';
 import type { KontoKontext } from './kontext';
+
+/** Token-Zwischenspeicher und Sitzungsversionen dieses Prozesses folgen den Widerrufen der anderen (NOTIFY). */
+export function horcheAufWiderruf(k: KontoKontext): void {
+  horcheAufTokenWiderruf(k);
+  horcheAufSitzungsVersion(k);
+}
 
 export function begrenzeSitzungen(k: KontoKontext, userId: number, eigene: string): Promise<number> {
   return k.zugaenge.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);

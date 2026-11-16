@@ -427,7 +427,12 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         'SELECT verwaltungsprotokoll_aufraeumen() WHERE $1::int > 0',
       ])
         await assert.rejects(app.query(sql, [konto]), /permission denied/, `Laufzeitrolle: ${sql}`);
+      // Den Namen nur am eigenen Konto (0121): ohne Konto keine Zeile, mit Konto die eigene.
+      assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 0);
+      await app.query('BEGIN');
+      await app.query(`SELECT set_config('app.konto', $1, true)`, [String(konto)]);
       assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 1);
+      await app.query('COMMIT');
       await app.query(`INSERT INTO verwaltungsprotokoll (ziel_id, aktion) VALUES ($1, 'probe')`, [konto]);
     });
     await als(db, SYS, SYS_PW, async sys => {
@@ -471,10 +476,24 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       await als(db, null, null, c => c.query(`SELECT id FROM users WHERE username LIKE 'kt\\_%' ORDER BY username`))
     ).rows.map(z => z.id);
     await als(db, ROLLE, PASSWORT, async app => {
-      for (const sql of ['SELECT password_hash FROM users', 'SELECT * FROM users', 'SELECT sid FROM user_sessions'])
+      for (const sql of [
+        'SELECT password_hash FROM users',
+        'SELECT * FROM users',
+        'SELECT email FROM users',
+        'SELECT reset_token FROM users',
+        'SELECT sid FROM user_sessions',
+      ])
         await assert.rejects(app.query(sql), /permission denied/, `Laufzeitrolle: ${sql}`);
       await assert.rejects(app.query(`DELETE FROM user_sessions`), /permission denied/);
-      assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rows[0].username, 'kt_a');
+      // Ohne Konto keine Zeile, mit Konto die eigene (0121).
+      assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rowCount, 0);
+      await app.query('BEGIN');
+      try {
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
+        assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rows[0].username, 'kt_a');
+      } finally {
+        await app.query('ROLLBACK');
+      }
       await app.query('BEGIN');
       try {
         await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
@@ -490,7 +509,8 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       try {
         await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
         assert.equal((await app.query('DELETE FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
-        assert.equal((await app.query('SELECT 1 FROM account_links WHERE main_user_id = $1', [A])).rowCount, 1);
+        // Fremde Verknüpfungen sieht C nicht mehr (0121), auch nicht zum Lesen.
+        assert.equal((await app.query('SELECT 1 FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
         assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 1, 'eigene Einladung');
         await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
         assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 0, 'fremde Einladung');
@@ -842,12 +862,14 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       c.query(`INSERT INTO sets (user_id, set_number) SELECT id, '10001-1' FROM users WHERE username = 'leseprobe'`),
     );
     const zaehle = c => c.query('SELECT count(id)::int AS n FROM sets').then(r => r.rows[0].n);
+    // Ohne Konto sieht die Laufzeitrolle auch in users keine Zeile (0121): die Kennung von der Eigentümerin.
+    const konto = await als(neu, null, null, c =>
+      c.query(`SELECT id FROM users WHERE username = 'leseprobe'`).then(r => r.rows[0].id),
+    );
     await als(neu, ROLLE, PASSWORT, async app => {
       assert.equal(await zaehle(app), 0, 'ohne Konto sieht die Laufzeitrolle keine Zeile');
       await app.query('BEGIN');
-      await app.query(
-        `SELECT set_config('app.konto', (SELECT id FROM users WHERE username = 'leseprobe')::text, true)`,
-      );
+      await app.query(`SELECT set_config('app.konto', $1::text, true)`, [konto]);
       assert.equal(await zaehle(app), 1, 'mit Konto sieht sie dessen Zeile');
       await app.query('COMMIT');
     });

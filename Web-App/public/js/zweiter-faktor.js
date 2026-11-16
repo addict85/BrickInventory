@@ -75,7 +75,12 @@ export async function ladeZweitenFaktor() {
     return;
   }
   // Den Code fragt jede Aktion in ihrem eigenen Dialog: Ein Feld für zwei Knöpfe liess offen, wofür es gilt.
+  // Codes alter Art laufen ab (Migration 0122); ob die offenen alt sind, weiss nur der Inhaber.
+  const alt = d.alte_codes_bis
+    ? html`<p role="note" data-stil="margin:0 0 .75rem 0">${ico('warnung')} ${tRaw('zf.alte_codes', { bis: fmtDatum(d.alte_codes_bis) })}</p>`
+    : '';
   zeichne(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
+    ${alt}
     <div class="zf-knoepfe">
       ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
       ${knopf('zfAbschalten', tRaw(angemeldetesKonto?.isAdmin ? 'zf.neu_einrichten' : 'zf.disable'), 'bd')}

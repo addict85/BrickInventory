@@ -79,6 +79,8 @@ const BAUSTEINE = [
   'konten-orte.js',
   'papierkorb.js',
   'kennzahlen.js',
+  // Die Tafel für Links aus Mails vor der Anmeldung; die Anmeldemaske (sitzung.js) zeigt sie.
+  'maillink.js',
 ];
 
 /** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */

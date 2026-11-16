@@ -94,7 +94,7 @@ const NAMEN = {
   ImportZeile: 'CsvImportZeile',
   POSTApiV1AuthEmailBestaetigenVorschau: 'EmailVorschau',
   PdfStand: 'PdfAuftragStand',
-  PUTApiV1AuthUsersIdPassword: 'PasswortGesetzt',
+  VerwalterWeg: 'PasswortGesetzt',
   PasskeyAnmeldung: 'LoginResponse',
   PdfAuftrag: 'PdfAuftragAntwort',
   PdfFreigabe: 'GutscheinPdfFreigabe',

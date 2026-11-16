@@ -133,6 +133,7 @@ const ANMELDUNG = {
         zweiter_faktor: false,
         wartet_auf_bestaetigung: false,
         created_at: '2026-10-01T00:00:00Z',
+        angekuendigt: [{ art: 'deaktivieren', wirksam_ab: '2026-10-02T00:00:00Z' }],
       },
     ],
   },

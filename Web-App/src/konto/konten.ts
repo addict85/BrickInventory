@@ -13,6 +13,7 @@ import type { Geloest } from '../mail';
 import { hinweisNebenher } from './kontoHinweis';
 import { loescheTagesgrenze } from './loginLimiter';
 import type { KontoKontext } from './kontext';
+import type { UebernahmeArt } from './repository/uebernahmen';
 
 /** Nur melden, nichts ändern: Welche Adresse gemeint war, weiss nur der Inhaber. */
 export async function meldeUngueltigeAdressen(k: KontoKontext): Promise<number[]> {
@@ -39,7 +40,14 @@ export async function meldeAusstehendeAdressen(k: KontoKontext): Promise<number[
 export async function kontenListe(k: KontoKontext) {
   const konten = await k.konten.alleKonten();
   const mitFaktor = await k.faktoren.aktiveUnter(konten.map(z => z.id));
-  return konten.map(z => ({ ...z, zweiter_faktor: mitFaktor.has(z.id) }));
+  // Angekündigte Änderungen an Verwaltern (24 h): Die übrigen Verwalter sollen sie sehen, nicht nur per Mail.
+  const angekuendigt = new Map<number, { art: UebernahmeArt; wirksam_ab: string }[]>();
+  for (const a of await k.uebernahmen.angekuendigte())
+    angekuendigt.set(a.ziel_id, [
+      ...(angekuendigt.get(a.ziel_id) ?? []),
+      { art: a.art, wirksam_ab: new Date(a.wirksam_ab).toISOString() },
+    ]);
+  return konten.map(z => ({ ...z, zweiter_faktor: mitFaktor.has(z.id), angekuendigt: angekuendigt.get(z.id) ?? [] }));
 }
 
 export async function profil(k: KontoKontext, id: number) {

@@ -20,6 +20,14 @@ export const FEHLER = {
     en: 'This access token must be rotated first (POST /api/v1/auth/token-rotieren).',
   },
   passkey_ungueltig: { de: 'Der Passkey wurde nicht angenommen.', en: 'The passkey was not accepted.' },
+  abbruch_link_ungueltig: {
+    de: 'Der Link ist ungültig, schon benutzt, oder die Änderung ist schon wirksam.',
+    en: 'The link is invalid, already used, or the change has already taken effect.',
+  },
+  freigabe_link_ungueltig: {
+    de: 'Der Freigabelink ist ungültig, abgelaufen oder schon benutzt.',
+    en: 'The approval link is invalid, expired or already used.',
+  },
   passkey_ohne_domain: {
     de: 'Passkeys sind auf diesem Server nicht eingerichtet. Bitte mit Passwort anmelden.',
     en: 'Passkeys are not set up on this server. Please sign in with your password.',
@@ -49,8 +57,8 @@ export const FEHLER = {
     en: 'Too many failed attempts — please try again in {minuten} min',
   },
   konto_tagesgrenze: {
-    de: 'Zu viele Fehlversuche für dieses Konto in 24 Stunden. Anmelden geht jetzt nur mit Passwort und Code des zweiten Faktors, mit Passkey oder nach „Passwort vergessen“.',
-    en: 'Too many failed attempts for this account in 24 hours. Sign-in now works only with password and second-factor code, with a passkey or after “Forgot password”.',
+    de: 'Zu viele Fehlversuche für dieses Konto in 24 Stunden. Anmelden geht jetzt nur mit Passwort und Code des zweiten Faktors, mit Passkey, nach „Passwort vergessen“ oder über den Link „Anmeldung freigeben“, den das Konto per Mail bekommt.',
+    en: 'Too many failed attempts for this account in 24 hours. Sign-in now works only with password and second-factor code, with a passkey, after “Forgot password” or via the “Allow this sign-in” link the account receives by email.',
   },
   anmeldedaten_ungueltig: { de: 'Ungültige Anmeldedaten', en: 'Invalid credentials' },
   name_oder_email_eingeben: {

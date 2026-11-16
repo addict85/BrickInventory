@@ -41,6 +41,8 @@ const ERWARTET_OFFEN = new Map([
   ['POST /api/v1/auth/forgot-password', 'Wer sein Passwort vergisst, kann sich nicht anmelden'],
   ['POST /api/v1/auth/bestaetigung-erneut', 'Ein unbestätigtes Konto kann sich nicht anmelden'],
   ['POST /api/v1/auth/reset-password', 'Dasselbe, zweiter Schritt'],
+  ['POST /api/v1/auth/uebernahme-abbrechen', 'Der Link aus der Mail: Das Ziel ist deaktiviert oder abgemeldet'],
+  ['POST /api/v1/auth/anmeldung-freigeben', 'Der Link aus der Mail: Die Anmeldung ist gerade gesperrt'],
   ['POST /api/v1/auth/email-bestaetigen', 'Wer seine Adresse bestätigt, ist noch nicht angemeldet'],
   ['POST /api/v1/auth/email-bestaetigen/vorschau', 'Dasselbe, vor dem Bestätigen'],
   ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],

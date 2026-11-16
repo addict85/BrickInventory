@@ -23,13 +23,38 @@ export async function loadUsers() {
       u => html`<tr><td class="nutzer-name" data-label=""><strong>${u.username}</strong></td><td class="nutzer-id">${u.id}</td>
       <td><span class="rb ${u.is_admin ? 'rv' : 'ru'}">${u.is_admin ? tRaw('users.role.admin') : tRaw('users.role.user')}</span>
         ${u.is_active === false ? html`<span class="rb ru">${tRaw('users.status.inaktiv')}</span>` : ''}
-        ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.wartet')}</span>` : ''}</td>
+        ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.wartet')}</span>` : ''}
+        ${angekuendigt(u)}</td>
       <td>${fmtDatum(u.created_at)}</td>
       <td>${nutzerAktionen(u)}</td></tr>`,
     )}</tbody></table></div>`,
   );
   ladeProtokoll();
 }
+/** @type {Record<string, () => string>} */
+const ANGEKUENDIGT = {
+  passwort: () => tRaw('users.angekuendigt.passwort'),
+  zweiter_faktor: () => tRaw('users.angekuendigt.zweiter_faktor'),
+  deaktivieren: () => tRaw('users.angekuendigt.deaktivieren'),
+  rolle_entziehen: () => tRaw('users.angekuendigt.rolle_entziehen'),
+  loeschen: () => tRaw('users.angekuendigt.loeschen'),
+};
+/**
+ * Was an einem Verwalterkonto angekündigt ist (24 h): Die übrigen Verwalter sollen es sehen, nicht nur per Mail.
+ * @param {Konto} u
+ */
+function angekuendigt(u) {
+  return (u.angekuendigt ?? []).map(
+    a =>
+      html`<span class="rb ru">${tRaw('users.angekuendigt', { was: (ANGEKUENDIGT[a.art] || (() => a.art))(), zeit: fmtDatum(a.wirksam_ab, 'tagzeit') })}</span>`,
+  );
+}
+/** Die Antwort einer Verwalteraktion: angekündigt (Verwalterkonto) oder sofort. @param {{ wirksam_ab?: string }} d @param {string} sofort */
+const meldeErgebnis = (d, sofort) =>
+  toast(
+    d.wirksam_ab ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') }) : sofort,
+    'success',
+  );
 // Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im Quelltext steht und die
 // Wörterbuchprüfung ihn findet.
 /** @type {Record<string, () => string>} */
@@ -226,7 +251,7 @@ async function toggleAdmin(uid, isAdmin, name) {
   );
   if (d === null) return;
   if (d.success) {
-    toast(tRaw('users.role_changed'), 'success');
+    meldeErgebnis(d, tRaw('users.role_changed'));
     loadUsers();
   } else toast(d.error || t('settings.error'), 'error');
 }
@@ -250,7 +275,7 @@ async function toggleAktiv(uid, aktiv, name) {
   );
   if (d === null) return;
   if (d.success) {
-    toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success');
+    meldeErgebnis(d, tRaw(istAktiv ? 'users.deactivated' : 'users.activated'));
     loadUsers();
   } else toast(d.error || t('settings.error'), 'error');
 }
@@ -288,7 +313,7 @@ async function delUser(uid, name) {
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/users/${uid}`, { admin_password, ...z }));
   if (d === null) return;
   if (d.success) {
-    toast(tRaw('users.deleted', { name }), 'success');
+    meldeErgebnis(d, tRaw('users.deleted', { name }));
     loadUsers();
   } else toast(d.error || t('settings.error'), 'error');
 }

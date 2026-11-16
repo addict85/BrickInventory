@@ -16,7 +16,7 @@ export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'profil' | 'bilder'>
 
   // Erst ein Knopf auf der Seite wirkt (POST), sonst bestätigte schon der
   // Link-Scanner des Mailanbieters eine fremde Adresse.
-  router.get(['/verify', '/reset-password'], async (req, res) => {
+  router.get(['/verify', '/reset-password', '/uebernahme-abbrechen', '/anmeldung-freigeben'], async (req, res) => {
     res.set('Cache-Control', 'no-store');
     if (tokenInsFragment(req, res)) return;
     await sendeStartseite(d.profil, res);

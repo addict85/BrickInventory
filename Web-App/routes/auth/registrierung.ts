@@ -56,6 +56,8 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
         ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
         : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
       email_sent: gesendet,
+      // Die Registrierung verlangt einen Mailserver (oben): Den Link gibt nie die Konsole aus.
+      console_mode: false,
     };
   });
 
@@ -129,6 +131,23 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
       const uid = await d.konto.passwortPerLinkSetzen(token, password);
       if (!uid) fachfehler('ungueltig', 'token_ungueltig');
       return { message: 'Passwort erfolgreich geändert.' };
+    },
+  );
+  // Links aus Mails, ohne Anmeldung: Der Token ist das Recht, die Drossel hält Raten auf.
+  router.endpunkt(
+    'POST /api/v1/auth/uebernahme-abbrechen',
+    ipThrottle(d.konto, 'uebernahme-abbrechen', 20, 60 * 60 * 1000),
+    async req => {
+      await d.konto.mailLinkEinloesen('abbrechen', req.eingabe.token ?? '');
+      return {};
+    },
+  );
+  router.endpunkt(
+    'POST /api/v1/auth/anmeldung-freigeben',
+    ipThrottle(d.konto, 'anmeldung-freigeben', 20, 60 * 60 * 1000),
+    async req => {
+      await d.konto.mailLinkEinloesen('freigeben', req.eingabe.token ?? '');
+      return {};
     },
   );
   return router;

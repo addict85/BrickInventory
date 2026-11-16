@@ -116,6 +116,11 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
         body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }),
       });
       assert.equal(r.status, 200, await r.text());
+      // Einem Verwalter wird die Rolle erst nach der Frist entzogen: fällig machen und ausführen.
+      await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+        id.sv_zweiter,
+      ]);
+      assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
       assert.equal(await zeile(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
       await zurueckschreiben(alt);
 

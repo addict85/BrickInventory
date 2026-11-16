@@ -2324,3 +2324,50 @@ wird). Hinweise:
   `set_minifigs_catalog`. Docker: nichts zu tun. Wer 0119 von Hand erneut einspielt
   (Abschnitt 65, Rolle erst danach angelegt), spielt danach auch
   `db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql` ein; sie ist wiederholbar.
+
+## 67. Runde 29 – Verwalteraktionen angekündigt, Zeilenschutz für Konten, alte Wiederherstellungscodes, Freigabelink (Migrationen 0121–0123)
+
+- **Verwalter gegen Verwalter nur noch angekündigt (0123):** Deaktivieren, Rolle
+  entziehen und Löschen eines anderen Verwalters (oder eines, der die Rolle in den
+  letzten 24 Stunden verlor) gelten wie schon Passwort und zweiter Faktor erst nach
+  24 Stunden. Das Ziel und alle Verwalter bekommen eine Mail; das Ziel kann abbrechen,
+  indem es sich anmeldet (Passwort, Passkey oder QR-Kopplung der App) oder den Link
+  „Änderung abbrechen“ aus seiner Mail öffnet – auch deaktiviert und ohne Anmeldung.
+  Die Kontenliste der Verwaltung zeigt angekündigte Änderungen mit Zeitpunkt. Ausgeführt
+  wird im stündlichen Aufräumlauf. Eine fällige Passwort- oder Faktor-Übernahme entfällt,
+  wenn das Ziel seit der Ankündigung deaktiviert wurde. Gegen Konten ohne Verwalterrolle
+  wirkt alles wie bisher sofort.
+  **Folge für den Betrieb:** Einen kompromittierten Verwalter wird man nicht mehr
+  sofort los; er kann jede Ankündigung durch Anmelden abbrechen. Dann: das Konto direkt
+  in der Datenbank deaktivieren (als Migrationsrolle
+  `UPDATE users SET is_active = false WHERE username = '…'`) und den Server neu starten.
+  Der Link braucht `APP_BASE_URL`; ohne sie nennt die Mail nur die Anmeldung.
+- **Zeilenschutz für `users` und `account_links` (0121):** Die Laufzeitrolle sieht nur
+  noch das eigene Konto, die direkt verknüpften Haushaltskonten und getrennte
+  Unterkonten, und nur Verknüpfungen mit dem eigenen Konto. E-Mail-Adresse,
+  Bestätigungs- und Rücksetz-Token liest nur noch die Systemrolle. Docker: nichts zu tun;
+  `db-rolle` (`postgres/app-rolle.sh`) setzt die Spaltenrechte bei jedem Start.
+  **Ohne Docker:** nach dem Update `postgres/app-rolle.sh` einmal laufen lassen. Eigene
+  Auswertungen, die als Laufzeitrolle Konten oder Adressen lesen, nehmen die Leserolle
+  (pgweb) oder die Systemrolle.
+- **Alte Wiederherstellungscodes laufen ab (0122):** Codes von vor dem 01.11.2026 (zehn
+  Zeichen) gelten noch **90 Tage ab diesem Update**. Wer sich mit einem anmeldet, bekommt
+  eine Mail mit der Frist; unter Menü → Konto → Zweiter Faktor steht ein Hinweis, solange
+  offene Codes alter Art sein könnten. Bitte die Nutzer bitten, dort „Neue
+  Wiederherstellungscodes“ zu erzeugen. Danach gelten alte Codes nicht mehr; wer weder
+  Telefon noch neue Codes hat, braucht den Notausgang des Verwalters.
+- **Tagesgrenze: Freigabelink statt Sperre:** Nach 50 Fehlversuchen in 24 Stunden bekommt
+  ein Konto ohne zweiten Faktor bei einer gesperrten Anmeldung von einem neuen Ort eine
+  Mail „Anmeldung freigeben“ (höchstens eine je Adresse und Stunde, zehn am Tag). Der Link
+  gilt 24 Stunden und einmal und schaltet nur die Adresse frei, von der die gesperrte
+  Anmeldung kam. Braucht Mailserver und `APP_BASE_URL`.
+- **Mehrere Web-Prozesse:** Beendete Sitzungen gelten in allen Prozessen sofort nicht mehr
+  (NOTIFY auf `sitzung_version`, wie beim Token-Widerruf), nicht erst nach fünf Sekunden.
+  Ein Lesefehler der Datenbank bei der Sitzungsprüfung antwortet jetzt 503 statt 500.
+- **Verschlüsselung:** AES-GCM nimmt nur noch den vollen 16-Byte-Tag an. Werte, die der
+  Server selbst geschrieben hat, haben ihn immer; nichts zu tun.
+- **API:** `PUT /auth/users/:id/admin`, `PUT …/aktiv` und `DELETE /auth/users/:id`
+  antworten bei Verwalterkonten mit `wirksam_ab`; `GET /auth/users` liefert je Konto
+  `angekuendigt`, `GET /auth/zweiter-faktor` `alte_codes_bis`. Neu und ohne Anmeldung:
+  `POST /auth/uebernahme-abbrechen` und `POST /auth/anmeldung-freigeben` (je `{ token }`).
+  `POST /auth/register` liefert `message` und `console_mode` (immer `false`) jetzt immer.

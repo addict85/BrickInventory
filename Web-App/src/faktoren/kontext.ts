@@ -55,6 +55,7 @@ export const zugang = (db: Db) => ({
     aktivesGeheimnis: imSystem(db, CODE_VOR_ANMELDUNG, zweiterFaktor.aktivesGeheimnis),
     verbraucheSchritt: imSystem(db, CODE_VOR_ANMELDUNG, zweiterFaktor.verbraucheSchritt),
     verbraucheCode: imSystem(db, CODE_VOR_ANMELDUNG, zweiterFaktor.verbraucheCode),
+    codesSindNeu: imSystem(db, CODE_VOR_ANMELDUNG, zweiterFaktor.codesSindNeu),
     entferne: imSystem(db, FREMDES_KONTO, zweiterFaktor.entferne),
   },
 });

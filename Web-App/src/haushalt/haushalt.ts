@@ -142,7 +142,7 @@ export async function pruefeEinladung(k: HaushaltKontext, uid: number, code: str
   if (mainId === subId) fachfehler('konflikt', 'konto_mit_sich_selbst');
   if (await repo.istVerknuepft(k.db, mainId, subId)) fachfehler('konflikt', 'konto_bereits_verknuepft');
   if (await repo.istVerknuepft(k.db, subId, mainId)) fachfehler('konflikt', 'verknuepfung_erzeugt_kreis');
-  return { inviter: { id: mainId, username: (await repo.kontoName(k.db, k.lesevertrag, mainId)) || String(mainId) } };
+  return { inviter: { id: mainId, username: (await k.repository.einladenderName(mainId)) || String(mainId) } };
 }
 
 // Atomar entwertet, bei Fehlschlag frei.

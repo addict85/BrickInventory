@@ -41,7 +41,7 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   // gilt nur noch dort, und das kann der Eingang nicht wissen.
   [
     'POST',
-    /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren)$/,
+    /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren|uebernahme-abbrechen|anmeldung-freigeben)$/,
   ],
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
