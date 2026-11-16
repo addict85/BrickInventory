@@ -23049,7 +23049,8 @@
         "required": [
           "success",
           "message",
-          "email_sent"
+          "email_sent",
+          "console_mode"
         ],
         "additionalProperties": {}
       },
@@ -23070,10 +23071,7 @@
           }
         },
         "required": [
-          "enabled",
-          "passkey",
-          "passwort_vergessen",
-          "mail_versand"
+          "enabled"
         ],
         "additionalProperties": {}
       },

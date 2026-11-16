@@ -56,6 +56,8 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
         ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
         : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
       email_sent: gesendet,
+      // Die Registrierung verlangt einen Mailserver (oben): Den Link gibt nie die Konsole aus.
+      console_mode: false,
     };
   });
 

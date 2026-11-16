@@ -95,15 +95,15 @@ export const RegisterResponse = z.looseObject({
   success: z.boolean(),
   message: z.string(),
   email_sent: z.boolean(),
-  console_mode: z.boolean().optional(),
+  console_mode: z.boolean(),
   error: z.string().nullable().optional(),
 });
 
 export const RegistrationStatusResponse = z.looseObject({
   enabled: z.boolean(),
-  passkey: z.boolean(),
-  passwort_vergessen: z.boolean(),
-  mail_versand: z.boolean(),
+  passkey: z.boolean().optional(),
+  passwort_vergessen: z.boolean().optional(),
+  mail_versand: z.boolean().optional(),
 });
 
 export const TokenRotation = z.looseObject({

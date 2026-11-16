@@ -2370,5 +2370,4 @@ wird). Hinweise:
   antworten bei Verwalterkonten mit `wirksam_ab`; `GET /auth/users` liefert je Konto
   `angekuendigt`, `GET /auth/zweiter-faktor` `alte_codes_bis`. Neu und ohne Anmeldung:
   `POST /auth/uebernahme-abbrechen` und `POST /auth/anmeldung-freigeben` (je `{ token }`).
-  `GET /auth/registration-status` liefert `passkey`, `passwort_vergessen` und
-  `mail_versand` jetzt immer.
+  `POST /auth/register` liefert `message` und `console_mode` (immer `false`) jetzt immer.

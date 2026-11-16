@@ -1957,15 +1957,15 @@ export type RegisterResponse = {
   success: boolean;
   message: string;
   email_sent: boolean;
-  console_mode?: boolean;
+  console_mode: boolean;
   error?: string | null;
   [feld: string]: unknown;
 };
 export type RegistrationStatusResponse = {
   enabled: boolean;
-  passkey: boolean;
-  passwort_vergessen: boolean;
-  mail_versand: boolean;
+  passkey?: boolean;
+  passwort_vergessen?: boolean;
+  mail_versand?: boolean;
   [feld: string]: unknown;
 };
 export type RoheEinstellungen = {
