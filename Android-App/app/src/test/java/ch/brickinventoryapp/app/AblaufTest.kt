@@ -35,6 +35,7 @@ import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
+import ch.brickinventoryapp.ui.util.LocalSdkStufe
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -75,6 +76,8 @@ import androidx.compose.ui.test.SemanticsMatcher
  *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
  *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“
  *       (gegenproben/erfassen-ohne-grund.patch)
+ *   (j) GutscheineCard ohne GeheimKopierWarnung() → rot „unter Android 13 warnt die
+ *       Gutscheinseite …“ (gegenproben/gutschein-kopieren-ohne-warnung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 // NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
@@ -226,10 +229,13 @@ class AblaufTest {
     private var zustand by mutableStateOf(GutscheinUiState(gutscheine = listOf(
         Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht())))
 
+    /** Die Android-Stufe, nach der die Seite wählt; Robolectric selbst läuft gegen API 35. */
+    private var stufe by mutableStateOf(android.os.Build.VERSION.SDK_INT)
+
     /** Ein Gutschein mit PIN 4711; [schutz] steht für die Gerätesperre. */
     private fun zeigeGutschein(schutz: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {
         zeige {
-            CompositionLocalProvider(LocalSchrittschutz provides schutz) {
+            CompositionLocalProvider(LocalSchrittschutz provides schutz, LocalSdkStufe provides stufe) {
                 GutscheineCard(
                     zustand = zustand, onFeld = { _, _, _, _ -> },
                     onPinSchalten = { id -> zustand = zustand.copy(pinSichtbar = zustand.pinSichtbar + id) },
@@ -239,6 +245,18 @@ class AblaufTest {
                 )
             }
         }
+    }
+
+    /** Kopieren bleibt (Nummer und PIN wandern in ein Bezahlfeld), aber unter Android 13 mit Warnung. */
+    @Test
+    fun `unter Android 13 warnt die Gutscheinseite vor dem Kopieren, ab 13 nicht`() {
+        stufe = 32
+        zeigeGutschein(schutz = { _, weiter -> weiter() })
+        compose.onNodeWithText(ctx.getString(R.string.geheim_kopieren_warnung)).assertExists()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, "6061 2345 6789")).assertExists()
+        stufe = 33
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.geheim_kopieren_warnung)).assertDoesNotExist()
     }
 
     @Test

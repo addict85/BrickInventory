@@ -883,6 +883,7 @@
 
     <!-- Gutscheine (LEGO-Geschenkkarten im eigenen Profil) -->
     <string name="vouchers_title">Gutscheine</string>
+    <string name="geheim_kopieren_warnung">Auf dieser Android-Version sehen Tastatur und Kopier-Vorschau, was du kopierst, auch Nummer und PIN. Die App leert die Zwischenablage nach einer Minute wieder.</string>
     <string name="vouchers_empty">Noch keine Gutscheine hinterlegt.</string>
     <string name="vouchers_total">Total</string>
     <string name="vouchers_add">Gutschein hinzufügen</string>

@@ -8,7 +8,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.components.zeichenweise
@@ -45,6 +44,8 @@ import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.ui.components.fuer
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.geheimKopierbar
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.SettingsCard
 
@@ -84,13 +85,6 @@ internal fun teileCodes(ctx: Context, titel: String, codes: List<String>) {
     }
     runCatching { ctx.startActivity(Intent.createChooser(senden, titel)) }
 }
-
-/**
- * Den TOTP-Schlüssel kopieren nur dort, wo das System ihn als vertraulich behandelt
- * (EXTRA_IS_SENSITIVE ab API 33): Darunter zeigen Vorschau und Tastaturverlauf ihn an.
- * Die Codes gehen nie über die Ablage, nur über [teileCodes].
- */
-internal fun schluesselKopierbar(sdk: Int = Build.VERSION.SDK_INT): Boolean = sdk >= Build.VERSION_CODES.TIRAMISU
 
 /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
 internal fun oeffneMitAuswahl(ctx: Context, uri: String, titel: String): Boolean {
@@ -193,7 +187,7 @@ internal fun ZweiterFaktorCard(
                 }
                 Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
                     fontFamily = FontFamily.Monospace)
-                if (schluesselKopierbar()) {
+                if (geheimKopierbar(LocalSdkStufe.current)) {
                     OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                         Text(stringResource(R.string.zf_copy_key))
                     }

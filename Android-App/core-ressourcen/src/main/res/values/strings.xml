@@ -896,6 +896,7 @@
 
     <!-- Vouchers (LEGO gift cards in your own profile) -->
     <string name="vouchers_title">Vouchers</string>
+    <string name="geheim_kopieren_warnung">On this Android version, the keyboard and the copy preview see what you copy, including number and PIN. The app clears the clipboard again after one minute.</string>
     <string name="vouchers_empty">No vouchers stored yet.</string>
     <string name="vouchers_total">Total</string>
     <string name="vouchers_add">Add voucher</string>
