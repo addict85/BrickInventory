@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.app.StringResourceParityTest
 Rot: ein Begriff je Sache
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values/strings.xml b/Android-App/core-ressourcen/src/main/res/values/strings.xml
+index b6aa641..69bf3d8 100644
 --- a/Android-App/core-ressourcen/src/main/res/values/strings.xml
 +++ b/Android-App/core-ressourcen/src/main/res/values/strings.xml
 @@ -23,7 +23,7 @@
-     <string name="settings_default_condition">Default condition</string>
+     <string name="settings_default_condition">My condition when adding</string>
      <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-     <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background jobs.</string>
--    <string name="settings_default_condition_global">Global default</string>
-+    <string name="settings_default_condition_global">— Global default —</string>
+     <string name="settings_default_condition_hint">A newly added set starts with this. “General” uses the default for all accounts.</string>
+-    <string name="settings_default_condition_global">General</string>
++    <string name="settings_default_condition_global">— General —</string>
      <string name="condition_new">New</string>
      <string name="condition_used">Used</string>
-     <string name="monitoring_default_condition">Default condition</string>
+     <string name="monitoring_default_condition">Condition when adding, for all accounts</string>

@@ -1,0 +1,19 @@
+Gegenprobe: Seitenname der Hintergrundarbeiten wieder über dem Inhalt
+Modul: app
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: Hintergrundarbeiten mit einem Titel
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+index b6f8df7..4d16e87 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+@@ -111,7 +111,8 @@ fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, c
+         ) {
+             // Kein eigener Titel: Die Leiste darüber nennt die Seite schon (VerwaltungGraph).
+             item {
+-                Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
++                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
++                    Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                     if (monState.aktualisiert) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                     else MitTooltip(stringResource(R.string.monitoring_refresh)) {
+                         IconButton(onClick = aktionen::aktualisiere) {
