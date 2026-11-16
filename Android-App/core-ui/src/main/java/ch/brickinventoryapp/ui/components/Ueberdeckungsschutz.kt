@@ -18,9 +18,9 @@ import ch.brickinventoryapp.ressourcen.R
 fun Ueberdeckungsschutz() {
     val view = LocalView.current
     DisposableEffect(view) {
-        val dialog = (view.parent as? DialogWindowProvider)?.window
-        val ziel = dialog?.decorView ?: view.rootView
-        val fenster = dialog ?: activityFenster(view.context)
+        val eigenesFenster = (view.parent as? DialogWindowProvider)?.window
+        val ziel = eigenesFenster?.decorView ?: view.rootView
+        val fenster = eigenesFenster ?: activityFenster(view.context)
         fun anzahl() = ziel.getTag(R.id.ueberdeckung_anzahl) as? Int ?: 0
         ziel.setTag(R.id.ueberdeckung_anzahl, anzahl() + 1)
         ziel.filterTouchesWhenObscured = true

@@ -210,6 +210,9 @@ class UnterseitenTest {
         assertTrue("Gelöscht vor Ablauf der Snackbar", welt.pfade.anfragen.none { it.startsWith("DELETE") })
         meldung.currentSnackbarData?.dismiss()
         compose.mainClock.autoAdvance = true
+        // Das Ende der Snackbar setzt den LaunchedEffect fort; der läuft auf dem Takt der
+        // Compose-Uhr, den treibeBis (nur der Hauptlooper) nicht weiterschiebt.
+        compose.waitForIdle()
         warte("Löschen") { welt.pfade.anfragen.any { it.startsWith("DELETE") && it.endsWith("/storage/locations/3") } }
     }
 

@@ -446,8 +446,9 @@ class OberflaecheEinheitlichTest {
         treibe("Teil offen") { vm.setItemState.value.kopf != null }
         compose.waitForIdle()
         assertEquals("Kopf des Teils aus Sets", 200f, bildHoehe("Brick 2 x 4"), 1f)
+        // Der Chip zeigt die Farbe in der Sprache der App (de-CH), wie beim selbst erfassten Teil.
         assertTrue("Kennzahlen als Chips wie beim selbst erfassten Teil",
-            compose.onAllNodes(hasText(ctx.getString(R.string.setitem_color) + " Red", substring = true), useUnmergedTree = true)
+            compose.onAllNodes(hasText(ctx.getString(R.string.setitem_color) + " Rot", substring = true), useUnmergedTree = true)
                 .fetchSemanticsNodes().isNotEmpty())
     }
 }
