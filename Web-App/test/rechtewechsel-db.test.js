@@ -7,6 +7,9 @@
  *   B  protokolliere() vor dem Löschen entfernt → rot: Protokoll ohne
  *      „konto_geloescht"
  *
+ * Das Ziel ist Verwalter: Entzug und Löschung werden seit Runde 29 angekündigt und
+ * wirken im Aufräumlauf (src/konto/verwalterAktionen.ts); der Test führt ihn aus.
+ *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausfuehren: REQUIRE_DB=1 npm test
  */
@@ -85,6 +88,14 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       (await db.get("SELECT COUNT(*)::int AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n,
     );
 
+  /** Die Ankündigung fällig machen und den Aufräumlauf ausführen. */
+  const faellig = async () => {
+    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+      idZiel,
+    ]);
+    return _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus();
+  };
+
   try {
     const chefCookie = await anmelden(CHEF);
 
@@ -104,6 +115,9 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       body: { is_admin: false, admin_password: PASS },
     });
     assert.equal(entzug.status, 200, `Entzug scheiterte: ${JSON.stringify(entzug.body)}`);
+    assert.ok(entzug.body.wirksam_ab, 'Bei einem Verwalter wird der Entzug angekündigt');
+    assert.equal(await sitzungen(idZiel), 1, 'Vor der Frist bleibt die Sitzung');
+    assert.equal(await faellig(), 1);
     assert.equal(
       await sitzungen(idZiel),
       0,
@@ -170,6 +184,8 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       body: { admin_password: PASS },
     });
     assert.equal(weg.status, 200, `Loeschen scheiterte: ${JSON.stringify(weg.body)}`);
+    assert.ok(weg.body.wirksam_ab, 'Bei einem Verwalter wird die Löschung angekündigt');
+    assert.equal(await faellig(), 1);
     assert.equal(
       await sitzungen(idZiel),
       0,
@@ -188,7 +204,13 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     ]);
     assert.deepEqual(
       prot.map(p => p.aktion),
-      ['verwalter_entzogen', 'verwalter_ernannt', 'konto_geloescht'],
+      [
+        'uebernahme_angekuendigt',
+        'verwalter_entzogen',
+        'verwalter_ernannt',
+        'uebernahme_angekuendigt',
+        'konto_geloescht',
+      ],
     );
     assert.ok(
       prot.every(p => p.ziel_name === ZIEL),

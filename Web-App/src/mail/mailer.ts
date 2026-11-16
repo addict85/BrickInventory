@@ -472,7 +472,6 @@ export async function sendKontoHinweisMail(
     ? 'If this was not you, reset your password via “Forgot password”, check Menu → Account and Menu → Household — or ask the administrator.'
     : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Verwalter.';
   const hallo = en ? 'Hello' : 'Hallo';
-  // Nur mit Basis-URL: Ein Link ohne sie führte nirgendwohin, der Text nennt dann die Anmeldung.
   const basis = basisUrl();
   const link =
     basis && o.abbruch

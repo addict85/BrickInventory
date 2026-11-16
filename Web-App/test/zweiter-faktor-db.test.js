@@ -154,6 +154,8 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       success: true,
       aktiv: true,
       codes_uebrig: 10,
+      // Frisch erzeugte Codes sind neuer Art und tragen keine Frist (Migration 0122).
+      alte_codes_bis: null,
     });
     const roh = JSON.stringify(await db.all('SELECT code_hash FROM zweiter_faktor_codes'));
     assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'Wiederherstellungscodes stehen im Klartext');
@@ -161,10 +163,13 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     for (const c of codes) assert.match(c, /^[a-z2-7]{4}(-[a-z2-7]{4}){3}$/);
     const sha = c => require('node:crypto').createHash('sha256').update(c.replace(/-/g, '')).digest('hex');
     assert.ok(!codes.some(c => roh.includes(sha(c))), 'Wiederherstellungscodes als ungesalzenes SHA-256 gespeichert');
-    // Ein Code der alten Form (10 Zeichen, SHA-256) gilt weiter, einmal.
+    // Ein Code der alten Form (10 Zeichen, SHA-256) gilt bis zu seiner Frist (0122), einmal.
     const uid = (await db.get('SELECT id FROM users WHERE username = $1', [NAME])).id;
-    await db.run('INSERT INTO zweiter_faktor_codes (user_id, code_hash) VALUES ($1, $2)', [uid, sha('abcde23456')]);
-    assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), 'wiederherstellung', 'alter Code gilt nicht mehr');
+    await db.run(
+      `INSERT INTO zweiter_faktor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
+      [uid, sha('abcde23456')],
+    );
+    assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'alter Code gilt nicht mehr');
     assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
     await db.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NOT NULL', [uid]);
 

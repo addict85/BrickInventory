@@ -15,7 +15,6 @@ import { anmeldungFreigeben } from './loginLimiter';
 import type { Uebernahme, UebernahmeArt } from './repository/uebernahmen';
 import type { KontoKontext } from './kontext';
 
-/** Sofort, ohne Ankündigung: für Nicht-Verwalter und den Aufräumlauf. */
 export function rolleSchreiben(k: KontoKontext, durch: number, ziel: number, soll: boolean) {
   return mitZugangsende(k, ziel, async t => {
     const r = await setzeVerwalterRolle(t, ziel, soll);
@@ -32,7 +31,6 @@ export function aktivSchreiben(k: KontoKontext, durch: number, ziel: number, sol
   });
 }
 
-/** Einem Verwalter wird die Rolle erst nach der Frist entzogen; `wirksamAb` sagt, ab wann. */
 export async function verwalterRolleSetzen(k: KontoKontext, durch: number, ziel: number, soll: boolean) {
   const wirksamAb = soll ? null : await abbauAnkuendigen(k, durch, ziel, 'rolle_entziehen');
   return wirksamAb ? { geaendert: false, wirksamAb } : { ...(await rolleSchreiben(k, durch, ziel, soll)), wirksamAb };
@@ -197,8 +195,7 @@ export async function uebernahmenAbbrechen(
   return arten;
 }
 
-/** Die Links aus Mails an den Inhaber, ohne Anmeldung: eine Ankündigung abbrechen (einmal, der Abbruch
- * löscht die Zeilen) oder eine Anmeldung über der Tagesgrenze freigeben. */
+/** Die Links aus Mails an den Inhaber, ohne Anmeldung; ein Abbruch gilt einmal, weil er die Zeilen löscht. */
 export async function mailLinkEinloesen(k: KontoKontext, art: 'abbrechen' | 'freigeben', token: string): Promise<void> {
   if (art === 'freigeben') return anmeldungFreigeben(k, token);
   const ziel = token ? await k.uebernahmen.zielZumAbbruch(tokenAbdruck(token)) : null;

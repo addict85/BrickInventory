@@ -21,10 +21,10 @@ const KANAL = 'sitzung_version';
 const erhoeht = (k: KontoKontext) =>
   k.faecher.fach('sitzungsVersionSignal', () => {
     const e = prozessEreignis('sitzungsVersion', KANAL);
-    e.horche(() => leere(k));
+    e.horche(() => vergissAlle(k));
     return e;
   });
-function leere(k: KontoKontext): void {
+function vergissAlle(k: KontoKontext): void {
   const s = speicher(k);
   s.eintraege.clear();
   s.stand++;
@@ -35,10 +35,10 @@ export function horcheAufSitzungsVersion(k: KontoKontext): void {
 }
 function nutzbar(k: KontoKontext): boolean {
   if (speicher(k).verteilt && k.db.benachrichtigung.hoertZu(KANAL)) return true;
-  leere(k);
+  vergissAlle(k);
   return false;
 }
-function melde(k: KontoKontext): void {
+function meldeErhoehung(k: KontoKontext): void {
   if (speicher(k).verteilt) void erhoeht(k).melde(k.db.benachrichtigung);
 }
 
@@ -60,16 +60,16 @@ export async function aktuelleSitzungsVersion(k: KontoKontext, uid: number): Pro
 /** Vor dem Löschen der Zeilen aufrufen; liefert die neue Version. */
 export async function erhoeheSitzungsVersion(k: KontoKontext, uid: number): Promise<number> {
   const version = await k.zugaenge.zaehleSitzungsVersionHoch(uid);
-  leere(k);
+  vergissAlle(k);
   meldeZugangsAenderung();
-  melde(k);
+  meldeErhoehung(k);
   return version;
 }
 
 /** Nach dem COMMIT einer Transaktion, die die Version erhöht hat: Eine Anfrage
  * dazwischen hätte sonst den alten Stand wieder gemerkt. */
 export function vergissSitzungsVersion(k: KontoKontext, _uid: number): void {
-  leere(k);
+  vergissAlle(k);
   meldeZugangsAenderung();
-  melde(k);
+  meldeErhoehung(k);
 }

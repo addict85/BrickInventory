@@ -156,7 +156,6 @@ export const KontoInListe = z.looseObject({
   created_at: zeit.nullable(),
   zweiter_faktor: z.boolean(),
   wartet_auf_bestaetigung: z.boolean(),
-  /** Angekündigte Änderungen an diesem Verwalterkonto, wirksam ab dem Zeitpunkt. */
   angekuendigt: z.array(
     z.looseObject({
       art: z.enum(['passwort', 'zweiter_faktor', 'deaktivieren', 'rolle_entziehen', 'loeschen']),
