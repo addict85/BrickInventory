@@ -114,10 +114,10 @@ export async function sendEmailGeaendertMail(
       : {
           subject: 'BrickInventory Manager — Neue E-Mail-Adresse beantragt',
           title: 'Neue E-Mail-Adresse beantragt',
-          text: `Hallo ${username},\n\nfür dein Konto wurde die E-Mail-Adresse ${neueAdresse} beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.\n\nWarst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+          text: `Hallo ${username},\n\nfür dein Konto wurde die E-Mail-Adresse ${neueAdresse} beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.\n\nWarst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Administrator.\n\nBrickInventory Manager`,
           html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
        <p style="margin:0 0 16px">für dein Konto wurde die E-Mail-Adresse <strong>${esc(neueAdresse)}</strong> beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.</p>`,
-          note: 'Warst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.',
+          note: 'Warst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Administrator.',
         };
   return sendMail(k, {
     to,
@@ -244,10 +244,10 @@ export async function sendHaushaltVerknuepftMail(
       : {
           subject: 'BrickInventory Manager — Dein Konto ist einem Haushalt beigetreten',
           title: 'Haushalt verknüpft',
-          text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${hauptkonto}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+          text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${hauptkonto}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Administrator.\n\nBrickInventory Manager`,
           html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
        <p style="margin:0 0 16px">dein Konto ist jetzt Unterkonto von <strong>${esc(hauptkonto)}</strong>. Dieses Konto sieht und ändert deine Sammlung.</p>`,
-          note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Verwalter.',
+          note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Administrator.',
         };
   return sendMail(k, {
     to,
@@ -327,7 +327,7 @@ function uebernahme(o: HinweisAngaben, en: boolean): { was: string; bis: string 
     passwort: ['ein neues Passwort setzen', 'set a new password'],
     zweiter_faktor: ['den zweiten Faktor entfernen', 'remove the second factor'],
     deaktivieren: ['das Konto deaktivieren', 'deactivate the account'],
-    rolle_entziehen: ['die Verwalterrechte entziehen', 'revoke the administrator rights'],
+    rolle_entziehen: ['die Administratorrechte entziehen', 'revoke the administrator rights'],
     loeschen: ['das Konto löschen', 'delete the account'],
   };
   const was = arten.map(a => (satz[a] ?? ['', ''])[en ? 1 : 0]).join(en ? ' and ' : ' und ');
@@ -361,19 +361,19 @@ function uebernahmeSaetze(o: HinweisAngaben, en: boolean) {
   return {
     uebernahme_angekuendigt: en
       ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough) or open the link below; the change is then dropped.`
-      : `der Verwalter „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung.`,
+      : `der Administrator „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt) oder öffne den Link unten; dann entfällt die Änderung.`,
     verwaltung_uebernahme_angekuendigt: en
       ? `“${o.durch ?? ''}” wants to ${u.was} for the administrator account “${o.konto ?? ''}”, effective ${u.bis} unless “${o.konto ?? ''}” signs in before then.`
-      : `„${o.durch ?? ''}“ will für das Verwalterkonto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
+      : `„${o.durch ?? ''}“ will für das Administratorkonto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
     verwaltung_uebernahme_abgebrochen: en
       ? `“${o.konto ?? ''}” signed in or cancelled by the link in the email; the announced change (${u.was}) is dropped.`
       : `„${o.konto ?? ''}“ hat sich angemeldet oder über den Link in der Mail abgebrochen; die angekündigte Änderung (${u.was}) entfällt.`,
     verwalter_aktion_ausgefuehrt: en
       ? `the announced change by the administrator “${o.durch ?? ''}” took effect: ${u.was}.`
-      : `die angekündigte Änderung des Verwalters „${o.durch ?? ''}“ ist wirksam: ${u.was}.`,
+      : `die angekündigte Änderung des Administrators „${o.durch ?? ''}“ ist wirksam: ${u.was}.`,
     verwaltung_aktion_ausgefuehrt: en
       ? `the change to the administrator account “${o.konto ?? ''}” announced by “${o.durch ?? ''}” took effect: ${u.was}.`
-      : `die von „${o.durch ?? ''}“ angekündigte Änderung am Verwalterkonto „${o.konto ?? ''}“ ist wirksam: ${u.was}.`,
+      : `die von „${o.durch ?? ''}“ angekündigte Änderung am Administratorkonto „${o.konto ?? ''}“ ist wirksam: ${u.was}.`,
     anmeldung_freigeben: en
       ? `your account reached the limit of failed sign-in attempts. Signing in with the password from a new place (address ${o.adresse ?? '?'}) is blocked for now. If that was you, open the link below: it allows signing in from that address again. If not, ignore this email.`
       : `für dein Konto ist die Grenze der Fehlversuche erreicht. Mit dem Passwort ist die Anmeldung von einem neuen Ort (Adresse ${o.adresse ?? '?'}) vorerst gesperrt. Warst du das, öffne den Link unten: Er schaltet die Anmeldung von dieser Adresse wieder frei. Sonst ignoriere diese Mail.`,
@@ -403,16 +403,16 @@ function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string 
       : 'für dein Konto wurde ein QR-Code zur Anmeldung der App erzeugt.',
     zweiter_faktor_entfernt: en
       ? `the administrator “${o.durch ?? ''}” removed the second factor of your account.`
-      : `der Verwalter „${o.durch ?? ''}“ hat den zweiten Faktor deines Kontos entfernt.`,
+      : `der Administrator „${o.durch ?? ''}“ hat den zweiten Faktor deines Kontos entfernt.`,
     verwalter_ernannt: en
       ? `“${o.durch ?? ''}” made the account “${o.konto ?? ''}” an administrator.`
-      : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Verwalter gemacht.`,
+      : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Administrator gemacht.`,
     verwaltung_faktor_entfernt: en
       ? `“${o.durch ?? ''}” removed the second factor of the account “${o.konto ?? ''}”.`
       : `„${o.durch ?? ''}“ hat den zweiten Faktor des Kontos „${o.konto ?? ''}“ entfernt.`,
     passwort_durch_verwalter: en
       ? `the administrator “${o.durch ?? ''}” set a new password for your account. All sign-ins and app tokens were ended.`
-      : `der Verwalter „${o.durch ?? ''}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
+      : `der Administrator „${o.durch ?? ''}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
     verwaltung_passwort_gesetzt: en
       ? `“${o.durch ?? ''}” set a new password for the account “${o.konto ?? ''}”.`
       : `„${o.durch ?? ''}“ hat ein neues Passwort für das Konto „${o.konto ?? ''}“ gesetzt.`,
@@ -470,7 +470,7 @@ export async function sendKontoHinweisMail(
     : '';
   const note = en
     ? 'If this was not you, reset your password via “Forgot password”, check Menu → Account and Menu → Household — or ask the administrator.'
-    : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Verwalter.';
+    : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Administrator.';
   const hallo = en ? 'Hello' : 'Hallo';
   const basis = basisUrl();
   const link =

@@ -95,7 +95,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     );
     for (const [aktion, titel] of /** @type {[string, RegExp][]} */ ([
       ['delUser', /^Konto „r12x_\d+“ löschen\?$/],
-      ['toggleAdmin', /^„r12x_\d+“ zum Verwalter machen\?$/],
+      ['toggleAdmin', /^„r12x_\d+“ zum Administrator machen\?$/],
       ['toggleAktiv', /^Konto „r12x_\d+“ deaktivieren\?$/],
     ])) {
       await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)});

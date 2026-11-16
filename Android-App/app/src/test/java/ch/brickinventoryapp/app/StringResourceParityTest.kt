@@ -306,6 +306,21 @@ class StringResourceParityTest {
         assert(funde.isEmpty()) { "Abweichender Begriff:\n  " + funde.joinToString("\n  ") }
     }
 
+    /**
+     * Die Rollen heissen wie im Web „Standard“ und „Administrator“, auch in Zusammensetzungen
+     * („Administratorrechte“); „Verwalter“ und „Benutzer“ als Rolle sind abgelöst.
+     * Gegenprobe (gegenproben/rolle-verwalter.patch): zf_pflicht_kurz wieder „Verwalterrechte …“ → rot.
+     */
+    @Test
+    fun `die Rollen heissen Standard und Administrator`() {
+        val de = texte("values-de/strings.xml")
+        val en = texte("values/strings.xml")
+        assert(de["zf_pflicht_kurz"]?.startsWith("Administratorrechte") == true) { "zf_pflicht_kurz = ${de["zf_pflicht_kurz"]}" }
+        val alt = de.filterValues { Regex("""Verwalter|\bBenutzer(?!name)""").containsMatchIn(it) }.keys +
+            en.filterValues { Regex("""\b[Aa]dmins?\b""").containsMatchIn(it) }.keys
+        assert(alt.isEmpty()) { "Alter Rollenname in: $alt" }
+    }
+
     @Test
     fun `kein zweiter Name fuer einen common-Text`() {
         val en = texte("values/strings.xml")

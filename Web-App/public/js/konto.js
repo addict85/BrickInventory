@@ -98,8 +98,10 @@ export async function initDefaultCondition() {
 export function zeigeBenutzernamen() {
   const el = G('ubadge');
   if (!el || !angemeldetesKonto) return;
-  // „admin (Admin)“ sagte dasselbe zweimal.
-  const doppelt = angemeldetesKonto.username.toLocaleLowerCase() === tRaw('users.admin_badge').toLocaleLowerCase();
+  // „admin (Administrator)“ sagt dasselbe zweimal: „admin“ ist die gängige Kurzform der Rolle
+  // und der Name des Startkontos.
+  const name = angemeldetesKonto.username.toLocaleLowerCase();
+  const doppelt = name === 'admin' || name === tRaw('users.admin_badge').toLocaleLowerCase();
   el.textContent =
     angemeldetesKonto.isAdmin && !doppelt
       ? `${angemeldetesKonto.username} (${tRaw('users.admin_badge')})`
