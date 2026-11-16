@@ -1,0 +1,17 @@
+Gegenprobe: Thema der Galeriekachel wieder in der Hauptfarbe
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaecheEinheitlichTest
+Rot: Thema und Nummern stehen nicht in Primaerblau
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+@@ -418,7 +418,7 @@
+ private fun themaUndTeile(thema: String?, teile: String?): androidx.compose.ui.text.AnnotatedString =
+     androidx.compose.ui.text.buildAnnotatedString {
+         if (!thema.isNullOrBlank()) {
+-            pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold))
++            pushStyle(androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.primary))
+             append(thema)
+             pop()
+         }

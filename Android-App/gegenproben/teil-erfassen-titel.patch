@@ -1,0 +1,17 @@
+Gegenprobe: Titel des Teil-Dialogs wieder „Teil erfassen“
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaecheEinheitlichTest
+Rot: Texte sagen hinzufuegen und Preisvergleich
+
+diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+--- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
++++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+@@ -328,7 +328,7 @@
+     <string name="parts_add">Teil hinzufügen</string>
+     <string name="parts_delete_title">Teil löschen?</string>
+     <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
+-    <string name="parts_add_title">Teil hinzufügen</string>
++    <string name="parts_add_title">Teil erfassen</string>
+     <string name="parts_part_number">Teilenummer</string>
+     <string name="parts_part_number_placeholder">z. B. 3001</string>
+     <string name="parts_no_color">Keine Farbe</string>

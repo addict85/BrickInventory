@@ -34,6 +34,7 @@ import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.teile.ui.viewmodel.MitSetItem
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.ListeUndDetail
+import ch.brickinventoryapp.ui.components.RueckgaengigMeldung
 import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.listeUndDetail
@@ -80,6 +81,9 @@ private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
         val partsState by teileVm.teileState.collectAsStateWithLifecycle()
+        val teilWeg = teileVm.loeschen.wert.collectAsStateWithLifecycle().value
+        RueckgaengigMeldung(teilWeg, stringResource(R.string.vm_set_deleted, teilWeg?.name.orEmpty()), navigation.snackbar,
+            teileVm.loeschen::rueckgaengig, teileVm.loeschen::ausfuehren)
         navigation.Reiter(stringResource(R.string.nav_parts)) {
             ScrollPositionKeeper(
                 TeileZiel.Parts.rollSchluessel, partsGridState,
@@ -115,6 +119,9 @@ private fun NavGraphBuilder.figurenZiel(navigation: TeileNavigation) {
         val figurenVm: FigurenViewModel = hiltViewModel()
         val state by figurenVm.sitzungsWerte.collectAsStateWithLifecycle()
         val figuren by figurenVm.figurenZustand.collectAsStateWithLifecycle()
+        val figurWeg = figurenVm.loeschen.wert.collectAsStateWithLifecycle().value
+        RueckgaengigMeldung(figurWeg, stringResource(R.string.vm_set_deleted, figurWeg?.name.orEmpty()), navigation.snackbar,
+            figurenVm.loeschen::rueckgaengig, figurenVm.loeschen::ausfuehren)
         navigation.Reiter(stringResource(R.string.nav_minifigs)) {
             ScrollPositionKeeper(
                 TeileZiel.Minifigs.rollSchluessel, minifigsGridState,
@@ -147,10 +154,19 @@ private fun NavGraphBuilder.einzelstueckZiel(navigation: TeileNavigation) {
     val navController = navigation.navController
     composable<TeileZiel.ManualItemDetail> { backStackEntry ->
         val ziel = backStackEntry.toRoute<TeileZiel.ManualItemDetail>()
+        // Liegt der Reiter darunter, löscht das Detail über dessen ViewModel mit „Rückgängig“;
+        // das eigene endete mit dem Zurückgehen und nähme das Vorgemerkte mit.
+        val reiter = remember(backStackEntry) {
+            runCatching {
+                if (ziel.art == Postenart.FIG) navController.getBackStackEntry<TeileZiel.Minifigs>()
+                else navController.getBackStackEntry<TeileZiel.Parts>()
+            }.getOrNull()
+        }
         ManualItemDetailRoute(
             vm = hiltViewModel<KaeufeViewModel>(),
-            teile = hiltViewModel(),
-            figuren = hiltViewModel(),
+            teile = reiter?.takeIf { ziel.art != Postenart.FIG }?.let { hiltViewModel<TeileViewModel>(it) } ?: hiltViewModel(),
+            figuren = reiter?.takeIf { ziel.art == Postenart.FIG }?.let { hiltViewModel<FigurenViewModel>(it) } ?: hiltViewModel(),
+            rueckgaengig = reiter != null,
             type = ziel.art,
             id = ziel.id,
             colorId = ziel.colorId,
@@ -266,6 +282,7 @@ internal fun ListeUndDetailRoute(
                             onBack = { manuell = null },
                             onNavigateToAcqMgmt = oeffneKaeufe,
                             onFarbeGeaendert = { neueFarbe -> manuell = listOf(offen[0], offen[1], neueFarbe.toString(), offen[3]) },
+                            rueckgaengig = (detailVm is FigurenViewModel) == (offen[0] == Postenart.FIG.kennung),
                         )
                     }
                 },

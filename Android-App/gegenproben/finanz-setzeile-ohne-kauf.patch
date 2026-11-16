@@ -6,9 +6,9 @@ Rot: die Set-Zeile zeigt
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
-@@ -232,14 +232,6 @@
+@@ -245,14 +245,6 @@
                          else -> Text(priceStr, fontWeight = FontWeight.Bold,
-                             color = MaterialTheme.colorScheme.primary,
+                             color = MaterialTheme.colorScheme.onSurface,
                              style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
 -                    }
 -                    rowPurchase?.let {

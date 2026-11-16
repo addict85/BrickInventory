@@ -21,6 +21,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +78,25 @@ fun SucheMitFilter(
      * es als ErfassenFab. Null = dieser Bildschirm erfasst nichts.
      */
     erfassen: Pair<String, () -> Unit>? = null,
+    /** Die wirkenden Filter; sie stehen als Chips unter der Suche und lassen sich einzeln entfernen. */
+    aktive: List<AktiverFilter> = emptyList(),
+) {
+    Column(Modifier.fillMaxWidth()) {
+        SucheUndKnoepfe(wert, onWert, platzhalter, aktiveFilter, onFilter, onScannen, sortierung, erfassen)
+        AktiveFilterReihe(aktive)
+    }
+}
+
+@Composable
+private fun SucheUndKnoepfe(
+    wert: String,
+    onWert: (String) -> Unit,
+    platzhalter: String,
+    aktiveFilter: Int,
+    onFilter: () -> Unit,
+    onScannen: (() -> Unit)?,
+    sortierung: (@Composable () -> Unit)?,
+    erfassen: Pair<String, () -> Unit>?,
 ) {
     // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
     // stand sie auf dem Tablet mitten über den Kacheln.
@@ -110,6 +134,51 @@ fun SucheMitFilter(
         }
     }
 }
+
+/** Ein wirkender Filter: was er zeigt und wie er wegfällt. */
+data class AktiverFilter(val text: String, val entfernen: () -> Unit)
+
+/**
+ * Die wirkenden Filter unter der Suche, je ein Chip mit Kreuz. Die Zahl am Filterknopf
+ * sagte nur „2“; welche zwei, sah man erst im Blatt, und zum Entfernen musste man hinein.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun AktiveFilterReihe(filter: List<AktiverFilter>) {
+    if (filter.isEmpty()) return
+    FlowRow(
+        Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.winzig),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+    ) {
+        for (f in filter) {
+            val name = stringResource(R.string.filter_entfernen, f.text)
+            InputChip(
+                selected = false,
+                onClick = f.entfernen,
+                label = { Text(f.text, maxLines = 2) },
+                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(InputChipDefaults.IconSize)) },
+                modifier = Modifier.semantics { contentDescription = name },
+            )
+        }
+    }
+}
+
+/** Der Kontofilter als Chip, wenn er wirkt; der Name wie im Blatt. */
+@Composable
+fun kontoFilter(members: List<MitgliedAnsicht>, wert: String, onEntfernen: () -> Unit): AktiverFilter? {
+    if (wert == ScopeFilter.ALL) return null
+    val text = kontoOptionen(
+        members,
+        labelAll = stringResource(R.string.household_scope_all),
+        labelOwn = stringResource(R.string.household_scope_own),
+    ).firstOrNull { it.first == wert }?.second ?: return null
+    return AktiverFilter(text, onEntfernen)
+}
+
+/** Der Lagerortfilter als Chip, wenn er wirkt. */
+fun lagerFilter(orte: List<LagerortAnsicht>, wert: String, onEntfernen: () -> Unit): AktiverFilter? =
+    wert.takeIf { w -> w.isNotBlank() && orte.any { it.ort == w } }?.let { AktiverFilter(it, onEntfernen) }
 
 @Composable
 private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {

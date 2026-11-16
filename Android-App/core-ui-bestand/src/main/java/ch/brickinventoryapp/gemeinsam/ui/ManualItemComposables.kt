@@ -226,16 +226,16 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * Der erste ist mengengewichtet über alle Erfassungen; der zweite nur der zuletzt
  * geschriebene Einzelpreis.
  *
- * @param preis    roher Betrag; null = keiner hinterlegt, dann steht „—“ da
+ * @param preis    roher Betrag; null = keiner hinterlegt, dann steht „noch kein Preis“ da
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
 fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
     Text(
-        if (preis != null) fmtMoney(preis, waehrung) else "—",
+        if (preis != null) fmtMoney(preis, waehrung) else stringResource(R.string.detail_price_none_yet),
         style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurface,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(top = Abstaende.haar),

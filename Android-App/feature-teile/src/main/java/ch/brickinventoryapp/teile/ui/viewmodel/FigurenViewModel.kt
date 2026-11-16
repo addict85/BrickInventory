@@ -22,6 +22,9 @@ import ch.brickinventoryapp.teile.ui.SetItemAblauf
 import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.Loeschvormerkung
+import ch.brickinventoryapp.model.fach.Figurenordnung
+import kotlinx.coroutines.flow.MutableStateFlow
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
@@ -85,7 +88,22 @@ class FigurenViewModel @Inject constructor(
         return if (r is Ergebnis.Fehler) r else kontosicht.manuelleFiguren.aktualisiere(a)
     }
 
-    private val figurenBeobachtet = Beobachtet(liste.zustand)
+    /** Eine manuelle Figur, die erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    data class VorgemerkteFigur(val figNumber: String, val owner: Int?, val name: String)
+
+    val loeschen = Loeschvormerkung<VorgemerkteFigur>(viewModelScope) { v ->
+        val r = figuren.deleteMinifig(v.figNumber, v.owner)
+        if (r is Ergebnis.Fehler) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+    }
+
+    private val ordnung = MutableStateFlow(gemerkt[F_ORDNUNG] ?: Figurenordnung.VORGABE)
+
+    private val figurenBeobachtet = Beobachtet(liste.zustand
+        .abgeleitet(ordnung) { st, o -> st.copy(minifigs = o.sortiere(st.minifigs), ordnung = o) }
+        .abgeleitet(loeschen.wert) { st, v ->
+            if (v == null) st else st.copy(manualFigs = st.manualFigs?.filterNot {
+                it.figNumber == v.figNumber && (v.owner == null || it.userId == v.owner) })
+        })
     val figurenZustand: StateFlow<FigurenUiState> = figurenBeobachtet
 
     private val inSets = SetItemAblauf(viewModelScope, Postenart.FIG,
@@ -123,6 +141,14 @@ class FigurenViewModel @Inject constructor(
             figuren.updateMinifig(figNumber, quantity, unitPrice, blFigNumber, condition, owner)
         }
 
+    override fun figurLoeschenVormerken(figNumber: String, owner: Int?, name: String) =
+        loeschen.vormerken(VorgemerkteFigur(figNumber, owner, name))
+
+    override fun setMinifigsOrdnung(wert: Figurenordnung) {
+        gemerkt[F_ORDNUNG] = wert
+        ordnung.value = wert
+    }
+
     override fun deleteMinifig(figNumber: String, owner: Int?) =
         aendere(meldungen, meldungen.text(R.string.vm_minifig_deleted)) {
             figuren.deleteMinifig(figNumber, owner)
@@ -139,10 +165,13 @@ class FigurenViewModel @Inject constructor(
         inSets.schliesse()
         gemerkt.remove<String>(F_SUCHE)
         gemerkt.remove<Listenansicht>(F_ANSICHT)
+        gemerkt.remove<Figurenordnung>(F_ORDNUNG)
+        ordnung.value = Figurenordnung.VORGABE
     }
 
     private companion object {
         const val F_SUCHE = "figuren_suche"
         const val F_ANSICHT = "figuren_ansicht"
+        const val F_ORDNUNG = "figuren_ordnung"
     }
 }

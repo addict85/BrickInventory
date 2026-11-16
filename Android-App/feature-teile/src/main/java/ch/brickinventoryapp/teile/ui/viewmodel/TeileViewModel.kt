@@ -22,6 +22,7 @@ import ch.brickinventoryapp.teile.ui.SetItemAblauf
 import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.Loeschvormerkung
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -126,7 +127,18 @@ class TeileViewModel @Inject constructor(
         return manuelleAbfrage(st)?.let { kontosicht.manuelleTeile.aktualisiere(it) } ?: repo.aktualisiereManuelleTeile()
     }
 
-    private val teileBeobachtet = Beobachtet(teile.state)
+    /** Ein manuelles Teil, das erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    data class VorgemerktesTeil(val partNumber: String, val colorId: Int, val owner: Int?, val name: String)
+
+    val loeschen = Loeschvormerkung<VorgemerktesTeil>(viewModelScope) { v ->
+        val r = repo.deletePart(v.partNumber, v.colorId, v.owner)
+        if (r is Ergebnis.Fehler) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
+    }
+
+    private val teileBeobachtet = Beobachtet(teile.state.abgeleitet(loeschen.wert) { st, v ->
+        if (v == null) st else st.copy(manualParts = st.manualParts?.filterNot {
+            it.partNumber == v.partNumber && it.colorId == v.colorId && (v.owner == null || it.userId == v.owner) })
+    })
     val teileState: StateFlow<TeileUiState> = teileBeobachtet
 
     private val inSets = SetItemAblauf(viewModelScope, Postenart.PART,
@@ -180,6 +192,9 @@ class TeileViewModel @Inject constructor(
         aendere(meldungen, meldungen.text(R.string.vm_saved)) {
             repo.updatePart(partNumber, colorId, quantity, unitPrice, condition, owner)
         }
+
+    override fun teilLoeschenVormerken(partNumber: String, colorId: Int, owner: Int?, name: String) =
+        loeschen.vormerken(VorgemerktesTeil(partNumber, colorId, owner, name))
 
     override fun deletePart(partNumber: String, colorId: Int, owner: Int?) =
         aendere(meldungen, meldungen.text(R.string.vm_part_deleted)) {

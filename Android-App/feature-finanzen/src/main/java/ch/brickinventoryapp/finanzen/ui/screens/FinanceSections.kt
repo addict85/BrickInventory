@@ -186,7 +186,7 @@ private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZei
         Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
             maxLines = 2, style = MaterialTheme.typography.bodyMedium)
         Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary)
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (rowQty > 1)
             Text(mengeManuell(rowQty),
                 Modifier.vorgelesenAls(stueckzahl(rowQty)),
@@ -243,7 +243,7 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
                             Text(stringResource(R.string.detail_price_none_yet), color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall)
                         else -> Text(priceStr, fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
                     }
                     rowPurchase?.let {

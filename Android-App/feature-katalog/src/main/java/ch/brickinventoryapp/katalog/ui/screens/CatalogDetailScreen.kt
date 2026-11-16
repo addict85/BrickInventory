@@ -326,7 +326,8 @@ private fun ColumnScope.KatalogAngaben(
     onOpenInGallery: (String) -> Unit,
     onBrickLink: (String) -> Unit,
 ) {
-    Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
+    // Nicht antippbar, darum nicht in der Farbe der Links und Knöpfe.
+    Text(detail.setNumber, color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
 
     KatalogTabelle(detail, gemerkt)

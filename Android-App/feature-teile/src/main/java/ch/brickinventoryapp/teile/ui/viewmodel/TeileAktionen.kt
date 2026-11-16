@@ -11,6 +11,7 @@ import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
 import ch.brickinventoryapp.teile.ui.SetItemUiState
+import ch.brickinventoryapp.model.fach.Figurenordnung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import kotlinx.coroutines.flow.StateFlow
 
@@ -48,6 +49,9 @@ internal interface TeileAktionen : SetItemAktionen {
     fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
                    condition: Zustand? = null, owner: Int? = null)
     fun deletePart(partNumber: String, colorId: Int, owner: Int? = null)
+    /** Löschen mit „Rückgängig“; ohne Liste dahinter, die es anbietet, gleich löschen. */
+    fun teilLoeschenVormerken(partNumber: String, colorId: Int, owner: Int?, name: String) =
+        deletePart(partNumber, colorId, owner)
     fun setzeTeilFarbe(partNumber: String, colorId: Int, neueFarbe: Int,
                        farbName: String? = null, farbHex: String? = null,
                        owner: Int? = null, onFertig: (Int) -> Unit = {})
@@ -63,6 +67,9 @@ internal interface FigurenAktionen : SetItemAktionen {
     fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null,
                       condition: Zustand? = null, owner: Int? = null)
     fun deleteMinifig(figNumber: String, owner: Int? = null)
+    /** Löschen mit „Rückgängig“; ohne Liste dahinter, die es anbietet, gleich löschen. */
+    fun figurLoeschenVormerken(figNumber: String, owner: Int?, name: String) = deleteMinifig(figNumber, owner)
+    fun setMinifigsOrdnung(wert: Figurenordnung) = Unit
 
     /** Figuren haben keinen eigenen Lagerort: Sie stecken in ihrem Set. */
     override fun setzeTeilLagerort(nummer: String, farbe: Int, ort: String) = Unit

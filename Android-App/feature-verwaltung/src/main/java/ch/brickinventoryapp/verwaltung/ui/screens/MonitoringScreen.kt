@@ -40,6 +40,8 @@ import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
 import ch.brickinventoryapp.ui.satz
 import androidx.lifecycle.repeatOnLifecycle
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
 
@@ -104,8 +106,10 @@ fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, c
     // Aufgeklappt gehört dem Menschen: rememberSaveable übersteht auch den Prozesstod.
     var queueOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Mittig in Formularbreite wie die Einstellungen: Auf dem Tablet zogen sich die Karten
+    // sonst über die ganze Breite, Knopf und Zustand eines Auftrags standen weit auseinander.
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().mittigBis(Lesebreite.formular),
             contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {

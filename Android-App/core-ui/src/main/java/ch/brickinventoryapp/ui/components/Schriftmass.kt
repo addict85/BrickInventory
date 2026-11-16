@@ -39,4 +39,8 @@ data class LesbareSpalten(val mindestens: Dp) : GridCells {
         val breite = mindestens * fontScale.coerceIn(1f, 2f) * (if (breit) 1.5f else 1f)
         return with(GridCells.Adaptive(breite)) { calculateCrossAxisCellSizes(availableSize, spacing) }
     }
+
+    /** Wie viele Spalten das Raster auf [verfuegbar] stellt; dieselbe Rechnung wie beim Auslegen. */
+    fun Density.anzahl(verfuegbar: Dp, abstand: Dp): Int =
+        calculateCrossAxisCellSizes(verfuegbar.roundToPx(), abstand.roundToPx()).size
 }

@@ -9,6 +9,7 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.RueckgaengigMeldung
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
@@ -44,6 +45,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.util.fmtEingabe
@@ -69,7 +72,11 @@ fun AcquisitionManagementRoute(
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
-    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState), vm, type, id, colorId, title, onBack)
+    val weg = vm.kaufWeg.wert.collectAsStateWithLifecycle().value
+    val meldung = remember { SnackbarHostState() }
+    RueckgaengigMeldung(weg, stringResource(R.string.acq_geloescht), meldung, vm.kaufWeg::rueckgaengig, vm.kaufWeg::ausfuehren)
+    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState, weg?.kaufId), vm, type, id, colorId, title, onBack,
+        meldung)
 }
 
 /** Was die Kaufverwaltung zeigt: ein Zustand für Sets, Teile und Figuren. */
@@ -77,6 +84,8 @@ internal data class KaeufeZustand(
     val state: AppUiState,
     val blick: BlickfeldUiState,
     val manDetailState: ManualItemDetailUiState,
+    /** Der Kauf, dessen Löschen gerade „Rückgängig“ anbietet; er fehlt schon in der Liste. */
+    val wegKaufId: Int? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,14 +97,15 @@ internal fun AcquisitionManagementScreen(
     id: String,             // setNumber / partNumber / figNumber
     colorId: Int = OHNE_FARBE,
     title: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    meldung: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     val state = zustand.state
     val blick = zustand.blick
     val currency = state.currency
     val manDetailState = zustand.manDetailState
 
-    val acquisitions = manDetailState.acquisitions
+    val acquisitions = manDetailState.acquisitions.filterNot { it.id == zustand.wegKaufId }
     // Summe vom Server — die Rechnung stand vorher hier und noch dreimal
     // woanders (siehe utils/acquisitions.ts, acquisitionTotals).
     val totals = manDetailState.acquisitionTotals
@@ -111,6 +121,7 @@ internal fun AcquisitionManagementScreen(
     val isLoading    = manDetailState.kaeufeAbruf.laedt
 
     Scaffold(
+        snackbarHost = { SnackbarHost(meldung) },
         topBar = {
             // Der Titel ist ein Teile- oder Setname: zweizeilig statt hart abgeschnitten.
             DetailTopAppBar(title, onBack, schliessen = false)
@@ -130,8 +141,10 @@ internal fun AcquisitionManagementScreen(
             return@Scaffold
         }
 
+        // Auf dem Tablet mittig in Formularbreite wie die Einstellungen: Über 1200 dp
+        // lagen Anzahl und Preis einer Zeile zu weit auseinander, um sie zusammen zu lesen.
         LazyColumn(
-            Modifier.fillMaxSize().padding(innerPadding),
+            Modifier.fillMaxSize().padding(innerPadding).mittigBis(Lesebreite.formular),
             contentPadding = PaddingValues(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
@@ -162,12 +175,7 @@ internal fun AcquisitionManagementScreen(
                             else aktionen.loadManualAcquisitions(type, id, colorId)
                         }
                     },
-                    onDelete = {
-                        when (type) {
-                            Postenart.SET  -> aktionen.deleteAcquisition(id, acq.id)
-                            else   -> aktionen.deleteManualAcquisition(type, id, colorId, acq.id)
-                        }
-                    }
+                    onDelete = { aktionen.kaufLoeschenVormerken(type, id, colorId, acq.id) }
                 )
                 // ── Eigentümer dieser Zeile ──
                 //
@@ -204,8 +212,8 @@ internal fun AcquisitionManagementScreen(
                 HorizontalDivider()
             }
 
-            // Summary row
-            if (acquisitions.size > 1) {
+            // Die Summe kommt vom Server und zählt einen vorgemerkten Kauf noch mit.
+            if (acquisitions.size > 1 && zustand.wegKaufId == null) {
                 item {
                     Row(
                         Modifier.fillMaxWidth().padding(top = Abstaende.winzig),
@@ -220,7 +228,7 @@ internal fun AcquisitionManagementScreen(
                         totals.amount?.let {
                             Text(fmtMoney(it, currency),
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary)
+                                color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }

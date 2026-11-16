@@ -11,6 +11,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.BestandteilKopfAnsicht
 import ch.brickinventoryapp.model.fach.FarbeAnsicht
 import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.Figurenordnung
 import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
 import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
 import ch.brickinventoryapp.model.fach.KategorieAnsicht
@@ -88,6 +89,7 @@ data class FigurenUiState(
     /** Gesucht wird auf dem Server vor der Gruppierung; eine zweite Suche im Bildschirm träfe anderes. */
     val minifigsQuery: String = "",
     val minifigsView: Listenansicht = Listenansicht.KARTEN,
+    val ordnung: Figurenordnung = Figurenordnung.VORGABE,
 )
 
 /**

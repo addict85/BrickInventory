@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
 
 /** Was die Einstellungen und ihre Unterseiten am Konto ändern; die Karten kennen nur diese Schnittstelle. */
 interface EinstellungenAktionen {
@@ -20,4 +21,6 @@ interface EinstellungenAktionen {
     fun benenneLagerortUm(id: Int, name: String)
     fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean)
     fun loescheLagerort(id: Int)
+    /** Löschen mit „Rückgängig“; ohne Seite, die es anbietet, gleich löschen. */
+    fun lagerortLoeschenVormerken(ort: LagerortEintragAnsicht) = loescheLagerort(ort.id)
 }

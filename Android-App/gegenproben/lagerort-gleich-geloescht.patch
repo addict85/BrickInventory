@@ -1,0 +1,17 @@
+Gegenprobe: Vormerken loescht den Lagerort gleich
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaecheEinheitlichTest
+Rot: Lagerort loeschen bietet Rueckgaengig
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+@@ -248,7 +248,7 @@
+     override fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
+         lagerortSchleuse { teile.setzeLagerortVorgabe(if (istVorgabe) null else id).auswerten() }
+ 
+-    override fun lagerortLoeschenVormerken(ort: LagerortEintragAnsicht) = lagerortWeg.vormerken(ort)
++    override fun lagerortLoeschenVormerken(ort: LagerortEintragAnsicht) = loescheLagerort(ort.id)
+ 
+     override fun loescheLagerort(id: Int) = lagerortSchleuse { teile.loescheLagerort(id).auswerten() }
+ 
