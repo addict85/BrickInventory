@@ -39,7 +39,10 @@ die folgenden. Eine Prüfung von `app.konto` vor dem COMMIT hälfe nicht: Gelese
 ist dann gelesen, und die Anweisung kann das Konto vorher zurücksetzen. Gegen
 eingeschleustes SQL schützen gebundene Parameter (kein SQL aus Zeichenketten der
 Eingabe) und die Rollenrechte: Die Laufzeitrolle liest weder Passwort-Hashes noch
-Sitzungen (0115) und schreibt weder Passwort noch Verwalterrecht (0117).
+Sitzungen (0115), keine Adressen und Links in `users` (0121) und schreibt weder
+Passwort noch Verwalterrecht (0117). In `users` sieht sie nur das eigene Konto und
+den Haushalt, in `account_links` nur Verknüpfungen mit dem eigenen Konto (0121) —
+`konten-zeilenschutz-db`.
 
 **Zwei Systemrollen.** Den Zeilenschutz heben zwei Rollen auf (`BYPASSRLS`):
 `brickinventory_system` hält nur der Dienst `jobs` (Aufträge, Umschlüsselung,
@@ -159,7 +162,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
   mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
   Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
   sperrt den Inhaber so nicht an seinen Geräten aus. „Passwort vergessen“ leert
-  alle Zähler: `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
+  alle Zähler. Ohne zweiten Faktor bekommt der Inhaber für einen gesperrten neuen
+  Ort einen signierten, einmal gültigen Link, der diese Adresse einen Tag lang wie
+  eine bekannte zählen lässt (je Adresse eine Mail pro Stunde, zehn am Tag):
+  `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
 - Sitzung: `httpOnly`, `sameSite=strict`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
   `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
@@ -168,9 +174,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
   `users.sitzungs_version` von der Anmeldung; wer Zugänge beendet (Passwort,
   Sperre, Rolle, Löschen, „andere beenden“, 2FA eingeschaltet), erhöht sie,
-  jede Anfrage vergleicht (5 s Zwischenspeicher je Konto). Eine von einer
+  jede Anfrage vergleicht (5 s Zwischenspeicher je Konto, den eine Erhöhung in jedem
+  Web-Prozess über NOTIFY sofort leert; ohne Horch-Verbindung keiner). Eine von einer
   laufenden Anfrage zurückgeschriebene Zeile gilt damit nicht mehr:
-  `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`.
+  `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`, `sitzungsversion-prozesse-db`.
 - Drosseln je Adresse zählen ein IPv6-/64 als eine Adresse, IPv4 in IPv6 als
   IPv4: `drosselAdresse` in `src/konto/loginLimiter.ts` — `drossel-ipv6-db`.
 - App-Anmeldung: Token mit fester Höchstdauer 180 Tage ab Anmeldung, die der
@@ -214,7 +221,16 @@ handelte der Prozess für jede gerade aktive Sitzung.
   und vom Verwalter entferntem zweitem Faktor (alle Verwalter, das Konto
   selbst): `src/konto/kontoHinweis.ts` — `zugang-hinweis-db`.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
-  Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
+  Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`. Codes von vor
+  dem 01.11.2026 (50 Bit, SHA-256) gelten nur noch 90 Tage ab dem Update (0122);
+  wer einen benutzt, bekommt eine Mail — `alte-wiederherstellungscodes-db`.
+- Verwalter gegen Verwalter: Passwort setzen, zweiten Faktor entfernen,
+  deaktivieren, Rolle entziehen und löschen gelten erst nach 24 Stunden, mit Mail an
+  das Ziel und alle Verwalter. Das Ziel bricht ab durch Anmeldung (Passwort,
+  Passkey, QR-Abholung) oder über den einmal gültigen Link in seiner Mail; eine
+  fällige Übernahme entfällt, wenn das Ziel inzwischen deaktiviert wurde:
+  `src/konto/verwalterAktionen.ts` — `verwalter-uebernahme-db`.
+- AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/geheimnis.ts` — `geheimnis-tag-laenge`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys und löst
   ausserdem, was ein Eindringling angelegt haben könnte: die Verknüpfung mit
   Hauptkonten über diesem Konto (der Haushalt nach oben), offene
