@@ -97,6 +97,7 @@ function konten(k: KontoKontext) {
     kontoZumRuecksetzLink: mit(k)(registrierungAblauf.kontoZumRuecksetzLink),
     legeStartVerwalterAn: mit(k)(startVerwalterDienst.legeStartVerwalterAn),
     horcheAufTokenWiderruf: mit(k)(tokenCache.horcheAufTokenWiderruf),
+    horcheAufSitzungsVersion: mit(k)(sitzungsVersion.horcheAufSitzungsVersion),
     tokenAngaben: mit(k)(tokenWunsch.tokenAngaben),
     zielGedrosselt: mit(k)(zielDrossel.zielGedrosselt),
     kontoGedrosselt: mit(k)(zielDrossel.kontoGedrosselt),

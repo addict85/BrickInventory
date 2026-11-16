@@ -164,6 +164,7 @@ async function starte(): Promise<void> {
   ];
   if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
   if (web) dienste.konto.horcheAufTokenWiderruf();
+  if (web) dienste.konto.horcheAufSitzungsVersion();
   // Web und Jobs (auch getrennte Prozesse) leeren ihr Haushaltsgedächtnis auf jede Änderung.
   dienste.haushalt.horcheAufAenderungen();
   // Ein globaler Wert aus einem anderen Prozess (Nachlauf, zweiter Web-Prozess) leert den Einrichtungsstand.
