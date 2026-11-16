@@ -12,9 +12,6 @@ import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
 import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
-import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -27,8 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,20 +39,17 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.MengenKnopf
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
-import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
 import ch.brickinventoryapp.gemeinsam.ui.MarketPriceByCondition
 import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
 import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 import ch.brickinventoryapp.gemeinsam.ui.SectionCard
-import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
 import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 
 /**

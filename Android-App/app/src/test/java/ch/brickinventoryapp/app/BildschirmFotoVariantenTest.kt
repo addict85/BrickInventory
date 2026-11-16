@@ -1515,8 +1515,12 @@ class BildschirmFotoVariantenTest {
 
     private fun figurenFoto(name: String, dunkel: Boolean, schrift: Float, fehler: Boolean) {
         val voll = stufe(name, schrift)
-        if (fehler) { deutschVorDemLaden(); welt.pfade.codes["/api/v1/minifigs"] = 500 }
-        else welt.pfade.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
+        if (fehler) {
+            deutschVorDemLaden()
+            welt.pfade.codes["/api/v1/minifigs"] = 500
+        } else {
+            welt.pfade.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
+        }
         val vm = welt.figuren().also { it.loadMinifigs() }
         zeige(voll, dunkel = dunkel, schrift = schrift, bereit = { !vm.figurenZustand.value.figurenAbruf.laedt },
             zustand = { vm.figurenZustand.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }

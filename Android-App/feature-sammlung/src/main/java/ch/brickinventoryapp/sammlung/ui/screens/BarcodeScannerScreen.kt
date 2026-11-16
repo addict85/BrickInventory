@@ -60,9 +60,6 @@ fun BarcodeScannerScreen(
     val cameraPermission = rememberKameraErlaubnis()
     val defaultHint = stringResource(R.string.scanner_hint_default)
     val detectedHintFmt = stringResource(R.string.scanner_hint_detected)
-    val confirmingHint = stringResource(R.string.scanner_hint_confirming)
-    val aimHint = stringResource(R.string.scanner_hint_aim)
-    val errorHint = stringResource(R.string.scanner_hint_error)
     var statusText by rememberSaveable { mutableStateOf(defaultHint) }
     var frozen    by rememberSaveable { mutableStateOf(false) }
     var torchOn   by rememberSaveable { mutableStateOf(false) }
@@ -81,7 +78,15 @@ fun BarcodeScannerScreen(
 
     // Der Treffer ist auch zu spüren: Wer auf die Schachtel zielt, sieht nicht aufs Telefon.
     val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
-    val treffer = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm) }
+
+    // Ein Treffer friert die Anzeige ein; was danach noch erkannt wird, zählt nicht mehr.
+    fun gefunden(wert: String, weiter: (String) -> Unit) {
+        if (frozen) return
+        frozen = true
+        haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm)
+        statusText = detectedHintFmt.replace("%1\$s", wert)
+        weiter(wert)
+    }
 
     val borderColor by animateColorAsState(
         if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
@@ -94,29 +99,12 @@ fun BarcodeScannerScreen(
                 if (!ohneKamera) CameraPreviewBarcode(
                     frozen = frozen,
                     ocrEnabled = ocrEnabled,
-                    onBarcodeFound = { value ->
-                        if (!frozen) {
-                            frozen = true
-                            treffer()
-                            statusText = detectedHintFmt.replace("%1\$s", value)
-                            onResult(value)
-                        }
-                    },
+                    onBarcodeFound = { gefunden(it, onResult) },
                     // Getrennter Rückweg: Was hier ankommt, ist schon die Setnummer und darf nicht
                     // wie eine EAN durch die Auflösung laufen — die schlüge fehl und kostete
                     // Kontingent.
-                    onSetNumberFound = { value ->
-                        if (!frozen) {
-                            frozen = true
-                            treffer()
-                            statusText = detectedHintFmt.replace("%1\$s", value)
-                            onSetNumberResult(value)
-                        }
-                    },
+                    onSetNumberFound = { gefunden(it, onSetNumberResult) },
                     onStatus   = { if (!frozen) statusText = it },
-                    confirmingHint = confirmingHint,
-                    aimHint = aimHint,
-                    errorHint = errorHint,
                     onCamera   = { cameraCtrl = it }
                 )
 
@@ -129,32 +117,7 @@ fun BarcodeScannerScreen(
                         Spacer(Modifier.height(Abstaende.gross))
                         LichtKnopf(torchOn) { torchOn = !torchOn }
                     },
-                ) {
-                    // Scanning frame
-                    Box(
-                        Modifier
-                            .fillMaxWidth(0.88f)
-                            .aspectRatio(1.8f)
-                            .border(2.dp, borderColor, Formen.feld)
-                    ) {
-                        // Corner accents
-                        val accent = borderColor
-                        val cs = 20.dp
-                        val ct = 3.dp
-                        // Top-left
-                        Box(Modifier.size(cs, ct).align(Alignment.TopStart).background(accent))
-                        Box(Modifier.size(ct, cs).align(Alignment.TopStart).background(accent))
-                        // Top-right
-                        Box(Modifier.size(cs, ct).align(Alignment.TopEnd).background(accent))
-                        Box(Modifier.size(ct, cs).align(Alignment.TopEnd).background(accent))
-                        // Bottom-left
-                        Box(Modifier.size(cs, ct).align(Alignment.BottomStart).background(accent))
-                        Box(Modifier.size(ct, cs).align(Alignment.BottomStart).background(accent))
-                        // Bottom-right
-                        Box(Modifier.size(cs, ct).align(Alignment.BottomEnd).background(accent))
-                        Box(Modifier.size(ct, cs).align(Alignment.BottomEnd).background(accent))
-                    }
-                }
+                ) { ScanRahmen(borderColor) }
             }
             else -> {
                 KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_barcode),
@@ -167,6 +130,24 @@ fun BarcodeScannerScreen(
             IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }
+        }
+    }
+}
+
+/** Das breite Rechteck mit Eckwinkeln: Ein Strichcode liegt quer, nicht im Quadrat. */
+@Composable
+private fun ScanRahmen(farbe: Color) {
+    Box(
+        Modifier
+            .fillMaxWidth(0.88f)
+            .aspectRatio(1.8f)
+            .border(2.dp, farbe, Formen.feld)
+    ) {
+        val lang = 20.dp
+        val dick = 3.dp
+        for (ecke in listOf(Alignment.TopStart, Alignment.TopEnd, Alignment.BottomStart, Alignment.BottomEnd)) {
+            Box(Modifier.size(lang, dick).align(ecke).background(farbe))
+            Box(Modifier.size(dick, lang).align(ecke).background(farbe))
         }
     }
 }
@@ -269,11 +250,11 @@ internal fun CameraPreviewBarcode(
     onSetNumberFound: (String) -> Unit,
     onStatus: (String) -> Unit,
     onCamera: (CameraControl) -> Unit,
-    confirmingHint: String,
-    aimHint: String,
-    errorHint: String
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
+    val confirmingHint = stringResource(R.string.scanner_hint_confirming)
+    val aimHint = stringResource(R.string.scanner_hint_aim)
+    val errorHint = stringResource(R.string.scanner_hint_error)
     // Der Tipp-Listener wird im factory-Block gesetzt, die Kamerasteuerung gibt es
     // erst nach dem Binden — deshalb eine Referenz, die beim Binden gefüllt wird.
     val _kameraCtrl = remember { java.util.concurrent.atomic.AtomicReference<CameraControl?>(null) }
