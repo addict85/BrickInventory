@@ -141,9 +141,14 @@ function v2Schluessel(): Buffer {
   return S.v2;
 }
 
+/** Die Tag-Länge steht fest: Sonst nähme GCM beim Öffnen auch einen gekürzten Tag
+ * an, und 4 Byte liessen sich durchprobieren. */
+const IV = 12,
+  TAG = 16;
+
 function versiegle(schluessel: Buffer, daten: Buffer, aad: Kontext | null): Buffer {
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv('aes-256-gcm', schluessel, iv);
+  const iv = crypto.randomBytes(IV);
+  const c = crypto.createCipheriv('aes-256-gcm', schluessel, iv, { authTagLength: TAG });
   if (aad !== null) c.setAAD(Buffer.from(aad, 'utf8'));
   const inhalt = Buffer.concat([c.update(daten), c.final()]);
   return Buffer.concat([iv, c.getAuthTag(), inhalt]);
@@ -151,11 +156,12 @@ function versiegle(schluessel: Buffer, daten: Buffer, aad: Kontext | null): Buff
 
 /** null, wenn Schlüssel, Inhalt oder Kontext nicht passen. */
 function oeffne(schluessel: Buffer, roh: Buffer, aad: Kontext | null): Buffer | null {
+  if (roh.length < IV + TAG) return null;
   try {
-    const d = crypto.createDecipheriv('aes-256-gcm', schluessel, roh.subarray(0, 12));
+    const d = crypto.createDecipheriv('aes-256-gcm', schluessel, roh.subarray(0, IV), { authTagLength: TAG });
     if (aad !== null) d.setAAD(Buffer.from(aad, 'utf8'));
-    d.setAuthTag(roh.subarray(12, 28));
-    return Buffer.concat([d.update(roh.subarray(28)), d.final()]);
+    d.setAuthTag(roh.subarray(IV, IV + TAG));
+    return Buffer.concat([d.update(roh.subarray(IV + TAG)), d.final()]);
   } catch {
     return null;
   }
