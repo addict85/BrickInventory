@@ -61,7 +61,7 @@ internal fun YearScrubber(
     var dragging by remember { mutableStateOf(false) }
     var ziehAnteil by remember { mutableStateOf(0f) }
     var heightPx by rememberSaveable { mutableStateOf(1) }
-    var sprungmenue by remember { mutableStateOf(false) }
+    var sprungmenue by rememberSaveable { mutableStateOf(false) }
     val thumbHeightPx = with(LocalDensity.current) { GRIFF_HOEHE.roundToPx() }
 
     // Beim Ziehen zeigt der Griff, WOHIN es geht; sonst, WO die Liste steht.

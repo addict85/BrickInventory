@@ -101,20 +101,29 @@ private fun ZertifikatFrageDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    val angenommen = onVertrauen(eingabe.takeIf { abschreiben })
-                    befund = if (angenommen) null
-                        else Abschrift.von(eingabe, frage.fingerabdruck).takeIf { it != Abschrift.PASST } ?: Abschrift.PASST_NICHT
-                },
-                enabled = !abschreiben || eingabe.isNotBlank(),
-                colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                         else ButtonDefaults.textButtonColors(),
-            ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }
+            VertrauenKnopf(geaendert, aktiv = !abschreiben || eingabe.isNotBlank()) {
+                befund = befundNach(onVertrauen(eingabe.takeIf { abschreiben }), eingabe, frage.fingerabdruck)
+            }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
+
+/** Ein geänderter Schlüssel färbt den Knopf als Warnung; sonst der gewohnte Knopf. */
+@Composable
+private fun VertrauenKnopf(geaendert: Boolean, aktiv: Boolean, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        enabled = aktiv,
+        colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                 else ButtonDefaults.textButtonColors(),
+    ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }
+}
+
+/** Lehnt die App ab, obwohl die Abschrift passt, steht trotzdem „passt nicht“ da — sonst bliebe der Dialog stumm. */
+private fun befundNach(angenommen: Boolean, eingabe: String, fingerabdruck: String): Abschrift? =
+    if (angenommen) null
+    else Abschrift.von(eingabe, fingerabdruck).takeIf { it != Abschrift.PASST } ?: Abschrift.PASST_NICHT
 
 /** Bisheriger und neuer Fingerabdruck; beim Abtippen nur der Anfang. */
 @Composable
