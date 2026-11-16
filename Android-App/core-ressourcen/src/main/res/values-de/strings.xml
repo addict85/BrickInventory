@@ -1206,7 +1206,7 @@
     <string name="update_beim_start">Beim Start nach Updates suchen</string>
     <string name="update_beim_start_hint">Fragt bei jedem Start einmal bei GitHub nach einer neueren Version; GitHub sieht dabei die IP-Adresse des Geräts. Gilt für dieses Gerät.</string>
     <string name="datenschutz_titel">Datenschutz</string>
-    <string name="datenschutz_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• GitHub, nur für die Update-Prüfung (beim Start, wenn eingeschaltet, sonst auf „Prüfen“);\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung auf dem Gerät (ML Kit) kann Nutzungsstatistiken an Google senden;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
+    <string name="datenschutz_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• GitHub, nur für die Update-Prüfung (beim Start, wenn eingeschaltet, sonst auf „Prüfen“);\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung (ML Kit) läuft auf dem Gerät, ihren Kanal für Nutzungsstatistiken an Google hat die App abgeschaltet;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
     <plurals name="csv_fortschritt">
         <item quantity="one">%1$d von %2$d Set</item>
         <item quantity="other">%1$d von %2$d Sets</item>

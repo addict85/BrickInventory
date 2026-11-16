@@ -10,7 +10,9 @@ Rot (Rueckgabe 1), wenn
   - eine exportierte Komponente nicht in tools/manifest-exportiert.txt steht oder
     dort eine andere Berechtigung verlangt als im APK,
   - das APK eine Berechtigung verlangt, die nicht in tools/manifest-berechtigungen.txt
-    steht (etwa READ_PHONE_STATE aus einer neuen Bibliotheksfassung).
+    steht (etwa READ_PHONE_STATE aus einer neuen Bibliotheksfassung),
+  - Googles datatransport ein Backend findet (meta-data `backend:` an
+    TransportBackendDiscovery): Darüber meldet ML Kit Nutzungsdaten an Google.
 
 Aufruf: manifest-pruefen.py <xmltree.txt> <positivliste.txt> <berechtigungen.txt>
 """
@@ -19,6 +21,7 @@ import sys
 
 ANDROID = 'http://schemas.android.com/apk/res/android:'
 KOMPONENTEN = ('activity', 'activity-alias', 'service', 'receiver', 'provider')
+TELEMETRIE = 'com.google.android.datatransport.runtime.backends.TransportBackendDiscovery'
 WAHR = ('true', '0xffffffff', '(type 0x12)0xffffffff')
 
 
@@ -99,6 +102,14 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
                 fehler.append(f'{art} {name}: verlangt {recht}, erwartet {erlaubt[name]}')
     if gesehen == 0:
         fehler.append('keine Komponente gefunden — Format von aapt2 geaendert?')
+    for dienst in alle(apps[0], 'service'):
+        if dienst[1].get('name') != TELEMETRIE:
+            continue
+        for eintrag in alle(dienst, 'meta-data'):
+            name = eintrag[1].get('name', '')
+            if name.startswith('backend:'):
+                fehler.append(f'datatransport hat ein Backend ({name[8:]}): ML Kit sendet damit Nutzungsdaten '
+                              f'an Google. Im App-Manifest mit tools:node="remove" herausnehmen.')
     return fehler
 
 

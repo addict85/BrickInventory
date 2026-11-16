@@ -178,8 +178,11 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
 - **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
-  (Credential Manager). Die eingebaute Texterkennung kann Nutzungsstatistiken an
-  Google senden.
+  (Credential Manager). Barcode-Scan und Texterkennung laufen auf dem Gerät. Den Weg,
+  über den ML Kit Nutzungsstatistiken an Google meldet (datatransport, Backend `cct`
+  zu `firebaselogging.googleapis.com`), nimmt das App-Manifest heraus; die Prüfung
+  des fertigen APK (`tools/manifest-pruefen.py`) ist rot, sobald er wieder drin ist.
+  Was die Play-Dienste in ihrem eigenen Prozess senden, regelt Google.
 - **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
 
 Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.

@@ -1224,7 +1224,7 @@
     <string name="update_beim_start">Check for updates on start</string>
     <string name="update_beim_start_hint">Asks GitHub once per start whether a newer version exists; GitHub sees the IP address of the device. Applies to this device.</string>
     <string name="datenschutz_titel">Privacy</string>
-    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; on-device text recognition (ML Kit) may send usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
+    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; text recognition (ML Kit) runs on the device, and the app has switched off its channel for usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
     <plurals name="csv_fortschritt">
         <item quantity="one">%1$d of %2$d set</item>
         <item quantity="other">%1$d of %2$d sets</item>

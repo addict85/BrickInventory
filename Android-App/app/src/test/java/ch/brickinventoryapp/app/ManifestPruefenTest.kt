@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit
  *                               rot „herausgenommene Bibliothekskomponenten …“
  * die Schleife über uses-permission gestrichen →
  *                               rot „eine Berechtigung ausserhalb der Liste …“
+ *   manifest-telemetrie-ungeprueft  die Prüfung der datatransport-Backends gestrichen →
+ *                               rot „ein Telemetrie-Backend von ML Kit …“
  */
 class ManifestPruefenTest {
 
@@ -112,5 +114,21 @@ class ManifestPruefenTest {
         assertTrue(text, "READ_PHONE_STATE" in text)
         val testOnly = "      A: http://schemas.android.com/apk/res/android:testOnly(0x01010272)=true\n"
         assertEquals(1, pruefe(manifest(*gut, anwendung = testOnly)).first)
+    }
+
+    /** ML Kit meldet über Googles datatransport Nutzungsdaten; die App nimmt dessen Backend heraus. */
+    @Test
+    fun `ein Telemetrie-Backend von ML Kit faellt auf, der Dienst ohne Backend nicht`() {
+        val dienst = komponente("service", "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery", false)
+        val backend = "        E: meta-data (line=6)\n" +
+            "          A: http://schemas.android.com/apk/res/android:name(0x01010003)=" +
+            "\"backend:com.google.android.datatransport.cct.CctBackendFactory\" " +
+            "(Raw: \"backend:com.google.android.datatransport.cct.CctBackendFactory\")\n" +
+            "          A: http://schemas.android.com/apk/res/android:value(0x01010024)=\"cct\" (Raw: \"cct\")\n"
+        val (ohne, text) = pruefe(manifest(*gut, dienst))
+        assertEquals(text, 0, ohne)
+        val (mit, text2) = pruefe(manifest(*gut, dienst + backend))
+        assertEquals(text2, 1, mit)
+        assertTrue(text2, "CctBackendFactory" in text2)
     }
 }
