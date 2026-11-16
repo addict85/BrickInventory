@@ -45,7 +45,7 @@ function rolle(u) {
     return html`<span class="rb ru">${tRaw('users.role.user')}</span>${
       selbst
         ? ''
-        : html`<button type="button" class="btn bs btn-sm rolle-ernennen" ${ziel} title="${name}" aria-label="${name}">${ico('plus')}<span>${tRaw('users.role.admin')}</span></button>`
+        : html`<button type="button" class="btn bs btn-sm" ${ziel} title="${name}" aria-label="${name}">${ico('plus')}<span>${tRaw('users.role.admin')}</span></button>`
     }`;
   }
   const name = tRaw('users.rolle.entziehen', { name: u.username });

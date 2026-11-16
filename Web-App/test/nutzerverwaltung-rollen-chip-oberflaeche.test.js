@@ -58,7 +58,11 @@ test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
     assert.ok(x, 'X im Chip');
     assert.equal(x.getAttribute('aria-label'), 'Administratorrechte von carla entziehen');
     assert.equal(x.getAttribute('type'), 'button');
-    assert.equal(zeile(d, 'carla').querySelector('.rolle-ernennen'), null, 'kein Ernennen am Administrator');
+    assert.equal(
+      zeile(d, 'carla').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'),
+      null,
+      'kein Ernennen am Administrator',
+    );
 
     x.click();
     assert.equal(await bestaetige(d), '„carla“ die Administratorrolle entziehen?');
@@ -87,7 +91,7 @@ test('Standard-Chip ohne X, + Administrator ernennt', async () => {
     const z = zeile(d, 'ben');
     assert.equal(z.querySelector('.rb.ru')?.textContent.trim(), 'Standard');
     assert.equal(z.querySelector('.chip-weg'), null, 'Standard-Chip ohne X');
-    const k = z.querySelector('button.rolle-ernennen');
+    const k = z.querySelector('button[data-click="toggleAdmin"][data-arg2="0"]');
     assert.ok(k, 'Knopf zum Ernennen');
     assert.equal(k.textContent.trim(), 'Administrator');
     assert.equal(k.querySelector('use')?.getAttribute('href'), '#i-plus');
@@ -125,7 +129,7 @@ test('ein einziger Administrator: kein X', async () => {
     await warte(() => zeile(d, 'ben'));
     assert.equal(d.querySelectorAll('#users-tbl .rolle-chip').length, 1, 'Testdaten: ein Administrator-Chip');
     assert.equal(d.querySelectorAll('#users-tbl .chip-weg').length, 0, 'den letzten Administrator entzieht kein X');
-    assert.ok(zeile(d, 'ben').querySelector('.rolle-ernennen'), 'ernennen bleibt möglich');
+    assert.ok(zeile(d, 'ben').querySelector('[data-click="toggleAdmin"][data-arg2="0"]'), 'ernennen bleibt möglich');
   } finally {
     w.close();
   }

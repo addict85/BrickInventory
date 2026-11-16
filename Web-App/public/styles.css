@@ -871,7 +871,7 @@
     .rolle-wort{min-width:0;overflow-wrap:anywhere;hyphens:auto}
     .rolle-chip:has(> .chip-weg){padding-right:2px}
     .chip-weg{background:none;border:none;cursor:pointer;color:inherit;padding:0;margin:-4px 0;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;border-radius:999px}
-    .chip-weg:hover{background:color-mix(in srgb,currentColor 15%,transparent)}
+    @media (hover:hover){.chip-weg:hover{background:color-mix(in srgb,currentColor 15%,transparent)}}
     .chip-weg:focus-visible{outline-offset:0}
     .chip-weg .ico{width:1rem;height:1rem}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
