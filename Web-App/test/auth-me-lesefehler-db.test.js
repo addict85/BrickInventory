@@ -6,6 +6,9 @@
  *
  * Gegenprobe (11.11.2026 gemessen): der frühere catch-Zweig (Token → 401
  * token_ungueltig, sonst 200 loggedIn: false) → rot in beiden Teiltests.
+ * Gegenprobe (16.11.2026 gemessen): sitzungsVersionPruefen reicht den Lesefehler wieder als
+ * next(e) durch → rot: „mit Sitzung …“ (500 interner_fehler; die Sitzungsversion wird ohne
+ * Horch-Verbindung nicht mehr zwischengespeichert, src/konto/sitzungsVersion.ts).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
