@@ -74,7 +74,6 @@ export async function verbraucheSchritt(db: DbSchnittstelle, uid: number, schrit
   return (r.changes ?? 0) > 0;
 }
 
-/** @param alt nur Codes alter Art: Sie gelten bis `alt_gilt_bis` (Migration 0122). */
 export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: string, alt = false): Promise<boolean> {
   const r = await db.run(
     `UPDATE zweiter_faktor_codes SET verbraucht_am = NOW()

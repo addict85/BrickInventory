@@ -68,22 +68,32 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
     hh.meldeHaushaltsaenderung();
-    assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Unterkonto ist gemerkt');
-    assert.equal(await hh.darfSchreibenFuer(ids[0], ids[1]), true);
+    // Unter dem Zeilenschutz des Hauptkontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
+    const als = (uid, f) => require('./helpers/sources').alsKonto(uid, f);
+    assert.deepEqual(
+      (await als(ids[0], () => hh.haushaltVon(ids[0]))).memberIds,
+      ids,
+      'Vorbedingung: das Unterkonto ist gemerkt',
+    );
+    assert.equal(await als(ids[0], () => hh.darfSchreibenFuer(ids[0], ids[1])), true);
     // Von aussen gelöst, ohne dass dieser Prozess davon hört.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
-    assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Gedächtnis ist noch alt');
+    assert.deepEqual(
+      (await als(ids[0], () => hh.haushaltVon(ids[0]))).memberIds,
+      ids,
+      'Vorbedingung: das Gedächtnis ist noch alt',
+    );
     assert.equal(
-      await hh.darfSchreibenFuer(ids[0], ids[1]),
+      await als(ids[0], () => hh.darfSchreibenFuer(ids[0], ids[1])),
       false,
       'darfSchreibenFuer entscheidet nach dem gemerkten Blickfeld',
     );
     assert.deepEqual(
-      await hh.schreibbereich(ids[0]),
+      await als(ids[0], () => hh.schreibbereich(ids[0])),
       [ids[0]],
       'schreibbereich entscheidet nach dem gemerkten Blickfeld',
     );
-    assert.equal(await hh.darfSchreibenFuer(ids[1], ids[1]), true, 'Eigene Daten immer');
+    assert.equal(await als(ids[1], () => hh.darfSchreibenFuer(ids[1], ids[1])), true, 'Eigene Daten immer');
   });
 });
 

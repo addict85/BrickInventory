@@ -32,7 +32,7 @@ CREATE TABLE account_links (
 );
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
 ALTER TABLE account_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY lesen ON account_links FOR SELECT USING (true);
+CREATE POLICY lesen ON account_links FOR SELECT USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 CREATE POLICY loesen ON account_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
 CREATE TABLE api_aufrufe (
@@ -1061,6 +1061,13 @@ CREATE TABLE users (
 );
 CREATE UNIQUE INDEX users_email_lower ON users USING btree (lower(email));
 CREATE UNIQUE INDEX users_username_lower ON users USING btree (lower(username));
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY namen_aendern ON users FOR UPDATE USING ((id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+CREATE POLICY zeilenschutz ON users FOR SELECT USING (((id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)) OR (EXISTS ( SELECT 1
+   FROM account_links l
+  WHERE (((l.main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)) AND (l.sub_user_id = users.id)) OR ((l.sub_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)) AND (l.main_user_id = users.id))))) OR (EXISTS ( SELECT 1
+   FROM household_former_links f
+  WHERE ((f.main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)) AND ((users.id = f.sub_user_id) OR (users.id = f.via_user_id)))))));
 
 CREATE TABLE verwalter_uebernahmen (
   ziel_id integer NOT NULL,
@@ -1069,12 +1076,14 @@ CREATE TABLE verwalter_uebernahmen (
   passwort_hash text,
   angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
   wirksam_ab timestamp with time zone NOT NULL,
-  CONSTRAINT verwalter_uebernahmen_art_check CHECK ((art = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text]))),
+  abbruch_hash text,
+  CONSTRAINT verwalter_uebernahmen_art_check CHECK ((art = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text, 'deaktivieren'::text, 'rolle_entziehen'::text, 'loeschen'::text]))),
   CONSTRAINT verwalter_uebernahmen_check CHECK (((art = 'passwort'::text) = (passwort_hash IS NOT NULL))),
   CONSTRAINT verwalter_uebernahmen_durch_id_fkey FOREIGN KEY (durch_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT verwalter_uebernahmen_pkey PRIMARY KEY (ziel_id, art),
   CONSTRAINT verwalter_uebernahmen_ziel_id_fkey FOREIGN KEY (ziel_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE UNIQUE INDEX idx_verwalter_uebernahmen_abbruch ON verwalter_uebernahmen USING btree (abbruch_hash);
 CREATE INDEX idx_verwalter_uebernahmen_durch ON verwalter_uebernahmen USING btree (durch_id);
 ALTER TABLE verwalter_uebernahmen ENABLE ROW LEVEL SECURITY;
 
@@ -1172,6 +1181,7 @@ CREATE TABLE zweiter_faktor_codes (
   user_id integer NOT NULL,
   code_hash text NOT NULL,
   verbraucht_am timestamp with time zone,
+  alt_gilt_bis timestamp with time zone,
   CONSTRAINT zweiter_faktor_codes_pkey PRIMARY KEY (id),
   CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

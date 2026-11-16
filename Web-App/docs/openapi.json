@@ -1506,6 +1506,51 @@
         "x-klein": true
       }
     },
+    "/api/v1/auth/anmeldung-freigeben": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 400
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/bestaetigung-erneut": {
       "post": {
         "tags": [
@@ -3275,6 +3320,51 @@
         "x-geheim": true
       }
     },
+    "/api/v1/auth/uebernahme-abbrechen": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/users": {
       "get": {
         "tags": [
@@ -3457,7 +3547,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                  "$ref": "#/components/schemas/VerwalterWeg"
                 }
               }
             }
@@ -3556,7 +3646,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                  "$ref": "#/components/schemas/VerwalterWeg"
                 }
               }
             }
@@ -3893,7 +3983,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_auth_users_id_password"
+                  "$ref": "#/components/schemas/VerwalterWeg"
                 }
               }
             }
@@ -3996,7 +4086,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_auth_users_id_password"
+                  "$ref": "#/components/schemas/VerwalterWeg"
                 }
               }
             }
@@ -16843,6 +16933,8 @@
           "token_id_fehlt",
           "token_rotation_noetig",
           "passkey_ungueltig",
+          "abbruch_link_ungueltig",
+          "freigabe_link_ungueltig",
           "passkey_ohne_domain",
           "unbegrenzt_nur_https",
           "token_nicht_ausgestellt",
@@ -19131,6 +19223,9 @@
           },
           "is_active": {
             "type": "boolean"
+          },
+          "wirksam_ab": {
+            "type": "string"
           }
         },
         "required": [
@@ -19167,6 +19262,32 @@
           },
           "wartet_auf_bestaetigung": {
             "type": "boolean"
+          },
+          "angekuendigt": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "art": {
+                  "type": "string",
+                  "enum": [
+                    "passwort",
+                    "zweiter_faktor",
+                    "deaktivieren",
+                    "rolle_entziehen",
+                    "loeschen"
+                  ]
+                },
+                "wirksam_ab": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "art",
+                "wirksam_ab"
+              ],
+              "additionalProperties": {}
+            }
           }
         },
         "required": [
@@ -19176,7 +19297,8 @@
           "is_active",
           "created_at",
           "zweiter_faktor",
-          "wartet_auf_bestaetigung"
+          "wartet_auf_bestaetigung",
+          "angekuendigt"
         ],
         "additionalProperties": {}
       },
@@ -22661,22 +22783,6 @@
         },
         "additionalProperties": {}
       },
-      "PUT_api_v1_auth_users_id_password": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "const": true
-          },
-          "wirksam_ab": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "success"
-        ],
-        "additionalProperties": {}
-      },
       "QrAbholung": {
         "type": "object",
         "properties": {
@@ -22925,10 +23031,7 @@
             "type": "boolean"
           },
           "message": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "email_sent": {
             "type": "boolean"
@@ -22967,7 +23070,10 @@
           }
         },
         "required": [
-          "enabled"
+          "enabled",
+          "passkey",
+          "passwort_vergessen",
+          "mail_versand"
         ],
         "additionalProperties": {}
       },
@@ -24787,6 +24893,22 @@
         ],
         "additionalProperties": {}
       },
+      "VerwalterWeg": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "wirksam_ab": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "additionalProperties": {}
+      },
       "VerwaltungDesign": {
         "type": "object",
         "properties": {
@@ -25277,6 +25399,12 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
+          "alte_codes_bis": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "error": {
             "type": [
               "string",
@@ -25287,7 +25415,8 @@
         "required": [
           "success",
           "aktiv",
-          "codes_uebrig"
+          "codes_uebrig",
+          "alte_codes_bis"
         ],
         "additionalProperties": {}
       }

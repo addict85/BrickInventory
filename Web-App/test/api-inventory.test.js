@@ -342,6 +342,9 @@ const C = {
 
   // Nur Webapp
   'POST /api/v1/auth/reset-password': 'nur-web',
+  // Links aus Mails an den Inhaber (Ankündigung abbrechen, Anmeldung freigeben).
+  'POST /api/v1/auth/uebernahme-abbrechen': 'nur-web',
+  'POST /api/v1/auth/anmeldung-freigeben': 'nur-web',
   // von GET auf POST umgestellt — die Route LEGT eine
   // Anmelde-Nonce AN und war als GET die einzige zustandsaendernde Route,
   // die SameSite=lax durchliess.

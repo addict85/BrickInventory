@@ -6,8 +6,7 @@ import { prozessEreignis } from '../infra/ereignis';
 import type { KontoKontext } from './kontext';
 
 const ZWISCHENSPEICHER_MS = 5_000;
-/** Je Zugang: Die Version steht in der Datenbank, aus der sie gelesen wurde. `stand` zählt jedes
- * Leeren: Eine Version, die vor einer Erhöhung gelesen wurde, kommt danach nicht mehr hinein. */
+/** Je Zugang; `stand` zählt jedes Leeren, damit ein älterer Lesestand nicht wieder hineinkommt. */
 const speicher = (k: KontoKontext) =>
   k.faecher.fach('sitzungsVersion', () => ({
     eintraege: new Map<number, { version: number | null; bis: number }>(),

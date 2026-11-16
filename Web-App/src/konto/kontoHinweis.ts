@@ -12,6 +12,9 @@ type Angaben = {
   was?: string | undefined;
   bis?: string | undefined;
   geloest?: Geloest | undefined;
+  abbruch?: string | undefined;
+  freigabe?: string | undefined;
+  adresse?: string | undefined;
 };
 
 // Läuft auch vor der Anmeldung und für andere Konten (alle Verwalter): Sprache
@@ -45,6 +48,9 @@ async function meldeKontoaenderungFuer(
     was: angaben.was,
     bis: angaben.bis,
     geloest: angaben.geloest,
+    abbruch: angaben.abbruch,
+    freigabe: angaben.freigabe,
+    adresse: angaben.adresse,
   });
   return r.success;
 }

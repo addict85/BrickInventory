@@ -52,9 +52,10 @@ test('eine abweichende Antwort wird zur 500', async t => {
 });
 
 test('eine vertragsgemässe Antwort geht unverändert hinaus', async t => {
-  const basis = server(t, { rumpf: { enabled: true } });
+  const stand = { enabled: true, passkey: false, passwort_vergessen: true, mail_versand: true };
+  const basis = server(t, { rumpf: stand });
   const r = await fetch(`${basis}/registration-status`);
-  assert.deepEqual([r.status, await r.json()], [200, { enabled: true }]);
+  assert.deepEqual([r.status, await r.json()], [200, stand]);
 });
 
 test('eine vertragswidrige Eingabe erreicht die Route nicht', async t => {

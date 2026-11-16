@@ -48,9 +48,10 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.verwalter.verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
+    if (r.wirksamAb) return { wirksam_ab: r.wirksamAb.toISOString() };
     if (r.geaendert && soll)
       d.konto.verwalterHinweisNebenher('verwalter_ernannt', {
-        konto: await d.konto.kontoAnzeigeName(targetId),
+        konto: (await d.konto.kontoKurzVon(targetId))?.username ?? String(targetId),
         durch: nutzerName(req) ?? '',
       });
 
@@ -65,8 +66,8 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (targetId === nutzerId(req)) fachfehler('ungueltig', 'eigenes_konto_deaktivieren');
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    await d.konto.verwalter.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
-    return { is_active: soll };
+    const r = await d.konto.verwalter.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
+    return r.wirksamAb ? { is_active: true, wirksam_ab: r.wirksamAb.toISOString() } : { is_active: soll };
   });
 
   // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
@@ -96,8 +97,8 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
 
   router.endpunkt('DELETE /api/v1/auth/users/:id', requireAdmin, async (req, res) => {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
-    return {};
+    const wirksam = await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
+    return wirksam ? { wirksam_ab: wirksam.toISOString() } : {};
   });
 
   // Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.

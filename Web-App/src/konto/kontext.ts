@@ -124,6 +124,8 @@ const sitzungszugang = (db: Db) => ({
     verwalterOderEbenGewesen: imSystem(db, UEBERNAHME, uebernahmen.verwalterOderEbenGewesen),
     nimmFaellige: imSystem(db, UEBERNAHME, uebernahmen.nimmFaellige),
     brichUebernahmenAb: imSystem(db, UEBERNAHME, uebernahmen.brichUebernahmenAb),
+    zielZumAbbruch: imSystem(db, 'Abbruch-Link: Die Anfrage trägt kein Konto', uebernahmen.zielZumAbbruch),
+    angekuendigte: imSystem(db, UEBERNAHME, uebernahmen.angekuendigte),
   },
   startVerwalter: {
     kontenVorhanden: imSystem(db, ALLE_NAMEN, startVerwalter.kontenVorhanden),

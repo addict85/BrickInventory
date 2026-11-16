@@ -11,6 +11,7 @@ import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
 import { feldFehler, formularFehler, passwortRegelText } from './formular.js';
 import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './konto.js';
 import { toast } from './meldungen.js';
+import { mailLinkAnnehmen, mailLinkOffen } from './maillink.js';
 import {
   setzeGalerieSets,
   setzeKonto,
@@ -85,7 +86,7 @@ let _verifyAngemeldet = false;
  * @param {string} name
  */
 function showPanel(name) {
-  ['login', 'register', 'forgot', 'reset', 'verify', 'pflichtwechsel', 'zweitpflicht'].forEach(p => {
+  ['login', 'register', 'forgot', 'reset', 'verify', 'maillink', 'pflichtwechsel', 'zweitpflicht'].forEach(p => {
     const el = G('panel-' + p);
     if (el) el.style.display = p === name ? 'block' : 'none';
   });
@@ -167,7 +168,7 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   } else if (token && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
     _resetToken = token;
     showPanel('reset');
-  }
+  } else if (token && mailLinkAnnehmen(token, location.pathname)) showPanel('maillink');
   if (token) history.replaceState({}, '', location.pathname);
 })();
 // Ein weiterer Link im selben Tab ändert nur das Fragment: neu laden, sonst bliebe der alte Token.
@@ -347,7 +348,7 @@ export async function checkAuth() {
   _verifyAngemeldet = !!d.loggedIn;
   if (_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
   // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
-  if (d.loggedIn && !_verifyToken) {
+  if (d.loggedIn && !_verifyToken && !mailLinkOffen()) {
     setzeKonto(
       /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
@@ -357,7 +358,7 @@ export async function checkAuth() {
     startgeruestWeg();
     G('app').style.display = 'none';
     // Don't override reset/verified panels that were already set from URL params
-    if (!_resetToken && !_verifyToken && !G('verified-msg')?.style.display.includes('block')) {
+    if (!_resetToken && !_verifyToken && !mailLinkOffen() && !G('verified-msg')?.style.display.includes('block')) {
       showPanel('login');
     }
     checkRegistrationEnabled();

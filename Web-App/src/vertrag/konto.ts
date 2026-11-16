@@ -93,7 +93,7 @@ export const ProfilResponse = z.looseObject({
 
 export const RegisterResponse = z.looseObject({
   success: z.boolean(),
-  message: z.string().nullable(),
+  message: z.string(),
   email_sent: z.boolean(),
   console_mode: z.boolean().optional(),
   error: z.string().nullable().optional(),
@@ -101,9 +101,9 @@ export const RegisterResponse = z.looseObject({
 
 export const RegistrationStatusResponse = z.looseObject({
   enabled: z.boolean(),
-  passkey: z.boolean().optional(),
-  passwort_vergessen: z.boolean().optional(),
-  mail_versand: z.boolean().optional(),
+  passkey: z.boolean(),
+  passwort_vergessen: z.boolean(),
+  mail_versand: z.boolean(),
 });
 
 export const TokenRotation = z.looseObject({
@@ -143,7 +143,7 @@ export const ZweiterFaktorStand = z.looseObject({
   aktiv: z.boolean(),
   codes_uebrig: z.number().int(),
   /** Offene Codes könnten alter Art sein (vor dem 01.11.2026) und gelten dann nur bis dahin. */
-  alte_codes_bis: zeit.nullable().optional(),
+  alte_codes_bis: zeit.nullable(),
   error: z.string().nullable().optional(),
 });
 
@@ -156,9 +156,20 @@ export const KontoInListe = z.looseObject({
   created_at: zeit.nullable(),
   zweiter_faktor: z.boolean(),
   wartet_auf_bestaetigung: z.boolean(),
+  /** Angekündigte Änderungen an diesem Verwalterkonto, wirksam ab dem Zeitpunkt. */
+  angekuendigt: z.array(
+    z.looseObject({
+      art: z.enum(['passwort', 'zweiter_faktor', 'deaktivieren', 'rolle_entziehen', 'loeschen']),
+      wirksam_ab: z.string(),
+    }),
+  ),
 });
 export const KontenListe = z.looseObject({ success: z.literal(true), users: z.array(KontoInListe) });
-export const KontoAktiv = z.looseObject({ success: z.literal(true), is_active: z.boolean() });
+export const KontoAktiv = z.looseObject({
+  success: z.literal(true),
+  is_active: z.boolean(),
+  wirksam_ab: z.string().optional(),
+});
 
 export const TokenErstellt = z.looseObject({
   success: z.literal(true),
@@ -247,7 +258,7 @@ export const ProfilGespeichert = GenericResponse.extend({
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
 /** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/konto/verwalterAktionen.ts). */
-const VerwalterWeg = Erfolg.extend({ wirksam_ab: z.string().optional() });
+export const VerwalterWeg = Erfolg.extend({ wirksam_ab: z.string().optional() });
 const PASSWORT = 1024;
 const code = z
   .union([z.string().max(64), z.number()])
@@ -362,7 +373,7 @@ export const routen = {
     }),
   },
   'PUT /api/v1/auth/users/:id/admin': {
-    antwort: Erfolg,
+    antwort: VerwalterWeg,
     ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin') }),
   },
   'PUT /api/v1/auth/users/:id/aktiv': {
@@ -374,7 +385,7 @@ export const routen = {
     antwort: VerwalterWeg,
     ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }),
   },
-  'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/users/:id': { antwort: VerwalterWeg, ...verwalterBestaetigt() },
   'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: VerwalterWeg, ...verwalterBestaetigt() },
   'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt(tokenWunsch), geheim: true },
@@ -387,6 +398,14 @@ export const routen = {
         .optional(),
     }),
     geheim: true,
+  },
+  'POST /api/v1/auth/uebernahme-abbrechen': {
+    antwort: Erfolg,
+    eingabe: z.strictObject({ token: txt(200) }),
+  },
+  'POST /api/v1/auth/anmeldung-freigeben': {
+    antwort: Erfolg,
+    eingabe: z.strictObject({ token: txt(400) }),
   },
   'POST /api/v1/auth/reset-password': {
     antwort: ForgotPasswordResponse,

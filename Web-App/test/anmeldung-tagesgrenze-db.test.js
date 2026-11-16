@@ -21,6 +21,15 @@
  *   F  in loescheTagesgrenze() das Löschen mit Präfix gestrichen → rot: „nach Passwort
  *      vergessen …“ (Zähler der bekannten Adresse blieb)
  *
+ * Gegenproben zum Freigabelink (16.11.2026 gemessen, je einzeln):
+ *   G  in nurNochMitFaktor() freigabeAnbieten() gestrichen → rot: „an einer unbekannten
+ *      Adresse kommt ein Freigabelink …“ (keine Mail)
+ *   H  in _tagKey() die Freigabe nicht beachtet → rot: dieselbe Prüfung (429 nach dem Link)
+ *   I  in anmeldungFreigeben() die Einmal-Prüfung gestrichen → rot: dieselbe Prüfung (der Link
+ *      galt zweimal)
+ *   J  in anmeldungFreigeben() die Signatur nicht geprüft → rot: dieselbe Prüfung (ein Link für
+ *      ein anderes Konto galt)
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -30,7 +39,7 @@ const crypto = require('node:crypto');
 const { umgebung, testDaten, buildAndRequire } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung', APP_BASE_URL: 'http://localhost' });
 
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
@@ -165,5 +174,34 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     // Ohne Bekannt-Zeile ist dieselbe Adresse fremd: Dort gilt der gemeinsame Zähler.
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`login-bekannt|%|konto:${id[OHNE]}`]);
     assert.equal((await anmelden(OHNE, neu)).body?.code, 'konto_tagesgrenze');
+  });
+
+  await t.test('an einer unbekannten Adresse kommt ein Freigabelink; er schaltet sie frei, einmal', async () => {
+    const neu = 'neues-Passwort-nach-Link-17';
+    const links = () =>
+      gesendet
+        .filter(m => m.to === `${OHNE}@example.org`)
+        .map(m => /\/anmeldung-freigeben#token=(\S+)/.exec(m.text)?.[1])
+        .filter(Boolean);
+    assert.ok(await bis(() => links().length > 0, 10_000), 'kein Freigabelink an den Inhaber');
+    assert.equal((await anmelden(OHNE, 'falsch-noch-einmal')).body?.code, 'konto_tagesgrenze');
+    assert.equal(await bis(() => links().length > 1, 300), false, 'je Adresse und Stunde nur eine Mail');
+    const freigeben = token =>
+      fetch(`${base}${AUTH}/anmeldung-freigeben`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      }).then(async r => ({ status: r.status, body: await r.json() }));
+    const [token] = links();
+    const [uid, ...rest] = token.split('.');
+    const gefaelscht = [String(id[MIT]), ...rest].join('.');
+    assert.equal((await freigeben(gefaelscht)).body.code, 'freigabe_link_ungueltig', 'Signatur');
+    assert.equal(Number(uid), id[OHNE]);
+    const r = await freigeben(token);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal((await freigeben(token)).body.code, 'freigabe_link_ungueltig', 'nur einmal');
+    const a = await anmelden(OHNE, neu);
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    assert.equal(await tageszaehler(OHNE), 50, 'der gemeinsame Zähler bleibt für andere Adressen');
   });
 });

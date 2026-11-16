@@ -131,5 +131,22 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
       return { message: 'Passwort erfolgreich geändert.' };
     },
   );
+  // Links aus Mails, ohne Anmeldung: Der Token ist das Recht, die Drossel hält Raten auf.
+  router.endpunkt(
+    'POST /api/v1/auth/uebernahme-abbrechen',
+    ipThrottle(d.konto, 'uebernahme-abbrechen', 20, 60 * 60 * 1000),
+    async req => {
+      await d.konto.mailLinkEinloesen('abbrechen', req.eingabe.token ?? '');
+      return {};
+    },
+  );
+  router.endpunkt(
+    'POST /api/v1/auth/anmeldung-freigeben',
+    ipThrottle(d.konto, 'anmeldung-freigeben', 20, 60 * 60 * 1000),
+    async req => {
+      await d.konto.mailLinkEinloesen('freigeben', req.eingabe.token ?? '');
+      return {};
+    },
+  );
   return router;
 }

@@ -13,6 +13,8 @@ import {
   faktorCodeGesperrt,
   faktorCodeFalsch,
   tagesgrenzeErreicht,
+  freigabeToken,
+  zaehleAnfrage,
   MAX_ATTEMPTS,
   type Anmeldeereignis,
   type Anmeldeweg,
@@ -186,11 +188,7 @@ export async function pruefeAnmeldedaten(
       const grund = nurNotweg || erreicht ? 'zweiter_faktor_gesperrt' : 'zweiter_faktor_falsch';
       return ergaenzt(absage('nicht_angemeldet', grund, undefined, false, true));
     }
-    if (gilt === 'wiederherstellung_alt') {
-      // Vor der Anmeldung trägt die Anfrage noch kein Konto für den Zeilenschutz.
-      const bis = (await imSystemkontext('anmeldung: alte Codes', () => k.faktoren.stand(user.id))).alte_codes_bis;
-      if (bis) hinweisNebenher(k, user.id, 'alte_codes_ablauf', undefined, { bis });
-    }
+    if (gilt === 'wiederherstellung_alt') await alteCodesMelden(k, user.id);
   }
   // Erst jetzt, nach Passwort und zweitem Faktor: Den Klartext gibt es nur bei einer Anmeldung.
   if (brauchtNeuenHash(user.password_hash))
@@ -198,6 +196,13 @@ export async function pruefeAnmeldedaten(
   await anmeldungGelungen(k, ip, name);
   meldeAnmeldung({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };
+}
+
+/** Wer sich mit einem Code alter Art anmeldet, erfährt die Frist. Vor der Anmeldung trägt die
+ * Anfrage noch kein Konto für den Zeilenschutz, daher der Systemrahmen. */
+async function alteCodesMelden(k: KontoKontext, uid: number): Promise<void> {
+  const bis = (await imSystemkontext('anmeldung: alte Codes', () => k.faktoren.stand(uid))).alte_codes_bis;
+  if (bis) hinweisNebenher(k, uid, 'alte_codes_ablauf', undefined, { bis });
 }
 
 /** Über der Tagesgrenze nur mit Code oder Passkey und aktivem Faktor. Vor der Passwortprüfung
@@ -213,7 +218,17 @@ async function nurNochMitFaktor(
   if (mitFaktor && konto !== undefined && (await k.faktoren.istAktiv(konto))) return false;
   await gibAnmeldeplatzFrei(k, ip, name);
   meldeAnmeldeereignis('anmeldung_tagesgrenze', { ip, konto: konto ?? null });
+  if (konto !== undefined) await freigabeAnbieten(k, ip, konto);
   return true;
+}
+
+/** Ohne zweiten Faktor bliebe dem Inhaber an einem neuen Ort nur „Passwort vergessen“: ein Link je
+ * Adresse und Stunde, höchstens zehn am Tag, damit ein Fremder das Postfach nicht flutet. */
+async function freigabeAnbieten(k: KontoKontext, ip: string, konto: number): Promise<void> {
+  if (await k.faktoren.istAktiv(konto)) return;
+  if ((await zaehleAnfrage(k, `freigabe-mail|konto:${konto}`, ip, 3_600_000)).count > 1) return;
+  if (await kontoGedrosselt(k, 'freigabe-mail', konto, 10, TAG_MS)) return;
+  hinweisNebenher(k, konto, 'anmeldung_freigeben', undefined, { freigabe: freigabeToken(k, ip, konto), adresse: ip });
 }
 
 /** Beim Erreichen der Kontosperre erfährt es der Inhaber, höchstens einmal am Tag:

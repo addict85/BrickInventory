@@ -1,23 +1,33 @@
 /**
- * Ein Verwalter setzt Passwort oder zweiten Faktor eines anderen Kontos zurück
- * (routes/auth/benutzer.ts, src/konto/verwalterAktionen.ts): Danach enden alle Sitzungen
- * und Tokens des Ziels. Ist das Ziel Verwalter (oder war es eben noch), gilt die Änderung
- * erst nach 24 Stunden, im Aufräumlauf, und eine Anmeldung des Ziels hebt sie auf.
- * Über die echten Routen und die Laufzeitrolle.
+ * Ein Verwalter setzt Passwort oder zweiten Faktor eines anderen Kontos zurück, deaktiviert es,
+ * entzieht die Rolle oder löscht es (routes/auth/benutzer.ts, src/konto/verwalterAktionen.ts).
+ * Ist das Ziel Verwalter (oder war es eben noch), gilt das erst nach 24 Stunden, im Aufräumlauf;
+ * eine Anmeldung des Ziels (Passwort, Passkey, QR-Abholung) oder der Link aus seiner Mail hebt
+ * es auf. Über die echten Routen und die Laufzeitrolle.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
  *   A  in zweitenFaktorEntfernen `zugaengeBeenden` gestrichen → rot: „ein normales Konto:
  *      sofort, Sitzungen und Tokens enden“ (Token und Sitzung des Ziels blieben)
  *   B  passwortDurchVerwalter ohne die Prüfung auf Verwalter (immer sofort) → rot:
- *      „ein Verwalterkonto: angekündigt …“ (kein wirksam_ab, Hash sofort neu), dazu
- *      „erst die Rolle entziehen …“ und „… wer die Rolle verlor …“
- *   C  in verwalterOderEbenGewesen nur noch is_admin → rot: „erst die Rolle entziehen …“
- *      (und daraus folgend „… wer die Rolle verlor …“)
+ *      „ein Verwalterkonto: angekündigt …“ (kein wirksam_ab, Hash sofort neu)
+ *   C  in verwalterOderEbenGewesen nur noch is_admin → rot (16.11. neu gemessen): „Deaktivieren,
+ *      Rolle entziehen und Löschen …“ (nach dem Entzug ein Passwort sofort statt angekündigt)
  *   D  in angemeldetAntworten (routes/auth.ts) uebernahmenAbbrechen gestrichen → rot:
  *      „eine Anmeldung des Ziels hebt die Ankündigung auf“ (der Faktor fiel trotzdem)
  *   E  in nimmFaellige die Bedingung auf den noch aktiven Verwalter gestrichen → rot:
  *      „… wer die Rolle verlor, setzt nichts mehr durch“ (der Hash wurde ersetzt)
  *   F  im Aufräumlauf `zugaengeBeenden` gestrichen → rot: „… nach der Frist …“
+ * Gegenproben (16.11.2026 gemessen, je einzeln):
+ *   G  in aktivSetzen (verwalterAktionen.ts) die Ankündigung gestrichen → rot: „Deaktivieren,
+ *      Rolle entziehen und Löschen …“ (sofort deaktiviert, kein wirksam_ab)
+ *   H  in abbauAusfuehren den Zweig `loeschen` auf deaktivieren gelenkt → rot: dieselbe Prüfung
+ *      (das Konto blieb)
+ *   I  mailLinkEinloesen ohne Abbruch (nur Suche) → rot: „der Link aus der Mail …“
+ *   J  in nimmFaellige die Prüfung auf eine zugleich fällige Deaktivierung gestrichen → rot: „… fällt
+ *      weg, wenn das Ziel deaktiviert wurde“ (Fall a, der Hash wurde ersetzt); die Prüfung auf den
+ *      Protokolleintrag seit der Ankündigung gestrichen → rot: dieselbe Prüfung (Fall b)
+ *   K  in routes/auth/qr.ts uebernahmenAbbrechen gestrichen → rot: „eine QR-Abholung …“
+ *   L  kontenListe ohne `angekuendigt` → rot: „die Kontenliste zeigt …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,6 +38,7 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { bis } = require('./helpers/zeit');
 const db = S.testDaten();
 const { hashePasswort, passwortPasst } = _req('src/konto/passwortHash.js');
 const zf = _req('src/faktoren/zweiterFaktor.js');
@@ -39,46 +50,60 @@ async function mitFaktor(uid) {
   const geheim = zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid)));
   return S.alsKonto(uid, () => zf.bestaetigeEinrichtung(uid, zf.hotp(geheim, zf.zeitschritt())));
 }
+const mails = [];
 S.ersetzeDienste('mail', {
-  mailEingerichtet: async () => false,
+  mailEingerichtet: async () => true,
+  mailKontoHinweis: async (an, _name, art, o) => {
+    mails.push({ an, art, ...o });
+    return { success: true };
+  },
 });
 
-test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 120_000 }, async t => {
+test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     PASS = 'Uebernahme-Pruefung-1',
     NEU = 'Neu-Gesetzt-Durch-Verwalter-1';
-  const namen = ['chef', 'nutzer', 'vw', 'vw2', 'vw3'].map(n => `ueb_${n}_${P}`);
+  const namen = ['chef', 'nutzer', 'vw', 'vw2', 'vw3', 'vw4', 'vw5', 'vw6', 'vw7', 'vw8', 'vw9', 'nutzer2'].map(
+    n => `ueb_${n}_${P}`,
+  );
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const hash = await hashePasswort(PASS);
   const konto = async (name, admin) =>
     (
       await db.get(
-        `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-         VALUES ($1, $2, $3, true, true) RETURNING id`,
+        `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
+         VALUES ($1, $1 || '@beispiel.de', $2, $3, true, true) RETURNING id`,
         [name, hash, admin],
       )
     ).id;
-  const [chef, nutzer, vw, vw2, vw3] = [
-    await konto(namen[0], true),
-    await konto(namen[1], false),
-    await konto(namen[2], true),
-    await konto(namen[3], true),
-    await konto(namen[4], true),
-  ];
+  const ids = [];
+  for (const [i, n] of namen.entries()) ids.push(await konto(n, i !== 1 && i !== 11));
+  const [chef, nutzer, vw, vw2, vw3, vw4, vw5, vw6, vw7, vw8, vw9, nutzer2] = ids;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     await db.run(`DELETE FROM user_sessions WHERE sid LIKE 'ueb-%'`).catch(() => {});
+    await db.run(`DELETE FROM rate_limit_attempts`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
+  // Jede Verwalteraktion verbraucht einen Code; zehn reichen hier nicht, also weitere desselben Satzes.
   const codes = await mitFaktor(chef);
+  const { suchwert } = _req('src/infra/geheimnis.js');
+  for (let i = 0; i < 30; i++) {
+    const c = `zusatz${String(i).padStart(4, '0')}abcdef`;
+    await db.run('INSERT INTO zweiter_faktor_codes (user_id, code_hash) VALUES ($1, $2)', [
+      chef,
+      suchwert('zweiter-faktor-code', `${chef}:${c}`),
+    ]);
+    codes.push(c);
+  }
   const { base } = testServer(_req, { sitzung: { userId: chef, username: namen[0], isAdmin: true }, t });
-  const ruf = async (methode, weg, body) => {
-    const r = await fetch(`${base}/api/v1/auth${weg}`, {
+  const ruf = async (methode, weg, body, b = base) => {
+    const r = await fetch(`${b}/api/v1/auth${weg}`, {
       method: methode,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...body, code: codes.shift() }),
+      body: JSON.stringify({ ...body, code: body?.code ?? codes.shift() }),
     });
     return { status: r.status, body: await r.json() };
   };
@@ -101,12 +126,25 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 120_000 }, asy
       (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash,
     ),
   });
+  const konten = async uid => db.get('SELECT is_admin, is_active FROM users WHERE id = $1', [uid]);
   const faktor = uid => db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [uid]);
   const faellig = async uid => {
     await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [uid]);
     return _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus();
   };
-  const offen = async uid => (await db.all('SELECT art FROM verwalter_uebernahmen WHERE ziel_id = $1', [uid])).length;
+  const offen = async uid =>
+    (await db.all('SELECT art FROM verwalter_uebernahmen WHERE ziel_id = $1 ORDER BY art', [uid])).map(z => z.art);
+  const inFrist = r => {
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const stunden = (Date.parse(r.body.wirksam_ab) - Date.now()) / 3_600_000;
+    assert.ok(stunden > 23.9 && stunden <= 24, `wirksam_ab ${r.body.wirksam_ab}`);
+  };
+  const abbruchLink = async uid => {
+    const an = `${namen[ids.indexOf(uid)]}@beispiel.de`;
+    const m = () => [...mails].reverse().find(x => x.art === 'uebernahme_angekuendigt' && x.an === an);
+    await bis(() => m(), 1000);
+    return m()?.abbruch;
+  };
 
   await t.test('ein normales Konto: sofort, Sitzungen und Tokens enden', async () => {
     await faktor(nutzer);
@@ -118,6 +156,8 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 120_000 }, asy
     const p = await ruf('PUT', `/users/${nutzer}/password`, { password: NEU, admin_password: PASS });
     assert.deepEqual([p.status, p.body.wirksam_ab], [200, undefined]);
     assert.deepEqual(await stand(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
+    const a = await ruf('PUT', `/users/${nutzer2}/aktiv`, { is_active: false, admin_password: PASS });
+    assert.deepEqual([a.status, a.body.wirksam_ab, (await konten(nutzer2)).is_active], [200, undefined, false]);
   });
 
   await t.test('ein Verwalterkonto: angekündigt, wirksam erst nach der Frist, dann enden die Zugänge', async () => {
@@ -125,48 +165,140 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 120_000 }, asy
     await zugaenge(vw);
     const p = await ruf('PUT', `/users/${vw}/password`, { password: NEU, admin_password: PASS });
     const f = await ruf('DELETE', `/users/${vw}/zweiter-faktor`, { admin_password: PASS });
-    for (const r of [p, f]) {
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      const stunden = (Date.parse(r.body.wirksam_ab) - Date.now()) / 3_600_000;
-      assert.ok(stunden > 23.9 && stunden <= 24, `wirksam_ab ${r.body.wirksam_ab}`);
-    }
+    for (const r of [p, f]) inFrist(r);
     assert.deepEqual(await stand(vw), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
     assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 0, 'vor der Frist');
     assert.equal(await faellig(vw), 2);
     assert.deepEqual(await stand(vw), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
-    assert.equal(await offen(vw), 0);
+    assert.deepEqual(await offen(vw), []);
   });
 
-  await t.test('erst die Rolle entziehen, dann übernehmen: trotzdem angekündigt', async () => {
-    const r = await ruf('PUT', `/users/${vw2}/admin`, { is_admin: false, admin_password: PASS });
-    assert.equal(r.status, 200, JSON.stringify(r.body));
-    const p = await ruf('PUT', `/users/${vw2}/password`, { password: NEU, admin_password: PASS });
-    assert.ok(p.body.wirksam_ab, JSON.stringify(p.body));
+  await t.test('Deaktivieren, Rolle entziehen und Löschen eines Verwalters: angekündigt, dann wirksam', async () => {
+    mails.length = 0;
+    inFrist(await ruf('PUT', `/users/${vw4}/aktiv`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw5}/admin`, { is_admin: false, admin_password: PASS }));
+    inFrist(await ruf('DELETE', `/users/${vw6}`, { admin_password: PASS }));
+    assert.deepEqual(
+      [await konten(vw4), await konten(vw5), await konten(vw6)],
+      [
+        { is_admin: true, is_active: true },
+        { is_admin: true, is_active: true },
+        { is_admin: true, is_active: true },
+      ],
+      'vor der Frist ändert sich nichts',
+    );
+    assert.ok(await abbruchLink(vw4), 'das Ziel bekommt einen Abbruch-Link');
+    const anVerwalter = mails.filter(m => m.art === 'verwaltung_uebernahme_angekuendigt');
+    assert.ok(anVerwalter.length >= 3 && anVerwalter.every(m => !m.abbruch), 'die übrigen Verwalter ohne Link');
+    for (const uid of [vw4, vw5, vw6]) await faellig(uid);
+    assert.deepEqual(
+      [await konten(vw4), await konten(vw5), await konten(vw6)],
+      [{ is_admin: true, is_active: false }, { is_admin: false, is_active: true }, undefined],
+    );
+    // Wer die Rolle eben verlor, zählt noch als Verwalter: Sonst entzöge man sie erst und übernähme dann sofort.
+    inFrist(await ruf('PUT', `/users/${vw5}/password`, { password: NEU, admin_password: PASS }));
+  });
+
+  await t.test('erst die Rolle entziehen, dann übernehmen: beides angekündigt', async () => {
+    inFrist(await ruf('PUT', `/users/${vw2}/admin`, { is_admin: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw2}/password`, { password: NEU, admin_password: PASS }));
+    assert.deepEqual(await offen(vw2), ['passwort', 'rolle_entziehen']);
     assert.equal((await stand(vw2)).neuesPasswort, false);
   });
 
   await t.test('eine Anmeldung des Ziels hebt die Ankündigung auf', async () => {
     const eigene = await mitFaktor(vw3);
-    const f = await ruf('DELETE', `/users/${vw3}/zweiter-faktor`, { admin_password: PASS });
-    assert.ok(f.body.wirksam_ab, JSON.stringify(f.body));
-    const a = await fetch(`${base}/api/v1/auth/login`, {
+    inFrist(await ruf('DELETE', `/users/${vw3}/zweiter-faktor`, { admin_password: PASS }));
+    // Ein eigener Server: Die Anmeldung schriebe sonst in die Sitzung des Verwalters.
+    const anmeldung = testServer(_req, { sitzung: {}, t }).base;
+    const a = await fetch(`${anmeldung}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: namen[4], password: PASS, code: eigene[0], ohne_token: true }),
     });
     assert.equal(a.status, 200, await a.text());
-    assert.equal(await offen(vw3), 0);
+    assert.deepEqual(await offen(vw3), []);
     await faellig(vw3);
     assert.equal((await stand(vw3)).faktor, 1, 'der Faktor fiel trotz Anmeldung');
+  });
+
+  await t.test('der Link aus der Mail bricht ohne Anmeldung ab, einmal', async () => {
+    mails.length = 0;
+    inFrist(await ruf('PUT', `/users/${vw7}/aktiv`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw7}/password`, { password: NEU, admin_password: PASS }));
+    const link = await abbruchLink(vw7);
+    const abbrechen = token =>
+      fetch(`${base}/api/v1/auth/uebernahme-abbrechen`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: '' },
+        body: JSON.stringify({ token }),
+      }).then(async r => ({ status: r.status, body: await r.json() }));
+    assert.equal((await abbrechen('falsch')).body.code, 'abbruch_link_ungueltig');
+    assert.deepEqual(await offen(vw7), ['deaktivieren', 'passwort']);
+    const r = await abbrechen(link);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.deepEqual(await offen(vw7), []);
+    assert.equal((await abbrechen(link)).body.code, 'abbruch_link_ungueltig', 'nur einmal');
+    await faellig(vw7);
+    assert.deepEqual(await konten(vw7), { is_admin: true, is_active: true });
+  });
+
+  await t.test('eine fällige Übernahme fällt weg, wenn das Ziel deaktiviert wurde', async () => {
+    // a) Deaktivieren und Passwort werden zugleich fällig
+    inFrist(await ruf('PUT', `/users/${vw8}/aktiv`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw8}/password`, { password: NEU, admin_password: PASS }));
+    await faellig(vw8);
+    assert.deepEqual([(await konten(vw8)).is_active, (await stand(vw8)).neuesPasswort], [false, false]);
+    // b) seit der Ankündigung auf anderem Weg deaktiviert
+    inFrist(await ruf('PUT', `/users/${vw9}/password`, { password: NEU, admin_password: PASS }));
+    await S.alsKonto(chef, () => _req('src/konto/verwalterAktionen.js').aktivSchreiben(chef, vw9, false), {
+      verwalter: true,
+    });
+    await faellig(vw9);
+    assert.equal((await stand(vw9)).neuesPasswort, false);
+  });
+
+  await t.test('eine QR-Abholung des Ziels hebt die Ankündigung auf', async () => {
+    const eigene = await mitFaktor(vw);
+    await db.run('UPDATE users SET password_hash = $2, must_change_password = false WHERE id = $1', [vw, hash]);
+    inFrist(await ruf('PUT', `/users/${vw}/password`, { password: NEU, admin_password: PASS }));
+    const version = (await db.get('SELECT sitzungs_version AS v FROM users WHERE id = $1', [vw])).v;
+    const ziel = testServer(_req, {
+      sitzung: { userId: vw, username: namen[2], isAdmin: true, sitzungsVersion: version },
+      t,
+    }).base.replace('localhost', '127.0.0.1');
+    const qr = await ruf('POST', '/qr-token', { password: PASS, code: eigene[0] }, ziel);
+    assert.equal(qr.status, 200, JSON.stringify(qr.body));
+    const roh = (weg, body) =>
+      fetch(`${ziel}/api/v1/auth${weg}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(async r => ({ status: r.status, body: await r.json() }));
+    const m = await roh('/qr-login', { token: qr.body.token, label: 'Pixel Probe' });
+    assert.equal(m.status, 200, JSON.stringify(m.body));
+    const b = await roh(`/qr-kopplung/${qr.body.kopplung}/bestaetigen`, { code: m.body.code });
+    assert.equal(b.status, 200, JSON.stringify(b.body));
+    assert.deepEqual(await offen(vw), ['passwort']);
+    const a = await roh('/qr-login/abholen', { abholung: m.body.abholung });
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    assert.deepEqual(await offen(vw), []);
+  });
+
+  await t.test('die Kontenliste zeigt angekündigte Änderungen mit Zeitpunkt', async () => {
+    const r = await fetch(`${base}/api/v1/auth/users`).then(x => x.json());
+    const z = r.users.find(u => u.id === vw2);
+    assert.deepEqual(z.angekuendigt.map(a => a.art).sort(), ['passwort', 'rolle_entziehen']);
+    assert.ok(z.angekuendigt.every(a => Date.parse(a.wirksam_ab) > Date.now()));
   });
 
   await t.test('… wer die Rolle verlor, setzt nichts mehr durch', async () => {
     await db.run('UPDATE users SET is_admin = false WHERE id = $1', [chef]);
     try {
-      assert.equal(await offen(vw2), 1);
+      assert.equal((await offen(vw2)).length, 2);
       assert.equal(await faellig(vw2), 0);
-      assert.equal(await offen(vw2), 0, 'die Ankündigung bleibt nicht liegen');
-      assert.equal((await stand(vw2)).neuesPasswort, false);
+      assert.deepEqual(await offen(vw2), [], 'die Ankündigung bleibt nicht liegen');
+      assert.deepEqual([(await stand(vw2)).neuesPasswort, (await konten(vw2)).is_admin], [false, true]);
     } finally {
       await db.run('UPDATE users SET is_admin = true WHERE id = $1', [chef]);
     }

@@ -27,7 +27,7 @@ const sv = _req('src/konto/sitzungsVersion.js');
 const signale = testZugang().benachrichtigung;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
-const warte = ms => new Promise(r => setTimeout(r, ms));
+const { bis } = require('./helpers/zeit');
 
 test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
@@ -63,7 +63,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     bereit = true;
   };
   signale.listen('sitzung_version', fertig);
-  for (let i = 0; i < 200 && !bereit; i++) await warte(25);
+  await bis(() => bereit, 5000);
   signale.unlisten('sitzung_version', fertig);
   assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
@@ -72,12 +72,11 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     await hoeher();
     assert.equal(await sv.aktuelleSitzungsVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
     await anderer.query("SELECT pg_notify('sitzung_version', 'anderer')");
-    let v = vorher;
-    for (let i = 0; i < 40 && v === vorher; i++) {
-      await warte(25);
-      v = await sv.aktuelleSitzungsVersion(uid);
-    }
-    assert.equal(v, await inDb(), 'die alte Version gilt im Zwischenspeicher weiter');
+    const neu = await inDb();
+    assert.ok(
+      await bis(async () => (await sv.aktuelleSitzungsVersion(uid)) === neu, 1000),
+      'die alte Version gilt im Zwischenspeicher weiter',
+    );
   });
 
   await t.test('eine Erhöhung hier meldet sich bei den anderen', async () => {
@@ -85,7 +84,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN sitzung_version');
     await _req('src/konto/zugangsende.js').alleSitzungenBeenden(uid);
-    for (let i = 0; i < 40 && !gehoert.length; i++) await warte(25);
+    await bis(() => gehoert.length > 0, 1000);
     assert.deepEqual(gehoert.slice(0, 1), ['sitzung_version']);
   });
 });

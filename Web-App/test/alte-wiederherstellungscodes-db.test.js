@@ -25,6 +25,7 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { bis } = require('./helpers/zeit');
 
 const gesendet = [];
 S.ersetzeDienste('mail', {
@@ -73,9 +74,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     });
     return r.status;
   };
-  const wartenAufMail = async () => {
-    for (let i = 0; i < 40 && !gesendet.length; i++) await new Promise(r => setTimeout(r, 25));
-  };
+  const wartenAufMail = () => bis(() => gesendet.length > 0, 1000);
 
   await t.test('ein Code alter Art gilt bis zur Frist, mit Mail und Hinweis im Profil', async () => {
     const bis = new Date(Date.now() + 3 * 86_400_000);

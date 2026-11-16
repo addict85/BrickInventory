@@ -79,9 +79,7 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
       /permission denied/,
     );
     await als(haupt, () => zugang.run('UPDATE users SET first_name = $2 WHERE id = ANY($1)', [[haupt, unter], 'Neu']));
-    const vornamen = await db.all('SELECT id, first_name FROM users WHERE id = ANY($1) ORDER BY id', [
-      [haupt, unter],
-    ]);
+    const vornamen = await db.all('SELECT id, first_name FROM users WHERE id = ANY($1) ORDER BY id', [[haupt, unter]]);
     assert.deepEqual(
       vornamen.map(z => z.first_name),
       ['Neu', null],

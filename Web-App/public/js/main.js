@@ -75,6 +75,7 @@ import './passkeys.js';
 import './router.js';
 import './navigation.js';
 import './startkasten.js';
+import './maillink.js';
 import './sitzung.js';
 import './einrichtung-stand.js';
 

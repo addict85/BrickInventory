@@ -76,6 +76,8 @@ export function baueQrRouter(d: Pick<Dienste, 'konto'>) {
       if (!user) fachfehler('nicht_angemeldet', 'token_ungueltig');
       if (a.stand === 'bereit') return { wartet: false, vorschau: true, username: user.username } as const;
       meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
+      // Eine Anmeldung wie mit Passwort oder Passkey: Den QR-Code gab es nur mit Passwort und Faktor.
+      await d.konto.verwalter.uebernahmenAbbrechen(user.id);
       res.json(await qrAbgeholt(d, user, a.token, a.schluesselNonce));
     },
   );
