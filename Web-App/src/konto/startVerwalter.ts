@@ -24,10 +24,10 @@ export async function legeStartVerwalterAn(k: KontoKontext): Promise<void> {
   // Dieselben Kosten wie jedes Konto: Mit weniger antwortete ein Fehlversuch gegen „admin“ messbar schneller.
   const hash = hashePasswortSofort(passwort);
   await k.startVerwalter.legeVerwalterAn(hash, !ausUmgebung);
-  if (!datei) console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
+  if (!datei) console.log('✅ Erstes Administratorkonto erstellt (Passwort aus ADMIN_PASSWORD).');
   else
     console.log(
-      `✅ Standard-Admin erstellt. Das Startpasswort steht in ${datei} (nur für den Dienst lesbar); ` +
+      `✅ Erstes Administratorkonto erstellt. Das Startpasswort steht in ${datei} (nur für den Dienst lesbar); ` +
         'die Datei verschwindet mit dem ersten Passwortwechsel.',
     );
 }

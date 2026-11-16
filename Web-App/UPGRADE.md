@@ -1443,7 +1443,8 @@ Telefon die Webseite.
 - Das Passwort des ersten Verwalters steht beim allerersten Start im
   Protokoll von `app` oder `jobs` (wer zuerst migriert):
   `docker compose logs app jobs | grep -A2 Standard-Admin`. **Überholt durch
-  Abschnitt 51:** jetzt im Protokoll von `migration`. `ADMIN_PASSWORD`
+  Abschnitt 51:** jetzt im Protokoll von `migration`; die Zeile heisst seit
+  Abschnitt 67 „Erstes Administratorkonto erstellt“. `ADMIN_PASSWORD`
   reicht `compose.yaml` nicht durch.
 
 <a id="image-digest"></a>
@@ -2371,3 +2372,6 @@ wird). Hinweise:
   `angekuendigt`, `GET /auth/zweiter-faktor` `alte_codes_bis`. Neu und ohne Anmeldung:
   `POST /auth/uebernahme-abbrechen` und `POST /auth/anmeldung-freigeben` (je `{ token }`).
   `POST /auth/register` liefert `message` und `console_mode` (immer `false`) jetzt immer.
+- **Protokoll des ersten Starts:** Die Zeile heisst „✅ Erstes Administratorkonto
+  erstellt“ statt „Standard-Admin erstellt“. Wer im Protokoll danach sucht, nimmt
+  `docker compose logs migration | grep "Erstes Administratorkonto"`.

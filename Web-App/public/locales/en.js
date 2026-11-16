@@ -256,10 +256,8 @@ window.I18N_EN = {
 
   // Users
   'users.action.password': 'Password',
-  'users.action.make_admin': 'Make administrator',
-  'users.action.make_user': 'Set to Standard',
-  'users.action.make_admin_title': 'Grant administrator rights',
-  'users.action.make_user_title': 'Revoke administrator rights',
+  'users.rolle.ernennen': 'Make {name} an administrator',
+  'users.rolle.entziehen': 'Revoke administrator rights from {name}',
   'users.action.2fa': 'Second factor',
   'users.action.delete_title': 'Delete account',
   'users.action.deactivate': 'Deactivate',

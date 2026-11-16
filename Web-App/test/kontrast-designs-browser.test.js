@@ -1,10 +1,13 @@
 /**
  * Kontrast in allen sechs Designs, hell und dunkel: Jeder Text, der in
  * Sammlung und Finanzen vorkommt (Setnummer, Jahr, Datum, Preis, Gewinn,
- * Verlust, Kennzahl, Unterzeile, Gruppenkopf, Plaketten, Basiszeile), hat
- * auf seinem echten Grund mindestens 4,5:1. Gemessen in Chrome mit den …
+ * Verlust, Kennzahl, Unterzeile, Gruppenkopf, Plaketten, Basiszeile), dazu die
+ * Rollen-Chips der Kontenverwaltung mit ihrem X, hat auf seinem echten Grund
+ * mindestens 4,5:1. Gemessen in Chrome mit den …
  *
- * Gegenproben (am 03.11.2026 gemessen):
+ * Gegenproben (am 03.11.2026 gemessen; C am 16.11.2026):
+ *   C  .chip-weg mit color:var(--p300) statt inherit → rot: „… X am
+ *      Rollen-Chip“ in den hellen Designs
  *   A  in themes/noppe.css --b600 der hellen Variante nicht überschrieben →
  *      rot: „noppe hell: Setnummer in der Tabelle 4.44:1“ (ebenso hochglanz)
  *   B  dort --gewinn nicht überschrieben → rot: „noppe hell: Gewinn in der
@@ -58,7 +61,8 @@ function abschnitt(n) {
   </div></div></div></div>
   <div class="parts-group"><div class="group-hd"><span class="group-title" data-k="${n}: Gruppentitel">Manuell erfasste Teile</span><span class="group-sub" data-k="${n}: Gruppenzahl">1 Sorte</span></div></div>
   <div class="brick-stats"><div class="bstat bstat-slate"><div class="bstat-l" data-k="${n}: Statistik-Etikett">Sets</div><div class="bstat-v" data-k="${n}: Statistik-Wert">4</div></div></div>
-  <button class="period-btn" data-k="${n}: Zeitraum-Knopf">Woche</button>`;
+  <button class="period-btn" data-k="${n}: Zeitraum-Knopf">Woche</button>
+  <div class="rollen-zelle"><span class="rb rv rolle-chip" data-k="${n}: Rollen-Chip Administrator">Administrator<button type="button" class="chip-weg" data-k="${n}: X am Rollen-Chip">×</button></span><span class="rb ru" data-k="${n}: Rollen-Chip Standard">Standard</span></div>`;
 }
 
 function testseite() {
@@ -117,7 +121,7 @@ test('Kontrast in allen Designs, hell und dunkel', t => {
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-  assert.equal(werte.length, 11 * 30, `${werte.length} Messungen — fehlt ein Design oder ein Baustein?`);
+  assert.equal(werte.length, 11 * 33, `${werte.length} Messungen — fehlt ein Design oder ein Baustein?`);
   assert.deepEqual(
     werte.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
     [],

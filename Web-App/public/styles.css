@@ -863,6 +863,15 @@
     .user-tbl td,.user-tbl th{vertical-align:middle}
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:var(--fs-0);font-weight:600}
     .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
+    /* Rolle als Chip: Das X erbt die Schriftfarbe des Chips, damit es in jedem Design so lesbar ist wie das
+       Wort; die negativen Ränder halten den Chip trotz 24-px-Tippfläche so flach wie seine Nachbarn. */
+    .rollen-zelle{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+    .rolle-chip{align-items:center;gap:4px}
+    .rolle-chip:has(> .chip-weg){padding-right:2px}
+    .chip-weg{background:none;border:none;cursor:pointer;color:inherit;padding:0;margin:-4px 0;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;border-radius:999px}
+    .chip-weg:hover{background:color-mix(in srgb,currentColor 15%,transparent)}
+    .chip-weg:focus-visible{outline-offset:0}
+    .chip-weg .ico{width:1rem;height:1rem}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
     /* clip statt hidden: Mit hidden zählt der untere Rand als Grundlinie, das Abzeichen sass neben „Neuware“ tiefer. */

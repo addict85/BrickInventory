@@ -73,7 +73,7 @@ test('Aktionen der Benutzertabelle sind benannt', async () => {
       'keine Knöpfe gegen das eigene Konto',
     );
     const knoepfe = [...d.querySelectorAll('#users-tbl .nutzer-aktionen button')];
-    assert.equal(knoepfe.length, 9, '5 + 4 Knöpfe erwartet (ben hat einen zweiten Faktor)');
+    assert.equal(knoepfe.length, 7, '4 + 3 Knöpfe erwartet (ben hat einen zweiten Faktor; die Rolle steht am Chip)');
     for (const k of knoepfe) {
       const wort = k.querySelector('span')?.textContent.trim();
       assert.ok(wort, `Knopf ${k.dataset.click} ohne sichtbares Wort`);
