@@ -257,7 +257,7 @@ class StringResourceParityTest {
     fun `der Bereich heisst ueberall Hintergrundarbeiten`() {
         val en = texte("values/strings.xml")
         val de = texte("values-de/strings.xml")
-        for (k in listOf("monitoring_title", "nav_monitoring", "main_menu_monitoring")) {
+        for (k in listOf("nav_monitoring", "main_menu_monitoring")) {
             assert(de[k] == "Hintergrundarbeiten") { "$k (de) = ${de[k]}" }
             assert(en[k] == "Background jobs") { "$k (en) = ${en[k]}" }
         }

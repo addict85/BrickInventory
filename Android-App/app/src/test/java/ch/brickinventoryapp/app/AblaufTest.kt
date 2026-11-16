@@ -48,6 +48,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import android.os.Build
 
 /**
  * Die Kernabläufe als Oberflächentest auf der JVM (Robolectric): anmelden, Set
@@ -230,7 +231,7 @@ class AblaufTest {
         Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht())))
 
     /** Die Android-Stufe, nach der die Seite wählt; Robolectric selbst läuft gegen API 35. */
-    private var stufe by mutableStateOf(android.os.Build.VERSION.SDK_INT)
+    private var stufe by mutableStateOf(Build.VERSION.SDK_INT)
 
     /** Ein Gutschein mit PIN 4711; [schutz] steht für die Gerätesperre. */
     private fun zeigeGutschein(schutz: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {

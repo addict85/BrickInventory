@@ -307,7 +307,7 @@ class FormulareUndRaenderTest {
         }
         // Der eine Titel steht in der Leiste (VerwaltungGraph); der Inhalt wiederholt ihn nicht.
         assertEquals("„Hintergrundarbeiten“ unter der Leiste noch einmal", 0,
-            compose.onAllNodesWithText(text(R.string.monitoring_title)).fetchSemanticsNodes().size)
+            compose.onAllNodesWithText(text(R.string.nav_monitoring)).fetchSemanticsNodes().size)
         fun links(id: Int) = compose.onNode(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
         val auftraege = links(R.string.hintergrund_auftraege)
         for (id in listOf(R.string.monitoring_price_cache, R.string.monitoring_darstellung_vorgabe))

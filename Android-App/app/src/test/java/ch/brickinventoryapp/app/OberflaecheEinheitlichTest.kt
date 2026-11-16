@@ -409,7 +409,8 @@ class OberflaecheEinheitlichTest {
 
     // ── Ein Kopf für Teiledetails, ein Wort für „kein Preis“ ──
 
-    private fun bildHoehe(name: String): Float = compose.onAllNodes(hasContentDescription(name), useUnmergedTree = true)
+    /** Die Bildfläche zum Antippen (verschmolzen mit dem Bild), nicht das eingerückte Bild darin. */
+    private fun bildHoehe(name: String): Float = compose.onAllNodes(hasContentDescription(name))
         .fetchSemanticsNodes().maxOf { it.boundsInRoot.height } / dichte
 
     @Test

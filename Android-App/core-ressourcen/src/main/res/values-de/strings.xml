@@ -349,7 +349,6 @@
     <string name="minifigs_ordnung_nummer">Nach Nummer</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Hintergrundarbeiten</string>
     <string name="monitoring_refresh">Neu laden</string>
     <string name="monitoring_retry_error">Fehler beim erneuten Versuch</string>
     <string name="monitoring_delete_error">Fehler beim Löschen</string>

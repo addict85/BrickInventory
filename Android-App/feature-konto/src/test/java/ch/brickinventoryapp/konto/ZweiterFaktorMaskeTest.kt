@@ -50,6 +50,7 @@ import ch.brickinventoryapp.konto.ui.screens.CODES_DATEI
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import org.robolectric.Shadows
+import android.os.Build
 
 /**
  * Die Maske für den Pflicht-Faktor der Verwalter, ausgeführt: Einrichten erst mit
@@ -96,7 +97,7 @@ class ZweiterFaktorMaskeTest {
     private fun text(id: Int) = compose.activity.getString(id)
 
     /** Die Android-Stufe, nach der die Maske wählt; Robolectric selbst läuft gegen API 35. */
-    private val stufe = mutableStateOf(android.os.Build.VERSION.SDK_INT)
+    private val stufe = mutableStateOf(Build.VERSION.SDK_INT)
 
     private fun zeige(schrift: Float = 1f) {
         compose.setContent {

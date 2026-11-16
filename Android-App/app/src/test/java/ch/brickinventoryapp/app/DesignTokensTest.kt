@@ -124,13 +124,13 @@ class DesignTokensTest {
     }
 
     /**
-     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe. Im Ablauf
-     * Einrichten → Anmelden wechselte sie sonst von Bildschirm zu Bildschirm (12 dp,
-     * 14 dp, Pille). Gegenprobe: `shape = Formen.feld` am Knopf in LoginScreen.LadeKnopf
-     * → rot mit „LoginScreen.kt“ (Gegenprobe knopf-mit-eigener-form).
-     * Jeder umrandete Knopf trägt nebenKnopfFarben/-Rand oder ist als Gefahr rot; in der
-     * Material-Vorgabe sah er gesperrt aus. Gegenprobe nebenknopf-ohne-farben: „Als Datei
-     * speichern“ der Notfallcodes ohne beides → rot mit „ZweiterFaktorPflichtMaske.kt“.
+     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe; sonst wechselte sie
+     * im Ablauf Einrichten → Anmelden von Bildschirm zu Bildschirm. Jeder umrandete Knopf
+     * trägt nebenKnopfFarben/-Rand oder ist als Gefahr rot; sonst sah er gesperrt aus.
+     *
+     * Gegenproben: knopf-mit-eigener-form (`shape = Formen.feld` in LoginScreen.LadeKnopf)
+     * → rot mit „LoginScreen.kt“; nebenknopf-ohne-farben („Als Datei speichern“ der
+     * Notfallcodes ohne beides) → rot mit „ZweiterFaktorPflichtMaske.kt“.
      */
     @Test
     fun `Knoepfe tragen alle dieselbe Form, Nebenknoepfe dieselben Farben`() {
