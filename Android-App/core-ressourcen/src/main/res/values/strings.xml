@@ -1121,7 +1121,6 @@
     <string name="hintergrund_versuch">attempt %1$d of %2$d</string>
     <string name="hintergrund_jetzt">Now</string>
     <string name="hintergrund_leeren">Clear</string>
-    <string name="hintergrund_wiederholen">Retry</string>
     <string name="hintergrund_abbrechen">Cancel job</string>
     <string name="hintergrund_auftrag_wiederholen">Retry job</string>
     <string name="hintergrund_jetzt_cd">Start %1$s now</string>

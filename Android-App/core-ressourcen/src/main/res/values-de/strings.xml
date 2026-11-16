@@ -1103,7 +1103,6 @@
     <string name="hintergrund_versuch">Versuch %1$d von %2$d</string>
     <string name="hintergrund_jetzt">Jetzt</string>
     <string name="hintergrund_leeren">Leeren</string>
-    <string name="hintergrund_wiederholen">Wiederholen</string>
     <string name="hintergrund_abbrechen">Auftrag abbrechen</string>
     <string name="hintergrund_auftrag_wiederholen">Auftrag wiederholen</string>
     <string name="hintergrund_jetzt_cd">%1$s jetzt starten</string>
