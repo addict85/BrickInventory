@@ -142,11 +142,17 @@ handelte der Prozess für jede gerade aktive Sitzung.
   (5 je Stunde), den nur ein richtiger Code löscht; ein richtiges Passwort
   setzt ihn nicht zurück: `src/konto/passwortBestaetigung.ts`,
   `src/konto/loginLimiter.ts` — `bestaetigung-bremsen-db`.
-- Kein Passwort-Orakel: Ein gesperrtes oder unbestätigtes Konto bekommt bei
+- Kein Passwort-Orakel für gesperrte und unbestätigte Konten: Sie bekommen bei
   richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
   (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
   `POST /auth/bestaetigung-erneut` mit gleicher Antwort und Dauer für jede
-  Adresse — `konto-deaktivieren-db`.
+  Adresse — `konto-deaktivieren-db`. **Ausnahme, bewusst:** Bei aktivem zweitem
+  Faktor antwortet ein richtiges Passwort ohne Code mit 401
+  `zweiter_faktor_noetig` (ohne Fehlversuch), ein falsches mit
+  `anmeldedaten_ungueltig` — die Absage verrät also, dass das Passwort stimmte.
+  Weiter kommt man damit nicht: Nach 20 falschen Codes in 24 Stunden gelten nur
+  noch Wiederherstellungscode und Passkey, und der Inhaber erfährt es per Mail (`src/konto/anmeldepruefung.ts`) —
+  `zweiter-faktor-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
@@ -209,16 +215,23 @@ handelte der Prozess für jede gerade aktive Sitzung.
   selbst): `src/konto/kontoHinweis.ts` — `zugang-hinweis-db`.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
   Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
-- Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys; der
-  Wechsel Passkeys auf Wunsch der API (`passkeys_widerrufen`); die
-  Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
+- Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys und löst
+  ausserdem, was ein Eindringling angelegt haben könnte: die Verknüpfung mit
+  Hauptkonten über diesem Konto (der Haushalt nach oben), offene
+  Haushaltseinladungen und eine ausstehende Adressänderung; die Hinweis-Mail
+  nennt, was wegfiel (`setzePasswortZurueck` in `src/konto/konten.ts`) —
+  `passwort-vergessen-fremdzugriff-db`. Der Wechsel widerruft Passkeys auf
+  Wunsch der API (`passkeys_widerrufen`); die Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
   Passwortwechsel/-rücksetzung, mit den Konten, die die Sammlung sehen —
   `passkeys-db`.
 - „Passwort vergessen": ein Link je Konto und 15 Minuten, gleiche Antwort
   und Mindestdauer für bekannte und unbekannte Adressen; Links nur aus
   `APP_BASE_URL`, nie aus Kopfzeilen — `forgot-password-db`.
 - Startpasswort (`must_change_password`): bis zum Wechsel nur
-  `change-password`/`logout`, sonst 403 — `passwort-pflichtwechsel-db`.
+  `change-password`, `logout` und `POST /geraet/schluessel` (der
+  Geräteschlüssel der App, den der Server nur gleich nach der Anmeldung
+  annimmt), sonst 403 `passwort_wechsel_noetig`: `VOR_DEM_WECHSEL` in
+  `routes/api_v1/middleware.ts` — `passwort-pflichtwechsel-db`, `schrittschutz-db`.
 - Benutzernamen ohne Rücksicht auf Gross-/Kleinschreibung eindeutig
   (Index, Migration 0090) — `konto-anlegen-db`.
 - „Alle meine Daten löschen" nur mit Passwort — `alles-loeschen-haushalt-db`.
