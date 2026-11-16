@@ -20,16 +20,23 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * Drei Segmente, eines mit einer Beschriftung über zwei Zeilen und gewählt: Alle drei
- * sind gleich hoch, und das Häkchen neben der langen Beschriftung bleibt im Segment.
+ * sind gleich hoch, aber nicht höher als nötig, und das Häkchen neben der langen
+ * Beschriftung bleibt im Segment.
+ *
+ * NATIVE, weil die Vorgabe LEGACY Text nicht wirklich misst: Die lange Beschriftung
+ * brach nie um, und beide Gegenproben blieben grün.
  *
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   segmente-ungleich-hoch       Segmentzeile ohne height(IntrinsicSize.Min) → rot „alle Segmente …“
+ *   segmente-ungleich-hoch       Segmentzeile ohne height(IntrinsicSize.Min): fillMaxHeight
+ *                                streckt jedes Segment auf die ganze Höhe → rot „alle Segmente …“
  *   segment-haekchen-ueber-rand  Beschriftung wieder mit der vollen Innenbreite → rot „das Haekchen …“
  */
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class SegmentWahlTest {
 
@@ -54,11 +61,14 @@ class SegmentWahlTest {
             .fetchSemanticsNodes().sortedBy { it.positionInRoot.x }
 
     @Test
-    fun `alle Segmente sind gleich hoch, auch wenn eines zwei Zeilen hat`() {
+    fun `alle Segmente sind gleich hoch und nicht hoeher als noetig, auch wenn eines zwei Zeilen hat`() {
         zeige()
         val hoehen = segmente().map { it.size.height }
         assertEquals("Drei Segmente erwartet", 3, hoehen.size)
         assertTrue("Ungleich hoch: $hoehen", hoehen.distinct().size == 1)
+        val beschriftung = compose.onNode(hasText(lang), useUnmergedTree = true).fetchSemanticsNode().size.height
+        val hoechstens = beschriftung + with(compose.density) { 48.dp.roundToPx() }
+        assertTrue("Segmente $hoehen px hoch, die Beschriftung braucht $beschriftung px", hoehen.first() <= hoechstens)
     }
 
     @Test

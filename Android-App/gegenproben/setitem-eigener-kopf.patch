@@ -11,8 +11,8 @@ diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/
                              if (kopf?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
                          }
 -                        TeilDetailKopf(bild, imageLoader, kopf?.name, chips, onZoom = { zeigeZoom = true })
-+                        ProduktBild(model = bild, imageLoader = imageLoader, contentDescription = kopf?.name,
-+                            contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().height(140.dp))
++                        ch.brickinventoryapp.ui.components.ProduktBild(model = bild, imageLoader = imageLoader, contentDescription = kopf?.name,
++                            contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxWidth().height(140.dp))
                          Spacer(Modifier.height(Abstaende.klein))
                          // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur
                          // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
