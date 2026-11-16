@@ -111,18 +111,10 @@
             android:value="barcode" />
 
         <!--
-          ML Kit meldet Nutzungsdaten über Googles datatransport an firebaselogging.googleapis.com
-          (Backend „cct“). Ohne diesen Eintrag findet datatransport kein Backend und verwirft die
-          Ereignisse; Erkennung und Scan laufen unverändert. Es gibt keinen Schalter dafür, und
-          die App schickt sonst nichts an Dritte (tools/manifest-pruefen.py hält das fest).
+          Kein Backend für Googles datatransport: Das Release enthält die Bibliothek nicht, ein
+          Eintrag hier wäre eine Komponente ohne Klasse (Lint MissingClass). Dass das APK keinen
+          Telemetrie-Weg hat, prüft tools/manifest-pruefen.py am fertigen APK.
         -->
-        <service
-            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
-            tools:node="merge">
-            <meta-data
-                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
-                tools:node="remove" />
-        </service>
 
         <service
             android:name=".dienste.service.CsvImportService"
