@@ -198,7 +198,7 @@ export async function updateManualMinifig(
 }
 
 /** `uid` is the viewing scope (list). */
-export async function minifigAcquisitions(k: MinifigsContext, uidWahl: Sicht | number[], figNumber: string) {
+export async function minifigAcquisitionsInScope(k: MinifigsContext, uidWahl: Sicht | number[], figNumber: string) {
   const uid = await k.haushalt.blickfeldAus(uidWahl);
   return k.manualMinifigs.minifigAcquisitions(uid, figNumber);
 }

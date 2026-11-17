@@ -13,7 +13,7 @@
  *   5. Jede Lesestelle wird AUSGEFÜHRT. Das ist kein Beiwerk: teilmengeAus()
  *      liest den Alias `tm_e`, den erst teilmengeJoin() anhängt. Fehlt der
  *      JOIN, ist das kein stiller Fehler, sondern „missing FROM-clause entry
- *      for table tm_e" — GEMESSEN in figurenKennzahlenLesen(), wo genau das passiert
+ *      for table tm_e" — GEMESSEN in computeMinifigStats(), wo genau das passiert
  *      war. Ein Muster über den Quelltext hat diesen Fall NICHT gefunden
  *      (zwei seiner drei Treffer waren Fehlmeldungen: ein Bruchstück wird in
  *      eine Abfrage eingesetzt, die den JOIN trägt). Ausführen findet ihn.
@@ -408,7 +408,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
 
   assert.equal(
-    Number((await M.figurenKennzahlenLesen([haupt])).total_quantity),
+    Number((await M.computeMinifigStats([haupt])).total_quantity),
     4,
     'Die Figuren-Kennzahl rechnet nicht mit',
   );

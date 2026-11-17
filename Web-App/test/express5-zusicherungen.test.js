@@ -17,7 +17,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   const src = serverAll();
 
   // Den Catch-all an seiner AUFGABE finden, nicht an seinem Muster: Es ist
-  // die app.get-Registrierung, die startseiteHtml() ausliefert. Haenge die
+  // die app.get-Registrierung, die startPageHtml() ausliefert. Haenge die
   // Suche am Muster, muesste sie bei jeder Umbenennung mitgepflegt werden —
   // und dann prueft sie irgendwann die Schreibweise statt der Sache. …
   const kandidaten = [];

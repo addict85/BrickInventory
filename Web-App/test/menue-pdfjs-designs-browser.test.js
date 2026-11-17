@@ -10,8 +10,8 @@
  *   B  <template id="pdfjs-quelle"> wieder als <script type="module"> → rot:
  *      „PDF.js erst mit dem ersten PDF“ (pdf.min.mjs schon beim Start)
  *   C  in index.html die Design-Links wieder ausserhalb der Vorlage → rot:
- *      „Designs“ (alle Dateien beim Start); designStileFreigeben() in
- *      startseiteHtml nicht gerufen → rot: ebenda (nach dem Neuladen nicht
+ *      „Designs“ (alle Dateien beim Start); releaseThemeStyles() in
+ *      startPageHtml nicht gerufen → rot: ebenda (nach dem Neuladen nicht
  *      frei); in theme-boot.js applier ohne Warten → rot: ebenda (umgeschaltet,
  *      bevor die Stylesheets da waren)
  *   D  .fin-suche-zeile aus der Regel für #tab-finance.finanzen-leer entfernt →

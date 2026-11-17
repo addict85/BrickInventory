@@ -56,7 +56,7 @@ export async function readMinifigs(
 }
 
 // One count for the webapp and the app; the app used to count itself, differently.
-export async function minifigStats(k: MinifigsContext, userIdWahl: Sicht | number | number[]) {
+export async function computeMinifigStats(k: MinifigsContext, userIdWahl: Sicht | number | number[]) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const row = await k.minifigsList.minifigStats(uids);

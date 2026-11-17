@@ -57,7 +57,7 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
 
     // Wie die Sammlung: in einer Transaktion über deren Kontext; zwei fremde Konten nur im Systemrahmen.
     const { imSystemkontext } = _req('src/infra/kontoKontext.js');
-    const sammlung = require('./helpers/sources').testKontext('sammlung');
+    const sammlung = require('./helpers/sources').testKontext('collection');
     await imSystemkontext('Testdaten', () =>
       sammlung.transaktion(tt => tt.sets.setErfassungenUmhaengen(SN, vonId, nachId)),
     );

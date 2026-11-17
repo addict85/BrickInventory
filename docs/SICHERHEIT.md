@@ -403,7 +403,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
   darin, nach `einrichtung_erledigt` nur noch „erledigt“. Ohne Verwaltersitzung
   fehlen die Basis-URL und das Startpasswort („Konto“ heißt dann nur „es gibt
-  eines“): `src/profil/einrichtungStand.ts` — `einrichtung-stand-db`.
+  eines“): `src/profile/setupStatus.ts` — `einrichtung-stand-db`.
 - Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
   nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
   nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die

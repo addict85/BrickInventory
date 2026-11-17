@@ -112,8 +112,14 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
   assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
   assert.ok(schluessel.includes('konto.sitzungen.beendeAndere'), 'Selbstbeweis: Teilflächen zählen je Dienst');
 
+  // Bereiche, die Phase 2a schon vollständig auf Englisch gezogen hat: Ihre englischen
+  // Dienstschlüssel sind dort Absicht, nicht die Sorte Einzelfund, den diese Schranke fängt.
+  // Wächst mit jedem fertig umgestellten Bereich, nie zurück (siehe auch ratschen.test.js).
+  const ENGLISCH_UMGESTELLT = new Set(['idempotency', 'profile', 'minifigs', 'wanted', 'collection']);
   const SCHRANKE_ENGLISCH = 0;
-  const englisch = schluessel.filter(s => englischerName(s.split('.').at(-1) ?? ''));
+  const englisch = schluessel.filter(
+    s => !ENGLISCH_UMGESTELLT.has(s.split('.')[0] ?? '') && englischerName(s.split('.').at(-1) ?? ''),
+  );
   assert.ok(
     englisch.length <= SCHRANKE_ENGLISCH,
     `englische Dienstschlüssel: ${englisch.length}, erlaubt ${SCHRANKE_ENGLISCH}\n${englisch.join('\n')}`,
@@ -145,7 +151,8 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
   const ohne = schluessel.filter(s => {
     const name = s.split('.').at(-1);
     const muster = new RegExp(`[.?]\\s*${name}\\b|['"]${name}['"]`);
-    const fabrik = `src/${s.split('.')[0]}/bereich.ts`;
+    const b = s.split('.')[0];
+    const fabrik = ['bereich.ts', 'area.ts'].map(f => `src/${b}/${f}`).find(f => q.has(f)) ?? `src/${b}/bereich.ts`;
     return ![...q].some(([datei, text]) => datei !== fabrik && muster.test(text));
   });
   assert.deepEqual(ohne, [], 'Schlüssel ohne Aufrufer ausserhalb der Tests');
@@ -195,7 +202,7 @@ function repositoryFunktionen(b, q) {
 
 /** `name: mit(k.db, modul.f)` in der Fabrik, mit f aus einem Repository des Bereichs. */
 function gebundeneRepositories(b, blaetterDesBereichs, q) {
-  const fabrik = q.get(`src/${b}/bereich.ts`);
+  const fabrik = q.get(`src/${b}/bereich.ts`) ?? q.get(`src/${b}/area.ts`);
   if (!fabrik) return [];
   const repo = repositoryFunktionen(b, q);
   const raus = [];

@@ -141,7 +141,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
         'die Minifigurenliste multipliziert nicht mit',
       );
       assert.equal(
-        (await H.figurenKennzahlenLesen([uid])).total_quantity,
+        (await H.computeMinifigStats([uid])).total_quantity,
         3,
         'die Minifiguren-Kennzahl multipliziert nicht mit',
       );

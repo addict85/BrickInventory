@@ -577,7 +577,7 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
 /** Fachabläufe (Mail, Token-Hash, Design-Cache) stehen in Diensten, nicht in Routen. */
 function routenOhneFachablauf() {
   // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, tokenAbdruck oder
-  // vergissDesign importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
+  // forgetTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
   // Gegenproben (14.11.2026): `import { tokenAbdruck } from '../../src/konto'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
@@ -585,7 +585,7 @@ function routenOhneFachablauf() {
   /** @type {[RegExp, string][]} */
   const MUSTER = [
     [
-      /import\s*\{[^}]*\b(?:tokenAbdruck|vergissDesign)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profil)'/g,
+      /import\s*\{[^}]*\b(?:tokenAbdruck|forgetTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profile)'/g,
       'Werkzeug aus src/konto',
     ],
     [/import\s*\*\s*as\s*\w+\s*from\s*'[./]+\/src\/\w+'/g, 'Bereich als Namensraum'],

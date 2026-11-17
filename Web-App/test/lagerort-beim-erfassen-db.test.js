@@ -138,7 +138,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
 
   await t.test('5. Die Übernahme aus der Merkliste reicht ihn durch', async () => {
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [U.ich, '75192-1']);
-    await merkliste.uebernimm(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
+    await merkliste.fulfillWantedItem(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
     const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
     assert.equal(ort, 'Dachboden', 'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
   });

@@ -12,7 +12,7 @@
  *   d) NULLS LAST bei price_desc gestrichen        → Schritt 5 rot.
  *      (Bei name_asc gestrichen: BLIEB GRÜN — bei ASC ist NULLS LAST die
  *      Vorgabe von Postgres. Gemessen, nicht vermutet; der Schritt sagt es.)
- *   e) ausTabelle() durch MERK_SORTS[x] ersetzt    → Schritt 7 rot.
+ *   e) ausTabelle() durch WANTED_SORTS[x] ersetzt    → Schritt 7 rot.
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  */
@@ -188,7 +188,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
   });
 
   await t.test('7. Eine erfundene Sortierung fällt auf die Vorgabe zurück', async () => {
-    // ausTabelle() prüft mit hasOwnProperty. Mit `MERK_SORTS[x] || vorgabe`
+    // ausTabelle() prüft mit hasOwnProperty. Mit `WANTED_SORTS[x] || vorgabe`
     // wäre 'constructor' ein gültiger Wert gewesen — und was dann in ORDER BY
     // landet, ist keine Sortierung mehr, sondern eine Funktion als Text.
     for (const boese of ['constructor', 'toString', '__proto__', 'gibtsnicht']) {

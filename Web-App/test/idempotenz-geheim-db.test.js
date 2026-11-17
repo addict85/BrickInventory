@@ -24,9 +24,9 @@
  *
  * Gegenproben zum Fingerabdruck (02.11.2026 gemessen), je rot: „der
  * Fingerabdruck verrät das Passwort nicht“:
- *   F  ohneGeheimnisse() lässt Passwortfelder stehen
+ *   F  withoutSecrets() lässt Passwortfelder stehen
  *   G  suchwert() durch den blossen Text ersetzt (kein HMAC)
- *   H  alteAbdrueckeLoeschen() löscht nichts
+ *   H  deleteOldFingerprints() löscht nichts
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */

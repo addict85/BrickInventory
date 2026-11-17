@@ -41,7 +41,7 @@ test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
   /** @type {Record<string, any>} */
   const kontexte = {};
   baueDienste(db, { kontexte, konfig: konfig() });
-  const k = kontexte.sammlung;
+  const k = kontexte.collection;
   const imSystem = (/** @type {() => Promise<any>} */ f) => imSystemkontext('test', f);
 
   await t.test('zwei Transaktionen auf einer Verbindung teilen t und die Dienste darin', async () => {

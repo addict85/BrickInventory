@@ -256,7 +256,7 @@ function buildAndRequire() {
  *  Ein Test, der ein solches Modul direkt lädt, ruft sie mit dem Kontext dieser Testdatei. */
 const _mitKontext = new Map();
 const KONTEXT_FN =
-  /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+Kontext\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+Kontext\b/gm;
+  /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+(?:Kontext|Context)\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+(?:Kontext|Context)\b/gm;
 /** Die Namen der Kontext-Dienste einer Quelle, auch weitergereichte (export { a as b } [from './x']). */
 function kontextNamen(ts, tiefe = 0) {
   const quelle = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
@@ -276,8 +276,17 @@ function kontextNamen(ts, tiefe = 0) {
   return namen;
 }
 function mitKontext(rel, modul) {
-  const m = /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|repository\/|http\/)[\w/]+\.js$/.exec(rel);
-  if (!m || !fs.existsSync(path.join(ROOT, 'src', m[1], 'bereich.ts'))) return modul;
+  const m = /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|area\.js$|context\.js$|repository\/|http\/)[\w/]+\.js$/.exec(
+    rel,
+  );
+  if (
+    !m ||
+    !(
+      fs.existsSync(path.join(ROOT, 'src', m[1], 'bereich.ts')) ||
+      fs.existsSync(path.join(ROOT, 'src', m[1], 'area.ts'))
+    )
+  )
+    return modul;
   if (!_mitKontext.has(rel)) {
     const namen = kontextNamen(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
     const bereich = () => testKontext(m[1]);
@@ -879,16 +888,18 @@ function dienstQuelle(rel) {
       repos.add(`src/katalog/repository/${m[1]}.ts`);
   // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
   for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
-    const fabrik = path.join(ROOT, `src/${m[1]}/bereich.ts`);
-    if (!fs.existsSync(fabrik)) continue;
+    const fabrikDatei = ['bereich.ts', 'area.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${m[1]}/${f}`)));
+    if (!fabrikDatei) continue;
+    const fabrik = path.join(ROOT, `src/${m[1]}/${fabrikDatei}`);
     const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
   }
   // Über den Kontext des Dienstes (k.repo., k.<bereich>.repo.; t in einer Transaktion).
   const eigener = /^src\/(\w+)\//.exec(rel)?.[1];
   const ueber = (b, name) => {
-    const fabrik = path.join(ROOT, `src/${b}/kontext.ts`);
-    if (!b || !fs.existsSync(fabrik)) return;
+    const fabrikDatei = b && ['kontext.ts', 'context.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${b}/${f}`)));
+    const fabrik = fabrikDatei && path.join(ROOT, `src/${b}/${fabrikDatei}`);
+    if (!fabrik) return;
     const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${b}/${ziel[1]}.ts`);
   };

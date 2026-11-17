@@ -37,7 +37,7 @@ const { dateiFehler, fehlerText } = _req('src/infra/fehlerTexte.js');
 // Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
 // Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
 ersetze('src/wanted/repository/wanted.js', {
-  merkeSetVor: async () => {
+  markSetWanted: async () => {
     throw new Error(GEHEIM);
   },
 });

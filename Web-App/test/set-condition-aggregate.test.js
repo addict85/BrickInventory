@@ -232,7 +232,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
   const erfassungen = [
     ...ohneKommentar.matchAll(
-      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g,
+      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?acquisitionPrice/g,
     ),
   ];
   assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
@@ -262,7 +262,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Die Zweiterfassung muss den Preis über dieselbe Funktion ermitteln
   assert.match(
     fn,
-    /const re = await manuellerFigurenkauf\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
+    /const re = await manualMinifigPurchase\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
     'Die Zweiterfassung darf die Preislogik nicht neu ausformulieren',
   );
 });
