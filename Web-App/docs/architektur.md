@@ -226,7 +226,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 2 | `src/vertrag` |
 | 3 | `src/http` |
 | 4 | `db`, `clients` |
-| 5 | `src/drossel` |
+| 5 | `src/throttle` |
 | 6 | `src/einstellungen` |
 | 7 | `src/mail` |
 | 8 | `src/auftraege` |
@@ -296,7 +296,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 |---|---|
 | `db` | `schema_migrations` |
 | `src/infra` | `app_logs` |
-| `src/drossel` | `rate_limit_attempts` |
+| `src/throttle` | `rate_limit_attempts` |
 | `src/einstellungen` | `global_settings`, `user_settings` |
 | `src/auftraege` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
 | `src/fremdquellen` | `api_calls`, `api_cadence` |

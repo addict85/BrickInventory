@@ -3,7 +3,7 @@
 import type { AuftraegeDienste } from './auftraege';
 import type { BestandDienste } from './bestand';
 import type { BilderDienste } from './bilder';
-import type { DrosselDienste } from './drossel';
+import type { ThrottleServices } from './throttle';
 import type { EinstellungenDienste } from './einstellungen';
 import type { MinifigsServices } from './minifigs';
 import type { GeraeteDienste } from './geraete';
@@ -33,7 +33,7 @@ import * as zugangSicht from '../db/zugangSicht';
 export const LESEVERTRAG = { ...bestandSicht, ...bestandsmenge, ...haushaltSicht, ...kontoSicht, ...zugangSicht };
 
 export interface Dienste {
-  drossel: DrosselDienste;
+  throttle: ThrottleServices;
   einstellungen: EinstellungenDienste;
   mail: MailDienste;
   auftraege: AuftraegeDienste;

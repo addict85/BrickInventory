@@ -50,7 +50,7 @@ export async function belegePlatz(
       return Number.isFinite(n) ? n : 0;
     };
 
-    const konto = await t.drossel.stundenStand(kontoSchluessel(uid));
+    const konto = await t.throttle.hourlyState(kontoSchluessel(uid));
     if (rest(konto?.anzahl) >= KONTO_JE_STUNDE)
       return { frei: false as const, grund: 'konto' as const, wartenSek: Math.max(1, rest(konto?.warten_sek)) };
 
@@ -63,7 +63,7 @@ export async function belegePlatz(
     if (abstand > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: abstand };
 
     await repo.merkeAbruf(t.db);
-    await t.drossel.zaehleStunde(kontoSchluessel(uid));
+    await t.throttle.countHour(kontoSchluessel(uid));
     return { frei: true as const };
   });
 }

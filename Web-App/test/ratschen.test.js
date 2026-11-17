@@ -1318,7 +1318,14 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
 // Bereiche, die Phase 2a schon vollständig auf Englisch gezogen hat (Verzeichnis, Dateien,
 // Bezeichner): Ihre englischen Exportnamen sind dort Absicht, nicht die Sorte Einzelfund, die
 // dieser Zähler fängt. Diese Liste wächst mit jedem fertig umgestellten Bereich, nie zurück.
-const ENGLISCH_UMGESTELLT = ['src/idempotency', 'src/profile', 'src/minifigs', 'src/wanted', 'src/collection'];
+const ENGLISCH_UMGESTELLT = [
+  'src/idempotency',
+  'src/profile',
+  'src/minifigs',
+  'src/wanted',
+  'src/collection',
+  'src/throttle',
+];
 const nichtUmgestellt = (/** @type {string} */ f) => {
   const rel = path.relative(WEB, f).replace(/\\/g, '/');
   return !ENGLISCH_UMGESTELLT.some(d => rel === d || rel.startsWith(`${d}/`));

@@ -3,7 +3,7 @@ import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository/werte';
-import type { DrosselDienste } from '../drossel';
+import type { ThrottleServices } from '../throttle';
 import type { Uhr } from '../infra/uhr';
 import type { EinstellungenLesevertrag } from './lesevertrag';
 
@@ -12,7 +12,7 @@ export interface EinstellungenAbhaengigkeiten {
   db: Db;
   /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
   faecher: Faecher;
-  drossel: DrosselDienste;
+  throttle: ThrottleServices;
   lesevertrag: EinstellungenLesevertrag;
 }
 
