@@ -149,8 +149,8 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('der nächste Import: Annas Korrektur löst bei Anna auf, nicht bei Bruno', async () => {
-    const { loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
-    const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
+    const { loeseLokalAuf } = _req('src/wanted/wantedAufloesung.js');
+    const { leseWantedListe } = _req('src/wanted/wantedParser.js');
     const { posten } = leseWantedListe(liste(item('P', '3001', 5)));
     assert.equal((await alsKonto(ANNA, () => loeseLokalAuf(posten, ANNA)))[0].rbId, '3003');
     const bruno = (await alsKonto(BRUNO, () => loeseLokalAuf(posten, BRUNO)))[0];

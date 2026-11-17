@@ -96,9 +96,9 @@ testQuellen(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
-const { importiereWantedListe } = _req('src/merkliste/wantedListe.js');
-const { beschreibePosten, loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
-const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
+const { importiereWantedListe } = _req('src/wanted/wantedListe.js');
+const { beschreibePosten, loeseLokalAuf } = _req('src/wanted/wantedAufloesung.js');
+const { leseWantedListe } = _req('src/wanted/wantedParser.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});

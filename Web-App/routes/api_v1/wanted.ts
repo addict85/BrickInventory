@@ -1,11 +1,11 @@
-/** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
+/** /api/v1/wanted — the wanted list. The rules sit in src/wanted/; here
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache, fachfehler } from '../../src/infra/fehlerTexte';
-import type { Korrektur } from '../../src/merkliste';
+import type { Korrektur } from '../../src/wanted';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
 import { WantedKorrekturen, type ImportEingabe } from '../../src/sammlung';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
@@ -33,7 +33,7 @@ function korrekturenAus(roh: string | undefined): Korrektur[] | undefined | null
  * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
  * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
 async function importImStrom(
-  d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'merkliste' | 'sammlung'>,
+  d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'sammlung'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -61,7 +61,7 @@ async function importImStrom(
   if (!res.writableEnded) res.end();
 }
 
-export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'merkliste' | 'sammlung'>) {
+export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'sammlung'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -71,10 +71,10 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
     // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
     // gehört sie in die Abfrage.
     const waehrung = await d.einstellungen.nutzerWert(req.apiUser.user_id, 'currency', 'EUR');
-    const merkposten = await d.merkliste.merkpostenVon(ids, undefined, waehrung, {
-      suche: req.abfrage.search,
-      zustand: req.abfrage.condition,
-      sortierung: req.abfrage.sort,
+    const merkposten = await d.wanted.wantedItemsOf(ids, undefined, waehrung, {
+      search: req.abfrage.search,
+      condition: req.abfrage.condition,
+      sort: req.abfrage.sort,
     });
     const { eintraege, ...seite } = seiteAus(merkposten, req.abfrage);
     return { merkposten: eintraege, ...seite };
@@ -86,7 +86,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
     const { set_number, condition, owner_user_id } = req.eingabe;
     if (!set_number) fachfehler('ungueltig', 'set_number_erforderlich');
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
-    const { merkposten, war_neu } = await d.merkliste.legeMerkpostenAn(owner, set_number, condition);
+    const { merkposten, war_neu } = await d.wanted.addWantedItem(owner, set_number, condition);
     return { war_neu, merkposten };
   });
 
@@ -94,7 +94,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
   router.endpunkt('PUT /api/v1/wanted/:setNumber/:condition/inhaber', requireToken, async req => {
     const von = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const zu = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
-    const r = await d.merkliste.verschiebeMerkposten(von, req.pfad.setNumber, req.pfad.condition, zu);
+    const r = await d.wanted.moveWantedItem(von, req.pfad.setNumber, req.pfad.condition, zu);
     return { ...r, owner_user_id: zu };
   });
 
@@ -102,21 +102,21 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
    * neu UND gebraucht gewünscht sein. */
   router.endpunkt('DELETE /api/v1/wanted/:setNumber/:condition', requireToken, async req => {
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
-    const weg = await d.merkliste.loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
+    const weg = await d.wanted.removeWantedItem(owner, req.pfad.setNumber, req.pfad.condition);
     return { geloescht: weg };
   });
 
   /** BEIDE Zustände, frisch geholt. */
   router.endpunkt('GET /api/v1/wanted/:setNumber/preise', requireToken, async req => {
     const sn = req.pfad.setNumber;
-    const preise = await d.merkliste.preiseBeiderZustaende(req.apiUser.user_id, sn);
+    const preise = await d.wanted.pricesForBothConditions(req.apiUser.user_id, sn);
     return { set_number: sn, ...preise };
   });
 
-  /** Die Regel steht in merkliste.ts:uebernimm(); hier bleibt nur, wer schreiben darf. */
+  /** Die Regel steht in wanted.ts:fulfillWantedItem(); hier bleibt nur, wer schreiben darf. */
   router.endpunkt('POST /api/v1/wanted/:setNumber/:condition/uebernehmen', requireToken, async req => {
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const r = await d.merkliste.uebernimm(
+    const r = await d.wanted.fulfillWantedItem(
       req.apiUser.user_id,
       owner,
       req.pfad.setNumber,
@@ -126,7 +126,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
     return { ...r };
   });
 
-  /** Das Gegenstück zu merklisteCsv(). */
+  /** Das Gegenstück zu wantedListCsv(). */
   router.endpunkt(
     'POST /api/v1/wanted/import/csv',
     requireToken,

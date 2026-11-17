@@ -40,7 +40,7 @@ async function importiereWantedXml(
     );
   };
   try {
-    const bericht = await kx.merkliste.importiereWantedListe(uid, e.xml, {
+    const bericht = await kx.wanted.importWantedList(uid, e.xml, {
       vorschau: !e.schreiben,
       ueberRebrickable: e.ueberRebrickable,
       ...(e.korrekturen ? { korrekturen: e.korrekturen } : {}),

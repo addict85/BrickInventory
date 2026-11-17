@@ -55,10 +55,10 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     return;
   }
   await seed();
-  const W = _req('src/merkliste/merkliste.js');
+  const W = _req('src/wanted/wanted.js');
 
   await t.test('ein Merkposten ist KEIN Besitz', async () => {
-    const a = await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
+    const a = await W.addWantedItem(U.opa, '75192-1', 'N');
     assert.equal(a.war_neu, true);
 
     // Die Kernaussage der ganzen Änderung. Stünde der Merkposten in `sets`, zählte
@@ -69,7 +69,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Stammdaten kommen aus dem Katalog, nicht aus einer Kopie', async () => {
-    const [w] = await W.merkpostenVon([U.opa]);
+    const [w] = await W.wantedItemsOf([U.opa]);
     assert.equal(w.name, 'Millennium Falcon');
     assert.equal(w.year, 2017);
     assert.equal(w.num_parts, 7541);
@@ -77,7 +77,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Und sie sind NICHT mitgespeichert: Ändert der Katalog den Namen, ändert
     // ihn die Merkliste mit. Genau dafür steht in 0021 keine name-Spalte.
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon (UCS)' WHERE set_num='75192-1'`);
-    const [nachher] = await W.merkpostenVon([U.opa]);
+    const [nachher] = await W.wantedItemsOf([U.opa]);
     assert.equal(nachher.name, 'Millennium Falcon (UCS)', 'Der Name stammt aus einer Kopie und veraltet');
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon' WHERE set_num='75192-1'`);
   });
@@ -85,8 +85,8 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   await t.test('ein Set, das der Katalog nicht kennt, zeigt seine Nummer', async () => {
     // Der benannte Preis dafür, dass hier keine Stammdaten liegen (0021).
     // Er soll SICHTBAR sein und nicht als Absturz auftreten.
-    await W.legeMerkpostenAn(U.opa, '99999-1', 'N');
-    const w = (await W.merkpostenVon([U.opa])).find(x => x.set_number === '99999-1');
+    await W.addWantedItem(U.opa, '99999-1', 'N');
+    const w = (await W.wantedItemsOf([U.opa])).find(x => x.set_number === '99999-1');
     assert.ok(w, 'Der Merkposten fehlt ganz — der LEFT JOIN ist ein INNER JOIN');
     assert.equal(w.name, null);
     assert.equal(w.year, null);
@@ -95,14 +95,14 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   await t.test('ohne Rebrickable-Katalog kommen Name und Bild aus set_catalog', async () => {
     // Gegenprobe (28.10.2026): rb.name statt COALESCE(rb.name, sc.name) → rot, name null.
     await katalogSet(db, '10316-1', { name: 'Rivendell', year: 2023, pieces: 6167, image_url: 'http://x/10316.jpg' });
-    await W.legeMerkpostenAn(U.opa, '10316-1', 'N');
-    const w = (await W.merkpostenVon([U.opa])).find(x => x.set_number === '10316-1');
+    await W.addWantedItem(U.opa, '10316-1', 'N');
+    const w = (await W.wantedItemsOf([U.opa])).find(x => x.set_number === '10316-1');
     assert.equal(w.name, 'Rivendell');
     assert.equal(w.year, 2023);
     assert.equal(w.num_parts, 6167);
     assert.equal(w.image_url, 'http://x/10316.jpg');
     assert.ok(
-      (await W.merkpostenVon([U.opa], undefined, 'EUR', { suche: 'riven' })).some(x => x.set_number === '10316-1'),
+      (await W.wantedItemsOf([U.opa], undefined, 'EUR', { search: 'riven' })).some(x => x.set_number === '10316-1'),
       'Die Suche findet den Namen aus set_catalog nicht',
     );
     await db.run(`DELETE FROM wanted WHERE set_number = '10316-1'`);
@@ -112,14 +112,14 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Wer ein gebrauchtes zum Bauen und ein verpacktes zum Aufheben sucht, hat
     // zwei Merkposten mit zwei Schwellen. price_alerts führt den Zustand seit
     // 0019 genauso im Schlüssel.
-    const b = await W.legeMerkpostenAn(U.opa, '75192-1', 'U');
+    const b = await W.addWantedItem(U.opa, '75192-1', 'U');
     assert.equal(b.war_neu, true, 'Der gebrauchte Merkposten hat den neuen überschrieben');
-    const beide = (await W.merkpostenVon([U.opa], '75192-1')).map(w => w.condition).sort();
+    const beide = (await W.wantedItemsOf([U.opa], '75192-1')).map(w => w.condition).sort();
     assert.deepEqual(beide, ['N', 'U']);
   });
 
   await t.test('denselben Merkposten zweimal eintragen ist kein zweiter Eintrag', async () => {
-    const wieder = await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
+    const wieder = await W.addWantedItem(U.opa, '75192-1', 'N');
     assert.equal(wieder.war_neu, false, 'war_neu meldet einen Neuzugang, den es nicht gab');
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM wanted WHERE user_id=$1 AND set_number='75192-1'`, [U.opa]);
     assert.equal(n.n, 2, 'N und U — nicht mehr');
@@ -128,11 +128,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   await t.test('der Grossvater sieht die Merkposten des Enkels', async () => {
     // Marcos Festlegung. Hier ist der Kontenbaum nicht nur konsequent,
     // sondern der Zweck: Wer ein Geschenk sucht, schaut genau dort nach.
-    await W.legeMerkpostenAn(U.enkel, '75192-1', 'N');
-    const nurOpa = await W.merkpostenVon([U.opa]);
+    await W.addWantedItem(U.enkel, '75192-1', 'N');
+    const nurOpa = await W.wantedItemsOf([U.opa]);
     assert.ok(!nurOpa.some(w => w.user_id === U.enkel), 'Ohne Blickfeld kommen fremde Merkposten mit');
 
-    const zusammen = await W.merkpostenVon([U.opa, U.enkel]);
+    const zusammen = await W.wantedItemsOf([U.opa, U.enkel]);
     const vomEnkel = zusammen.find(w => w.user_id === U.enkel);
     assert.ok(vomEnkel, 'Der Merkposten des Enkels fehlt im gemeinsamen Blickfeld');
     assert.equal(vomEnkel.set_number, '75192-1');
@@ -142,9 +142,9 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort
     // aufkommt. Beim Grossvater heisst „ich habe es" auch: der Enkel hat es.
     await haeltSet(db, U.enkel, '75192-1', 1);
-    const alleinOpa = await W.merkpostenVon([U.opa], '75192-1');
+    const alleinOpa = await W.wantedItemsOf([U.opa], '75192-1');
     assert.equal(alleinOpa[0].owned, false);
-    const imBlickfeld = await W.merkpostenVon([U.opa, U.enkel], '75192-1');
+    const imBlickfeld = await W.wantedItemsOf([U.opa, U.enkel], '75192-1');
     assert.ok(
       imBlickfeld.every(w => w.owned === true),
       'owned sieht nur das eigene Konto an',
@@ -154,13 +154,13 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   });
 
   await t.test('löschen trifft genau EINEN Zustand', async () => {
-    const weg = await W.loescheMerkposten(U.opa, '75192-1', 'U');
+    const weg = await W.removeWantedItem(U.opa, '75192-1', 'U');
     assert.equal(weg, 1);
-    const uebrig = (await W.merkpostenVon([U.opa], '75192-1')).map(w => w.condition);
+    const uebrig = (await W.wantedItemsOf([U.opa], '75192-1')).map(w => w.condition);
     assert.deepEqual(uebrig, ['N'], 'Löschen hat den anderen Zustand mitgenommen');
 
     // Zweimal löschen ist kein Fehler — das Ziel ist erreicht.
-    assert.equal(await W.loescheMerkposten(U.opa, '75192-1', 'U'), 0);
+    assert.equal(await W.removeWantedItem(U.opa, '75192-1', 'U'), 0);
   });
 
   await t.test('die Übernahme legt das Set über setErfassen() an — mit Erfassungszeile', async () => {
@@ -168,8 +168,8 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Setnummer erfassen. Ein eigenes INSERT INTO sets hätte weder die
     // Erfassungszeile noch den Zustand noch die Anreicherung — und genau
     // daran würde man es erst in der Finanzansicht merken.
-    await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
-    const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 2 });
+    await W.addWantedItem(U.opa, '75192-1', 'N');
+    const r = await W.fulfillWantedItem(U.opa, U.opa, '75192-1', 'N', { quantity: 2 });
     assert.equal(r.action, 'added');
 
     assert.ok(await haltZeile(db, U.opa, '75192-1'), 'Das Set ist nicht in der Galerie gelandet');
@@ -185,11 +185,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
 
   await t.test('nach der Übernahme sind Merkposten UND Alarm weg', async () => {
     // Marcos Festlegung auf die Rückfrage: „Eintrag weg, Alarm auch."
-    await W.legeMerkpostenAn(U.enkel, '10276-1', 'U');
+    await W.addWantedItem(U.enkel, '10276-1', 'U');
     // Der zweite Merkposten auf dasselbe Set, im anderen Zustand — er ist die
     // eigentliche Aussage unten. Er stand frueher im Notiz-Test, den es seit
     // dem Ausbau des Feldes (Migration 0022) nicht mehr gibt.
-    await W.legeMerkpostenAn(U.enkel, '10276-1', 'N');
+    await W.addWantedItem(U.enkel, '10276-1', 'N');
     const P = {
       ..._req('src/finanzen/preisalarm.js'),
       ...require('./helpers/sources').testBereich('finanzen').preisalarm,
@@ -197,12 +197,12 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     await P.setzeAlarm(U.enkel, '10276-1', 'EUR', { direction: 'unter', threshold: 249, condition: 'U' });
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
 
-    await W.uebernimm(U.enkel, U.enkel, '10276-1', 'U', {});
+    await W.fulfillWantedItem(U.enkel, U.enkel, '10276-1', 'U', {});
 
     // Genau der U-Merkposten ist weg. Der N-Merkposten auf dasselbe Set bleibt
     // stehen — er ist ein ANDERER Merkposten, und genau dafuer steht der Zustand
     // im Schluessel.
-    const uebrig = (await W.merkpostenVon([U.enkel], '10276-1')).map(w => w.condition);
+    const uebrig = (await W.wantedItemsOf([U.enkel], '10276-1')).map(w => w.condition);
     assert.deepEqual(uebrig, ['N'], 'Der U-Merkposten steht noch — oder der N-Merkposten wurde mitgenommen');
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 0, 'Der Alarm steht noch');
   });
@@ -212,21 +212,21 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // heisst „Detail öffnen", nicht „Menge erhöhen". Sie darf nicht davon
     // abhängen, über welchen der vier Wege jemand kommt.
     const vorher = await mengeVon(db, U.opa, '75192-1');
-    await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
-    const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 5 });
+    await W.addWantedItem(U.opa, '75192-1', 'N');
+    const r = await W.fulfillWantedItem(U.opa, U.opa, '75192-1', 'N', { quantity: 5 });
     assert.equal(r.action, 'exists');
     const nachher = await mengeVon(db, U.opa, '75192-1');
     assert.equal(nachher, vorher, 'Die Menge wurde aufgestockt');
     // Erledigt ist der Merkposten trotzdem — sonst bliebe er für ein Set stehen,
     // das man längst hat.
-    assert.equal((await W.merkpostenVon([U.opa], '75192-1')).length, 0);
+    assert.equal((await W.wantedItemsOf([U.opa], '75192-1')).length, 0);
   });
 
   await t.test('Anzahl, Kaufpreis und Zustand lassen sich bei der Übernahme setzen', async () => {
     // Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl
     // müssen beim Übernehmen angepasst werden."
-    await W.legeMerkpostenAn(U.opa, '10497-1', 'N');
-    await W.uebernimm(U.opa, U.opa, '10497-1', 'N', { quantity: 3, purchase_price: 88.5, condition: 'U' });
+    await W.addWantedItem(U.opa, '10497-1', 'N');
+    await W.fulfillWantedItem(U.opa, U.opa, '10497-1', 'N', { quantity: 3, purchase_price: 88.5, condition: 'U' });
 
     assert.equal(await mengeVon(db, U.opa, '10497-1'), 3, 'Die Anzahl wurde nicht übernommen');
 
@@ -244,12 +244,12 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Der Fall, der vorher still falsch war: Merkposten „gebraucht", gekauft
     // wurde ein neues. Dann muss der GEBRAUCHTE Merkposten weg — den hat man
     // erfuellt — und das Set als neu in die Galerie.
-    await W.legeMerkpostenAn(U.enkel, '21034-1', 'U');
-    await W.legeMerkpostenAn(U.enkel, '21034-1', 'N');
+    await W.addWantedItem(U.enkel, '21034-1', 'U');
+    await W.addWantedItem(U.enkel, '21034-1', 'N');
 
-    await W.uebernimm(U.enkel, U.enkel, '21034-1', 'U', { condition: 'N' });
+    await W.fulfillWantedItem(U.enkel, U.enkel, '21034-1', 'U', { condition: 'N' });
 
-    const uebrig = (await W.merkpostenVon([U.enkel], '21034-1')).map(w => w.condition);
+    const uebrig = (await W.wantedItemsOf([U.enkel], '21034-1')).map(w => w.condition);
     assert.deepEqual(
       uebrig,
       ['N'],
@@ -261,14 +261,14 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Die Adresse braucht nur die Setnummer, nicht den Katalog (der kennt nicht jedes Set).
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
-    //   a) `preisvergleich_url: fuerSet(...)` aus merkpostenVon() entfernt →
+    //   a) `preisvergleich_url: fuerSet(...)` aus wantedItemsOf() entfernt →
     //      beide Zusicherungen unten werden rot.
     //   b) fuerSet() nur mit der Nummer aufgerufen (Name weggelassen) → „der
     //      Name macht die Suche brauchbar" wird rot.
     // Frisch angelegt: Die Subtests davor löschen und übernehmen, der Merkposten
     // von oben muss hier nicht mehr stehen.
-    await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
-    const [mitKatalog] = await W.merkpostenVon([U.opa], '75192-1');
+    await W.addWantedItem(U.opa, '75192-1', 'N');
+    const [mitKatalog] = await W.wantedItemsOf([U.opa], '75192-1');
     const url = decodeURIComponent(mitKatalog.preisvergleich_url || '');
     assert.ok(url.startsWith('http'), 'Ohne Adresse führt der Knopf ins Leere');
     assert.ok(url.includes('75192'), `Die Setnummer fehlt in der Adresse: ${url}`);
@@ -280,8 +280,8 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
 
     // Und der Fall, der den Knopf bisher verschwinden liess: ein Set, das im
     // Katalog gar nicht steht. Der Name fehlt dann — die Adresse nicht.
-    await W.legeMerkpostenAn(U.opa, '99999-1', 'N');
-    const [ohneKatalog] = await W.merkpostenVon([U.opa], '99999-1');
+    await W.addWantedItem(U.opa, '99999-1', 'N');
+    const [ohneKatalog] = await W.wantedItemsOf([U.opa], '99999-1');
     assert.equal(ohneKatalog.name, null, 'Vorbedingung: dieses Set kennt der Katalog nicht');
     const url2 = decodeURIComponent(ohneKatalog.preisvergleich_url || '');
     assert.ok(
@@ -294,7 +294,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Marcos zwei Befunde in einem Test:
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
-    //   a) merkeGebraucht()-Zeile aus merkpostenVon() entfernt → „bestellt" rot.
+    //   a) merkeGebraucht()-Zeile aus wantedItemsOf() entfernt → „bestellt" rot.
     //   b) image_local fest auf null → „die lokale Datei gewinnt" rot.
     const fs = require('node:fs');
     const path = require('node:path');
@@ -307,7 +307,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     const ohneDatei = `wlimg${process.pid}a-1`;
     const mitDatei = `wlimg${process.pid}b-1`;
     const datei = path.join(ORDNER, `${mitDatei}.jpg`);
-    // Die Datei VOR dem Anlegen des Merkpostens: legeMerkpostenAn() liest die Liste
+    // Die Datei VOR dem Anlegen des Merkpostens: addWantedItem() liest die Liste
     // selbst noch einmal, und dieser Blick würde das „gibt es nicht" für die
     // nächsten zehn Minuten festhalten.
     fs.mkdirSync(ORDNER, { recursive: true });
@@ -322,12 +322,12 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
         sn,
         `http://cdn.example/media/sets/${sn}.jpg`,
       ]);
-      await W.legeMerkpostenAn(U.opa, sn, 'N');
+      await W.addWantedItem(U.opa, sn, 'N');
     }
 
     try {
       // ── Ohne Datei: kein image_local, dafür eine Bestellung ──────────────
-      const [a] = await W.merkpostenVon([U.opa], ohneDatei);
+      const [a] = await W.wantedItemsOf([U.opa], ohneDatei);
       assert.equal(a.image_local, null, 'Vorbedingung: für dieses Set liegt keine Datei');
       await IQ._schreibePuffer();
       const notiz = await db.get('SELECT set_number FROM image_wanted WHERE url=$1', [
@@ -341,7 +341,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(notiz.set_number, ohneDatei);
 
       // ── Mit Datei: die lokale gewinnt ────────────────────────────────────
-      const [b] = await W.merkpostenVon([U.opa], mitDatei);
+      const [b] = await W.wantedItemsOf([U.opa], mitDatei);
       assert.ok(
         String(b.image_local || '').startsWith('/images/sets/'),
         `image_local fehlt oder zeigt woandershin: ${b.image_local}`,
@@ -356,7 +356,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
 
   await t.test('der Inhaber laesst sich wechseln — mit Alarm und Datum', async () => {
     // Gegenproben (durchgeführt, Ergebnis im Commit):
-    //   a) In verschiebeMerkposten() das UPDATE der price_alerts entfernt →
+    //   a) In moveWantedItem() das UPDATE der price_alerts entfernt →
     //      „der Alarm zieht mit" wird rot.
     //   b) Statt UPDATE ein Löschen und Neuanlegen → „das Aufnahmedatum
     //      bleibt" wird rot.
@@ -373,23 +373,23 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
       [sn],
     );
 
-    await W.legeMerkpostenAn(U.opa, sn, 'N');
+    await W.addWantedItem(U.opa, sn, 'N');
     await P.setzeAlarm(U.opa, sn, 'EUR', { direction: 'unter', threshold: 99, condition: 'N' });
-    const [vorher] = await W.merkpostenVon([U.opa], sn);
+    const [vorher] = await W.wantedItemsOf([U.opa], sn);
     assert.ok(vorher, 'Aufbau: der Merkposten fehlt');
 
     // ── Derselbe Inhaber ist kein Umzug ─────────────────────────────────
-    const nix = await W.verschiebeMerkposten(U.opa, sn, 'N', U.opa);
+    const nix = await W.moveWantedItem(U.opa, sn, 'N', U.opa);
     assert.equal(nix.verschoben, false, 'Ein Umzug auf dasselbe Konto ist keiner');
 
     // ── Der Umzug ───────────────────────────────────────────────────────
-    const r = await W.verschiebeMerkposten(U.opa, sn, 'N', U.enkel);
+    const r = await W.moveWantedItem(U.opa, sn, 'N', U.enkel);
     assert.equal(r.verschoben, true);
     assert.equal(r.zusammengefuehrt, false);
 
-    const beimOpa = await W.merkpostenVon([U.opa], sn);
+    const beimOpa = await W.wantedItemsOf([U.opa], sn);
     assert.deepEqual(beimOpa, [], 'Der Merkposten steht noch beim alten Konto');
-    const [nachher] = await W.merkpostenVon([U.enkel], sn);
+    const [nachher] = await W.wantedItemsOf([U.enkel], sn);
     assert.ok(nachher, 'Der Merkposten ist beim neuen Konto nicht angekommen');
 
     // Das Aufnahmedatum ist die einzige Angabe, die ein Merkposten über sich
@@ -410,10 +410,10 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(parseFloat(alarm.threshold), 99);
 
     // ── Und wenn das Ziel den Merkposten schon hat ──────────────────────────
-    await W.legeMerkpostenAn(U.opa, sn, 'N');
-    const r2 = await W.verschiebeMerkposten(U.opa, sn, 'N', U.enkel);
+    await W.addWantedItem(U.opa, sn, 'N');
+    const r2 = await W.moveWantedItem(U.opa, sn, 'N', U.enkel);
     assert.equal(r2.zusammengefuehrt, true, 'Ein Merkposten, den das Ziel schon hat, muss zusammengeführt werden');
-    assert.deepEqual(await W.merkpostenVon([U.opa], sn), [], 'Die Quelle steht noch da');
+    assert.deepEqual(await W.wantedItemsOf([U.opa], sn), [], 'Die Quelle steht noch da');
     const nachMerge = (await P.alarmeFuer(U.enkel, sn)).find(a => a.condition === 'N');
     assert.equal(parseFloat(nachMerge.threshold), 99, 'Die Schwelle des ZIELS wurde überschrieben');
   });

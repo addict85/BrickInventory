@@ -14,7 +14,7 @@ import {
 } from './wantedAufloesung';
 import type { RebrickableAbbruch } from './wantedAufloesung';
 import { berichtsZeile, schreibePosten, type PostenErgebnis, type SchreibOptionen } from './wantedSchreiber';
-import type { MerklisteKontext } from './kontext';
+import type { WantedContext } from './context';
 
 export interface WantedBericht {
   gelesen: number;
@@ -49,7 +49,7 @@ function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
 
 /** Nach dem Auflösen die Korrekturen, weil sie es überstimmen; vor dem Zählen,
  * weil der Bericht sonst Zahlen von vor der Korrektur nennt. */
-async function loeseVollstaendigAuf(kx: MerklisteKontext, posten: WantedPosten[], uid: number, opt: WantedOptionen) {
+async function loeseVollstaendigAuf(kx: WantedContext, posten: WantedPosten[], uid: number, opt: WantedOptionen) {
   let auf = await loeseLokalAuf(kx, posten, uid);
   let rebrickable: WantedBericht['rebrickable'];
   if (opt.ueberRebrickable) {
@@ -85,7 +85,7 @@ export interface WantedOptionen extends SchreibOptionen {
 /** Vorschau und Ernstfall gehen denselben Weg, damit die Vorschau nichts
  * verspricht, was der Import nicht tut. */
 export async function importiereWantedListe(
-  k: MerklisteKontext,
+  k: WantedContext,
   uid: number,
   xml: string,
   opt: WantedOptionen = {},
@@ -158,7 +158,7 @@ export async function importiereWantedListe(
 
 /** Auch nach dem Schreiben: Der Dialog zeichnet dieselbe Tabelle mit der
  * Antwort neu und zeigte sonst leere Zellen. */
-async function beschreibeZeilen(k: MerklisteKontext, zeilen: PostenErgebnis[], auf: Aufloesung[]): Promise<void> {
+async function beschreibeZeilen(k: WantedContext, zeilen: PostenErgebnis[], auf: Aufloesung[]): Promise<void> {
   const beschreibung = await beschreibePosten(k, auf);
   zeilen.forEach((zeile, i) => {
     const b = beschreibung.get(i);

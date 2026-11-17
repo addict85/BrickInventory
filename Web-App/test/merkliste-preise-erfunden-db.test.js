@@ -3,7 +3,7 @@
  * keinen BrickLink-Abruf aus (das Tageskontingent teilen alle Konten).
  *
  * Gegenproben (am 08.11.2026 gemessen):
- *   A  die Katalogprüfung in preiseBeiderZustaende() entfernt
+ *   A  die Katalogprüfung in pricesForBothConditions() entfernt
  *      → rot: „erfundene Nummer …“ und „eine kein-Preis-Markierung …“
  *   B  setImKatalog() verneint immer (auch bekannte Sets)
  *      → rot: „bekanntes Set wird abgerufen“
@@ -80,25 +80,25 @@ test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurren
     for (const z of alterZugang) await setze(z.key, z.value);
     await db.pool.end().catch(() => {});
   });
-  const { preiseBeiderZustaende } = _req('src/merkliste/merkliste.js');
+  const { pricesForBothConditions } = _req('src/wanted/wanted.js');
 
   await t.test('erfundene Nummer: kein BrickLink-Aufruf', async () => {
     aufrufe.length = 0;
-    const r = await preiseBeiderZustaende(uid, ERFUNDEN);
+    const r = await pricesForBothConditions(uid, ERFUNDEN);
     assert.deepEqual(r.current, {});
     assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
   });
 
   await t.test('eine kein-Preis-Markierung ist kein Katalogeintrag', async () => {
     aufrufe.length = 0;
-    const r = await preiseBeiderZustaende(uid, MARKIERT);
+    const r = await pricesForBothConditions(uid, MARKIERT);
     assert.deepEqual(r.current, {});
     assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
   });
 
   await t.test('bekanntes Set wird abgerufen', async () => {
     aufrufe.length = 0;
-    const r = await preiseBeiderZustaende(uid, BEKANNT);
+    const r = await pricesForBothConditions(uid, BEKANNT);
     assert.ok(aufrufe.length > 0, 'die Attrappe sah keinen Aufruf — die Gegenprobe oben bewiese nichts');
     assert.equal(parseFloat(String(r.current.N.avg_price)), 12.5);
   });

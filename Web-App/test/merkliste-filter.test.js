@@ -63,7 +63,7 @@ test('1. die Webapp schickt alle vier Filter an den Server', async () => {
 
 test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () => {
   // ── Die Quelle der Wahrheit ───────────────────────────────────────────────
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/merkliste/repository/merkliste.ts'), 'utf8'));
+  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const tabelle = server.slice(
     server.indexOf('const MERK_SORTS'),
     server.indexOf('};', server.indexOf('const MERK_SORTS')),
@@ -90,7 +90,7 @@ test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () 
 
 test('4. die Vorgabe-Sortierung ist in Server und Webapp dieselbe', () => {
   // Sie entscheidet, ob die Webapp den Parameter überhaupt mitschickt.
-  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/merkliste/repository/merkliste.ts'), 'utf8'));
+  const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const ersteZeile = server.slice(server.indexOf('const MERK_SORTS')).split('\n')[1];
   assert.match(ersteZeile, /added_desc/, 'MERK_SORTS beginnt nicht mit added_desc');
 

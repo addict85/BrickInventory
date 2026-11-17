@@ -40,7 +40,7 @@ export function baueApiRouter(
     | 'sets'
     | 'teile'
     | 'minifigs'
-    | 'merkliste'
+    | 'wanted'
     | 'gutscheine'
     | 'sammlung'
     | 'verwaltung'
@@ -61,7 +61,7 @@ export function baueApiRouter(
   router.haengeEin(baueSettingsRouter(d)); // /settings — Einstellungen, Zugänge, Haushalt
   router.haengeEin(baueAdminRouter(d));
   router.haengeEin(baueCatalogRouter(d)); // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
-  router.haengeEin(baueWantedRouter(d)); // /wanted — Merkliste (eigene Tabelle, siehe 0021)
+  router.haengeEin(baueWantedRouter(d)); // /wanted — wanted list (own table, see 0021)
   router.haengeEin(baueVouchersRouter(d)); // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
   router.haengeEin(bauePapierkorbRouter(d)); // /papierkorb — gelöschte Elemente (siehe 0041)
   router.haengeEin(baueGeraetRouter(d)); // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)

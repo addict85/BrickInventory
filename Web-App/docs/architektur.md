@@ -238,7 +238,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 14 | `src/finanzen` |
 | 15 | `src/bestand` |
 | 16 | `src/sets` |
-| 17 | `src/teile`, `src/minifigs`, `src/merkliste`, `src/gutscheine` |
+| 17 | `src/teile`, `src/minifigs`, `src/wanted`, `src/gutscheine` |
 | 18 | `src/sammlung`, `src/verwaltung` |
 | 19 | `src/dienste.ts` |
 | 20 | `jobs`, `routes` |
@@ -311,7 +311,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/bestand` | `minifig_acquisitions`, `minifigs`, `trash`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
 | `src/sets` | `instructions` |
 | `src/teile` | `parts_catalog_pending`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
-| `src/merkliste` | `wanted` |
+| `src/wanted` | `wanted` |
 | `src/gutscheine` | `voucher_balance_throttle`, `vouchers` |
 
 ## API-Vertrag

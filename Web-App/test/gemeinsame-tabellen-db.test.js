@@ -56,7 +56,7 @@
  *      aufwärts“ ['src/bestand → instructions']; die Regex auf wörtliche Namen sah beides nicht
  *   Q  cacheZahlen() in src/katalog/repository/katalogCache.ts zählt wieder zaehle('price_cache') →
  *      rot: „gemessen, wie eingetragen“ und „lesen nie aufwärts“ ['src/katalog → price_cache']
- *   R  src/merkliste/repository/merkliste.ts liest wieder `FROM sets s` statt setBestand() → rot:
+ *   R  src/wanted/repository/wanted.ts liest wieder `FROM sets s` statt setBestand() → rot:
  *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
  *
  * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im

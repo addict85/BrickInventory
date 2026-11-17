@@ -87,7 +87,7 @@ async function ergebnisVon(
     case 'figuren_csv':
       return csvImportBericht(await kx.minifigs.importMinifigsCsv(uid, n.eingabe.text));
     case 'merkliste_csv':
-      return csvImportBericht(await kx.merkliste.importiereMerklisteCsv(n.eingabe.owner, n.eingabe.text));
+      return csvImportBericht(await kx.wanted.importWantedListCsv(n.eingabe.owner, n.eingabe.text));
     case 'alarme_csv':
       return kx.finanzen.preisalarm.alarmeAusCsv(uid, n.eingabe.waehrung, n.eingabe.text);
     case 'wanted_xml':

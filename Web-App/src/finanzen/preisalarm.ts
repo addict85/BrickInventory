@@ -64,7 +64,7 @@ export async function setzeAlarm(
   return alarme.find(a => a.condition === condition)!;
 }
 
-/** Der Alarm wandert mit einer Vormerkung ins andere Konto (src/merkliste). */
+/** Der Alarm wandert mit einer Vormerkung ins andere Konto (src/wanted). */
 export async function alarmUebertragen(
   k: FinanzenKontext,
   zuId: number,

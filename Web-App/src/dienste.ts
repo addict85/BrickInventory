@@ -17,7 +17,7 @@ import type { KatalogDienste } from './katalog';
 import type { KontoDienste } from './konto';
 import type { MailDienste } from './mail';
 import type { ProfileServices } from './profile';
-import type { MerklisteDienste } from './merkliste';
+import type { WantedServices } from './wanted';
 import type { SammlungDienste } from './sammlung';
 import type { SetsDienste } from './sets';
 import type { TeileDienste } from './teile';
@@ -51,7 +51,7 @@ export interface Dienste {
   sets: SetsDienste;
   teile: TeileDienste;
   minifigs: MinifigsServices;
-  merkliste: MerklisteDienste;
+  wanted: WantedServices;
   gutscheine: GutscheineDienste;
   sammlung: SammlungDienste;
   verwaltung: VerwaltungDienste;

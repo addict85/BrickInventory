@@ -53,7 +53,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.minifigs.db,
     // @ts-expect-error
-    d.merkliste.db,
+    d.wanted.db,
     // @ts-expect-error
     d.gutscheine.gutscheine,
     // @ts-expect-error

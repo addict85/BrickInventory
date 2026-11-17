@@ -3,7 +3,7 @@
 import { RebrickableGesperrt } from '../fremdquellen';
 import { meldeFehler } from '../infra/fehler';
 import type { WantedArt, WantedPosten } from './wantedParser';
-import type { MerklisteKontext } from './kontext';
+import type { WantedContext } from './context';
 
 export type Sicherheit =
   | 'zuordnung'
@@ -31,7 +31,7 @@ export interface Aufloesung {
 /** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
  * sicher sind. */
 export async function loeseLokalAuf(
-  k: MerklisteKontext,
+  k: WantedContext,
   posten: WantedPosten[],
   uid: number | null = null,
 ): Promise<Aufloesung[]> {
@@ -103,7 +103,7 @@ export type WantedFortschritt = {
 };
 
 export async function loeseUeberRebrickableAuf(
-  k: MerklisteKontext,
+  k: WantedContext,
   auf: Aufloesung[],
   grenze = 250,
   fortschritt?: (stand: WantedFortschritt) => void,
@@ -173,7 +173,7 @@ export interface Korrektur {
 
 /** Drei Abfragen für die ganze Liste, nicht eine je Posten. */
 export async function beschreibePosten(
-  k: MerklisteKontext,
+  k: WantedContext,
   auf: Aufloesung[],
 ): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
   const raus = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
@@ -320,7 +320,7 @@ export function wendeKorrekturenAn(
 
 /** Eine von Hand eingetragene Farbe war in der Auflösung nicht dabei; ohne
  * diesen Schritt ginge sie ohne Namen an den Anleger. */
-export async function farbenNachtragen(k: MerklisteKontext, auf: Aufloesung[]): Promise<Aufloesung[]> {
+export async function farbenNachtragen(k: WantedContext, auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
   if (!offen.length) return auf;
   const zeilen = await k.wantedListe.farbenZuIds([...new Set(offen)]);

@@ -1,7 +1,7 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
-import * as merkliste from './repository/merkliste';
+import * as wanted from './repository/wanted';
 import * as wantedListe from './repository/wantedListe';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
@@ -12,7 +12,7 @@ import type { FremdquellenDienste } from '../fremdquellen';
 import type { BilderDienste } from '../bilder';
 import type { Uhr } from '../infra/uhr';
 
-export interface MerklisteAbhaengigkeiten {
+export interface WantedDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
@@ -24,15 +24,18 @@ export interface MerklisteAbhaengigkeiten {
   sets: SetsDienste;
 }
 
-export const zugang = (db: Db) => ({
-  merkliste: {
-    merkeSetVor: mit(db)(merkliste.merkeSetVor),
-    streicheVormerkung: mit(db)(merkliste.streicheVormerkung),
-    istVorgemerkt: mit(db)(merkliste.istVorgemerkt),
-    uebertrageVormerkung: mit(db)(merkliste.uebertrageVormerkung),
-    merklisteImBlickfeld: mit(db)(merkliste.merklisteImBlickfeld),
-    merklisteFuerExport: mit(db)(merkliste.merklisteFuerExport),
+export const access = (db: Db) => ({
+  wanted: {
+    markSetWanted: mit(db)(wanted.markSetWanted),
+    removeWantedEntry: mit(db)(wanted.removeWantedEntry),
+    isWanted: mit(db)(wanted.isWanted),
+    transferWantedEntry: mit(db)(wanted.transferWantedEntry),
+    wantedListInScope: mit(db)(wanted.wantedListInScope),
+    wantedListForExport: mit(db)(wanted.wantedListForExport),
   },
+  // Cross-reference lookups for the BrickLink wanted-list XML import (BL→RB
+  // number mapping); left under their established German names, same as
+  // wantedAufloesung.ts/wantedListe.ts that call them — see the Phase 2a report.
   wantedListe: {
     zuordnungen: mit(db)(wantedListe.zuordnungen),
     nummernImKatalog: mit(db)(wantedListe.nummernImKatalog),
@@ -44,4 +47,4 @@ export const zugang = (db: Db) => ({
     setsBeschreibung: mit(db)(wantedListe.setsBeschreibung),
   },
 });
-export type MerklisteKontext = Kontext<MerklisteAbhaengigkeiten, ReturnType<typeof zugang>>;
+export type WantedContext = Kontext<WantedDependencies, ReturnType<typeof access>>;

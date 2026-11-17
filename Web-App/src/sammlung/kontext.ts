@@ -10,7 +10,7 @@ import type { BestandDienste } from '../bestand';
 import type { SetsDienste } from '../sets';
 import type { TeileDienste } from '../teile';
 import type { MinifigsServices } from '../minifigs';
-import type { MerklisteDienste } from '../merkliste';
+import type { WantedServices } from '../wanted';
 import type { Uhr } from '../infra/uhr';
 
 export interface SammlungAbhaengigkeiten {
@@ -24,7 +24,7 @@ export interface SammlungAbhaengigkeiten {
   sets: SetsDienste;
   teile: TeileDienste;
   minifigs: MinifigsServices;
-  merkliste: MerklisteDienste;
+  wanted: WantedServices;
 }
 
 export const zugang = (db: Db) => ({

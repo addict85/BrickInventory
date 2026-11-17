@@ -4,9 +4,9 @@
  * Trigger auf price_alerts — der Alarm ist jeweils der letzte Schritt.
  *
  * Gegenproben (am 11.11.2026 gemessen):
- *   A  verschiebeMerkposten() ohne mitMerkpostenSperre (Rumpf direkt) → rot:
+ *   A  moveWantedItem() ohne withWantedItemLock (Rumpf direkt) → rot:
  *      „verschieben: der Merkposten bleibt beim alten Konto“
- *   B  uebernimm() ohne mitMerkpostenSperre → rot: „übernehmen: kein Set im
+ *   B  fulfillWantedItem() ohne withWantedItemLock → rot: „übernehmen: kein Set im
  *      Bestand, der Merkposten steht noch“
  *   C  alarmUebertragen() wieder mit .catch(meldeFehler) → rot: „verschieben:
  *      der Fehler kommt an“
@@ -69,7 +69,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
-  const W = _req('src/merkliste/merkliste.js');
+  const W = _req('src/wanted/wanted.js');
   const alarm = uid =>
     db.run(
       `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
@@ -84,9 +84,9 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
       .length;
 
   await t.test('verschieben: der Fehler kommt an', async () => {
-    await W.legeMerkpostenAn(U.von, '75192-1', 'N');
+    await W.addWantedItem(U.von, '75192-1', 'N');
     await alarm(U.von);
-    await mitBremse(() => assert.rejects(W.verschiebeMerkposten(U.von, '75192-1', 'N', U.zu), /erzwungen/));
+    await mitBremse(() => assert.rejects(W.moveWantedItem(U.von, '75192-1', 'N', U.zu), /erzwungen/));
   });
 
   await t.test('verschieben: der Merkposten bleibt beim alten Konto', async () => {
@@ -96,7 +96,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('verschieben ohne Fehler nimmt Merkposten und Alarm mit', async () => {
-    const r = await W.verschiebeMerkposten(U.von, '75192-1', 'N', U.zu);
+    const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
     assert.deepEqual(r, { verschoben: true, zusammengefuehrt: false });
     assert.equal(await merk(U.zu), 1);
     assert.equal(await alarme(U.zu), 1);
@@ -104,19 +104,19 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('Ziel mit eigenem Alarm: dessen Alarm gilt, der Merkposten wandert', async () => {
-    await W.verschiebeMerkposten(U.zu, '75192-1', 'N', U.von);
+    await W.moveWantedItem(U.zu, '75192-1', 'N', U.von);
     await db.run(`DELETE FROM price_alerts`);
     await alarm(U.von);
     await alarm(U.zu);
     await db.run(`UPDATE price_alerts SET threshold = 123 WHERE user_id=$1`, [U.zu]);
-    const r = await W.verschiebeMerkposten(U.von, '75192-1', 'N', U.zu);
+    const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
     assert.equal(r.verschoben, true);
     const zeilen = await db.all(`SELECT user_id, threshold::float AS s FROM price_alerts`);
     assert.deepEqual(zeilen, [{ user_id: U.zu, s: 123 }]);
   });
 
   await t.test('übernehmen: kein Set im Bestand, der Merkposten steht noch', async () => {
-    await mitBremse(() => assert.rejects(W.uebernimm(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/));
+    await mitBremse(() => assert.rejects(W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/));
     assert.equal(
       (await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length,
       0,
@@ -126,7 +126,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('übernehmen ohne Fehler: Set erfasst, Merkposten und Alarm weg', async () => {
-    const r = await W.uebernimm(U.zu, U.zu, '75192-1', 'N', { quantity: 1 });
+    const r = await W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 });
     assert.equal(r.action, 'added');
     assert.equal((await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length, 1);
     assert.equal(await merk(U.zu), 0);

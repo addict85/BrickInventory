@@ -166,7 +166,7 @@ test('kein Zustand auf global', () => {
 test('src/ und clients/ importieren nichts aus jobs/', () => {
   // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/auftraege);
   // die Ausführung setzt startup/verdrahtung.ts ein.
-  // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
+  // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in wanted.ts → rot.
   const treffer = [];
   for (const d of innereDateien().filter(f => /^(src|clients)\//.test(f)))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
@@ -514,7 +514,7 @@ test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => 
   // Text aus einem Repository) ginge an ihr vorbei. Gegenproben (09.11.2026):
   // `import * as datenbank from '../../db/database'` und `datenbank.all(repo.SQL)` in
   // src/sets/loeschen.ts → rot „src/sets/loeschen.ts: all“, die Prüfung oben blieb grün;
-  // die Merklisten-Sortierung (COALESCE … NULLS LAST) zurück in src/merkliste/merkliste.ts → rot oben.
+  // die Merklisten-Sortierung (COALESCE … NULLS LAST) zurück in src/wanted/wanted.ts → rot oben.
   const treffer = [];
   let gesehen = 0;
   for (const d of tsUnter('src', 'jobs', 'clients', 'routes', 'startup')
@@ -945,7 +945,7 @@ const STUFEN = [
   ['src/finanzen'],
   ['src/bestand'],
   ['src/sets'],
-  ['src/teile', 'src/minifigs', 'src/merkliste', 'src/gutscheine'],
+  ['src/teile', 'src/minifigs', 'src/wanted', 'src/gutscheine'],
   ['src/sammlung', 'src/verwaltung'],
   ['src/dienste.ts'],
   ['jobs', 'routes'],

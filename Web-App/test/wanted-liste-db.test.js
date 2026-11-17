@@ -15,9 +15,9 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
-const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
-const { loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
-const { importiereWantedListe } = _req('src/merkliste/wantedListe.js');
+const { leseWantedListe } = _req('src/wanted/wantedParser.js');
+const { loeseLokalAuf } = _req('src/wanted/wantedAufloesung.js');
+const { importiereWantedListe } = _req('src/wanted/wantedListe.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -219,7 +219,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
 
 /**
  * Was der Schreibweg mit `farbeOffen` tut. Gegenproben, je eine Änderung in
- * src/merkliste/wantedListe.ts:
+ * src/wanted/wantedListe.ts:
  *   A  `a.farbeOffen` aus der Abbruchbedingung entfernt (Posten mit `color_id: 0`)
  *      → rot: „eine offene Farbe wird nicht erfunden“, „ein zweiter Lauf stockt auf“,
  *      „in der Vorschau wird nichts geschrieben“

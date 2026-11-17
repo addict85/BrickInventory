@@ -84,7 +84,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   const setService = require('./helpers/sources').bereichsSeite('sets');
   const teile = _req('src/teile/manuelleTeile.js');
   const figuren = _req('src/minifigs/manualMinifigs.js');
-  const merkliste = _req('src/merkliste/merkliste.js');
+  const merkliste = _req('src/wanted/wanted.js');
   const L = {
     ..._req('src/bestand/lagerort.js'),
     ...require('./helpers/sources').testBereich('bestand').lagerortDienst,

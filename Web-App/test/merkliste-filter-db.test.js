@@ -113,25 +113,25 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     return;
   }
   await seed();
-  const M = _req('src/merkliste/merkliste.js');
+  const M = _req('src/wanted/wanted.js');
   const alle = [U.opa, U.enkel];
 
   await t.test('1. Ohne Filter bleibt alles, wie es war', async () => {
     // Der Ausgangspunkt: Vier Parameter sind dazugekommen, und ein Aufruf ohne
     // sie muss weiterhin dieselbe Liste in derselben Reihenfolge liefern.
-    const liste = await M.merkpostenVon(alle, undefined, 'EUR');
+    const liste = await M.wantedItemsOf(alle, undefined, 'EUR');
     assert.equal(liste.length, 6, `${liste.length} statt 6 Merkposten`);
     // Vorgabe added_desc: der zuletzt eingetragene zuerst.
     assert.equal(liste[0].set_number, '75192-1');
   });
 
   await t.test('2. Die Suche trifft Nummer UND Name', async () => {
-    const perNummer = await M.merkpostenVon(alle, undefined, 'EUR', { suche: '75192' });
+    const perNummer = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '75192' });
     assert.deepEqual(nummern(perNummer), ['75192-1/N']);
 
     // „Falcon" steht in keiner Setnummer — ohne den Namensvergleich käme hier
     // nichts zurück. Der Name kommt aus rb_sets, nicht aus wanted.
-    const perName = await M.merkpostenVon(alle, undefined, 'EUR', { suche: 'falcon' });
+    const perName = await M.wantedItemsOf(alle, undefined, 'EUR', { search: 'falcon' });
     assert.deepEqual(nummern(perName).sort(), ['10179-1/N', '10179-1/U', '75192-1/N']);
   });
 
@@ -140,27 +140,27 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     // nach „irgendwas, das 50 enthält" — und „Feuerwehr 5000er" käme mit.
     // Das ist nicht kaputt, aber es ist nicht, wonach gefragt wurde; für den
     // Suchenden sieht es aus, als wirke der Filter nicht.
-    const liste = await M.merkpostenVon(alle, undefined, 'EUR', { suche: '50%' });
+    const liste = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '50%' });
     assert.deepEqual(nummern(liste), ['60000-1/N'], `Die Maskierung greift nicht: ${nummern(liste).join(', ')}`);
     // Die Gegenprobe dazu: OHNE Prozentzeichen findet dieselbe Suche beide.
-    const beide = await M.merkpostenVon(alle, undefined, 'EUR', { suche: '50' });
+    const beide = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '50' });
     assert.equal(beide.length, 2, `„50" findet ${beide.length} statt 2 — Seed veraltet?`);
   });
 
   await t.test('4. Der Zustand filtert, ein unbekannter Wert nicht', async () => {
-    const gebraucht = await M.merkpostenVon(alle, undefined, 'EUR', { zustand: 'U' });
+    const gebraucht = await M.wantedItemsOf(alle, undefined, 'EUR', { condition: 'U' });
     assert.deepEqual(nummern(gebraucht), ['10179-1/U']);
     // Kleinschreibung soll genauso wirken — die Oberflächen schicken, was in
     // ihrem Auswahlfeld steht, und eine davon könnte 'u' schicken.
-    assert.equal((await M.merkpostenVon(alle, undefined, 'EUR', { zustand: 'u' })).length, 1);
+    assert.equal((await M.wantedItemsOf(alle, undefined, 'EUR', { condition: 'u' })).length, 1);
     // Ein unbekannter Wert heisst „beide" und nicht „keine": Eine leere Liste
     // sähe aus wie eine leere Merkliste.
-    assert.equal((await M.merkpostenVon(alle, undefined, 'EUR', { zustand: 'X' })).length, 6);
+    assert.equal((await M.wantedItemsOf(alle, undefined, 'EUR', { condition: 'X' })).length, 6);
   });
 
   await t.test('5. Sortierung: der fehlende Wert steht hinten', async () => {
     // 99999-1 hat keinen Namen (nicht im Katalog).
-    const nachName = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'name_asc' });
+    const nachName = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'name_asc' });
     assert.equal(
       nachName[nachName.length - 1].set_number,
       '99999-1',
@@ -168,12 +168,12 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     );
     assert.equal(nachName[0].name, 'Feuerwehr 5000er');
 
-    const nachPreis = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'price_desc' });
+    const nachPreis = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'price_desc' });
     assert.equal(nachPreis[0].marktpreis, 500);
     assert.equal(nachPreis[1].marktpreis, 80);
     assert.equal(nachPreis[nachPreis.length - 1].marktpreis, null, 'Ein Merkposten ohne Preis steht nicht am Ende.');
 
-    const nachNummer = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'num_asc' });
+    const nachNummer = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'num_asc' });
     assert.equal(nachNummer[0].set_number, '10179-1');
   });
 
@@ -181,9 +181,9 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     // Genau so steht es in der Route: `accounts=` geht durch blickfeldIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
     // die Doppelung, vor der src/haushalt/haushalt.ts warnt.
-    const nurEnkel = await M.merkpostenVon([U.enkel], undefined, 'EUR');
+    const nurEnkel = await M.wantedItemsOf([U.enkel], undefined, 'EUR');
     assert.deepEqual(nummern(nurEnkel), ['75192-1/N']);
-    const nurOpa = await M.merkpostenVon([U.opa], undefined, 'EUR');
+    const nurOpa = await M.wantedItemsOf([U.opa], undefined, 'EUR');
     assert.equal(nurOpa.length, 5);
   });
 
@@ -192,7 +192,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     // wäre 'constructor' ein gültiger Wert gewesen — und was dann in ORDER BY
     // landet, ist keine Sortierung mehr, sondern eine Funktion als Text.
     for (const boese of ['constructor', 'toString', '__proto__', 'gibtsnicht']) {
-      const liste = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: boese });
+      const liste = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: boese });
       assert.equal(liste.length, 6, `${boese} hat die Liste verändert`);
       assert.equal(liste[0].set_number, '75192-1', `${boese} hat die Reihenfolge verändert`);
     }
@@ -203,10 +203,10 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     // Bauen hochgezählt, und die Währung hängt sich ganz am Ende an. Verrutscht
     // eine Nummer, bekäme Postgres die Währung als Setnummer und liefe still
     // leer — kein Fehler, nur eine leere Liste.
-    const liste = await M.merkpostenVon([U.opa], undefined, 'EUR', {
-      suche: 'falcon',
-      zustand: 'N',
-      sortierung: 'num_asc',
+    const liste = await M.wantedItemsOf([U.opa], undefined, 'EUR', {
+      search: 'falcon',
+      condition: 'N',
+      sort: 'num_asc',
     });
     assert.deepEqual(nummern(liste), ['10179-1/N']);
     assert.equal(liste[0].marktpreis, 500, 'Die Währung ist beim Zählen verrutscht.');

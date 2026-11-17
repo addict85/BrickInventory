@@ -81,7 +81,7 @@ const JE_BEREICH = {
   sets: 41,
   teile: 13,
   minifigs: 8,
-  merkliste: 9,
+  wanted: 9,
   gutscheine: 16,
   sammlung: 8,
   verwaltung: 28,

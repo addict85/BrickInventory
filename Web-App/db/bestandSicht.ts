@@ -35,7 +35,8 @@ export const teilErfassungen = (konten?: Konten) =>
 export const figurErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, fig_number, unit_price FROM minifig_acquisitions${nur(konten)})`;
 
-/** Merkliste (src/merkliste): user_id, set_number, condition. */
+/** Wanted list (src/wanted); the name mirrors src/finanzen's FinanzenLesevertrag.merkliste,
+ * which is out of this phase's scope — see the Phase 2a report. */
 export const merkliste = (konten?: Konten) => `(SELECT user_id, set_number, condition FROM wanted${nur(konten)})`;
 
 /** Eigene Anleitungen (src/sets): user_id, set_number. */

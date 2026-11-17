@@ -38,7 +38,7 @@ export async function datenZip(
     k.sets.setsAlsCsv(uid),
     k.bestand.teileAlsCsv(uid),
     k.bestand.figurenAlsCsv(uid),
-    k.merkliste.merklisteAlsCsv(uid),
+    k.wanted.wantedListCsv(uid),
     k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
   ]);
   const archiv = new ZipArchive({ zlib: { level: 9 } });

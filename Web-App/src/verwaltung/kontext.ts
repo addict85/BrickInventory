@@ -15,7 +15,7 @@ import type { BilderDienste } from '../bilder';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { SetsDienste } from '../sets';
-import type { MerklisteDienste } from '../merkliste';
+import type { WantedServices } from '../wanted';
 import type { Uhr } from '../infra/uhr';
 
 export interface VerwaltungAbhaengigkeiten {
@@ -32,7 +32,7 @@ export interface VerwaltungAbhaengigkeiten {
   finanzen: FinanzenDienste;
   bestand: BestandDienste;
   sets: SetsDienste;
-  merkliste: MerklisteDienste;
+  wanted: WantedServices;
   gutscheine: GutscheineDienste;
   mail: MailDienste;
 }

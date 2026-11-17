@@ -77,14 +77,14 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
     return;
   }
   await seed();
-  const M = _req('src/merkliste/merkliste.js');
+  const M = _req('src/wanted/wanted.js');
 
   await t.test('1. Der Preis kommt als Zahl an', async () => {
     // Dass er das tut, liegt am Typ-Leser in db/database.ts (Gegenprobe c),
     // nicht am Number() in merkliste.ts. Die Prüfung
     // steht trotzdem hier: Fiele der Leser weg, verglichen beide Oberflächen
     // später Text, und das fiele sonst erst beim Sortieren auf.
-    const liste = await M.merkpostenVon([U.ich], undefined, 'EUR');
+    const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const neu = liste.find(w => w.set_number === '10179-1' && w.condition === 'N');
     assert.equal(typeof neu.marktpreis, 'number', `marktpreis ist ${typeof neu.marktpreis}`);
     assert.equal(neu.marktpreis, 500);
@@ -94,7 +94,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
   await t.test('2. Jeder Zustand bekommt SEINEN Preis', async () => {
     // Ohne die Zustandsbedingung im JOIN stünde beim gebrauchten Merkposten
     // der Neupreis — und niemand sähe es der Zahl an.
-    const liste = await M.merkpostenVon([U.ich], undefined, 'EUR');
+    const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const karte = Object.fromEntries(
       liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.marktpreis]),
     );
@@ -102,7 +102,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
   });
 
   await t.test('3. Die Währung des Lesers entscheidet', async () => {
-    const chf = await M.merkpostenVon([U.ich], undefined, 'CHF');
+    const chf = await M.wantedItemsOf([U.ich], undefined, 'CHF');
     const neu = chf.find(w => w.set_number === '10179-1' && w.condition === 'N');
     assert.equal(neu.marktpreis, 999, 'Der Preis stammt aus der falschen Währung.');
     assert.equal(neu.waehrung, 'CHF');
@@ -112,7 +112,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
     // 0 wäre „wertlos", null ist „noch keiner da" — die Oberflächen zeigen
     // dafür einen Strich. Der Unterschied ist der zwischen einer Aussage und
     // einer fehlenden Aussage.
-    const liste = await M.merkpostenVon([U.ich], undefined, 'EUR');
+    const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const ohne = liste.find(w => w.set_number === '75192-1');
     assert.equal(ohne.marktpreis, null);
   });
@@ -122,7 +122,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
     // davon ab, ob der Set-Filter gesetzt ist. Genau dort entstünde ein
     // Zahlendreher, und er wäre still: Postgres bekäme die Währung als
     // Setnummer und liefe leer.
-    const eins = await M.merkpostenVon([U.ich], '10179-1', 'EUR');
+    const eins = await M.wantedItemsOf([U.ich], '10179-1', 'EUR');
     assert.equal(eins.length, 2, `${eins.length} Zeilen statt 2 — Parameterfolge verrutscht?`);
     assert.ok(eins.every(w => w.set_number === '10179-1'));
     assert.equal(eins.find(w => w.condition === 'U').marktpreis, 300);
