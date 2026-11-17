@@ -16,7 +16,7 @@ import type { IdempotencyServices } from './idempotency';
 import type { KatalogDienste } from './katalog';
 import type { KontoDienste } from './konto';
 import type { MailDienste } from './mail';
-import type { ProfilDienste } from './profil';
+import type { ProfileServices } from './profile';
 import type { MerklisteDienste } from './merkliste';
 import type { SammlungDienste } from './sammlung';
 import type { SetsDienste } from './sets';
@@ -41,7 +41,7 @@ export interface Dienste {
   geraete: GeraeteDienste;
   faktoren: FaktorenDienste;
   konto: KontoDienste;
-  profil: ProfilDienste;
+  profile: ProfileServices;
   idempotency: IdempotencyServices;
   fremdquellen: FremdquellenDienste;
   bilder: BilderDienste;

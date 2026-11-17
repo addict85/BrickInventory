@@ -1,12 +1,12 @@
 /** Die Seiten der Oberfläche: Bilder unter /images/ und die Links aus E-Mails.
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
-import { sendeStartseite, tokenInsFragment } from '../src/profil/http/startseite';
+import { sendStartPage, tokenToFragment } from '../src/profile/http/startPage';
 import { liefereBild } from '../src/bilder/http/bildAuslieferung';
 import { waechterFuer } from './api_v1/middleware';
 import type { Dienste } from '../src/dienste';
 
-export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'profil' | 'bilder'>) {
+export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'profile' | 'bilder'>) {
   const router = express.Router();
   const { requireLoginOrToken, eingangsSperre } = waechterFuer(d.konto);
 
@@ -18,8 +18,8 @@ export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'profil' | 'bilder'>
   // Link-Scanner des Mailanbieters eine fremde Adresse.
   router.get(['/verify', '/reset-password', '/uebernahme-abbrechen', '/anmeldung-freigeben'], async (req, res) => {
     res.set('Cache-Control', 'no-store');
-    if (tokenInsFragment(req, res)) return;
-    await sendeStartseite(d.profil, res);
+    if (tokenToFragment(req, res)) return;
+    await sendStartPage(d.profile, res);
   });
   return router;
 }

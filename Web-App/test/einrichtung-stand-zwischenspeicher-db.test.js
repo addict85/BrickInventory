@@ -3,7 +3,7 @@
  * Er kostet je Aufruf rund zehn Abfragen (Entschlüsselung, Kontenzählung).
  *
  * Gegenproben (am 08.11.2026 gemessen):
- *   A  Zwischenspeicher aus einrichtungStand() entfernt
+ *   A  Zwischenspeicher aus setupStatus() entfernt
  *      → rot: „innerhalb des Fensters rechnet nur der erste Aufruf“
  *   B  beide Antworten unter demselben Schlüssel gemerkt (verwalter ignoriert)
  *      → rot: „Verwalter- und öffentliche Antwort sind getrennt“
@@ -55,7 +55,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   });
 
   const einstellungen = _req('src/einstellungen/settings.js');
-  const stand = _req('src/profil/einrichtungStand.js');
+  const stand = _req('src/profile/setupStatus.js');
   // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
   const gelesen = [];
   // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
@@ -72,20 +72,20 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   });
 
   await t.test('innerhalb des Fensters rechnet nur der erste Aufruf', async () => {
-    stand.einrichtungStandVergessen();
+    stand.forgetSetupStatus();
     gelesen.length = 0;
-    await stand.einrichtungStand();
+    await stand.setupStatus();
     const erster = gelesen.length;
     assert.ok(erster >= 5, `der Zähler sieht nichts (${erster}) — die Gegenprobe bewiese nichts`);
-    await Promise.all([stand.einrichtungStand(), stand.einrichtungStand()]);
+    await Promise.all([stand.setupStatus(), stand.setupStatus()]);
     assert.equal(gelesen.length, erster, 'weitere Aufrufe im Fenster dürfen nichts lesen');
   });
 
   await t.test('ein geschriebener Wert gilt sofort', async () => {
-    stand.einrichtungStandVergessen();
-    assert.equal((await stand.einrichtungStand()).konfiguriert, false);
+    stand.forgetSetupStatus();
+    assert.equal((await stand.setupStatus()).konfiguriert, false);
     await einstellungen.setGlobalSetting('rebrickable_api_key', 'probe');
-    assert.equal((await stand.einrichtungStand()).konfiguriert, true);
+    assert.equal((await stand.setupStatus()).konfiguriert, true);
   });
 
   await t.test('ein Wert aus einem anderen Prozess leert den Stand hier (NOTIFY)', async () => {
@@ -96,21 +96,21 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
       await zugang.benachrichtigung.close();
     });
     assert.ok(await bis(() => zugang.benachrichtigung.hoertZu('globale_einstellung')), 'kein LISTEN');
-    stand.einrichtungStandVergessen();
-    assert.equal((await stand.einrichtungStand()).konfiguriert, false);
+    stand.forgetSetupStatus();
+    assert.equal((await stand.setupStatus()).konfiguriert, false);
     // Ein zweiter Satz Dienste mit eigenen Fächern schreibt wie ein anderer Prozess.
     const anderer = _req('startup/verdrahtung.js').baueDienste(zugang);
     await anderer.einstellungen.setzeGlobalenWert('rebrickable_api_key', 'probe2');
     assert.ok(
-      await bis(async () => (await stand.einrichtungStand()).konfiguriert, 3000),
+      await bis(async () => (await stand.setupStatus()).konfiguriert, 3000),
       'der Stand hier blieb beim alten Wert, bis seine Frist ablief',
     );
   });
 
   await t.test('Verwalter- und öffentliche Antwort sind getrennt', async () => {
-    stand.einrichtungStandVergessen();
-    const verwalter = await stand.einrichtungStand({ verwalter: true });
-    const offen = await stand.einrichtungStand({ verwalter: false });
+    stand.forgetSetupStatus();
+    const verwalter = await stand.setupStatus({ isAdmin: true });
+    const offen = await stand.setupStatus({ isAdmin: false });
     assert.equal(offen.basis_url, null, 'die öffentliche Antwort darf die Basis-URL nicht tragen');
     assert.notEqual(verwalter, offen);
     const k = _req('src/infra/konfig.js').konfig();
@@ -119,9 +119,9 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
 
   await t.test('nach Abschluss wird kein Schlüssel gelesen', async () => {
     await einstellungen.setGlobalSetting('einrichtung_erledigt', '1');
-    stand.einrichtungStandVergessen();
+    stand.forgetSetupStatus();
     gelesen.length = 0;
-    const d = await stand.einrichtungStand();
+    const d = await stand.setupStatus();
     assert.equal(d.erledigt, true);
     assert.deepEqual(d.schritte, []);
     assert.deepEqual(
@@ -130,7 +130,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
       'es wurde mehr gelesen als der Abschluss',
     );
     await db.run("DELETE FROM global_settings WHERE key = 'einrichtung_erledigt'");
-    stand.einrichtungStandVergessen();
+    stand.forgetSetupStatus();
   });
 
   await t.test('die Adresse wird gebremst', async () => {

@@ -5,7 +5,7 @@ import { istVerwalter, ipThrottle } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueEinrichtungRouter(d: Pick<Dienste, 'konto' | 'profil'>) {
+export function baueEinrichtungRouter(d: Pick<Dienste, 'konto' | 'profile'>) {
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt(
@@ -13,7 +13,7 @@ export function baueEinrichtungRouter(d: Pick<Dienste, 'konto' | 'profil'>) {
     ipThrottle(d.konto, 'einrichtung-stand', 120, 10 * 60 * 1000),
     async (req, res) => {
       res.set('Cache-Control', 'no-store');
-      return { ...(await d.profil.einrichtungStand({ verwalter: istVerwalter(req) })) };
+      return { ...(await d.profile.setupStatus({ isAdmin: istVerwalter(req) })) };
     },
   );
   return router;

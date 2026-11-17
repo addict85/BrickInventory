@@ -20,7 +20,7 @@ import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { erzeugeKonto } from '../src/konto';
 import { erzeugeFaktoren } from '../src/faktoren';
-import { erzeugeProfil } from '../src/profil';
+import { createProfile } from '../src/profile';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
 import { erzeugeDrossel } from '../src/drossel';
@@ -125,7 +125,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete, faktoren },
     zeige('konto'),
   );
-  const profil = erzeugeProfil({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profil'));
+  const profile = createProfile({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profile'));
   const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
   const fremdquellen = erzeugeFremdquellen(
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
@@ -150,7 +150,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     geraete,
     faktoren,
     konto,
-    profil,
+    profile,
     idempotency,
     fremdquellen,
     bilder,

@@ -12,7 +12,7 @@
  *   C  styles.css wieder im <head> → rot: „vor dem ersten Stylesheet“
  *   D  (08.11.2026) die zwei Regeln für [data-theme=brick] aus dem Startstil
  *      gestrichen → rot: „Stein (Blau): Kopf blau, Grund blaugrau“
- *   E  in startseiteHtml() das Setzen von data-abgemeldet gestrichen → rot:
+ *   E  in startPageHtml() das Setzen von data-abgemeldet gestrichen → rot:
  *      „ohne Sitzung: keine App-Kacheln im Gerüst“; die Regel
  *      [data-abgemeldet] im Startstil gestrichen → ebenso rot
  */
@@ -25,9 +25,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stilHashDerStartseite, startseiteHtml, ohneKommentare } = _req('src/profil/indexHtml.js');
+const { startPageStyleHash, startPageHtml, stripComments } = _req('src/profile/indexHtml.js');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
-// startseiteHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
+// startPageHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
 test.after(() =>
   testDaten()
     .pool.end()
@@ -35,15 +35,15 @@ test.after(() =>
 );
 
 test('der Hash passt zum ausgelieferten Block', async () => {
-  const html = await startseiteHtml();
+  const html = await startPageHtml();
   const block = /<style id="startstil">([\s\S]*?)<\/style>/.exec(html);
   assert.ok(block, 'kein Startgerüst-Stil im ausgelieferten HTML');
   const erwartet = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
-  assert.equal(stilHashDerStartseite(false), erwartet);
+  assert.equal(startPageStyleHash(false), erwartet);
 });
 
 test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {
-  const html = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
+  const html = stripComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
   const geruest = html.indexOf('id="startgeruest"');
   assert.ok(geruest > 0);
   const erstesStylesheet = html.search(/<link rel="stylesheet"/);
@@ -102,9 +102,9 @@ test('ohne Sitzung: keine App-Kacheln im Gerüst, mit Sitzung schon', async () =
     }
   };
   assert.deepEqual(
-    sichtbar(await startseiteHtml()),
+    sichtbar(await startPageHtml()),
     [false, false, false],
     'ohne Sitzung: keine App-Kacheln im Gerüst',
   );
-  assert.deepEqual(sichtbar(await startseiteHtml(1)), [true, true, true], 'mit Sitzung: Kopf, Leiste und Kacheln');
+  assert.deepEqual(sichtbar(await startPageHtml(1)), [true, true, true], 'mit Sitzung: Kopf, Leiste und Kacheln');
 });

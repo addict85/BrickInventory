@@ -31,7 +31,7 @@ export function baueApiRouter(
     | 'haushalt'
     | 'geraete'
     | 'konto'
-    | 'profil'
+    | 'profile'
     | 'katalog'
     | 'fremdquellen'
     | 'bilder'

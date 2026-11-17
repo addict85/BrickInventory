@@ -71,7 +71,7 @@ const JE_BEREICH = {
   geraete: 6,
   faktoren: 18,
   konto: 65,
-  profil: 3,
+  profile: 3,
   idempotency: 8,
   fremdquellen: 12,
   bilder: 29,

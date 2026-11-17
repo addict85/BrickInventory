@@ -22,7 +22,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   // und dann prueft sie irgendwann die Schreibweise statt der Sache. …
   const kandidaten = [];
   for (const m of src.matchAll(/^\s*app\.get\('([^']+)'/gm)) {
-    if (/startseiteHtml|sendeStartseite/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
+    if (/startPageHtml|sendStartPage/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
   }
   assert.ok(kandidaten.length, 'Keine Route rendert mehr index.html — Suche veraltet?');
   const muster = kandidaten.find(k => k.includes('*'));

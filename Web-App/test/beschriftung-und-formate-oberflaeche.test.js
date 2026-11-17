@@ -33,7 +33,7 @@
  *      Sammlung“
  *   H  sammlungUntertitel() in initScopeSelects nicht aufgerufen → rot:
  *      „Haushalt im Untertitel“ (13.11.2026)
- *   I  versionEinsetzen() gibt das HTML unverändert zurück → rot: „Version in
+ *   I  insertVersion() gibt das HTML unverändert zurück → rot: „Version in
  *      der Anmeldemaske“
  */
 const test = require('node:test');
@@ -289,10 +289,10 @@ test('Haushalt im Untertitel', async () => {
 });
 
 test('Version in der Anmeldemaske', () => {
-  const { versionEinsetzen } = require('./helpers/sources').buildAndRequire()('src/profil/indexHtml.js');
+  const { insertVersion } = require('./helpers/sources').buildAndRequire()('src/profile/indexHtml.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.doesNotMatch(html, /Build 20\d\d\./, 'festes Datum in index.html');
-  assert.match(versionEinsetzen(html, 'ab341de'), /<div class="start-fuss" data-version>Version ab341de<\/div>/);
-  assert.match(versionEinsetzen(html, 'unbekannt'), /<div class="start-fuss" data-version><\/div>/);
-  assert.doesNotMatch(versionEinsetzen(html, '<b>x'), /<b>/);
+  assert.match(insertVersion(html, 'ab341de'), /<div class="start-fuss" data-version>Version ab341de<\/div>/);
+  assert.match(insertVersion(html, 'unbekannt'), /<div class="start-fuss" data-version><\/div>/);
+  assert.doesNotMatch(insertVersion(html, '<b>x'), /<b>/);
 });

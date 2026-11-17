@@ -11,7 +11,7 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
 export function baueSettingsGlobalRouter(
-  d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profil' | 'verwaltung'>,
+  d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profile' | 'verwaltung'>,
 ) {
   const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
@@ -137,7 +137,7 @@ export function baueSettingsGlobalRouter(
 
   router.endpunkt('POST /api/v1/settings/admin/theme', requireAdmin, async req => {
     const theme = req.eingabe.theme;
-    await d.profil.setzeGlobalesDesign(theme);
+    await d.profile.setGlobalTheme(theme);
     return { theme };
   });
   return router;

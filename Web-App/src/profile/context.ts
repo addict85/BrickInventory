@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services get; separate from area.ts so no import cycle forms. */
 import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { Kontext } from '../infra/bereich';
@@ -8,7 +8,7 @@ import type { KontoDienste } from '../konto';
 import type { MailDienste } from '../mail';
 import type { Uhr } from '../infra/uhr';
 
-export interface ProfilAbhaengigkeiten {
+export interface ProfileDependencies {
   konfig: Readonly<Konfig>;
   db: Db;
   uhr: Uhr;
@@ -18,6 +18,6 @@ export interface ProfilAbhaengigkeiten {
   mail: MailDienste;
 }
 
-/** Eigene Tabellen hat das Profil nicht: Es liest und schreibt über Konto und Einstellungen. */
-export const zugang = (_db: Db) => ({});
-export type ProfilKontext = Kontext<ProfilAbhaengigkeiten, ReturnType<typeof zugang>>;
+/** The profile has no tables of its own: it reads and writes through account and settings. */
+export const access = (_db: Db) => ({});
+export type ProfileContext = Kontext<ProfileDependencies, ReturnType<typeof access>>;

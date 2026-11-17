@@ -3,10 +3,10 @@
  * ohne Schlüssel; der Eingang lässt ohne Sitzung nur diesen Pfad durch.
  *
  * Gegenproben:
- *   A  Konten-Zähler in einrichtungStand.ts entfernt → rot: „für den Verwalter steht das Konto erst auf bereit, …“
+ *   A  Konten-Zähler in setupStatus.ts entfernt → rot: „für den Verwalter steht das Konto erst auf bereit, …“
  *   B  Pfad aus OEFFENTLICH gestrichen               → rot: 401 statt 200
  *   C  users-Zeile in die Antwort übernommen         → rot: „keine Adressen, keine Namen“
- *   D  BrickLink-/Rebrickable-Prüfung in einrichtungStand.ts entfernt → rot: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
+ *   D  BrickLink-/Rebrickable-Prüfung in setupStatus.ts entfernt → rot: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
  *   E  in routes/api_v1/einrichtung.ts `verwalter: true` fest gesetzt (07.11.2026)
  *      → rot: „ohne Verwalter verrät der Stand kein Startpasswort“
  *

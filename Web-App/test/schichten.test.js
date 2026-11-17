@@ -940,7 +940,7 @@ const STUFEN = [
   ['src/fremdquellen'],
   ['src/haushalt', 'src/geraete', 'src/faktoren'],
   ['src/konto'],
-  ['src/bilder', 'src/profil'],
+  ['src/bilder', 'src/profile'],
   ['src/idempotency', 'src/katalog'],
   ['src/finanzen'],
   ['src/bestand'],

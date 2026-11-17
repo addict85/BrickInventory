@@ -233,7 +233,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 9 | `src/fremdquellen` |
 | 10 | `src/haushalt`, `src/geraete`, `src/faktoren` |
 | 11 | `src/konto` |
-| 12 | `src/bilder`, `src/profil` |
+| 12 | `src/bilder`, `src/profile` |
 | 13 | `src/idempotency`, `src/katalog` |
 | 14 | `src/finanzen` |
 | 15 | `src/bestand` |

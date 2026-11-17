@@ -119,7 +119,7 @@ async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: numb
   } as const;
 }
 
-export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'faktoren' | 'profil'>) {
+export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'faktoren' | 'profile'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 

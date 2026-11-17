@@ -10,7 +10,7 @@ import { fachfehler } from '../../src/infra/fehlerTexte';
 import { eigenerZugang } from '../../src/konto';
 
 export function baueSettingsRouter(
-  d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'profil' | 'verwaltung'>,
+  d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'profile' | 'verwaltung'>,
 ) {
   const { requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');

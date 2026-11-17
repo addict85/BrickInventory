@@ -9,7 +9,7 @@
  *      „ein servergesetzter Wert gilt …“ (Abruf trotz Serverwert)
  *   C  konto.js: applyTheme() gibt null zurück statt __bimApplyTheme →
  *      rot „applyTheme läuft über den Boot-Helfer“
- *   D  routes/api_v1/settings.ts: vergissDesign() im Admin-Speichern
+ *   D  routes/api_v1/settingsGlobal.ts: forgetTheme() im Admin-Speichern
  *      entfernt → rot „der Server setzt data-theme selbst …“ (brick statt noppe)
  *   Gestrichen „GET /api/settings/theme ist ohne Login erreichbar“: deckt
  *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
@@ -206,9 +206,9 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
-  const { vergissDesign } = _req('src/profil/indexHtml.js');
-  const sendeStartseite = (...a) =>
-    _req('src/profil/http/startseite.js').sendeStartseite(require('./helpers/sources').testDienste().profil, ...a);
+  const { forgetTheme } = _req('src/profile/indexHtml.js');
+  const sendStartPage = (...a) =>
+    _req('src/profile/http/startPage.js').sendStartPage(require('./helpers/sources').testDienste().profile, ...a);
   const name = `theme_admin_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const admin = (
@@ -223,15 +223,15 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
     await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});
     if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
     else await setGlobalSetting('app_theme', vorher);
-    vergissDesign();
+    forgetTheme();
     await db.pool.end().catch(() => {});
   });
   await setGlobalSetting('app_theme', 'brick');
-  vergissDesign();
+  forgetTheme();
 
   const startseite = async () => {
     let gesendet = '';
-    await sendeStartseite({
+    await sendStartPage({
       type: () => ({
         send: b => {
           gesendet = b;
