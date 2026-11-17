@@ -14,7 +14,7 @@ import {
   kachelName,
 } from './bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { escHex, esc, html, ungeprueft, verbinde } from './escapen.js';
+import { escHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './bilder.js';
 import {
@@ -243,7 +243,7 @@ export function renderFigs(list, target) {
           )}</td>
           <td data-stil="max-width:200px">${f.fig_name || '—'}</td>
           <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity || f.quantity}</span></td>
-          <td data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(erfasst)}</td>
+          <td data-stil="font-size:var(--fs-1);color:var(--mut)">${rawHtml(erfasst)}</td>
         </tr>`;
       })}</tbody></table></div>`,
     );
@@ -264,7 +264,7 @@ export function renderFigs(list, target) {
       ([label, figs]) => html`
     <div class="parts-group">
       <div class="group-hd">
-        ${ico('set')}<span class="group-title">${ungeprueft(label)}</span>
+        ${ico('set')}<span class="group-title">${rawHtml(label)}</span>
         <span class="group-sub">${tRaw('parts.group_types', { n: figs.length })}</span>
       </div>
       <div class="parts-grid">
@@ -295,14 +295,14 @@ export function renderFigs(list, target) {
           // `source=set` laedt.
           const k = kachelName();
           return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
-            ${ungeprueft(delBtn)}
+            ${rawHtml(delBtn)}
             ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${f.fig_number}</div>
             <div class="part-name">${f.fig_name || '—'}</div>
             <div class="kachel-mehr"${k.teil(0)}>
             <div class="part-qty">×${f.total_quantity || f.quantity}</div>
-            ${ungeprueft(condBadge)}
-            ${ungeprueft(besitzer)}
+            ${rawHtml(condBadge)}
+            ${rawHtml(besitzer)}
             ${erfasst ? html`<div data-stil="font-size:var(--fs-0);color:var(--mut)">${tRaw('gallery.card.bought')} ${erfasst}</div>` : ''}
             </div>
           </div>`;
@@ -429,14 +429,14 @@ export function renderManualFigsTable() {
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" data-taste="${tRaw('kachel.entf')}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
-        ${ungeprueft(img)}
+        ${rawHtml(img)}
         <div class="man-tile-num">${f.fig_number}</div>
         <div class="man-tile-name">${f.fig_name || '—'}</div>
         <div class="kachel-mehr"${k.teil(0)}>
         <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
-          <span class="qbadge">×${f.quantity}</span>${ungeprueft(condBadge)}${ownerBadges(f)}
+          <span class="qbadge">×${f.quantity}</span>${rawHtml(condBadge)}${ownerBadges(f)}
         </div>
-        <div class="preis man-preis">${ungeprueft(priceStr)}</div>
+        <div class="preis man-preis">${rawHtml(priceStr)}</div>
         </div>
       </div>`;
     })}
@@ -637,10 +637,10 @@ export function manuelleTabelle(posten, art) {
       <td>${condBadges(p)}</td>
       <td class="preis">${preis != null ? fmtN(preis, accountCurrency) : '—'}</td>
       <td data-stil="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
-      <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${ungeprueft(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
+      <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${rawHtml(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return html`<div class="tw"><table class="dt" aria-label="${tRaw(istTeil ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${ungeprueft(h)}</th>`)}</tr></thead><tbody>${verbinde(posten.map(zeile))}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw(istTeil ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${rawHtml(h)}</th>`)}</tr></thead><tbody>${joinHtml(posten.map(zeile))}</tbody></table></div>`;
 }
 
 /**

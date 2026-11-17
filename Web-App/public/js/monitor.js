@@ -1,6 +1,6 @@
 // Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
 import { echt, registerActions } from './registry.js';
-import { alsHtml, escHtmlAttr, esc, html, ungeprueft } from './escapen.js';
+import { asHtml, escHtmlAttr, esc, html, rawHtml } from './escaping.js';
 import { api, apiDaten } from './api.js';
 import { ico, G, setzeHtml, wennSichtbar } from './dom.js';
 import { fmtDatum } from './format.js';
@@ -113,7 +113,7 @@ function openLogViewer() {
     '"></script>' +
     '</body></html>';
 
-  win.document.write(alsHtml(ungeprueft(markup)));
+  win.document.write(asHtml(rawHtml(markup)));
   win.document.close();
 }
 
@@ -351,7 +351,7 @@ export async function loadMonitor() {
     if (panelHTML !== null) {
       const neu = G('brickset-queue-panel');
       if (neu) {
-        setzeHtml(neu, ungeprueft(panelHTML));
+        setzeHtml(neu, rawHtml(panelHTML));
         neu.style.display = 'block';
         const knopf = el.querySelector('[data-click="toggleBricksetQueue"] span');
         if (knopf) knopf.textContent = tRaw('monitor.collapse');
@@ -463,8 +463,8 @@ const auftragsZeile = (a, mehrfach) => {
   return html`<tr>
     <td><strong>${artName(a.type)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}${rolle ? html` <span class="mon-rolle">${rolle}</span>` : ''}</td>
     <td><span class="mon-zustand mon-${wartet ? 'wartet' : a.status}">${wartet ? tRaw('monitor.auftraege.wartet') : statusName(a.status)}</span></td>
-    <td>${ungeprueft(wann)}</td>
-    <td>${ungeprueft(hinweis)}</td>
+    <td>${rawHtml(wann)}</td>
+    <td>${rawHtml(hinweis)}</td>
     <td><div class="mon-knoepfe">${aktion}</div></td>
   </tr>`;
 };
@@ -493,7 +493,7 @@ async function zeigeAuftraege() {
       naechster[a.type] = a.due_at;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const ziffer = (/** @type {number | undefined} */ n, klasse = '') =>
-    html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
+    html`<span class="mon-ziffer${n ? html`${' '}${rawHtml(klasse)}` : ' null'}">${n || 0}</span>`;
   const mehr = d.auftraege.length - 40;
   /** @type {Record<string, number>} */
   const nachFehler = {};

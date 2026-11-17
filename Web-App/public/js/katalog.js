@@ -11,7 +11,7 @@ import { betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { setScrollLabel } from './rollbalken.js';
 import { setLastImportAt, loggedInAccount, settingsSnapshot } from './state.js';
-import { esc, html, verbinde } from './escapen.js';
+import { esc, html, joinHtml } from './escaping.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 
@@ -249,13 +249,13 @@ async function loadCatalogSets() {
     const anzahl = seite === _catPageCount ? _catTotal - (seite - 1) * CAT_LIMIT : CAT_LIMIT;
     bloecke.push(
       seite === 1
-        ? html`<div class="sgrid cat-page" data-page="1">${verbinde(_catItems.map(catCard))}</div>`
+        ? html`<div class="sgrid cat-page" data-page="1">${joinHtml(_catItems.map(catCard))}</div>`
         : // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25 000
           // Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
           html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`,
     );
   }
-  setzeHtml(grid, verbinde(bloecke));
+  setzeHtml(grid, joinHtml(bloecke));
   _catLoadedPages.add(1);
   _ladeJahrVerteilung();
   _setzePlatzhalterHoehe();
@@ -383,7 +383,7 @@ export async function ladeSeite(seite) {
     block.classList.add('sgrid');
     block.style.height = '';
     block.removeAttribute('data-anzahl');
-    setzeHtml(block, verbinde(d.sets.map(catCard)));
+    setzeHtml(block, joinHtml(d.sets.map(catCard)));
     _catLoadedPages.add(seite);
     _catItems = _catItems.concat(d.sets);
     // Die Blockhöhen haben sich geändert — neu messen, dann nachsehen, was jetzt zusätzlich im Bild steht.

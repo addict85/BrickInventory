@@ -1,4 +1,4 @@
-import { html, sichereUrl, ungeprueft } from './escapen.js';
+import { html, safeUrl, rawHtml } from './escaping.js';
 import { ico, setzeHtml } from './dom.js';
 
 // Bildadressen und Platzhalter. Fremde Bilder gehen nur über den Proxy des Servers; was nicht lädt, zeigt den
@@ -12,7 +12,7 @@ import { ico, setzeHtml } from './dom.js';
  *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
  */
 export function bildTag(o) {
-  return html`${html`<img src="${sichereUrl(o.src)}" alt="${o.alt || ''}"${o.klasse ? html` class="${o.klasse}"` : ''}`}${html` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${o.ph || 'set'}"`}${html`${o.orig ? html` data-orig="${sichereUrl(o.orig)}"` : ''}${o.fade ? html` data-fade="1"` : ''}`}${html`${o.stil ? html` data-stil="${o.stil}"` : ''}${o.extra ? html`${' '}${ungeprueft(o.extra)}` : ''} />`}`;
+  return html`${html`<img src="${safeUrl(o.src)}" alt="${o.alt || ''}"${o.klasse ? html` class="${o.klasse}"` : ''}`}${html` loading="lazy" decoding="async" data-onerror="platzhalter" data-ph="${o.ph || 'set'}"`}${html`${o.orig ? html` data-orig="${safeUrl(o.orig)}"` : ''}${o.fade ? html` data-fade="1"` : ''}`}${html`${o.stil ? html` data-stil="${o.stil}"` : ''}${o.extra ? html`${' '}${rawHtml(o.extra)}` : ''} />`}`;
 }
 
 /**

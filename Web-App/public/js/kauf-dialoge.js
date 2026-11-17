@@ -1,7 +1,7 @@
 import { emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
-import { esc, html } from './escapen.js';
+import { esc, html } from './escaping.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { betragFuerFeld } from './format.js';

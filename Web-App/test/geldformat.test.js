@@ -22,7 +22,7 @@ const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche')
  * Hat dieser Aufruf ein ZWEITES Argument?
  *
  * Ein Muster wie /fmtN\([^)]*,/ reicht nicht: Die Argumente enthalten selbst
- * Klammern (`fmtN(v.total_value, v.currency || kontoWaehrung)`) und Aufrufe. Deshalb
+ * Klammern (`fmtN(v.total_value, v.currency || accountCurrency)`) und Aufrufe. Deshalb
  * wird die Klammertiefe mitgezählt und nur ein Komma auf Ebene 1 gewertet.
  */
 function hatZweitesArgument(src, ab) {

@@ -6,17 +6,17 @@ import { fmtBig, fmtPct, istGeschenk } from './format.js';
 import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { registerActions, resolveAction } from './registry.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html, rawHtml } from './escaping.js';
 import { loggedInAccount, accountCurrency } from './state.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
  *
- * @param {string | import('./escapen.js').SicheresHtml} label     Beschriftung links. Wird NICHT escaped: Alle
+ * @param {string | import('./escaping.js').SafeHtml} label     Beschriftung links. Wird NICHT escaped: Alle
  *                           Aufrufer geben hier eine Übersetzung t(...), und
  *                           die ist bereits sicher. Ein escape hier würde die
  *                           Sonderzeichen der Übersetzungen zerstören.
- * @param {import('./escapen.js').Markup | string} wert      Inhalt rechts. Wird NICHT escaped — viele
+ * @param {import('./escaping.js').Markup | string} wert      Inhalt rechts. Wird NICHT escaped — viele
  *                           Aufrufer geben absichtlich Markup mit (Eingabe-
  *                           felder, Farbpunkte, Knöpfe). Wer Nutzertext
  *                           einsetzt, escaped ihn selbst mit esc().
@@ -32,12 +32,12 @@ export function detailZeile(label, wert, o = {}) {
   const zKlasse = o.klasse ? ` ${o.klasse}` : '';
   const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
   const wId = o.wertId ? ` id="${o.wertId}"` : '';
-  const [l, i, s] = [ungeprueft(label), ungeprueft(wId), ungeprueft(wStil)];
-  const v = typeof wert === 'string' ? ungeprueft(wert) : wert;
+  const [l, i, s] = [rawHtml(label), rawHtml(wId), rawHtml(wStil)];
+  const v = typeof wert === 'string' ? rawHtml(wert) : wert;
   const paar = o.paar
     ? html`<dt class="dl">${l}</dt><dd class="dv"${i}${s}>${v}</dd>`
     : html`<span class="dl">${l}</span><span class="dv"${i}${s}>${v}</span>`;
-  return html`<div class="dr${zKlasse}"${ungeprueft(zStil)}>${paar}</div>`;
+  return html`<div class="dr${zKlasse}"${rawHtml(zStil)}>${paar}</div>`;
 }
 
 /**
@@ -53,7 +53,7 @@ export function ladeAnzeige(text, o = {}) {
   const inhalt = o.klein
     ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
-  return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${ungeprueft(stil)}>`}${html`<span class="vh">${text ? ungeprueft(text) : tRaw('common.loading')}</span>${ungeprueft(inhalt)}</div>`}`;
+  return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${rawHtml(stil)}>`}${html`<span class="vh">${text ? rawHtml(text) : tRaw('common.loading')}</span>${rawHtml(inhalt)}</div>`}`;
 }
 
 /**
@@ -66,7 +66,7 @@ export function ladeAnzeige(text, o = {}) {
 export function skelettKacheln(anzahl, text, art = 'set') {
   const raster = art === 'teil' ? 'parts-grid' : 'sgrid';
   const kachel = html`<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
-  return html`<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${Array.from({ length: anzahl }, () => kachel)}</div>`;
+  return html`<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${rawHtml(text)}</span>${Array.from({ length: anzahl }, () => kachel)}</div>`;
 }
 
 /**
@@ -77,7 +77,7 @@ export function skelettKacheln(anzahl, text, art = 'set') {
 export function skelettZeilen(anzahl, text) {
   const zeile =
     '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
-  return html`<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${ungeprueft(zeile.repeat(anzahl))}</div>`;
+  return html`<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${rawHtml(text)}</span>${rawHtml(zeile.repeat(anzahl))}</div>`;
 }
 
 /**
@@ -109,7 +109,7 @@ export function fehlerZustand(o) {
   const details = o.details
     ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${o.details}</code></details>`
     : '';
-  return html`${html`<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${o.titel || tRaw('liste.fehler_titel')}</h2><p>${o.grund || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-lesend data-click="${o.erneut}"${ungeprueft(arg)}>${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
+  return html`${html`<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${o.titel || tRaw('liste.fehler_titel')}</h2><p>${o.grund || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-lesend data-click="${o.erneut}"${rawHtml(arg)}>${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
 }
 
 /**
@@ -182,7 +182,7 @@ export function teileAufschluesselung(ausSets, einzeln) {
  * für die Maus anklickbar, nimmt aber keinen Fokus mehr; eine fokussierbare <tr> nannte Vorlesern weder
  * Rolle noch Ziel.
  * @param {{ click: string, arg?: string | number, arg2?: string | number, arg3?: string | number }} ziel
- * @param {import('./escapen.js').Markup | string} sichtbar  Inhalt der Zelle
+ * @param {import('./escaping.js').Markup | string} sichtbar  Inhalt der Zelle
  * @param {string} name  Name des Knopfs; enthält den sichtbaren Text
  * Inhalt in einem <span>: Im Flex-Knopf fiele sonst der Abstand in „Brick 2 x 4 (Schwarz)“ weg.
  */
@@ -203,10 +203,10 @@ export function kachelName(teile = 1) {
 }
 
 /** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.
- * @param {string | import('./escapen.js').SicheresHtml} markup schon maskiertes Markup */
+ * @param {string | import('./escaping.js').SafeHtml} markup schon maskiertes Markup */
 export function geschaetztKauf(markup) {
   const hinweis = tRaw('acq.geschaetzt');
-  return html`<span class="kauf-geschaetzt" title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${ungeprueft(String(markup))}</span>`;
+  return html`<span class="kauf-geschaetzt" title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${rawHtml(String(markup))}</span>`;
 }
 
 /**

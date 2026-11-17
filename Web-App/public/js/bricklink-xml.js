@@ -7,7 +7,7 @@
  * BrickLink-Hilfe 207: „maximum file size allowed for upload is 204800 bytes". Einmal benannt, weil die Zahl
  * sonst im Bauteil und in seinem Test zweimal stünde.
  */
-import { esc } from './escapen.js';
+import { esc } from './escaping.js';
 
 export const BL_UPLOAD_MAX_BYTES = 204800;
 

@@ -12,7 +12,7 @@ import {
 } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { escJs, esc, html, ungeprueft } from './escapen.js';
+import { escJs, esc, html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './dom.js';
@@ -102,7 +102,7 @@ function geschaetztMarke(it, markup) {
   if (!it.estimated_from_parts) return markup;
   const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
   const hinweis = esc(tRaw('finance.aus_teilen_geschaetzt', { p }));
-  return html`<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${ungeprueft(markup)}</span>`;
+  return html`<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${rawHtml(markup)}</span>`;
 }
 
 /** Am Telefon fehlt die Kaufpreisspalte; die Zeile darunter sagt dann, dass der Kaufpreis geschätzt ist.
@@ -152,13 +152,13 @@ function pmRow(it, label, acq, lage, text) {
       : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
   // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer gesetzt — der Zweig war tot und hätte
   // als Inline-Handler die CSP blockiert.
-  return html`<tr class="zeiger" ${ungeprueft(manArgs(it))}>
+  return html`<tr class="zeiger" ${rawHtml(manArgs(it))}>
     <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manZiel(it), ungeprueft(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(it, lage.mehrereKonten)}</span><span class="fin-unter">×${qty}${unterKauf(purchase, qty, cur)}${unterGeschaetzt(acq)}</span></td>
+      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manZiel(it), rawHtml(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(it, lage.mehrereKonten)}</span><span class="fin-unter">×${qty}${unterKauf(purchase, qty, cur)}${unterGeschaetzt(acq)}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
-    <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
-    <td class="fin-wert price-total zahl">${total > 0 ? ungeprueft(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), String(wertMitStueck(total, current, qty, cur)))) : ohneMarkt()}</td>
+    <td class="fin-detail price-cell zahl">${rawHtml(einstandZelle(purchase, qty, cur, acq))}</td>
+    <td class="fin-wert price-total zahl">${total > 0 ? rawHtml(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), String(wertMitStueck(total, current, qty, cur)))) : ohneMarkt()}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status">${priceStatusBadge({ no_price: !(current > 0) })}</td>
   </tr>`;
@@ -189,8 +189,8 @@ function manuellerAbschnitt(o) {
   const fuss = html`<tfoot><tr><td colspan="4" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(o.kauf, o.wert, o.cur)}<td colspan="2"></td></tr></tfoot>`;
   return html`
     <div class="tw abstand-o-125" data-fin-art="${o.art}" tabindex="0" role="region" aria-label="${o.titel}">
-      <h2 class="ctitle fin-abschnitt">${ico(o.symbol)} ${ungeprueft(o.titel)}</h2>
-      <table class="dt dt-fin" aria-label="${o.titel}">${PM_COLGROUP}${pmTableHead()}<tbody>${ungeprueft(o.zeilen)}</tbody>${fuss}</table>
+      <h2 class="ctitle fin-abschnitt">${ico(o.symbol)} ${rawHtml(o.titel)}</h2>
+      <table class="dt dt-fin" aria-label="${o.titel}">${PM_COLGROUP}${pmTableHead()}<tbody>${rawHtml(o.zeilen)}</tbody>${fuss}</table>
     </div>`;
 }
 
@@ -217,7 +217,7 @@ function setRow(s, acq, lage) {
     <td class="fin-name">${zeilenKnopf({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(s, lage.mehrereKonten)}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${unterKauf(purchase, qty, cur)}${unterGeschaetzt(acq)}</span></td>
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
-  <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
+  <td class="fin-detail price-cell zahl">${rawHtml(einstandZelle(purchase, qty, cur, acq))}</td>
   <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? wertMitStueck(Number(total), Number(market), qty, cur) : ohneMarkt()}</td>
   <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
@@ -226,7 +226,7 @@ function setRow(s, acq, lage) {
 
 /** @param {string} rows @param {{ sets: number }} einstand @param {number} setsQtyAvg @param {string} cur */
 function setsTabelle(rows, einstand, setsQtyAvg, cur) {
-  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
+  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${rawHtml(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
 }
 
 /** Gesamtsumme unter allen Abschnitten. Die Summe je Bereich steht schon unter seiner Tabelle; hier noch
@@ -236,7 +236,7 @@ function setsTabelle(rows, einstand, setsQtyAvg, cur) {
  * @param {{ ohneMarkt: number }} basis */
 function summenTabelle(einstand, wert, cur, basis) {
   const zeile = (/** @type {string} */ name, /** @type {number} */ kauf, /** @type {number} */ w, zusatz = '') =>
-    html`<tr><td class="fin-fuss-name">${ungeprueft(name)}</td>${summenZellen(kauf, w, cur, zusatz)}</tr>`;
+    html`<tr><td class="fin-fuss-name">${rawHtml(name)}</td>${summenZellen(kauf, w, cur, zusatz)}</tr>`;
   return html`
     <div class="tw abstand-o-125">
       <table class="dt dt-summe" aria-label="${tRaw('finance.sum')}">
@@ -254,7 +254,7 @@ function finanzenLaedt() {
   G('fin-sum').hidden = false;
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').setAttribute('aria-busy', 'true');
-    for (const id of KENNZAHLEN) setzeHtml(G(id), ungeprueft(WERT_SKELETT));
+    for (const id of KENNZAHLEN) setzeHtml(G(id), rawHtml(WERT_SKELETT));
   }
   // Ein Fehler vom letzten Mal bleibt nicht stehen, während neu geladen wird.
   const kurve = G('portfolio-chart');
@@ -422,7 +422,7 @@ function einstandBetrag(stueck, menge, cur, acq) {
  */
 function preisKoepfe(sortierbar = false) {
   const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) =>
-    html`<th class="zahl" title="${tRaw(lang)}"${sortStand('guv', sortierbar)}>${sortKnopf('guv', sortierbar, html`<span aria-hidden="true">${ungeprueft(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span>`)}</th>`;
+    html`<th class="zahl" title="${tRaw(lang)}"${sortStand('guv', sortierbar)}>${sortKnopf('guv', sortierbar, html`<span aria-hidden="true">${rawHtml(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span>`)}</th>`;
   return html`${html`<th class="zahl"${sortStand('kauf', sortierbar)}>${sortKnopf('kauf', sortierbar, tRaw('finance.col.purchase'))}</th>`}${html`<th class="zahl"${sortStand('wert', sortierbar)}>${sortKnopf('wert', sortierbar, tRaw('finance.grand.value'))}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
 }
 
@@ -442,7 +442,7 @@ function sortStand(feld, an) {
   if (!an) return '';
   return html` aria-sort="${_finSort.feld === feld ? (_finSort.ab ? 'descending' : 'ascending') : 'none'}"`;
 }
-/** @param {string} feld @param {boolean} an @param {import('./escapen.js').Markup | string} inhalt */
+/** @param {string} feld @param {boolean} an @param {import('./escaping.js').Markup | string} inhalt */
 function sortKnopf(feld, an, inhalt) {
   return an
     ? html`<button type="button" class="sort-knopf" data-click="finSortiere" data-arg="${feld}">${inhalt}</button>`
@@ -589,7 +589,7 @@ function finMehr() {
 function legende() {
   const eintrag = (
     /** @type {string} */ klasse,
-    /** @type {import('./escapen.js').Markup | string} */ zeichen,
+    /** @type {import('./escaping.js').Markup | string} */ zeichen,
     /** @type {string} */ text,
   ) =>
     html`<span class="legende-eintrag"><span class="legende-zeichen pst ${klasse}" aria-hidden="true">${zeichen}</span> ${text}</span>`;

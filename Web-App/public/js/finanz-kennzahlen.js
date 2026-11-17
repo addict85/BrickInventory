@@ -1,7 +1,7 @@
 // Finanzen: die Karten über der Tabelle (Kaufpreis, Marktwert, Gewinn/Verlust) und die Zeile, worüber sie rechnen.
 import { pnlBadge } from './bausteine.js';
 import { tRaw } from '../i18n.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtN } from './format.js';
 

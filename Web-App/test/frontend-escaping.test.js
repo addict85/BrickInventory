@@ -13,8 +13,8 @@ const FILES = fs
   .filter(f => istAppModul(f))
   .sort();
 
-// Die Helfer selbst, nicht nachgebaut: escapen.js ist DOM-frei und lädt in Node.
-const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escapen.js')).href);
+// Die Helfer selbst, nicht nachgebaut: escaping.js ist DOM-frei und lädt in Node.
+const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escaping.js')).href);
 const loadHelpers = () => helfer;
 
 test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
@@ -27,9 +27,9 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
   assert.equal(esc(undefined), '');
 });
 
-// Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von sichereUrl() entfernt → rot: „/\\host“ kam durch.
-test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', async () => {
-  const { sichereUrl } = await loadHelpers();
+// Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von safeUrl() entfernt → rot: „/\\host“ kam durch.
+test('safeUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', async () => {
+  const { safeUrl } = await loadHelpers();
   for (const gut of [
     '/img/a.png',
     '/',
@@ -38,7 +38,7 @@ test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', a
     'data:image/png;base64,AAAA',
     ' /pfad ',
   ])
-    assert.equal(sichereUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
+    assert.equal(safeUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
   for (const schlecht of [
     '//evil.example/x',
     '/\\evil.example/x',
@@ -53,7 +53,7 @@ test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', a
     null,
     undefined,
   ])
-    assert.equal(sichereUrl(schlecht), '', `„${schlecht}“ kam durch`);
+    assert.equal(safeUrl(schlecht), '', `„${schlecht}“ kam durch`);
 });
 
 test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
@@ -88,7 +88,7 @@ test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
 });
 
 // ── Statische Sink-Prüfung ──────────────────────────────────────────────────
-const SAFE = /^\s*(esc|escJs|escUrl|sichereUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
+const SAFE = /^\s*(esc|escJs|escUrl|safeUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
 const DATA_FIELD =
   /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
 
@@ -123,9 +123,9 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
 });
 
 test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
-  // Alle Maskierer liegen in escapen.js (DOM-frei, auch der BrickLink-Export
+  // Alle Maskierer liegen in escaping.js (DOM-frei, auch der BrickLink-Export
   // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
-  const zuhause = { esc: 'escapen.js', escJs: 'escapen.js', escUrl: 'escapen.js', escHex: 'escapen.js' };
+  const zuhause = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
   for (const [name, datei] of Object.entries(zuhause)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')),
@@ -181,9 +181,9 @@ test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
       if (/^\s*(\/\/|\*)/.test(line)) return;
       if (!/<\w/.test(line)) return; // kein HTML-Kontext
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
-        // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch ungeprueft().
+        // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch rawHtml().
         const vor = src.lastIndexOf('`', zeileAb + (m.index ?? 0));
-        if (src.slice(vor - 4, vor) === 'html' && !/ungeprueft\(/.test(m[1])) continue;
+        if (src.slice(vor - 4, vor) === 'html' && !/rawHtml\(/.test(m[1])) continue;
         // Zeichenkettenliterale entfernen, damit Übersetzungsschlüssel
         // ('…error') nicht als Datenfeld gelten.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");

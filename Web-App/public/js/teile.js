@@ -13,7 +13,7 @@ import {
 } from './bausteine.js';
 import { registerActions, echt } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, esc, html, ungeprueft } from './escapen.js';
+import { escHex, esc, html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { loadGuard } from './load-guard.js';
 import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './bilder.js';
@@ -68,7 +68,7 @@ async function loadPartsStats() {
   const felder = ['ps-total', 'ps-unique', 'ps-colors'];
   const box = G('parts-stats-bar');
   if (!G('ps-total').dataset.geladen) {
-    for (const id of felder) setzeHtml(G(id), ungeprueft(WERT_SKELETT));
+    for (const id of felder) setzeHtml(G(id), rawHtml(WERT_SKELETT));
     box?.setAttribute('aria-busy', 'true');
   }
   const d = await api('GET', `/v1/parts/stats${scopeQuery('parts')}`);
@@ -634,15 +634,15 @@ export function renderManualParts() {
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${p.part_number}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}" data-taste="${tRaw('kachel.entf')}" title="${t('parts.delete.title')}">${TRASH_ICON_SVG}</span></div>
-        ${ungeprueft(img)}
+        ${rawHtml(img)}
         <div class="man-tile-num" title="${p.part_number}">${p.bl_part_number || p.part_number}</div>
         <div class="man-tile-name">${p.part_name || '—'}</div>
-        ${ungeprueft(colorRow)}
+        ${rawHtml(colorRow)}
         <div class="kachel-mehr"${k.teil(0)}>
         <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
-          <span class="qbadge">×${p.quantity}</span>${ungeprueft(condBadge)}${ownerBadges(p)}
+          <span class="qbadge">×${p.quantity}</span>${rawHtml(condBadge)}${ownerBadges(p)}
         </div>
-        <div class="preis man-preis">${ungeprueft(priceStr)}</div>
+        <div class="preis man-preis">${rawHtml(priceStr)}</div>
         </div>
       </div>`;
     })}

@@ -20,7 +20,7 @@ import {
   setAccountCurrency,
   setSettingsSnapshot,
 } from './state.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import {
   confirmDelete,
   bestaetigeMitPasswort,

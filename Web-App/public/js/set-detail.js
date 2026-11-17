@@ -4,7 +4,7 @@ import { emit } from './events.js';
 import { registerTarget } from './targets.js';
 import { registerActions, echt } from './registry.js';
 import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } from './state.js';
-import { escJs, esc, html, sichereUrl, ungeprueft } from './escapen.js';
+import { escJs, esc, html, safeUrl, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { fullUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
 import { G, ico, aktiverReiter, setzeHtml } from './dom.js';
@@ -294,8 +294,8 @@ export function renderInstructions(instr, sn) {
       const label = esc(i.description) || t('instr.label');
       // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
       const link = isLocal
-        ? html`<a href="${sichereUrl(href)}" data-click="openPdfViewerLink" data-arg="${href}" data-arg2="${i.description || ''}" data-stil="cursor:pointer">${ungeprueft(label)}</a>`
-        : html`<a href="${sichereUrl(href)}" target="_blank" rel="noopener">${ungeprueft(label)}</a>`;
+        ? html`<a href="${safeUrl(href)}" data-click="openPdfViewerLink" data-arg="${href}" data-arg2="${i.description || ''}" data-stil="cursor:pointer">${rawHtml(label)}</a>`
+        : html`<a href="${safeUrl(href)}" target="_blank" rel="noopener">${rawHtml(label)}</a>`;
       return html`<div class="ii" id="instr-${i.id}">
       ${link}
       ${isUpload ? html`<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${tRaw('instr.badge_manual')}</span>` : isLocal ? html`<span class="lc">${ico('speichern')}</span>` : html`<span class="lv">${ico('globus')}</span>`}
@@ -327,7 +327,7 @@ export function renderInstructions(instr, sn) {
       <h3 class="bereich-titel" data-stil="margin:0">${tRaw('instr.section_title')} ${instr.length ? html`(${instr.length})` : ''}</h3>
       ${loggedInAccount?.isAdmin || !instr.some(i => !i.is_manual) ? html`<button data-click="redownloadInstr" data-arg="${sn}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${tRaw('instr.reload')}</button>` : ''}
     </div>
-    ${items ? ungeprueft(items) : html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
+    ${items ? rawHtml(items) : html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('instr.none_auto')}</div>`}
     ${uploadForm}`,
   );
 }

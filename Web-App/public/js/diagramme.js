@@ -5,7 +5,7 @@ import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { detailZeile, pnlBadge } from './bausteine.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
-import { html, ungeprueft, verbinde } from './escapen.js';
+import { html, rawHtml, joinHtml } from './escaping.js';
 import { fadenkreuzTeile } from './fadenkreuz.js';
 
 /**
@@ -36,7 +36,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
     setzeHtml(
       el,
       teile.length
-        ? verbinde(teile)
+        ? joinHtml(teile)
         : html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')}</span><span class="wk-wert text-mut">${tRaw('detail.kein_marktpreis')}</span></div>`,
     );
     return;
@@ -54,7 +54,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       wertStil: 'display:flex;align-items:center;gap:8px',
     });
   });
-  setzeHtml(el, verbinde(rows));
+  setzeHtml(el, joinHtml(rows));
 }
 
 /**
@@ -457,7 +457,7 @@ let _naechsteKennung = 0;
  * @param {string} [uid]  Kürzel für die Verlaufs-IDs im SVG
  * @param {number} [breite]
  * @param {Set<string>} [mittel] Zustände, deren Kaufpreis das Mittel mehrerer Käufe ist („Ø Kaufpreis“)
- * @returns {import('./escapen.js').SicheresHtml} SVG-Markup oder ein Hinweistext
+ * @returns {import('./escaping.js').SafeHtml} SVG-Markup oder ein Hinweistext
  */
 export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700, mittel = new Set()) {
   const axis = data?.chart?.x || [];
@@ -587,7 +587,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
   ]
     .filter(Boolean)
     .join('. ');
-  return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${zusammenfassung}" data-flaeche="${iw.toFixed(0)}"${ungeprueft(fk.attr)}>
+  return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${zusammenfassung}" data-flaeche="${iw.toFixed(0)}"${rawHtml(fk.attr)}>
     ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, accountCurrency, f, lage.innen)}
     ${parts}
     ${kaufLinien}
@@ -686,7 +686,7 @@ export function portfolioChartSVG(
   const area = `${px(0).toFixed(1)},${unten} ${pts} ${px(n - 1).toFixed(1)},${unten}`;
 
   // Je Beschriftung rund 70 px, damit sie sich am Telefon nicht überlappen.
-  /** @type {import('./escapen.js').Markup} */
+  /** @type {import('./escaping.js').Markup} */
   let xLabels = html``;
   if (mitZeit) {
     xLabels = xBeschriftung(
@@ -740,7 +740,7 @@ export function portfolioChartSVG(
   ]
     .filter(Boolean)
     .join('. ');
-  return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${zusammenfassung}" data-flaeche="${iw.toFixed(0)}"${ungeprueft(fk.attr)}>
+  return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${zusammenfassung}" data-flaeche="${iw.toFixed(0)}"${rawHtml(fk.attr)}>
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>

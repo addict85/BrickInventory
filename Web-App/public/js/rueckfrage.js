@@ -2,7 +2,7 @@
 // damit jede Ansicht sie nutzen kann, ohne eine andere Ansicht zu importieren.
 import { api } from './api.js';
 import { G, ico, setzeHtml } from './dom.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { tRaw } from '../i18n.js';
 
 /**

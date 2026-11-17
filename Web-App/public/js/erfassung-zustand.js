@@ -1,6 +1,6 @@
 import { heuteIso } from './bausteine.js';
 import { tRaw } from '../i18n.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, rawHtml } from './escaping.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum, browserSchreibtDatumWieApp } from './format.js';
 
@@ -22,7 +22,7 @@ export const erfassung = {
  * Neu zeichnen, ohne den Fokus zu verlieren: Das Speichern beim Verlassen eines Feldes zeichnet die Tabelle
  * neu, wenn Tab schon im nächsten Feld steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
  * @param {HTMLElement} ziel
- * @param {import('./escapen.js').Markup} markup
+ * @param {import('./escaping.js').Markup} markup
  */
 export function setzeMitFokus(ziel, markup) {
   const felder = () => /** @type {HTMLElement[]} */ ([...ziel.querySelectorAll('input, select, button')]);
@@ -52,7 +52,7 @@ export function isoTag(v) {
 export function datumFeld(attrs, iso, textId) {
   const text = browserSchreibtDatumWieApp(iso) ? '' : fmtDatum(iso, 'lang');
   return html`<span class="acq-datum"><input class="acq-feld" type="date" max="${heuteIso()}" value="${iso}" aria-label="${tRaw('detail.added')}"
-      ${text ? html`aria-describedby="${textId}"` : ''} ${ungeprueft(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
+      ${text ? html`aria-describedby="${textId}"` : ''} ${rawHtml(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
 }
 
 /** Zeilen, deren letzte Änderung gespeichert ist; die Marke übersteht das Neuzeichnen. */

@@ -6,7 +6,7 @@ import { fmtDatum } from './format.js';
 import { feldFehler, passwortRegelText } from './formular.js';
 import { toast } from './meldungen.js';
 import { loggedInAccount } from './state.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, rawHtml } from './escaping.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
 // administrators see it — the server checks every action itself.
@@ -146,7 +146,7 @@ function userActions(u) {
     ${u.wartet_auf_bestaetigung ? userButton(u, 'bp', 'kontoFreischalten', 'ok', 'users.action.freischalten', 'users.action.freischalten_title', u.username) : ''}
     ${userButton(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title', u.username)}
     <details class="mehr-menue v-mehr"><summary class="btn bs btn-sm" aria-label="${tRaw('users.weitere', { name: u.username })}">${ico('menue')}<span>${tRaw('users.weitere_kurz')}</span></summary>
-      <div class="mehr-liste">${ungeprueft(rare)}</div></details>
+      <div class="mehr-liste">${rawHtml(rare)}</div></details>
   </div>`;
 }
 

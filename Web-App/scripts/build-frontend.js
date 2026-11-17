@@ -45,7 +45,7 @@ const STANDALONE = new Set([
  */
 const KERN = [
   'styles.js',
-  'escapen.js',
+  'escaping.js',
   'events.js',
   'targets.js',
   'state.js',

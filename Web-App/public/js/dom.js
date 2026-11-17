@@ -1,5 +1,5 @@
 import { tRaw } from '../i18n.js';
-import { alsHtml, esc, html, ungeprueft } from './escapen.js';
+import { asHtml, esc, html, rawHtml } from './escaping.js';
 
 // Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe. Ohne
 // Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
@@ -105,7 +105,7 @@ export function leerZustand(o) {
     : '';
   // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
   const k = (/** @type {string | undefined} */ key) => (key ? ` data-i18n="${esc(key)}"` : '');
-  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${ungeprueft(k(o.titelKey))}>${o.titelKey ? tRaw(o.titelKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${ungeprueft(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
+  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${rawHtml(k(o.titelKey))}>${o.titelKey ? tRaw(o.titelKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${rawHtml(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
 }
 
 /**
@@ -175,23 +175,23 @@ export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.o
 export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
 
 /**
- * Die eine Stelle, die Markup in die Seite schreibt. Sie nimmt nur fertiges Markup (html``, ungeprueft() oder
+ * Die eine Stelle, die Markup in die Seite schreibt. Sie nimmt nur fertiges Markup (html``, rawHtml() oder
  * Listen davon), damit die Typprüfung eine Zeichenkette mit Daten zurückweist, statt sie einzusetzen.
  * @param {Element | null | undefined} el
- * @param {import('./escapen.js').Markup} inhalt
+ * @param {import('./escaping.js').Markup} inhalt
  */
 export function setzeHtml(el, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder ungeprueft()');
-  if (el) el.innerHTML = alsHtml(inhalt);
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('setzeHtml: nur html`` oder rawHtml()');
+  if (el) el.innerHTML = asHtml(inhalt);
 }
 
 /**
  * insertAdjacentHTML mit derselben Regel wie setzeHtml().
  * @param {Element | null | undefined} el
  * @param {InsertPosition} wo
- * @param {import('./escapen.js').Markup} inhalt
+ * @param {import('./escaping.js').Markup} inhalt
  */
 export function fuegeHtmlEin(el, wo, inhalt) {
-  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder ungeprueft()');
-  el?.insertAdjacentHTML(wo, alsHtml(inhalt));
+  if (typeof inhalt === 'string' && inhalt !== '') throw new TypeError('fuegeHtmlEin: nur html`` oder rawHtml()');
+  el?.insertAdjacentHTML(wo, asHtml(inhalt));
 }

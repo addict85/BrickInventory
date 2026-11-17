@@ -3,7 +3,7 @@
 // ── Warum eigene Datei ───────────────────────────────────────
 //
 // Braucht von aussen nur G() — den Rest macht er selbst.
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { G, setzeHtml } from './dom.js';
 
 // Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im Katalog:

@@ -585,10 +585,10 @@ function coreQuelle() {
   const path = require('node:path'),
     fs = require('node:fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
-  // escapen.js VORNE: esc() gehört zur Grundausstattung, und
+  // escaping.js VORNE: esc() gehört zur Grundausstattung, und
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
   return [
-    'escapen.js',
+    'escaping.js',
     'state.js',
     'events.js',
     'dom.js',

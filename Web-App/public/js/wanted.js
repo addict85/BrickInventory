@@ -1,7 +1,7 @@
 import { emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { esc, html, ungeprueft, verbinde } from './escapen.js';
+import { esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
 import {
@@ -103,8 +103,8 @@ function zeile(w) {
            data-taste="${tRaw('kachel.entf')}" title="${tRaw('wanted.remove')}">${TRASH_ICON_SVG}</span></div>
       ${bild}
       <div class="mk-text">
-        <div class="mk-titel">${ungeprueft(titel)}</div>
-        <div class="mk-unter"${k.teil(0)}>${ungeprueft(unter)}</div>
+        <div class="mk-titel">${rawHtml(titel)}</div>
+        <div class="mk-unter"${k.teil(0)}>${rawHtml(unter)}</div>
       </div>
       <div class="mk-rechts"${k.teil(1)}>
         ${alarm}${schon}${preis}
@@ -174,7 +174,7 @@ export async function ladeMerkliste() {
   setzeHtml(
     ziel,
     _merkposten.length
-      ? verbinde(_merkposten.map(zeile))
+      ? joinHtml(_merkposten.map(zeile))
       : gefiltert
         ? leerZustand({
             ico: 'suche',
@@ -386,7 +386,7 @@ export async function oeffneMerkpostenDetail(arg) {
   setzeDialogbild(G('mk-m-img'), bild, bild);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
   G('mk-m-market-rows').replaceChildren();
-  setzeHtml(G('mk-m-det'), ungeprueft(zeilen(w)));
+  setzeHtml(G('mk-m-det'), rawHtml(zeilen(w)));
   G('mk-m-bricklink').style.display = 'none';
   // Der Preisvergleich hängt am Merkposten, nicht am Katalog: Ein dort unbekanntes Set hat trotzdem seine Adresse.
   zeigeAdresse('mk-m-vergleich', w.preisvergleich_url);
@@ -473,7 +473,7 @@ const zahl = (/** @type {unknown} */ n) => (n == null ? STRICH : Number(n).toLoc
 /** @param {Merkposten} w */
 function zeilen(w) {
   // Kennt der Katalog das Set nicht, sagt eine Zeile das, statt vier Striche bei Jahr, Thema, Teilen, Figuren.
-  /** @type {[string, string | import('./escapen.js').SicheresHtml, string | null][]} */
+  /** @type {[string, string | import('./escaping.js').SafeHtml, string | null][]} */
   const katalog = w.name
     ? [
         ['detail.year', w.year != null ? String(w.year) : STRICH, null],
@@ -482,7 +482,7 @@ function zeilen(w) {
         ['detail.minifigs', STRICH, 'mk-m-minifigs'],
       ]
     : [['nav.catalog', esc(tRaw('wanted.unbekannt')), null]];
-  /** @type {[string, string | import('./escapen.js').SicheresHtml, string | null][]} */
+  /** @type {[string, string | import('./escaping.js').SafeHtml, string | null][]} */
   const z = [
     ...katalog,
     ['common.condition', esc(zustandText(w.condition)), null],

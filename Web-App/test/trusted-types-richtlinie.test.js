@@ -1,12 +1,12 @@
 /**
- * Die Richtlinie `app` (public/js/escapen.js) prägt TrustedHTML nur für den Text, den alsHtml()
+ * Die Richtlinie `app` (public/js/escaping.js) prägt TrustedHTML nur für den Text, den asHtml()
  * gerade aus html`` gebaut hat: Direkt aufgerufen scheitert sie, eine Zeichenkette und ein nachgebautes
- * SicheresHtml kommen maskiert an. Ausgeführt wird das echte Modul mit einer Attrappe von trustedTypes.
+ * SafeHtml kommen maskiert an. Ausgeführt wird das echte Modul mit einer Attrappe von trustedTypes.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  createHTML der Richtlinie wieder `s => s` → rot: „direkt aufgerufen …“
- *   B  einsetzen() wieder mit `instanceof SicheresHtml` → rot: „ein nachgebautes …“
- *   C  alsHtml() reicht eine Zeichenkette unverändert durch → rot: „eine Zeichenkette …“
+ *   B  toText() wieder mit `instanceof SafeHtml` → rot: „ein nachgebautes …“
+ *   C  asHtml() reicht eine Zeichenkette unverändert durch → rot: „eine Zeichenkette …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,34 +23,34 @@ globalThis.trustedTypes = {
   },
 };
 
-const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escapen.js')).href);
+const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escaping.js')).href);
 
 test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => {
-  const { alsHtml, html } = await laden();
-  assert.deepEqual(alsHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`), {
+  const { asHtml, html } = await laden();
+  assert.deepEqual(asHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`), {
     geprueft: '<b>&lt;img src=x onerror=alert(1)&gt;</b>',
   });
-  assert.deepEqual(alsHtml([html`<i>a</i>`, html`<i>b</i>`]), { geprueft: '<i>a</i><i>b</i>' });
+  assert.deepEqual(asHtml([html`<i>a</i>`, html`<i>b</i>`]), { geprueft: '<i>a</i><i>b</i>' });
 });
 
 test('direkt aufgerufen nimmt die Richtlinie nichts an', async () => {
-  const { alsHtml, html } = await laden();
+  const { asHtml, html } = await laden();
   assert.throws(() => richtlinien.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
   // Auch nicht den Text, der eben durchging: Die Freigabe gilt einmal.
-  alsHtml(html`<b>x</b>`);
+  asHtml(html`<b>x</b>`);
   assert.throws(() => richtlinien.app.createHTML('<b>x</b>'), TypeError);
 });
 
 test('eine Zeichenkette kommt maskiert als Text an', async () => {
-  const { alsHtml } = await laden();
-  assert.deepEqual(alsHtml('<b>x</b>'), { geprueft: '&lt;b&gt;x&lt;/b&gt;' });
+  const { asHtml } = await laden();
+  assert.deepEqual(asHtml('<b>x</b>'), { geprueft: '&lt;b&gt;x&lt;/b&gt;' });
 });
 
-test('ein nachgebautes SicheresHtml ohne Marke wird maskiert', async () => {
-  const { alsHtml, SicheresHtml } = await laden();
-  const falsch = Object.assign(Object.create(SicheresHtml.prototype), { text: '<script>x</script>' });
-  assert.ok(falsch instanceof SicheresHtml, 'Vorbedingung: instanceof liesse es durch');
-  assert.deepEqual(alsHtml(falsch), { geprueft: '&lt;script&gt;x&lt;/script&gt;' });
+test('ein nachgebautes SafeHtml ohne Marke wird maskiert', async () => {
+  const { asHtml, SafeHtml } = await laden();
+  const falsch = Object.assign(Object.create(SafeHtml.prototype), { text: '<script>x</script>' });
+  assert.ok(falsch instanceof SafeHtml, 'Vorbedingung: instanceof liesse es durch');
+  assert.deepEqual(asHtml(falsch), { geprueft: '&lt;script&gt;x&lt;/script&gt;' });
 });
 
 test('die Richtlinie default nimmt nur das Leeren an', async () => {

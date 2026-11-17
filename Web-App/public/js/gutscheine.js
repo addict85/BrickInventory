@@ -7,7 +7,7 @@ import { antwortFehler, betragAusFeld, feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { accountCurrency, settingsSnapshot } from './state.js';
-import { html, verbinde } from './escapen.js';
+import { html, joinHtml } from './escaping.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 
 // Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen schnell
@@ -183,7 +183,7 @@ export async function ladeGutscheine() {
   setzeHtml(
     liste,
     _gutscheine.length
-      ? verbinde(_gutscheine.map(zeile))
+      ? joinHtml(_gutscheine.map(zeile))
       : html`<div class="voucher-leer" data-i18n="vouchers.empty">${tRaw('vouchers.empty')}</div>`,
   );
   // Summe, „alle abfragen“ und Export haben ohne Gutscheine nichts zu tun.

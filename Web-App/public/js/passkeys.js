@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
 import { loggedInAccount } from './state.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './rueckfrage.js';
 
 // ═══ Passkeys (Server: src/faktoren/repository/passkeys.ts, routes/auth.ts) ═══════════════

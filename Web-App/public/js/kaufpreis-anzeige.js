@@ -1,7 +1,7 @@
 // Wie Kaufpreise dastehen: Summenzeile, Währung, Umrechnung und Schätzung, in Dialog und Detail gleich.
 // Eigene Datei, weil Set-Detail, Kaufpreis-Dialog und Detail manueller Einträge dieselben Bausteine nutzen.
 import { tRaw } from '../i18n.js';
-import { esc, html } from './escapen.js';
+import { esc, html } from './escaping.js';
 import { ico } from './dom.js';
 import { fmtDatum, fmtGeld, fmtGeldCode, fmtN, istGeschenk } from './format.js';
 import { accountCurrency } from './state.js';

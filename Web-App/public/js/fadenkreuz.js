@@ -1,4 +1,4 @@
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html, rawHtml } from './escaping.js';
 
 // Das Fadenkreuz aller Diagramme: Zeigen, Tippen und Pfeiltasten über dieselben Punkte am SVG.
 /** Ein Punkt des Fadenkreuzes: x in viewBox-Einheiten, je Reihe ein y, Beschriftungszeilen. @typedef {{ x: number, y: (number | null)[], t: string[] }} Punkt */
@@ -19,7 +19,7 @@ export function fadenkreuzTeile(punkte, farben, oben, unten, f = 1) {
   return {
     attr: ` data-punkte="${json}" data-mass="${f}" tabindex="0"`,
     svg: html`<g class="fadenkreuz" visibility="hidden" pointer-events="none">
-      <line class="fk-linie" y1="${oben}" y2="${unten}" stroke="var(--txt)" stroke-width="1"/>${ungeprueft(kreise)}
+      <line class="fk-linie" y1="${oben}" y2="${unten}" stroke="var(--txt)" stroke-width="1"/>${rawHtml(kreise)}
       <rect class="fk-schild" rx="6" height="0" width="0" fill="var(--txt)"/>
       <text class="fk-text" font-size="${12 * f}" font-weight="600" fill="var(--sur)" font-family="inherit"></text></g>`,
   };

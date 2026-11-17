@@ -1,7 +1,7 @@
 import { schliesseErfassen, csvHochladen } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { hexZiffern, html } from './escapen.js';
+import { rawHex, html } from './escaping.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
@@ -42,7 +42,7 @@ function renderColorDropdown() {
   // die Farbanzeige und der Filter im Teile-Reiter.
   setzeHtml(
     sel,
-    html`${html`<option value="">${tRaw('parts.no_color_dash')}</option>`}${_brickColors.map(c => html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" data-hex="${hexZiffern(c.hex)}">${colorName(c.name)}</option>`)}`,
+    html`${html`<option value="">${tRaw('parts.no_color_dash')}</option>`}${_brickColors.map(c => html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" data-hex="${rawHex(c.hex)}">${colorName(c.name)}</option>`)}`,
   );
 }
 

@@ -2,7 +2,7 @@ import { emit } from './events.js';
 import { detailZeile } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { escHex, escJs, hexZiffern, esc, html, ungeprueft, verbinde } from './escapen.js';
+import { escHex, escJs, rawHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
 import { fullUrl, imgUrl } from './bilder.js';
 import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './dom.js';
@@ -42,7 +42,7 @@ export function vergissManItem() {
 
 /** Die Zeilen des Detail-Dialogs eines manuell erfassten Teils oder einer Figur.
  * @param {string} type @param {string} id @param {number} colorId @param {{ quantity?: number, user_id?: number | null, bl_fig_number?: string | null, color_hex?: string | null, color_name?: string | null, storage?: string | null }} item @param {Erfassung[]} acqs @param {{ totals?: { priced_rows?: number, quantity?: number } } | null | undefined} ad
- * @returns {import('./escapen.js').Markup[]} */
+ * @returns {import('./escaping.js').Markup[]} */
 function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   const rows = [];
 
@@ -223,7 +223,7 @@ export async function openManDetail(type, id, colorId) {
   const ad = await api('GET', acqUrl);
   const acqs = ad?.acquisitions || [];
 
-  setzeHtml(bodyEl, verbinde(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad)));
+  setzeHtml(bodyEl, joinHtml(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad)));
   modal.classList.add('open');
 
   // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.
@@ -261,7 +261,7 @@ async function fuelleFarbwahl(aktuell) {
     sel,
     farben.map(
       c =>
-        html`${html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" `}${html`data-hex="${hexZiffern(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>`}${html`${colorName(c.name)}</option>`}`,
+        html`${html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" `}${html`data-hex="${rawHex(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>`}${html`${colorName(c.name)}</option>`}`,
     ),
   );
   // Kennt die Liste die heutige Farbe nicht (ältere Bestände, eine Farbe, die Rebrickable zurückgezogen hat),
@@ -441,25 +441,25 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     markup = html`${markup}${html`<tr id="acq-row-${ai_}">
       <td>
         <input class="acq-feld acq-menge" id="acq-menge-${ai_}" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${tRaw('detail.qty')}"
-          data-blur="manAcqSave" ${ungeprueft(args)} data-arg5="qty" data-val="1"
+          data-blur="manAcqSave" ${rawHtml(args)} data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
       <td>${datumFeld(`id="acq-datum-feld-${ai_}" data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
       <td>
-        <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="manAcqSave" ${ungeprueft(args)} data-arg5="cond" data-val="1">
+        <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="manAcqSave" ${rawHtml(args)} data-arg5="cond" data-val="1">
           <option value="N" ${a.condition !== 'U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
           <option value="U" ${a.condition === 'U' ? 'selected' : ''}>${tRaw('common.condition_used')}</option>
         </select>
       </td>
       <td class="zahl">
         <input class="acq-feld acq-preis" id="acq-preis-${ai_}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.unit_price)}" aria-label="${tRaw('detail.purchase_price')}"
-          data-blur="manAcqSave" ${ungeprueft(args)} data-arg5="price" data-val="1"
+          data-blur="manAcqSave" ${rawHtml(args)} data-arg5="price" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
       ${
         erfassung.mitglieder.length > 1
           ? html`<td>
-        <select class="acq-feld" aria-label="${tRaw('household.owner')}" data-change="manAcqSave" ${ungeprueft(args)} data-arg5="owner" data-val="1">
+        <select class="acq-feld" aria-label="${tRaw('household.owner')}" data-change="manAcqSave" ${rawHtml(args)} data-arg5="owner" data-val="1">
           ${erfassung.mitglieder.map(m => html`<option value="${m.id}"${m.id === (a.owner_user_id ?? erfassung.besitzer) ? ' selected' : ''}>${m.username}</option>`)}
         </select>
       </td>`
@@ -467,7 +467,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
       }
       <td class="acq-aktion">
         ${gespeichertMarke(ai_)}
-        <button class="acq-loeschen" data-click="manAcqDelete"${echt()} ${ungeprueft(args)}
+        <button class="acq-loeschen" data-click="manAcqDelete"${echt()} ${rawHtml(args)}
           title="${tRaw('gallery.delete.title')}" aria-label="${tRaw('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
     </tr>`}`;

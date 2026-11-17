@@ -4,7 +4,7 @@
 
 // Kern
 import './styles.js';
-import './escapen.js';
+import './escaping.js';
 import './events.js';
 import './targets.js';
 import './state.js';

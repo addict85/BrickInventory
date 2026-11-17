@@ -13,7 +13,7 @@ import {
 } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { loadGuard } from './load-guard.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
@@ -351,7 +351,7 @@ function preisZeile(s) {
   const pct = pnl
     ? html`<span title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>`
     : '';
-  return html`${art}<span class="preis">${ungeprueft(betrag)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
+  return html`${art}<span class="preis">${rawHtml(betrag)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
 /** @param {Tile} s */

@@ -5,7 +5,7 @@ import { G, setzeHtml } from './dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock } from './detailfelder.js';
 import { tRaw } from '../i18n.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, rawHtml } from './escaping.js';
 import { subscribe } from './events.js';
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
 
@@ -34,7 +34,7 @@ export function initScopeSelects(members) {
       el.style.display = 'none';
       continue;
     }
-    setzeHtml(el, ungeprueft(opts));
+    setzeHtml(el, rawHtml(opts));
     // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen — dann auf „Alle" zurückfallen
     // statt eine leere Auswahl zu zeigen.
     const saved = scopeMode(view);
@@ -131,7 +131,7 @@ function zeichneKontoauswahl(members) {
       continue;
     }
     const vorher = sel.value;
-    setzeHtml(sel, ungeprueft(markup));
+    setzeHtml(sel, rawHtml(markup));
     if (vorher && [...sel.querySelectorAll('option')].some(o => o.value === vorher)) sel.value = vorher;
     box.style.display = '';
   }

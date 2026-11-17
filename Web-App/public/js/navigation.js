@@ -33,7 +33,7 @@ import { sammlungUntertitel } from './konten-orte.js';
 import { setScrollLabel } from './rollbalken.js';
 import { tRaw } from '../i18n.js';
 import { subscribe, emit } from './events.js';
-import { esc } from './escapen.js';
+import { esc } from './escaping.js';
 
 // Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit oben derselbe Icon wie im Nav-Tab
 // erscheint. Quelle ist der Nav-Tab selbst — Emoji ODER Inline-SVG —, so bleibt beides automatisch synchron.

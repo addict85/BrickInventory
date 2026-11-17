@@ -4,7 +4,7 @@
 import { emit } from './events.js';
 import { registerActions } from './registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { escHex, hexZiffern, esc, html, ungeprueft, verbinde } from './escapen.js';
+import { escHex, rawHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { apiRoh } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl } from './bilder.js';
 import { ico, G, XML_ICON_SVG, setzeHtml } from './dom.js';
@@ -352,7 +352,7 @@ function zeile(p, i) {
     schluessel = 'wanted.feld_menge',
   ) =>
     html`<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}" aria-label="${tRaw(schluessel, { id })}"
-       value="${wert}" ${ungeprueft(extra)}
+       value="${wert}" ${rawHtml(extra)}
        data-breite-px="${breit}"
        data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--feldrand);border-radius:5px;text-align:right" />`;
   const mengeZelle = feld('menge', korr.menge ?? p.menge, 'type="number" min="1" step="1"');
@@ -386,7 +386,7 @@ function zeile(p, i) {
     <td data-stil="text-align:right">${mengeZelle}</td>
     <td data-stil="font-size:var(--fs-1);white-space:nowrap">${zustandWahl}${zustandJetzt === '' && zustandZelle ? html`<div data-stil="margin-top:2px">${zustandZelle}</div>` : ''}</td>
     <td data-stil="text-align:right">${preisZelle}</td>
-    <td data-stil="font-size:var(--fs-1)">${ungeprueft(ausgang)}${grund ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${ungeprueft(grund)}</div>` : ''}</td>
+    <td data-stil="font-size:var(--fs-1)">${rawHtml(ausgang)}${grund ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${rawHtml(grund)}</div>` : ''}</td>
     <td><input type="text" value="${korr.rbId ?? ''}" placeholder="${tRaw('wanted.rb_id_ph')}" aria-label="${tRaw('wanted.feld_rb', { id })}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
       border:1px solid var(--feldrand);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
@@ -418,7 +418,7 @@ function zeichneTabelle(d) {
       <th>${tRaw('wanted.col_outcome')}</th>
       <th>${tRaw('wanted.col_rb_id')}</th>
       <th>${tRaw('wanted.col_set_color')}</th>
-    </tr></thead><tbody>${verbinde(posten.map(zeile))}</tbody></table>`,
+    </tr></thead><tbody>${joinHtml(posten.map(zeile))}</tbody></table>`,
   );
   fuelleFarbwahlen().catch(() => {});
 }
@@ -433,14 +433,14 @@ async function fuelleFarbwahlen() {
   const farben = await loadBrickColors();
   if (!farben?.length) return;
   const opts = farben
-    .map(c => html`<option value="${c.id}" data-hex="${hexZiffern(c.hex)}">${colorName(c.name)}</option>`)
+    .map(c => html`<option value="${c.id}" data-hex="${rawHex(c.hex)}">${colorName(c.name)}</option>`)
     .join('');
   for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
     G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]')
   )) {
     const i = Number(sel.dataset.i);
     const gewaehlt = _korrekturen.get(i)?.rbFarbe;
-    setzeHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${ungeprueft(opts)}`);
+    setzeHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${rawHtml(opts)}`);
     if (gewaehlt !== undefined && gewaehlt !== null) sel.value = String(gewaehlt);
   }
 }

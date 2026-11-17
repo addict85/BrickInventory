@@ -24,7 +24,7 @@
   /** @param {string} k */
   const tx = k => L[k] || k;
   // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das hier maskierte Markup. Wie in
-  // escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
+  // escaping.js nimmt sie nur den Text an, den asHtml() ihr gerade freigibt.
   const tt =
     /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
       /** @type {unknown} */ (window)
@@ -34,14 +34,14 @@
   const richtlinie = tt
     ? tt.createPolicy('app', {
         createHTML: (/** @type {string} */ s) => {
-          if (freigabe === null || s !== freigabe) throw new TypeError('Trusted Types: Markup nur über alsHtml()');
+          if (freigabe === null || s !== freigabe) throw new TypeError('Trusted Types: Markup nur über asHtml()');
           freigabe = null;
           return s;
         },
       })
     : null;
   /** @param {string} s @returns {string} */
-  const alsHtml = s => {
+  const asHtml = s => {
     if (!richtlinie) return s;
     freigabe = s;
     try {
@@ -111,10 +111,10 @@
     const treffer = _logs.filter(l => _levels.has(l.level) && (!suche || l.message.toLowerCase().includes(suche)));
     el('status').textContent = treffer.length + ' / ' + _logs.length + ' ' + tx('log.entries');
     if (!treffer.length) {
-      wrap.innerHTML = alsHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>');
+      wrap.innerHTML = asHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>');
       return;
     }
-    wrap.innerHTML = alsHtml(
+    wrap.innerHTML = asHtml(
       treffer
         .map(l => {
           const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', {

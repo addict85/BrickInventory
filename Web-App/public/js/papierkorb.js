@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
-import { html, verbinde } from './escapen.js';
+import { html, joinHtml } from './escaping.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 import { emit } from './events.js';
 
@@ -61,7 +61,7 @@ export async function ladePapierkorb(fokusNach) {
   setzeHtml(
     liste,
     eintraege.length
-      ? verbinde(eintraege.map(e => zeile(e, konten)))
+      ? joinHtml(eintraege.map(e => zeile(e, konten)))
       : html`<div class="voucher-leer" tabindex="-1">${tRaw('trash.empty')}</div>`,
   );
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';

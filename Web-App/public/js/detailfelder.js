@@ -2,7 +2,7 @@
 // Schliessen des Set-Dialogs. Liegt unter den Ansichten, damit Set-Detail, Merkliste und Teile-Detail sie
 // gleich nutzen.
 import { registerActions } from './registry.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
@@ -149,7 +149,7 @@ export function lagerortBlock(id, wert, attrs = '') {
               data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
       <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${tRaw('detail.storage')}" data-stil="display:none"
              placeholder="${tRaw('detail.storage_ph')}" value="${ort}"
-             data-blur="lagerortGetippt" ${ungeprueft(attrs)} />
+             data-blur="lagerortGetippt" ${rawHtml(attrs)} />
     `;
 }
 
@@ -467,7 +467,7 @@ export function initStorageSelects(orte) {
       el.style.display = 'none';
       continue;
     }
-    setzeHtml(el, ungeprueft(opts));
+    setzeHtml(el, rawHtml(opts));
     // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier sonst eine leere Beschriftung
     // über einer gefilterten Liste — dieselbe Falle wie beim Kontofilter.
     const gespeichert = lagerModus(view);

@@ -1,7 +1,7 @@
 import { ladeAnzeige, verstaendlicherGrund, pnlBadge } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';

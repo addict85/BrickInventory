@@ -3,7 +3,7 @@ import { t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
-import { esc, html, ungeprueft, verbinde } from './escapen.js';
+import { esc, html, rawHtml, joinHtml } from './escaping.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 // Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die Bestände der
 // verknüpften Konten; die Regeln dazu stehen im Server (src/haushalt).
@@ -46,7 +46,7 @@ function renderHousehold(d) {
     html`<ul class="haushalt-liste">${eintraege.map(
       a => html`<li data-stil="display:contents">
       <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${a.username}</span>
-      <span class="haushalt-aktion">${ungeprueft(aktion(a))}</span>
+      <span class="haushalt-aktion">${rawHtml(aktion(a))}</span>
     </li>`,
     )}</ul>`;
 
@@ -82,7 +82,7 @@ function renderHousehold(d) {
       )}
     </div>`);
   }
-  setzeHtml(stateEl, verbinde(teile));
+  setzeHtml(stateEl, joinHtml(teile));
 
   // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere Elternkonten haben, und jedes braucht
   // seine eigene Einladung.

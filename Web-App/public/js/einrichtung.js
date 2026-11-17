@@ -7,7 +7,7 @@ import { rbHinweisVerbergen, rbHinweisZeigen } from './konto.js';
 import { toast, verwirfToasts } from './meldungen.js';
 import { oeffneErfassen, verstaendlicherGrund } from './bausteine.js';
 import { mitZweitemFaktor, speichereEinstellungen } from './rueckfrage.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/api_v1/settings.ts /settings/einrichtung) ═
 // Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim nächsten Anmelden kommt der

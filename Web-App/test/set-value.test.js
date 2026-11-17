@@ -257,7 +257,7 @@ test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
   const fn = src.slice(i, i + 500);
   assert.match(
     fn,
-    /!offenesSet \|\| offenesSet\.set_number !== sn/,
+    /!openSet \|\| openSet\.set_number !== sn/,
     'Die späte Antwort prüft nicht, ob noch dasselbe Set offen ist',
   );
 });

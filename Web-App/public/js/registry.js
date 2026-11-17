@@ -1,6 +1,6 @@
 // In ES-Modulen liegen Funktionen nicht auf window; data-click="name" findet seinen Handler deshalb hier. Ein
 // Tippfehler im Namen fällt so im Test auf statt erst beim Klicken.
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 
 /** name → Funktion. Wird von den einzelnen Modulen gefüllt. */
 const _actions = new Map();

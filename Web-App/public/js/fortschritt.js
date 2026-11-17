@@ -1,6 +1,6 @@
 // Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad() und
 // gibZuruecksetzen(), der Rest ist Innenleben.
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { registerActions } from './registry.js';
 import { apiRoh, api, apiDaten, strom } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';

@@ -19,10 +19,9 @@ test('Farbwerte kommen nur über escHex ins Markup', () => {
       for (const m of zeile.matchAll(/\$\{([^{}]*(?:color_hex|colour_hex|\.hex)\b[^{}]*)\}/g)) {
         gepruefte++;
         // Zwei erlaubte Fassungen derselben Prüfung: escHex() liefert
-        // `#RRGGBB` für style, hexZiffern() die nackten sechs Ziffern für
+        // `#RRGGBB` für style, rawHex() die nackten sechs Ziffern für
         // Attribute, deren Leser das Doppelkreuz selbst ergänzen.
-        if (!m[1].includes('escHex(') && !m[1].includes('hexZiffern('))
-          treffer.push(`${f}:${i + 1}  \${${m[1].trim()}}`);
+        if (!m[1].includes('escHex(') && !m[1].includes('rawHex(')) treffer.push(`${f}:${i + 1}  \${${m[1].trim()}}`);
       }
     });
   }
@@ -35,6 +34,6 @@ test('Farbwerte kommen nur über escHex ins Markup', () => {
     'Diese Stellen schreiben einen Farbwert roh ins Markup:\n  ' +
       treffer.join('\n  ') +
       '\nescHex(wert, rückfall) prüft auf sechs Hexziffern und liefert sonst den ' +
-      'Rückfall — siehe den Hinweis in escapen.js.',
+      'Rückfall — siehe den Hinweis in escaping.js.',
   );
 });

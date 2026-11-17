@@ -4,7 +4,7 @@ import { fmtDatum } from './format.js';
 import { fehlerMeldung, api } from './api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
-import { html, sichereUrl } from './escapen.js';
+import { html, safeUrl } from './escaping.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 
 // Zugänge des Kontos: App-Tokens, QR-Anmeldung und das TLS-Zertifikat für die App.
@@ -242,7 +242,7 @@ export async function ladeTls() {
     <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
     <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
     <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
-    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${sichereUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`,
+    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${safeUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`,
   );
 }
 

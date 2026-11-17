@@ -1,5 +1,5 @@
 import { emit } from './js/events.js';
-import { SicheresHtml } from './js/escapen.js';
+import { SafeHtml } from './js/escaping.js';
 
 // Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
 // damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
@@ -67,7 +67,7 @@ export function locale() {
 }
 
 /**
- * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/escapen.js.
+ * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/escaping.js.
  *
  * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR den Kernmodulen geladen (siehe
  * Skript-Reihenfolge in index.html), esc() existiert zum Zeitpunkt der ersten t()-Aufrufe also noch nicht.
@@ -98,12 +98,12 @@ function mehrzahlSchluessel(dict, key, vars) {
 }
 
 /**
- * Übersetzten Text als Markup holen: Die Werte werden maskiert und das Ergebnis ist SicheresHtml, damit tsc
+ * Übersetzten Text als Markup holen: Die Werte werden maskiert und das Ergebnis ist SafeHtml, damit tsc
  * meldet, wenn es in textContent, toast() oder einen Dialogtext geriete — dort stünde sonst „&amp;“. Für
  * reinen Text gibt es tRaw().
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
- * @returns {SicheresHtml}
+ * @returns {SafeHtml}
  */
 export function t(key, vars) {
   // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
@@ -119,7 +119,7 @@ export function t(key, vars) {
       str = str.replaceAll('{' + k + '}', _i18nEsc(vars[k]));
     });
   }
-  return new SicheresHtml(str);
+  return new SafeHtml(str);
 }
 
 /**

@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { formularFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { loadUsers } from './user-management.js';
-import { html, ungeprueft } from './escapen.js';
+import { html, rawHtml } from './escaping.js';
 import { fmtDatum } from './format.js';
 import { emit } from './events.js';
 import { loggedInAccount } from './state.js';
@@ -41,7 +41,7 @@ function pflichtHinweis(schluessel) {
 }
 
 /**
- * @param {import('./escapen.js').Markup} markup
+ * @param {import('./escaping.js').Markup} markup
  */
 function zeichne(markup) {
   const f = flaeche();
@@ -51,13 +51,13 @@ function zeichne(markup) {
 const knopfArt = () => (pflicht ? 'knopf-breit' : 'btn-sm');
 
 const knopf = (/** @type {string} */ aktion, /** @type {string} */ text, art = 'bs') =>
-  html`<button type="button" class="btn ${art} ${ungeprueft(knopfArt())}" data-click="${aktion}"${echt()}>${ungeprueft(text)}</button>`;
+  html`<button type="button" class="btn ${art} ${rawHtml(knopfArt())}" data-click="${aktion}"${echt()}>${rawHtml(text)}</button>`;
 const reihe = (/** @type {string} */ inhalt) =>
-  html`<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${ungeprueft(inhalt)}</div>`;
+  html`<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${rawHtml(inhalt)}</div>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js findet nur wörtliche
 // id-Angaben. findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
 const CODEFELD = (/** @type {string} */ label, laenge = 24) =>
-  html`<div class="fg"><label for="zf-code">${ungeprueft(label)}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
+  html`<div class="fg"><label for="zf-code">${rawHtml(label)}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
 
 export async function ladeZweitenFaktor() {
   if (!flaeche()) return;

@@ -99,7 +99,7 @@ test('5. Sonderzeichen werden maskiert, und & zuerst', async () => {
 });
 
 test('5b. esc() kennt alle fünf XML-Entitäten — die Wunschliste hat keinen eigenen Maskierer', async () => {
-  const { esc } = await import(`file://${path.join(ROOT, 'public', 'js', 'escapen.js')}`);
+  const { esc } = await import(`file://${path.join(ROOT, 'public', 'js', 'escaping.js')}`);
   assert.equal(esc(`&<>"'`), '&amp;&lt;&gt;&quot;&#39;');
 });
 

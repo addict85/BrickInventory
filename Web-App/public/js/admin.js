@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml, wennSichtbar } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 
 // ── JOB STATUS ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */

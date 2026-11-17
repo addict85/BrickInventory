@@ -2,7 +2,7 @@
 // darf jede Ansicht starten oder leeren, und keine Ansicht importiert es. Die API-Hülle meldet ein
 // Sitzungsende nur als Ereignis; reagiert wird hier.
 import { registerActions } from './registry.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { subscribe, emit } from './events.js';
 import { resetScopeModes } from './kontofilter.js';
 import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';

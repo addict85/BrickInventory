@@ -5,7 +5,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { antwortFehler, feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
-import { html } from './escapen.js';
+import { html } from './escaping.js';
 import { confirmDelete } from './rueckfrage.js';
 import { ladeLagerortVorgabe } from './konten-orte.js';
 import { ladeLagerorte } from './detailfelder.js';

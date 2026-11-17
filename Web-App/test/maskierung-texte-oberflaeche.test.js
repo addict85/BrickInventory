@@ -1,5 +1,5 @@
 /**
- * t() liefert fertiges Markup (SicheresHtml), tRaw() reinen Text. Wer Text in
+ * t() liefert fertiges Markup (SafeHtml), tRaw() reinen Text. Wer Text in
  * textContent oder einen Dialog schreibt, muss tRaw() nehmen, und eine
  * Variable von t() wird nicht vorher schon maskiert. Geprüft wird, was im
  * echten Bündel (jsdom) sichtbar ankommt: Ein Name mit „&“ und „<“ steht

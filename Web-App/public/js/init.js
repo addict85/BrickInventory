@@ -1,6 +1,6 @@
 import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, esc, html } from './escapen.js';
+import { escHex, esc, html } from './escaping.js';
 import { fehlerMeldung, api, apiRoh, strom } from './api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';

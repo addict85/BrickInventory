@@ -1214,10 +1214,10 @@ test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
   );
 });
 
-/** Die Argumente aller ungeprueft()-Aufrufe in `text`, bis zur schliessenden Klammer. */
-function ungeprueftArgumente(/** @type {string} */ text) {
+/** Die Argumente aller rawHtml()-Aufrufe in `text`, bis zur schliessenden Klammer. */
+function rawHtmlArgumente(/** @type {string} */ text) {
   const raus = [];
-  for (const m of text.matchAll(/(?<![\w.])(?<!function )ungeprueft\(/g)) {
+  for (const m of text.matchAll(/(?<![\w.])(?<!function )rawHtml\(/g)) {
     const ab = (m.index ?? 0) + m[0].length;
     let i = ab;
     for (let tiefe = 0; i < text.length; i++)
@@ -1228,17 +1228,15 @@ function ungeprueftArgumente(/** @type {string} */ text) {
   return raus;
 }
 
-test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .join() darin', () => {
-  // html`` maskiert jeden eingesetzten Wert; ungeprueft() setzt eine Zeichenkette als Markup ein, die
-  // vor dem Umbau schon maskiert gebaut wurde. Listen aus html`` verbindet verbinde() (escapen.js).
+test('rawHtml() wird weniger, nie mehr; kein Template mit ${…} und kein .join() darin', () => {
+  // html`` maskiert jeden eingesetzten Wert; rawHtml() setzt eine Zeichenkette als Markup ein, die
+  // vor dem Umbau schon maskiert gebaut wurde. Listen aus html`` verbindet joinHtml() (escaping.js).
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
   const SCHRANKE = 83;
   assert.deepEqual(
-    ungeprueftArgumente(
-      "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
-    ),
+    rawHtmlArgumente("function rawHtml(t) {}\na(rawHtml(`<i>${b(c)}</i>`), rawHtml(d.map(e).join('')), x.rawHtml(f))"),
     ['`<i>${b(c)}</i>`', "d.map(e).join('')"],
     'Selbstbeweis',
   );
@@ -1247,26 +1245,26 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
     .readdirSync(js)
     .filter(n => istAppModul(n))
     .flatMap(f =>
-      ungeprueftArgumente(require('./helpers/sources').ohneKommentare(fs.readFileSync(path.join(js, f), 'utf8'))).map(
+      rawHtmlArgumente(require('./helpers/sources').ohneKommentare(fs.readFileSync(path.join(js, f), 'utf8'))).map(
         a => ({ f, a }),
       ),
     );
   const ist = argumente.length;
-  assert.ok(ist > 0, 'kein ungeprueft() gefunden — greift die Suche noch?');
+  assert.ok(ist > 0, 'kein rawHtml() gefunden — greift die Suche noch?');
   const vorlage = argumente.filter(x => /^\s*`[^`]*\$\{/.test(x.a));
   assert.deepEqual(
     vorlage.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
     [],
-    'ungeprueft() mit Template und ${…}: html`` nehmen',
+    'rawHtml() mit Template und ${…}: html`` nehmen',
   );
   const verbunden = argumente.filter(x => /\.join\(/.test(x.a));
   assert.deepEqual(
     verbunden.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
     [],
-    'ungeprueft(… .join()): verbinde() nehmen',
+    'rawHtml(… .join()): joinHtml() nehmen',
   );
-  assert.ok(ist <= SCHRANKE, `${ist}-mal ungeprueft(), erlaubt sind ${SCHRANKE}`);
-  if (ist < SCHRANKE) console.log(`  ℹ ungeprueft(): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  assert.ok(ist <= SCHRANKE, `${ist}-mal rawHtml(), erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ rawHtml(): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {

@@ -9,7 +9,7 @@ import { toast } from './meldungen.js';
 import { csvHochladen } from './bausteine.js';
 import { confirmDelete } from './rueckfrage.js';
 import { gallerySets } from './state.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html, rawHtml } from './escaping.js';
 // Einstellungen, Abschnitt Preisalarme: Übersicht, Schwelle ändern, löschen, CSV-Import.
 
 // Lagerorte verwalten. Nur die eigenen: Ein Ort ist ein Regal in der eigenen Wohnung, fremde umzubenennen
@@ -89,13 +89,13 @@ export async function ladeAlarmUebersicht() {
       // Fehler. Feld und Löschknopf haben eigenes data-click, sonst öffnete jeder Klick ins Feld den Dialog
       // darüber.
       const oeffnet = a.besitzt ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"` : '';
-      return html`<div class="alarm-ue"${ungeprueft(oeffnet)}>
-      ${ungeprueft(bild)}
+      return html`<div class="alarm-ue"${rawHtml(oeffnet)}>
+      ${rawHtml(bild)}
       <div class="alarm-ue-text">
         <div><strong>${a.name || a.set_number}</strong></div>
         <div class="alarm-ue-unter">${a.name ? html`${a.set_number}${' · '}` : ''}${zustand}</div>
       </div>
-      <div class="alarm-ue-stand">${ungeprueft(marke)}<span class="alarm-ue-zuletzt">${stand}</span></div>
+      <div class="alarm-ue-stand">${rawHtml(marke)}<span class="alarm-ue-zuletzt">${stand}</span></div>
       <div class="alarm-ue-schwelle">
         <span class="alarm-ue-richtung">${richtung}</span>
         <span class="alarm-ue-betrag"><input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.threshold)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"

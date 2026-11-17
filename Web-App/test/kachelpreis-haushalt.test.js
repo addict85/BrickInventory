@@ -86,20 +86,20 @@ test('das Web übernimmt die Werte des Servers', () => {
   // enrichGalleryWithPrices() mit einer Antwort ausführen und nachsehen, was
   // an der Kachel ankommt — ohne Browser, über die Modulfunktion selbst.
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'collection.js'), 'utf8');
-  const von = src.indexOf('  setzeGuvJeSet({});');
+  const von = src.indexOf('  setPnlBySet({});');
   const bis = src.indexOf('  // Inject price data into cached sets');
   assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() nicht gefunden — umgebaut?');
-  const guvJeSet = {};
+  const pnlBySet = {};
   // eslint-disable-next-line no-new-func
-  new Function('pnl', 'guvJeSet', 'setzeGuvJeSet', src.slice(von, bis))(
+  new Function('pnl', 'pnlBySet', 'setPnlBySet', src.slice(von, bis))(
     {
       sets: [
         { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' },
         { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' },
       ],
     },
-    guvJeSet,
+    pnlBySet,
     () => {},
   );
-  assert.deepEqual(guvJeSet, { 'A-1': { price: 10.5, pnl_pct: 12.3, quelle: 'kauf' } });
+  assert.deepEqual(pnlBySet, { 'A-1': { price: 10.5, pnl_pct: 12.3, quelle: 'kauf' } });
 });
