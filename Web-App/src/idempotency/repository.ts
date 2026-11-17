@@ -8,8 +8,8 @@ export type Eintrag = {
   verwaist: boolean;
 };
 
-/** Ein Eintrag, dessen erste Anfrage nach `verwaistNachS` nicht fertig ist,
- * wird neu belegt. @returns ob belegt wurde */
+/** An entry whose first request is still unfinished after `verwaistNachS`
+ * gets claimed again. @returns whether it was claimed */
 export async function belege(
   db: DbSchnittstelle,
   uid: number,
@@ -35,7 +35,7 @@ export function eintrag(db: DbSchnittstelle, uid: number, key: string, verwaistN
   );
 }
 
-/** Jede Transaktion in `arbeit` vermerkt vor ihrem COMMIT, in ihr, die Wirkung am Schlüssel. */
+/** Every transaction in `arbeit` marks the effect on the key inside itself, before its COMMIT. */
 export function mitWirkungsVermerk<T>(db: Db, uid: number, key: string, arbeit: () => T): T {
   return db.mitCommitBegleiter(async (tx: DbSchnittstelle) => {
     await tx.run(
@@ -60,8 +60,8 @@ export async function schliesseAb(
   ]);
 }
 
-/** Eine fertige Antwort bleibt bis zum Ablauf der Frist; ein Eintrag mit Wirkung
- * wird ohne Antwort abgeschlossen, statt eine zweite zuzulassen. */
+/** A finished response stays until it expires; an entry with an effect is closed
+ * without a response instead of allowing a second one. */
 export async function loescheLaufenden(db: DbSchnittstelle, uid: number, key: string, status: number): Promise<void> {
   await db.run(
     `WITH weg AS (DELETE FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL AND NOT has_effect)
@@ -87,7 +87,7 @@ export function alteAntworten(db: DbSchnittstelle) {
   );
 }
 
-/** `AND response = $3`: Eine inzwischen neu geschriebene Zeile bleibt. */
+/** `AND response = $3`: a row written anew in the meantime is left alone. */
 export async function ersetzeAntwort(
   db: DbSchnittstelle,
   uid: number,

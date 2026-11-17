@@ -7,10 +7,10 @@
  * Gegenproben (31.10.2026 gemessen):
  *   A  app.use('/api/v1', idempotency) in server.ts gestrichen → rot:
  *      „Wiederholung wirkt nicht zweimal" (Menge 4 statt 3), kein Replay-Kopf
- *   B  in beginne() den Vergleich des Fingerabdrucks entfernt → rot:
+ *   B  in begin() den Vergleich des Fingerabdrucks entfernt → rot:
  *      „anderer Inhalt unter demselben Schlüssel" (200 statt 422)
- *   C  beende() merkt auch 5xx → rot: „ein Serverfehler gibt den Schlüssel frei"
- *   D  raeumeIdempotenzAuf ohne Frist (alles löschen) → rot: der frische Eintrag fehlt
+ *   C  end() merkt auch 5xx → rot: „ein Serverfehler gibt den Schlüssel frei"
+ *   D  cleanupIdempotency ohne Frist (alles löschen) → rot: der frische Eintrag fehlt
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -139,22 +139,22 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.equal(await menge(a), 5);
   });
 
-  const dienst = _req('src/idempotenz/dienst.js');
-  const abdruck = dienst.fingerabdruck('PUT', '/x', { y: 1 });
+  const dienst = _req('src/idempotency/service.js');
+  const abdruck = dienst.fingerprint('PUT', '/x', { y: 1 });
 
   await t.test('eine laufende erste Anfrage: die Wiederholung wartet', async () => {
-    assert.deepEqual(await dienst.beginne(a.id, 'k-lauf', abdruck), { art: 'neu' });
-    assert.deepEqual(await dienst.beginne(a.id, 'k-lauf', abdruck), { art: 'laeuft' });
+    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), { kind: 'new' });
+    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), { kind: 'running' });
   });
 
   await t.test('ein Serverfehler gibt den Schlüssel frei, ein 4xx wird gemerkt', async () => {
-    await dienst.beende(a.id, 'k-lauf', 500, '{"success":false}');
-    assert.deepEqual(await dienst.beginne(a.id, 'k-lauf', abdruck), { art: 'neu' });
-    await dienst.beende(a.id, 'k-lauf', 404, '{"success":false}');
-    assert.deepEqual(await dienst.beginne(a.id, 'k-lauf', abdruck), {
-      art: 'wiederholung',
+    await dienst.end(a.id, 'k-lauf', 500, '{"success":false}');
+    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), { kind: 'new' });
+    await dienst.end(a.id, 'k-lauf', 404, '{"success":false}');
+    assert.deepEqual(await dienst.begin(a.id, 'k-lauf', abdruck), {
+      kind: 'replay',
       status: 404,
-      antwort: '{"success":false}',
+      response: '{"success":false}',
     });
   });
 
@@ -162,9 +162,9 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     await db.run(
       `UPDATE idempotency SET created_at = NOW() - make_interval(hours => $2)
                    WHERE user_id = $1 AND key = 'k-1'`,
-      [a.id, dienst.FRIST_STUNDEN + 1],
+      [a.id, dienst.EXPIRY_HOURS + 1],
     );
-    assert.ok((await dienst.raeumeIdempotenzAuf()) >= 1);
+    assert.ok((await dienst.cleanupIdempotency()) >= 1);
     const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [a.id])).map(r => r.key);
     assert.deepEqual(uebrig, ['k-lauf']);
   });

@@ -8,7 +8,7 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KontoDienste } from '../konto';
 import type { FaktorenDienste } from '../faktoren';
-import type { IdempotenzDienste } from '../idempotenz';
+import type { IdempotencyServices } from '../idempotency';
 import type { KatalogDienste } from '../katalog';
 import type { FremdquellenDienste } from '../fremdquellen';
 import type { BilderDienste } from '../bilder';
@@ -25,7 +25,7 @@ export interface VerwaltungAbhaengigkeiten {
   auftraege: AuftraegeDienste;
   konto: KontoDienste;
   faktoren: FaktorenDienste;
-  idempotenz: IdempotenzDienste;
+  idempotency: IdempotencyServices;
   katalog: KatalogDienste;
   fremdquellen: FremdquellenDienste;
   bilder: BilderDienste;

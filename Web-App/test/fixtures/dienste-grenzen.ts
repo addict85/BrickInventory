@@ -61,7 +61,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.verwaltung.db,
     // @ts-expect-error
-    d.idempotenz.db,
+    d.idempotency.db,
     // Die ausdrücklichen Dienste dagegen stehen da.
     d.bestand.lagerortDienst.lagerorte,
     d.auftraege.liesZustand,

@@ -1,5 +1,5 @@
 /** Die Fristen des HTTP-Servers an einer Stelle: Die Idempotenz leitet daraus ab,
- * wann eine erste Anfrage als abgebrochen gilt (src/idempotenz/dienst.ts).
+ * wann eine erste Anfrage als abgebrochen gilt (src/idempotency/service.ts).
  * Fünf Minuten für 50-MB-Uploads; ohne kurzes Prüfintervall griffe die Kopffrist erst nach 45 s. */
 export const HTTP_FRISTEN = {
   headersTimeout: 15_000,

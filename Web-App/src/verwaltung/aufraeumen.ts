@@ -29,7 +29,7 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
       ['PDF-Aufträge', k.katalog.pdf.raeumeAuf],
       ['alte Aufträge', k.auftraege.raeumeErledigteAuf],
       ['verfallene Bildwünsche', k.bilder.loescheVerfallene],
-      ['Idempotenzschlüssel', k.idempotenz.raeumeIdempotenzAuf],
+      ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],
     ],
     lauf,
   );

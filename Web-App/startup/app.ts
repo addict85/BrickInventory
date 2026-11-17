@@ -32,7 +32,7 @@ import { registerImgProxy } from '../routes/imgProxy';
 import { waechterFuer, rumpfLesen } from '../routes/api_v1/middleware';
 import { schrittschutzAmEingang } from '../src/konto/http/schrittschutz';
 import { apiDrossel } from '../src/http/apiDrossel';
-import { idempotenz } from '../src/idempotenz/http/middleware';
+import { idempotency } from '../src/idempotency/http/middleware';
 import { baueDatenDateienRouter } from '../routes/datenDateien';
 import { baueApiRouter } from '../routes/api_v1/index';
 import { baueAuthRouter } from '../routes/auth';
@@ -275,7 +275,7 @@ function apiEingang(app: express.Express, d: Dienste): void {
   app.use('/api/v1', schrittschutzAmEingang(d.konto));
   // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
   app.use('/api/v1', rumpfLesen);
-  app.use('/api/v1', idempotenz(d.idempotenz));
+  app.use('/api/v1', idempotency(d.idempotency));
 }
 
 function rueckfaelle(app: express.Express, profil: ProfilDienste): void {

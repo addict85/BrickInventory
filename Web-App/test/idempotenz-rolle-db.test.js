@@ -5,7 +5,7 @@
  * Geprüft an der echten Kette vor /api/v1 (apiEingang) mit echten Tokens.
  *
  * Gegenprobe (13.11.2026 gemessen):
- *   A  in middleware.ts die Rolle nicht an fingerabdruck() übergeben → rot:
+ *   A  in middleware.ts die Rolle nicht an fingerprint() übergeben → rot:
  *      „ein App-Token bekommt die Verwalter-Antwort nicht“ (200 mit
  *      Idempotent-Replay statt 422)
  *

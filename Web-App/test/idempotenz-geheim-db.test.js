@@ -7,7 +7,7 @@
  * Gegenproben (01.11.2026 gemessen):
  *   A  dienst.ts und middleware.ts auf Stand e21f747 → rot: alle fünf Fälle,
  *      zuerst „das TOTP-Geheimnis steht in keiner Spalte" (idempotency: 1)
- *   B  antwortIstGeheim() liefert immer false → rot: Fälle 1–3 (Rumpf liegt,
+ *   B  responseIsSecret() liefert immer false → rot: Fälle 1–3 (Rumpf liegt,
  *      wenn auch verschlüsselt; die Wiederholung bekommt 200 mit Replay)
  *   C  in beende() verschluessele() weggelassen → rot: Fälle 4 und 5
  *   D  Migration 0086 durch `SELECT 1;` ersetzt → rot: Fall 5
@@ -46,7 +46,7 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const zf = _req('src/faktoren/zweiterFaktor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
-const { idempotenz, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
+const { idempotency, responseIsSecret } = _req('src/idempotency/http/middleware.js');
 const { nichtWiederholbar } = _req('src/vertrag/grund.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -89,7 +89,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     if (!req.originalUrl.startsWith('/api/v1/auth')) req.apiUser = { user_id: uid, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', idempotenz(require('./helpers/sources').testDienste().idempotenz));
+  app.use('/api/v1', idempotency(require('./helpers/sources').testDienste().idempotency));
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
@@ -154,7 +154,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     const z = await zeile('p-1');
     assert.ok(z.response.startsWith('v2:'), z.response);
     assert.equal(
-      geheimnis.entschluessele(z.response, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')),
+      geheimnis.entschluessele(z.response, _req('src/idempotency/service.js').responseContext(uid, 'p-1')),
       JSON.stringify(erst.body),
     );
     const nochmal = await post('/storage/locations', 'p-1', { name: 'Kiste 1' });
@@ -162,7 +162,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
   });
 
   await t.test('der Fingerabdruck verrät das Passwort nicht', async () => {
-    const dienst = _req('src/idempotenz/dienst.js');
+    const dienst = _req('src/idempotency/service.js');
     const pfad = '/api/v1/auth/zweiter-faktor/einrichten';
     const alt = require('node:crypto')
       .createHash('sha256')
@@ -173,7 +173,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
       (await db.get("SELECT request FROM idempotency WHERE user_id = $1 AND key = 'zf-1'", [uid])).request,
       /^h1:[0-9a-f]{64}$/,
     );
-    const abdruck = rumpf => dienst.fingerabdruck('POST', pfad, rumpf);
+    const abdruck = rumpf => dienst.fingerprint('POST', pfad, rumpf);
     assert.equal(
       abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', faktor_code: '2', pin: '3', x: 1 }),
       abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', faktor_code: '8', pin: '7', x: 1 }),
@@ -194,13 +194,13 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     }
 
     await db.run(`INSERT INTO idempotency (user_id, key, request, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
-    assert.ok((await dienst.alteAbdrueckeLoeschen()) >= 1);
+    assert.ok((await dienst.deleteOldFingerprints()) >= 1);
     const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [uid])).map(z => z.key);
     assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });
 
   await t.test('die Migration entfernt Klartext und die Wiederholung wird abgesagt', async () => {
-    const abdruck = _req('src/idempotenz/dienst.js').fingerabdruck('POST', '/api/v1/storage/locations', {
+    const abdruck = _req('src/idempotency/service.js').fingerprint('POST', '/api/v1/storage/locations', {
       name: 'Alt',
     });
     await db.run(
@@ -242,13 +242,13 @@ test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
     const [methode, pfad] = key.split(' ');
     if (methode === 'GET' || !route.antwort?.shape) continue;
     if (!GEHEIME_FELDER.some(f => f in route.antwort.shape)) continue;
-    (antwortIstGeheim(methode, pfad.replace(/:\w+/g, '1')) ? gefunden : fehlt).push(key);
+    (responseIsSecret(methode, pfad.replace(/:\w+/g, '1')) ? gefunden : fehlt).push(key);
   }
   assert.deepEqual(fehlt, []);
   assert.ok(gefunden.length >= 9, `nur ${gefunden.length} Routen erkannt: ${gefunden.join(', ')}`);
-  assert.equal(antwortIstGeheim('POST', '/api/v1/settings/household/invite'), true);
-  assert.equal(antwortIstGeheim('POST', '/api/v1/vouchers/7/klartext'), true);
-  assert.equal(antwortIstGeheim('PUT', '/api/v1/parts/3001/5'), false);
+  assert.equal(responseIsSecret('POST', '/api/v1/settings/household/invite'), true);
+  assert.equal(responseIsSecret('POST', '/api/v1/vouchers/7/klartext'), true);
+  assert.equal(responseIsSecret('PUT', '/api/v1/parts/3001/5'), false);
 });
 
 test('jede Route mit Bestätigung ist nicht wiederholbar', () => {
@@ -256,7 +256,7 @@ test('jede Route mit Bestätigung ist nicht wiederholbar', () => {
   assert.ok(mitBestaetigung.length >= 20, `nur ${mitBestaetigung.length} Routen mit Bestätigung`);
   const wiederholbar = mitBestaetigung
     .map(([k]) => k.split(' '))
-    .filter(([m, p]) => !antwortIstGeheim(m, p.replace(/:\w+/g, '1')))
+    .filter(([m, p]) => !responseIsSecret(m, p.replace(/:\w+/g, '1')))
     .map(x => x.join(' '));
   assert.deepEqual(wiederholbar, []);
   assert.equal(nichtWiederholbar({ response: undefined }), false);

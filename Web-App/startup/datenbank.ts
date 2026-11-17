@@ -33,10 +33,10 @@ export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluessel
     (await d.gutscheine.nummernNachverschluesseln()) +
     (await d.gutscheine.kopienVerschluesseln()) +
     (await d.faktoren.verschluesseleAltbestand()) +
-    (await d.idempotenz.antwortenUmschluesseln()) +
+    (await d.idempotency.reencryptResponses()) +
     (await d.gutscheine.verschluesseleAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
-  const alt = await d.idempotenz.alteAbdrueckeLoeschen();
+  const alt = await d.idempotency.deleteOldFingerprints();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
   await d.auftraege.setzeZustand(ALTBESTAND_MARKE, new Date().toISOString());
   return { umgeschluesselt: n, abdruecke: alt };
@@ -53,7 +53,7 @@ export async function schluesselWechsel(d: Dienste): Promise<number | null> {
     (await d.gutscheine.kopienVerschluesseln(true)) +
     (await d.gutscheine.verschluesseleAltbestand({ alle: true }));
   // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
-  await d.idempotenz.alleVergessen();
+  await d.idempotency.forgetAll();
   console.log(
     `[geheimnis] Schlüsselwechsel: ${n} Werte mit dem neuen Schlüssel geschrieben. Der vorige ` +
       '(DATA_KEY_ALT_FILE) kann weg, sobald jedes Konto mit zweitem Faktor neue Wiederherstellungscodes hat (UPGRADE.md).',

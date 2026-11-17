@@ -44,7 +44,7 @@ const gr = {
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
 const zf = _req('src/faktoren/zweiterFaktor.js');
 const settings = _req('src/einstellungen/settings.js');
-const idem = _req('src/idempotenz/dienst.js');
+const idem = _req('src/idempotency/service.js');
 
 /** Das Format vor dem Kontext: AES-GCM mit dem Rohschlüssel, ohne AAD. */
 function roh1(daten) {
@@ -138,20 +138,20 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     );
 
     // Gespeicherte Antwort eines Idempotency-Keys in den Eintrag eines anderen Kontos.
-    for (const uid of ids) assert.equal((await idem.beginne(uid, 'k-1', 'abdruck')).art, 'neu');
-    await idem.beende(a, 'k-1', 200, '{"geheim":"a"}');
-    await idem.beende(b, 'k-1', 200, '{"geheim":"b"}');
-    assert.deepEqual(await idem.beginne(a, 'k-1', 'abdruck'), {
-      art: 'wiederholung',
+    for (const uid of ids) assert.equal((await idem.begin(uid, 'k-1', 'abdruck')).kind, 'new');
+    await idem.end(a, 'k-1', 200, '{"geheim":"a"}');
+    await idem.end(b, 'k-1', 200, '{"geheim":"b"}');
+    assert.deepEqual(await idem.begin(a, 'k-1', 'abdruck'), {
+      kind: 'replay',
       status: 200,
-      antwort: '{"geheim":"a"}',
+      response: '{"geheim":"a"}',
     });
     await db.run(
       `UPDATE idempotency SET response = (SELECT response FROM idempotency WHERE user_id = $1 AND key = 'k-1')
                   WHERE user_id = $2 AND key = 'k-1'`,
       [a, b],
     );
-    assert.equal((await stumm(() => idem.beginne(b, 'k-1', 'abdruck'))).art, 'nicht_wiederholbar');
+    assert.equal((await stumm(() => idem.begin(b, 'k-1', 'abdruck'))).kind, 'not_replayable');
 
     // Gutschein-PDF von a in den Ordner von b.
     const da = path.join(dateien.VOUCHER_DIR, String(a), `${ga.id}.pdf`),
@@ -196,7 +196,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [alsV1('Smtp-Alt-2')]);
     const totp = zf.base32(crypto.randomBytes(20));
     await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [b, alsV1(totp)]);
-    const abdruck = idem.fingerabdruck('PUT', '/api/v1/x', { alt: true });
+    const abdruck = idem.fingerprint('PUT', '/api/v1/x', { alt: true });
     await db.run(
       `INSERT INTO idempotency (user_id, key, request, status, response) VALUES ($1, 'alt-1', $2, 200, $3)`,
       [a, abdruck, alsV1('{"alt":true}')],
@@ -216,10 +216,10 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     assert.equal(await settings.getGlobalSetting('smtp_pass'), 'Smtp-Alt-2');
     assert.match((await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [b])).secret, /^v2:/);
     assert.equal(await zf.pruefeCode(b, zf.hotp(zf.ausBase32(totp), zf.zeitschritt())), 'totp');
-    assert.deepEqual(await idem.beginne(a, 'alt-1', abdruck), {
-      art: 'wiederholung',
+    assert.deepEqual(await idem.begin(a, 'alt-1', abdruck), {
+      kind: 'replay',
       status: 200,
-      antwort: '{"alt":true}',
+      response: '{"alt":true}',
     });
     assert.equal(fs.readFileSync(pdf).subarray(0, 7).toString('latin1'), 'BIENC2\n');
     assert.ok((await dateien.liesGutscheinPdf(pdf)).equals(PDF));

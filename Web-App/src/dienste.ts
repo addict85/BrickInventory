@@ -12,7 +12,7 @@ import type { FinanzenDienste } from './finanzen';
 import type { FremdquellenDienste } from './fremdquellen';
 import type { GutscheineDienste } from './gutscheine';
 import type { HaushaltDienste } from './haushalt';
-import type { IdempotenzDienste } from './idempotenz';
+import type { IdempotencyServices } from './idempotency';
 import type { KatalogDienste } from './katalog';
 import type { KontoDienste } from './konto';
 import type { MailDienste } from './mail';
@@ -42,7 +42,7 @@ export interface Dienste {
   faktoren: FaktorenDienste;
   konto: KontoDienste;
   profil: ProfilDienste;
-  idempotenz: IdempotenzDienste;
+  idempotency: IdempotencyServices;
   fremdquellen: FremdquellenDienste;
   bilder: BilderDienste;
   katalog: KatalogDienste;

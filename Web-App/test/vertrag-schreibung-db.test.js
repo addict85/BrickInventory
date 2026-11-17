@@ -33,7 +33,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { VERTRAG, routeFuerAnfrage } = _req('src/vertrag/index.js');
-const { antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
+const { responseIsSecret: antwortIstGeheim } = _req('src/idempotency/http/middleware.js');
 const { warte } = require('./helpers/zeit');
 const { portVon } = require('./helpers/server');
 const freierPort = () =>

@@ -7,7 +7,7 @@ import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
 import { erzeugeMail } from '../src/mail';
-import { erzeugeIdempotenz } from '../src/idempotenz';
+import { createIdempotency } from '../src/idempotency';
 import { erzeugeBestand } from '../src/bestand';
 import { erzeugeTeile } from '../src/teile';
 import { erzeugeFiguren } from '../src/figuren';
@@ -126,7 +126,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     zeige('konto'),
   );
   const profil = erzeugeProfil({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profil'));
-  const idempotenz = erzeugeIdempotenz({ db, uhr }, zeige('idempotenz'));
+  const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
   const fremdquellen = erzeugeFremdquellen(
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
     zeige('fremdquellen'),
@@ -151,7 +151,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     faktoren,
     konto,
     profil,
-    idempotenz,
+    idempotency,
     fremdquellen,
     bilder,
     katalog,
@@ -169,7 +169,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     haushalt,
     faktoren,
     konto,
-    idempotenz,
+    idempotency,
     fremdquellen,
     bilder,
     katalog,
@@ -212,7 +212,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
       auftraege,
       faktoren,
       konto,
-      idempotenz,
+      idempotency,
       katalog,
       fremdquellen,
       bilder,
