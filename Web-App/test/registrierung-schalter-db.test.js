@@ -18,7 +18,7 @@
  *   F  (04.11.) registration-status und /register ohne mailBereit() → rot:
  *      „ohne Mailversand bleibt sie zu …“; ebenso die Prüfung beim Einschalten
  *      in POST /settings entfernt
- *   G  (04.11.) schalteRegistrierungFrei() lässt registrierung_offen stehen oder
+ *   G  (04.11.) schalteRegistrierungFrei() lässt registration_pending stehen oder
  *      die Route protokolliert nicht → rot: „der Verwalter schaltet … frei“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -168,14 +168,13 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const z = await zeile();
     assert.deepEqual(
-      [z.email, z.email_verified, z.registrierung_offen, z.email_neu],
+      [z.email, z.email_verified, z.registration_pending, z.new_email],
       [`${NEU}@example.org`, true, false, null],
     );
     assert.equal(assertLoginAllowed(z), null);
     assert.equal((await inListe()).wartet_auf_bestaetigung, false);
     assert.equal(
-      (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [neu]))
-        .action,
+      (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [neu])).action,
       'konto_freigeschaltet',
     );
     const nochmal = await rufe('PUT', `/auth/users/${neu}/freischalten`, { admin_password: PASS });

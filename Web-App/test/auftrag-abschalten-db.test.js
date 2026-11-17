@@ -25,14 +25,14 @@ const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('jobs').jobs };
+  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
   require('./helpers/sources')
     .testDienste()
-    .jobs.meldeArtAn({ type: ART, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
+    .auftraege.meldeArtAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
   await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
@@ -54,7 +54,7 @@ test('Abschalten während einer Belegung', async t => {
   let angefangen = false;
   // Hängt bis zum Testende: Ein angelaufener Auftrag bliebe so auf 'laeuft'.
   const w = erzeugeWorker(
-    require('./helpers/sources').testDienste().jobs,
+    require('./helpers/sources').testDienste().auftraege,
     {
       [ART]: {
         ausfuehren: () => {

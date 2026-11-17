@@ -6,7 +6,7 @@
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in Migration 0056 die DELETE-Anweisungen entfernt → rot: „die Migration
  *      räumt doppelte Tagespunkte ab …“ (der eindeutige Index scheitert)
- *   B  in fetchMinifigPrice „AND NOT geschaetzt“ entfernt → rot: „eine
+ *   B  in fetchMinifigPrice „AND NOT estimated“ entfernt → rot: „eine
  *      Schätzung im Cache gilt nicht als BrickLink-Preis“ (5 statt 20)
  *   C  in schaetzeFigurenpreis die Abdeckung nicht mehr gelesen → rot: „die
  *      Schätzung trägt ihre Abdeckung“
@@ -154,21 +154,24 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
 
   await t.test('eine Schätzung im Cache gilt nicht als BrickLink-Preis', async () => {
     await db.run(
-      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
       VALUES ($1, 'N', 'EUR', 5, 5, TRUE, 0.5)`,
       [FIGUR],
     );
     const { fetchMinifigPrice } = _req('src/finanzen/financeCalc.js');
     const p = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);
     assert.equal(Number(p.avg_price), 20);
-    const zeile = await db.get('SELECT geschaetzt, abdeckung FROM minifig_price_cache WHERE fig_number = $1', [FIGUR]);
+    const zeile = await db.get(
+      'SELECT estimated AS geschaetzt, coverage AS abdeckung FROM minifig_price_cache WHERE fig_number = $1',
+      [FIGUR],
+    );
     assert.equal(zeile.geschaetzt, false, 'der echte Preis trägt noch die Schätzmarke');
     assert.equal(zeile.abdeckung, null);
   });
 
   await t.test('die Schätzung trägt ihre Abdeckung', async () => {
     await db.run(
-      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
       VALUES ($1, 'N', 'EUR', 8, 8, TRUE, 0.75)`,
       [RBFIGUR],
     );

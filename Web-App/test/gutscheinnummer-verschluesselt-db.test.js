@@ -124,9 +124,9 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.deepEqual(await klartext(haupt, id1), [NR1, '2468'], 'der Eigentümer liest die Nummer bestätigt');
     const zeile = await zeileAlsText(id1);
     assert.ok(!zeile.includes(NR1) && !zeile.includes(NR1.slice(-6)), zeile);
-    const roh = await db.get('SELECT number, nummer_suche FROM vouchers WHERE id = $1', [id1]);
+    const roh = await db.get('SELECT number, number_search FROM vouchers WHERE id = $1', [id1]);
     assert.ok(roh.number.startsWith('v2:'), roh.number);
-    assert.match(roh.nummer_suche, /^[0-9a-f]{64}$/);
+    assert.match(roh.number_search, /^[0-9a-f]{64}$/);
   });
 
   await t.test('lesen und ändern', async () => {
@@ -135,13 +135,13 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       liste.body.vouchers.map(v => [v.id, v.number, v.pin]),
       [[id1, '…' + NR1.slice(-4), '•••']],
     );
-    const suche = (await db.get('SELECT nummer_suche FROM vouchers WHERE id = $1', [id1])).nummer_suche;
+    const suche = (await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search;
     const r = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { number: NR2 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal((await klartext(haupt, id1))[0], NR2);
     const zeile = await zeileAlsText(id1);
     assert.ok(!zeile.includes(NR2) && !zeile.includes(NR1), zeile);
-    assert.notEqual((await db.get('SELECT nummer_suche FROM vouchers WHERE id = $1', [id1])).nummer_suche, suche);
+    assert.notEqual((await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search, suche);
     // Nur der Betrag: Die Nummer kommt entschlüsselt aus der Zeile und geht verschlüsselt zurück.
     const b = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
     assert.deepEqual([b.status, (await klartext(haupt, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
@@ -157,7 +157,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.deepEqual([umbenannt.status, umbenannt.body.code], [409, 'gutschein_existiert']);
     const anderesKonto = await ruf(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
     assert.equal(anderesKonto.status, 200, 'dieselbe Karte in einem anderen Konto ist erlaubt');
-    const suchwerte = await db.all('SELECT DISTINCT nummer_suche FROM vouchers WHERE id = ANY($1)', [
+    const suchwerte = await db.all('SELECT DISTINCT number_search FROM vouchers WHERE id = ANY($1)', [
       [id1, anderesKonto.body.voucher.id],
     ]);
     assert.equal(suchwerte.length, 2, 'derselbe Suchwert in zwei Konten verriete, dass sie dieselbe Karte halten');
@@ -215,7 +215,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     // Der Stand vor 0087: Nummer im Klartext, eindeutig über (user_id, number).
     await db.run('DELETE FROM vouchers');
     await db.run(`ALTER TABLE vouchers DROP CONSTRAINT vouchers_nummer_verschluesselt,
-      DROP CONSTRAINT vouchers_user_id_nummer_suche_key, DROP COLUMN nummer_suche,
+      DROP CONSTRAINT vouchers_user_id_nummer_suche_key, DROP COLUMN number_search,
       ADD CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number)`);
     await db.run(
       `DELETE FROM schema_migrations WHERE name IN ('0087-gutscheinnummer-verschluesselt.sql', '0088-geheimnisse-mit-kontext.sql')`,
@@ -237,11 +237,16 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
         ).id,
       );
 
-    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang(), require('./helpers/sources').testDienste());
+    // 0087 legt die Spalte noch unter ihrem alten Namen an; 0124 (längst
+    // angewandt) hätte sie sonst gleich danach umbenannt, wie bei einer
+    // echten Reihenfolge der Migrationen.
+    await testZugang().initSchemaOnce();
+    await db.run('ALTER TABLE vouchers RENAME COLUMN nummer_suche TO number_search');
+    await _req('startup/datenbank.js').altbestandAufruesten(require('./helpers/sources').testDienste());
 
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name = '0087-gutscheinnummer-verschluesselt.sql'`));
     const zeilen = await db.all(
-      'SELECT id, user_id, number, nummer_suche FROM vouchers WHERE id = ANY($1) ORDER BY id',
+      'SELECT id, user_id, number, number_search FROM vouchers WHERE id = ANY($1) ORDER BY id',
       [ids],
     );
     assert.deepEqual(
@@ -249,12 +254,12 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       [NR1, NR1, NR3],
     );
     for (const z of zeilen) {
-      assert.ok(z.number.startsWith('v2:') && z.nummer_suche, JSON.stringify(z));
+      assert.ok(z.number.startsWith('v2:') && z.number_search, JSON.stringify(z));
       assert.ok(
         !(await zeileAlsText(z.id)).includes(NR1.slice(-6)) && !(await zeileAlsText(z.id)).includes(NR3.slice(-6)),
       );
     }
-    assert.notEqual(zeilen[0].nummer_suche, zeilen[1].nummer_suche);
+    assert.notEqual(zeilen[0].number_search, zeilen[1].number_search);
     const liste = await ruf(haupt, 'GET', '/vouchers');
     const werte = [];
     for (const v of liste.body.vouchers) werte.push(await klartext(haupt, v.id));

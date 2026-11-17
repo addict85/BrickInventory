@@ -34,7 +34,7 @@ const enthaeltSchluessel = (wert, name) =>
   (Object.hasOwn(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
 
 test('kein Antwortschema der Verwaltung nennt user_id', () => {
-  for (const r of ['GET /api/v1/admin/jobs', 'GET /api/v1/admin/image-diag/:setNumber']) {
+  for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {
     const schema = JSON.stringify(z.toJSONSchema(routeZu(r).antwort, { io: 'output', unrepresentable: 'any' }));
     assert.doesNotMatch(schema, /"user_id"/, r);
   }
@@ -83,10 +83,10 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
   });
 
   await t.test('die Auftragsliste ohne Konto', async () => {
-    const r = await fetch(`${base}/api/v1/admin/jobs?status=error_message`);
+    const r = await fetch(`${base}/api/v1/admin/auftraege?status=fehler`);
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
-    const eintrag = body.jobs.find(a => a.id === String(auftrag));
+    const eintrag = body.auftraege.find(a => a.id === String(auftrag));
     assert.ok(eintrag, 'Vorbedingung: der Auftrag steht in der Liste');
     assert.equal(eintrag.set_number, SN);
     assert.equal(enthaeltSchluessel(body, 'user_id'), false, JSON.stringify(eintrag));

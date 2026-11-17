@@ -73,8 +73,8 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   const erfassungen = (tabelle, nummer, farbe, u) =>
     db.all(
       `SELECT ${nummer}${farbe ? ', color_id' : ''}, quantity, ${tabelle === 'set_acquisitions' ? 'purchase_price' : 'unit_price'}::text AS preis,
-            condition, tag::text AS tag
-       FROM ${tabelle} WHERE user_id=$1 ORDER BY tag, condition`,
+            condition, day::text AS tag
+       FROM ${tabelle} WHERE user_id=$1 ORDER BY day, condition`,
       [u],
     );
 

@@ -30,8 +30,8 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   const spaeter = () =>
     db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'preise' AND status = 'offen'`);
   const faellig = async () =>
-    (await db.get(`SELECT due_at <= NOW() AS jetzt FROM jobs WHERE type = 'preise' AND status = 'offen'`))
-      ?.jetzt === true;
+    (await db.get(`SELECT due_at <= NOW() AS jetzt FROM jobs WHERE type = 'preise' AND status = 'offen'`))?.jetzt ===
+    true;
   const warteAufLauf = async () => {
     for (let i = 0; i < 40; i++) {
       if (await faellig()) return true;

@@ -74,7 +74,7 @@ test('Pause nennt eine unbekannte Auftragsart wörtlich', async () => {
       zusammenfassung: [],
       job_prozess: { laeuft: true },
       bildbedarf: 0,
-      pausen: [{ art: 'x&y', bis: '2026-11-05T12:00:00Z', grund: 'Wartung' }],
+      pausen: [{ type: 'x&y', until_at: '2026-11-05T12:00:00Z', reason: 'Wartung' }],
     },
   });
   try {

@@ -256,7 +256,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       m: 'POST',
       p: '/api/v1/auth/qr-login/abholen',
       davor: async () => {
-        await db.run('UPDATE qr_login_tokens SET bestaetigt_am = NOW() WHERE token = $1', [
+        await db.run('UPDATE qr_login_tokens SET confirmed_at = NOW() WHERE token = $1', [
           _req('src/konto/geraeteToken.js').tokenAbdruck(w.qr.slice(4)),
         ]);
       },
@@ -393,7 +393,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'DELETE', p: '/api/v1/sets/{setNumber}/acquisitions/{acqId}' },
     // Die einzige Erfassung ist weg und mit ihr das Set — neu anlegen.
     { m: 'POST', p: '/api/v1/sets', body: { set_number: SET, quantity: 1, condition: 'N' } },
-    { m: 'PUT', p: '/api/v1/sets/{setNumber}/alert', body: { richtung: 'unter', schwelle: 30, condition: 'N' } },
+    { m: 'PUT', p: '/api/v1/sets/{setNumber}/alert', body: { direction: 'unter', threshold: 30, condition: 'N' } },
     { m: 'DELETE', p: '/api/v1/sets/{setNumber}/alert', q: 'condition=N' },
     { m: 'PUT', p: '/api/v1/sets/{setNumber}/storage', body: { storage: 'Regal Probe 2' } },
     {

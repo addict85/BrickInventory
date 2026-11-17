@@ -58,10 +58,9 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen', { concurrenc
   };
   /** 0, sobald der Entzug angekündigt (oder vollzogen) ist. */
   const istAdmin = async () => {
-    const angekuendigt = await db.get(
-      `SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='rolle_entziehen'`,
-      [zielId],
-    );
+    const angekuendigt = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='rolle_entziehen'`, [
+      zielId,
+    ]);
     const admin = (await db.get(`SELECT is_admin FROM users WHERE id=$1`, [zielId])).is_admin;
     return admin && !angekuendigt ? 1 : 0;
   };

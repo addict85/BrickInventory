@@ -48,7 +48,7 @@ const MIT_ALLEN_RECHTEN = [
   ...['account_link_invites', 'account_links', 'api_tokens', 'api_tokens_consumed', 'jobs'],
   ...['device_nonces', 'device_keys', 'global_settings', 'household_former_links', 'passkeys'],
   ...['qr_login_tokens', 'rate_limit_attempts', 'step_up_challenges', 'step_up_approvals', 'user_sessions'],
-  ...['user_settings', 'users', 'admin_takeovers', 'webauthn_challenges', 'zweiter_faktor'],
+  ...['user_settings', 'users', 'admin_takeovers', 'webauthn_challenges', 'second_factor'],
   'second_factor_codes',
   // ohne Kontobezug: Katalog, Preis- und Bildspeicher, Laufzustand
   ...['api_calls', 'api_cadence', 'app_logs', 'job_exclusive_locks', 'job_pauses', 'job_types'],
@@ -131,7 +131,14 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1'), ($2, '10002-1')`, [a, b]);
     // Eine neue Sicht über eine Kontotabelle, danach 0119 erneut (UPGRADE.md, Abschnitt 65) und 0120.
     await db.run(`CREATE VIEW ${name} AS SELECT user_id, set_number FROM sets`);
+    // 0119 ist Geschichte und nennt Tabelle und Spalte noch unter ihrem alten
+    // Namen (auftrags_arten.art); 0124 (längst angewandt) hätte sie sonst
+    // gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+    await db.run('ALTER TABLE job_types RENAME COLUMN type TO art');
+    await db.run('ALTER TABLE job_types RENAME TO auftrags_arten');
     await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0119-systemrolle-web.sql'), 'utf8'));
+    await db.run('ALTER TABLE auftrags_arten RENAME TO job_types');
+    await db.run('ALTER TABLE job_types RENAME COLUMN art TO type');
     await db.run(
       fs.readFileSync(path.join(ROOT, 'db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql'), 'utf8'),
     );
@@ -207,8 +214,8 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'katalog_nachzug' AND status = 'offen'`));
     const nachzug = quellen
       .testDienste()
-      .jobs.angemeldeteArten()
-      .find(a => a.type === 'katalog_nachzug');
+      .auftraege.angemeldeteArten()
+      .find(a => a.art === 'katalog_nachzug');
     await imSystemkontext('Test', () => nachzug.ausfuehren({}, {}));
     assert.equal(await offen(), 0, 'der Auftrag leert sie');
   });

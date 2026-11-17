@@ -53,7 +53,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
       createdAt: am,
     });
   const zeilen = () =>
-    db.all(`SELECT tag::text AS tag, quantity FROM set_acquisitions WHERE user_id=$1 ORDER BY tag`, [uid]);
+    db.all(`SELECT day::text AS tag, quantity FROM set_acquisitions WHERE user_id=$1 ORDER BY day`, [uid]);
 
   try {
     await t.test('ein Kauf um 00:30 gehört zum selben Tag wie einer am Mittag', async () => {
@@ -71,7 +71,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
       try {
         const r = await c.query(
           `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
-                                 VALUES ($1, $2, 1, 11, 'U', 'CHF', '2026-03-09T23:30:00Z') RETURNING tag::text AS tag`,
+                                 VALUES ($1, $2, 1, 11, 'U', 'CHF', '2026-03-09T23:30:00Z') RETURNING day::text AS tag`,
           [uid, SN],
         );
         assert.equal(r.rows[0].tag, '2026-03-10');
@@ -80,10 +80,10 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
       }
     });
     await t.test('ein geändertes Datum ist der neue Tag', async () => {
-      const id = (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND tag='2026-03-04'`, [uid])).id;
+      const id = (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND day='2026-03-04'`, [uid])).id;
       await db.run(`UPDATE set_acquisitions SET created_at = '2026-02-01T23:30:00Z' WHERE id=$1`, [id]);
       assert.equal(
-        (await db.get('SELECT tag::text AS tag FROM set_acquisitions WHERE id=$1', [id])).tag,
+        (await db.get('SELECT day::text AS tag FROM set_acquisitions WHERE id=$1', [id])).tag,
         '2026-02-02',
         'der Trigger rechnet den Tag neu, in Zürich',
       );

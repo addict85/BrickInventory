@@ -57,10 +57,9 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
       await db.get("SELECT COUNT(*)::int AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])
     ).n,
     protokoll: (
-      await db.get(
-        "SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'konto_geloescht'",
-        [uid],
-      )
+      await db.get("SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'konto_geloescht'", [
+        uid,
+      ])
     ).n,
   });
   t.after(async () => {
@@ -108,10 +107,9 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
       fs.promises.rm = echt;
     }
     assert.equal(r, 'eingereiht');
-    const a = await db.get(
-      "SELECT payload, dedupe_key FROM jobs WHERE type = 'konto_dateien' AND dedupe_key = $1",
-      ['konto_dateien:987654'],
-    );
+    const a = await db.get("SELECT payload, dedupe_key FROM jobs WHERE type = 'konto_dateien' AND dedupe_key = $1", [
+      'konto_dateien:987654',
+    ]);
     assert.ok(a, 'kein Auftrag zum Wiederholen');
     assert.equal(a.payload.user_id, 987654);
     assert.equal(await kontoDateienEntfernen(987654), 'entfernt', 'ohne Störung geht es gleich');

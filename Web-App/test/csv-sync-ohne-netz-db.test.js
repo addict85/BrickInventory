@@ -57,9 +57,8 @@ testQuellen(null, {
 
 test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
-  const vorher =
-    (await db.get(`SELECT wert AS value FROM run_state WHERE schluessel='rb_csv_last_sync'`))?.value ?? null;
-  await db.run(`DELETE FROM run_state WHERE schluessel IN ('rb_csv_last_sync','startup_status')`);
+  const vorher = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
+  await db.run(`DELETE FROM run_state WHERE key IN ('rb_csv_last_sync','startup_status')`);
   const zustand = _req('src/auftraege/startZustand.js');
   await zustand.meldeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
@@ -70,9 +69,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
       );
       const stand = await zustand.aktuellerStartZustand();
       assert.equal(stand.ready, true, JSON.stringify(stand));
-      const gespeichert = JSON.parse(
-        (await db.get(`SELECT wert AS value FROM run_state WHERE schluessel='startup_status'`)).value,
-      );
+      const gespeichert = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
       assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');
     });
     await t.test('die Zwischendatei bleibt nach einem Fehlschlag nicht liegen', async () => {
@@ -88,8 +85,8 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
   } finally {
     if (vorher !== null)
       await db.run(
-        `INSERT INTO run_state (schluessel, wert) VALUES ('rb_csv_last_sync',$1)
-                                       ON CONFLICT (schluessel) DO UPDATE SET wert = $1`,
+        `INSERT INTO run_state (key, value) VALUES ('rb_csv_last_sync',$1)
+                                       ON CONFLICT (key) DO UPDATE SET value = $1`,
         [vorher],
       );
     await db.pool.end().catch(() => {});

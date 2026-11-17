@@ -11,17 +11,17 @@
  *      „die ausstehende Adresse belegt nichts“ und „beim Einlösen …“
  *   C  aktivesKontoNachEmail() ohne `AND email_verified` → rot: „Passwort
  *      vergessen nur für bestätigte Adressen“
- *   D  assertLoginAllowed() ohne die Bedingung `registrierung_offen` → rot: „eine
+ *   D  assertLoginAllowed() ohne die Bedingung `registration_pending` → rot: „eine
  *      fremde Registrierung sperrt die Adresse nicht“ (mallory meldet sich an)
  *   E  uebernimmEmailNeu() ohne OHNE_RUECKSETZLINK → rot: „eingelöst gilt die
  *      neue Adresse“ (der Rücksetzlink an die alte Adresse gilt weiter)
- *   F  in 0096 die Bedingung `NOT registrierung_offen` gestrichen → rot:
+ *   F  in 0096 die Bedingung `NOT registration_pending` gestrichen → rot:
  *      „Migration 0096 …“; in 0097 `email = NULL` gestrichen → rot: „Migrationen
  *      0096 und 0097 …“ (auf frischer DB gemessen, sonst greift die Prüfsumme)
  *   G  meldeAusstehendeAdressen() ohne Abfrage (leere Liste) → rot: dieselbe Prüfung
  *   H  erneuereEmailTokenWennFrei() ohne `HAVING COUNT(*) = 1` → rot: „ein neuer
  *      Link nur für die einzige offene Registrierung“
- *   I  die Vorschau nennt auch email_neu (Name und Adresse) → rot: „die
+ *   I  die Vorschau nennt auch new_email (Name und Adresse) → rot: „die
  *      Vorschau nennt nur den Benutzernamen“
  *   K  die Vorschau ruft verifiziereEmailToken() → rot: „… löst nicht ein“
  *   L  POST /register übergibt `mehrere` nicht → rot: „bei mehreren offenen
@@ -130,8 +130,8 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     });
     return { status: r.status, body: await r.json() };
   };
-  const carol = () => db.get('SELECT email, email_verified, email_neu, reset_token FROM users WHERE id = $1', [uid]);
-  const konto = name => db.get('SELECT id, email, email_neu FROM users WHERE username = $1', [`${name}_${P}`]);
+  const carol = () => db.get('SELECT email, email_verified, new_email, reset_token FROM users WHERE id = $1', [uid]);
+  const konto = name => db.get('SELECT id, email, new_email FROM users WHERE username = $1', [`${name}_${P}`]);
   const registriere = (name, email) =>
     ruf('POST', '/register', { username: `${name}_${P}`, email, password: 'Opfer-Passwort-2026!' });
   const linkAn = (an, art = 'adresse') => post.filter(m => m.an === an && m.art === art).at(-1)?.token;
@@ -144,7 +144,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.deepEqual(await carol(), {
       email: adr('alt'),
       email_verified: true,
-      email_neu: adr('opfer'),
+      new_email: adr('opfer'),
       reset_token: null,
     });
     assert.ok(linkAn(adr('opfer')), 'der Link geht an die neue Adresse');
@@ -153,7 +153,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       [{ an: adr('alt'), art: 'hinweis', neu: adr('opfer') }],
     );
     const profil = await ruf('GET', '/profile');
-    assert.deepEqual([profil.body.user.email, profil.body.user.email_neu], [adr('alt'), adr('opfer')]);
+    assert.deepEqual([profil.body.user.email, profil.body.user.new_email], [adr('alt'), adr('opfer')]);
   });
 
   await t.test('die ausstehende Adresse belegt nichts', async () => {
@@ -161,7 +161,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(
       await konto('opfer'),
-      { id: (await konto('opfer')).id, email: null, email_neu: adr('opfer') },
+      { id: (await konto('opfer')).id, email: null, new_email: adr('opfer') },
       'der Inhaber bekommt ein Konto, die Adresse bis zum Link nur ausstehend',
     );
     assert.equal((await carol()).email, adr('alt'));
@@ -183,14 +183,14 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     const r = await ruf('POST', '/email-bestaetigen', { token: linkAn(adr('opfer')) });
     assert.deepEqual([r.status, r.body.code], [400, 'email_vergeben'], JSON.stringify(r.body));
     const c = await carol();
-    assert.deepEqual([c.email, c.email_neu], [adr('alt'), null]);
+    assert.deepEqual([c.email, c.new_email], [adr('alt'), null]);
   });
 
   await t.test('eingelöst gilt die neue Adresse', async () => {
     assert.equal((await ruf('PUT', '/profile', { email: adr('neu'), password_current: PASS })).status, 200);
     const token = linkAn(adr('neu'));
     assert.equal((await ruf('POST', '/email-bestaetigen', { token })).status, 200);
-    assert.deepEqual(await carol(), { email: adr('neu'), email_verified: true, email_neu: null, reset_token: null });
+    assert.deepEqual(await carol(), { email: adr('neu'), email_verified: true, new_email: null, reset_token: null });
     const nochmal = await ruf('POST', '/email-bestaetigen', { token });
     assert.deepEqual([nochmal.status, nochmal.body.code], [400, 'bestaetigungslink_ungueltig']);
   });
@@ -202,7 +202,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     await db.run("UPDATE users SET created_at = NOW() - INTERVAL '25 hours' WHERE username = $1", [`mallory1_${P}`]);
     assert.equal((await registriere('mallory2', adr('ziel'))).status, 200);
     assert.equal((await registriere('ziel', adr('ziel'))).status, 200);
-    assert.deepEqual(await konto('ziel'), { id: (await konto('ziel')).id, email: null, email_neu: adr('ziel') });
+    assert.deepEqual(await konto('ziel'), { id: (await konto('ziel')).id, email: null, new_email: adr('ziel') });
     assert.ok(
       !post.some(m => m.an === adr('ziel') && m.art === 'versuch'),
       'eine unbestätigte Registrierung gilt als Inhaber',
@@ -234,13 +234,13 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       return post.slice(vorher);
     };
     assert.equal((await registriere('allein', adr('allein'))).status, 200);
-    await db.run("UPDATE users SET email_neu_bis = NOW() + INTERVAL '1 hour' WHERE username = $1", [`allein_${P}`]);
+    await db.run("UPDATE users SET new_email_until = NOW() + INTERVAL '1 hour' WHERE username = $1", [`allein_${P}`]);
     assert.deepEqual(
       (await erneut(adr('allein'))).map(m => [m.an, m.art]),
       [[adr('allein'), 'registrierung']],
     );
     assert.equal((await registriere('doppel', adr('allein'))).status, 200);
-    await db.run("UPDATE users SET email_neu_bis = NOW() + INTERVAL '1 hour' WHERE username LIKE $1", [`%_${P}`]);
+    await db.run("UPDATE users SET new_email_until = NOW() + INTERVAL '1 hour' WHERE username LIKE $1", [`%_${P}`]);
     assert.deepEqual(await erneut(adr('allein')), [], 'bei zwei offenen Registrierungen ginge ein fremder Link mit');
   });
 
@@ -263,7 +263,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     );
     assert.deepEqual(
       await konto('mallory4'),
-      { id: (await konto('mallory4')).id, email: null, email_neu: adr('zwei') },
+      { id: (await konto('mallory4')).id, email: null, new_email: adr('zwei') },
       'die Vorschau löst nicht ein',
     );
     for (const falsch of ['falsch', '', undefined]) {
@@ -289,7 +289,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
         (
           await c.query(
             `INSERT INTO users (username, password_hash, email, email_verified,
-        registrierung_offen, verification_token, token_expires) VALUES ($1, 'x', $2, $3, $4, $5, NOW() + $6::interval) RETURNING id`,
+        registration_pending, verification_token, token_expires) VALUES ($1, 'x', $2, $3, $4, $5, NOW() + $6::interval) RETURNING id`,
             [`${name}_${P}`, adr(name), ...spalten],
           )
         ).rows[0].id;
@@ -299,11 +299,22 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
         offen: await neu('offen', [false, true, 'h3', '2 hours']),
         fest: await neu('fest', [true, false, null, '0 hours']),
       };
+      // Migration 0096 ist Geschichte und nennt die Spalten noch unter ihrem
+      // alten Namen; 0124 (längst angewandt) hätte sie sonst gleich danach
+      // umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+      await c.query(`ALTER TABLE users RENAME COLUMN new_email TO email_neu`);
+      await c.query(`ALTER TABLE users RENAME COLUMN new_email_token TO email_neu_token`);
+      await c.query(`ALTER TABLE users RENAME COLUMN new_email_until TO email_neu_bis`);
+      await c.query(`ALTER TABLE users RENAME COLUMN registration_pending TO registrierung_offen`);
       await c.query(sql.slice(sql.indexOf('UPDATE users')));
+      await c.query(`ALTER TABLE users RENAME COLUMN email_neu TO new_email`);
+      await c.query(`ALTER TABLE users RENAME COLUMN email_neu_token TO new_email_token`);
+      await c.query(`ALTER TABLE users RENAME COLUMN email_neu_bis TO new_email_until`);
+      await c.query(`ALTER TABLE users RENAME COLUMN registrierung_offen TO registration_pending`);
       const z = Object.fromEntries(
         (
           await c.query(
-            `SELECT id, email, email_neu, email_neu_token, email_neu_bis IS NOT NULL AS bis,
+            `SELECT id, email, new_email, new_email_token, new_email_until IS NOT NULL AS bis,
         verification_token FROM users WHERE id = ANY($1)`,
             [Object.values(ids)],
           )
@@ -312,16 +323,16 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       assert.deepEqual(z[ids.gueltig], {
         id: ids.gueltig,
         email: null,
-        email_neu: adr('gueltig'),
-        email_neu_token: 'h1',
+        new_email: adr('gueltig'),
+        new_email_token: 'h1',
         bis: true,
         verification_token: null,
       });
       assert.deepEqual(z[ids.alt], {
         id: ids.alt,
         email: null,
-        email_neu: adr('altlink'),
-        email_neu_token: null,
+        new_email: adr('altlink'),
+        new_email_token: null,
         bis: false,
         verification_token: null,
       });
@@ -337,16 +348,26 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       const m97 = fs.readFileSync(path.join(ROOT, 'db/migrations/0097-registrierung-ausstehend.sql'), 'utf8');
       const ids = (
         await c2.query(
-          `INSERT INTO users (username, password_hash, email, email_verified, registrierung_offen,
+          `INSERT INTO users (username, password_hash, email, email_verified, registration_pending,
         verification_token, token_expires) VALUES ($1, 'x', $2, false, true, 'h4', NOW() + INTERVAL '2 hours'),
         ($3, 'x', $4, true, false, NULL, NULL) RETURNING id`,
           [`reg_${P}`, adr('reg'), `best_${P}`, adr('best')],
         )
       ).rows.map(r => r.id);
+      // Migration 0097 ist Geschichte und nennt die Spalten noch unter ihrem
+      // alten Namen; siehe Begründung bei Migration 0096 weiter oben.
+      await c2.query(`ALTER TABLE users RENAME COLUMN new_email TO email_neu`);
+      await c2.query(`ALTER TABLE users RENAME COLUMN new_email_token TO email_neu_token`);
+      await c2.query(`ALTER TABLE users RENAME COLUMN new_email_until TO email_neu_bis`);
+      await c2.query(`ALTER TABLE users RENAME COLUMN registration_pending TO registrierung_offen`);
       await c2.query(m97);
+      await c2.query(`ALTER TABLE users RENAME COLUMN email_neu TO new_email`);
+      await c2.query(`ALTER TABLE users RENAME COLUMN email_neu_token TO new_email_token`);
+      await c2.query(`ALTER TABLE users RENAME COLUMN email_neu_bis TO new_email_until`);
+      await c2.query(`ALTER TABLE users RENAME COLUMN registrierung_offen TO registration_pending`);
       const z = (
         await c2.query(
-          `SELECT email, email_neu, email_neu_token, email_neu_bis IS NOT NULL AS bis, verification_token
+          `SELECT email, new_email, new_email_token, new_email_until IS NOT NULL AS bis, verification_token
         FROM users WHERE id = ANY($1) ORDER BY id`,
           [ids],
         )
@@ -354,8 +375,8 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       assert.deepEqual(
         z,
         [
-          { email: null, email_neu: adr('reg'), email_neu_token: 'h4', bis: true, verification_token: null },
-          { email: adr('best'), email_neu: null, email_neu_token: null, bis: false, verification_token: null },
+          { email: null, new_email: adr('reg'), new_email_token: 'h4', bis: true, verification_token: null },
+          { email: adr('best'), new_email: null, new_email_token: null, bis: false, verification_token: null },
         ],
         'Migration 0097 …',
       );
@@ -364,7 +385,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       c2.release();
     }
     const h5 = (
-      await db.get(`INSERT INTO users (username, password_hash, email_neu) VALUES ($1, 'x', $2) RETURNING id`, [
+      await db.get(`INSERT INTO users (username, password_hash, new_email) VALUES ($1, 'x', $2) RETURNING id`, [
         `h5_${P}`,
         adr('h5'),
       ])

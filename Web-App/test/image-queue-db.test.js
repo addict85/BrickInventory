@@ -127,8 +127,8 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
     // ANDERE Zahl bezieht.
     assert.match(voll.sub, /Bestand:/, 'Ohne diese Beschriftung sind die beiden Zahlen nicht auseinanderzuhalten');
     // „running" heisst jetzt: hat kürzlich etwas getan
-    await db.run(`DELETE FROM run_state WHERE schluessel='imgqueue_last_run'`);
-    await db.run(`DELETE FROM run_state WHERE schluessel='imgredl_status'`);
+    await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
+    await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
     await _req('src/verwaltung/kacheln.js')
       .imgDlReset()
       .catch(() => {});
@@ -151,7 +151,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
     assert.ok(voll.total >= 137, `total=${voll.total} enthält die Warteschlange nicht`);
 
     // Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb
-    await db.run(`DELETE FROM run_state WHERE schluessel='imgqueue_last_run'`);
+    await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     _req('src/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
     await _req('src/verwaltung/kacheln.js')
       .imgDlReset()
@@ -164,8 +164,8 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
 
     const redl = async at =>
       db.run(
-        `INSERT INTO run_state (schluessel, wert) VALUES ('imgredl_status',$1)
-         ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+        `INSERT INTO run_state (key, value) VALUES ('imgredl_status',$1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
         [JSON.stringify({ running: true, phase: 'scanning', at })],
       );
 
@@ -181,7 +181,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
       'Ein zehn Minuten alter Stand gilt noch als Betrieb — dann bleibt die ' +
         'Kachel nach einem abgebrochenen Lauf für immer auf „läuft" stehen.',
     );
-    await db.run(`DELETE FROM run_state WHERE schluessel='imgredl_status'`);
+    await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
   } finally {
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});

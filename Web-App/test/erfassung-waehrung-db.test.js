@@ -39,11 +39,11 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
   await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')", [uid]);
-  await db.run(`INSERT INTO exchange_rates (tag, waehrung, je_eur) VALUES ('2019-03-04', 'USD', 1.25), ('2019-03-04', 'JPY', 120)
-                ON CONFLICT (waehrung, tag) DO UPDATE SET je_eur = EXCLUDED.je_eur`);
+  await db.run(`INSERT INTO exchange_rates (day, currency, per_eur) VALUES ('2019-03-04', 'USD', 1.25), ('2019-03-04', 'JPY', 120)
+                ON CONFLICT (currency, day) DO UPDATE SET per_eur = EXCLUDED.per_eur`);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2), ($1,$3)', [uid, SN, GS]);
   await db.run(
-    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, tag)
+    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, day)
                 VALUES ($1,$2,3,260.66,'N','USD','2019-03-04 12:00','2019-03-04'), ($1,$2,2,354.50,'N','EUR','2019-03-05 12:00','2019-03-05'),
                        ($1,$3,4,308,'N','EUR','2026-11-05 12:00','2026-11-05')`,
     [uid, SN, GS],
@@ -68,7 +68,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
 
   await t.test('ohne Kurs nicht eingerechnet, sondern gezählt', async () => {
     await db.run(
-      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, tag)
+      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, day)
                   VALUES ($1,$2,1,9000,'U','JPY','2010-01-01 12:00','2010-01-01')`,
       [uid, SN],
     );

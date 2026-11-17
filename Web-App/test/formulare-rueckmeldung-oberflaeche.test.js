@@ -70,8 +70,8 @@ test('Alarm löschen mit Dialog und Rückgängig', async () => {
     set_number: SN,
     name: 'Burg',
     condition: 'N',
-    richtung: 'unter',
-    schwelle: 249,
+    direction: 'unter',
+    threshold: 249,
     currency_code: 'EUR',
   };
   const o = await oeffneOberflaeche(
@@ -105,7 +105,7 @@ test('Alarm löschen mit Dialog und Rückgängig', async () => {
     [...o.d.querySelectorAll('#toasts button')].find(b => /Rückgängig/.test(b.textContent)).click();
     assert.ok(await warte(() => o.aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/sets/${SN}/alert`))));
     const rumpf = JSON.parse(o.aufrufe.find(a => a.method === 'PUT').body);
-    assert.deepEqual(rumpf, { richtung: 'unter', schwelle: 249, condition: 'N' });
+    assert.deepEqual(rumpf, { direction: 'unter', threshold: 249, condition: 'N' });
   } finally {
     o.w.close();
   }

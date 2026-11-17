@@ -49,7 +49,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
   const neuerLink = async uid => {
     const roh = crypto.randomBytes(32).toString('hex');
     await app.db.run(
-      `UPDATE users SET email_neu = $3, email_neu_token = $2, email_neu_bis = NOW() + INTERVAL '1 day' WHERE id = $1`,
+      `UPDATE users SET new_email = $3, new_email_token = $2, new_email_until = NOW() + INTERVAL '1 day' WHERE id = $1`,
       [uid, crypto.createHash('sha256').update(roh).digest('hex'), `neu${uid}_${process.pid}@example.org`],
     );
     return `http://127.0.0.1:${app.port}/verify#token=${roh}`;
@@ -57,7 +57,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
   const bestaetigt = async uid =>
     (
       await app.db.get(
-        'SELECT email_neu IS NULL AND email IS NOT NULL AND email_verified AS ok FROM users WHERE id = $1',
+        'SELECT new_email IS NULL AND email IS NOT NULL AND email_verified AS ok FROM users WHERE id = $1',
         [uid],
       )
     ).ok;
@@ -80,7 +80,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
   await t.test('abgemeldet: die Erfolgsmeldung steht über der Anmeldung', async st => {
     const zweiter = (
       await app.db.get(
-        `INSERT INTO users (username, password_hash, is_active, registrierung_offen)
+        `INSERT INTO users (username, password_hash, is_active, registration_pending)
       VALUES ($1, 'x', true, true) RETURNING id`,
         [`bestaetigen2_${process.pid}`],
       )

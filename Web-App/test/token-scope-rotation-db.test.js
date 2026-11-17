@@ -19,13 +19,13 @@
  *   G  rotationPflicht() immer false → rot: dieselbe Prüfung (Status 200 statt 401)
  *   H  in der Migration 0080 never_expires nicht zurückgesetzt → rot:
  *      „Migration 0080: …“
- *   I  in zugaengeDesKontos() `ersetzt_durch IS NULL` entfernt → rot:
+ *   I  in zugaengeDesKontos() `replaced_by IS NULL` entfernt → rot:
  *      „Geräteliste: …“ (das getauschte Gerät stand doppelt da)
  *   J  (02.11.2026) in /login wieder `null` statt APP_HOECHSTDAUER_TAGE → rot:
  *      „App-Anmeldung: feste Höchstdauer …“ (hard_expires_at null)
  *   K  (02.11.2026) in legeNachfolgerAn() hard_expires_at auf NOW() + 180
  *      Tage gesetzt → rot: dieselbe Prüfung („der Tausch verlängert …“)
- *   L  (09.11.2026) in zugangLoeschen() den Vorgänger (`left(ersetzt_durch, 16)`)
+ *   L  (09.11.2026) in zugangLoeschen() den Vorgänger (`left(replaced_by, 16)`)
  *      nicht mitgelöscht → rot: „Geräteliste: …“ (der Vorgänger lebt weiter)
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
@@ -175,7 +175,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     // Zwei Tage nicht benutzt: Die nächste Anfrage schiebt Frist und letzte Nutzung.
     await db.run(
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '2 days', expires_at = NOW() + INTERVAL '88 days',
-                  ip_bereich = NULL WHERE token = $1`,
+                  ip_range = NULL WHERE token = $1`,
       [auth.tokenAbdruck(tok)],
     );
     tokenCache.leereTokenCache();
@@ -187,7 +187,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
       await new Promise(r => setTimeout(r, 20));
     }
     assert.ok(Math.abs(tageBis(z.expires_at) - 90) < 0.01, 'Die Nutzung verlängert auf 90 Tage');
-    assert.match(String(z.ip_bereich), /\/(24|48)$/, 'Der Adressbereich wird mitgeschrieben');
+    assert.match(String(z.ip_range), /\/(24|48)$/, 'Der Adressbereich wird mitgeschrieben');
 
     // Vor 23 Stunden geschrieben: Weitere Anfragen schreiben nichts.
     await db.run(
@@ -223,7 +223,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg —
     // nach dem Sperrfenster gegen gleichzeitige Tausche (token-tausch-parallel-db).
     assert.equal((await ruf('/auth/me', { token: a })).status, 200, 'Der alte gilt in der Überlappung');
-    await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
+    await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
       auth.tokenAbdruck(b),
     ]);
     const r2 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
@@ -275,7 +275,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
       assert.equal(qr.body.token_info.never_expires, true);
       assert.equal(qr.body.token_info.expires_at, null);
 
-      await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '31 days' WHERE token = $1`, [
+      await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '31 days' WHERE token = $1`, [
         auth.tokenAbdruck(u),
       ]);
       tokenCache.leereTokenCache();
@@ -285,7 +285,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
       assert.equal(faellig.body.token_info.rotation_faellig, true);
       assert.equal((await ruf('/settings/tokens', { token: u })).kopf.get('x-token-rotation'), 'faellig');
 
-      await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '61 days' WHERE token = $1`, [
+      await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '61 days' WHERE token = $1`, [
         auth.tokenAbdruck(u),
       ]);
       tokenCache.leereTokenCache();
@@ -316,8 +316,8 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.equal(tablets.length, 1, 'Ein getauschtes Gerät steht einmal da');
     const e = tablets[0];
     assert.equal(e.scope, 'app');
-    assert.ok(e.last_used && e.expires_at && e.created_at && e.rotiert_am);
-    assert.match(String(e.ip_bereich), /\/(24|48)$/);
+    assert.ok(e.last_used && e.expires_at && e.created_at && e.rotated_at);
+    assert.match(String(e.ip_range), /\/(24|48)$/);
     assert.equal(e.never_expires, false);
 
     assert.equal(e.token_id, auth.tokenAbdruck(neu).slice(0, 16), 'Es steht der neue Token da');

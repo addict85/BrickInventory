@@ -27,7 +27,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('jobs').jobs };
+  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
   const { NutzlastUngueltig } = _req('src/auftraege/arten.js');
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   await db.run(`DELETE FROM jobs WHERE type = 'brickset'`);
@@ -49,7 +49,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
     ]);
     const gesehen = [];
     const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().jobs,
+      require('./helpers/sources').testDienste().auftraege,
       {
         brickset: {
           ausfuehren: async n => {
@@ -71,7 +71,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
     let gelaufen = 0,
       aufgegeben = 0;
     const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().jobs,
+      require('./helpers/sources').testDienste().auftraege,
       {
         brickset: {
           ausfuehren: async () => {

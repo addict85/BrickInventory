@@ -26,7 +26,7 @@ test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { altbestandAufruesten, ALTBESTAND_MARKE } = _req('startup/datenbank.js');
-  const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').run_state;
+  const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
   await loescheZustand(ALTBESTAND_MARKE);
 
   await t.test('der erste Start rüstet auf und setzt die Marke', async () => {

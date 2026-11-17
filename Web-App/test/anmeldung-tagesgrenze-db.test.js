@@ -135,7 +135,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     const r = await anmelden(OHNE, PASS);
     assert.equal(r.status, 429, JSON.stringify(r.body));
     assert.equal(r.body.code, 'konto_tagesgrenze');
-    assert.equal(r.body.second_factor, true, 'die Oberfläche bietet das Codefeld an');
+    assert.equal(r.body.zweiter_faktor, true, 'die Oberfläche bietet das Codefeld an');
     // Ohne Faktor hilft auch ein Code nicht; die Antwort verrät das Passwort nicht.
     assert.equal((await anmelden(OHNE, PASS, '123456')).body.code, 'konto_tagesgrenze');
     assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'konto_tagesgrenze');

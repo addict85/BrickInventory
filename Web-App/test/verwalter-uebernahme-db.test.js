@@ -156,7 +156,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     const p = await ruf('PUT', `/users/${nutzer}/password`, { password: NEU, admin_password: PASS });
     assert.deepEqual([p.status, p.body.effective_at], [200, undefined]);
     assert.deepEqual(await stand(nutzer), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
-    const a = await ruf('PUT', `/users/${nutzer2}/active`, { is_active: false, admin_password: PASS });
+    const a = await ruf('PUT', `/users/${nutzer2}/aktiv`, { is_active: false, admin_password: PASS });
     assert.deepEqual([a.status, a.body.effective_at, (await konten(nutzer2)).is_active], [200, undefined, false]);
   });
 
@@ -175,7 +175,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
 
   await t.test('Deaktivieren, Rolle entziehen und Löschen eines Verwalters: angekündigt, dann wirksam', async () => {
     mails.length = 0;
-    inFrist(await ruf('PUT', `/users/${vw4}/active`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw4}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw5}/admin`, { is_admin: false, admin_password: PASS }));
     inFrist(await ruf('DELETE', `/users/${vw6}`, { admin_password: PASS }));
     assert.deepEqual(
@@ -224,7 +224,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
 
   await t.test('der Link aus der Mail bricht ohne Anmeldung ab, einmal', async () => {
     mails.length = 0;
-    inFrist(await ruf('PUT', `/users/${vw7}/active`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw7}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw7}/password`, { password: NEU, admin_password: PASS }));
     const link = await abbruchLink(vw7);
     const abbrechen = token =>
@@ -245,7 +245,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
 
   await t.test('eine fällige Übernahme fällt weg, wenn das Ziel deaktiviert wurde', async () => {
     // a) Deaktivieren und Passwort werden zugleich fällig
-    inFrist(await ruf('PUT', `/users/${vw8}/active`, { is_active: false, admin_password: PASS }));
+    inFrist(await ruf('PUT', `/users/${vw8}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw8}/password`, { password: NEU, admin_password: PASS }));
     await faellig(vw8);
     assert.deepEqual([(await konten(vw8)).is_active, (await stand(vw8)).neuesPasswort], [false, false]);

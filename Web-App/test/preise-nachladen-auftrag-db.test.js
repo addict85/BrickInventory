@@ -32,7 +32,7 @@ const { buildAndRequire, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
-const set = n => ({ type: 'set', nummer: `${n}-1`, zustand: 'N' });
+const set = n => ({ art: 'set', nummer: `${n}-1`, zustand: 'N' });
 
 test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
@@ -43,7 +43,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   const D_ = _req('src/auftraege/dienst.js');
   const { merkePreiseVor } = _req('src/finanzen/preisPosten.js');
   const D = { ...D_, merkePreiseVor: n => alsKonto(uid, () => merkePreiseVor(n)) };
-  const repo = require('./helpers/sources').testBereich('jobs').jobs;
+  const repo = require('./helpers/sources').testBereich('auftraege').auftraege;
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   const zeilen = () =>
@@ -56,7 +56,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     await leeren();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await require('./helpers/sources')
-      .testBereich('jobs')
+      .testBereich('auftraege')
       .db.benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
@@ -160,14 +160,14 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     const id = await D.merkePreiseVor({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const stand = () => db.get('SELECT progress FROM jobs WHERE id = $1', [id]).then(r => r.progress);
     const gesehen = [];
-    const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
       preise_nachladen: {
         ausfuehren: async (_n, k) => {
-          await k.progress({ erledigt: 5.532, gesamt: 8 });
+          await k.fortschritt({ erledigt: 5.532, gesamt: 8 });
           gesehen.push(await stand());
           // BigInt lässt sich nicht als JSON schreiben: Diese eine Meldung scheitert.
-          await assert.rejects(k.progress({ erledigt: 6, gross: 1n }));
-          gesehen.push(await k.progress({ erledigt: 7, gesamt: 8 }));
+          await assert.rejects(k.fortschritt({ erledigt: 6, gross: 1n }));
+          gesehen.push(await k.fortschritt({ erledigt: 7, gesamt: 8 }));
           gesehen.push(await stand());
         },
       },

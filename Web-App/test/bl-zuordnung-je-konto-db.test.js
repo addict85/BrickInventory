@@ -104,8 +104,8 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
 
   await t.test('der Import schreibt nur Annas Zuordnung', async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
-      { index: 0, blId: 'sw0001a', type: 'fig', rbId: 'fig-000001' },
-      { index: 1, blId: '3001', type: 'part', rbId: '3003', rbFarbe: 4 },
+      { index: 0, blId: 'sw0001a', art: 'fig', rbId: 'fig-000001' },
+      { index: 1, blId: '3001', art: 'part', rbId: '3003', rbFarbe: 4 },
     ]);
     assert.equal(status, 200, JSON.stringify(body));
     assert.equal(body.korrekturen?.angewandt, 2, JSON.stringify(body.korrekturen));

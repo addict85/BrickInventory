@@ -391,16 +391,10 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     for (const k of Object.keys(ist)) soll[k] = false;
     // Tabellenweit (has_table_privilege prüft hier nur ganze Tabellen; SELECT auf users hat die
     // Laufzeitrolle spaltenweise ohne password_hash, siehe oben).
-    for (const k of [
-      'app global_settings SELECT',
-      'app admin_log SELECT',
-      'app admin_log INSERT',
-    ])
-      soll[k] = true;
+    for (const k of ['app global_settings SELECT', 'app admin_log SELECT', 'app admin_log INSERT']) soll[k] = true;
     for (const t of ['users', 'global_settings'])
       for (const a of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) soll[`sys ${t} ${a}`] = true;
-    for (const k of ['sys admin_log SELECT', 'sys admin_log INSERT', 'sys aufraeumen EXECUTE'])
-      soll[k] = true;
+    for (const k of ['sys admin_log SELECT', 'sys admin_log INSERT', 'sys aufraeumen EXECUTE']) soll[k] = true;
     assert.deepEqual(ist, soll);
     const spalten = (
       await als(db, null, null, c =>

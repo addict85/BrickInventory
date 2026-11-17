@@ -195,7 +195,7 @@ test('Preisalarm in seiner Ansicht anlegen', async () => {
     await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/alert')));
     const ruf = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/alert'));
     assert.match(ruf.url, /\/v1\/sets\/10294-1\/alert$/);
-    assert.deepEqual(JSON.parse(ruf.body), { richtung: 'unter', schwelle: 599.9, condition: 'N' });
+    assert.deepEqual(JSON.parse(ruf.body), { direction: 'unter', threshold: 599.9, condition: 'N' });
   } finally {
     w.close();
   }
@@ -212,12 +212,19 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
     },
     '/v1/admin/auftraege': {
       success: true,
-      zusammenfassung: [{ art: 'exchange_rates', status: 'fehler', anzahl: 1 }],
+      zusammenfassung: [{ type: 'wechselkurse', status: 'fehler', anzahl: 1 }],
       job_prozess: { laeuft: true },
       pausen: [],
       bildbedarf: 0,
       auftraege: [
-        { id: '9', art: 'exchange_rates', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 },
+        {
+          id: '9',
+          type: 'wechselkurse',
+          status: 'fehler',
+          error_message: 'ENOTFOUND ecb',
+          attempts: 6,
+          max_attempts: 6,
+        },
       ],
     },
   });

@@ -88,7 +88,7 @@ test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async 
     });
     const z = await lies('set_acquisitions', id);
     assert.deepEqual([z.quantity, Number(z.purchase_price), z.condition, z.price_estimated], [99, 1, 'U', true]);
-    assert.equal((await db.get('SELECT tag::text AS t FROM set_acquisitions WHERE id = $1', [id])).t, '2020-01-02');
+    assert.equal((await db.get('SELECT day::text AS t FROM set_acquisitions WHERE id = $1', [id])).t, '2020-01-02');
   });
 
   await t.test('eine fremde manuelle Erfassung lässt sich weder kürzen noch entfernen', async () => {

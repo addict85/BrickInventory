@@ -258,19 +258,19 @@ test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
     '/v1/admin/auftraege': {
       success: true,
-      zusammenfassung: [{ art: 'anleitung', status: 'fehler', anzahl: 1 }],
+      zusammenfassung: [{ type: 'anleitung', status: 'fehler', anzahl: 1 }],
       job_prozess: { laeuft: true },
       pausen: [],
       bildbedarf: 0,
       auftraege: [
         {
           id: '7',
-          art: 'anleitung',
+          type: 'anleitung',
           status: 'fehler',
           set_number: '10294-1',
-          fehler: roh,
-          versuche: 3,
-          max_versuche: 3,
+          error_message: roh,
+          attempts: 3,
+          max_attempts: 3,
         },
       ],
     },
@@ -290,14 +290,14 @@ test('Hintergrundarbeiten: ein verschobener Auftrag wartet, ein abgebrochener is
   const bis = new Date(Date.now() + 3 * 3600_000).toISOString();
   const zeile = (id, mehr) => ({
     id,
-    art: 'preise_nachladen',
+    type: 'preise_nachladen',
     set_number: null,
-    versuche: 3,
-    max_versuche: 5,
-    faellig_ab: bis,
+    attempts: 3,
+    max_attempts: 5,
+    due_at: bis,
     geplant: false,
-    wartet: false,
-    fortschritt: null,
+    waiting: false,
+    progress: null,
     ...mehr,
   });
   const { w, d } = await oeffneOberflaeche({
@@ -305,14 +305,14 @@ test('Hintergrundarbeiten: ein verschobener Auftrag wartet, ein abgebrochener is
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
     '/v1/admin/auftraege': {
       success: true,
-      zusammenfassung: [{ art: 'preise_nachladen', status: 'offen', anzahl: 2 }],
+      zusammenfassung: [{ type: 'preise_nachladen', status: 'offen', anzahl: 2 }],
       job_prozess: { laeuft: true },
       pausen: [],
       bildbedarf: 0,
       auftraege: [
-        zeile('1', { status: 'offen', wartet: true, fehler: 'BrickLink-Tageskontingent erschöpft' }),
-        zeile('2', { status: 'offen', fehler: 'getaddrinfo ENOTFOUND api.bricklink.com' }),
-        zeile('3', { status: 'abgebrochen', fehler: 'abgebrochen', faellig_ab: null }),
+        zeile('1', { status: 'offen', waiting: true, error_message: 'BrickLink-Tageskontingent erschöpft' }),
+        zeile('2', { status: 'offen', error_message: 'getaddrinfo ENOTFOUND api.bricklink.com' }),
+        zeile('3', { status: 'abgebrochen', error_message: 'abgebrochen', due_at: null }),
       ],
     },
   });

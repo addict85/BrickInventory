@@ -454,8 +454,8 @@ test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrenc
       await musterHaushalt(db, uid);
       // Zwei offene Läufe einer Art, einer nach Fehlern: Etikett und langer Hinweis am Telefon.
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
-        VALUES ('exchange_rates', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
-      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('exchange_rates', NOW() + interval '6 hours')`);
+        VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
       const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
       const en = await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
@@ -469,7 +469,7 @@ test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrenc
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [

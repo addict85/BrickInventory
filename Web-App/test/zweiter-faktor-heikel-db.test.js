@@ -13,7 +13,7 @@
  *      Code geht leer in die Prüfung) → rot: die drei „ohne Code" und
  *      „fehlender Code zählt nicht in der Bremse" (429 statt 200)
  *   E  `felder.email_verified = user.is_admin` zurück → rot: „Verwalter-
- *      Adresse gilt erst nach dem Link" (seit 04.11.2026 über email_neu,
+ *      Adresse gilt erst nach dem Link" (seit 04.11.2026 über new_email,
  *      Gegenproben dazu in email-neu-db)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -147,7 +147,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
       code: codes[2],
     });
     assert.equal(gut.status, 200, JSON.stringify(gut.body));
-    assert.equal((await db.get('SELECT email_neu FROM users WHERE id = $1', [uid])).email_neu, `${NAME}@neu.example`);
+    assert.equal((await db.get('SELECT new_email FROM users WHERE id = $1', [uid])).new_email, `${NAME}@neu.example`);
   });
 
   await t.test('fehlender Code zählt nicht in der Bremse', async () => {
@@ -179,9 +179,9 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
       password_current: PASS,
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const z = await db.get('SELECT email, email_neu FROM users WHERE id = $1', [chef]);
+    const z = await db.get('SELECT email, new_email FROM users WHERE id = $1', [chef]);
     assert.deepEqual(
-      [z.email, z.email_neu],
+      [z.email, z.new_email],
       [`${CHEF}@alt.example`, `${CHEF}@neu.example`],
       'Verwalter-Adresse gilt erst nach dem Link',
     );

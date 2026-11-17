@@ -262,8 +262,8 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   await t.test('Bestätigungsseite nennt Konto und Adresse', async () => {
     const roh = `r13-${process.pid}-link`;
     await db.run(
-      `UPDATE users SET email_neu = $2, email_neu_token = encode(sha256($3::bytea), 'hex'),
-      email_neu_bis = NOW() + INTERVAL '1 hour' WHERE id = $1`,
+      `UPDATE users SET new_email = $2, new_email_token = encode(sha256($3::bytea), 'hex'),
+      new_email_until = NOW() + INTERVAL '1 hour' WHERE id = $1`,
       [app.uid, `neu-${process.pid}@example.org`, roh],
     );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${roh}` });

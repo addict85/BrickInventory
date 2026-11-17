@@ -150,7 +150,8 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
       'Chewbacca',
     );
     assert.equal(
-      (await db.get('SELECT fig_name FROM minifig_custom WHERE user_id = $1 AND fig_number = $2', [A, 'sw0011'])).fig_name,
+      (await db.get('SELECT fig_name FROM minifig_custom WHERE user_id = $1 AND fig_number = $2', [A, 'sw0011']))
+        .fig_name,
       'Annas Figur',
     );
   });

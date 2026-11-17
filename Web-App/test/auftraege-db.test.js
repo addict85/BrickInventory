@@ -43,7 +43,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('jobs').jobs,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
@@ -54,7 +54,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   for (const type of [ART, `${ART}-ex`]) {
     require('./helpers/sources')
       .testDienste()
-      .jobs.meldeArtAn({ type: type, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
+      .auftraege.meldeArtAn({ art: type, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [type]);
   }
   const leeren = () => db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);
@@ -70,7 +70,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.equal(tot.id, id);
       const erledigt = [];
       const w = erzeugeWorker(
-        require('./helpers/sources').testDienste().jobs,
+        require('./helpers/sources').testDienste().auftraege,
         {
           [ART]: {
             ausfuehren: async n => {
@@ -92,7 +92,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await leeren();
       let mal = 0;
       const aufgegeben = [];
-      const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
           ausfuehren: async n => {
             mal++;
@@ -124,8 +124,8 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
 
     await t.test('derselbe Schlüssel steht nur einmal offen', async () => {
       await leeren();
-      const a = await A.stelleAuftragEin(ART, { marke: MARKE }, { dedupe_key: `${MARKE}:s` });
-      const b = await A.stelleAuftragEin(ART, { marke: MARKE }, { dedupe_key: `${MARKE}:s` });
+      const a = await A.stelleAuftragEin(ART, { marke: MARKE }, { schluessel: `${MARKE}:s` });
+      const b = await A.stelleAuftragEin(ART, { marke: MARKE }, { schluessel: `${MARKE}:s` });
       assert.ok(a);
       assert.equal(b, null);
     });
@@ -143,11 +143,11 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
           },
         },
       };
-      const w1 = erzeugeWorker(require('./helpers/sources').testDienste().jobs, bearbeiter, {
+      const w1 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
         parallel: 4,
         taktMs: 20,
       });
-      const w2 = erzeugeWorker(require('./helpers/sources').testDienste().jobs, bearbeiter, {
+      const w2 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
         parallel: 4,
         taktMs: 20,
       });
@@ -178,7 +178,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       let gleichzeitig = 0,
         hoechstens = 0;
       const w = erzeugeWorker(
-        require('./helpers/sources').testDienste().jobs,
+        require('./helpers/sources').testDienste().auftraege,
         {
           [EX]: {
             exklusiv: true,
@@ -208,7 +208,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await leeren();
       const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
       let zaehlt = false;
-      const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
           ausfuehren: async () => {
             throw new AuftragVerschieben(new Date(Date.now() + 3_600_000), 'gedrosselt', zaehlt);
@@ -241,7 +241,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const nachAbbruch = new Promise(r => {
         abgebrochen = () => r(null);
       });
-      const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
           ausfuehren: async (_n, k) => {
             laeuft();
@@ -267,17 +267,12 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await db.run(`DELETE FROM jobs WHERE type = 'aufraeumen'`);
       await Z.planeAlle();
       await Z.planeAlle();
-      const plaene = await db.all(
-        `SELECT due_at FROM jobs WHERE dedupe_key = 'plan:aufraeumen' AND status = 'offen'`,
-      );
+      const plaene = await db.all(`SELECT due_at FROM jobs WHERE dedupe_key = 'plan:aufraeumen' AND status = 'offen'`);
       assert.equal(plaene.length, 1, 'planeAlle legt je Art genau einen Termin an');
-      assert.ok(
-        new Date(plaene[0].due_at) > new Date(Date.now() + 55 * 60_000),
-        'stündlich heisst in einer Stunde',
-      );
+      assert.ok(new Date(plaene[0].due_at) > new Date(Date.now() + 55 * 60_000), 'stündlich heisst in einer Stunde');
       assert.equal(await Z.ziehePlanVor('aufraeumen'), true);
       let lief = 0;
-      const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         aufraeumen: {
           ausfuehren: async () => {
             lief++;
@@ -286,9 +281,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       });
       assert.equal(await w.verarbeiteEinen(), true);
       assert.equal(lief, 1);
-      const danach = await db.all(
-        `SELECT status, due_at FROM jobs WHERE dedupe_key = 'plan:aufraeumen' ORDER BY id`,
-      );
+      const danach = await db.all(`SELECT status, due_at FROM jobs WHERE dedupe_key = 'plan:aufraeumen' ORDER BY id`);
       assert.deepEqual(
         danach.map(z => z.status),
         ['erledigt', 'offen'],
@@ -317,7 +310,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
             sets: [],
             parts: [{ part_number: '3001', part_name: 'Stein', color_name: 'Rot', quantity: 2 }],
           },
-          { userId: uid, dedupe_key: pdfA.pdfSchluessel(jobId) },
+          { userId: uid, schluessel: pdfA.pdfSchluessel(jobId) },
         );
         let stand;
         for (let i = 0; i < 200; i++) {

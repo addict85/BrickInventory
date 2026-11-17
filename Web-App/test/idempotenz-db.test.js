@@ -154,7 +154,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(await dienst.beginne(a.id, 'k-lauf', abdruck), {
       art: 'wiederholung',
       status: 404,
-      response: '{"success":false}',
+      antwort: '{"success":false}',
     });
   });
 
@@ -165,9 +165,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
       [a.id, dienst.FRIST_STUNDEN + 1],
     );
     assert.ok((await dienst.raeumeIdempotenzAuf()) >= 1);
-    const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [a.id])).map(
-      r => r.key,
-    );
+    const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [a.id])).map(r => r.key);
     assert.deepEqual(uebrig, ['k-lauf']);
   });
 });

@@ -513,14 +513,14 @@ test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout
       await musterHaushalt(db, uid);
       await legeBilder(t, db, uid, req);
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
-        VALUES ('exchange_rates', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
+        VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
     },
   });
   if (a.grund) {
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [

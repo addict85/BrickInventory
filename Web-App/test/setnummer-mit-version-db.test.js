@@ -99,7 +99,20 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
       await c.query(`INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)`, [880000 + (PID % 10000), T3]);
       await c.query('SET CONSTRAINTS ALL IMMEDIATE');
 
+      // Migration 0074 ist Geschichte und nennt die Spalte noch unter ihrem
+      // alten Namen (set_acquisitions.tag); 0124 (längst angewandt) hätte sie
+      // sonst gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+      // Der Trigger (0070/0124) kennt nur die jeweils aktuelle Spalte, während
+      // der Umbenennung aus.
+      await c.query('ALTER TABLE set_acquisitions DISABLE TRIGGER set_acquisitions_tag');
+      await c.query('ALTER TABLE set_acquisitions RENAME COLUMN day TO tag');
+      await c.query('ALTER TABLE set_parts RENAME TO set_teile');
+      await c.query('ALTER TABLE set_minifigs RENAME TO set_figuren');
       await c.query(MIG('0074-setnummer-mit-version.sql'));
+      await c.query('ALTER TABLE set_teile RENAME TO set_parts');
+      await c.query('ALTER TABLE set_figuren RENAME TO set_minifigs');
+      await c.query('ALTER TABLE set_acquisitions RENAME COLUMN tag TO day');
+      await c.query('ALTER TABLE set_acquisitions ENABLE TRIGGER set_acquisitions_tag');
 
       assert.deepEqual(
         await q('SELECT set_number, storage_id FROM sets WHERE user_id=$1 ORDER BY 1', [A]),
@@ -240,7 +253,12 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
                      VALUES ($1,'E1',1,1,'True'), ($1,'E2',1,1,'f'), ($1,'E3',1,1,NULL), ($1,'E4',1,1,'t')`,
         [inv],
       );
+      // Migration 0075 ist Geschichte und nennt die Tabelle noch unter ihrem
+      // alten Namen (set_teile); 0124 (längst angewandt) hätte sie sonst gleich
+      // danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+      await c.query('ALTER TABLE set_parts RENAME TO set_teile');
       await c.query(MIG('0075-ersatzteil-null-eins.sql'));
+      await c.query('ALTER TABLE set_teile RENAME TO set_parts');
       const r = (
         await c.query('SELECT part_num, is_spare FROM rb_inventory_parts WHERE inventory_id=$1 ORDER BY 1', [inv])
       ).rows;

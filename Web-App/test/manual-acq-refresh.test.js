@@ -200,7 +200,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     const tag = async id =>
       (
         await db.get(
-          `SELECT to_char(COALESCE(tag, (created_at AT TIME ZONE 'UTC')::date), 'YYYY-MM-DD') AS t
+          `SELECT to_char(COALESCE(day, (created_at AT TIME ZONE 'UTC')::date), 'YYYY-MM-DD') AS t
          FROM part_acquisitions WHERE id = $1`,
           [id],
         )

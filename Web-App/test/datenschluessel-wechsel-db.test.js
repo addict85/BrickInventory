@@ -91,7 +91,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   const liesAlles = async () => {
     const api = (await db.get(`SELECT value FROM global_settings WHERE key = 'rebrickable_api_key'`)).value;
     const faktor = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
-    const v = await db.get('SELECT number, pin, nummer_suche FROM vouchers WHERE id = $1', [g.id]);
+    const v = await db.get('SELECT number, pin, number_search FROM vouchers WHERE id = $1', [g.id]);
     const datei = G.entschluesselePuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
     return {
       api: G.entschluessele(api, apiKontext),
@@ -99,7 +99,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
       number: G.entschluessele(v.number, gut.nummerKontext(uid, g.id)),
       pin: G.entschluessele(v.pin, gut.pinKontext(uid, g.id)),
       pdf: datei?.toString() ?? null,
-      suchePasst: v.nummer_suche === gut.nummerSuche(uid, '6299-1234-5678'),
+      suchePasst: v.number_search === gut.nummerSuche(uid, '6299-1234-5678'),
     };
   };
   const KLAR = {

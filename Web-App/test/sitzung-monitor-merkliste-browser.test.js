@@ -211,7 +211,11 @@ async function neuNachFehler(b, bis, tab, ziel, pfad) {
       `${tab}: Gerüst statt altem Fehler`,
       25,
     );
-    await bis(`!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .error_message-zustand')`, `${tab}: geladen`, 100);
+    await bis(
+      `!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .error_message-zustand')`,
+      `${tab}: geladen`,
+      100,
+    );
   } finally {
     await aus();
   }
@@ -312,12 +316,12 @@ async function designSofort(_t, a) {
 
 async function hintergrundarbeiten(_t, a) {
   const { b, bis, ruhig, db } = a;
-  await db.run(`DELETE FROM jobs WHERE type = 'exchange_rates'`);
+  await db.run(`DELETE FROM jobs WHERE type = 'wechselkurse'`);
   await db.run(
-    `INSERT INTO jobs (type, dedupe_key, due_at) VALUES ('exchange_rates', 'plan:exchange_rates', NOW() + interval '5 hours')`,
+    `INSERT INTO jobs (type, dedupe_key, due_at) VALUES ('wechselkurse', 'plan:wechselkurse', NOW() + interval '5 hours')`,
   );
   await db.run(`INSERT INTO jobs (type, attempts, max_attempts, error_message, due_at)
-                VALUES ('exchange_rates', 3, 6, 'ECONNRESET', NOW() + interval '1 hour')`);
+                VALUES ('wechselkurse', 3, 6, 'ECONNRESET', NOW() + interval '1 hour')`);
   const abrufe = [];
   const zaehler = d => {
     if (d.method === 'Network.requestWillBeSent' && d.params.request.url.includes('/api/v1/admin/jobs'))

@@ -83,7 +83,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     });
     assert.equal(r.action, 'added');
     const auftrag = await db.get(
-      "SELECT payload->>'type' AS type FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1",
+      "SELECT payload->>'art' AS type FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1",
       [SN],
     );
     assert.equal(auftrag?.type, 'csv');

@@ -98,7 +98,16 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
       // Die verzögerten Fremdschlüssel der Testzeilen prüfen, sonst verweigert
       // ALTER TABLE in derselben Transaktion.
       await c.query('SET CONSTRAINTS ALL IMMEDIATE');
+      // Migration 0071 ist Geschichte und nennt die Spalte noch unter ihrem
+      // alten Namen (part_acquisitions.tag); 0124 (längst angewandt) hätte sie
+      // sonst gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+      // Der Trigger (Migration 0070/0124) kennt nur die jeweils aktuelle Spalte;
+      // während der Umbenennung aus, sonst scheitert er an NEW.day bzw. NEW.tag.
+      await c.query('ALTER TABLE part_acquisitions DISABLE TRIGGER part_acquisitions_tag');
+      await c.query('ALTER TABLE part_acquisitions RENAME COLUMN day TO tag');
       await c.query(fs.readFileSync(MIGRATION, 'utf8'));
+      await c.query('ALTER TABLE part_acquisitions RENAME COLUMN tag TO day');
+      await c.query('ALTER TABLE part_acquisitions ENABLE TRIGGER part_acquisitions_tag');
 
       const farben = async (u, nr) =>
         (

@@ -43,10 +43,10 @@ async function detail(antworten = {}) {
             alert: {
               set_number: SN,
               condition: 'N',
-              richtung: 'unter',
-              schwelle: 249,
+              direction: 'unter',
+              threshold: 249,
               currency_code: 'EUR',
-              ausgeloest: true,
+              triggered: true,
             },
           }
         : { success: true, alerts: [] },
@@ -82,7 +82,7 @@ test('Webapp: beim Tippen gespeichert, entprellt mit der Ruhezeit der App', asyn
     const [put, ...mehr] = schreibend(o);
     assert.equal(mehr.length, 0, `${mehr.length + 1} Schreibaufrufe statt einem`);
     assert.equal(put.method, 'PUT');
-    assert.deepEqual(JSON.parse(put.body), { richtung: 'unter', schwelle: 249, condition: 'N' });
+    assert.deepEqual(JSON.parse(put.body), { direction: 'unter', threshold: 249, condition: 'N' });
     assert.ok(
       await warte(() => o.d.getElementById('m-alert-state').textContent === de['detail.alert_fired']),
       `der Merker zeigt „${o.d.getElementById('m-alert-state').textContent}“`,
@@ -103,10 +103,10 @@ test('Webapp: ein leeres Feld löscht, ein Zustandswechsel lädt nur', async () 
               {
                 set_number: SN,
                 condition: 'N',
-                richtung: 'ueber',
-                schwelle: 300,
+                direction: 'ueber',
+                threshold: 300,
                 currency_code: 'EUR',
-                ausgeloest: false,
+                triggered: false,
               },
             ],
           },
@@ -135,7 +135,7 @@ test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung w
   const offen = {
     success: true,
     now: JETZT,
-    alerts: [{ set_number: SN, richtung: 'unter', schwelle: 200, zuletzt_preis: 199.5, currency_code: 'CHF' }],
+    alerts: [{ set_number: SN, direction: 'unter', threshold: 200, last_price: 199.5, currency_code: 'CHF' }],
   };
   const meldungen = o => [...o.d.querySelectorAll('#toasts > *')].map(t => t.textContent.trim());
   const erst = await oeffneOberflaeche({ '/v1/alerts/pending': offen });

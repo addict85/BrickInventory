@@ -201,7 +201,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(b.mehrere.errors, 0, `${b.mehrere.errors} Fehler: ${JSON.stringify(b.mehrere.results)}`);
 
     for (const k of KARTEN) {
-      const z = await db.get('SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND nummer_suche=$2', [
+      const z = await db.get('SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND number_search=$2', [
         HAUPT,
         suche(HAUPT, k.nr),
       ]);
@@ -217,7 +217,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
       );
     }
     // Und der von Hand erfasste, der nie ein PDF hatte.
-    const ohne = await db.get('SELECT amount, pin FROM vouchers WHERE user_id=$1 AND nummer_suche=$2', [
+    const ohne = await db.get('SELECT amount, pin FROM vouchers WHERE user_id=$1 AND number_search=$2', [
       HAUPT,
       suche(HAUPT, '5045076374450033388'),
     ]);
@@ -239,7 +239,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(
       Number(
         (
-          await db.get('SELECT amount FROM vouchers WHERE user_id=$1 AND nummer_suche=$2', [
+          await db.get('SELECT amount FROM vouchers WHERE user_id=$1 AND number_search=$2', [
             HAUPT,
             suche(HAUPT, KARTEN[0].nr),
           ])

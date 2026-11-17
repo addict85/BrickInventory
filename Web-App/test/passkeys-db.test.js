@@ -445,7 +445,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));
     const fuelle = zweck =>
       db.run(
-        `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
+        `INSERT INTO webauthn_challenges (challenge, user_id, purpose, expires_at)
         SELECT 'voll' || $2 || g, NULL, $2, NOW() + INTERVAL '5 minutes' FROM generate_series(1, $1::int) g`,
         [N, zweck],
       );

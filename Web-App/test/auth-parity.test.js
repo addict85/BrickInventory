@@ -73,16 +73,16 @@ test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
     email_verified: 0,
     email: null,
     is_admin: 0,
-    registrierung_offen: true,
+    registration_pending: true,
   });
   assert.equal(r?.art, 'verboten');
   assert.equal(r?.unverified, true);
   assert.equal(
-    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }),
+    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registration_pending: true }),
     null,
   );
   assert.equal(
-    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }),
+    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registration_pending: false }),
     null,
     'ein vom Verwalter angelegtes Konto ohne Adresse',
   );

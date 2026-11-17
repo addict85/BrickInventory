@@ -54,7 +54,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('jobs').jobs },
+    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege },
   );
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
@@ -63,29 +63,29 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   });
 
   await t.test('ein Auftrag ohne eigenes Lebenszeichen läuft genau einmal', async () => {
-    await db.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
+    await db.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
     let starts = 0;
     // Zwei Worker wie zwei Prozesse: Der zweite darf die Zeile nicht übernehmen, solange der erste arbeitet.
     // Die Arbeit dauert länger als die Frist (1 s): Nur das eigene Lebenszeichen hält die Zeile.
     const bearbeiter = {
-      exchange_rates: {
+      wechselkurse: {
         ausfuehren: async () => {
           starts++;
           await warte(4500);
         },
       },
     };
-    const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, bearbeiter, {
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
       parallel: 2,
       fristSek: 1,
       taktMs: 300,
     });
-    const w2 = erzeugeWorker(require('./helpers/sources').testDienste().jobs, bearbeiter, {
+    const w2 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
       parallel: 2,
       fristSek: 1,
       taktMs: 300,
     });
-    const id = await A.stelleAuftragEin('exchange_rates', {}, { dedupe_key: `pacht-${process.pid}` });
+    const id = await A.stelleAuftragEin('wechselkurse', {}, { schluessel: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
     w.starte();
     await bis(async () => (await status()) === 'laeuft');
@@ -141,7 +141,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
     const BEARBEITER = _req('jobs/auftraegeStarten.js').bearbeiter(require('./helpers/sources').testDienste());
     const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().jobs,
+      require('./helpers/sources').testDienste().auftraege,
       { csv_sync: BEARBEITER.csv_sync },
       { fristSek: 60, taktMs: 100 },
     );

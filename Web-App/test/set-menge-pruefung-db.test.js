@@ -59,11 +59,8 @@ test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, asyn
       assert.equal(r.status, 200);
       const j = await r.json();
       assert.equal(j.quantity, 0);
-      assert.ok(j.trash, 'die Antwort nennt den Papierkorb-Eintrag');
-      const eintrag = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [
-        j.trash,
-        uid,
-      ]);
+      assert.ok(j.papierkorb, 'die Antwort nennt den Papierkorb-Eintrag');
+      const eintrag = await db.get('SELECT type, number FROM trash WHERE id=$1 AND user_id=$2', [j.papierkorb, uid]);
       assert.equal(eintrag?.number, SN);
       assert.equal(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]), undefined);
     });

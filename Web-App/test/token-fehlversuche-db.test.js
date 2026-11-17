@@ -117,9 +117,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
     const neu = await auth.rotiereToken(alt, null);
     assert.ok(neu && neu !== 'laeuft', 'Vorbedingung: der Tausch hat geklappt');
     assert.equal((await ruf(neu.token)).status, 200, 'der Nachfolger wird benutzt, der Vorgänger ist damit verbraucht');
-    await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [
-      uid,
-    ]);
+    await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
     tokenCache.leereTokenCache();
     for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) await ruf(zufall(i));
     assert.equal((await ruf(alt)).status, 401);

@@ -68,18 +68,18 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   const plan = type => zeilen.find(z => z.dedupe_key === `plan:${type}`);
 
   await t.test('jede geplante Art hat einen Termin', () => {
-    for (const { type } of require('./helpers/sources')
+    for (const { art } of require('./helpers/sources')
       .testDienste()
-      .jobs.angemeldeteArten()
+      .auftraege.angemeldeteArten()
       .filter(a => a.zeitplan))
-      assert.ok(plan(type), `kein Termin für ${type}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
+      assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
       plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.beimStart,
       'der Katalog wird beim Start sofort geprüft',
     );
     assert.ok(plan('preise').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
     assert.ok(
-      zeilen.some(z => z.type === 'exchange_rates'),
+      zeilen.some(z => z.type === 'wechselkurse'),
       'kein Wechselkurs-Auftrag',
     );
   });
@@ -103,7 +103,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
 
   await t.test('das Lebenszeichen folgt dem Worker', async () => {
     const jp = _req('startup/jobsProzess.js');
-    const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('jobs').run_state;
+    const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
     for (let i = 0; i < 50 && !(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL)); i++) await warte(20);
     assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
     for (const lauf of laeufe) await jp.stoppeJobs(require('./helpers/sources').testDienste(), lauf);

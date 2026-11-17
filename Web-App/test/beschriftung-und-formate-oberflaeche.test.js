@@ -122,7 +122,12 @@ test('Protokoll mit fmtDatum', async () => {
       '/v1/admin/protokoll': {
         success: true,
         eintraege: [
-          { zeit: '2026-11-05T17:29:38Z', verwalter_name: 'anna', aktion: 'konto_angelegt', konto_name: 'bert' },
+          {
+            occurred_at: '2026-11-05T17:29:38Z',
+            verwalter_name: 'anna',
+            action: 'konto_angelegt',
+            target_name: 'bert',
+          },
         ],
       },
     },

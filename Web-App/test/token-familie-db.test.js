@@ -114,9 +114,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
   });
 
   await t.test('der Tausch mit dem verbrauchten sperrt die Familie', async () => {
-    await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [
-      uid,
-    ]);
+    await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
     assert.equal((await ruf('/token-rotieren', a, {})).status, 401);
     assert.equal(await gilt(b), false, 'der Nachfolger des kopierten Tokens gilt weiter');
     assert.deepEqual(await verbraucht(), [], 'die Familie ist samt Vermerk weg');

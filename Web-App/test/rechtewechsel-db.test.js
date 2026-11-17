@@ -199,9 +199,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     );
 
     // ── 5. Jede Verwalteraktion steht im Protokoll — auch die Löschung ──────
-    const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [
-      idZiel,
-    ]);
+    const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [idZiel]);
     assert.deepEqual(
       prot.map(p => p.action),
       [

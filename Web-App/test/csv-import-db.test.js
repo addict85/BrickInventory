@@ -205,9 +205,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
       'neu: eingefügt, mit set_catalog',
     );
     assert.deepEqual(
-      ['1-1', '2-1'].map(
-        n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].source],
-      ),
+      ['1-1', '2-1'].map(n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].source]),
       [
         ['A neu', 2, 11, 'csv'],
         ['B echt', 3, 99, 'csv'],

@@ -54,7 +54,7 @@ test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, as
   );
   await t.test('setzeAlarm liest nach dem Schreiben', () =>
     assert.rejects(
-      alsKonto(uid, () => p.setzeAlarm(uid, SN, 'EUR', { richtung: 'unter', schwelle: 10, condition: 'N' })),
+      alsKonto(uid, () => p.setzeAlarm(uid, SN, 'EUR', { direction: 'unter', threshold: 10, condition: 'N' })),
       /Tabelle gestört/,
     ),
   );

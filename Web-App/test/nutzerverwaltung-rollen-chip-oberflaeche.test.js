@@ -42,11 +42,15 @@ test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
     '/v1/auth/users': () => ({
       success: true,
-      users: [ANNA, BEN, { ...CARLA, angekuendigt: angekuendigt ? [{ art: 'rolle_entziehen', wirksam_ab: AB }] : [] }],
+      users: [
+        ANNA,
+        BEN,
+        { ...CARLA, angekuendigt: angekuendigt ? [{ type: 'rolle_entziehen', effective_at: AB }] : [] },
+      ],
     }),
     '/v1/auth/users/3/admin': () => {
       angekuendigt = true;
-      return { success: true, wirksam_ab: AB };
+      return { success: true, effective_at: AB };
     },
   });
   try {

@@ -101,7 +101,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
     ['en', false],
   ]) {
     const n = `${NAME}_${sprache}_${bestaetigt ? 'ok' : 'neu'}`;
-    // Ein offenes Konto der Registrierung trägt die Adresse erst als email_neu.
+    // Ein offenes Konto der Registrierung trägt die Adresse erst als new_email.
     const id = bestaetigt
       ? (
           await db.get(
@@ -112,7 +112,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
         ).id
       : (
           await db.get(
-            `INSERT INTO users (username, email_neu, password_hash, is_active, email_verified, registrierung_offen)
+            `INSERT INTO users (username, new_email, password_hash, is_active, email_verified, registration_pending)
           VALUES ($1, $2, 'x', true, false, true) RETURNING id`,
             [n, `${n}@example.org`],
           )

@@ -170,7 +170,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     const { body } = await hochladen(srv.base, XML, '?schreiben=1');
     assert.equal(body.vorschau, false);
     assert.equal(body.angelegt, 2, `${body.angelegt} angelegt statt 2: ${JSON.stringify(body.posten)}`);
-    assert.equal(body.error_message, 0, `${body.error_message} Fehler: ${JSON.stringify(body.posten)}`);
+    assert.equal(body.fehler, 0, `${body.fehler} Fehler: ${JSON.stringify(body.posten)}`);
 
     // Stufe 2: die Nummer bleibt, die Farbe wird abgebildet (BL 5 → RB 4).
     const a = await db.get(
@@ -244,9 +244,9 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
 
     // Der Import läuft als Auftrag; die Anfrage liest seinen Stand im Takt,
     // Zwischenstände können darum zusammenfallen. Der letzte kommt immer an.
-    const melde = zeilen.filter(z => z.progress);
+    const melde = zeilen.filter(z => z.fortschritt);
     assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
-    const fertig = melde.map(z => z.progress.fertig);
+    const fertig = melde.map(z => z.fortschritt.fertig);
     assert.deepEqual(
       fertig,
       [...fertig].sort((a, b) => a - b),
@@ -254,15 +254,15 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
     assert.equal(fertig.at(-1), 3, 'Der letzte Stand nennt alle Posten (sonst bliebe der Balken vor dem Ende stehen)');
     for (const z of melde) {
-      assert.equal(z.progress.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
-      assert.equal(z.progress.phase, 'schreiben');
+      assert.equal(z.fortschritt.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
+      assert.equal(z.fortschritt.phase, 'schreiben');
     }
 
     const letzte = zeilen[zeilen.length - 1];
     assert.equal(letzte.success, true, 'Die letzte Zeile ist der Bericht');
     assert.equal(letzte.vorschau, false, 'mit schreiben=1 ist es kein Probelauf');
     assert.equal(letzte.gelesen, 3);
-    assert.ok(!letzte.progress, 'Der Bericht ist keine Fortschrittszeile');
+    assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
   });
 
   // Derselbe Balken wie beim Set-Import
@@ -391,10 +391,9 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
       [HAUPT, SN],
     );
     assert.equal(menge.n, 4);
-    const nacharbeit = await db.all(
-      "SELECT 1 FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1",
-      [SN],
-    );
+    const nacharbeit = await db.all("SELECT 1 FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [
+      SN,
+    ]);
     assert.ok(nacharbeit.length >= 1, 'ohne Nacharbeit bliebe das Set ohne Katalog');
   });
 });

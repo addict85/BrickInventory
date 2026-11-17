@@ -55,7 +55,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
       );
       await haeltTeil(db, uid, '99902', { setNumber: '10294-1', colorId: 0, menge: 2 });
       await db.run(
-        `INSERT INTO users (username, email_neu, password_hash, is_active, email_verified, registrierung_offen)
+        `INSERT INTO users (username, new_email, password_hash, is_active, email_verified, registration_pending)
       VALUES ($1, $2, 'x', true, false, true)`,
         [WARTET, `${WARTET}@example.org`],
       );
@@ -270,7 +270,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     const NEU = `${NAME}-neu@example.org`,
       TOKEN = `r14-${process.pid}-${Date.now()}`;
     await db.run(
-      `UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = NOW() + INTERVAL '1 hour' WHERE id = $1`,
+      `UPDATE users SET new_email = $2, new_email_token = $3, new_email_until = NOW() + INTERVAL '1 hour' WHERE id = $1`,
       [uid, NEU, tokenAbdruck(TOKEN)],
     );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${TOKEN}` });

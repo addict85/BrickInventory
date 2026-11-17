@@ -26,7 +26,7 @@ async function kopplung(knopf, endStand) {
       expires_in: 300,
       token_days: null,
     },
-    '/v1/auth/qr-kopplung/7': () => ({ success: true, stand, geraet: 'Pixel 9', ip_bereich: '10.0.0.0/24' }),
+    '/v1/auth/qr-kopplung/7': () => ({ success: true, stand, geraet: 'Pixel 9', ip_range: '10.0.0.0/24' }),
     '/v1/auth/qr-kopplung/7/bestaetigen': (_u, init) => {
       gesendet.push(['ja', JSON.parse(init.body)]);
       stand = endStand;

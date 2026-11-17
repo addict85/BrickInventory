@@ -72,7 +72,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   const W = _req('src/merkliste/merkliste.js');
   const alarm = uid =>
     db.run(
-      `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
+      `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
                                   VALUES ($1, '75192-1', 'N', 'unter', 500, 'EUR')`,
       [uid],
     );
@@ -108,10 +108,10 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM price_alerts`);
     await alarm(U.von);
     await alarm(U.zu);
-    await db.run(`UPDATE price_alerts SET schwelle = 123 WHERE user_id=$1`, [U.zu]);
+    await db.run(`UPDATE price_alerts SET threshold = 123 WHERE user_id=$1`, [U.zu]);
     const r = await W.verschiebeMerkposten(U.von, '75192-1', 'N', U.zu);
     assert.equal(r.verschoben, true);
-    const zeilen = await db.all(`SELECT user_id, schwelle::float AS s FROM price_alerts`);
+    const zeilen = await db.all(`SELECT user_id, threshold::float AS s FROM price_alerts`);
     assert.deepEqual(zeilen, [{ user_id: U.zu, s: 123 }]);
   });
 

@@ -152,7 +152,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     );
     assert.deepEqual((await ruf('/zweiter-faktor', null, token)).body, {
       success: true,
-      active: true,
+      aktiv: true,
       codes_uebrig: 10,
       // Frisch erzeugte Codes sind neuer Art und tragen keine Frist (Migration 0122).
       alte_codes_bis: null,
@@ -166,17 +166,17 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     // Ein Code der alten Form (10 Zeichen, SHA-256) gilt bis zu seiner Frist (0122), einmal.
     const uid = (await db.get('SELECT id FROM users WHERE username = $1', [NAME])).id;
     await db.run(
-      `INSERT INTO second_factor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
+      `INSERT INTO second_factor_codes (user_id, code_hash, old_valid_until) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
       [uid, sha('abcde23456')],
     );
     assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'alter Code gilt nicht mehr');
     assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
-    await db.run('DELETE FROM second_factor_codes WHERE user_id = $1 AND verbraucht_am IS NOT NULL', [uid]);
+    await db.run('DELETE FROM second_factor_codes WHERE user_id = $1 AND consumed_at IS NOT NULL', [uid]);
 
     // Ohne Code: Absage mit Hinweis, kein Token.
     const ohne = await anmelden(NAME);
     assert.equal(ohne.status, 401);
-    assert.equal(ohne.body.second_factor, true, 'ohne Code angemeldet');
+    assert.equal(ohne.body.zweiter_faktor, true, 'ohne Code angemeldet');
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
     assert.equal(ohne.body.token, undefined);
 

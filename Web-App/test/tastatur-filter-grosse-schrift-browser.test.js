@@ -460,14 +460,14 @@ test('Tastatur in Formularen, Filterleiste, grosse Schrift', { concurrency: 1, t
     alleDesigns: true,
     bestand: async (db, uid) => {
       kid = await musterHaushalt(db, uid);
-      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('exchange_rates', NOW() + interval '6 hours')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
     },
   });
   if (a.grund) {
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, kid: number) => Promise<void>][]} */
   const pruefungen = [

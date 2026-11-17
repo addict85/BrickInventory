@@ -87,9 +87,9 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
   // Der erste Entwurf dieses Tests hatte sie sich zurechtgelegt und lief
   // sofort in „Die Richtung muss unter oder ueber sein" — die Werte landeten
   // an den falschen Stellen.
-  await setzeAlarm(ich.id, '70002-1', 'CHF', { richtung: 'unter', schwelle: 30, condition: 'N' });
-  await setzeAlarm(ich.id, '99999-9', 'CHF', { richtung: 'ueber', schwelle: 500, condition: 'U' }); // Set unbekannt
-  await setzeAlarm(fremd.id, '70002-1', 'CHF', { richtung: 'unter', schwelle: 10, condition: 'N' }); // fremd
+  await setzeAlarm(ich.id, '70002-1', 'CHF', { direction: 'unter', threshold: 30, condition: 'N' });
+  await setzeAlarm(ich.id, '99999-9', 'CHF', { direction: 'ueber', threshold: 500, condition: 'U' }); // Set unbekannt
+  await setzeAlarm(fremd.id, '70002-1', 'CHF', { direction: 'unter', threshold: 10, condition: 'N' }); // fremd
 
   // Das Set des KINDES — ich besitze es nicht, sehe es aber im Blickfeld.
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
@@ -102,7 +102,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     [kind.id],
   );
   await katalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
-  await setzeAlarm(ich.id, '60000-1', 'CHF', { richtung: 'unter', schwelle: 40, condition: 'N' });
+  await setzeAlarm(ich.id, '60000-1', 'CHF', { direction: 'unter', threshold: 40, condition: 'N' });
 
   // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die
   // Verbindung über das Blickfeld geht, kann sie mehrere Zeilen treffen;
@@ -119,13 +119,13 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.equal(a.length, 3, `Erwartet 3 eigene Alarme, bekommen: ${a.length}`);
     // numeric kommt als Zeichenkette aus dem Treiber — die Übersicht rechnet
     // damit (Feld, Vergleich), also muss hier eine ZAHL ankommen.
-    assert.equal(typeof a[0].schwelle, 'number', 'Die Schwelle kommt nicht als Zahl an.');
+    assert.equal(typeof a[0].threshold, 'number', 'Die Schwelle kommt nicht als Zahl an.');
   });
 
   await t.test('2. und KEIN fremder', async () => {
     const a = await alleAlarme(ich.id);
     assert.ok(
-      !a.some(x => Number(x.schwelle) === 10),
+      !a.some(x => Number(x.threshold) === 10),
       'Der Alarm des anderen Kontos steht in meiner Übersicht — das fehlende ' +
         'user_id-Kriterium sieht im Quelltext harmlos aus und ist der ganze Fehler.',
     );

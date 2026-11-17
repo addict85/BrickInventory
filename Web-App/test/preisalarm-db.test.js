@@ -94,13 +94,13 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Eine stillschweigend korrigierte Schwelle wäre schlimmer als eine
     // Absage: Der Alarm stünde da und meldete nie oder immer.
     for (const [feld, wert] of [
-      ['richtung', 'seitwärts'],
-      ['schwelle', 0],
-      ['schwelle', -5],
-      ['schwelle', 'abc'],
+      ['direction', 'seitwärts'],
+      ['threshold', 0],
+      ['threshold', -5],
+      ['threshold', 'abc'],
       ['condition', 'X'],
     ]) {
-      const eingabe = { richtung: 'unter', schwelle: 200, condition: 'N', [feld]: wert };
+      const eingabe = { direction: 'unter', threshold: 200, condition: 'N', [feld]: wert };
       // Auf `code` geprüft, nicht auf die Meldung: fachfehler() setzt als
       // `message` den DEUTSCHEN Satz — ein Test darauf bräche bei jeder
       // Umformulierung, ohne dass sich das Verhalten ändert.
@@ -113,7 +113,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
   });
 
   await t.test('gemeldet wird der ÜBERGANG, nicht der Zustand', async () => {
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
     // 1. Über der Schwelle — nichts zu melden.
     await setzePreis(250);
@@ -133,7 +133,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await setzePreis(260);
     assert.equal(await pruefe(SN), 0);
     const nach = (await A.alarmeFuer(U.ich, SN))[0];
-    assert.equal(nach.ausgeloest, false, 'der Merker wurde nicht zurückgesetzt');
+    assert.equal(nach.triggered, false, 'der Merker wurde nicht zurückgesetzt');
 
     // 5. Wieder darunter — wieder eine Meldung. Genau das verschluckt eine
     //    Sperrfrist („höchstens einmal pro Woche"), und genau das ist der
@@ -146,8 +146,8 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Nach Prüfung 5 steht der Merker. Wer die Schwelle ändert, will eine
     // Antwort — auch wenn die alte schon einmal gemeldet hat.
     await setzePreis(150);
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 160, condition: 'N' });
-    assert.equal((await A.alarmeFuer(U.ich, SN))[0].ausgeloest, false);
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 160, condition: 'N' });
+    assert.equal((await A.alarmeFuer(U.ich, SN))[0].triggered, false);
     assert.equal(await pruefe(SN), 1, 'nach dem Ändern wurde nicht neu gemeldet');
   });
 
@@ -155,7 +155,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // 200 CHF sind nicht 200 EUR. Gibt es keinen Preis in DER Währung des
     // Alarms, ist er nicht falsch — nur (noch) nicht beantwortbar.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
-    await A.setzeAlarm(U.ich, SN, 'CHF', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'CHF', { direction: 'unter', threshold: 200, condition: 'N' });
     await setzePreis(10, 'N', 'EUR'); // billig, aber in der falschen Währung
     assert.equal(await pruefe(SN), 0, 'ein Preis in fremder Währung hat ausgelöst');
     await setzePreis(10, 'N', 'CHF');
@@ -167,7 +167,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // auf „neu" darf von einem gebrauchten Preis nicht ausgelöst werden.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     await setzePreis(50, 'U');
     assert.equal(await pruefe(SN), 0, 'der gebrauchte Preis hat den Neu-Alarm ausgelöst');
     await setzePreis(150, 'N');
@@ -178,10 +178,10 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Der Merker wird trotzdem gesetzt — sonst liefe die Prüfung bei jedem
     // Lauf erneut durch alle Alarme dieses Kontos.
     await db.run('DELETE FROM price_alerts', []);
-    await A.setzeAlarm(U.ohnemail, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ohnemail, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 0, 'ohne Adresse darf nichts verschickt werden');
-    assert.equal((await A.alarmeFuer(U.ohnemail, SN))[0].ausgeloest, true, 'der Merker muss trotzdem stehen');
+    assert.equal((await A.alarmeFuer(U.ohnemail, SN))[0].triggered, true, 'der Merker muss trotzdem stehen');
   });
 
   await t.test('ein gescheiterter Versand lässt den Merker ungesetzt', async () => {
@@ -189,12 +189,12 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // obwohl nie eine Mail ankam.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     versandFehler = 'SMTP weg';
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 0);
     assert.equal(
-      (await A.alarmeFuer(U.ich, SN))[0].ausgeloest,
+      (await A.alarmeFuer(U.ich, SN))[0].triggered,
       false,
       'nach einem gescheiterten Versand darf der Merker nicht stehen',
     );
@@ -209,7 +209,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // gerissen sind.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
@@ -228,7 +228,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
 
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
@@ -241,17 +241,17 @@ test('Preisalarm gegen echte Datenbank', async t => {
       1,
       'die ausgelöste Schwelle fehlt. ' +
         `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
-        `zuletzt_am=${(await db.get('SELECT zuletzt_am FROM price_alerts'))?.zuletzt_am}`,
+        `last_triggered_at=${(await db.get('SELECT last_triggered_at FROM price_alerts'))?.last_triggered_at}`,
     );
     assert.equal(erste.alerts[0].set_number, SN);
-    assert.equal(erste.alerts[0].richtung, 'unter');
+    assert.equal(erste.alerts[0].direction, 'unter');
     // numeric kommt als Zeichenkette aus dem Treiber — käme sie so durch,
     // stünde in der Meldung "200.00" statt einer Zahl, und die App rechnete
     // auf einer Zeichenkette.
-    assert.equal(typeof erste.alerts[0].schwelle, 'number');
-    assert.equal(erste.alerts[0].schwelle, 200);
-    assert.equal(typeof erste.alerts[0].zuletzt_preis, 'number');
-    assert.equal(erste.alerts[0].zuletzt_preis, 100);
+    assert.equal(typeof erste.alerts[0].threshold, 'number');
+    assert.equal(erste.alerts[0].threshold, 200);
+    assert.equal(typeof erste.alerts[0].last_price, 'number');
+    assert.equal(erste.alerts[0].last_price, 100);
 
     const zweite = await A.ausgeloesteSeit(U.ich, erste.now);
     // Die Zeitstempel stehen in der Meldung, und das hat einen Grund: Genau
@@ -263,7 +263,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
       [],
       'dieselbe Meldung kam ein zweites Mal. ' +
         `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
-        `zuletzt_am=${erste.alerts[0]?.zuletzt_am?.toISOString?.() ?? erste.alerts[0]?.zuletzt_am}, ` +
+        `last_triggered_at=${erste.alerts[0]?.last_triggered_at?.toISOString?.() ?? erste.alerts[0]?.last_triggered_at}, ` +
         `erste.now=${erste.now?.toISOString?.() ?? erste.now}`,
     );
   });
@@ -272,13 +272,13 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Der Befund, und warum er zweimal die CI rot gemacht hat
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
     const MIT_MIKRO = '2026-09-19 20:29:58.527431+00';
     const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
     await db.run(
-      `UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = $1::timestamptz,
-              zuletzt_preis = 100 WHERE user_id = $2`,
+      `UPDATE price_alerts SET triggered = TRUE, last_triggered_at = $1::timestamptz,
+              last_price = 100 WHERE user_id = $2`,
       [MIT_MIKRO, U.ich],
     );
 
@@ -305,7 +305,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
@@ -320,7 +320,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     versandt = [];
 
     let marke = (await A.ausgeloesteSeit(U.ich, null)).now;
-    await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
+    await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
     /** Ein Preislauf: Preis setzen, prüfen, abholen. Gibt [Mails, Meldungen] zurück. */
     const lauf = async preis => {

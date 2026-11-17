@@ -30,7 +30,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
   await db.run('DELETE FROM minifig_price_history WHERE fig_number = $1', [fig]);
   await db.run(
-    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt)
+    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated)
      VALUES ($1,'N','EUR',3.50,3.50,TRUE)`,
     [fig],
   );
@@ -72,7 +72,7 @@ test('ein veralteter Eintrag wird übergangen', async t => {
 
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
   await db.run(
-    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, fetched_at)
+    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, fetched_at)
      VALUES ($1,'N','EUR',3.50,3.50,TRUE, NOW() - INTERVAL '48 hours')`,
     [fig],
   );

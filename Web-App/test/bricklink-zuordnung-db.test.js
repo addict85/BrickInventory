@@ -97,7 +97,7 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_mapping', { concurrency
   const z = await spaltenVon('bl_mapping');
   assert.deepEqual(
     z,
-    ['type', 'bl_id', 'fetched_at', 'rb_id'],
+    ['bl_id', 'fetched_at', 'rb_id', 'type'],
     `bl_mapping hat nicht die vorgesehenen Spalten: ${z.join(', ')}`,
   );
 

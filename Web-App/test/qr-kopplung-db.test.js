@@ -89,7 +89,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.deepEqual([vorher.status, vorher.body.wartet, vorher.body.token], [200, true, undefined]);
     const stand = await ruf('GET', `/qr-kopplung/${qr.kopplung}`);
     assert.deepEqual(
-      [stand.body.stand, stand.body.geraet, stand.body.ip_bereich],
+      [stand.body.stand, stand.body.geraet, stand.body.ip_range],
       ['wartet', 'Pixel Probe', '127.0.0.0/24'],
     );
     assert.equal((await bestaetige(qr, m.code)).status, 200);
@@ -185,7 +185,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     await db.run(`DELETE FROM qr_login_tokens`);
     tt.after(() => db.run(`DELETE FROM qr_login_tokens`));
     await db.run(
-      `INSERT INTO qr_login_tokens (token, user_id, expires_at, abgeholt_am)
+      `INSERT INTO qr_login_tokens (token, user_id, expires_at, picked_up_at)
       SELECT 'abgeholt' || g, $1, NOW() + INTERVAL '5 minutes', NOW() FROM generate_series(1, 5) g`,
       [ids[1]],
     );

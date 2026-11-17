@@ -53,7 +53,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   const Z = _req('src/auftraege/zeitplan.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('jobs').jobs,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   t.after(async () => {
     await db.run('DELETE FROM jobs');
@@ -91,7 +91,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
 
   const wartend = [];
   for (const sn of ['11111-1', '22222-1'])
-    wartend.push(await A.stelleAuftragEin('anleitung', { set_number: sn }, { dedupe_key: `anleitung:${sn}` }));
+    wartend.push(await A.stelleAuftragEin('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
   const kaputt = await A.stelleAuftragEin('nachlauf', { schritt: 'katalog' });
   await db.run(`UPDATE jobs SET status = 'fehler', error_message = 'Quelle weg' WHERE id = $1`, [kaputt]);
   await db.run(`INSERT INTO run_state (key, value) VALUES ('jobs_lebenszeichen', NOW()::text)
@@ -99,21 +99,21 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
 
   await t.test('die Liste zeigt nur Anstehende, die Zusammenfassung auch Gescheiterte', async st => {
     st.after(() => db.run('DELETE FROM jobs WHERE id = ANY($1)', [[verschoben, abgebrochen]]));
-    const r = await rufe('GET', '/admin/jobs');
+    const r = await rufe('GET', '/admin/auftraege');
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const { jobs, zusammenfassung, job_prozess } = r.body;
+    const { auftraege, zusammenfassung, job_prozess } = r.body;
     assert.deepEqual(
-      jobs.filter(a => a.id === kaputt || a.id === abgebrochen),
+      auftraege.filter(a => a.id === kaputt || a.id === abgebrochen),
       [],
       'beendete Aufträge stehen in der Liste der einzelnen',
     );
-    assert.deepEqual([...new Set(jobs.map(a => a.status))].sort(), ['offen']);
-    const w = jobs.find(a => a.id === verschoben);
+    assert.deepEqual([...new Set(auftraege.map(a => a.status))].sort(), ['offen']);
+    const w = auftraege.find(a => a.id === verschoben);
     assert.deepEqual([w?.status, w?.waiting, w?.error_message], ['offen', true, 'Tageskontingent erschöpft']);
-    assert.equal(jobs.find(a => a.set_number === '11111-1')?.waiting, false, 'ein gewöhnlicher waiting nicht');
+    assert.equal(auftraege.find(a => a.set_number === '11111-1')?.waiting, false, 'ein gewöhnlicher waiting nicht');
     assert.ok(zusammenfassung.some(z => z.type === 'nachlauf' && z.status === 'fehler' && z.anzahl === 1));
     assert.equal(job_prozess.laeuft, true);
-    const f = (await rufe('GET', '/admin/jobs?status=error_message')).body.jobs.find(a => a.id === kaputt);
+    const f = (await rufe('GET', '/admin/auftraege?status=fehler')).body.auftraege.find(a => a.id === kaputt);
     assert.deepEqual(
       [f?.status, f?.error_message, f?.waiting],
       ['fehler', 'Quelle weg', false],
@@ -122,28 +122,28 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Liste zeigt Wartende und Geplante', async () => {
-    const r = await rufe('GET', '/admin/jobs');
-    const { jobs, zusammenfassung } = r.body;
+    const r = await rufe('GET', '/admin/auftraege');
+    const { auftraege, zusammenfassung } = r.body;
     assert.deepEqual(
-      jobs
+      auftraege
         .filter(a => a.type === 'anleitung')
         .map(a => a.set_number)
         .sort(),
       ['11111-1', '22222-1'],
     );
     assert.ok(
-      jobs.some(a => a.type === 'preise' && a.geplant === true),
+      auftraege.some(a => a.type === 'preise' && a.geplant === true),
       'geplante Läufe fehlen',
     );
     assert.ok(zusammenfassung.some(z => z.type === 'anleitung' && z.status === 'offen' && z.anzahl === 2));
-    assert.equal((await rufe('GET', '/admin/jobs?type=gibtsnicht')).status, 400);
+    assert.equal((await rufe('GET', '/admin/auftraege?art=gibtsnicht')).status, 400);
   });
 
   await t.test('wiederholen stellt einen gescheiterten neu ein', async () => {
-    assert.equal((await rufe('POST', `/admin/jobs/${kaputt}/wiederholen`)).status, 200);
+    assert.equal((await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status, 200);
     assert.equal((await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [kaputt])).status, 'offen');
     assert.equal(
-      (await rufe('POST', `/admin/jobs/${kaputt}/wiederholen`)).status,
+      (await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status,
       409,
       'ein offener lässt sich nicht wiederholen',
     );
@@ -151,23 +151,23 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
 
   await t.test('ein abgebrochener geplanter Lauf hinterlässt den nächsten Termin', async () => {
     const p = await plan('bild_nachlauf');
-    assert.equal((await rufe('POST', `/admin/jobs/${p.id}/abbrechen`)).status, 200);
+    assert.equal((await rufe('POST', `/admin/auftraege/${p.id}/abbrechen`)).status, 200);
     const neu = await plan('bild_nachlauf');
     assert.ok(neu && neu.id !== p.id, 'kein neuer Termin nach dem Abbruch');
   });
 
   await t.test('Leeren verwirft Wartende, nicht den Zeitplan', async () => {
-    const r = await rufe('DELETE', '/admin/jobs/type/anleitung');
+    const r = await rufe('DELETE', '/admin/auftraege/art/anleitung');
     assert.deepEqual([r.status, r.body.entfernt], [200, 2]);
     await A.stelleAuftragEin('preise', {}, {});
-    const r2 = await rufe('DELETE', '/admin/jobs/type/preise');
+    const r2 = await rufe('DELETE', '/admin/auftraege/art/preise');
     assert.equal(r2.body.entfernt, 1, 'der einzelne Preis-Auftrag ist weg');
     assert.ok(await plan('preise'), 'der geplante Preis-Lauf wurde mit geleert');
   });
 
   await t.test('Jetzt zieht den geplanten Lauf vor', async () => {
-    const r = await rufe('POST', '/admin/jobs/type/aufraeumen/jetzt');
-    assert.deepEqual([r.status, r.body.started_at], [200, true]);
+    const r = await rufe('POST', '/admin/auftraege/art/aufraeumen/jetzt');
+    assert.deepEqual([r.status, r.body.gestartet], [200, true]);
     assert.ok(new Date((await plan('aufraeumen')).due_at) <= new Date());
   });
 

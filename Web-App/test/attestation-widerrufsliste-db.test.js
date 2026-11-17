@@ -48,7 +48,7 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
   const d = testDienste();
 
   await t.test('der geplante Auftrag legt die Liste ab und plant den nächsten Lauf', async () => {
-    await d.jobs.ziehePlanVor('widerrufsliste', 0);
+    await d.auftraege.ziehePlanVor('widerrufsliste', 0);
     const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);

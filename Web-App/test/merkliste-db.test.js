@@ -194,7 +194,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
       ..._req('src/finanzen/preisalarm.js'),
       ...require('./helpers/sources').testBereich('finanzen').preisalarm,
     };
-    await P.setzeAlarm(U.enkel, '10276-1', 'EUR', { richtung: 'unter', schwelle: 249, condition: 'U' });
+    await P.setzeAlarm(U.enkel, '10276-1', 'EUR', { direction: 'unter', threshold: 249, condition: 'U' });
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
 
     await W.uebernimm(U.enkel, U.enkel, '10276-1', 'U', {});
@@ -374,7 +374,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
 
     await W.legeMerkpostenAn(U.opa, sn, 'N');
-    await P.setzeAlarm(U.opa, sn, 'EUR', { richtung: 'unter', schwelle: 99, condition: 'N' });
+    await P.setzeAlarm(U.opa, sn, 'EUR', { direction: 'unter', threshold: 99, condition: 'N' });
     const [vorher] = await W.merkpostenVon([U.opa], sn);
     assert.ok(vorher, 'Aufbau: der Merkposten fehlt');
 
@@ -407,7 +407,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
     const alarm = (await P.alarmeFuer(U.enkel, sn)).find(a => a.condition === 'N');
     assert.ok(alarm, 'Der Alarm ist nicht mitgezogen');
-    assert.equal(parseFloat(alarm.schwelle), 99);
+    assert.equal(parseFloat(alarm.threshold), 99);
 
     // ── Und wenn das Ziel den Merkposten schon hat ──────────────────────────
     await W.legeMerkpostenAn(U.opa, sn, 'N');
@@ -415,7 +415,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(r2.zusammengefuehrt, true, 'Ein Merkposten, den das Ziel schon hat, muss zusammengeführt werden');
     assert.deepEqual(await W.merkpostenVon([U.opa], sn), [], 'Die Quelle steht noch da');
     const nachMerge = (await P.alarmeFuer(U.enkel, sn)).find(a => a.condition === 'N');
-    assert.equal(parseFloat(nachMerge.schwelle), 99, 'Die Schwelle des ZIELS wurde überschrieben');
+    assert.equal(parseFloat(nachMerge.threshold), 99, 'Die Schwelle des ZIELS wurde überschrieben');
   });
 
   await t.test('Verbindungen schliessen', async () => {

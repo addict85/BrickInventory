@@ -56,7 +56,7 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
       assert.deepEqual(await mf.schaetzeFigurenpreis(FIG, u.id, 'N'), { preis: 4, abdeckung: 1 });
       assert.deepEqual(await mf.schaetzeFigurenpreis(FIG, u.id, 'U'), { preis: 6, abdeckung: 1 });
       const cache = await db.all(
-        `SELECT condition, avg_price::float AS preis, geschaetzt FROM minifig_price_cache
+        `SELECT condition, avg_price::float AS preis, estimated AS geschaetzt FROM minifig_price_cache
                                    WHERE fig_number = $1 ORDER BY condition`,
         [FIG],
       );
@@ -66,7 +66,7 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
       ]);
       const verlauf = await db.all(
         `SELECT condition, avg_price::float AS preis FROM minifig_price_history
-                                     WHERE fig_number = $1 AND geschaetzt ORDER BY condition`,
+                                     WHERE fig_number = $1 AND estimated ORDER BY condition`,
         [FIG],
       );
       assert.deepEqual(verlauf, [

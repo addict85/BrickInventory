@@ -57,7 +57,7 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
   await t.test('ohne Worker bleibt der Auftrag offen', async () => {
     await assert.rejects(
       importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
-      (/** @type {any} */ e) => e.code === 'import_laeuft_noch' && e.type === 'zeitueberschreitung',
+      (/** @type {any} */ e) => e.code === 'import_laeuft_noch' && e.art === 'zeitueberschreitung',
     );
     const a = await db.get(
       `SELECT status, payload->>'quelle' AS quelle FROM jobs
@@ -88,7 +88,7 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     importWorker(tt, _req);
     await assert.rejects(
       importAlsAuftrag(uid, 'alarme_csv', { waehrung: 'CHF', text: 'set_number\n1-1\n' }),
-      (/** @type {any} */ e) => e.code === 'alarm_schwelle_ungueltig' && e.type === 'ungueltig',
+      (/** @type {any} */ e) => e.code === 'alarm_schwelle_ungueltig' && e.art === 'ungueltig',
     );
   });
 });

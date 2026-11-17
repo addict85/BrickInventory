@@ -138,20 +138,20 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     );
 
     // Gespeicherte Antwort eines Idempotency-Keys in den Eintrag eines anderen Kontos.
-    for (const uid of ids) assert.equal((await idem.beginne(uid, 'k-1', 'abdruck')).type, 'neu');
+    for (const uid of ids) assert.equal((await idem.beginne(uid, 'k-1', 'abdruck')).art, 'neu');
     await idem.beende(a, 'k-1', 200, '{"geheim":"a"}');
     await idem.beende(b, 'k-1', 200, '{"geheim":"b"}');
     assert.deepEqual(await idem.beginne(a, 'k-1', 'abdruck'), {
-      type: 'wiederholung',
+      art: 'wiederholung',
       status: 200,
-      response: '{"geheim":"a"}',
+      antwort: '{"geheim":"a"}',
     });
     await db.run(
       `UPDATE idempotency SET response = (SELECT response FROM idempotency WHERE user_id = $1 AND key = 'k-1')
                   WHERE user_id = $2 AND key = 'k-1'`,
       [a, b],
     );
-    assert.equal((await stumm(() => idem.beginne(b, 'k-1', 'abdruck'))).type, 'nicht_wiederholbar');
+    assert.equal((await stumm(() => idem.beginne(b, 'k-1', 'abdruck'))).art, 'nicht_wiederholbar');
 
     // Gutschein-PDF von a in den Ordner von b.
     const da = path.join(dateien.VOUCHER_DIR, String(a), `${ga.id}.pdf`),
@@ -186,13 +186,13 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     const nr = '5045076374450044444';
     const id = (
       await db.get(
-        `INSERT INTO vouchers (user_id, number, nummer_suche, pin, amount, currency)
+        `INSERT INTO vouchers (user_id, number, number_search, pin, amount, currency)
       VALUES ($1, $2, $3, $4, 5, 'CHF') RETURNING id`,
         [a, alsV1(nr), gr.nummerSuche(a, nr), alsV1('4444')],
       )
     ).id;
     await db.run(`ALTER TABLE vouchers ADD CONSTRAINT vouchers_nummer_verschluesselt
-      CHECK (number LIKE 'v2:%' AND nummer_suche IS NOT NULL) NOT VALID`);
+      CHECK (number LIKE 'v2:%' AND number_search IS NOT NULL) NOT VALID`);
     await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [alsV1('Smtp-Alt-2')]);
     const totp = zf.base32(crypto.randomBytes(20));
     await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [b, alsV1(totp)]);
@@ -206,7 +206,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
     // Ein Altbestand trägt die Marke der Umschlüsselung noch nicht (die Testvorlage schon).
-    await require('./helpers/sources').testBereich('auftraege').run_state.loescheZustand('altbestand_v2');
+    await require('./helpers/sources').testBereich('auftraege').laufzustand.loescheZustand('altbestand_v2');
     await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang(), require('./helpers/sources').testDienste());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
@@ -217,9 +217,9 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     assert.match((await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [b])).secret, /^v2:/);
     assert.equal(await zf.pruefeCode(b, zf.hotp(zf.ausBase32(totp), zf.zeitschritt())), 'totp');
     assert.deepEqual(await idem.beginne(a, 'alt-1', abdruck), {
-      type: 'wiederholung',
+      art: 'wiederholung',
       status: 200,
-      response: '{"alt":true}',
+      antwort: '{"alt":true}',
     });
     assert.equal(fs.readFileSync(pdf).subarray(0, 7).toString('latin1'), 'BIENC2\n');
     assert.ok((await dateien.liesGutscheinPdf(pdf)).equals(PDF));

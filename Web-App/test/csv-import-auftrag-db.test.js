@@ -79,7 +79,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   const b = await konto(`csvauftrag-b-${process.pid}`);
   const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('jobs').jobs,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   const { jobSet } = _req('src/auftraege/importAuftrag.js');
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
@@ -88,7 +88,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   });
   const nacharbeit = uid =>
     db.all(
-      `SELECT payload->>'set_number' AS sn, payload->>'type' AS type FROM jobs
+      `SELECT payload->>'set_number' AS sn, payload->>'art' AS type FROM jobs
       WHERE type = 'nacharbeit' AND user_id = $1 ORDER BY id`,
       [uid],
     );

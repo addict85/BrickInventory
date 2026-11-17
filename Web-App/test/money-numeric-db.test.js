@@ -111,7 +111,8 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     const index = /CREATE UNIQUE INDEX idx_set_acq_erfassungstag[^;]+;/.exec(mig);
     assert.ok(index, 'Tagesindex in 0070 nicht gefunden');
     await db.run('DROP INDEX IF EXISTS idx_set_acq_erfassungstag');
-    await db.run(index[0]);
+    // 0070 kennt die Spalte noch unter ihrem alten Namen (vor 0124).
+    await db.run(index[0].replace(/\btag\b/, 'day'));
   });
 
   await t.test('tausend Beträge summieren sich exakt', async () => {

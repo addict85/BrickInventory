@@ -104,9 +104,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
       body: { is_active: aktiv, admin_password: pw, code: codes.shift() },
     });
   const protokoll = async () =>
-    (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [nutzer])).map(
-      z => z.action,
-    );
+    (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [nutzer])).map(z => z.action);
 
   const chefKeks = (await anmelden(CHEF, { ohne_token: true, code: codes.shift() })).cookie;
   assert.match(chefKeks, /^bim\.sid=/);
@@ -157,7 +155,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
 
   await t.test('unbestätigt: dieselbe Absage, neuer Link ohne Kontoauskunft', async () => {
     const adresse = `deakt_${process.pid}@example.org`;
-    await db.run('UPDATE users SET email = NULL, email_neu = $2, registrierung_offen = true WHERE id = $1', [
+    await db.run('UPDATE users SET email = NULL, new_email = $2, registration_pending = true WHERE id = $1', [
       nutzer,
       adresse,
     ]);
@@ -178,19 +176,19 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
     );
     assert.equal(bekannt.status, 200);
     const z = await db.get(
-      "SELECT email_neu_token, email_neu_bis > NOW() + interval '23 hours' AS frisch FROM users WHERE id = $1",
+      "SELECT new_email_token, new_email_until > NOW() + interval '23 hours' AS frisch FROM users WHERE id = $1",
       [nutzer],
     );
-    assert.ok(z.email_neu_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
+    assert.ok(z.new_email_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
     await erneut(adresse);
     assert.equal(
-      (await db.get('SELECT email_neu_token FROM users WHERE id = $1', [nutzer])).email_neu_token,
-      z.email_neu_token,
+      (await db.get('SELECT new_email_token FROM users WHERE id = $1', [nutzer])).new_email_token,
+      z.new_email_token,
       'ein zweiter Link sofort danach',
     );
     await db.run(
-      `UPDATE users SET email_verified = true, registrierung_offen = false, email_neu = NULL, email_neu_token = NULL,
-      email_neu_bis = NULL WHERE id = $1`,
+      `UPDATE users SET email_verified = true, registration_pending = false, new_email = NULL, new_email_token = NULL,
+      new_email_until = NULL WHERE id = $1`,
       [nutzer],
     );
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");

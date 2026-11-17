@@ -26,13 +26,13 @@ const SET = {
 };
 const eintrag = (id, user_id, anzahl) => ({
   id,
-  art: 'set',
-  nummer: '21318-1',
-  farbe_id: null,
-  bezeichnung: 'Tree House',
+  type: 'set',
+  number: '21318-1',
+  color_id: null,
+  label: 'Tree House',
   anzahl,
   user_id,
-  geloescht_am: '2026-11-15T10:00:00Z',
+  deleted_at: '2026-11-15T10:00:00Z',
   endgueltig_am: '2026-12-15T10:00:00Z',
 });
 
@@ -52,7 +52,7 @@ function antworten() {
     '/v1/papierkorb': () => ({ success: true, eintraege: korb }),
     '/v1/papierkorb/7/wiederherstellen': () => {
       korb.splice(0, 1);
-      return { success: true, art: 'set', nummer: '21318-1', user_id: 1 };
+      return { success: true, type: 'set', number: '21318-1', user_id: 1 };
     },
   };
 }

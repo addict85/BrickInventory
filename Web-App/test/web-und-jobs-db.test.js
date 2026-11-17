@@ -232,7 +232,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal(jobs.exitCode, 0, jobs.log.slice(-1500));
       assert.equal(web.exitCode, 0, web.log.slice(-1500));
       for (const p of [jobs, web]) assert.match(p.log, /\[shutdown\] Datenbankverbindungen geschlossen/);
-      assert.match(jobs.log, /\[jobs\] beendet/, 'Der Job-Prozess hat seinen Worker nicht angehalten');
+      assert.match(jobs.log, /\[auftraege\] beendet/, 'Der Job-Prozess hat seinen Worker nicht angehalten');
       const z = await auftrag(id);
       assert.notEqual(z.status, 'laeuft', 'Ein Auftrag blieb belegt');
     });

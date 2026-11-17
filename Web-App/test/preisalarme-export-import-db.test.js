@@ -5,7 +5,7 @@
  *
  *   a) preisalarme.csv aus dem ZIP entfernt      → 1, 2, 3, 4 rot
  *   b) Währung aus der DATEI statt den Einstell. → 5 rot
- *   c) `ausgeloest` mit exportiert               → 3 rot
+ *   c) `triggered` mit exportiert               → 3 rot
  *   d) setzeAlarm durch ein rohes INSERT ersetzt → 6 und 6b rot
  *   e) `WHERE user_id` aus dem Export entfernt   → 2 und 4 rot
  *
@@ -14,9 +14,9 @@
  *
  * (d) machte im ERSTEN Versuch GAR NICHTS rot. Fall 6 behauptete, er prüfe,
  * dass die Route setzeAlarm() benutzt — tat er nicht: Die Tabelle hat eigene
- * CHECK-Bedingungen auf `richtung` und `schwelle` (nachgemessen), die fingen
+ * CHECK-Bedingungen auf `direction` und `threshold` (nachgemessen), die fingen
  * das rohe INSERT genauso. Fall 6 trägt jetzt den Zustand „X", auf den es
- * KEINE CHECK gibt, und 6b das Zurücksetzen von `ausgeloest`, das die Tabelle
+ * KEINE CHECK gibt, und 6b das Zurücksetzen von `triggered`, das die Tabelle
  * auch nicht erzwingt. Erst damit trennt der Test die beiden Fassungen.
  *
  * (e) deckte beim DURCHDENKEN eine Lücke auf, bevor er lief: Der Aufbau hatte
@@ -89,7 +89,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
   // waere es falsch — ein Alarm kennt kein Blickfeld.
   await katalogSet(db, FREMDER_ALARM.sn, { name: FREMDER_ALARM.sn });
   await db.run(
-    `INSERT INTO price_alerts (user_id,set_number,condition,richtung,schwelle,currency_code)
+    `INSERT INTO price_alerts (user_id,set_number,condition,direction,threshold,currency_code)
                 VALUES ($1,$2,$3,$4,$5,$6)`,
     [FREMD, FREMDER_ALARM.sn, FREMDER_ALARM.c, FREMDER_ALARM.r, FREMDER_ALARM.s, FREMDER_ALARM.w],
   );
@@ -119,7 +119,7 @@ async function aufbau(kontoWaehrung = 'CHF') {
       );
     }
     await db.run(
-      `INSERT INTO price_alerts (user_id,set_number,condition,richtung,schwelle,currency_code)
+      `INSERT INTO price_alerts (user_id,set_number,condition,direction,threshold,currency_code)
                   VALUES ($1,$2,$3,$4,$5,$6)`,
       [HAUPT, a.sn, a.c, a.r, a.s, a.w],
     );
@@ -204,11 +204,11 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     for (const a of ALARME) {
       const z = zeilen.find(x => x.set_number === a.sn && x.condition === a.c);
       assert.ok(z, `(${a.sn}, ${a.c}) fehlt im Export`);
-      assert.equal(z.richtung, a.r, `Richtung von (${a.sn}, ${a.c}) ist „${z.richtung}"`);
+      assert.equal(z.direction, a.r, `Richtung von (${a.sn}, ${a.c}) ist „${z.direction}"`);
       assert.equal(
-        Number(z.schwelle),
+        Number(z.threshold),
         a.s,
-        `Schwelle von (${a.sn}, ${a.c}) kam als „${z.schwelle}" heraus, erwartet ${a.s}`,
+        `Schwelle von (${a.sn}, ${a.c}) kam als „${z.threshold}" heraus, erwartet ${a.s}`,
       );
       assert.equal(z.currency_code, a.w);
     }
@@ -237,12 +237,12 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
   await t.test('3. Laufzeitzustand steht NICHT in der Datei', () => {
     const kopf = csvText.replace(/^﻿/, '').split(/\r?\n/)[0];
-    for (const spalte of ['ausgeloest', 'zuletzt_am', 'zuletzt_preis']) {
+    for (const spalte of ['triggered', 'last_triggered_at', 'last_price']) {
       assert.ok(
         !kopf.includes(spalte),
         `„${spalte}" steht im Export. Das ist Laufzeitzustand des Jobs, keine Angabe ` +
-          'des Nutzers: Ein ausgeloest=true aus der Datei unterdrückte die erste Meldung ' +
-          'nach dem Wiederherstellen, und ein alter zuletzt_preis stünde in der ' +
+          'des Nutzers: Ein triggered=true aus der Datei unterdrückte die erste Meldung ' +
+          'nach dem Wiederherstellen, und ein alter last_price stünde in der ' +
           'Übersicht als aktueller Stand.',
       );
     }
@@ -268,16 +268,16 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
     for (const a of ALARME) {
       const z = await db.get(
-        `SELECT richtung, schwelle, currency_code, ausgeloest FROM price_alerts
+        `SELECT direction, threshold, currency_code, triggered FROM price_alerts
           WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
         [HAUPT, a.sn, a.c],
       );
       assert.ok(z, `(${a.sn}, ${a.c}) kam nicht zurück`);
-      assert.equal(z.richtung, a.r);
-      assert.equal(Number(z.schwelle), a.s, `Schwelle von (${a.sn}, ${a.c}) ist ${z.schwelle}, erwartet ${a.s}`);
+      assert.equal(z.direction, a.r);
+      assert.equal(Number(z.threshold), a.s, `Schwelle von (${a.sn}, ${a.c}) ist ${z.threshold}, erwartet ${a.s}`);
       assert.equal(z.currency_code, 'CHF');
       assert.equal(
-        z.ausgeloest,
+        z.triggered,
         false,
         'Der Merker steht auf true — ein frisch gesetzter Alarm hat noch nichts gemeldet',
       );
@@ -292,7 +292,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
     assert.equal(body.added, ALARME.length, `${body.added} angelegt statt ${ALARME.length}`);
     const z = await db.get(
-      `SELECT currency_code, schwelle FROM price_alerts
+      `SELECT currency_code, threshold FROM price_alerts
         WHERE user_id=$1 AND set_number=$2 AND condition='N'`,
       [HAUPT, '75192-1'],
     );
@@ -304,7 +304,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
         'auseinander (die Regel steht an PUT /sets/:setNumber/alert).',
     );
     assert.equal(
-      Number(z.schwelle),
+      Number(z.threshold),
       600,
       'Die Schwelle wurde verändert — umgerechnet wird NICHT, dafür bräuchte es einen Kurs',
     );
@@ -375,19 +375,18 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
   });
 
   await t.test('6b. ein erneuter Import setzt den Merker zurück', async () => {
-    // setzeAlarm() sagt zu: „Der Merker ausgeloest wird beim Ändern
+    // setzeAlarm() sagt zu: „Der Merker triggered wird beim Ändern
     // ZURÜCKGESETZT: Eine neue Schwelle ist eine neue Frage, und die soll
     // beantwortet werden, auch wenn die alte schon einmal gemeldet hat."
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
     await db.run(
       `INSERT INTO price_alerts
-                    (user_id,set_number,condition,richtung,schwelle,currency_code,ausgeloest)
+                    (user_id,set_number,condition,direction,threshold,currency_code,triggered)
                   VALUES ($1,'75192-1','N','unter',600,'CHF',TRUE)`,
       [HAUPT],
     );
     assert.equal(
-      (await db.get(`SELECT ausgeloest FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'`, [HAUPT]))
-        .ausgeloest,
+      (await db.get(`SELECT triggered FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'`, [HAUPT])).triggered,
       true,
       'Vorbedingung: der Merker steht',
     );
@@ -396,11 +395,11 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     assert.equal(
       (
         await db.get(
-          `SELECT ausgeloest FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'
+          `SELECT triggered FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'
         AND condition='N'`,
           [HAUPT],
         )
-      ).ausgeloest,
+      ).triggered,
       false,
       'Der Merker steht noch auf true. Dann meldet der wiederhergestellte Alarm nie ' +
         'wieder — er gilt als schon beantwortet.',

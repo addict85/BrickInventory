@@ -114,7 +114,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
                   VALUES ($1, '75313-1', 1, 99.99, 'N', 'USD')`,
       [uid],
     );
-    await db.run(`DELETE FROM exchange_rates WHERE waehrung = 'USD'`).catch(() => {});
+    await db.run(`DELETE FROM exchange_rates WHERE currency = 'USD'`).catch(() => {});
     const r = await hole('/finance/valuation');
     const set = r.body.sets.find(s => s.set_number === '75313-1');
     assert.ok(set, JSON.stringify(r.body.sets.map(s => s.set_number)));

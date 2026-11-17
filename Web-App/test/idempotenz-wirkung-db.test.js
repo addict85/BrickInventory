@@ -25,7 +25,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { idempotency } = _req('src/idempotenz/http/middleware.js');
+const { idempotenz } = _req('src/idempotenz/http/middleware.js');
 const dienst = _req('src/idempotenz/dienst.js');
 
 const NAME = `idem_wirkung_${process.pid}`;
@@ -57,7 +57,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     /** @type {any} */ (req).apiUser = { user_id: uid };
     next();
   });
-  app.use('/api/v1', idempotency(require('./helpers/sources').testDienste().idempotency));
+  app.use('/api/v1', idempotenz(require('./helpers/sources').testDienste().idempotenz));
   app.post('/api/v1/parts', async (req, res) => {
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);
@@ -88,9 +88,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     );
   const fertig = async k => {
     for (let i = 0; i < 50; i++) {
-      if (
-        !(await db.get('SELECT 1 FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL', [uid, k]))
-      )
+      if (!(await db.get('SELECT 1 FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL', [uid, k])))
         return;
       await new Promise(r => setTimeout(r, 20));
     }

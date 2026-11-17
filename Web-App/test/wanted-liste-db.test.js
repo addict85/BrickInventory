@@ -96,7 +96,7 @@ test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
   );
   assert.equal(r.posten.length, 3, `${r.posten.length} brauchbare Posten statt 3`);
   assert.deepEqual(
-    r.posten.map(p => p.type),
+    r.posten.map(p => p.art),
     ['part', 'fig', 'set'],
   );
   assert.deepEqual(

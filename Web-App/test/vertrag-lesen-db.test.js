@@ -224,12 +224,12 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   // /admin/jobs keine leeren Listen liefert.
   const auftrag = await {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('jobs').jobs,
-  }.stelleAuftragEin('anleitung', { set_number: SET }, { dedupe_key: `vertrag-get:${process.pid}` });
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
+  }.stelleAuftragEin('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE jobs SET progress = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
     auftrag,
   ]);
-  await db.run(`INSERT INTO job_pauses (type, until_at, reason) VALUES ('exchange_rates', NOW() + INTERVAL '1 hour', 'Vertrag')
+  await db.run(`INSERT INTO job_pauses (type, until_at, reason) VALUES ('wechselkurse', NOW() + INTERVAL '1 hour', 'Vertrag')
                 ON CONFLICT (type) DO UPDATE SET until_at = EXCLUDED.until_at, reason = EXCLUDED.reason`);
   aufraeumen.push(
     [`DELETE FROM jobs WHERE id = $1`, [auftrag]],
@@ -248,7 +248,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     .testBereich('gutscheine')
     .gutscheine.gutscheinAnlegen(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
   await db.run(
-    `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code, ausgeloest, zuletzt_am, zuletzt_preis)
+    `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code, triggered, last_triggered_at, last_price)
                 VALUES ($1, $2, 'N', 'unter', 55, 'EUR', true, NOW(), 50)`,
     [uid, SET],
   );

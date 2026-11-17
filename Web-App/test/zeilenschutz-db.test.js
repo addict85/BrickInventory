@@ -214,14 +214,14 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('im Systemrahmen sieht die Aufräumarbeit alle Konten', async () => {
-    const { trash } = bauMit(app).kontexte.bestand;
-    assert.equal(await trash.entferneAeltere(30), 0);
-    assert.equal(await imSystemkontext('test', () => trash.entferneAeltere(30)), 3);
+    const { papierkorb } = bauMit(app).kontexte.bestand;
+    assert.equal(await papierkorb.entferneAeltere(30), 0);
+    assert.equal(await imSystemkontext('test', () => papierkorb.entferneAeltere(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM trash'), []);
   });
 
   await t.test('ein Auftrag läuft im Systemrahmen nur, wenn seine Art kontoübergreifend ist', async st => {
-    const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('exchange_rates', 'nacharbeit', 'preise')");
+    const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('wechselkurse', 'nacharbeit', 'preise')");
     st.after(leeren);
     const A_ = _req('src/auftraege/dienst.js');
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
@@ -230,8 +230,8 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const sieh = name => async () => {
       gesehen[name] = ids(await alleSets());
     };
-    const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
-      exchange_rates: { ausfuehren: sieh('ohne Marke') },
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
+      wechselkurse: { ausfuehren: sieh('ohne Marke') },
       nacharbeit: {
         ausfuehren: async () => {
           await sieh('Konto')();
@@ -241,15 +241,15 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       },
       preise: { ausfuehren: (_n, _k, a) => sieh(a.user_id ? 'markiert mit Konto' : 'markiert')() },
     });
-    await A_.stelleAuftragEin('exchange_rates', {}, { dedupe_key: `rows-${process.pid}` });
+    await A_.stelleAuftragEin('wechselkurse', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.verarbeiteEinen(), true);
     // Auch aus einem Systemrahmen heraus (server.ts startet die Jobs in einem).
     await A_.stelleAuftragEin('nacharbeit', { set_number: '10001-1', user_id: A }, { userId: A, maxVersuche: 1 });
     assert.equal(await imSystemkontext('test', () => w.verarbeiteEinen()), true);
-    await A_.stelleAuftragEin('preise', {}, { dedupe_key: `rows-${process.pid}` });
+    await A_.stelleAuftragEin('preise', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.verarbeiteEinen(), true);
     // Mit Konto zählt das Konto, auch bei einer markierten Art.
-    await A_.stelleAuftragEin('preise', {}, { userId: A, dedupe_key: `rows-a-${process.pid}` });
+    await A_.stelleAuftragEin('preise', {}, { userId: A, schluessel: `rows-a-${process.pid}` });
     assert.equal(await w.verarbeiteEinen(), true);
     assert.deepEqual(gesehen, {
       'ohne Marke': [],
@@ -335,11 +335,11 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(ids(await imSystemkontext('test', () => alsAnfrage({ apiUser: { user_id: C } }, alleSets))), [C]);
   });
   await t.test('Aufträge und Zugangsdaten anderer Konten bleiben der Laufzeitrolle verborgen', async () => {
-    await su.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
-    await su.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('exchange_rates', '{}', $1)`, [
+    await su.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
+    await su.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('wechselkurse', '{}', $1)`, [
       `rows-sys-${process.pid}`,
     ]);
-    await su.run(`INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ('exchange_rates', '{}', $1, $2)`, [
+    await su.run(`INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ('wechselkurse', '{}', $1, $2)`, [
       C,
       `rows-c-${process.pid}`,
     ]);
@@ -352,10 +352,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       assert.deepEqual(ids(await als(C, () => app.all(`SELECT user_id FROM ${tabelle}`))), [C], tabelle);
     }
     assert.equal(
-      (await imSystemkontext('test', () => app.all("SELECT 1 FROM jobs WHERE type = 'exchange_rates'"))).length,
+      (await imSystemkontext('test', () => app.all("SELECT 1 FROM jobs WHERE type = 'wechselkurse'"))).length,
       2,
     );
-    await su.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
+    await su.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
     await su.run('DELETE FROM api_tokens WHERE user_id = $1', [C]);
   });
 
@@ -452,10 +452,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   await t.test('Gutscheine und Idempotenzeinträge des Unterkontos sieht das Hauptkonto nicht', async st => {
     const pid = process.pid;
     await su.run(
-      `INSERT INTO vouchers (user_id, number, nummer_suche, amount, currency) VALUES ($1, 'v2:x', $2, 10, 'EUR')`,
+      `INSERT INTO vouchers (user_id, number, number_search, amount, currency) VALUES ($1, 'v2:x', $2, 10, 'EUR')`,
       [B, `zs-gs-${pid}`],
     );
-    await su.run(`INSERT INTO idempotency (user_id, dedupe_key, request) VALUES ($1, $2, 'POST /x')`, [B, `zs-${pid}`]);
+    await su.run(`INSERT INTO idempotency (user_id, key, request) VALUES ($1, $2, 'POST /x')`, [B, `zs-${pid}`]);
     st.after(async () => {
       for (const tab of ['vouchers', 'idempotency'])
         await su.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[A, B]]);
@@ -466,7 +466,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       assert.deepEqual(ids(await als(B, () => app.all(`SELECT user_id FROM ${tab}`))), [B], `${tab}: das Konto selbst`);
     }
     await assert.rejects(
-      als(A, () => app.run(`INSERT INTO idempotency (user_id, dedupe_key, request) VALUES ($1, 'fremd', 'x')`, [B])),
+      als(A, () => app.run(`INSERT INTO idempotency (user_id, key, request) VALUES ($1, 'fremd', 'x')`, [B])),
       /row-level security/,
     );
   });

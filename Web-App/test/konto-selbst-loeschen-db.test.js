@@ -9,11 +9,11 @@
  *      bleibt das Konto …“ und „mit zweitem Faktor …“
  *   B  loescheEigenesKonto() ohne die Verwalterbedingung → rot: „der letzte
  *      Verwalter bleibt“
- *   C  loescheOffeneRegistrierungen() ohne `registrierung_offen` → rot:
+ *   C  loescheOffeneRegistrierungen() ohne `registration_pending` → rot:
  *      „unbestätigte Registrierungen …“ (das Konto mit neuer Adresse ist weg)
  *   D  der Schritt fehlt in aufraeumenTaeglich() → rot: dieselbe Prüfung
  *      (die alte Registrierung bleibt)
- * Gemessen grün blieb (04.11.2026): uebernimmEmailNeu() ohne `registrierung_offen = false` —
+ * Gemessen grün blieb (04.11.2026): uebernimmEmailNeu() ohne `registration_pending = false` —
  * das Löschen verlangt zusätzlich NOT email_verified.
  *
  * REQUIRE_DB=1.

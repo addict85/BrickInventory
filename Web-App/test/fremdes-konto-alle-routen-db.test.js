@@ -227,7 +227,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   const ort = (await ok('POST', '/api/v1/storage/locations', { name: `Ort ${MARKE}` })).ort.id;
   await ok('POST', '/api/v1/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
   await ok('PUT', `/api/v1/sets/${SET}/storage`, { storage: `Ort ${MARKE}` });
-  await ok('PUT', `/api/v1/sets/${SET}/alert`, { richtung: 'unter', schwelle: 30, condition: 'N' });
+  await ok('PUT', `/api/v1/sets/${SET}/alert`, { direction: 'unter', threshold: 30, condition: 'N' });
   const setAcq = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [opfer, SET]))
     .id;
   const pdf = await pdfMit(['Bauanleitung']);
@@ -260,7 +260,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   const nonce = `fremd${process.pid}${Date.now()}`;
   const qr = (
     await db.get(
-      `INSERT INTO qr_login_tokens (token, user_id, expires_at, abholung, code_hash)
+      `INSERT INTO qr_login_tokens (token, user_id, expires_at, pickup_code, code_hash)
     VALUES ($1, $2, NOW() + INTERVAL '5 minutes', 'abh', 'x') RETURNING id`,
       [auth.tokenAbdruck(nonce), opfer],
     )
@@ -285,7 +285,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   const idFuer = p =>
     p.includes('/storage/locations/')
       ? ort
-      : p.includes('/trash/')
+      : p.includes('/papierkorb/')
         ? trash
         : p.includes('/vouchers/')
           ? gutschein

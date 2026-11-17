@@ -64,7 +64,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
     [`pv-einladung-${P}`, V],
   );
   await db.run(
-    `UPDATE users SET email_neu = $2, email_neu_token = 'x', email_neu_bis = NOW() + INTERVAL '1 day' WHERE id = $1`,
+    `UPDATE users SET new_email = $2, new_email_token = 'x', new_email_until = NOW() + INTERVAL '1 day' WHERE id = $1`,
     [V, `boese-${P}@example.org`],
   );
   const K_ = _req('src/konto/konten.js');
@@ -104,8 +104,8 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
     assert.equal((await db.all('SELECT 1 FROM account_link_invites WHERE main_user_id = $1', [V])).length, 0);
   });
   await t.test('der ausstehende Adresswechsel ist verworfen', async () => {
-    const z = await db.get('SELECT email, email_neu, email_neu_token FROM users WHERE id = $1', [V]);
-    assert.deepEqual(z, { email: `${namen[0]}@example.org`, email_neu: null, email_neu_token: null });
+    const z = await db.get('SELECT email, new_email, new_email_token FROM users WHERE id = $1', [V]);
+    assert.deepEqual(z, { email: `${namen[0]}@example.org`, new_email: null, new_email_token: null });
   });
   await t.test('die Mail nennt, was gelöst wurde', async () => {
     const an = () => gesendet.find(m => m.to === `${namen[0]}@example.org` && /zurückgesetzt/.test(m.text));

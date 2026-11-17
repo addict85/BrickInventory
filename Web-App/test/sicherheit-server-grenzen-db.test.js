@@ -107,8 +107,8 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
   const unbestaetigt = await lege(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
   // Wie POST /register seit Runde 13: Adresse und Link nur ausstehend.
   await db.run(
-    `UPDATE users SET email_neu = email, email_neu_token = verification_token, email_neu_bis = token_expires,
-    email = NULL, verification_token = NULL, token_expires = NULL, registrierung_offen = true WHERE id = $1`,
+    `UPDATE users SET new_email = email, new_email_token = verification_token, new_email_until = token_expires,
+    email = NULL, verification_token = NULL, token_expires = NULL, registration_pending = true WHERE id = $1`,
     [unbestaetigt],
   );
   t.after(async () => {

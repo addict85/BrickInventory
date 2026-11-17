@@ -208,13 +208,13 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
   await t.test('der Schlüssel gilt einmal je Zugang; ein anderer wird nicht nachgeschoben', async () => {
     const h = await hinterlege(ruf, token);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
-    geraet = h.key;
+    geraet = h.schluessel;
     const anderer = await hinterlege(ruf, token);
     assert.deepEqual([anderer.antwort.status, anderer.antwort.body.code], [409, 'geraeteschluessel_vorhanden']);
-    const ohneKette = await ruf('/geraet/key', {
+    const ohneKette = await ruf('/geraet/schluessel', {
       method: 'POST',
       token,
-      body: { public_key: geraet.public_key },
+      body: { oeffentlich: geraet.oeffentlich },
     });
     assert.deepEqual(
       [ohneKette.status, ohneKette.body.code],
@@ -227,17 +227,17 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     'eine Kette mit fremder oder verbrauchter Challenge, aus Software oder fremder Wurzel wird abgewiesen',
     async () => {
       const neu = (await anmelden(NAME)).body.token;
-      const senden = kette => ruf('/geraet/key', { method: 'POST', token: neu, body: { kette } });
+      const senden = kette => ruf('/geraet/schluessel', { method: 'POST', token: neu, body: { kette } });
       const fremdeChallenge = attestation.kette({ challenge: Buffer.alloc(32, 1) });
       assert.deepEqual([(await senden(fremdeChallenge.kette)).body.code], ['geraeteschluessel_attestation']);
       for (const o of [{ sicherheit: 0 }, { wurzel: attestation.neueWurzel('Fremd') }, { paket: 'com.boese.app' }]) {
-        const n = (await ruf('/geraet/key/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
+        const n = (await ruf('/geraet/schluessel/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
         const r = await senden(attestation.kette({ challenge: Buffer.from(n, 'base64url'), ...o }).kette);
         assert.deepEqual([r.status, r.body.code], [400, 'geraeteschluessel_attestation'], JSON.stringify(o));
       }
       const ok = await hinterlege(ruf, neu);
       assert.equal(ok.antwort.status, 200, JSON.stringify(ok.antwort.body));
-      const zweimal = await ruf('/geraet/key', {
+      const zweimal = await ruf('/geraet/schluessel', {
         method: 'POST',
         token: (await anmelden(NAME)).body.token,
         body: { kette: attestation.kette({ challenge: Buffer.from(ok.nonce, 'base64url') }).kette },
@@ -257,14 +257,14 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     await db.run('INSERT INTO device_keys (user_id, token_family, public_key) VALUES ($1, $2, $3)', [
       f.uid,
       f.seit,
-      geraeteSchluessel().public_key,
+      geraeteSchluessel().oeffentlich,
     ]);
     assert.equal((await klartext({ token: alt })).body.code, 'schritt_freigabe_noetig', 'vor dem Stichtag gilt er');
     assert.equal(await repo.schluesselDer(f, new Date(Date.now() - 1000)), null, 'nach dem Stichtag nicht mehr');
     const h = await hinterlege(ruf, alt);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
-    assert.deepEqual(await repo.eintragDer(f), { public_key: h.key.public_key, attested: true });
-    assert.equal(await repo.schluesselDer(f, new Date(0)), h.key.public_key);
+    assert.deepEqual(await repo.eintragDer(f), { public_key: h.schluessel.oeffentlich, attested: true });
+    assert.equal(await repo.schluesselDer(f, new Date(0)), h.schluessel.oeffentlich);
   });
 
   await t.test('ein Zugang aus der QR-Kopplung hinterlegt nur mit der Nonce seiner Abholung', async () => {
@@ -276,7 +276,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.match(a.body.schluessel_nonce, /^[\w-]{43}$/);
     for (let i = 0; i < 2; i++) {
-      const n = await ruf('/geraet/key/nonce', { method: 'POST', token: a.body.token, body: {} });
+      const n = await ruf('/geraet/schluessel/nonce', { method: 'POST', token: a.body.token, body: {} });
       assert.equal(n.body.nonce, a.body.schluessel_nonce, 'keine zweite Nonce neben der aus der Abholung');
     }
     const h = await hinterlege(ruf, a.body.token);
@@ -341,7 +341,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     await db.run(`UPDATE api_tokens SET created_at = NOW() - INTERVAL '1 hour' WHERE token = $1`, [
       auth.tokenAbdruck(alt),
     ]);
-    const n = await ruf('/geraet/key/nonce', { method: 'POST', token: alt, body: {} });
+    const n = await ruf('/geraet/schluessel/nonce', { method: 'POST', token: alt, body: {} });
     assert.deepEqual([n.status, n.body.code], [403, 'geraeteschluessel_frist']);
     // Auch eine Nonce von damals hilft nicht: Sie läuft mit der Frist der Familie ab.
     const altNonce = Buffer.alloc(32, 9);
@@ -350,7 +350,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
        date_trunc('milliseconds', created_at), NOW() + INTERVAL '1 hour' FROM api_tokens WHERE token = $1`,
       [auth.tokenAbdruck(alt), altNonce.toString('base64url')],
     );
-    const r = await ruf('/geraet/key', {
+    const r = await ruf('/geraet/schluessel', {
       method: 'POST',
       token: alt,
       body: { kette: attestation.kette({ challenge: altNonce }).kette },
@@ -373,7 +373,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.deepEqual([vorher.status, vorher.body.code], [403, 'geraeteschluessel_fehlt']);
     const h = await hinterlege(ruf, voll);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
-    const s = h.key;
+    const s = h.schluessel;
     assert.equal((await ruf('/auth/users', { token: voll })).body.code, 'schritt_freigabe_noetig');
     await geraetFreigeben(ruf, voll, 'gutschein', s);
     assert.equal(
@@ -417,7 +417,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     // Seit der Attestation hinterlegt die App den Schlüssel mit Kette (helpers/geraet.js).
     const h = await hinterlege(ruf, voll);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
-    const s = h.key;
+    const s = h.schluessel;
     for (const [weg, rufe] of Object.entries(wege)) {
       const r = await rufe();
       assert.deepEqual([r.status, r.body?.code], [403, 'schritt_freigabe_noetig'], `${weg} ohne Freigabe`);

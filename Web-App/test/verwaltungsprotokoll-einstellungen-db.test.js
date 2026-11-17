@@ -79,11 +79,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     const e = await eigene();
     assert.equal(e.length, 1, JSON.stringify(e));
     assert.equal(e[0].action, 'einstellungen_geaendert');
-    assert.deepEqual(e[0].details.split(', ').sort(), [
-      'rebrickable_api_key',
-      'registration_enabled',
-      'smtp_host',
-    ]);
+    assert.deepEqual(e[0].details.split(', ').sort(), ['rebrickable_api_key', 'registration_enabled', 'smtp_host']);
     assert.ok(!JSON.stringify(e).includes(GEHEIM) && !JSON.stringify(e).includes('mail.neu.example'));
   });
 

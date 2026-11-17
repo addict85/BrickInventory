@@ -174,7 +174,7 @@ const GEMEINSAM = {
     eingabe: false,
     schreiber: ['src/finanzen/repository/marktpreise.ts', 'src/finanzen/repository/preisCache.ts'],
   },
-  exchange_rates: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/exchange_rates.ts'] },
+  exchange_rates: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/wechselkurse.ts'] },
   image_misses: { type: BETRIEB, eingabe: false },
   image_wanted: { type: BETRIEB, eingabe: false },
   parts_catalog_pending: {
@@ -241,30 +241,22 @@ const DYNAMISCH = {
   },
   'src/bestand/repository/papierkorb.ts': {
     liest: [
-      'minifig_custom',
       'minifig_acquisitions',
+      'minifig_custom',
       'minifigs',
       'minifigs_catalog',
-      'papierkorb',
       'part_acquisitions',
       'part_catalog',
       'part_color_catalog',
+      'part_color_custom',
+      'part_custom',
       'parts',
       'rb_sets',
       'set_acquisitions',
       'sets',
-      'part_custom',
-      'part_color_custom',
+      'trash',
     ],
-    schreibt: [
-      'minifig_acquisitions',
-      'minifigs',
-      'papierkorb',
-      'part_acquisitions',
-      'parts',
-      'set_acquisitions',
-      'sets',
-    ],
+    schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts', 'set_acquisitions', 'sets', 'trash'],
   },
   'src/bestand/repository/umhaengen.ts': {
     liest: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
@@ -885,8 +877,8 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     fd.append(
       'korrekturen',
       JSON.stringify([
-        { index: 0, blId: `${MARKE}4`, type: 'fig', rbId: 'fig-000001' },
-        { index: 1, blId: `${MARKE}5`, type: 'part', rbId: '3003', rbFarbe: 4 },
+        { index: 0, blId: `${MARKE}4`, art: 'fig', rbId: 'fig-000001' },
+        { index: 1, blId: `${MARKE}5`, art: 'part', rbId: '3003', rbFarbe: 4 },
       ]),
     );
     const r = await fetch(`${srv.base}/api/v1/wanted-list/import/xml?schreiben=1`, { method: 'POST', body: fd });

@@ -181,7 +181,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
         () =>
           Object.assign({}, _req('src/auftraege/auftraege.js'), {
             ..._req('src/auftraege/dienst.js'),
-            ...require('./helpers/sources').testBereich('jobs').jobs,
+            ...require('./helpers/sources').testBereich('auftraege').auftraege,
           }).erledigt({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
         300,
       );
@@ -223,11 +223,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
         assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
         assert.equal(r.body.code, 'eingabe_ungueltig', fall);
       }
-      assert.equal(
-        (await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n,
-        0,
-        'ein Auftrag trotz 400',
-      );
+      assert.equal((await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n, 0, 'ein Auftrag trotz 400');
 
       const ok = await starte({
         sets: [{ set_number: '10001-1', name: 'Probe' }],

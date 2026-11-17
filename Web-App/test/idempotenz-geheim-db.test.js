@@ -46,7 +46,7 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const zf = _req('src/faktoren/zweiterFaktor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
-const { idempotency, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
+const { idempotenz, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
 const { nichtWiederholbar } = _req('src/vertrag/grund.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -89,7 +89,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     if (!req.originalUrl.startsWith('/api/v1/auth')) req.apiUser = { user_id: uid, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', idempotency(require('./helpers/sources').testDienste().idempotency));
+  app.use('/api/v1', idempotenz(require('./helpers/sources').testDienste().idempotenz));
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
@@ -193,14 +193,9 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
       geheimnis._vergissSchluessel();
     }
 
-    await db.run(`INSERT INTO idempotency (user_id, key, request, status) VALUES ($1, 'sha-1', $2, 200)`, [
-      uid,
-      alt,
-    ]);
+    await db.run(`INSERT INTO idempotency (user_id, key, request, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
     assert.ok((await dienst.alteAbdrueckeLoeschen()) >= 1);
-    const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [uid])).map(
-      z => z.key,
-    );
+    const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [uid])).map(z => z.key);
     assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });
 
@@ -218,7 +213,18 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
       `INSERT INTO idempotency (user_id, key, request, status, response) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`,
       [uid],
     );
-    await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotency-ohne-klartext.sql'), 'utf8'));
+    const m0086 = fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotenz-ohne-klartext.sql'), 'utf8');
+    // Die Migration kennt noch die Namen von vor 0124; kurz zurückbenennen, danach sofort zurück.
+    await db.run(
+      'ALTER TABLE idempotency RENAME TO idempotenz; ALTER TABLE idempotenz RENAME COLUMN response TO antwort',
+    );
+    try {
+      await db.run(m0086);
+    } finally {
+      await db.run(
+        'ALTER TABLE idempotenz RENAME COLUMN antwort TO response; ALTER TABLE idempotenz RENAME TO idempotency',
+      );
+    }
     assert.deepEqual(await fundstellen('klartext-aus-frueher'), []);
     assert.equal((await zeile('v1-1')).response, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
     const r = await post('/storage/locations', 'alt-1', { name: 'Alt' });
@@ -234,8 +240,8 @@ test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
     fehlt = [];
   for (const [key, route] of Object.entries(VERTRAG)) {
     const [methode, pfad] = key.split(' ');
-    if (methode === 'GET' || !route.response?.shape) continue;
-    if (!GEHEIME_FELDER.some(f => f in route.response.shape)) continue;
+    if (methode === 'GET' || !route.antwort?.shape) continue;
+    if (!GEHEIME_FELDER.some(f => f in route.antwort.shape)) continue;
     (antwortIstGeheim(methode, pfad.replace(/:\w+/g, '1')) ? gefunden : fehlt).push(key);
   }
   assert.deepEqual(fehlt, []);

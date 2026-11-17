@@ -15,8 +15,8 @@ const { ROOT, ohneKommentare, pruefeParameter } = require('./helpers/sources');
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 // Die Abfrage, die den Token EINLÖST: Registrierung und neue Adresse tragen
-// ihn seit Runde 13 beide in email_neu_token (verification_token ist leer).
-const ABFRAGE = /email_neu_token\s*=\s*\$1\s+AND\s+email_neu_bis\s*>\s*NOW\(\)/;
+// ihn seit Runde 13 beide in new_email_token (verification_token ist leer).
+const ABFRAGE = /new_email_token\s*=\s*\$1\s+AND\s+new_email_until\s*>\s*NOW\(\)/;
 const EINLOESEN = /email_verified\s*=\s*true/i;
 const KANDIDATEN = [
   'src/konto/anmeldepruefung.ts',

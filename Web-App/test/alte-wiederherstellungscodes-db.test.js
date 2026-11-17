@@ -1,11 +1,11 @@
 /**
  * Wiederherstellungscodes alter Art (vor dem 01.11.2026: 10 Zeichen, ungesalzenes SHA-256)
- * gelten nur bis `alt_gilt_bis` (Migration 0122, src/faktoren/zweiterFaktor.ts). Wer sich mit
+ * gelten nur bis `old_valid_until` (Migration 0122, src/faktoren/zweiterFaktor.ts). Wer sich mit
  * einem anmeldet, bekommt eine Mail mit der Frist; die Profilseite nennt sie. Ein Code neuer
  * Art hebt die Frist für seinen Satz auf. Über die echte Anmeldung.
  *
  * Gegenproben (16.11.2026 gemessen, je einzeln):
- *   A  in verbraucheCode die Bedingung `alt_gilt_bis > NOW()` gestrichen → rot: „ein abgelaufener
+ *   A  in verbraucheCode die Bedingung `old_valid_until > NOW()` gestrichen → rot: „ein abgelaufener
  *      Code alter Art gilt nicht mehr“ (200 statt 401)
  *   B  in anmeldepruefung.ts die Mail für 'wiederherstellung_alt' gestrichen → rot: „ein Code
  *      alter Art gilt bis zur Frist, mit Mail …“
@@ -59,7 +59,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
   });
   const alt = code => crypto.createHash('sha256').update(code.replace(/-/g, '')).digest('hex');
   const code = async (hash, frist) =>
-    db.run('INSERT INTO second_factor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, $3)', [
+    db.run('INSERT INTO second_factor_codes (user_id, code_hash, old_valid_until) VALUES ($1, $2, $3)', [
       uid,
       hash,
       frist,
@@ -114,8 +114,19 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     );
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
     await code('neu-ohne-frist', null);
-    await db.run(sql);
-    const z = await db.get('SELECT alt_gilt_bis FROM second_factor_codes WHERE user_id = $1', [uid]);
-    assert.equal(z.alt_gilt_bis, null);
+    // Die Migration kennt noch die Namen von vor 0124; für den Wiederholbarkeits-
+    // Test kurz zurückbenennen, danach sofort wieder zurück.
+    await db.run(`ALTER TABLE second_factor_codes RENAME TO zweiter_faktor_codes;
+                  ALTER TABLE zweiter_faktor_codes RENAME COLUMN old_valid_until TO alt_gilt_bis;
+                  ALTER TABLE zweiter_faktor_codes RENAME COLUMN consumed_at TO verbraucht_am`);
+    try {
+      await db.run(sql);
+    } finally {
+      await db.run(`ALTER TABLE zweiter_faktor_codes RENAME COLUMN alt_gilt_bis TO old_valid_until;
+                    ALTER TABLE zweiter_faktor_codes RENAME COLUMN verbraucht_am TO consumed_at;
+                    ALTER TABLE zweiter_faktor_codes RENAME TO second_factor_codes`);
+    }
+    const z = await db.get('SELECT old_valid_until FROM second_factor_codes WHERE user_id = $1', [uid]);
+    assert.equal(z.old_valid_until, null);
   });
 });

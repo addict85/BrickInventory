@@ -136,9 +136,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
   const faellig = async () => {
-    await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
-      zwei,
-    ]);
+    await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [zwei]);
     assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
   };
 
@@ -191,8 +189,8 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
     const zf = _req('src/faktoren/zweiterFaktor.js');
-    const { secret } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
-    const code = versatz => zf.hotp(zf.ausBase32(secret), zf.zeitschritt() + versatz);
+    const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
+    const code = versatz => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
     await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
     assert.deepEqual(
       (await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an),

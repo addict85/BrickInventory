@@ -78,7 +78,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
     const alt = await auth.tokenAnlegen(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
     const erster = await auth.rotiereToken(alt, '10.1.2.77');
     assert.ok(erster && typeof erster === 'object', 'Vorbedingung: der erste Tausch gelingt');
-    await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
+    await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
       auth.tokenAbdruck(erster.token),
     ]);
     assert.equal(await auth.rotiereToken(alt, '192.0.2.5'), null);

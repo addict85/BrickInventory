@@ -22,7 +22,7 @@
  *      „Preisverlauf aus der zweiten Datenbank“ und „der Prozesszugang …“
  *   F  teilelisteDesSets() ruft neuestesInventar(setNum) ohne sk.katalog → rot:
  *      „Teileliste aus dem Katalog …“ und „der Prozesszugang …“
- *   G  derselbe stelleAuftragEin('bilder', …) ohne sk.jobs → rot:
+ *   G  derselbe stelleAuftragEin('bilder', …) ohne sk.auftraege → rot:
  *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
  *      Prozesszugang …“
  *   H  src/haushalt/haushalt.ts wieder mit einem Gedächtnis für alle Zugänge →
@@ -83,7 +83,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     quellen.buildAndRequire();
     await db.pool.end().catch(() => {});
   });
-  await zweite.initSchema();
+  await zweite.initSchemaOnce();
 
   const { id: uid } = await zweite.get(
     "INSERT INTO users (username, password_hash) VALUES ('nur_in_zwei', 'x') RETURNING id",
@@ -131,7 +131,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   });
 
   await t.test('Preisalarm in der zweiten Datenbank', async () => {
-    const alarm = await sets.alarmDesSetsSetzen(uid, SN, { richtung: 'unter', schwelle: 12.5, condition: 'N' });
+    const alarm = await sets.alarmDesSetsSetzen(uid, SN, { direction: 'unter', threshold: 12.5, condition: 'N' });
     assert.equal(alarm.currency_code, 'CHF', 'die Währung des Alarms kommt aus der zweiten Datenbank');
     assert.equal((await sets.setAlarmeLesen(uid, SN)).length, 1);
     assert.equal(await sets.alarmDesSetsLoeschen(uid, SN, 'N'), 1);

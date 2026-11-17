@@ -2,10 +2,10 @@
  * E-Mail-Verifikation gegen eine ECHTE Datenbank.
  *
  * ── Gegenproben (04.11.2026 gemessen, je einzeln) ───────────────────────────
- * Seit Runde 13 trägt eine Registrierung Adresse und Link in email_neu*.
- *   A  in uebernimmEmailNeu() `AND email_neu_bis > NOW()` gestrichen → rot:
+ * Seit Runde 13 trägt eine Registrierung Adresse und Link in new_email*.
+ *   A  in uebernimmEmailNeu() `AND new_email_until > NOW()` gestrichen → rot:
  *      „abgelaufener Token wird abgelehnt …“
- *   B  uebernimmEmailNeu() ohne `registrierung_offen = false` → rot: „gültiger
+ *   B  uebernimmEmailNeu() ohne `registration_pending = false` → rot: „gültiger
  *      Token …“ (die Registrierung bliebe offen und gesperrt)
  *   C  uebernimmEmailNeu() ohne erneute Vergabeprüfung UND ohne den Fang von
  *      23505 → rot: „die erste Bestätigung gewinnt …“ (Fehler aus dem Index;
@@ -57,7 +57,7 @@ async function seed() {
 async function neuerNutzer(name, { minutenGueltig = 60, email = `${name}@example.ch` } = {}) {
   const token = crypto.randomBytes(16).toString('hex');
   const { id } = await db.get(
-    `INSERT INTO users (username, password_hash, email_neu, email_neu_token, email_neu_bis, registrierung_offen)
+    `INSERT INTO users (username, password_hash, new_email, new_email_token, new_email_until, registration_pending)
      VALUES ($1, 'x', $2, $3, NOW() + ($4 || ' minutes')::interval, true) RETURNING id`,
     [name, email, tokenAbdruck(token), String(minutenGueltig)],
   );
@@ -66,7 +66,7 @@ async function neuerNutzer(name, { minutenGueltig = 60, email = `${name}@example
 
 const zustand = id =>
   db.get(
-    'SELECT email, email_verified, registrierung_offen, email_neu, email_neu_token, email_neu_bis FROM users WHERE id=$1',
+    'SELECT email, email_verified, registration_pending, new_email, new_email_token, new_email_until FROM users WHERE id=$1',
     [id],
   );
 
@@ -88,10 +88,10 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
     assert.deepEqual(await zustand(u.id), {
       email: 'gueltig@example.ch',
       email_verified: true,
-      registrierung_offen: false,
-      email_neu: null,
-      email_neu_token: null,
-      email_neu_bis: null,
+      registration_pending: false,
+      new_email: null,
+      new_email_token: null,
+      new_email_until: null,
     });
   });
 
@@ -100,11 +100,11 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
     await assert.rejects(verifiziereEmailToken(u.token), UNGUELTIG);
     const z = await zustand(u.id);
     assert.deepEqual(
-      [z.email, z.email_verified, z.registrierung_offen],
+      [z.email, z.email_verified, z.registration_pending],
       [null, false, true],
       'Ein abgelaufener Token hat bestätigt',
     );
-    assert.notEqual(z.email_neu_token, null, 'Die Felder wurden fälschlich abgeräumt');
+    assert.notEqual(z.new_email_token, null, 'Die Felder wurden fälschlich abgeräumt');
   });
 
   await t.test('unbekannter Token wird abgelehnt', async () => {
@@ -132,7 +132,7 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
     await verifiziereEmailToken(erste.token);
     await assert.rejects(verifiziereEmailToken(zweite.token), { code: 'email_vergeben' });
     const z = await zustand(zweite.id);
-    assert.deepEqual([z.email, z.registrierung_offen, z.email_neu_token], [null, true, null]);
+    assert.deepEqual([z.email, z.registration_pending, z.new_email_token], [null, true, null]);
   });
 
   // Die fuenf Faelle ueber die API-Route sind ENTFERNT

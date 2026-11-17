@@ -87,7 +87,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
 
   await t.test('die Schätzung wird zwischengespeichert und fortgeschrieben', async () => {
     const z = await db.all(
-      `SELECT condition, avg_price::float AS preis, geschaetzt FROM minifig_price_cache
+      `SELECT condition, avg_price::float AS preis, estimated AS geschaetzt FROM minifig_price_cache
                              WHERE fig_number = $1 ORDER BY condition`,
       [FB],
     );

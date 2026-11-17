@@ -27,7 +27,7 @@ for (const sprache of ['de', 'en']) {
         '/v1/admin/auftraege': {
           success: true,
           auftraege: [],
-          zusammenfassung: ARTEN.map(art => ({ art, status: 'offen', anzahl: 1 })),
+          zusammenfassung: ARTEN.map(art => ({ type: art, status: 'offen', anzahl: 1 })),
           job_prozess: { laeuft: true },
           bildbedarf: 0,
           pausen: [],

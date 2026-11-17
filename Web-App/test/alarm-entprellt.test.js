@@ -70,7 +70,7 @@ function fenster() {
       ok: true,
       status: 200,
       headers: { get: () => 'application/json' },
-      json: async () => ({ success: true, alerts: [], orte: [], alert: { condition: 'N', ausgeloest: false } }),
+      json: async () => ({ success: true, alerts: [], orte: [], alert: { condition: 'N', triggered: false } }),
     };
   };
   w.eval(BUNDLE);

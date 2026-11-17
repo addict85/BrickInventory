@@ -59,14 +59,22 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     // Ohne die Prüfungen von heute: Standardwerte und Indizes, keine CHECKs.
     for (const tab of TABELLEN)
       await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING DEFAULTS INCLUDING INDEXES)`);
+    // Stand vor 0124: Die Migration 0109 kennt nur die damaligen Namen.
+    await c.query(`ALTER TABLE price_alerts RENAME COLUMN direction TO richtung;
+                   ALTER TABLE price_alerts RENAME COLUMN threshold TO schwelle;
+                   ALTER TABLE jobs RENAME TO auftraege; ALTER TABLE auftraege RENAME COLUMN type TO art;
+                   ALTER TABLE job_pauses RENAME TO auftrag_pausen; ALTER TABLE auftrag_pausen RENAME COLUMN type TO art;
+                   ALTER TABLE auftrag_pausen RENAME COLUMN until_at TO bis;
+                   ALTER TABLE auftrag_pausen RENAME COLUMN reason TO grund;
+                   ALTER TABLE auftrag_pausen RENAME COLUMN level TO stufe;`);
     await c.query(`INSERT INTO wanted (user_id, set_number, condition) VALUES
       (1, '1-1', 'n'), (1, '1-1', 'N'), (1, '2-1', 'u '), (1, '3-1', 'x'), (1, '4-1', 'n'), (1, '4-1', ' n')`);
     await c.query(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
                    VALUES (1, '1-1', 'u', 'unter', 5, 'EUR'), (1, '2-1', '?', 'unter', 5, 'EUR')`);
     await c.query(`INSERT INTO price_cache (set_number, condition, currency_code) VALUES
       ('1-1', 'N', 'EUR'), ('1-1', 'n', 'EUR')`);
-    await c.query(`INSERT INTO jobs (type) VALUES ('preise'), ('verschwunden')`);
-    await c.query(`INSERT INTO job_pauses (type, until_at) VALUES ('preise', NOW()), ('weg', NOW())`);
+    await c.query(`INSERT INTO auftraege (art) VALUES ('preise'), ('verschwunden')`);
+    await c.query(`INSERT INTO auftrag_pausen (art, bis) VALUES ('preise', NOW()), ('weg', NOW())`);
 
     await c.query(MIGRATION);
 
@@ -87,12 +95,12 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     });
 
     await tt.test('Aufträge und Pausen unbekannter Art fallen', async () => {
-      assert.deepEqual((await c.query('SELECT type FROM jobs')).rows, [{ type: 'preise' }]);
-      assert.deepEqual((await c.query('SELECT type FROM job_pauses')).rows, [{ type: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT art FROM auftraege')).rows, [{ art: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT art FROM auftrag_pausen')).rows, [{ art: 'preise' }]);
     });
 
     await tt.test('danach weist das Schema Unbekanntes ab', async () => {
-      await assert.rejects(c.query(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
+      await assert.rejects(c.query(`INSERT INTO auftraege (art) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
       await assert.rejects(
         c.query(`INSERT INTO price_history (set_number, condition, currency_code) VALUES ('9-1', 'u', 'EUR')`),
         /price_history_zustand/,
@@ -104,8 +112,8 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
   await t.test('job_types kennt genau die angemeldeten Arten', async () => {
     const angemeldet = require('./helpers/sources')
       .testDienste()
-      .jobs.angemeldeteArten()
-      .map(a => a.type);
+      .auftraege.angemeldeteArten()
+      .map(a => a.art);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
     assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);
     assert.deepEqual(inDb, [...angemeldet].sort());

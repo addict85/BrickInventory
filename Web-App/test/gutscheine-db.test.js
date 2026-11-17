@@ -422,7 +422,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal((await r.json()).code, 'pdf_unlesbar');
       const nummer_suche = _req('src/gutscheine/repository/gutscheine.js').nummerSuche(U.opa, '5045076374450018888');
       assert.equal(
-        (await db.get('SELECT count(*)::int AS n FROM vouchers WHERE nummer_suche = $1', [nummer_suche])).n,
+        (await db.get('SELECT count(*)::int AS n FROM vouchers WHERE number_search = $1', [nummer_suche])).n,
         0,
       );
     });
@@ -483,9 +483,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
         pin: '5225',
       });
       assert.deepEqual(
-        await db.all(
-          "SELECT admin_id, target_id, details FROM admin_log WHERE action = 'gutschein_klartext'",
-        ),
+        await db.all("SELECT admin_id, target_id, details FROM admin_log WHERE action = 'gutschein_klartext'"),
         [{ admin_id: U.opa, target_id: U.opa, details: '…1166' }],
         'der Abruf steht im Protokoll',
       );

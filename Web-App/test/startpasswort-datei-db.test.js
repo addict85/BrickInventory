@@ -51,7 +51,7 @@ test('Startpasswort in einer Datei statt im Log', async t => {
     return true;
   };
   try {
-    await db.initSchema();
+    await db.initSchemaOnce();
   } finally {
     console.log = echt.log;
     console.warn = echt.warn;

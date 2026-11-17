@@ -7,7 +7,7 @@
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  das UPDATE auf part_catalog weggelassen → rot: „der gemeinsame Katalog
  *      behält nur Geprüftes“ (die Spalte fällt, der fremde Name bliebe stehen)
- *   B  für part_custom alle `*_von`-Werte statt nur bestehender Konten → rot:
+ *   B  für teil_eigen alle `*_von`-Werte statt nur bestehender Konten → rot:
  *      Fremdschlüssel teil_eigen_user_id_fkey verletzt (Konto 2147480000)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -38,8 +38,13 @@ test('Migration 0093: eigene Katalogangaben', { concurrency: 1 }, async t => {
   await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
   await c.query(`CREATE SCHEMA ${SCHEMA}`);
   await c.query(`SET search_path TO ${SCHEMA}, public`);
-  for (const tab of ['part_catalog', 'part_color_catalog', 'minifigs_catalog', 'set_parts', 'set_minifigs'])
+  for (const tab of ['part_catalog', 'part_color_catalog', 'minifigs_catalog'])
     await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING ALL)`);
+  // Migration 0093 ist Geschichte und nennt die Tabellen noch unter ihrem alten
+  // Namen (set_teile/set_figuren); 0124 (längst angewandt) hätte sie sonst
+  // gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+  await c.query(`CREATE TABLE set_teile (LIKE public.set_parts INCLUDING ALL)`);
+  await c.query(`CREATE TABLE set_figuren (LIKE public.set_minifigs INCLUDING ALL)`);
   await c.query(`ALTER TABLE part_catalog ADD COLUMN name_von integer, ADD COLUMN kategorie_von integer`);
   await c.query(
     `ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer, ADD COLUMN bild_von integer`,
@@ -69,13 +74,13 @@ test('Migration 0093: eigene Katalogangaben', { concurrency: 1 }, async t => {
   await c.query(MIGRATION);
 
   await t.test('Eingaben stehen beim Konto', async () => {
-    assert.deepEqual((await c.query('SELECT user_id, part_number, part_name, category_name FROM part_custom')).rows, [
+    assert.deepEqual((await c.query('SELECT user_id, part_number, part_name, category_name FROM teil_eigen')).rows, [
       { user_id: anna, part_number: 'p1', part_name: 'Annas Name', category_name: null },
     ]);
-    assert.deepEqual((await c.query('SELECT user_id, color_name, color_hex, image_url FROM part_color_custom')).rows, [
+    assert.deepEqual((await c.query('SELECT user_id, color_name, color_hex, image_url FROM teil_farbe_eigen')).rows, [
       { user_id: anna, color_name: 'Tresorrot', color_hex: null, image_url: 'https://cdn.rebrickable.com/a.jpg' },
     ]);
-    assert.deepEqual((await c.query('SELECT user_id, fig_name FROM minifig_custom')).rows, [
+    assert.deepEqual((await c.query('SELECT user_id, fig_name FROM figur_eigen')).rows, [
       { user_id: anna, fig_name: 'Geheimfigur' },
     ]);
   });
