@@ -1,21 +1,21 @@
 import type { DbSchnittstelle } from '../../db/database';
 
-/** `ongoing` zählt Prüfungen, die gerade laufen, damit gleichzeitige Versuche
- * die Grenze nicht gemeinsam überspringen. */
+/** `ongoing` counts checks currently in flight, so concurrent attempts can't jointly
+ * jump the limit. */
 
-export type ZaehlerZeile = { count: string; wait_min: string; seit: string };
+export type CounterRow = { count: string; wait_min: string; seit: string };
 
-export function lies(db: DbSchnittstelle, key: string, fensterMin: number) {
-  return db.get<ZaehlerZeile>(
+export function read(db: DbSchnittstelle, key: string, windowMin: number) {
+  return db.get<CounterRow>(
     `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
        FROM rate_limit_attempts
       WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`,
-    [key, fensterMin],
+    [key, windowMin],
   );
 }
 
-export async function erhoehe(db: DbSchnittstelle, key: string, fensterMin: number): Promise<number> {
+export async function increase(db: DbSchnittstelle, key: string, windowMin: number): Promise<number> {
   return Number(
     (
       await db.get<{ count: string }>(
@@ -28,13 +28,13 @@ export async function erhoehe(db: DbSchnittstelle, key: string, fensterMin: numb
                        THEN NOW() ELSE rate_limit_attempts.first_at END,
        ongoing  = GREATEST(rate_limit_attempts.ongoing - 1, 0)
      RETURNING count`,
-        [key, fensterMin],
+        [key, windowMin],
       )
     )?.count ?? 0,
   );
 }
 
-export type Sperrstand = {
+export type LockState = {
   count: string;
   ongoing: string;
   abgelaufen: boolean;
@@ -43,52 +43,52 @@ export type Sperrstand = {
   seit: string;
 };
 
-export async function sperre(
+export async function lock(
   tx: DbSchnittstelle,
   key: string,
-  fensterMin: number,
-  laufendVerfallS: number,
-): Promise<Sperrstand> {
+  windowMin: number,
+  ongoingDecayS: number,
+): Promise<LockState> {
   await tx.run(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at, ongoing)
                 VALUES ($1, 0, NOW(), NULL, 0) ON CONFLICT (key) DO NOTHING`,
     [key],
   );
-  return (await tx.get<Sperrstand>(
+  return (await tx.get<LockState>(
     `SELECT count, ongoing,
             first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
             COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
             EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
        FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`,
-    [key, fensterMin, laufendVerfallS],
+    [key, windowMin, ongoingDecayS],
   ))!;
 }
 
-export async function belegeLaufplatz(tx: DbSchnittstelle, key: string, ongoing: number, neu: boolean): Promise<void> {
+export async function occupySlot(tx: DbSchnittstelle, key: string, ongoing: number, fresh: boolean): Promise<void> {
   await tx.run(
     `UPDATE rate_limit_attempts
         SET ongoing = $2, ongoing_since = NOW(),
             count = CASE WHEN $3 THEN 0 ELSE count END,
             first_at = CASE WHEN $3 THEN NOW() ELSE first_at END
       WHERE key = $1`,
-    [key, ongoing, neu],
+    [key, ongoing, fresh],
   );
 }
 
-export async function gibLaufplatzFrei(db: DbSchnittstelle, key: string): Promise<void> {
+export async function freeSlot(db: DbSchnittstelle, key: string): Promise<void> {
   await db.run('UPDATE rate_limit_attempts SET ongoing = GREATEST(ongoing - 1, 0) WHERE key = $1', [key]);
 }
 
-export async function loescheZaehler(db: DbSchnittstelle, key: string): Promise<void> {
+export async function deleteCounter(db: DbSchnittstelle, key: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [key]);
 }
 
-export async function loescheZaehlerMitPraefix(db: DbSchnittstelle, praefix: string): Promise<void> {
-  await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [praefix]);
+export async function deleteCountersWithPrefix(db: DbSchnittstelle, prefix: string): Promise<void> {
+  await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [prefix]);
 }
 
-export async function loescheAlteZaehler(db: DbSchnittstelle, bekanntMin: number): Promise<number> {
+export async function deleteOldCounters(db: DbSchnittstelle, knownMin: number): Promise<number> {
   return (
     (
       await db.run(
@@ -96,16 +96,16 @@ export async function loescheAlteZaehler(db: DbSchnittstelle, bekanntMin: number
     DELETE FROM rate_limit_attempts
      WHERE COALESCE(last_at, first_at) < NOW() - CASE WHEN key LIKE 'login-bekannt|%'
                                                      THEN make_interval(mins => $1) ELSE interval '1 day' END`,
-        [bekanntMin],
+        [knownMin],
       )
     ).changes || 0
   );
 }
 
-export async function zaehleHoch(
+export async function countUp(
   db: DbSchnittstelle,
   key: string,
-  fensterMin: number,
+  windowMin: number,
 ): Promise<{ count: string; wait_min: string }> {
   return (await db.get<{ count: string; wait_min: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
@@ -116,12 +116,12 @@ export async function zaehleHoch(
        first_at = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
                        THEN NOW() ELSE rate_limit_attempts.first_at END
      RETURNING count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min`,
-    [key, fensterMin],
+    [key, windowMin],
   ))!;
 }
 
-/** Je Konto und Stunde (Guthabenabfrage): Die Grenze fällt erst nach einer vollen Stunde. */
-export function stundenStand(tx: DbSchnittstelle, key: string) {
+/** Per account and hour (balance lookups): the limit only falls after a full hour. */
+export function hourlyState(tx: DbSchnittstelle, key: string) {
   return tx.get<{ anzahl: number; warten_sek: number }>(
     `SELECT count AS anzahl,
        CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS warten_sek
@@ -130,7 +130,7 @@ export function stundenStand(tx: DbSchnittstelle, key: string) {
   );
 }
 
-export async function zaehleStunde(tx: DbSchnittstelle, key: string): Promise<void> {
+export async function countHour(tx: DbSchnittstelle, key: string): Promise<void> {
   await tx.run(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET last_at = NOW(),
@@ -140,8 +140,8 @@ export async function zaehleStunde(tx: DbSchnittstelle, key: string): Promise<vo
   );
 }
 
-/** Zählen und Stand liefern in einem Schritt: eine Zeile, wenn der Tag frei war. */
-export function zaehleEinmalJeTag(db: DbSchnittstelle, key: string) {
+/** Count and return state in one step: one row, if the day was free. */
+export function countOncePerDay(db: DbSchnittstelle, key: string) {
   return db.get<{ key: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()

@@ -63,7 +63,7 @@ function blaetter(x, vor) {
 
 /** Je Bereich höchstens so viele; ein neuer Dienst verdrängt einen alten. */
 const JE_BEREICH = {
-  drossel: 10,
+  throttle: 10,
   einstellungen: 22,
   mail: 13,
   auftraege: 65,
@@ -115,7 +115,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
   // Bereiche, die Phase 2a schon vollständig auf Englisch gezogen hat: Ihre englischen
   // Dienstschlüssel sind dort Absicht, nicht die Sorte Einzelfund, den diese Schranke fängt.
   // Wächst mit jedem fertig umgestellten Bereich, nie zurück (siehe auch ratschen.test.js).
-  const ENGLISCH_UMGESTELLT = new Set(['idempotency', 'profile', 'minifigs', 'wanted', 'collection']);
+  const ENGLISCH_UMGESTELLT = new Set(['idempotency', 'profile', 'minifigs', 'wanted', 'collection', 'throttle']);
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(
     s => !ENGLISCH_UMGESTELLT.has(s.split('.')[0] ?? '') && englischerName(s.split('.').at(-1) ?? ''),
@@ -172,8 +172,8 @@ const ROH_ERLAUBT = {
   'auftraege.loescheZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'auftraege.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'auftraege.zaehleZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'drossel.stundenStand': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
-  'drossel.zaehleStunde': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
+  'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
+  'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
   'sets.setsDesKontos': 'Setnummern eines Kontos für das Löschen der Sammlung (src/collection), ohne Regel davor',
   'finanzen.marktpreisAusCache': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
   'finanzen.marktpreisAusVerlauf': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',

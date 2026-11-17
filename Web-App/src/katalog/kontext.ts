@@ -2,7 +2,7 @@
 import { mit, mitVertrag, type Kontext } from '../infra/bereich';
 import type { KatalogLesevertrag } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
-import type { DrosselDienste } from '../drossel';
+import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen';
 import type { AuftraegeDienste } from '../auftraege';
@@ -33,7 +33,7 @@ export interface KatalogAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
-  drossel: DrosselDienste;
+  throttle: ThrottleServices;
   lesevertrag: KatalogLesevertrag;
 }
 

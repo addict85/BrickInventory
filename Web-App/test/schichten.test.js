@@ -933,7 +933,7 @@ const STUFEN = [
   ['src/vertrag'],
   ['src/http'],
   ['db', 'clients'],
-  ['src/drossel'],
+  ['src/throttle'],
   ['src/einstellungen'],
   ['src/mail'],
   ['src/auftraege'],

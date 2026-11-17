@@ -39,7 +39,7 @@ export function anleitungenZusammenlegen<A extends object, B extends object>(get
 /** Einmal je Set und Tag für alle: Neuladen löscht für alle und kostet
  * Kontingent. In EINER Anweisung, damit zwei Anfragen nicht beide durchkommen. */
 export async function anleitungNeuLadenErlaubt(k: KatalogKontext, setNumber: string): Promise<boolean> {
-  return k.drossel.einmalJeTag(`anleitung-neu|${mitVersion(setNumber)}`);
+  return k.throttle.oncePerDay(`anleitung-neu|${mitVersion(setNumber)}`);
 }
 
 export async function loescheAnleitungen(k: KatalogKontext, setNumber: string) {

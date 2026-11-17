@@ -23,7 +23,7 @@ import { erzeugeFaktoren } from '../src/faktoren';
 import { createProfile } from '../src/profile';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
-import { erzeugeDrossel } from '../src/drossel';
+import { createThrottle } from '../src/throttle';
 import { erzeugeGeraete } from '../src/geraete';
 import { konfig, type Konfig } from '../src/infra/konfig';
 import { systemUhr, type Uhr } from '../src/infra/uhr';
@@ -114,15 +114,15 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
 function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
-  const drossel = erzeugeDrossel({ db, uhr }, zeige('drossel'));
-  const einstellungen = erzeugeEinstellungen({ db, uhr, drossel, lesevertrag: LESEVERTRAG }, zeige('einstellungen'));
+  const throttle = createThrottle({ db, uhr }, zeige('throttle'));
+  const einstellungen = erzeugeEinstellungen({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('einstellungen'));
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
   const geraete = erzeugeGeraete({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
   const faktoren = erzeugeFaktoren({ db, uhr, konfig, einstellungen }, zeige('faktoren'));
   const konto = erzeugeKonto(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, drossel, geraete, faktoren },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, throttle, geraete, faktoren },
     zeige('konto'),
   );
   const profile = createProfile({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profile'));
@@ -136,13 +136,13 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     zeige('bilder'),
   );
   const katalog = erzeugeKatalog(
-    { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, drossel, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, throttle, lesevertrag: LESEVERTRAG },
     zeige('katalog'),
   );
   // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
   bilder.beiSetBildGeladen((sn, quelle) => katalog.setBildLokalEintragen(sn, quelle));
   return {
-    drossel,
+    throttle,
     einstellungen,
     mail,
     auftraege,
@@ -162,7 +162,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   const zeige = einblickIn(bauteile.kontexte);
   const grund = baueGrund(db, bauteile, zeige);
   const {
-    drossel,
+    throttle,
     einstellungen,
     mail,
     auftraege,
@@ -199,7 +199,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     { db, uhr, einstellungen, haushalt, katalog, fremdquellen, bilder, finanzen, sets },
     zeige('wanted'),
   );
-  const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, drossel }, zeige('gutscheine'));
+  const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, throttle }, zeige('gutscheine'));
   const collection = createCollection(
     { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, minifigs, wanted },
     zeige('collection'),

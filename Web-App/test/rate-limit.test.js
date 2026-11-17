@@ -119,8 +119,8 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
 test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
-  // Die Zähler schreibt src/drossel (Besitzer von rate_limit_attempts), die Anmeldung ruft k.drossel.
-  const src = fs.readFileSync(path.join(ROOT, 'src/drossel/repository.ts'), 'utf8');
+  // Die Zähler schreibt src/throttle (Besitzer von rate_limit_attempts), die Anmeldung ruft k.throttle.
+  const src = fs.readFileSync(path.join(ROOT, 'src/throttle/repository.ts'), 'utf8');
   assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
   assert.match(
     src,
@@ -135,13 +135,13 @@ test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
 });
 
 test('bei DB-Ausfall greift die Rückfallebene', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/drossel/zaehler.ts'), 'utf8');
-  for (const fn of ['zaehlerStand', 'zaehleVersuch', 'vergissZaehler']) {
+  const src = fs.readFileSync(path.join(ROOT, 'src/throttle/counter.ts'), 'utf8');
+  for (const fn of ['counterState', 'countAttempt', 'forgetCounter']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
-    // Der Rückfall meldet sich (imSpeicher); der Name der Fehlervariable zählt nicht.
+    // Der Rückfall meldet sich (inMemory); der Name der Fehlervariable zählt nicht.
     assert.match(
       body,
-      /catch \(\w+\) \{\s*imSpeicher\(/,
+      /catch \(\w+\) \{\s*inMemory\(/,
       `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`,
     );
   }
