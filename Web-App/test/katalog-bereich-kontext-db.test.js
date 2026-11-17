@@ -80,7 +80,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
     const r = await kontingentPruefenUndZaehlen(kontexte.fremdquellen, 'brickset');
     assert.equal(r.allowed, true);
     assert.ok(
-      sql.some(s => /INSERT INTO api_aufrufe/.test(s)),
+      sql.some(s => /INSERT INTO api_calls/.test(s)),
       `gezählt: ${sql.join(' | ').slice(0, 300)}`,
     );
   });

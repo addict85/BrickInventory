@@ -48,7 +48,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       c.release();
     }
   }
-  const auftraege = _req('src/katalog/pdf/pdfAuftraege.js');
+  const jobs = _req('src/katalog/pdf/pdfAuftraege.js');
   const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
@@ -83,10 +83,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
   /** Auftrag direkt anlegen — der Lauf selbst ginge ins Netz. */
   async function auftragLegen(jobId, userId, status = 'done') {
     await db.run(
-      `INSERT INTO auftraege (art, user_id, schluessel, status, belegt_von, frist_bis)
+      `INSERT INTO jobs (type, user_id, dedupe_key, status, locked_by, deadline_at)
                   VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
                           CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
-      [auftraege.pdfSchluessel(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
+      [jobs.pdfSchluessel(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
     );
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
     if (status === 'done') {
@@ -97,7 +97,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     fetch(`${basis}/api/v1/sets/partslist-pdf/${pfad}`, { headers: { Authorization: `Bearer ${token}` } });
 
   try {
-    const jobA = auftraege.neueJobId(Date.now());
+    const jobA = jobs.neueJobId(Date.now());
     await auftragLegen(jobA, idA);
 
     await t.test('der eigene Auftrag ist abrufbar', async () => {
@@ -122,10 +122,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     });
 
     await t.test('der Deckel greift beim dritten gleichzeitigen Auftrag', async () => {
-      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
-      await auftragLegen(auftraege.neueJobId(Date.now()), idA, 'running');
-      await auftragLegen(auftraege.neueJobId(Date.now()), idA, 'running');
-      await auftragLegen(auftraege.neueJobId(Date.now()), idB, 'running'); // fremder Lauf zählt nicht mit
+      await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
+      await auftragLegen(jobs.neueJobId(Date.now()), idA, 'running');
+      await auftragLegen(jobs.neueJobId(Date.now()), idA, 'running');
+      await auftragLegen(jobs.neueJobId(Date.now()), idB, 'running'); // fremder Lauf zählt nicht mit
 
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -144,14 +144,14 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     });
 
     await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
-      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
-      const alt1 = auftraege.neueJobId(Date.now()),
-        alt2 = auftraege.neueJobId(Date.now());
+      await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
+      const alt1 = jobs.neueJobId(Date.now()),
+        alt2 = jobs.neueJobId(Date.now());
       await auftragLegen(alt1, idA, 'running');
       await auftragLegen(alt2, idA, 'running');
       // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
-      await db.run(`UPDATE auftraege SET erstellt = NOW() - INTERVAL '1 day' WHERE schluessel = ANY($1)`, [
-        [alt1, alt2].map(auftraege.pdfSchluessel),
+      await db.run(`UPDATE jobs SET created_at = NOW() - INTERVAL '1 day' WHERE dedupe_key = ANY($1)`, [
+        [alt1, alt2].map(jobs.pdfSchluessel),
       ]);
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -162,8 +162,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     });
 
     await t.test('der Statusstrom meldet das Ende sofort', async () => {
-      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
-      const job = auftraege.neueJobId(Date.now());
+      await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
+      const job = jobs.neueJobId(Date.now());
       await auftragLegen(job, idA, 'running');
       const ctrl = new AbortController();
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`, {
@@ -176,13 +176,13 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       let text = '';
       const start = Date.now();
       // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
-      const zeile = await db.get(`SELECT id FROM auftraege WHERE schluessel = $1`, [auftraege.pdfSchluessel(job)]);
+      const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfSchluessel(job)]);
       setTimeout(
         () =>
           Object.assign({}, _req('src/auftraege/auftraege.js'), {
             ..._req('src/auftraege/dienst.js'),
-            ...require('./helpers/sources').testBereich('auftraege').auftraege,
-          }).erledigt({ id: String(zeile.id), belegt_von: 'test', art: 'pdf' }),
+            ...require('./helpers/sources').testBereich('jobs').jobs,
+          }).erledigt({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
         300,
       );
       while (!text.includes('"done"') && Date.now() - start < 8000) {
@@ -199,7 +199,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     });
 
     await t.test('die Teileliste wird geprüft, bevor ein Auftrag entsteht', async () => {
-      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
+      await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       const starte = rumpf =>
         fetch(`${basis}/api/v1/sets/partslist-pdf`, {
           method: 'POST',
@@ -224,7 +224,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
         assert.equal(r.body.code, 'eingabe_ungueltig', fall);
       }
       assert.equal(
-        (await db.get(`SELECT count(*)::int n FROM auftraege WHERE art = 'pdf'`)).n,
+        (await db.get(`SELECT count(*)::int n FROM jobs WHERE type = 'pdf'`)).n,
         0,
         'ein Auftrag trotz 400',
       );
@@ -234,16 +234,16 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
         parts: [teil({ quantity: '12', boese: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => teil())],
       });
       assert.equal(ok.status, 200, JSON.stringify(ok.body));
-      const nutzlast = (await db.get(`SELECT nutzlast FROM auftraege WHERE art = 'pdf'`)).nutzlast;
-      assert.equal(nutzlast.parts.length, 5000);
-      assert.equal(nutzlast.parts[0].quantity, '12');
-      assert.ok(!('boese' in nutzlast.parts[0]), 'unbekannte Felder gehen in den Auftrag');
+      const payload = (await db.get(`SELECT payload FROM jobs WHERE type = 'pdf'`)).payload;
+      assert.equal(payload.parts.length, 5000);
+      assert.equal(payload.parts[0].quantity, '12');
+      assert.ok(!('boese' in payload.parts[0]), 'unbekannte Felder gehen in den Auftrag');
     });
 
     await t.test('die Auftragskennung kommt aus kryptografischem Zufall', () => {
-      const ids = new Set(Array.from({ length: 200 }, () => auftraege.neueJobId(Date.now())));
+      const ids = new Set(Array.from({ length: 200 }, () => jobs.neueJobId(Date.now())));
       assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
-      for (const id of ids) assert.ok(auftraege.gueltigeAuftragsKennung(id), `eigene Kennung ist ungültig: ${id}`);
+      for (const id of ids) assert.ok(jobs.gueltigeAuftragsKennung(id), `eigene Kennung ist ungültig: ${id}`);
       const zufallsteil = [...ids][0].split('-')[1];
       assert.match(zufallsteil, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
     });
@@ -252,7 +252,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     for (const f of await fs.readdir(PDF_JOB_DIR).catch(() => [])) {
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
-    await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
+    await db.run(`DELETE FROM jobs WHERE type = 'pdf'`).catch(() => {});
     await testZugang()
       .benachrichtigung.close()
       .catch(() => {});

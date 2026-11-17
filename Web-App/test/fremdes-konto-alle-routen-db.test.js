@@ -52,13 +52,13 @@ const GUTSCHEIN = '5045076374450019876';
 const VOR_DER_ANMELDUNG =
   /^(POST|GET) \/api\/v1\/auth\/(login|register|forgot-password|reset-password|verify[\w/-]*|resend-verification|qr-login[\w/-]*|passkey\/anmelden[\w/-]*|name-frei|email-frei)$/;
 
-function pdfMit(zeilen) {
+function pdfMit(rows) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: false });
     const stuecke = [];
     doc.on('data', s => stuecke.push(s));
     doc.on('end', () => fertig(Buffer.concat(stuecke)));
-    for (const z of zeilen) doc.text(z);
+    for (const z of rows) doc.text(z);
     doc.end();
   });
 }
@@ -255,7 +255,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   ).voucher.id;
   await ok('POST', '/api/v1/sets', { set_number: SET3, quantity: 1, condition: 'N' });
   await ok('DELETE', `/api/v1/sets/${SET3}`);
-  const papierkorb = (await db.get('SELECT id FROM papierkorb WHERE user_id = $1', [opfer])).id;
+  const trash = (await db.get('SELECT id FROM trash WHERE user_id = $1', [opfer])).id;
   const token = await auth.tokenAnlegen(opfer, `Gerät ${MARKE}`, true);
   const nonce = `fremd${process.pid}${Date.now()}`;
   const qr = (
@@ -272,8 +272,8 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   const bestand = async () => {
     const aus = { users: await db.all('SELECT * FROM users WHERE id = $1', [opfer]) };
     for (const { table_name: tab, column_name: sp } of spalten) {
-      const zeilen = await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [opfer]);
-      aus[`${tab}.${sp}`] = zeilen.map(z => JSON.stringify(z)).sort();
+      const rows = await db.all(`SELECT * FROM "${tab}" WHERE "${sp}" = $1`, [opfer]);
+      aus[`${tab}.${sp}`] = rows.map(z => JSON.stringify(z)).sort();
     }
     return aus;
   };
@@ -285,8 +285,8 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   const idFuer = p =>
     p.includes('/storage/locations/')
       ? ort
-      : p.includes('/papierkorb/')
-        ? papierkorb
+      : p.includes('/trash/')
+        ? trash
         : p.includes('/vouchers/')
           ? gutschein
           : p.includes('/qr-kopplung/')
@@ -310,7 +310,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
       tokenId: auth.tokenAbdruck(token).slice(0, 16),
       jobId: '1700000000000-abcd',
       condition: 'N',
-      art: 'anleitung',
+      type: 'anleitung',
       barcode: '5702016616354',
     })[n];
   /** `konto`: das Opfer (fremde Konto-ID im Feld) oder das eigene — dann kommt die Anfrage an der

@@ -1,6 +1,6 @@
 import type { DbSchnittstelle } from '../../db/database';
 
-/** `laufend` zählt Prüfungen, die gerade laufen, damit gleichzeitige Versuche
+/** `ongoing` zählt Prüfungen, die gerade laufen, damit gleichzeitige Versuche
  * die Grenze nicht gemeinsam überspringen. */
 
 export type ZaehlerZeile = { count: string; wait_min: string; seit: string };
@@ -26,7 +26,7 @@ export async function erhoehe(db: DbSchnittstelle, key: string, fensterMin: numb
                        THEN 1 ELSE rate_limit_attempts.count + 1 END,
        first_at = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
                        THEN NOW() ELSE rate_limit_attempts.first_at END,
-       laufend  = GREATEST(rate_limit_attempts.laufend - 1, 0)
+       ongoing  = GREATEST(rate_limit_attempts.ongoing - 1, 0)
      RETURNING count`,
         [key, fensterMin],
       )
@@ -36,7 +36,7 @@ export async function erhoehe(db: DbSchnittstelle, key: string, fensterMin: numb
 
 export type Sperrstand = {
   count: string;
-  laufend: string;
+  ongoing: string;
   abgelaufen: boolean;
   laufend_alt: boolean;
   wait_min: string;
@@ -50,14 +50,14 @@ export async function sperre(
   laufendVerfallS: number,
 ): Promise<Sperrstand> {
   await tx.run(
-    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at, laufend)
+    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at, ongoing)
                 VALUES ($1, 0, NOW(), NULL, 0) ON CONFLICT (key) DO NOTHING`,
     [key],
   );
   return (await tx.get<Sperrstand>(
-    `SELECT count, laufend,
+    `SELECT count, ongoing,
             first_at < NOW() - make_interval(mins => $2) AS abgelaufen,
-            COALESCE(laufend_seit < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
+            COALESCE(ongoing_since < NOW() - make_interval(secs => $3), TRUE) AS laufend_alt,
             EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
        FROM rate_limit_attempts WHERE key = $1 FOR UPDATE`,
@@ -65,19 +65,19 @@ export async function sperre(
   ))!;
 }
 
-export async function belegeLaufplatz(tx: DbSchnittstelle, key: string, laufend: number, neu: boolean): Promise<void> {
+export async function belegeLaufplatz(tx: DbSchnittstelle, key: string, ongoing: number, neu: boolean): Promise<void> {
   await tx.run(
     `UPDATE rate_limit_attempts
-        SET laufend = $2, laufend_seit = NOW(),
+        SET ongoing = $2, ongoing_since = NOW(),
             count = CASE WHEN $3 THEN 0 ELSE count END,
             first_at = CASE WHEN $3 THEN NOW() ELSE first_at END
       WHERE key = $1`,
-    [key, laufend, neu],
+    [key, ongoing, neu],
   );
 }
 
 export async function gibLaufplatzFrei(db: DbSchnittstelle, key: string): Promise<void> {
-  await db.run('UPDATE rate_limit_attempts SET laufend = GREATEST(laufend - 1, 0) WHERE key = $1', [key]);
+  await db.run('UPDATE rate_limit_attempts SET ongoing = GREATEST(ongoing - 1, 0) WHERE key = $1', [key]);
 }
 
 export async function loescheZaehler(db: DbSchnittstelle, key: string): Promise<void> {

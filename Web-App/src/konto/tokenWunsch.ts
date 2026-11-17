@@ -26,7 +26,7 @@ export async function tokenAngaben(k: KontoKontext, klartext: string) {
         expires_at: z.expires_at,
         hard_expires_at: z.hard_expires_at,
         never_expires: z.never_expires,
-        rotiert_am: z.rotiert_am,
+        rotated_at: z.rotated_at,
       }
     : null;
 }

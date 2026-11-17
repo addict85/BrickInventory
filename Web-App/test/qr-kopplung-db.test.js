@@ -120,11 +120,11 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal(ja.body.username, NAMEN[0]);
     // Die Nonce für den Geräteschlüssel gehört der Familie des neuen Tokens.
     const n = await db.get(
-      `SELECT n.aus_qr FROM geraete_nonces n JOIN api_tokens t ON t.user_id = n.user_id
-         AND date_trunc('milliseconds', t.created_at) = n.familie WHERE n.nonce = $1 AND t.token = $2`,
+      `SELECT n.from_qr FROM device_nonces n JOIN api_tokens t ON t.user_id = n.user_id
+         AND date_trunc('milliseconds', t.created_at) = n.token_family WHERE n.nonce = $1 AND t.token = $2`,
       [ja.body.schluessel_nonce, _req('src/konto/geraeteToken.js').tokenAbdruck(ja.body.token)],
     );
-    assert.equal(n?.aus_qr, true);
+    assert.equal(n?.from_qr, true);
   });
 
   await t.test('ein Nein der App verwirft die Kopplung, es entsteht kein Token', async () => {

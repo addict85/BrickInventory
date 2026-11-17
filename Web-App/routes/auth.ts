@@ -97,7 +97,7 @@ async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: Geprueft
       expires_at: u.expires_at,
       hard_expires_at: u.hard_expires_at ?? null,
       never_expires: u.never_expires === true,
-      rotiert_am: u.rotiert_am,
+      rotated_at: u.rotated_at,
       rotation_faellig: faellig,
     },
   } as const;
@@ -196,7 +196,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
           expires_at: t.expires_at,
           hard_expires_at: t.hard_expires_at,
           never_expires: t.never_expires,
-          rotiert_am: t.rotiert_am,
+          rotated_at: t.rotated_at,
           rotation_faellig: false,
         },
         alt_gueltig_bis: t.alt_gueltig_bis,

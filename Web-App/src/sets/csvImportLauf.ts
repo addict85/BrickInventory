@@ -5,7 +5,7 @@ import { fehlertext } from '../infra/fehler';
 import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
 import type { SetsKontext } from './kontext';
 
-/** Nach jedem Set steht der Stand in import_stand; ein Neustart setzt dort
+/** Nach jedem Set steht der Stand in import_status; ein Neustart setzt dort
  * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
  * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
 const CsvZeileSchema = z.object({

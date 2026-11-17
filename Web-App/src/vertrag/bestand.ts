@@ -86,20 +86,20 @@ export const LagerorteResponse = z.looseObject({
 
 export const PapierkorbEintrag = z.looseObject({
   id: ganz,
-  art: z.enum(['set', 'teil', 'figur']),
-  nummer: z.string(),
-  farbe_id: ganz.nullable(),
-  bezeichnung: z.string().nullable(),
+  type: z.enum(['set', 'teil', 'figur']),
+  number: z.string(),
+  color_id: ganz.nullable(),
+  label: z.string().nullable(),
   anzahl: ganz,
   user_id: ganz,
-  geloescht_am: zeit,
+  deleted_at: zeit,
   endgueltig_am: zeit,
 });
 export const Papierkorb = z.looseObject({ success: z.literal(true), eintraege: z.array(PapierkorbEintrag) });
 export const Wiederhergestellt = z.looseObject({
   success: z.literal(true),
-  art: z.enum(['set', 'teil', 'figur']),
-  nummer: z.string(),
+  type: z.enum(['set', 'teil', 'figur']),
+  number: z.string(),
   user_id: ganz,
 });
 export const PapierkorbGeleert = z.looseObject({ success: z.literal(true), entfernt: ganz });

@@ -66,7 +66,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, fremd]]);
     await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [teile]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [figuren.map(f => f + 'bl')]);
-    await db.run(`DELETE FROM bl_zuordnung WHERE art = 'fig' AND rb_id = ANY($1)`, [figuren]);
+    await db.run(`DELETE FROM bl_mapping WHERE type = 'fig' AND rb_id = ANY($1)`, [figuren]);
     await db.pool.end().catch(() => {});
   });
 
@@ -80,7 +80,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   }
   for (const nr of figuren) {
     await haeltFigur(db, uid, nr, { menge: 1, preis: 3 });
-    await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('fig', $1, $2)`, [nr, nr + 'bl']);
+    await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('fig', $1, $2)`, [nr, nr + 'bl']);
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, 'N', 'EUR', 4, 4)`,

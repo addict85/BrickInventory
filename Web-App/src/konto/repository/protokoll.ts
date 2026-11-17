@@ -29,7 +29,7 @@ export async function protokolliere(
   einzelheiten: string | null = null,
 ): Promise<void> {
   await db.run(
-    `INSERT INTO verwaltungsprotokoll (verwalter_id, ziel_id, ziel_name, aktion, einzelheiten)
+    `INSERT INTO admin_log (admin_id, target_id, target_name, action, details)
      VALUES ($1, $2, (SELECT username FROM users WHERE id = $2), $3, $4)`,
     [verwalterId, zielId, aktion, einzelheiten],
   );
@@ -38,9 +38,9 @@ export async function protokolliere(
 
 export async function letzteEintraege(db: DbSchnittstelle, anzahl = 200) {
   return db.all<Record<string, unknown>>(
-    `SELECT p.id, p.zeit, p.aktion, p.einzelheiten, p.ziel_id, p.ziel_name, p.verwalter_id, u.username AS verwalter_name
-       FROM verwaltungsprotokoll p LEFT JOIN users u ON u.id = p.verwalter_id
-      ORDER BY p.zeit DESC, p.id DESC LIMIT $1`,
+    `SELECT p.id, p.occurred_at, p.action, p.details, p.target_id, p.target_name, p.admin_id, u.username AS verwalter_name
+       FROM admin_log p LEFT JOIN users u ON u.id = p.admin_id
+      ORDER BY p.occurred_at DESC, p.id DESC LIMIT $1`,
     [anzahl],
   );
 }

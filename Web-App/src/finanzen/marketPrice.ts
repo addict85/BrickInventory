@@ -229,7 +229,7 @@ export async function schaetzeFigurenpreis(
     if (zwischengespeichert > 0)
       return {
         preis: zwischengespeichert,
-        abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null,
+        abdeckung: cached?.coverage != null ? parseFloat(String(cached.coverage)) : null,
       };
 
     const parts = await k.katalog.figurTeile(figNumber);

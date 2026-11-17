@@ -329,17 +329,17 @@ async function tabellenansicht(_t, a) {
 
 async function finanzSpalten(_t, a) {
   const { b } = a;
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="parts"] tbody tr')`, 'Finanzen');
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen');
   const m =
     await b.auswerten(`(() => { const sichtbar = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
       return k.textContent.trim() || (k.querySelector('img, svg') ? 'Bild' : ''); };
-    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-art] table')].flatMap(t => {
+    const leer = [...document.querySelectorAll('#fin-tbl [data-fin-type] table')].flatMap(t => {
       const kopf = [...t.querySelectorAll('thead th')].map(k => k.textContent.trim());
       const zeilen = [...t.querySelectorAll('tbody tr')];
       return kopf.filter((k, i) => zeilen.length && zeilen.every(z => !sichtbar(z.children[i] || z))).map(k => t.getAttribute('aria-label') + ': ' + (k || '(ohne Kopf)'));
     });
-    const teil = [...document.querySelectorAll('[data-fin-art="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
-    return { leer, koepfe: [...document.querySelectorAll('[data-fin-art="sets"] thead th')].map(k => k.textContent.trim()),
+    const teil = [...document.querySelectorAll('[data-fin-type="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
+    return { leer, koepfe: [...document.querySelectorAll('[data-fin-type="sets"] thead th')].map(k => k.textContent.trim()),
       teil: teil && [...teil.children].map(sichtbar).filter(x => /0,12/.test(x)) }; })()`);
   assert.ok(!m.koepfe.includes('Stückpreis'), `Spalte „Stückpreis“ steht noch da: ${m.koepfe.join(' | ')}`);
   assert.deepEqual(m.leer, [], 'Spalte ohne einen Wert');
@@ -382,8 +382,8 @@ async function serverfehlerVerwalter(_t, a) {
   });
   try {
     await b.auswerten(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
-    await bis(`!window.__alt && !!document.querySelector('.tab.active .fehler-zustand')`, 'Fehler', 300);
-    const m = await b.auswerten(text('.tab.active .fehler-zustand'));
+    await bis(`!window.__alt && !!document.querySelector('.tab.active .error_message-zustand')`, 'Fehler', 300);
+    const m = await b.auswerten(text('.tab.active .error_message-zustand'));
     assert.match(m, /Hintergrundarbeiten → „Protokoll anzeigen“/, m);
     assert.doesNotMatch(m, /hilft der Administrator/, 'Verwalter wird an sich selbst verwiesen');
   } finally {
@@ -394,9 +394,9 @@ async function serverfehlerVerwalter(_t, a) {
   }
 }
 
-async function auftraege(_t, a) {
+async function jobs(_t, a) {
   const { b } = a;
-  // Ein Dienst wartet mit Arbeit (total > 0), einer läuft: Nur der laufende zeigt den Balken.
+  // Ein Dienst waiting mit Arbeit (total > 0), einer läuft: Nur der laufende zeigt den Balken.
   await b.auswerten(`window.__echt = window.fetch; window.fetch = async (u, o) => { const r = await window.__echt(u, o);
     if (!/v1\\/admin\\/jobs$/.test(String(u))) return r;
     const d = await r.clone().json(); const [x, y] = Object.keys(d.jobs);
@@ -512,15 +512,15 @@ test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout
     bestand: async (db, uid) => {
       await musterHaushalt(db, uid);
       await legeBilder(t, db, uid, req);
-      await db.run(`INSERT INTO auftraege (art, faellig_ab, versuche, max_versuche, fehler)
-        VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
+      await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
+        VALUES ('exchange_rates', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
     },
   });
   if (a.grund) {
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM auftraege WHERE art = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [
@@ -529,7 +529,7 @@ test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout
     ['Tabellenansicht mit Kaufpreis und Marktwert', tabellenansicht],
     ['Finanzen ohne leere Spalte', finanzSpalten],
     ['Finanzbegriffe', finanzBegriffe],
-    ['Aufträge und Fortschritt', auftraege],
+    ['Aufträge und Fortschritt', jobs],
     ['Seitentitel im Set-Detail', seitentitel],
     ['Bauliste: breites Feld', bauliste],
     ['Merkliste zugeklappt', merklisteZu],

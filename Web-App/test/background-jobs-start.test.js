@@ -60,26 +60,26 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     keineDb(t, e);
     return;
   }
-  await db.run('DELETE FROM auftraege');
+  await db.run('DELETE FROM jobs');
   laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste()));
 
-  const zeilen = await db.all(`SELECT art, schluessel, nutzlast, EXTRACT(EPOCH FROM faellig_ab - NOW())::int AS in_sek
-                                 FROM auftraege WHERE status = 'offen'`);
-  const plan = art => zeilen.find(z => z.schluessel === `plan:${art}`);
+  const zeilen = await db.all(`SELECT type, dedupe_key, payload, EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek
+                                 FROM jobs WHERE status = 'offen'`);
+  const plan = type => zeilen.find(z => z.dedupe_key === `plan:${type}`);
 
   await t.test('jede geplante Art hat einen Termin', () => {
-    for (const { art } of require('./helpers/sources')
+    for (const { type } of require('./helpers/sources')
       .testDienste()
-      .auftraege.angemeldeteArten()
+      .jobs.angemeldeteArten()
       .filter(a => a.zeitplan))
-      assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.schluessel).join(', ')}`);
+      assert.ok(plan(type), `kein Termin für ${type}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
-      plan('csv_sync').in_sek <= 0 && plan('csv_sync').nutzlast.beimStart,
+      plan('csv_sync').in_sek <= 0 && plan('csv_sync').payload.beimStart,
       'der Katalog wird beim Start sofort geprüft',
     );
     assert.ok(plan('preise').in_sek <= 30, 'der Preis-Job läuft 30 s nach dem Start');
     assert.ok(
-      zeilen.some(z => z.art === 'wechselkurse'),
+      zeilen.some(z => z.type === 'exchange_rates'),
       'kein Wechselkurs-Auftrag',
     );
   });
@@ -88,12 +88,12 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     const { NACHLAEUFE } = _req('src/verwaltung/startNachlaeufe.js');
     for (const schritt of Object.keys(NACHLAEUFE))
       assert.ok(
-        zeilen.some(z => z.schluessel === `nachlauf:${schritt}`),
+        zeilen.some(z => z.dedupe_key === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
     laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste()));
-    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE status = 'offen'
-                                    GROUP BY schluessel HAVING COUNT(*) > 1 LIMIT 1`);
+    const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'offen'
+                                    GROUP BY dedupe_key HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
   });
 
@@ -103,7 +103,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
 
   await t.test('das Lebenszeichen folgt dem Worker', async () => {
     const jp = _req('startup/jobsProzess.js');
-    const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
+    const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('jobs').run_state;
     for (let i = 0; i < 50 && !(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL)); i++) await warte(20);
     assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
     for (const lauf of laeufe) await jp.stoppeJobs(require('./helpers/sources').testDienste(), lauf);

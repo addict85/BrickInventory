@@ -39,7 +39,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
   await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')", [uid]);
-  await db.run(`INSERT INTO wechselkurse (tag, waehrung, je_eur) VALUES ('2019-03-04', 'USD', 1.25), ('2019-03-04', 'JPY', 120)
+  await db.run(`INSERT INTO exchange_rates (tag, waehrung, je_eur) VALUES ('2019-03-04', 'USD', 1.25), ('2019-03-04', 'JPY', 120)
                 ON CONFLICT (waehrung, tag) DO UPDATE SET je_eur = EXCLUDED.je_eur`);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2), ($1,$3)', [uid, SN, GS]);
   await db.run(

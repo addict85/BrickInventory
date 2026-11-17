@@ -31,8 +31,8 @@
  *      „die Leserolle sieht keine Geheimnisse“
  *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` gestrichen → rot:
  *      „die Leserolle legt temporäre Tabellen an“
- *   K  (03.11.2026) `api_tokens_verbraucht` aus der Sperrliste gestrichen →
- *      rot: „SELECT token FROM api_tokens_verbraucht“
+ *   K  (03.11.2026) `api_tokens_consumed` aus der Sperrliste gestrichen →
+ *      rot: „SELECT token FROM api_tokens_consumed“
  *   L  (03.11.2026, Allowlist) `password_hash` in die Zeile `users:` von
  *      LESEN_SPALTEN aufgenommen → rot: „die Leserolle sieht keine Geheimnisse“
  *      (SELECT password_hash gelingt) und „… liest genau die Allowlist“
@@ -93,7 +93,7 @@
  *      (GRANT ON ALL TABLES gibt INSERT/UPDATE/DELETE zurück)
  *   AJ verwaltungsprotokoll_aufraeumen() als SECURITY INVOKER → rot: beide (die Systemrolle
  *      darf selbst nicht löschen, das Aufräumen scheitert)
- *   AK in app-rolle.sh das REVOKE auf verwaltungsprotokoll nur für die Laufzeitrolle → rot:
+ *   AK in app-rolle.sh das REVOKE auf admin_log nur für die Laufzeitrolle → rot:
  *      „… und nach jedem Lauf …“ (die Systemrolle löscht Protokollzeilen)
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
@@ -361,14 +361,14 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
 
   /** Genau diese Schreibrechte (0117): Zugangsdaten, globale Einstellungen und das Protokoll. */
   const zugangsrechtePruefen = async (db, konto) => {
-    const frage = (rolle, objekt, art, funktion) =>
+    const frage = (rolle, objekt, type, funktion) =>
       als(db, null, null, c =>
         c
           .query(
             funktion
               ? 'SELECT has_function_privilege($1, $2, $3) AS ja'
               : 'SELECT has_table_privilege($1, $2, $3) AS ja',
-            [rolle, objekt, art],
+            [rolle, objekt, type],
           )
           .then(r => r.rows[0].ja),
       );
@@ -377,9 +377,9 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       [ROLLE, 'app'],
       [SYS, 'sys'],
     ]) {
-      for (const tabelle of ['users', 'global_settings', 'verwaltungsprotokoll'])
-        for (const art of ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'])
-          ist[`${kurz} ${tabelle} ${art}`] = await frage(rolle, `public.${tabelle}`, art);
+      for (const tabelle of ['users', 'global_settings', 'admin_log'])
+        for (const type of ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'])
+          ist[`${kurz} ${tabelle} ${type}`] = await frage(rolle, `public.${tabelle}`, type);
       ist[`${kurz} aufraeumen EXECUTE`] = await frage(
         rolle,
         'public.verwaltungsprotokoll_aufraeumen()',
@@ -393,13 +393,13 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     // Laufzeitrolle spaltenweise ohne password_hash, siehe oben).
     for (const k of [
       'app global_settings SELECT',
-      'app verwaltungsprotokoll SELECT',
-      'app verwaltungsprotokoll INSERT',
+      'app admin_log SELECT',
+      'app admin_log INSERT',
     ])
       soll[k] = true;
     for (const t of ['users', 'global_settings'])
       for (const a of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) soll[`sys ${t} ${a}`] = true;
-    for (const k of ['sys verwaltungsprotokoll SELECT', 'sys verwaltungsprotokoll INSERT', 'sys aufraeumen EXECUTE'])
+    for (const k of ['sys admin_log SELECT', 'sys admin_log INSERT', 'sys aufraeumen EXECUTE'])
       soll[k] = true;
     assert.deepEqual(ist, soll);
     const spalten = (
@@ -419,10 +419,10 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         'UPDATE users SET is_admin = true WHERE id = $1',
         "UPDATE users SET password_hash = 'x' WHERE id = $1",
         "UPDATE users SET email = 'boese@example.org' WHERE id = $1",
-        'UPDATE users SET sitzungs_version = 0 WHERE id = $1',
+        'UPDATE users SET session_version = 0 WHERE id = $1',
         'DELETE FROM users WHERE id = $1',
-        'DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1',
-        "UPDATE verwaltungsprotokoll SET aktion = 'x' WHERE ziel_id = $1",
+        'DELETE FROM admin_log WHERE target_id = $1',
+        "UPDATE admin_log SET action = 'x' WHERE target_id = $1",
         "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1::text)",
         'SELECT verwaltungsprotokoll_aufraeumen() WHERE $1::int > 0',
       ])
@@ -433,26 +433,26 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       await app.query(`SELECT set_config('app.konto', $1, true)`, [String(konto)]);
       assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 1);
       await app.query('COMMIT');
-      await app.query(`INSERT INTO verwaltungsprotokoll (ziel_id, aktion) VALUES ($1, 'probe')`, [konto]);
+      await app.query(`INSERT INTO admin_log (target_id, action) VALUES ($1, 'probe')`, [konto]);
     });
     await als(db, SYS, SYS_PW, async sys => {
       await sys.query(
-        `INSERT INTO verwaltungsprotokoll (zeit, ziel_id, aktion) VALUES (NOW() - INTERVAL '400 days', $1, 'alt')`,
+        `INSERT INTO admin_log (occurred_at, target_id, action) VALUES (NOW() - INTERVAL '400 days', $1, 'alt')`,
         [konto],
       );
       for (const sql of [
-        'DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1',
-        "UPDATE verwaltungsprotokoll SET aktion = 'x' WHERE ziel_id = $1",
+        'DELETE FROM admin_log WHERE target_id = $1',
+        "UPDATE admin_log SET action = 'x' WHERE target_id = $1",
       ])
         await assert.rejects(sys.query(sql, [konto]), /permission denied/, `Systemrolle: ${sql}`);
       assert.ok((await sys.query('SELECT verwaltungsprotokoll_aufraeumen() AS n')).rows[0].n >= 1);
       assert.deepEqual(
-        (await sys.query('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY aktion', [konto])).rows,
-        [{ aktion: 'probe' }],
+        (await sys.query('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY action', [konto])).rows,
+        [{ action: 'probe' }],
         'die feste Frist nimmt nur die alte Zeile',
       );
     });
-    await als(db, null, null, c => c.query('DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1', [konto]));
+    await als(db, null, null, c => c.query('DELETE FROM admin_log WHERE target_id = $1', [konto]));
   };
 
   /** Was die Laufzeitrolle an Kontotabellen darf; die Systemrolle liest alles. */
@@ -758,9 +758,9 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         'SELECT reset_token FROM users',
         'SELECT * FROM users',
         'SELECT token FROM api_tokens',
-        'SELECT token FROM api_tokens_verbraucht',
+        'SELECT token FROM api_tokens_consumed',
         'SELECT sid FROM user_sessions',
-        'SELECT geheimnis FROM zweiter_faktor',
+        'SELECT secret FROM second_factor',
         'SELECT value FROM global_settings',
       ])
         await assert.rejects(l.query(sql), /permission denied/, sql);
@@ -832,7 +832,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       'reset_token_expires',
       'must_change_password',
       'created_at',
-      'sitzungs_version',
+      'session_version',
     ]);
     assert.deepEqual(await lesbar('vouchers'), [
       'id',
@@ -842,17 +842,17 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       'pdf_path',
       'created_at',
       'updated_at',
-      'guthaben_geprueft_am',
+      'balance_checked_at',
     ]);
     for (const t of [
       'api_tokens',
-      'api_tokens_verbraucht',
+      'api_tokens_consumed',
       'user_sessions',
       'qr_login_tokens',
       'webauthn_challenges',
-      'zweiter_faktor_codes',
+      'second_factor_codes',
       'account_link_invites',
-      'idempotenz',
+      'idempotency',
     ])
       assert.deepEqual(await lesbar(t), [], `${t} ist für die Leserolle lesbar`);
   });

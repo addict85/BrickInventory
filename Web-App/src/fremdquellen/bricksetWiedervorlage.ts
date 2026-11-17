@@ -66,13 +66,13 @@ export function bricksetZahlen(k: FremdquellenKontext) {
 
 export async function bricksetWartende(k: FremdquellenKontext) {
   return (await k.auftraege.wiedervorlage.wartende('brickset')).map(z => {
-    const n = BricksetNutzlast.safeParse(z.nutzlast);
+    const n = BricksetNutzlast.safeParse(z.payload);
     return {
       set_number: n.success ? n.data.set_number : '',
       versuch: (n.success ? n.data.versuch : undefined) ?? 1,
-      faellig_ab: z.faellig_ab,
-      fehler: z.fehler,
-      erstellt: z.erstellt,
+      faellig_ab: z.due_at,
+      fehler: z.error_message,
+      erstellt: z.created_at,
     };
   });
 }

@@ -56,11 +56,11 @@ const tageSeit = (zeitpunkt: string | Date | null | undefined, jetzt: number): n
   zeitpunkt ? (jetzt - new Date(zeitpunkt).getTime()) / TAG_MS : 0;
 
 export function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
-  return tageSeit(u.rotiert_am, jetzt) >= ROTATION_FAELLIG_TAGE;
+  return tageSeit(u.rotated_at, jetzt) >= ROTATION_FAELLIG_TAGE;
 }
 
 export function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
-  return u.never_expires === true && tageSeit(u.rotiert_am, jetzt) >= ROTATION_PFLICHT_TAGE;
+  return u.never_expires === true && tageSeit(u.rotated_at, jetzt) >= ROTATION_PFLICHT_TAGE;
 }
 
 /** /24 bzw. /48: genug, um ein fremdes Netz zu erkennen; die genaue Adresse
@@ -256,7 +256,7 @@ export interface Tausch {
   expires_at: Date | null;
   hard_expires_at: Date | null;
   never_expires: boolean;
-  rotiert_am: Date;
+  rotated_at: Date;
   alt_gueltig_bis: Date;
 }
 
@@ -275,15 +275,15 @@ export async function rotiereToken(kx: KontoKontext, alt: string, ip?: string | 
     kx.transaktion(async t => {
       const z = await repo.tauschQuelleSperren(t.db, altHash);
       if (!z) return null;
-      const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(t.db, z.ersetzt_durch, altHash) : undefined;
+      const offen = z.replaced_by ? await repo.unbenutzterNachfolger(t.db, z.replaced_by, altHash) : undefined;
       const bereich = ipBereich(ip);
-      if (offen?.ip_bereich && bereich && offen.ip_bereich !== bereich) {
+      if (offen?.ip_range && bereich && offen.ip_range !== bereich) {
         await repo.loescheFamilie(t.db, z.user_id, z.created_at);
         kopie = { user_id: z.user_id, label: z.label };
         return null;
       }
       if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
-      if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(t.db, z.ersetzt_durch, altHash);
+      if (z.replaced_by) await repo.loescheUnbenutztenNachfolger(t.db, z.replaced_by, altHash);
       const zeile = await repo.legeNachfolgerAn(t.db, neuHash, altHash, z, t.konfig.tokenLeerlaufTage, ipBereich(ip));
       const vorher = await repo.befristeVorgaenger(t.db, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
       return {
@@ -292,7 +292,7 @@ export async function rotiereToken(kx: KontoKontext, alt: string, ip?: string | 
         expires_at: zeile!.expires_at,
         hard_expires_at: zeile!.hard_expires_at,
         never_expires: z.never_expires,
-        rotiert_am: zeile!.rotiert_am,
+        rotated_at: zeile!.rotated_at,
         alt_gueltig_bis: vorher!.expires_at,
       };
     }),

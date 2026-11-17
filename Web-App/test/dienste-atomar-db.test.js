@@ -102,8 +102,8 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
     assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [`${NAME}-neu`]), undefined);
     // Ohne Störung entstehen Konto und Eintrag zusammen.
     const id = await K.legeKontoAn(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
-    const eintrag = await db.get('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1', [id]);
-    assert.equal(eintrag?.aktion, 'konto_angelegt');
+    const eintrag = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
+    assert.equal(eintrag?.action, 'konto_angelegt');
   });
 
   await t.test('scheitert der Protokolleintrag beim Sperren, bleibt das Konto aktiv', async () => {

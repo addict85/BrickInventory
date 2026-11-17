@@ -44,7 +44,7 @@ export async function loeseLokalAuf(
   const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
   const eigene = new Set<string>();
   for (const z of await k.wantedListe.zuordnungen(nummern, uid)) {
-    const schluessel = `${z.art}:${z.bl_id ?? z.rb_id}`;
+    const schluessel = `${z.type}:${z.bl_id ?? z.rb_id}`;
     const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
     const schon = zuordnung.get(schluessel);
     if (z.eigen) eigene.add(schluessel);

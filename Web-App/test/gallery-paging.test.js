@@ -40,7 +40,7 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
   const nummern = SETS.map(s => s.nr);
   const aufraeumen = async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-    await db.run('DELETE FROM set_figuren WHERE set_number = ANY($1)', [nummern]);
+    await db.run('DELETE FROM set_minifigs WHERE set_number = ANY($1)', [nummern]);
     await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
   };
   await aufraeumen();

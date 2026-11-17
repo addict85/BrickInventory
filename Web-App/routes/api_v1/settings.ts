@@ -43,8 +43,8 @@ export function baueSettingsRouter(
         hard_expires_at: t.hard_expires_at,
         never_expires: !t.expires_at,
         scope: t.scope,
-        ip_bereich: t.ip_bereich,
-        rotiert_am: t.rotiert_am,
+        ip_range: t.ip_range,
+        rotated_at: t.rotated_at,
         aktuell: eigenerZugang(eigener, t.token),
       })),
     };

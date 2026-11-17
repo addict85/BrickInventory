@@ -5,8 +5,8 @@
  */
 async function leereWarteschlange(db) {
   await db.run('DELETE FROM image_wanted').catch(() => {});
-  // Eine Drosselpause eines Vorgängers hielte den Stapel sonst an (auftrag_pausen).
-  await db.run(`DELETE FROM auftrag_pausen WHERE art = 'bildbedarf'`).catch(() => {});
+  // Eine Drosselpause eines Vorgängers hielte den Stapel sonst an (job_pauses).
+  await db.run(`DELETE FROM job_pauses WHERE type = 'bildbedarf'`).catch(() => {});
 }
 
 module.exports.leereWarteschlange = leereWarteschlange;

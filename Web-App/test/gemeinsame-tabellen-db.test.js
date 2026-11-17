@@ -7,7 +7,7 @@
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  routes/api_v1/wanted.ts: merkeNummer schreibt immer merkeBlNummer →
  *      rot: „Eingaben eines Kontos landen in keiner gemeinsamen Tabelle“
- *      (bl_zuordnung trägt die Marke)
+ *      (bl_mapping trägt die Marke)
  *   B  merkeFigur() in src/katalog/katalogPflege.ts ohne den Zweig für `von` →
  *      rot: dieselbe Prüfung (minifigs_catalog)
  *   C  ein `INSERT INTO part_catalog` in src/teile/repository/manuelleTeile.ts
@@ -88,18 +88,18 @@ testQuellen(null, {
 
 const KATALOG = 'katalog'; // geprüfte Quellen (Rebrickable, BrickLink, Brickset, EZB)
 const BETRIEB = 'betrieb'; // Zustand des Servers, keine Angaben über Teile
-const KONTO = 'konto'; // gehört einem Konto über einen anderen Schlüssel
+const KONTO = 'account_id'; // gehört einem Konto über einen anderen Schlüssel
 
-/** art, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
+/** type, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
 const GEMEINSAM = {
-  bl_zuordnung: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
+  bl_mapping: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
   catalog_cache: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts'],
   },
   set_catalog: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: [
       'src/katalog/repository/bildlage.ts',
@@ -108,9 +108,9 @@ const GEMEINSAM = {
       'src/katalog/repository/teileAnreicherung.ts',
     ],
   },
-  part_catalog: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
+  part_catalog: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   part_color_catalog: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: [
       'src/katalog/repository/csvKatalog.ts',
@@ -119,31 +119,31 @@ const GEMEINSAM = {
     ],
   },
   minifigs_catalog: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: ['src/katalog/repository/katalogStamm.ts', 'src/katalog/repository/teileAnreicherung.ts'],
   },
-  set_teile: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
-  set_figuren: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
+  set_parts: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
+  set_minifigs: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
   subsets_cache: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts'],
   },
-  minifig_parts_cache: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/rebrickableCache.ts'] },
-  shared_instructions: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/anleitungen.ts'] },
+  minifig_parts_cache: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/rebrickableCache.ts'] },
+  shared_instructions: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/anleitungen.ts'] },
   rb_colors: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: ['src/katalog/repository/blZuordnung.ts', 'src/katalog/repository/csvTausch.ts'],
   },
-  rb_inventories: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_inventory_minifigs: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_inventory_parts: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_part_categories: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_parts: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_inventories: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_inventory_minifigs: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_inventory_parts: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_part_categories: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_parts: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
   rb_sets: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: [
       'src/katalog/repository/bildlage.ts',
@@ -151,10 +151,10 @@ const GEMEINSAM = {
       'src/katalog/repository/setStamm.ts',
     ],
   },
-  rb_themes: { art: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  price_cache: { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
+  rb_themes: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
   price_history: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: [
       'src/finanzen/repository/preisCache.ts',
@@ -162,43 +162,43 @@ const GEMEINSAM = {
       'src/finanzen/repository/preisverlauf.ts',
     ],
   },
-  part_price_cache: { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
-  part_price_history: { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
+  part_price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
+  part_price_history: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
   minifig_price_cache: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: ['src/finanzen/repository/marktpreise.ts', 'src/finanzen/repository/preisCache.ts'],
   },
   minifig_price_history: {
-    art: KATALOG,
+    type: KATALOG,
     eingabe: false,
     schreiber: ['src/finanzen/repository/marktpreise.ts', 'src/finanzen/repository/preisCache.ts'],
   },
-  wechselkurse: { art: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/wechselkurse.ts'] },
-  image_misses: { art: BETRIEB, eingabe: false },
-  image_wanted: { art: BETRIEB, eingabe: false },
-  parts_katalog_offen: {
-    art: BETRIEB,
+  exchange_rates: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/exchange_rates.ts'] },
+  image_misses: { type: BETRIEB, eingabe: false },
+  image_wanted: { type: BETRIEB, eingabe: false },
+  parts_catalog_pending: {
+    type: BETRIEB,
     eingabe: 'Nummern, deren Teile-Zusammenfassung nachzuziehen ist; sie ändern keine Angabe',
   },
-  api_takt: { art: BETRIEB, eingabe: false },
-  auftrag_pausen: { art: BETRIEB, eingabe: false },
-  auftrag_exklusiv: { art: BETRIEB, eingabe: false },
-  auftrags_arten: { art: BETRIEB, eingabe: false },
-  laufzustand: { art: BETRIEB, eingabe: false },
-  schema_migrations: { art: BETRIEB, eingabe: false },
-  global_settings: { art: BETRIEB, eingabe: 'nur Verwalter (requireAdmin)' },
-  app_logs: { art: BETRIEB, eingabe: 'Protokollzeilen nennen Eingaben, steuern aber nichts' },
-  rate_limit_attempts: { art: BETRIEB, eingabe: 'Schlüssel aus Benutzername und Adresse der Anmeldebremse' },
-  users: { art: KONTO, eingabe: 'Zeile des Kontos (id)' },
-  user_sessions: { art: KONTO, eingabe: 'Sitzung eines Kontos (sess.userId)' },
-  account_links: { art: KONTO, eingabe: 'Haushalt (main_user_id, sub_user_id)' },
-  account_link_invites: { art: KONTO, eingabe: 'Einladung des Hauptkontos (main_user_id)' },
-  household_former_links: { art: KONTO, eingabe: 'frühere Haushalte (main_user_id, sub_user_id)' },
-  api_aufrufe: { art: KONTO, eingabe: 'Zähler je Konto (konto)' },
-  gutschein_guthaben_schranke: { art: KONTO, eingabe: 'je Gutschein (id = vouchers.id)' },
-  verwaltungsprotokoll: { art: KONTO, eingabe: 'Handlungen der Verwalter (verwalter_id)' },
-  verwalter_uebernahmen: { art: KONTO, eingabe: 'angekündigte Änderung an einem Verwalterkonto (ziel_id)' },
+  api_cadence: { type: BETRIEB, eingabe: false },
+  job_pauses: { type: BETRIEB, eingabe: false },
+  job_exclusive_locks: { type: BETRIEB, eingabe: false },
+  job_types: { type: BETRIEB, eingabe: false },
+  run_state: { type: BETRIEB, eingabe: false },
+  schema_migrations: { type: BETRIEB, eingabe: false },
+  global_settings: { type: BETRIEB, eingabe: 'nur Verwalter (requireAdmin)' },
+  app_logs: { type: BETRIEB, eingabe: 'Protokollzeilen nennen Eingaben, steuern aber nichts' },
+  rate_limit_attempts: { type: BETRIEB, eingabe: 'Schlüssel aus Benutzername und Adresse der Anmeldebremse' },
+  users: { type: KONTO, eingabe: 'Zeile des Kontos (id)' },
+  user_sessions: { type: KONTO, eingabe: 'Sitzung eines Kontos (sess.userId)' },
+  account_links: { type: KONTO, eingabe: 'Haushalt (main_user_id, sub_user_id)' },
+  account_link_invites: { type: KONTO, eingabe: 'Einladung des Hauptkontos (main_user_id)' },
+  household_former_links: { type: KONTO, eingabe: 'frühere Haushalte (main_user_id, sub_user_id)' },
+  api_calls: { type: KONTO, eingabe: 'Zähler je Konto (account_id)' },
+  voucher_balance_throttle: { type: KONTO, eingabe: 'je Gutschein (id = vouchers.id)' },
+  admin_log: { type: KONTO, eingabe: 'Handlungen der Verwalter (admin_id)' },
+  admin_takeovers: { type: KONTO, eingabe: 'angekündigte Änderung an einem Verwalterkonto (target_id)' },
 };
 
 /** Dateien, die einen Tabellennamen zur Laufzeit wählen (nicht über den Lesevertrag `l.`): was sie
@@ -241,7 +241,7 @@ const DYNAMISCH = {
   },
   'src/bestand/repository/papierkorb.ts': {
     liest: [
-      'figur_eigen',
+      'minifig_custom',
       'minifig_acquisitions',
       'minifigs',
       'minifigs_catalog',
@@ -253,8 +253,8 @@ const DYNAMISCH = {
       'rb_sets',
       'set_acquisitions',
       'sets',
-      'teil_eigen',
-      'teil_farbe_eigen',
+      'part_custom',
+      'part_color_custom',
     ],
     schreibt: [
       'minifig_acquisitions',
@@ -311,7 +311,7 @@ const DYNAMISCH = {
   },
   'src/katalog/repository/teileAnreicherung.ts': {
     liest: [
-      'bl_zuordnung',
+      'bl_mapping',
       'minifigs_catalog',
       'part_color_catalog',
       'rb_inventories',
@@ -405,9 +405,9 @@ async function messeDatei(datei, bekannt) {
     for (const m of String(sql).matchAll(LIES)) if (bekannt.has(m[1])) liest.add(m[1]);
     for (const m of String(sql).matchAll(SCHREIBE)) if (bekannt.has(m[1] ?? m[2])) schreibt.add(m[1] ?? m[2]);
   };
-  const antwort = wert => async sql => {
+  const antwort = value => async sql => {
     merke(sql);
-    return wert;
+    return value;
   };
   const zugang = {
     get: antwort(c),
@@ -420,10 +420,10 @@ async function messeDatei(datei, bekannt) {
   const arten = [...ARTEN, ...listen.filter(x => typeof x === 'string')];
   for (const f of Object.values(modul))
     if (typeof f === 'function')
-      for (const art of arten)
+      for (const type of arten)
         for (const probe of [
-          [zugang, art, c, c, c, c, c, c],
-          [zugang, c, art, c, c, c, c, c],
+          [zugang, type, c, c, c, c, c, c],
+          [zugang, c, type, c, c, c, c, c],
         ])
           try {
             const r = f(...probe);
@@ -458,7 +458,7 @@ const FREMDSCHREIBER = [
 const TRIGGER_FREMDZIELE = {
   'src/bestand → parts_version_user':
     'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/teile',
-  'src/katalog → parts_katalog_offen':
+  'src/katalog → parts_catalog_pending':
     'Katalogänderungen merken nur die Nummer vor; src/teile zieht die Zusammenfassung nach und leert die Liste',
 };
 
@@ -519,7 +519,7 @@ async function lesebausteine(_req) {
     if (!/\b(?:FROM|JOIN)\b/.test(fs.readFileSync(path.join(ordner, n), 'utf8'))) continue;
     const modul = n.replace(/\.ts$/, '');
     je[modul] = {};
-    for (const [name, wert] of Object.entries(_req(`db/${modul}.js`))) {
+    for (const [name, value] of Object.entries(_req(`db/${modul}.js`))) {
       const tabellen = new Set();
       const merke = sql => {
         for (const m of String(sql).matchAll(LESE)) tabellen.add(m[1]);
@@ -536,20 +536,20 @@ async function lesebausteine(_req) {
         run: async sql => merke(sql),
         toString: () => '$9',
       };
-      if (typeof wert === 'string') merke(wert);
-      else if (typeof wert === 'function')
-        for (const art of ['part', 'fig', 'set']) {
+      if (typeof value === 'string') merke(value);
+      else if (typeof value === 'function')
+        for (const type of ['part', 'fig', 'set']) {
           const proben = [
             [],
             ['= ANY($1)'],
-            [art, '$1', ['3001', 4], zugang],
-            ['s', art, 'tm', '= ANY($1)'],
+            [type, '$1', ['3001', 4], zugang],
+            ['s', type, 'tm', '= ANY($1)'],
             ['$1', '$2', zugang],
             [1, '3001-1', zugang],
           ];
           for (const probe of proben) {
             try {
-              const r = wert(...probe);
+              const r = value(...probe);
               if (r && typeof r.then === 'function') await r.catch(() => {});
               else merke(r);
             } catch {
@@ -692,7 +692,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     const ist = {},
       soll = {};
     for (const [name, e] of Object.entries(GEMEINSAM)) {
-      if (e.art !== KATALOG) continue;
+      if (e.type !== KATALOG) continue;
       ist[name] = [...(tabellen.get(name) ?? [])].sort();
       soll[name] = [...e.schreiber].sort();
     }
@@ -788,16 +788,16 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       [],
       'Ein tieferer Bereich liest die Tabelle eines höheren: Form im eigenen Lesevertrag nennen, SQL über src/dienste.ts reichen.',
     );
-    for (const [art, schranke] of [
+    for (const [type, schranke] of [
       ['katalog', KATALOG_LESER_HOECHSTENS],
       ['abwärts', ABWAERTS_LESER_HOECHSTENS],
     ]) {
       assert.ok(
-        je[art].length <= schranke,
-        `${je[art].length} direkte Lesestellen (${art}), erlaubt sind ${schranke}.\n${je[art].join('\n')}`,
+        je[type].length <= schranke,
+        `${je[type].length} direkte Lesestellen (${type}), erlaubt sind ${schranke}.\n${je[type].join('\n')}`,
       );
-      if (je[art].length < schranke)
-        console.log(`  ℹ fremde Leser (${art}): ${je[art].length} (Schranke ${schranke}) — Schranke nachziehen`);
+      if (je[type].length < schranke)
+        console.log(`  ℹ fremde Leser (${type}): ${je[type].length} (Schranke ${schranke}) — Schranke nachziehen`);
     }
   });
 
@@ -885,8 +885,8 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     fd.append(
       'korrekturen',
       JSON.stringify([
-        { index: 0, blId: `${MARKE}4`, art: 'fig', rbId: 'fig-000001' },
-        { index: 1, blId: `${MARKE}5`, art: 'part', rbId: '3003', rbFarbe: 4 },
+        { index: 0, blId: `${MARKE}4`, type: 'fig', rbId: 'fig-000001' },
+        { index: 1, blId: `${MARKE}5`, type: 'part', rbId: '3003', rbFarbe: 4 },
       ]),
     );
     const r = await fetch(`${srv.base}/api/v1/wanted-list/import/xml?schreiben=1`, { method: 'POST', body: fd });
@@ -902,9 +902,9 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(befallen, []);
     // Gegenstück: Die Eingaben stehen bei den Konten, sonst prüfte die Suche oben nichts.
     const eigen = await db.get(`SELECT
-      (SELECT count(*) FROM bl_zuordnung_eigen e WHERE e::text LIKE '%${MARKE}%')::int AS bl,
-      (SELECT count(*) FROM figur_eigen e WHERE e::text LIKE '%${MARKE}%')::int AS fig,
-      (SELECT count(*) FROM teil_eigen e WHERE e::text LIKE '%${MARKE}%')::int AS teil`);
+      (SELECT count(*) FROM bl_mapping_custom e WHERE e::text LIKE '%${MARKE}%')::int AS bl,
+      (SELECT count(*) FROM minifig_custom e WHERE e::text LIKE '%${MARKE}%')::int AS fig,
+      (SELECT count(*) FROM part_custom e WHERE e::text LIKE '%${MARKE}%')::int AS teil`);
     assert.deepEqual(eigen, { bl: 5, fig: 2, teil: 1 });
   });
 });

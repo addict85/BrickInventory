@@ -35,20 +35,52 @@ ALTER TABLE account_links ENABLE ROW LEVEL SECURITY;
 CREATE POLICY lesen ON account_links FOR SELECT USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 CREATE POLICY loesen ON account_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
-CREATE TABLE api_aufrufe (
-  tag date NOT NULL,
+CREATE TABLE admin_log (
+  id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),
+  occurred_at timestamp with time zone NOT NULL DEFAULT now(),
+  admin_id integer,
+  target_id integer,
+  target_name text,
+  action text NOT NULL,
+  details text,
+  CONSTRAINT verwaltungsprotokoll_pkey PRIMARY KEY (id),
+  CONSTRAINT verwaltungsprotokoll_verwalter_id_fkey FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX idx_verwaltungsprotokoll_verwalter ON admin_log USING btree (admin_id);
+CREATE INDEX idx_verwaltungsprotokoll_zeit ON admin_log USING btree (occurred_at DESC);
+
+CREATE TABLE admin_takeovers (
+  target_id integer NOT NULL,
+  type text NOT NULL,
+  initiated_by integer NOT NULL,
+  password_hash text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  effective_at timestamp with time zone NOT NULL,
+  cancel_hash text,
+  CONSTRAINT verwalter_uebernahmen_art_check CHECK ((type = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text, 'deaktivieren'::text, 'rolle_entziehen'::text, 'loeschen'::text]))),
+  CONSTRAINT verwalter_uebernahmen_check CHECK (((type = 'passwort'::text) = (password_hash IS NOT NULL))),
+  CONSTRAINT verwalter_uebernahmen_durch_id_fkey FOREIGN KEY (initiated_by) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT verwalter_uebernahmen_pkey PRIMARY KEY (target_id, type),
+  CONSTRAINT verwalter_uebernahmen_ziel_id_fkey FOREIGN KEY (target_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX idx_verwalter_uebernahmen_abbruch ON admin_takeovers USING btree (cancel_hash);
+CREATE INDEX idx_verwalter_uebernahmen_durch ON admin_takeovers USING btree (initiated_by);
+ALTER TABLE admin_takeovers ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE api_cadence (
   api text NOT NULL,
-  konto integer NOT NULL DEFAULT 0,
-  anzahl integer NOT NULL DEFAULT 0,
-  CONSTRAINT api_aufrufe_anzahl_check CHECK ((anzahl >= 0)),
-  CONSTRAINT api_aufrufe_api_check CHECK ((api = ANY (ARRAY['bricklink'::text, 'rebrickable'::text, 'brickset'::text]))),
-  CONSTRAINT api_aufrufe_pkey PRIMARY KEY (tag, api, konto)
+  next_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT api_takt_pkey PRIMARY KEY (api)
 );
 
-CREATE TABLE api_takt (
+CREATE TABLE api_calls (
+  day date NOT NULL,
   api text NOT NULL,
-  naechster timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT api_takt_pkey PRIMARY KEY (api)
+  account_id integer NOT NULL DEFAULT 0,
+  count integer NOT NULL DEFAULT 0,
+  CONSTRAINT api_aufrufe_anzahl_check CHECK ((count >= 0)),
+  CONSTRAINT api_aufrufe_api_check CHECK ((api = ANY (ARRAY['bricklink'::text, 'rebrickable'::text, 'brickset'::text]))),
+  CONSTRAINT api_aufrufe_pkey PRIMARY KEY (day, api, account_id)
 );
 
 CREATE TABLE api_tokens (
@@ -62,10 +94,10 @@ CREATE TABLE api_tokens (
   never_expires boolean NOT NULL DEFAULT false,
   label text,
   scope text NOT NULL DEFAULT 'app'::text,
-  ip_bereich text,
-  rotiert_am timestamp with time zone NOT NULL DEFAULT now(),
-  vorgaenger text,
-  ersetzt_durch text,
+  ip_range text,
+  rotated_at timestamp with time zone NOT NULL DEFAULT now(),
+  previous_token text,
+  replaced_by text,
   CONSTRAINT api_tokens_pkey PRIMARY KEY (token),
   CONSTRAINT api_tokens_scope_check CHECK ((scope = ANY (ARRAY['app'::text, 'voll'::text]))),
   CONSTRAINT api_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -77,17 +109,17 @@ CREATE INDEX idx_api_tokens_user_created ON api_tokens USING btree (user_id, cre
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
 CREATE POLICY zeilenschutz ON api_tokens USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
-CREATE TABLE api_tokens_verbraucht (
+CREATE TABLE api_tokens_consumed (
   token text NOT NULL,
   user_id integer NOT NULL,
-  familie timestamp with time zone NOT NULL,
-  verbraucht_am timestamp with time zone NOT NULL DEFAULT now(),
+  token_family timestamp with time zone NOT NULL,
+  consumed_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT api_tokens_verbraucht_pkey PRIMARY KEY (token),
   CONSTRAINT api_tokens_verbraucht_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_api_tokens_verbraucht_familie ON api_tokens_verbraucht USING btree (user_id, familie);
-ALTER TABLE api_tokens_verbraucht ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON api_tokens_verbraucht USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+CREATE INDEX idx_api_tokens_verbraucht_familie ON api_tokens_consumed USING btree (user_id, token_family);
+ALTER TABLE api_tokens_consumed ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON api_tokens_consumed USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE app_logs (
   id bigint NOT NULL DEFAULT nextval('app_logs_id_seq'::regclass),
@@ -98,88 +130,35 @@ CREATE TABLE app_logs (
 );
 CREATE INDEX idx_app_logs_logged_at ON app_logs USING btree (logged_at DESC);
 
-CREATE TABLE auftraege (
-  id bigint NOT NULL DEFAULT nextval('auftraege_id_seq'::regclass),
-  art text NOT NULL,
-  nutzlast jsonb NOT NULL DEFAULT '{}'::jsonb,
-  user_id integer,
-  schluessel text,
-  status text NOT NULL DEFAULT 'offen'::text,
-  versuche integer NOT NULL DEFAULT 0,
-  max_versuche integer NOT NULL DEFAULT 5,
-  faellig_ab timestamp with time zone NOT NULL DEFAULT now(),
-  belegt_von text,
-  fehler text,
-  erstellt timestamp with time zone NOT NULL DEFAULT now(),
-  aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
-  frist_bis timestamp with time zone,
-  gestartet timestamp with time zone,
-  fortschritt jsonb,
-  ergebnis jsonb,
-  wartet boolean NOT NULL DEFAULT false,
-  CONSTRAINT auftraege_art_fkey FOREIGN KEY (art) REFERENCES auftrags_arten(art),
-  CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
-  CONSTRAINT auftraege_pkey PRIMARY KEY (id),
-  CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text]))),
-  CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_auftraege_art ON auftraege USING btree (art, status);
-CREATE INDEX idx_auftraege_frist ON auftraege USING btree (frist_bis) WHERE (status = 'laeuft'::text);
-CREATE INDEX idx_auftraege_offen_faellig ON auftraege USING btree (faellig_ab) WHERE (status = 'offen'::text);
-CREATE UNIQUE INDEX idx_auftraege_schluessel ON auftraege USING btree (schluessel) WHERE (status = 'offen'::text);
-CREATE INDEX idx_auftraege_user ON auftraege USING btree (user_id) WHERE (user_id IS NOT NULL);
-CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, belegt_von ON auftraege FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.belegt_von IS DISTINCT FROM old.belegt_von))) EXECUTE FUNCTION auftrag_exklusiv_belegen();
-ALTER TABLE auftraege ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON auftraege USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
-
-CREATE TABLE auftrag_exklusiv (
-  art text NOT NULL,
-  CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (art)
-);
-
-CREATE TABLE auftrag_pausen (
-  art text NOT NULL,
-  bis timestamp with time zone NOT NULL,
-  grund text,
-  stufe integer NOT NULL DEFAULT 0,
-  CONSTRAINT auftrag_pausen_art_fkey FOREIGN KEY (art) REFERENCES auftrags_arten(art),
-  CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art)
-);
-
-CREATE TABLE auftrags_arten (
-  art text NOT NULL,
-  CONSTRAINT auftrags_arten_pkey PRIMARY KEY (art)
-);
-
-CREATE TABLE bl_zuordnung (
-  art text NOT NULL,
+CREATE TABLE bl_mapping (
+  type text NOT NULL,
   rb_id text NOT NULL,
   bl_id text,
   fetched_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT bl_zuordnung_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text]))),
-  CONSTRAINT bl_zuordnung_pkey PRIMARY KEY (art, rb_id)
+  CONSTRAINT bl_zuordnung_art CHECK ((type = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text]))),
+  CONSTRAINT bl_zuordnung_pkey PRIMARY KEY (type, rb_id)
 );
-CREATE INDEX idx_bl_zuordnung_bl ON bl_zuordnung USING btree (art, bl_id);
-CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
-CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
-CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+CREATE INDEX idx_bl_zuordnung_bl ON bl_mapping USING btree (type, bl_id);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_mapping REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_mapping REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_mapping REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
-CREATE TABLE bl_zuordnung_eigen (
+CREATE TABLE bl_mapping_custom (
   user_id integer NOT NULL,
-  art text NOT NULL,
+  type text NOT NULL,
   rb_id text NOT NULL,
   bl_id text NOT NULL,
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT bl_zuordnung_eigen_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text]))),
-  CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id),
+  CONSTRAINT bl_zuordnung_eigen_art CHECK ((type = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text]))),
+  CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, type, rb_id),
   CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_bl_zuordnung_eigen_bl ON bl_zuordnung_eigen USING btree (user_id, art, bl_id);
-CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
-CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
-CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
-ALTER TABLE bl_zuordnung_eigen ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON bl_zuordnung_eigen USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE INDEX idx_bl_zuordnung_eigen_bl ON bl_mapping_custom USING btree (user_id, type, bl_id);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_mapping_custom REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_mapping_custom REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_mapping_custom REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+ALTER TABLE bl_mapping_custom ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON bl_mapping_custom USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
 CREATE TABLE catalog_cache (
   set_number text NOT NULL,
@@ -191,57 +170,46 @@ CREATE TABLE catalog_cache (
 );
 CREATE TRIGGER catalog_cache_setnummer BEFORE INSERT OR UPDATE OF set_number ON catalog_cache FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
 
-CREATE TABLE figur_eigen (
+CREATE TABLE device_keys (
   user_id integer NOT NULL,
-  fig_number text NOT NULL,
-  fig_name text,
-  image_url text,
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number),
-  CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  token_family timestamp with time zone NOT NULL,
+  public_key text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  attested boolean NOT NULL DEFAULT false,
+  CONSTRAINT geraete_schluessel_pkey PRIMARY KEY (user_id, token_family),
+  CONSTRAINT geraete_schluessel_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-ALTER TABLE figur_eigen ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON figur_eigen USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+ALTER TABLE device_keys ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON device_keys USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
-CREATE TABLE geraete_nonces (
+CREATE TABLE device_nonces (
   nonce text NOT NULL,
   user_id integer NOT NULL,
-  familie timestamp with time zone NOT NULL,
-  aus_qr boolean NOT NULL DEFAULT false,
-  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
-  ablauf timestamp with time zone NOT NULL,
+  token_family timestamp with time zone NOT NULL,
+  from_qr boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone NOT NULL,
   CONSTRAINT geraete_nonces_pkey PRIMARY KEY (nonce),
   CONSTRAINT geraete_nonces_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_geraete_nonces_familie ON geraete_nonces USING btree (user_id, familie);
-ALTER TABLE geraete_nonces ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON geraete_nonces USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+CREATE INDEX idx_geraete_nonces_familie ON device_nonces USING btree (user_id, token_family);
+ALTER TABLE device_nonces ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON device_nonces USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
-CREATE TABLE geraete_schluessel (
-  user_id integer NOT NULL,
-  familie timestamp with time zone NOT NULL,
-  oeffentlich text NOT NULL,
-  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
-  attestiert boolean NOT NULL DEFAULT false,
-  CONSTRAINT geraete_schluessel_pkey PRIMARY KEY (user_id, familie),
-  CONSTRAINT geraete_schluessel_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE exchange_rates (
+  day date NOT NULL,
+  currency character(3) NOT NULL,
+  per_eur numeric NOT NULL,
+  CONSTRAINT wechselkurse_je_eur_check CHECK ((per_eur > (0)::numeric)),
+  CONSTRAINT wechselkurse_pkey PRIMARY KEY (currency, day),
+  CONSTRAINT wechselkurse_waehrung_check CHECK (((currency ~ '^[A-Z]{3}$'::text) AND (currency <> 'EUR'::bpchar)))
 );
-ALTER TABLE geraete_schluessel ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON geraete_schluessel USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE global_settings (
   key text NOT NULL,
   value text NOT NULL,
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT global_settings_pkey PRIMARY KEY (key)
-);
-
-CREATE TABLE gutschein_guthaben_schranke (
-  id smallint NOT NULL DEFAULT 1,
-  letzter_abruf timestamp with time zone,
-  sperre_bis timestamp with time zone,
-  CONSTRAINT gutschein_guthaben_schranke_id_check CHECK ((id = 1)),
-  CONSTRAINT gutschein_guthaben_schranke_pkey PRIMARY KEY (id)
 );
 
 CREATE TABLE household_former_links (
@@ -260,21 +228,21 @@ ALTER TABLE household_former_links ENABLE ROW LEVEL SECURITY;
 CREATE POLICY loesen ON household_former_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 CREATE POLICY zeilenschutz ON household_former_links FOR SELECT USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
-CREATE TABLE idempotenz (
+CREATE TABLE idempotency (
   user_id integer NOT NULL,
-  schluessel text NOT NULL,
-  anfrage text NOT NULL,
+  key text NOT NULL,
+  request text NOT NULL,
   status integer,
-  antwort text,
-  angelegt timestamp with time zone NOT NULL DEFAULT now(),
-  wirkung boolean NOT NULL DEFAULT false,
-  CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, schluessel),
-  CONSTRAINT idempotenz_schluessel_check CHECK (((length(schluessel) >= 1) AND (length(schluessel) <= 100))),
+  response text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  has_effect boolean NOT NULL DEFAULT false,
+  CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, key),
+  CONSTRAINT idempotenz_schluessel_check CHECK (((length(key) >= 1) AND (length(key) <= 100))),
   CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_idempotenz_angelegt ON idempotenz USING btree (angelegt);
-ALTER TABLE idempotenz ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON idempotenz USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+CREATE INDEX idx_idempotenz_angelegt ON idempotency USING btree (created_at);
+ALTER TABLE idempotency ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON idempotency USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE image_misses (
   cache_key text NOT NULL,
@@ -291,7 +259,7 @@ CREATE TABLE image_wanted (
 );
 CREATE INDEX idx_image_wanted_alter ON image_wanted USING btree (requested_at);
 
-CREATE TABLE import_stand (
+CREATE TABLE import_status (
   user_id integer NOT NULL,
   status text NOT NULL DEFAULT 'running'::text,
   total integer NOT NULL DEFAULT 0,
@@ -306,8 +274,8 @@ CREATE TABLE import_stand (
   CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
   CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-ALTER TABLE import_stand ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON import_stand USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+ALTER TABLE import_status ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON import_status USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
 CREATE TABLE instructions (
   id integer NOT NULL DEFAULT nextval('instructions_id_seq'::regclass),
@@ -327,12 +295,58 @@ CREATE TRIGGER instructions_setnummer BEFORE INSERT OR UPDATE OF set_number ON i
 ALTER TABLE instructions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY zeilenschutz ON instructions USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE TABLE laufzustand (
-  schluessel text NOT NULL,
-  wert text NOT NULL DEFAULT ''::text,
-  aktualisiert timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT laufzustand_pkey PRIMARY KEY (schluessel)
+CREATE TABLE job_exclusive_locks (
+  type text NOT NULL,
+  CONSTRAINT auftrag_exklusiv_pkey PRIMARY KEY (type)
 );
+
+CREATE TABLE job_pauses (
+  type text NOT NULL,
+  until_at timestamp with time zone NOT NULL,
+  reason text,
+  level integer NOT NULL DEFAULT 0,
+  CONSTRAINT auftrag_pausen_art_fkey FOREIGN KEY (type) REFERENCES job_types(type),
+  CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (type)
+);
+
+CREATE TABLE job_types (
+  type text NOT NULL,
+  CONSTRAINT auftrags_arten_pkey PRIMARY KEY (type)
+);
+
+CREATE TABLE jobs (
+  id bigint NOT NULL DEFAULT nextval('auftraege_id_seq'::regclass),
+  type text NOT NULL,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  user_id integer,
+  dedupe_key text,
+  status text NOT NULL DEFAULT 'offen'::text,
+  attempts integer NOT NULL DEFAULT 0,
+  max_attempts integer NOT NULL DEFAULT 5,
+  due_at timestamp with time zone NOT NULL DEFAULT now(),
+  locked_by text,
+  error_message text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  deadline_at timestamp with time zone,
+  started_at timestamp with time zone,
+  progress jsonb,
+  result jsonb,
+  waiting boolean NOT NULL DEFAULT false,
+  CONSTRAINT auftraege_art_fkey FOREIGN KEY (type) REFERENCES job_types(type),
+  CONSTRAINT auftraege_max_versuche_check CHECK ((max_attempts > 0)),
+  CONSTRAINT auftraege_pkey PRIMARY KEY (id),
+  CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text]))),
+  CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_auftraege_art ON jobs USING btree (type, status);
+CREATE INDEX idx_auftraege_frist ON jobs USING btree (deadline_at) WHERE (status = 'laeuft'::text);
+CREATE INDEX idx_auftraege_offen_faellig ON jobs USING btree (due_at) WHERE (status = 'offen'::text);
+CREATE UNIQUE INDEX idx_auftraege_schluessel ON jobs USING btree (dedupe_key) WHERE (status = 'offen'::text);
+CREATE INDEX idx_auftraege_user ON jobs USING btree (user_id) WHERE (user_id IS NOT NULL);
+CREATE TRIGGER auftrag_exklusiv BEFORE UPDATE OF status, locked_by ON jobs FOR EACH ROW WHEN (((new.status = 'laeuft'::text) AND (new.locked_by IS DISTINCT FROM old.locked_by))) EXECUTE FUNCTION auftrag_exklusiv_belegen();
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON jobs USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
 CREATE TABLE minifig_acquisitions (
   id integer NOT NULL DEFAULT nextval('minifig_acquisitions_id_seq'::regclass),
@@ -344,7 +358,7 @@ CREATE TABLE minifig_acquisitions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
-  tag date,
+  day date,
   CONSTRAINT minifig_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT minifig_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT minifig_acquisitions_pkey PRIMARY KEY (id),
@@ -352,11 +366,23 @@ CREATE TABLE minifig_acquisitions (
   CONSTRAINT minifig_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT minifig_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON minifig_acquisitions USING btree (user_id, fig_number, COALESCE(day, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 ALTER TABLE minifig_acquisitions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY zeilenschutz ON minifig_acquisitions USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE TABLE minifig_custom (
+  user_id integer NOT NULL,
+  fig_number text NOT NULL,
+  fig_name text,
+  image_url text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number),
+  CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+ALTER TABLE minifig_custom ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON minifig_custom USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
 CREATE TABLE minifig_parts_cache (
   fig_number text NOT NULL,
@@ -373,8 +399,8 @@ CREATE TABLE minifig_price_cache (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   fetched_at timestamp with time zone DEFAULT now(),
-  geschaetzt boolean NOT NULL DEFAULT false,
-  abdeckung numeric(4,3),
+  estimated boolean NOT NULL DEFAULT false,
+  coverage numeric(4,3),
   CONSTRAINT minifig_price_cache_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
   CONSTRAINT minifig_price_cache_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT minifig_price_cache_fig_number_condition_currency_code_key UNIQUE (fig_number, condition, currency_code),
@@ -392,8 +418,8 @@ CREATE TABLE minifig_price_history (
   avg_price numeric(12,4),
   qty_avg_price numeric(12,4),
   recorded_at timestamp with time zone NOT NULL DEFAULT now(),
-  geschaetzt boolean NOT NULL DEFAULT false,
-  abdeckung numeric(4,3),
+  estimated boolean NOT NULL DEFAULT false,
+  coverage numeric(4,3),
   CONSTRAINT minifig_price_history_avg_price_nicht_negativ CHECK ((avg_price >= (0)::numeric)),
   CONSTRAINT minifig_price_history_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT minifig_price_history_pkey PRIMARY KEY (id),
@@ -436,23 +462,6 @@ CREATE TABLE minifigs_catalog (
 CREATE INDEX idx_minifigs_catalog_bild_stamm ON minifigs_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 CREATE INDEX idx_minifigs_catalog_name_trgm ON minifigs_catalog USING gin (lower(fig_name) gin_trgm_ops);
 
-CREATE TABLE papierkorb (
-  id integer NOT NULL DEFAULT nextval('papierkorb_id_seq'::regclass),
-  user_id integer NOT NULL,
-  art text NOT NULL,
-  nummer text NOT NULL,
-  farbe_id integer,
-  bezeichnung text,
-  zeilen jsonb NOT NULL,
-  geloescht_am timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT papierkorb_art_check CHECK ((art = ANY (ARRAY['set'::text, 'teil'::text, 'figur'::text]))),
-  CONSTRAINT papierkorb_pkey PRIMARY KEY (id),
-  CONSTRAINT papierkorb_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_papierkorb_konto ON papierkorb USING btree (user_id, geloescht_am DESC);
-ALTER TABLE papierkorb ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON papierkorb USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
-
 CREATE TABLE part_acquisitions (
   id integer NOT NULL DEFAULT nextval('part_acquisitions_id_seq'::regclass),
   user_id integer NOT NULL,
@@ -464,7 +473,7 @@ CREATE TABLE part_acquisitions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
-  tag date,
+  day date,
   CONSTRAINT part_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT part_acquisitions_menge_positiv CHECK ((quantity > 0)),
   CONSTRAINT part_acquisitions_pkey PRIMARY KEY (id),
@@ -472,7 +481,7 @@ CREATE TABLE part_acquisitions (
   CONSTRAINT part_acquisitions_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT part_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(day, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 ALTER TABLE part_acquisitions ENABLE ROW LEVEL SECURITY;
@@ -505,6 +514,38 @@ CREATE INDEX idx_part_color_catalog_bild_stamm ON part_color_catalog USING btree
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON part_color_catalog REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON part_color_catalog REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON part_color_catalog REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+
+CREATE TABLE part_color_custom (
+  user_id integer NOT NULL,
+  part_number text NOT NULL,
+  color_id integer NOT NULL,
+  color_name text,
+  color_hex text,
+  image_url text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teil_farbe_eigen_pkey PRIMARY KEY (user_id, part_number, color_id),
+  CONSTRAINT teil_farbe_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON part_color_custom REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON part_color_custom REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON part_color_custom REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+ALTER TABLE part_color_custom ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON part_color_custom USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE TABLE part_custom (
+  user_id integer NOT NULL,
+  part_number text NOT NULL,
+  part_name text,
+  category_name text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teil_eigen_pkey PRIMARY KEY (user_id, part_number),
+  CONSTRAINT teil_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON part_custom REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON part_custom REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON part_custom REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+ALTER TABLE part_custom ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON part_custom USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
 CREATE TABLE part_price_cache (
   id integer NOT NULL DEFAULT nextval('part_price_cache_id_seq'::regclass),
@@ -572,9 +613,9 @@ CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON parts REFERENCING OLD 
 ALTER TABLE parts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY zeilenschutz ON parts USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE TABLE parts_katalog_offen (
+CREATE TABLE parts_catalog_pending (
   id bigint NOT NULL DEFAULT nextval('parts_katalog_offen_id_seq'::regclass),
-  nummer text NOT NULL,
+  number text NOT NULL,
   CONSTRAINT parts_katalog_offen_pkey PRIMARY KEY (id)
 );
 
@@ -647,17 +688,17 @@ CREATE TABLE price_alerts (
   user_id integer NOT NULL,
   set_number text NOT NULL,
   condition text NOT NULL DEFAULT 'N'::text,
-  richtung text NOT NULL,
-  schwelle numeric(12,4) NOT NULL,
+  direction text NOT NULL,
+  threshold numeric(12,4) NOT NULL,
   currency_code text NOT NULL,
-  ausgeloest boolean NOT NULL DEFAULT false,
-  zuletzt_am timestamp with time zone,
-  zuletzt_preis numeric(12,4),
+  triggered boolean NOT NULL DEFAULT false,
+  last_triggered_at timestamp with time zone,
+  last_price numeric(12,4),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT price_alerts_currency_code_iso CHECK ((currency_code ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT price_alerts_pkey PRIMARY KEY (user_id, set_number, condition),
-  CONSTRAINT price_alerts_richtung CHECK ((richtung = ANY (ARRAY['unter'::text, 'ueber'::text]))),
-  CONSTRAINT price_alerts_schwelle CHECK ((schwelle > (0)::numeric)),
+  CONSTRAINT price_alerts_richtung CHECK ((direction = ANY (ARRAY['unter'::text, 'ueber'::text]))),
+  CONSTRAINT price_alerts_schwelle CHECK ((threshold > (0)::numeric)),
   CONSTRAINT price_alerts_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text)),
   CONSTRAINT price_alerts_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT price_alerts_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
@@ -717,18 +758,18 @@ CREATE TABLE qr_login_tokens (
   used_at timestamp with time zone,
   token_days integer,
   id bigint NOT NULL,
-  abholung text,
+  pickup_code text,
   code_hash text,
-  geraet text,
-  ip_bereich text,
-  fehlversuche integer NOT NULL DEFAULT 0,
-  bestaetigt_am timestamp with time zone,
-  abgelehnt_am timestamp with time zone,
-  abgeholt_am timestamp with time zone,
+  device text,
+  ip_range text,
+  failed_attempts integer NOT NULL DEFAULT 0,
+  confirmed_at timestamp with time zone,
+  rejected_at timestamp with time zone,
+  picked_up_at timestamp with time zone,
   CONSTRAINT qr_login_tokens_pkey PRIMARY KEY (token),
   CONSTRAINT qr_login_tokens_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX idx_qr_login_abholung ON qr_login_tokens USING btree (abholung) WHERE (abholung IS NOT NULL);
+CREATE UNIQUE INDEX idx_qr_login_abholung ON qr_login_tokens USING btree (pickup_code) WHERE (pickup_code IS NOT NULL);
 CREATE INDEX idx_qr_login_expires ON qr_login_tokens USING btree (expires_at);
 CREATE UNIQUE INDEX idx_qr_login_id ON qr_login_tokens USING btree (id);
 CREATE INDEX idx_qr_login_user ON qr_login_tokens USING btree (user_id);
@@ -740,8 +781,8 @@ CREATE TABLE rate_limit_attempts (
   count integer NOT NULL DEFAULT 1,
   first_at timestamp with time zone NOT NULL DEFAULT now(),
   last_at timestamp with time zone,
-  laufend integer NOT NULL DEFAULT 0,
-  laufend_seit timestamp with time zone,
+  ongoing integer NOT NULL DEFAULT 0,
+  ongoing_since timestamp with time zone,
   CONSTRAINT rate_limit_attempts_pkey PRIMARY KEY (key)
 );
 CREATE INDEX idx_rate_limit_first_at ON rate_limit_attempts USING btree (first_at);
@@ -807,8 +848,8 @@ CREATE TABLE rb_sets (
   theme_id integer,
   num_parts integer,
   set_img_url text,
-  herkunft text NOT NULL DEFAULT 'csv'::text,
-  CONSTRAINT rb_sets_herkunft CHECK ((herkunft = ANY (ARRAY['csv'::text, 'api'::text]))),
+  source text NOT NULL DEFAULT 'csv'::text,
+  CONSTRAINT rb_sets_herkunft CHECK ((source = ANY (ARRAY['csv'::text, 'api'::text]))),
   CONSTRAINT rb_sets_pkey PRIMARY KEY (set_num)
 );
 CREATE INDEX idx_rb_sets_name_trgm ON rb_sets USING gin (name gin_trgm_ops);
@@ -823,6 +864,13 @@ CREATE TABLE rb_themes (
   CONSTRAINT rb_themes_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE run_state (
+  key text NOT NULL,
+  value text NOT NULL DEFAULT ''::text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT laufzustand_pkey PRIMARY KEY (key)
+);
+
 CREATE TABLE schema_migrations (
   name text NOT NULL,
   applied_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -830,33 +878,30 @@ CREATE TABLE schema_migrations (
   CONSTRAINT schema_migrations_pkey PRIMARY KEY (name)
 );
 
-CREATE TABLE schritt_challenges (
-  challenge text NOT NULL,
+CREATE TABLE second_factor (
   user_id integer NOT NULL,
-  familie timestamp with time zone NOT NULL,
-  aktion text NOT NULL,
-  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
-  ablauf timestamp with time zone NOT NULL,
-  CONSTRAINT schritt_challenges_aktion_check CHECK ((aktion = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
-  CONSTRAINT schritt_challenges_pkey PRIMARY KEY (challenge),
-  CONSTRAINT schritt_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  secret text NOT NULL,
+  active boolean NOT NULL DEFAULT false,
+  last_step bigint NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT zweiter_faktor_pkey PRIMARY KEY (user_id),
+  CONSTRAINT zweiter_faktor_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE INDEX idx_schritt_challenges_familie ON schritt_challenges USING btree (user_id, familie);
-ALTER TABLE schritt_challenges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON schritt_challenges USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+ALTER TABLE second_factor ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON second_factor USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
-CREATE TABLE schritt_freigaben (
+CREATE TABLE second_factor_codes (
+  id integer NOT NULL DEFAULT nextval('zweiter_faktor_codes_id_seq'::regclass),
   user_id integer NOT NULL,
-  familie timestamp with time zone NOT NULL,
-  aktion text NOT NULL,
-  bis timestamp with time zone NOT NULL,
-  hoechstens timestamp with time zone NOT NULL,
-  CONSTRAINT schritt_freigaben_aktion_check CHECK ((aktion = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
-  CONSTRAINT schritt_freigaben_pkey PRIMARY KEY (user_id, familie, aktion),
-  CONSTRAINT schritt_freigaben_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  code_hash text NOT NULL,
+  consumed_at timestamp with time zone,
+  old_valid_until timestamp with time zone,
+  CONSTRAINT zweiter_faktor_codes_pkey PRIMARY KEY (id),
+  CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-ALTER TABLE schritt_freigaben ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON schritt_freigaben USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+CREATE INDEX idx_zweiter_faktor_codes_konto ON second_factor_codes USING btree (user_id);
+ALTER TABLE second_factor_codes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON second_factor_codes USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE set_acquisitions (
   id integer NOT NULL DEFAULT nextval('set_acquisitions_id_seq'::regclass),
@@ -868,7 +913,7 @@ CREATE TABLE set_acquisitions (
   condition text NOT NULL DEFAULT 'N'::text,
   currency text NOT NULL,
   price_estimated boolean NOT NULL DEFAULT false,
-  tag date,
+  day date,
   CONSTRAINT set_acquisitions_bestand_fkey FOREIGN KEY (user_id, set_number) REFERENCES sets(user_id, set_number) DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT set_acquisitions_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
   CONSTRAINT set_acquisitions_menge_positiv CHECK ((quantity > 0)),
@@ -878,7 +923,7 @@ CREATE TABLE set_acquisitions (
   CONSTRAINT set_acquisitions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT set_acquisitions_zustand CHECK ((condition = ANY (ARRAY['N'::text, 'U'::text])))
 );
-CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON set_acquisitions USING btree (user_id, set_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
+CREATE UNIQUE INDEX idx_set_acq_erfassungstag ON set_acquisitions USING btree (user_id, set_number, COALESCE(day, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(purchase_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER set_acquisitions_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
 CREATE TRIGGER set_acquisitions_tag BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
@@ -902,7 +947,7 @@ CREATE TABLE set_catalog (
 CREATE INDEX idx_set_catalog_bild_stamm ON set_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
 CREATE TRIGGER set_catalog_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_catalog FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
 
-CREATE TABLE set_figuren (
+CREATE TABLE set_minifigs (
   set_number text NOT NULL,
   fig_number text NOT NULL,
   quantity integer NOT NULL DEFAULT 1,
@@ -911,10 +956,10 @@ CREATE TABLE set_figuren (
   CONSTRAINT set_figuren_pkey PRIMARY KEY (set_number, fig_number),
   CONSTRAINT set_figuren_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
-CREATE INDEX idx_set_figuren_fig ON set_figuren USING btree (fig_number);
-CREATE TRIGGER set_figuren_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_figuren FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+CREATE INDEX idx_set_figuren_fig ON set_minifigs USING btree (fig_number);
+CREATE TRIGGER set_figuren_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_minifigs FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
 
-CREATE TABLE set_teile (
+CREATE TABLE set_parts (
   set_number text NOT NULL,
   part_number text NOT NULL,
   color_id integer NOT NULL,
@@ -924,10 +969,10 @@ CREATE TABLE set_teile (
   CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id),
   CONSTRAINT set_teile_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
-CREATE TRIGGER set_teile_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_teile FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
-CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON set_teile REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
-CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON set_teile REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
-CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON set_teile REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+CREATE TRIGGER set_teile_setnummer BEFORE INSERT OR UPDATE OF set_number ON set_parts FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON set_parts REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON set_parts REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON set_parts REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
 CREATE TABLE sets (
   id integer NOT NULL DEFAULT nextval('sets_id_seq'::regclass),
@@ -963,6 +1008,34 @@ CREATE TABLE shared_instructions (
   CONSTRAINT shared_instructions_set_number_url_key UNIQUE (set_number, url)
 );
 
+CREATE TABLE step_up_approvals (
+  user_id integer NOT NULL,
+  token_family timestamp with time zone NOT NULL,
+  action text NOT NULL,
+  until_at timestamp with time zone NOT NULL,
+  max_until timestamp with time zone NOT NULL,
+  CONSTRAINT schritt_freigaben_aktion_check CHECK ((action = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT schritt_freigaben_pkey PRIMARY KEY (user_id, token_family, action),
+  CONSTRAINT schritt_freigaben_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+ALTER TABLE step_up_approvals ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON step_up_approvals USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+
+CREATE TABLE step_up_challenges (
+  challenge text NOT NULL,
+  user_id integer NOT NULL,
+  token_family timestamp with time zone NOT NULL,
+  action text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone NOT NULL,
+  CONSTRAINT schritt_challenges_aktion_check CHECK ((action = ANY (ARRAY['gutschein'::text, 'verwaltung'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT schritt_challenges_pkey PRIMARY KEY (challenge),
+  CONSTRAINT schritt_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_schritt_challenges_familie ON step_up_challenges USING btree (user_id, token_family);
+ALTER TABLE step_up_challenges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON step_up_challenges USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
+
 CREATE TABLE storage_locations (
   id integer NOT NULL DEFAULT nextval('storage_locations_id_seq'::regclass),
   user_id integer NOT NULL,
@@ -984,37 +1057,22 @@ CREATE TABLE subsets_cache (
   CONSTRAINT subsets_cache_pkey PRIMARY KEY (set_number)
 );
 
-CREATE TABLE teil_eigen (
+CREATE TABLE trash (
+  id integer NOT NULL DEFAULT nextval('papierkorb_id_seq'::regclass),
   user_id integer NOT NULL,
-  part_number text NOT NULL,
-  part_name text,
-  category_name text,
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT teil_eigen_pkey PRIMARY KEY (user_id, part_number),
-  CONSTRAINT teil_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  type text NOT NULL,
+  number text NOT NULL,
+  color_id integer,
+  label text,
+  rows jsonb NOT NULL,
+  deleted_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT papierkorb_art_check CHECK ((type = ANY (ARRAY['set'::text, 'teil'::text, 'figur'::text]))),
+  CONSTRAINT papierkorb_pkey PRIMARY KEY (id),
+  CONSTRAINT papierkorb_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
-CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
-CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
-ALTER TABLE teil_eigen ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON teil_eigen USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
-
-CREATE TABLE teil_farbe_eigen (
-  user_id integer NOT NULL,
-  part_number text NOT NULL,
-  color_id integer NOT NULL,
-  color_name text,
-  color_hex text,
-  image_url text,
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT teil_farbe_eigen_pkey PRIMARY KEY (user_id, part_number, color_id),
-  CONSTRAINT teil_farbe_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
-CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_farbe_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
-CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
-ALTER TABLE teil_farbe_eigen ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON teil_farbe_eigen USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE INDEX idx_papierkorb_konto ON trash USING btree (user_id, deleted_at DESC);
+ALTER TABLE trash ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON trash USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
 CREATE TABLE user_sessions (
   sid character varying NOT NULL,
@@ -1051,11 +1109,11 @@ CREATE TABLE users (
   reset_token_expires timestamp with time zone,
   must_change_password boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
-  sitzungs_version integer NOT NULL DEFAULT 0,
-  registrierung_offen boolean NOT NULL DEFAULT false,
-  email_neu text,
-  email_neu_token text,
-  email_neu_bis timestamp with time zone,
+  session_version integer NOT NULL DEFAULT 0,
+  registration_pending boolean NOT NULL DEFAULT false,
+  new_email text,
+  new_email_token text,
+  new_email_until timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );
@@ -1069,37 +1127,13 @@ CREATE POLICY zeilenschutz ON users FOR SELECT USING (((id = ( SELECT zeilenschu
    FROM household_former_links f
   WHERE ((f.main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)) AND ((users.id = f.sub_user_id) OR (users.id = f.via_user_id)))))));
 
-CREATE TABLE verwalter_uebernahmen (
-  ziel_id integer NOT NULL,
-  art text NOT NULL,
-  durch_id integer NOT NULL,
-  passwort_hash text,
-  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
-  wirksam_ab timestamp with time zone NOT NULL,
-  abbruch_hash text,
-  CONSTRAINT verwalter_uebernahmen_art_check CHECK ((art = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text, 'deaktivieren'::text, 'rolle_entziehen'::text, 'loeschen'::text]))),
-  CONSTRAINT verwalter_uebernahmen_check CHECK (((art = 'passwort'::text) = (passwort_hash IS NOT NULL))),
-  CONSTRAINT verwalter_uebernahmen_durch_id_fkey FOREIGN KEY (durch_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT verwalter_uebernahmen_pkey PRIMARY KEY (ziel_id, art),
-  CONSTRAINT verwalter_uebernahmen_ziel_id_fkey FOREIGN KEY (ziel_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE voucher_balance_throttle (
+  id smallint NOT NULL DEFAULT 1,
+  last_checked_at timestamp with time zone,
+  locked_until timestamp with time zone,
+  CONSTRAINT gutschein_guthaben_schranke_id_check CHECK ((id = 1)),
+  CONSTRAINT gutschein_guthaben_schranke_pkey PRIMARY KEY (id)
 );
-CREATE UNIQUE INDEX idx_verwalter_uebernahmen_abbruch ON verwalter_uebernahmen USING btree (abbruch_hash);
-CREATE INDEX idx_verwalter_uebernahmen_durch ON verwalter_uebernahmen USING btree (durch_id);
-ALTER TABLE verwalter_uebernahmen ENABLE ROW LEVEL SECURITY;
-
-CREATE TABLE verwaltungsprotokoll (
-  id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),
-  zeit timestamp with time zone NOT NULL DEFAULT now(),
-  verwalter_id integer,
-  ziel_id integer,
-  ziel_name text,
-  aktion text NOT NULL,
-  einzelheiten text,
-  CONSTRAINT verwaltungsprotokoll_pkey PRIMARY KEY (id),
-  CONSTRAINT verwaltungsprotokoll_verwalter_id_fkey FOREIGN KEY (verwalter_id) REFERENCES users(id) ON DELETE SET NULL
-);
-CREATE INDEX idx_verwaltungsprotokoll_verwalter ON verwaltungsprotokoll USING btree (verwalter_id);
-CREATE INDEX idx_verwaltungsprotokoll_zeit ON verwaltungsprotokoll USING btree (zeit DESC);
 
 CREATE TABLE vouchers (
   id integer NOT NULL DEFAULT nextval('vouchers_id_seq'::regclass),
@@ -1111,14 +1145,14 @@ CREATE TABLE vouchers (
   pdf_path text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  guthaben_geprueft_am timestamp with time zone,
-  nummer_suche text,
+  balance_checked_at timestamp with time zone,
+  number_search text,
   CONSTRAINT vouchers_amount_nicht_negativ CHECK ((amount >= (0)::numeric)),
   CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
-  CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v2:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID,
+  CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v2:%'::text) AND (number_search IS NOT NULL))) NOT VALID,
   CONSTRAINT vouchers_pkey PRIMARY KEY (id),
   CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, nummer_suche)
+  CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, number_search)
 );
 CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
@@ -1144,61 +1178,27 @@ CREATE POLICY zeilenschutz ON wanted USING ((user_id = ANY (( SELECT zeilenschut
 CREATE TABLE webauthn_challenges (
   challenge text NOT NULL,
   user_id integer,
-  zweck text NOT NULL,
+  purpose text NOT NULL,
   expires_at timestamp with time zone NOT NULL,
   CONSTRAINT webauthn_challenges_pkey PRIMARY KEY (challenge),
   CONSTRAINT webauthn_challenges_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT webauthn_challenges_zweck_check CHECK ((zweck = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text])))
+  CONSTRAINT webauthn_challenges_zweck_check CHECK ((purpose = ANY (ARRAY['registrieren'::text, 'anmelden'::text, 'zweiter_faktor'::text])))
 );
 CREATE INDEX idx_webauthn_challenges_frist ON webauthn_challenges USING btree (expires_at);
 CREATE INDEX idx_webauthn_challenges_konto ON webauthn_challenges USING btree (user_id);
 ALTER TABLE webauthn_challenges ENABLE ROW LEVEL SECURITY;
 CREATE POLICY zeilenschutz ON webauthn_challenges USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
-CREATE TABLE wechselkurse (
-  tag date NOT NULL,
-  waehrung character(3) NOT NULL,
-  je_eur numeric NOT NULL,
-  CONSTRAINT wechselkurse_je_eur_check CHECK ((je_eur > (0)::numeric)),
-  CONSTRAINT wechselkurse_pkey PRIMARY KEY (waehrung, tag),
-  CONSTRAINT wechselkurse_waehrung_check CHECK (((waehrung ~ '^[A-Z]{3}$'::text) AND (waehrung <> 'EUR'::bpchar)))
-);
-
-CREATE TABLE zweiter_faktor (
-  user_id integer NOT NULL,
-  geheimnis text NOT NULL,
-  aktiv boolean NOT NULL DEFAULT false,
-  letzter_schritt bigint NOT NULL DEFAULT 0,
-  eingerichtet_am timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT zweiter_faktor_pkey PRIMARY KEY (user_id),
-  CONSTRAINT zweiter_faktor_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-ALTER TABLE zweiter_faktor ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON zweiter_faktor USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
-
-CREATE TABLE zweiter_faktor_codes (
-  id integer NOT NULL DEFAULT nextval('zweiter_faktor_codes_id_seq'::regclass),
-  user_id integer NOT NULL,
-  code_hash text NOT NULL,
-  verbraucht_am timestamp with time zone,
-  alt_gilt_bis timestamp with time zone,
-  CONSTRAINT zweiter_faktor_codes_pkey PRIMARY KEY (id),
-  CONSTRAINT zweiter_faktor_codes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-CREATE INDEX idx_zweiter_faktor_codes_konto ON zweiter_faktor_codes USING btree (user_id);
-ALTER TABLE zweiter_faktor_codes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON zweiter_faktor_codes USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
-
 CREATE OR REPLACE FUNCTION auftrag_exklusiv_belegen()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = NEW.art) THEN RETURN NEW; END IF;
-  -- Belegt gerade ein anderer: diese Zeile nicht, ohne zu warten.
-  IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.art)) THEN RETURN NULL; END IF;
-  IF EXISTS (SELECT 1 FROM auftraege l
-              WHERE l.art = NEW.art AND l.status = 'laeuft' AND l.frist_bis >= NOW() AND l.id <> NEW.id) THEN
+  IF NOT EXISTS (SELECT 1 FROM job_exclusive_locks e WHERE e.type = NEW.type) THEN RETURN NEW; END IF;
+  -- Another row is holding this type right now: don't wait, just skip it.
+  IF NOT pg_try_advisory_xact_lock(59, hashtext(NEW.type)) THEN RETURN NULL; END IF;
+  IF EXISTS (SELECT 1 FROM jobs l
+              WHERE l.type = NEW.type AND l.status = 'laeuft' AND l.deadline_at >= NOW() AND l.id <> NEW.id) THEN
     RETURN NULL;
   END IF;
   RETURN NEW;
@@ -1279,10 +1279,10 @@ CREATE OR REPLACE FUNCTION erfassung_tag()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF (TG_OP = 'INSERT' AND NEW.tag IS NULL)
+  IF (TG_OP = 'INSERT' AND NEW.day IS NULL)
      OR (TG_OP = 'UPDATE' AND NEW.created_at IS DISTINCT FROM OLD.created_at
-         AND NEW.tag IS NOT DISTINCT FROM OLD.tag) THEN
-    NEW.tag := (NEW.created_at AT TIME ZONE
+         AND NEW.day IS NOT DISTINCT FROM OLD.day) THEN
+    NEW.day := (NEW.created_at AT TIME ZONE
                 COALESCE((SELECT NULLIF(value, '') FROM global_settings WHERE key = 'erfassung_zeitzone'), 'UTC'))::date;
   END IF;
   RETURN NEW;
@@ -1367,9 +1367,9 @@ CREATE OR REPLACE FUNCTION kurs_je_eur(w text, t date)
  STABLE
 AS $function$
   SELECT CASE WHEN upper(w) = 'EUR' THEN 1::numeric
-              ELSE (SELECT k.je_eur FROM wechselkurse k
-                     WHERE k.waehrung = upper(w) AND k.tag <= t
-                     ORDER BY k.tag DESC LIMIT 1) END
+              ELSE (SELECT k.per_eur FROM exchange_rates k
+                     WHERE k.currency = upper(w) AND k.day <= t
+                     ORDER BY k.day DESC LIMIT 1) END
 $function$;
 
 CREATE OR REPLACE FUNCTION merke_teilekatalog_alt()
@@ -1377,12 +1377,12 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_alt()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
-    INSERT INTO parts_katalog_offen (nummer)
+  IF TG_TABLE_NAME IN ('bl_mapping', 'bl_mapping_custom') THEN
+    INSERT INTO parts_catalog_pending (number)
     SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
-     WHERE alt.art = 'part' AND x IS NOT NULL;
+     WHERE alt.type = 'part' AND x IS NOT NULL;
   ELSE
-    INSERT INTO parts_katalog_offen (nummer) SELECT DISTINCT part_number FROM alt;
+    INSERT INTO parts_catalog_pending (number) SELECT DISTINCT part_number FROM alt;
   END IF;
   RETURN NULL;
 END $function$;
@@ -1392,13 +1392,13 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_beide()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
-    INSERT INTO parts_katalog_offen (nummer)
-    SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
+  IF TG_TABLE_NAME IN ('bl_mapping', 'bl_mapping_custom') THEN
+    INSERT INTO parts_catalog_pending (number)
+    SELECT DISTINCT x FROM (SELECT type, rb_id, bl_id FROM alt UNION ALL SELECT type, rb_id, bl_id FROM neu) z,
            LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
-     WHERE z.art = 'part' AND x IS NOT NULL;
+     WHERE z.type = 'part' AND x IS NOT NULL;
   ELSE
-    INSERT INTO parts_katalog_offen (nummer)
+    INSERT INTO parts_catalog_pending (number)
     SELECT DISTINCT part_number FROM (SELECT part_number FROM alt UNION ALL SELECT part_number FROM neu) z;
   END IF;
   RETURN NULL;
@@ -1409,12 +1409,12 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_neu()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
-    INSERT INTO parts_katalog_offen (nummer)
+  IF TG_TABLE_NAME IN ('bl_mapping', 'bl_mapping_custom') THEN
+    INSERT INTO parts_catalog_pending (number)
     SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
-     WHERE neu.art = 'part' AND x IS NOT NULL;
+     WHERE neu.type = 'part' AND x IS NOT NULL;
   ELSE
-    INSERT INTO parts_katalog_offen (nummer) SELECT DISTINCT part_number FROM neu;
+    INSERT INTO parts_catalog_pending (number) SELECT DISTINCT part_number FROM neu;
   END IF;
   RETURN NULL;
 END $function$;
@@ -1453,10 +1453,10 @@ DECLARE
   alt integer;
   namen integer;
 BEGIN
-  DELETE FROM verwaltungsprotokoll WHERE zeit < now() - interval '365 days';
+  DELETE FROM admin_log WHERE occurred_at < now() - interval '365 days';
   GET DIAGNOSTICS alt = ROW_COUNT;
-  UPDATE verwaltungsprotokoll p SET ziel_name = NULL
-   WHERE ziel_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = p.ziel_id);
+  UPDATE admin_log p SET target_name = NULL
+   WHERE target_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = p.target_id);
   GET DIAGNOSTICS namen = ROW_COUNT;
   RETURN alt + namen;
 END $function$;

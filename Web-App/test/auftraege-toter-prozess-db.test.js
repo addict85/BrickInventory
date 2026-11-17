@@ -36,7 +36,7 @@ test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   const laufend = async belegtVon =>
     (
       await db.get(
-        `INSERT INTO auftraege (art, nutzlast, status, belegt_von, frist_bis, gestartet, versuche)
+        `INSERT INTO jobs (type, payload, status, locked_by, deadline_at, started_at, attempts)
      VALUES ('aufraeumen', '{}', 'laeuft', $1, NOW() + interval '5 minutes', NOW(), 1) RETURNING id`,
         [belegtVon],
       )
@@ -44,7 +44,7 @@ test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   const tot = await laufend('toter-prozess/1');
   const anderer = await laufend('lebender-prozess/2');
   const eigener = await laufend(`${prozess.PROZESS}/3`);
-  const status = async id => (await db.get('SELECT status FROM auftraege WHERE id = $1', [id])).status;
+  const status = async id => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
 
   // Was startup/jobsProzess.ts vor dem Worker aufruft; den ganzen Job-Betrieb
   // hochzufahren startete echte Aufträge, die Verbindungen halten.

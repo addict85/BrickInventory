@@ -14,40 +14,40 @@ export type Richtung = 'unter' | 'ueber';
 export interface Preisalarm {
   set_number: string;
   condition: string;
-  richtung: Richtung;
-  schwelle: number;
+  direction: Richtung;
+  threshold: number;
   currency_code: string;
-  ausgeloest: boolean;
-  zuletzt_am: string | null;
-  zuletzt_preis: number | null;
+  triggered: boolean;
+  last_triggered_at: string | null;
+  last_price: number | null;
   /** Daran hängt die Detailansicht. */
   besitzt: boolean;
 }
 
 const ZUSTAENDE = new Set(['N', 'U']);
 
-/** Die Zeile wie gelesen (db/zeilen.ts); `richtung` hält ein CHECK auf zwei Werte, der Zeitpunkt
+/** Die Zeile wie gelesen (db/zeilen.ts); `direction` hält ein CHECK auf zwei Werte, der Zeitpunkt
  * geht als ISO-Text hinaus wie in JSON. */
-function alsAlarm<Z extends repo.AlarmZeile>(z: Z): Omit<Z, 'richtung' | 'zuletzt_am'> & Preisalarm {
-  return { ...z, richtung: z.richtung as Richtung, zuletzt_am: z.zuletzt_am?.toISOString() ?? null };
+function alsAlarm<Z extends repo.AlarmZeile>(z: Z): Omit<Z, 'direction' | 'last_triggered_at'> & Preisalarm {
+  return { ...z, direction: z.direction as Richtung, last_triggered_at: z.last_triggered_at?.toISOString() ?? null };
 }
 
 export interface AlarmEingabe {
-  richtung: string;
-  schwelle: number | string | null | undefined;
+  direction: string;
+  threshold: number | string | null | undefined;
   condition?: string | undefined;
 }
 
-function pruefeEingabe(richtung: string, schwelle: AlarmEingabe['schwelle'], condition: string | undefined) {
-  const r = String(richtung ?? '');
+function pruefeEingabe(direction: string, threshold: AlarmEingabe['threshold'], condition: string | undefined) {
+  const r = String(direction ?? '');
   if (r !== 'unter' && r !== 'ueber') fachfehler('ungueltig', 'alarm_richtung_ungueltig');
-  const s = Number(schwelle);
+  const s = Number(threshold);
   // Number.isFinite fängt auch NaN aus einer leeren Eingabe; `> 0` allein
   // meldete zwei verschiedene Fehler gleich.
   if (!Number.isFinite(s) || s <= 0) fachfehler('ungueltig', 'alarm_schwelle_ungueltig');
   const c = (condition ?? 'N').toUpperCase();
   if (!ZUSTAENDE.has(c)) fachfehler('ungueltig', 'alarm_zustand_ungueltig');
-  return { richtung: r as Richtung, schwelle: s, condition: c };
+  return { direction: r as Richtung, threshold: s, condition: c };
 }
 
 /** Höchstens EIN Alarm je Set und Zustand (Primärschlüssel). */
@@ -58,8 +58,8 @@ export async function setzeAlarm(
   waehrung: string,
   eingabe: AlarmEingabe,
 ): Promise<Preisalarm> {
-  const { richtung, schwelle, condition } = pruefeEingabe(eingabe.richtung, eingabe.schwelle, eingabe.condition);
-  await repo.schreibeAlarm(k.db, userId, setNumber, condition, richtung, schwelle, waehrung);
+  const { direction, threshold, condition } = pruefeEingabe(eingabe.direction, eingabe.threshold, eingabe.condition);
+  await repo.schreibeAlarm(k.db, userId, setNumber, condition, direction, threshold, waehrung);
   const alarme = await alarmeFuer(k, userId, setNumber);
   return alarme.find(a => a.condition === condition)!;
 }
@@ -153,22 +153,22 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
     if (preis == null || !(preis > 0)) continue;
 
-    const jetzt = reisst(a.richtung as Richtung, preis, a.schwelle);
+    const jetzt = reisst(a.direction as Richtung, preis, a.threshold);
 
     if (!jetzt) {
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
-      if (a.ausgeloest) {
+      if (a.triggered) {
         await repo
           .setzeAlarmZurueck(k.db, a.user_id, a.set_number, a.condition)
           .catch(e => meldeFehler('preisalarm:merker-loeschen', e));
       }
       continue;
     }
-    if (a.ausgeloest) continue; // schon gemeldet, nichts Neues
+    if (a.triggered) continue; // schon gemeldet, nichts Neues
 
     if (a.email) {
       try {
-        await verschicke(k, post, a, preis, a.schwelle);
+        await verschicke(k, post, a, preis, a.threshold);
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
@@ -197,7 +197,7 @@ async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AktiverAlarm, 
     setNumber: a.set_number,
     setName: name?.name ?? null,
     condition: a.condition,
-    richtung: a.richtung as Richtung,
+    richtung: a.direction as Richtung,
     schwelle,
     preis,
     waehrung: a.currency_code,
@@ -210,9 +210,9 @@ export async function preisalarmeAlsCsv(k: FinanzenKontext, uid: number): Promis
   const rows = await repo.alarmeFuerExport(k.db, uid);
 
   return toCsv(
-    ['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
+    ['set_number', 'condition', 'direction', 'threshold', 'currency_code'],
     // Number(): sonst stünde „200.0000" im Export.
-    rows.map(r => ({ ...r, schwelle: Number(r.schwelle) })),
+    rows.map(r => ({ ...r, threshold: Number(r.threshold) })),
   );
 }
 
@@ -237,10 +237,11 @@ export async function alarmeAusCsv(k: FinanzenKontext, uid: number, waehrung: st
     const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
     try {
       const alarm = await setzeAlarm(k, uid, sn, waehrung, {
-        richtung: String(row.richtung || row.Richtung || '')
+        // Both the new English header and an older export's German one are accepted on import.
+        direction: String(row.direction || row.richtung || row.Richtung || '')
           .trim()
           .toLowerCase(),
-        schwelle: String(row.schwelle || row.Schwelle || '')
+        threshold: String(row.threshold || row.schwelle || row.Schwelle || '')
           .trim()
           .replace(',', '.'),
         condition: String(row.condition || row.zustand || row.Zustand || 'N')

@@ -104,7 +104,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     ).map(r => r.table_name);
     assert.ok(tabellen.includes('set_acquisitions'), `Tabellen mit user_id fehlen: ${tabellen.join(', ')}`);
     assert.ok(!tabellen.includes('set_catalog'), 'Der Katalog gehört nicht in die Sicherung');
-    for (const n of ['account_links', 'account_link_invites', 'household_former_links', 'verwaltungsprotokoll'])
+    for (const n of ['account_links', 'account_link_invites', 'household_former_links', 'admin_log'])
       assert.ok(tabellen.includes(n), `${n} fehlt in der Sicherung`);
     assert.ok(
       await db.get(`SELECT 1 FROM ${neu[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [haupt, kind]),

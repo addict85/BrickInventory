@@ -59,7 +59,7 @@ const dbDa = async t => {
   }
 };
 
-test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung', { concurrency: 1 }, async t => {
+test('nach der ganzen Kette stehen die Nummern nur in bl_mapping', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -90,36 +90,36 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung', { concurren
   );
   assert.ok(
     !(await tabelleDa('rb_bl_mapping')),
-    'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_zuordnung',
+    'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_mapping',
   );
 
   // ── Und die Zuordnung steht ──────────────────────────────────────────────
-  const z = await spaltenVon('bl_zuordnung');
+  const z = await spaltenVon('bl_mapping');
   assert.deepEqual(
     z,
-    ['art', 'bl_id', 'fetched_at', 'rb_id'],
-    `bl_zuordnung hat nicht die vorgesehenen Spalten: ${z.join(', ')}`,
+    ['type', 'bl_id', 'fetched_at', 'rb_id'],
+    `bl_mapping hat nicht die vorgesehenen Spalten: ${z.join(', ')}`,
   );
 
   // Die Art ist eingeschränkt — ein Tippfehler soll nicht als vierte Art
   // durchgehen und dort still unsichtbare Zeilen anlegen.
   await assert.rejects(
-    () => db.run(`INSERT INTO bl_zuordnung (art, rb_id) VALUES ('teil','x')`),
+    () => db.run(`INSERT INTO bl_mapping (type, rb_id) VALUES ('teil','x')`),
     /bl_zuordnung_art|check constraint/,
     'Eine erfundene Art wird angenommen — dann liegen Zeilen da, die keine ' + 'Leseabfrage je findet',
   );
-  for (const art of ['part', 'fig', 'set']) {
-    await db.run(`INSERT INTO bl_zuordnung (art, rb_id) VALUES ($1,'x') ` + `ON CONFLICT DO NOTHING`, [art]);
+  for (const type of ['part', 'fig', 'set']) {
+    await db.run(`INSERT INTO bl_mapping (type, rb_id) VALUES ($1,'x') ` + `ON CONFLICT DO NOTHING`, [type]);
   }
   assert.equal(
-    (await db.get(`SELECT COUNT(*)::int AS c FROM bl_zuordnung WHERE rb_id='x'`)).c,
+    (await db.get(`SELECT COUNT(*)::int AS c FROM bl_mapping WHERE rb_id='x'`)).c,
     3,
     'Nicht alle drei Arten sind erlaubt — Marcos Vorgabe nennt Minifiguren, ' + 'Parts UND Sets',
   );
-  await db.run(`DELETE FROM bl_zuordnung WHERE rb_id='x'`);
+  await db.run(`DELETE FROM bl_mapping WHERE rb_id='x'`);
 
   // Der Index fuer die Eindeutigkeitspruefung des Riegels.
-  const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_zuordnung'`)).map(r => r.indexname);
+  const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_mapping'`)).map(r => r.indexname);
   assert.ok(idx.includes('idx_bl_zuordnung_bl'), `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
 });
 
@@ -151,7 +151,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   // Migration 0038 nur noch dort.
   await haeltTeil(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.0 });
   await haeltFigur(db, uid, 'fig-9', { menge: 2, preis: 5.0 });
-  await db.run(`INSERT INTO bl_zuordnung (art,rb_id,bl_id) VALUES
+  await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
   const H = _req('src/teile/abfragen.js');
@@ -163,7 +163,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   assert.equal(
     teil.bl_part_number,
     '3070',
-    `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` + 'Nummer nicht aus bl_zuordnung',
+    `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` + 'Nummer nicht aus bl_mapping',
   );
 
   const figs = await M.manuelleFigurenAbfrage([uid], uid);
@@ -176,8 +176,8 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   // Der Kern dieses Tests. Ohne ihn könnten die Werte oben zufällig stimmen —
   // etwa aus einer anderen Quelle, die gerade dasselbe sagt. Erst wenn die
   // Antwort einer Änderung FOLGT, ist bewiesen, woher sie kommt.
-  await db.run(`UPDATE bl_zuordnung SET bl_id='3070neu' WHERE art='part' AND rb_id='3070b'`);
-  await db.run(`UPDATE bl_zuordnung SET bl_id='sw0000'  WHERE art='fig'  AND rb_id='fig-9'`);
+  await db.run(`UPDATE bl_mapping SET bl_id='3070neu' WHERE type='part' AND rb_id='3070b'`);
+  await db.run(`UPDATE bl_mapping SET bl_id='sw0000'  WHERE type='fig'  AND rb_id='fig-9'`);
 
   const teile2 = await H.manuelleTeileListe([uid], uid);
   const teil2 = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3070b');
@@ -201,7 +201,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   // dort genauso" — und nicht „leer": Als Gruppierungsschlüssel fiele ein
   // NULL-Wert in seine eigene Gruppe, und jedes Teil ohne Zuordnung stünde
   // einzeln in der Liste.
-  await db.run(`DELETE FROM bl_zuordnung WHERE art='part' AND rb_id='3070b'`);
+  await db.run(`DELETE FROM bl_mapping WHERE type='part' AND rb_id='3070b'`);
   const teile3 = await H.manuelleTeileListe([uid], uid);
   const teil3 = (Array.isArray(teile3) ? teile3 : teile3.parts || []).find(p => p.part_number === '3070b');
   assert.equal(
@@ -270,7 +270,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
     'Diese Stellen schreiben eine BrickLink-Nummer an eine Bestandszeile oder ' +
       'benutzen die alte Tabelle:\n  ' +
       stellen.join('\n  ') +
-      '\nSie steht seit Migration 0037 in bl_zuordnung, einmal je Gegenstand.',
+      '\nSie steht seit Migration 0037 in bl_mapping, einmal je Gegenstand.',
   );
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
@@ -294,7 +294,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   }
   // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
   for (const zeile of [
-    'INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2))',
+    'INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2))',
     'INSERT INTO parts_summary (user_id, part_key, bl_part_number) SELECT 1,2,3',
     'UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2',
   ]) {

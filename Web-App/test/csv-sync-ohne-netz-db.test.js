@@ -58,8 +58,8 @@ testQuellen(null, {
 test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const vorher =
-    (await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='rb_csv_last_sync'`))?.value ?? null;
-  await db.run(`DELETE FROM laufzustand WHERE schluessel IN ('rb_csv_last_sync','startup_status')`);
+    (await db.get(`SELECT wert AS value FROM run_state WHERE schluessel='rb_csv_last_sync'`))?.value ?? null;
+  await db.run(`DELETE FROM run_state WHERE schluessel IN ('rb_csv_last_sync','startup_status')`);
   const zustand = _req('src/auftraege/startZustand.js');
   await zustand.meldeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
@@ -71,7 +71,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
       const stand = await zustand.aktuellerStartZustand();
       assert.equal(stand.ready, true, JSON.stringify(stand));
       const gespeichert = JSON.parse(
-        (await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='startup_status'`)).value,
+        (await db.get(`SELECT wert AS value FROM run_state WHERE schluessel='startup_status'`)).value,
       );
       assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');
     });
@@ -88,7 +88,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
   } finally {
     if (vorher !== null)
       await db.run(
-        `INSERT INTO laufzustand (schluessel, wert) VALUES ('rb_csv_last_sync',$1)
+        `INSERT INTO run_state (schluessel, wert) VALUES ('rb_csv_last_sync',$1)
                                        ON CONFLICT (schluessel) DO UPDATE SET wert = $1`,
         [vorher],
       );

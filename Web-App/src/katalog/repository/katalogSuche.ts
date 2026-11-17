@@ -34,7 +34,7 @@ export interface KatalogWahl {
 }
 
 /** Ein Platzhalter der Erfassung ('Set …' ohne Daten) verriete nur, dass jemand die Nummer erfasst hat. */
-const PLATZHALTER = `(rb.herkunft = 'api' AND rb.name = 'Set ' || rb.set_num
+const PLATZHALTER = `(rb.source = 'api' AND rb.name = 'Set ' || rb.set_num
   AND rb.year IS NULL AND rb.theme_id IS NULL AND rb.num_parts IS NULL)`;
 
 function katalogWo(f: KatalogWahl, params: unknown[]): string {
@@ -143,7 +143,7 @@ export function katalogZeile(db: DbSchnittstelle, l: KatalogLesevertrag, konten:
 
 export async function katalogLeer(db: DbSchnittstelle): Promise<boolean> {
   // Zeilen der Erfassung ('api') gibt es auch ohne CSV-Abgleich.
-  return !(await db.get<{ x: number }>("SELECT 1 AS x FROM rb_sets WHERE herkunft = 'csv' LIMIT 1"));
+  return !(await db.get<{ x: number }>("SELECT 1 AS x FROM rb_sets WHERE source = 'csv' LIMIT 1"));
 }
 
 export function figurenImInventar(db: DbSchnittstelle, inventarId: number) {

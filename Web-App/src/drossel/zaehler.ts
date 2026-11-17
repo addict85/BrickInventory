@@ -88,7 +88,7 @@ export async function reserviere(
       const neu = !!r.abgelaufen;
       const s: Stand = {
         count: neu ? 0 : parseInt(r.count, 10) || 0,
-        laufend: r.laufend_alt ? 0 : parseInt(r.laufend, 10) || 0,
+        laufend: r.laufend_alt ? 0 : parseInt(r.ongoing, 10) || 0,
         waitMin: neu ? fensterMin : Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)),
         seitLetztem: Math.max(0, parseFloat(r.seit) || 0),
       };

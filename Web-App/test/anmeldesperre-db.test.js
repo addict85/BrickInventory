@@ -236,7 +236,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
   if (!(await vorbereiten(t))) return;
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
-      `INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
+      `INSERT INTO run_state (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
       [k],
     );

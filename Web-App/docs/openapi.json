@@ -9374,14 +9374,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "richtung": {
+                  "direction": {
                     "type": "string",
                     "enum": [
                       "unter",
                       "ueber"
                     ]
                   },
-                  "schwelle": {
+                  "threshold": {
                     "type": "number",
                     "minimum": 0,
                     "maximum": 1000000,
@@ -9406,7 +9406,7 @@
                   }
                 },
                 "required": [
-                  "richtung"
+                  "direction"
                 ],
                 "additionalProperties": false
               }
@@ -14887,13 +14887,13 @@
           "scope": {
             "type": "string"
           },
-          "ip_bereich": {
+          "ip_range": {
             "type": [
               "string",
               "null"
             ]
           },
-          "rotiert_am": {
+          "rotated_at": {
             "type": "string"
           }
         },
@@ -14908,8 +14908,8 @@
           "token_prefix",
           "hard_expires_at",
           "scope",
-          "ip_bereich",
-          "rotiert_am"
+          "ip_range",
+          "rotated_at"
         ],
         "additionalProperties": {}
       },
@@ -14962,53 +14962,53 @@
           "id": {
             "type": "string"
           },
-          "art": {
+          "type": {
             "type": "string"
           },
           "status": {
             "type": "string"
           },
-          "versuche": {
+          "attempts": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "max_versuche": {
+          "max_attempts": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "faellig_ab": {
+          "due_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "frist_bis": {
+          "deadline_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "gestartet": {
+          "started_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "erstellt": {
+          "created_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "aktualisiert": {
+          "updated_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "fortschritt": {
+          "progress": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/AuftragFortschritt"
@@ -15018,7 +15018,7 @@
               }
             ]
           },
-          "fehler": {
+          "error_message": {
             "type": [
               "string",
               "null"
@@ -15027,7 +15027,7 @@
           "geplant": {
             "type": "boolean"
           },
-          "wartet": {
+          "waiting": {
             "type": "boolean"
           },
           "set_number": {
@@ -15039,19 +15039,19 @@
         },
         "required": [
           "id",
-          "art",
+          "type",
           "status",
-          "versuche",
-          "max_versuche",
-          "faellig_ab",
-          "frist_bis",
-          "gestartet",
-          "erstellt",
-          "aktualisiert",
-          "fortschritt",
-          "fehler",
+          "attempts",
+          "max_attempts",
+          "due_at",
+          "deadline_at",
+          "started_at",
+          "created_at",
+          "updated_at",
+          "progress",
+          "error_message",
           "geplant",
-          "wartet",
+          "waiting",
           "set_number"
         ],
         "additionalProperties": {}
@@ -15115,16 +15115,16 @@
       "AuftragPause": {
         "type": "object",
         "properties": {
-          "art": {
+          "type": {
             "type": "string"
           },
-          "bis": {
+          "until_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "grund": {
+          "reason": {
             "type": [
               "string",
               "null"
@@ -15132,9 +15132,9 @@
           }
         },
         "required": [
-          "art",
-          "bis",
-          "grund"
+          "type",
+          "until_at",
+          "reason"
         ],
         "additionalProperties": {}
       },
@@ -15183,7 +15183,7 @@
       "AuftragZaehler": {
         "type": "object",
         "properties": {
-          "art": {
+          "type": {
             "type": "string"
           },
           "status": {
@@ -15196,7 +15196,7 @@
           }
         },
         "required": [
-          "art",
+          "type",
           "status",
           "anzahl"
         ],
@@ -19224,7 +19224,7 @@
           "is_active": {
             "type": "boolean"
           },
-          "wirksam_ab": {
+          "effective_at": {
             "type": "string"
           }
         },
@@ -19268,7 +19268,7 @@
             "items": {
               "type": "object",
               "properties": {
-                "art": {
+                "type": {
                   "type": "string",
                   "enum": [
                     "passwort",
@@ -19278,13 +19278,13 @@
                     "loeschen"
                   ]
                 },
-                "wirksam_ab": {
+                "effective_at": {
                   "type": "string"
                 }
               },
               "required": [
-                "art",
-                "wirksam_ab"
+                "type",
+                "effective_at"
               ],
               "additionalProperties": {}
             }
@@ -20353,20 +20353,20 @@
       "MerkpostenAlarm": {
         "type": "object",
         "properties": {
-          "richtung": {
+          "direction": {
             "type": "string"
           },
-          "schwelle": {
+          "threshold": {
             "type": "number"
           },
-          "ausgeloest": {
+          "triggered": {
             "type": "boolean"
           }
         },
         "required": [
-          "richtung",
-          "schwelle",
-          "ausgeloest"
+          "direction",
+          "threshold",
+          "triggered"
         ],
         "additionalProperties": {}
       },
@@ -20655,7 +20655,7 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "art": {
+          "type": {
             "type": "string",
             "enum": [
               "set",
@@ -20663,10 +20663,10 @@
               "figur"
             ]
           },
-          "nummer": {
+          "number": {
             "type": "string"
           },
-          "farbe_id": {
+          "color_id": {
             "anyOf": [
               {
                 "type": "integer",
@@ -20678,7 +20678,7 @@
               }
             ]
           },
-          "bezeichnung": {
+          "label": {
             "type": [
               "string",
               "null"
@@ -20694,7 +20694,7 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "geloescht_am": {
+          "deleted_at": {
             "type": "string"
           },
           "endgueltig_am": {
@@ -20703,13 +20703,13 @@
         },
         "required": [
           "id",
-          "art",
-          "nummer",
-          "farbe_id",
-          "bezeichnung",
+          "type",
+          "number",
+          "color_id",
+          "label",
           "anzahl",
           "user_id",
-          "geloescht_am",
+          "deleted_at",
           "endgueltig_am"
         ],
         "additionalProperties": {}
@@ -22170,25 +22170,25 @@
           "condition": {
             "type": "string"
           },
-          "richtung": {
+          "direction": {
             "type": "string"
           },
-          "schwelle": {
+          "threshold": {
             "type": "number"
           },
           "currency_code": {
             "type": "string"
           },
-          "ausgeloest": {
+          "triggered": {
             "type": "boolean"
           },
-          "zuletzt_am": {
+          "last_triggered_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "zuletzt_preis": {
+          "last_price": {
             "type": [
               "number",
               "null"
@@ -22225,12 +22225,12 @@
         "required": [
           "set_number",
           "condition",
-          "richtung",
-          "schwelle",
+          "direction",
+          "threshold",
           "currency_code",
-          "ausgeloest",
-          "zuletzt_am",
-          "zuletzt_preis",
+          "triggered",
+          "last_triggered_at",
+          "last_price",
           "besitzt"
         ],
         "additionalProperties": {}
@@ -22627,7 +22627,7 @@
           "email_verified": {
             "type": "boolean"
           },
-          "email_neu": {
+          "new_email": {
             "type": [
               "string",
               "null"
@@ -22641,7 +22641,7 @@
           "first_name",
           "last_name",
           "email_verified",
-          "email_neu"
+          "new_email"
         ],
         "additionalProperties": {}
       },
@@ -22873,7 +22873,7 @@
               "null"
             ]
           },
-          "ip_bereich": {
+          "ip_range": {
             "type": [
               "string",
               "null"
@@ -22884,7 +22884,7 @@
           "success",
           "stand",
           "geraet",
-          "ip_bereich"
+          "ip_range"
         ],
         "additionalProperties": {}
       },
@@ -24223,7 +24223,7 @@
           "never_expires": {
             "type": "boolean"
           },
-          "rotiert_am": {
+          "rotated_at": {
             "type": [
               "string",
               "null"
@@ -24300,7 +24300,7 @@
           "never_expires": {
             "type": "boolean"
           },
-          "rotiert_am": {
+          "rotated_at": {
             "type": [
               "string",
               "null"
@@ -24898,7 +24898,7 @@
             "type": "boolean",
             "const": true
           },
-          "wirksam_ab": {
+          "effective_at": {
             "type": "string"
           }
         },
@@ -25301,7 +25301,7 @@
             "type": "boolean",
             "const": true
           },
-          "art": {
+          "type": {
             "type": "string",
             "enum": [
               "set",
@@ -25309,7 +25309,7 @@
               "figur"
             ]
           },
-          "nummer": {
+          "number": {
             "type": "string"
           },
           "user_id": {
@@ -25320,8 +25320,8 @@
         },
         "required": [
           "success",
-          "art",
-          "nummer",
+          "type",
+          "number",
           "user_id"
         ],
         "additionalProperties": {}

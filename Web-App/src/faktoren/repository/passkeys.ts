@@ -6,7 +6,7 @@ import type { DbSchnittstelle, Treffer } from '../../../db/database';
 export async function speichereChallenge(
   db: DbSchnittstelle,
   hash: string,
-  zweck: string,
+  purpose: string,
   uid: number | null,
   bis: Date,
   hoechstens: number,
@@ -15,9 +15,9 @@ export async function speichereChallenge(
   return (
     (
       await db.run(
-        `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
-    SELECT $1, $2, $3, $4 WHERE (SELECT COUNT(*) FROM webauthn_challenges WHERE zweck = $3) < $5`,
-        [hash, uid, zweck, bis, hoechstens],
+        `INSERT INTO webauthn_challenges (challenge, user_id, purpose, expires_at)
+    SELECT $1, $2, $3, $4 WHERE (SELECT COUNT(*) FROM webauthn_challenges WHERE purpose = $3) < $5`,
+        [hash, uid, purpose, bis, hoechstens],
       )
     ).changes > 0
   );
@@ -28,16 +28,16 @@ export async function speichereChallenge(
 export async function vermerkeVerbraucht(
   db: DbSchnittstelle,
   hash: string,
-  zweck: string,
+  purpose: string,
   bis: Date,
 ): Promise<boolean> {
   await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
   return (
     (
       await db.run(
-        `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at) VALUES ($1, NULL, $2, $3)
+        `INSERT INTO webauthn_challenges (challenge, user_id, purpose, expires_at) VALUES ($1, NULL, $2, $3)
          ON CONFLICT (challenge) DO NOTHING`,
-        [hash, zweck, bis],
+        [hash, purpose, bis],
       )
     ).changes > 0
   );
@@ -47,15 +47,15 @@ export async function vermerkeVerbraucht(
 export async function verbraucheChallenge(
   db: DbSchnittstelle,
   hash: string,
-  zweck: string,
+  purpose: string,
   uid: number | null,
 ): Promise<boolean> {
   return !!(await db.get(
     `DELETE FROM webauthn_challenges
-      WHERE challenge = $1 AND zweck = $2 AND expires_at > NOW()
+      WHERE challenge = $1 AND purpose = $2 AND expires_at > NOW()
         AND ($3::int IS NULL OR user_id = $3::int)
       RETURNING challenge`,
-    [hash, zweck, uid],
+    [hash, purpose, uid],
   ));
 }
 

@@ -189,8 +189,8 @@ data class AppToken(
     @SerialName("token_prefix") val tokenPrefix: String? = null,
     @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
     @SerialName("scope") val scope: String = "",
-    @SerialName("ip_bereich") val ipBereich: String? = null,
-    @SerialName("rotiert_am") val rotiertAm: String = "",
+    @SerialName("ip_range") val ipRange: String? = null,
+    @SerialName("rotated_at") val rotatedAt: String = "",
 )
 
 @Serializable
@@ -206,19 +206,19 @@ data class AuftraegeResponse(
 @Serializable
 data class Auftrag(
     @SerialName("id") val id: String,
-    @SerialName("art") val art: String,
+    @SerialName("type") val type: String,
     @SerialName("status") val status: String,
-    @SerialName("versuche") val versuche: Int,
-    @SerialName("max_versuche") val maxVersuche: Int,
-    @SerialName("faellig_ab") val faelligAb: String?,
-    @SerialName("frist_bis") val fristBis: String?,
-    @SerialName("gestartet") val gestartet: String?,
-    @SerialName("erstellt") val erstellt: String?,
-    @SerialName("aktualisiert") val aktualisiert: String?,
-    @SerialName("fortschritt") val fortschritt: AuftragFortschritt?,
-    @SerialName("fehler") val fehler: String?,
+    @SerialName("attempts") val attempts: Int,
+    @SerialName("max_attempts") val maxAttempts: Int,
+    @SerialName("due_at") val dueAt: String?,
+    @SerialName("deadline_at") val deadlineAt: String?,
+    @SerialName("started_at") val startedAt: String?,
+    @SerialName("created_at") val createdAt: String?,
+    @SerialName("updated_at") val updatedAt: String?,
+    @SerialName("progress") val progress: AuftragFortschritt?,
+    @SerialName("error_message") val errorMessage: String?,
     @SerialName("geplant") val geplant: Boolean,
-    @SerialName("wartet") val wartet: Boolean = false,
+    @SerialName("waiting") val waiting: Boolean = false,
     @SerialName("set_number") val setNumber: String?,
 )
 
@@ -238,14 +238,14 @@ data class AuftragFortschritt(
 
 @Serializable
 data class AuftragPause(
-    @SerialName("art") val art: String,
-    @SerialName("bis") val bis: String?,
-    @SerialName("grund") val grund: String?,
+    @SerialName("type") val type: String,
+    @SerialName("until_at") val untilAt: String?,
+    @SerialName("reason") val reason: String?,
 )
 
 @Serializable
 data class AuftragZaehler(
-    @SerialName("art") val art: String,
+    @SerialName("type") val type: String,
     @SerialName("status") val status: String,
     @SerialName("anzahl") val anzahl: Int,
 )
@@ -1089,7 +1089,7 @@ data class KontenListe(
 data class KontoAktiv(
     @SerialName("success") val success: Boolean = false,
     @SerialName("is_active") val isActive: Boolean = false,
-    @SerialName("wirksam_ab") val wirksamAb: String = "",
+    @SerialName("effective_at") val effectiveAt: String = "",
 )
 
 @Serializable
@@ -1106,8 +1106,8 @@ data class KontoInListe(
 
 @Serializable
 data class KontoInListeAngekuendigtEintrag(
-    @SerialName("art") val art: String = "",
-    @SerialName("wirksam_ab") val wirksamAb: String = "",
+    @SerialName("type") val type: String = "",
+    @SerialName("effective_at") val effectiveAt: String = "",
 )
 
 @Serializable
@@ -1288,9 +1288,9 @@ data class Merkposten(
 
 @Serializable
 data class MerkpostenAlarm(
-    @SerialName("richtung") val richtung: Alarmrichtung = Alarmrichtung.UNTER,
-    @SerialName("schwelle") val schwelle: Double = 0.0,
-    @SerialName("ausgeloest") val ausgeloest: Boolean = false,
+    @SerialName("direction") val direction: Alarmrichtung = Alarmrichtung.UNTER,
+    @SerialName("threshold") val threshold: Double = 0.0,
+    @SerialName("triggered") val triggered: Boolean = false,
 )
 
 @Serializable
@@ -1424,13 +1424,13 @@ data class Papierkorb(
 @Serializable
 data class PapierkorbEintrag(
     @SerialName("id") val id: Int = 0,
-    @SerialName("art") val art: String = "",
-    @SerialName("nummer") val nummer: String = "",
-    @SerialName("farbe_id") val farbeId: Int? = null,
-    @SerialName("bezeichnung") val bezeichnung: String? = null,
+    @SerialName("type") val type: String = "",
+    @SerialName("number") val number: String = "",
+    @SerialName("color_id") val colorId: Int? = null,
+    @SerialName("label") val label: String? = null,
     @SerialName("anzahl") val anzahl: Int = 0,
     @SerialName("user_id") val userId: Int = 0,
-    @SerialName("geloescht_am") val geloeschtAm: String = "",
+    @SerialName("deleted_at") val deletedAt: String = "",
     @SerialName("endgueltig_am") val endgueltigAm: String = "",
 )
 
@@ -1627,7 +1627,7 @@ data class PasswortAenderung(
 @Serializable
 data class PasswortGesetzt(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("wirksam_ab") val wirksamAb: String = "",
+    @SerialName("effective_at") val effectiveAt: String = "",
 )
 
 @Serializable
@@ -1815,12 +1815,12 @@ data class PreisJobStandRateLimit(
 data class Preisalarm(
     @SerialName("set_number") val setNumber: String = "",
     @SerialName("condition") val condition: Zustand = Zustand.NEU,
-    @SerialName("richtung") val richtung: Alarmrichtung = Alarmrichtung.UNTER,
-    @SerialName("schwelle") val schwelle: Double = 0.0,
+    @SerialName("direction") val direction: Alarmrichtung = Alarmrichtung.UNTER,
+    @SerialName("threshold") val threshold: Double = 0.0,
     @SerialName("currency_code") val currencyCode: Waehrung = Waehrung.KEINE,
-    @SerialName("ausgeloest") val ausgeloest: Boolean = false,
-    @SerialName("zuletzt_am") val zuletztAm: String? = null,
-    @SerialName("zuletzt_preis") val zuletztPreis: Double? = null,
+    @SerialName("triggered") val triggered: Boolean = false,
+    @SerialName("last_triggered_at") val lastTriggeredAt: String? = null,
+    @SerialName("last_price") val lastPrice: Double? = null,
     @SerialName("name") val name: String? = null,
     @SerialName("image_local") val imageLocal: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
@@ -1830,8 +1830,8 @@ data class Preisalarm(
 
 @Serializable
 data class PreisalarmRequest(
-    @SerialName("richtung") val richtung: Alarmrichtung,
-    @SerialName("schwelle") val schwelle: Double,
+    @SerialName("direction") val direction: Alarmrichtung,
+    @SerialName("threshold") val threshold: Double,
     @SerialName("condition") val condition: Zustand = Zustand.NEU,
 )
 
@@ -1907,7 +1907,7 @@ data class Profil(
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
     @SerialName("email_verified") val emailVerified: Boolean = false,
-    @SerialName("email_neu") val emailNeu: String? = null,
+    @SerialName("new_email") val newEmail: String? = null,
 )
 
 @Serializable
@@ -1986,7 +1986,7 @@ data class QrKopplungStand(
     @SerialName("success") val success: Boolean = false,
     @SerialName("stand") val stand: String = "",
     @SerialName("geraet") val geraet: String? = null,
-    @SerialName("ip_bereich") val ipBereich: String? = null,
+    @SerialName("ip_range") val ipRange: String? = null,
 )
 
 @Serializable
@@ -2291,7 +2291,7 @@ data class TokenInfo(
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
     @SerialName("never_expires") val neverExpires: Boolean,
-    @SerialName("rotiert_am") val rotiertAm: String? = null,
+    @SerialName("rotated_at") val rotatedAt: String? = null,
     @SerialName("rotation_faellig") val rotationFaellig: Boolean = false,
 )
 
@@ -2528,8 +2528,8 @@ data class WantedXmlErgebnisRebrickable(
 @Serializable
 data class Wiederhergestellt(
     @SerialName("success") val success: Boolean = false,
-    @SerialName("art") val art: String = "",
-    @SerialName("nummer") val nummer: String = "",
+    @SerialName("type") val type: String = "",
+    @SerialName("number") val number: String = "",
     @SerialName("user_id") val userId: Int = 0,
 )
 

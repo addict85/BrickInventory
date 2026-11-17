@@ -1,10 +1,10 @@
 import type { DbSchnittstelle, Db } from '../../db/database';
 
 export type Eintrag = {
-  anfrage: string;
+  request: string;
   status: number | null;
-  antwort: string | null;
-  wirkung: boolean;
+  response: string | null;
+  has_effect: boolean;
   verwaist: boolean;
 };
 
@@ -13,34 +13,34 @@ export type Eintrag = {
 export async function belege(
   db: DbSchnittstelle,
   uid: number,
-  schluessel: string,
-  anfrage: string,
+  key: string,
+  request: string,
   verwaistNachS: number,
 ): Promise<boolean> {
   return !!(await db.get<{ ok: number }>(
-    `INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id, schluessel) DO UPDATE SET anfrage = EXCLUDED.anfrage, angelegt = NOW()
-       WHERE idempotenz.status IS NULL AND NOT idempotenz.wirkung
-         AND idempotenz.angelegt < NOW() - make_interval(secs => $4)
+    `INSERT INTO idempotency (user_id, key, request) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, key) DO UPDATE SET request = EXCLUDED.request, created_at = NOW()
+       WHERE idempotency.status IS NULL AND NOT idempotency.has_effect
+         AND idempotency.created_at < NOW() - make_interval(secs => $4)
      RETURNING 1 AS ok`,
-    [uid, schluessel, anfrage, verwaistNachS],
+    [uid, key, request, verwaistNachS],
   ));
 }
 
-export function eintrag(db: DbSchnittstelle, uid: number, schluessel: string, verwaistNachS: number) {
+export function eintrag(db: DbSchnittstelle, uid: number, key: string, verwaistNachS: number) {
   return db.get<Eintrag>(
-    `SELECT anfrage, status, antwort, wirkung, angelegt < NOW() - make_interval(secs => $3) AS verwaist
-       FROM idempotenz WHERE user_id = $1 AND schluessel = $2`,
-    [uid, schluessel, verwaistNachS],
+    `SELECT request, status, response, has_effect, created_at < NOW() - make_interval(secs => $3) AS verwaist
+       FROM idempotency WHERE user_id = $1 AND key = $2`,
+    [uid, key, verwaistNachS],
   );
 }
 
 /** Jede Transaktion in `arbeit` vermerkt vor ihrem COMMIT, in ihr, die Wirkung am Schlüssel. */
-export function mitWirkungsVermerk<T>(db: Db, uid: number, schluessel: string, arbeit: () => T): T {
+export function mitWirkungsVermerk<T>(db: Db, uid: number, key: string, arbeit: () => T): T {
   return db.mitCommitBegleiter(async (tx: DbSchnittstelle) => {
     await tx.run(
-      'UPDATE idempotenz SET wirkung = true WHERE user_id = $1 AND schluessel = $2 AND status IS NULL AND NOT wirkung',
-      [uid, schluessel],
+      'UPDATE idempotency SET has_effect = true WHERE user_id = $1 AND key = $2 AND status IS NULL AND NOT has_effect',
+      [uid, key],
     );
   }, arbeit);
 }
@@ -48,15 +48,15 @@ export function mitWirkungsVermerk<T>(db: Db, uid: number, schluessel: string, a
 export async function schliesseAb(
   db: DbSchnittstelle,
   uid: number,
-  schluessel: string,
+  key: string,
   status: number,
-  antwort: string | null,
+  response: string | null,
 ): Promise<void> {
-  await db.run('UPDATE idempotenz SET status = $3, antwort = $4 WHERE user_id = $1 AND schluessel = $2', [
+  await db.run('UPDATE idempotency SET status = $3, response = $4 WHERE user_id = $1 AND key = $2', [
     uid,
-    schluessel,
+    key,
     status,
-    antwort,
+    response,
   ]);
 }
 
@@ -65,45 +65,45 @@ export async function schliesseAb(
 export async function loescheLaufenden(
   db: DbSchnittstelle,
   uid: number,
-  schluessel: string,
+  key: string,
   status: number,
 ): Promise<void> {
   await db.run(
-    `WITH weg AS (DELETE FROM idempotenz WHERE user_id = $1 AND schluessel = $2 AND status IS NULL AND NOT wirkung)
-     UPDATE idempotenz SET status = $3, antwort = NULL WHERE user_id = $1 AND schluessel = $2 AND status IS NULL AND wirkung`,
-    [uid, schluessel, status],
+    `WITH weg AS (DELETE FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL AND NOT has_effect)
+     UPDATE idempotency SET status = $3, response = NULL WHERE user_id = $1 AND key = $2 AND status IS NULL AND has_effect`,
+    [uid, key, status],
   );
 }
 
 export async function loescheAndereAbdruecke(db: DbSchnittstelle, praefix: string): Promise<number> {
-  return (await db.run("DELETE FROM idempotenz WHERE anfrage NOT LIKE $1 || '%'", [praefix])).changes || 0;
+  return (await db.run("DELETE FROM idempotency WHERE request NOT LIKE $1 || '%'", [praefix])).changes || 0;
 }
 
 export async function loescheAelterAls(db: DbSchnittstelle, stunden: number): Promise<number> {
   return (
-    (await db.run('DELETE FROM idempotenz WHERE angelegt < NOW() - make_interval(hours => $1)', [stunden])).changes || 0
+    (await db.run('DELETE FROM idempotency WHERE created_at < NOW() - make_interval(hours => $1)', [stunden])).changes || 0
   );
 }
 
 export function alteAntworten(db: DbSchnittstelle) {
-  return db.all<{ user_id: number; schluessel: string; antwort: string }>(
-    "SELECT user_id, schluessel, antwort FROM idempotenz WHERE antwort IS NOT NULL AND antwort NOT LIKE 'v2:%'",
+  return db.all<{ user_id: number; key: string; response: string }>(
+    "SELECT user_id, key, response FROM idempotency WHERE response IS NOT NULL AND response NOT LIKE 'v2:%'",
   );
 }
 
-/** `AND antwort = $3`: Eine inzwischen neu geschriebene Zeile bleibt. */
+/** `AND response = $3`: Eine inzwischen neu geschriebene Zeile bleibt. */
 export async function ersetzeAntwort(
   db: DbSchnittstelle,
   uid: number,
-  schluessel: string,
+  key: string,
   alt: string,
   neu: string,
 ): Promise<number> {
   return (
     (
-      await db.run('UPDATE idempotenz SET antwort = $4 WHERE user_id = $1 AND schluessel = $2 AND antwort = $3', [
+      await db.run('UPDATE idempotency SET response = $4 WHERE user_id = $1 AND key = $2 AND response = $3', [
         uid,
-        schluessel,
+        key,
         alt,
         neu,
       ])

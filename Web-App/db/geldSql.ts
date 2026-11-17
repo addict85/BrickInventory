@@ -8,7 +8,7 @@
  * zum Kurs des Kauftags oder davor (0077). Ohne Kurs NULL: Der Preis zählt
  * dann als „fremde Währung, nicht eingerechnet“. */
 export function kaufpreisIn(spalte: string, w: string): string {
-  return `in_waehrung(${spalte}, currency, ${w}, COALESCE(tag, (created_at AT TIME ZONE 'UTC')::date))`;
+  return `in_waehrung(${spalte}, currency, ${w}, COALESCE(day, (created_at AT TIME ZONE 'UTC')::date))`;
 }
 
 /** Die drei Spalten jeder Erfassungsabfrage der Bewertung: Preis, fremd, umgerechnet. */

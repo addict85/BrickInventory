@@ -84,7 +84,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
         `INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`,
         [uid],
       );
-      await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('10300-1', '3001', 5, 4)
+      await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('10300-1', '3001', 5, 4)
                     ON CONFLICT DO NOTHING`);
       await haeltTeil(db, uid, '3001', { setNumber: '10300-1', menge: 4, colorId: 5 });
     },

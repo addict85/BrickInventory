@@ -343,7 +343,7 @@ export async function resolveBlColorId(k: FinanzenKontext, rbColorId: number): P
 }
 
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
-// (bl_zuordnung), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
+// (bl_mapping), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
 const blTeil = (k: FinanzenKontext) =>
   k.faecher.fach('blTeil', () =>
     nachschlagwerk(k.uhr, (partNumber: string) => k.katalog.blAbrufNummer('part', partNumber)),

@@ -6,14 +6,14 @@
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  in spurenLoeschen() entferneKontoAusSicherungen() entfernt → rot:
  *      „das gelöschte Konto ist in keiner Kopie …“ (users und sets)
- *   B  in raeumeProtokollAuf() das UPDATE auf ziel_name entfernt → rot:
+ *   B  in raeumeProtokollAuf() das UPDATE auf target_name entfernt → rot:
  *      „nach dem Aufräumlauf nennt das Verwaltungsprotokoll den Namen nicht mehr“
  *   C  raeumeAlteSicherungenAuf() vergleicht mit 3000 statt `tage` Tagen →
  *      rot: „Kopien älter als die Frist …“
  *   D  raeumeProtokollAuf() mit 3650 statt 365 Tagen → rot: „Protokollzeilen
  *      älter als ein Jahr …“
  *   Seit Migration 0117 räumt die Funktion verwaltungsprotokoll_aufraeumen() auf (14.11.2026
- *   wiederholt): dort `ziel_name = ziel_name` → rot wie B; 3650 statt 365 Tage → rot wie D.
+ *   wiederholt): dort `target_name = target_name` → rot wie B; 3650 statt 365 Tage → rot wie D.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -53,7 +53,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
     chef = await lege(CHEF, true);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, `8${P % 100000}-1`]);
   await db.run(
-    `INSERT INTO verwaltungsprotokoll (verwalter_id, ziel_id, ziel_name, aktion)
+    `INSERT INTO admin_log (admin_id, target_id, target_name, action)
     VALUES ($1, $2, $3, 'passwort_gesetzt')`,
     [chef, uid, NAME],
   );
@@ -95,9 +95,9 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
 
   await t.test('nach dem Aufräumlauf nennt das Verwaltungsprotokoll den Namen nicht mehr', async () => {
     await raeumeProtokollAuf();
-    const z = await db.all('SELECT ziel_id, ziel_name FROM verwaltungsprotokoll WHERE ziel_id = $1', [uid]);
+    const z = await db.all('SELECT target_id, target_name FROM admin_log WHERE target_id = $1', [uid]);
     assert.equal(z.length, 1, 'die Zeile selbst bleibt');
-    assert.equal(z[0].ziel_name, null);
+    assert.equal(z[0].target_name, null);
   });
 
   await t.test('Kopien älter als die Frist verschwinden im Aufräumlauf', async () => {
@@ -112,20 +112,20 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   await t.test('Protokollzeilen älter als ein Jahr verschwinden im Aufräumlauf', async () => {
     const alt = (
       await db.get(
-        `INSERT INTO verwaltungsprotokoll (zeit, verwalter_id, ziel_id, ziel_name, aktion)
+        `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
       VALUES (NOW() - INTERVAL '400 days', $1, $1, 'alt', 'konto_angelegt') RETURNING id`,
         [chef],
       )
     ).id;
     const jung = (
       await db.get(
-        `INSERT INTO verwaltungsprotokoll (zeit, verwalter_id, ziel_id, ziel_name, aktion)
+        `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)
       VALUES (NOW() - INTERVAL '300 days', $1, $1, 'jung', 'konto_angelegt') RETURNING id`,
         [chef],
       )
     ).id;
     await raeumeProtokollAuf();
-    const ids = (await db.all('SELECT id FROM verwaltungsprotokoll WHERE id = ANY($1)', [[alt, jung]])).map(z => z.id);
+    const ids = (await db.all('SELECT id FROM admin_log WHERE id = ANY($1)', [[alt, jung]])).map(z => z.id);
     assert.deepEqual(ids, [jung]);
   });
 });

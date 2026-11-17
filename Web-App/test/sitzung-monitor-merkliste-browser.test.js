@@ -82,7 +82,7 @@ async function finanzenOffline(_t, a) {
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETZ });
   try {
     await reiter(b, 'finance');
-    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Diagramm nicht verfügbar');
+    await bis(`!!document.querySelector('#portfolio-chart .error_message-zustand')`, 'Diagramm nicht verfügbar');
     const k = await b.auswerten(`[...document.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => {
       const s = getComputedStyle(k); return { aus: k.disabled, deckung: +s.opacity, zeiger: s.cursor }; })`);
     assert.equal(k.length, 4);
@@ -94,18 +94,18 @@ async function finanzenOffline(_t, a) {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETZ });
   }
   await b.auswerten(`document.querySelector('#fin-tbl [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
 }
 
 async function rechenbasis(_t, a) {
   const { b, bis } = a;
   await reiter(b, 'finance');
   await bis(
-    `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
+    `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
     'Basiszeile',
   );
   const z = await b.auswerten(`({ basis: ${text('#fin-basis')},
-    zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-art] tbody tr')].length })`);
+    zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-type] tbody tr')].length })`);
   const von = Number(/von (\d+) Positionen/.exec(z.basis)?.[1]);
   assert.ok(von > 0, `keine Zahl in „${z.basis}“`);
   assert.ok(z.zeilen > von, `Testaufbau: ${z.zeilen} Zeilen, ${von} Positionen`);
@@ -199,19 +199,19 @@ async function neuNachFehler(b, bis, tab, ziel, pfad) {
   let aus = async () => {};
   try {
     await reiter(b, tab);
-    await bis(`!!document.querySelector('${ziel} .fehler-zustand')`, `${tab}: Fehlerzustand`);
+    await bis(`!!document.querySelector('${ziel} .error_message-zustand')`, `${tab}: Fehlerzustand`);
     aus = await abfangen(b, [{ enthaelt: pfad, tun: spaeter(b, 3000) }]);
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETZ });
   }
   try {
-    await b.auswerten(`document.querySelector('${ziel} .fehler-zustand [data-click]')?.click(); true`);
+    await b.auswerten(`document.querySelector('${ziel} .error_message-zustand [data-click]')?.click(); true`);
     await bis(
-      `!document.querySelector('${ziel} .fehler-zustand') && !!document.querySelector('${ziel} [aria-busy="true"]')`,
+      `!document.querySelector('${ziel} .error_message-zustand') && !!document.querySelector('${ziel} [aria-busy="true"]')`,
       `${tab}: Gerüst statt altem Fehler`,
       25,
     );
-    await bis(`!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .fehler-zustand')`, `${tab}: geladen`, 100);
+    await bis(`!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .error_message-zustand')`, `${tab}: geladen`, 100);
   } finally {
     await aus();
   }
@@ -256,7 +256,7 @@ async function benutzerAnlegen(_t, a) {
   const stand = `(() => { const r = id => document.getElementById(id).getBoundingClientRect();
     const sicht = id => !!document.getElementById(id)?.checkVisibility();
     const zeile = document.querySelector('.nutzer-neu').getBoundingClientRect();
-    return { nameFehler: sicht('nu-n-fehler') ? ${text('#nu-n-fehler')} : '', pwFehler: sicht('nu-p-fehler') ? ${text('#nu-p-fehler')} : '',
+    return { nameFehler: sicht('nu-n-error_message') ? ${text('#nu-n-error_message')} : '', pwFehler: sicht('nu-p-error_message') ? ${text('#nu-p-error_message')} : '',
       nameRegel: sicht('nu-n-regel'), pwRegel: sicht('nu-p-regel'),
       oben: [r('nu-n').top, r('nu-p').top].map(Math.round), haken: (r('nu-a').top + r('nu-a').bottom) / 2,
       feld: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
@@ -264,7 +264,7 @@ async function benutzerAnlegen(_t, a) {
   await setze('nu-n', '');
   await setze('nu-p', '');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
-  await bis(`!!document.getElementById('nu-p-fehler')?.checkVisibility()`, 'Meldungen');
+  await bis(`!!document.getElementById('nu-p-error_message')?.checkVisibility()`, 'Meldungen');
   let s = await b.auswerten(stand);
   assert.equal(s.nameFehler, 'Bitte einen Benutzernamen eintragen.');
   assert.equal(s.pwFehler, 'Bitte ein Passwort eintragen.', 'nur eine Meldung auf einmal');
@@ -274,7 +274,7 @@ async function benutzerAnlegen(_t, a) {
   await setze('nu-p', 'Ziegel-Turm-Fenster-42');
   await setze('nu-n', 'a b');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
-  await bis(`!!document.getElementById('nu-n-fehler')?.checkVisibility()`, 'Meldung am Namen');
+  await bis(`!!document.getElementById('nu-n-error_message')?.checkVisibility()`, 'Meldung am Namen');
   s = await b.auswerten(stand);
   assert.equal(s.pwFehler, '');
   assert.equal(s.pwRegel, true, 'Passwortregel fehlt');
@@ -312,12 +312,12 @@ async function designSofort(_t, a) {
 
 async function hintergrundarbeiten(_t, a) {
   const { b, bis, ruhig, db } = a;
-  await db.run(`DELETE FROM auftraege WHERE art = 'wechselkurse'`);
+  await db.run(`DELETE FROM jobs WHERE type = 'exchange_rates'`);
   await db.run(
-    `INSERT INTO auftraege (art, schluessel, faellig_ab) VALUES ('wechselkurse', 'plan:wechselkurse', NOW() + interval '5 hours')`,
+    `INSERT INTO jobs (type, dedupe_key, due_at) VALUES ('exchange_rates', 'plan:exchange_rates', NOW() + interval '5 hours')`,
   );
-  await db.run(`INSERT INTO auftraege (art, versuche, max_versuche, fehler, faellig_ab)
-                VALUES ('wechselkurse', 3, 6, 'ECONNRESET', NOW() + interval '1 hour')`);
+  await db.run(`INSERT INTO jobs (type, attempts, max_attempts, error_message, due_at)
+                VALUES ('exchange_rates', 3, 6, 'ECONNRESET', NOW() + interval '1 hour')`);
   const abrufe = [];
   const zaehler = d => {
     if (d.method === 'Network.requestWillBeSent' && d.params.request.url.includes('/api/v1/admin/jobs'))
@@ -358,12 +358,12 @@ async function hintergrundarbeiten(_t, a) {
 
 async function sitzungUngeklaert(_t, a) {
   const { b, bis } = a;
-  let art = '429';
+  let type = '429';
   const aus = await abfangen(b, [
     {
       enthaelt: '/api/v1/auth/me',
       tun: id =>
-        art === '429'
+        type === '429'
           ? antworte(
               b,
               id,
@@ -375,7 +375,7 @@ async function sitzungUngeklaert(_t, a) {
               },
               [{ name: 'Retry-After', value: '40' }],
             )
-          : art === 'netz'
+          : type === 'netz'
             ? b.tab('Fetch.failRequest', { requestId: id, errorReason: 'InternetDisconnected' })
             : b.tab('Fetch.continueRequest', { requestId: id }),
     },
@@ -396,11 +396,11 @@ async function sitzungUngeklaert(_t, a) {
     assert.equal(z.titel, 'Zu viele Anfragen');
     assert.match(z.text, /^Der Server nimmt gerade keine weiteren Anfragen an\. Neuer Versuch in (40|39|38) s\.$/);
     assert.equal(z.knopf, true, '„Erneut versuchen“ fehlt');
-    art = 'netz';
+    type = 'netz';
     await b.auswerten(`document.getElementById('start-erneut').click(); true`);
     await bis(`/Keine Verbindung zum Server/.test(${text('#start-offline-text')})`, 'Grund: kein Netz');
     assert.equal(await b.auswerten(`getComputedStyle(document.getElementById('login-screen')).display`), 'none');
-    art = 'durch';
+    type = 'durch';
     await b.auswerten(`document.getElementById('start-erneut').click(); true`);
     await bis(
       `getComputedStyle(document.getElementById('app')).display !== 'none' && document.getElementById('start-offline').hidden`,

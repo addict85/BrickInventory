@@ -64,10 +64,10 @@ export async function beginne(
   // Zwischen Belegen und Lesen freigegeben (die erste scheiterte): neu versuchen.
   if (!e)
     return (await k.repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) ? { art: 'neu' } : { art: 'laeuft' };
-  if (e.anfrage !== abdruck) return { art: 'anders' };
+  if (e.request !== abdruck) return { art: 'anders' };
   // Verwaist mit Wirkung: Die erste hat gewirkt, ihre Antwort ging verloren.
-  if (e.status === null) return e.wirkung && e.verwaist ? { art: 'nicht_wiederholbar' } : { art: 'laeuft' };
-  const antwort = istVerschluesselt(e.antwort) ? entschluessele(e.antwort, antwortKontext(uid, schluessel)) : null;
+  if (e.status === null) return e.has_effect && e.verwaist ? { art: 'nicht_wiederholbar' } : { art: 'laeuft' };
+  const antwort = istVerschluesselt(e.response) ? entschluessele(e.response, antwortKontext(uid, schluessel)) : null;
   if (antwort === null) return { art: 'nicht_wiederholbar' };
   return { art: 'wiederholung', status: e.status, antwort };
 }
@@ -103,8 +103,8 @@ export const mitWirkungsVermerk = <T>(k: IdempotenzKontext, uid: number, schlues
 export async function antwortenUmschluesseln(k: IdempotenzKontext): Promise<number> {
   let n = 0;
   for (const z of await k.repository.alteAntworten()) {
-    const neu = umschluesseln(z.antwort, antwortKontext(z.user_id, z.schluessel));
-    if (neu) n += await k.repository.ersetzeAntwort(z.user_id, z.schluessel, z.antwort, neu);
+    const neu = umschluesseln(z.response, antwortKontext(z.user_id, z.key));
+    if (neu) n += await k.repository.ersetzeAntwort(z.user_id, z.key, z.response, neu);
   }
   return n;
 }

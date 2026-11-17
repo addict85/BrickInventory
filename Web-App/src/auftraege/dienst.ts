@@ -91,8 +91,8 @@ export async function setzeFortschritt(
   return !!z;
 }
 
-export async function erledigt(k: AuftraegeKontext, a: Belegung & Pick<AuftragsZeile, 'art'>): Promise<boolean> {
-  const z = await k.auftraege.setzeErledigt(a, !!k.arten.von(a.art)?.nutzlastVerwerfen);
+export async function erledigt(k: AuftraegeKontext, a: Belegung & Pick<AuftragsZeile, 'type'>): Promise<boolean> {
+  const z = await k.auftraege.setzeErledigt(a, !!k.arten.von(a.type)?.nutzlastVerwerfen);
   await meldeStand(k, z);
   return !!z;
 }
@@ -104,8 +104,8 @@ export async function fehlgeschlagen(
   fehler: string,
   sofortEndgueltig = false,
 ): Promise<boolean> {
-  const endgueltig = sofortEndgueltig || a.versuche >= a.max_versuche;
-  const z = await k.auftraege.setzeFehlgeschlagen(a, endgueltig, fehler, wartezeitSek(a.versuche));
+  const endgueltig = sofortEndgueltig || a.attempts >= a.max_attempts;
+  const z = await k.auftraege.setzeFehlgeschlagen(a, endgueltig, fehler, wartezeitSek(a.attempts));
   await meldeStand(k, z);
   return endgueltig && !!z;
 }
@@ -119,7 +119,7 @@ export async function verschoben(
   grund: string,
   zaehlt: boolean,
 ): Promise<boolean> {
-  const endgueltig = zaehlt && a.versuche >= a.max_versuche;
+  const endgueltig = zaehlt && a.attempts >= a.max_attempts;
   const z = await k.auftraege.setzeVerschoben(a, endgueltig, bis, grund, zaehlt);
   await meldeStand(k, z);
   return endgueltig && !!z;
@@ -133,7 +133,7 @@ export async function beendePause(k: AuftraegeKontext, art: AuftragsArt): Promis
 /** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
 export async function brichAb(k: AuftraegeKontext, id: string): Promise<AuftragsZeile | null> {
   const a = await k.auftraege.setzeAbgebrochen(id);
-  if (a) await meldeStand(k, { s: a.schluessel ?? a.id });
+  if (a) await meldeStand(k, { s: a.dedupe_key ?? a.id });
   return a;
 }
 
@@ -161,7 +161,7 @@ export async function zaehleArt(k: AuftraegeKontext, art: AuftragsArt): Promise<
  * zählt auf dessen Anteil am Fremdkontingent. */
 export async function imNamenDesAuftrags<T>(
   k: AuftraegeKontext,
-  a: Pick<AuftragsZeile, 'art' | 'user_id'>,
+  a: Pick<AuftragsZeile, 'type' | 'user_id'>,
   f: () => Promise<T>,
 ): Promise<T> {
   if (a.user_id == null) return imAuftragsrahmen(k, a, f);
@@ -173,11 +173,11 @@ export async function imNamenDesAuftrags<T>(
  * angemeldet ist (Anmeldung.kontouebergreifend), sonst ohne Konto und ohne Systemrahmen. */
 export function imAuftragsrahmen<T>(
   k: AuftraegeKontext,
-  a: Pick<AuftragsZeile, 'art'>,
+  a: Pick<AuftragsZeile, 'type'>,
   f: () => Promise<T>,
 ): Promise<T> {
-  const grund = k.arten.von(a.art)?.kontouebergreifend;
-  return grund ? imSystemkontext(`auftrag ${a.art}: ${grund}`, f) : alsAnfrage({}, f);
+  const grund = k.arten.von(a.type)?.kontouebergreifend;
+  return grund ? imSystemkontext(`auftrag ${a.type}: ${grund}`, f) : alsAnfrage({}, f);
 }
 
 /** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */
@@ -198,12 +198,12 @@ export function pruefeZugehoerigkeit(
   schluessel?: string,
 ): void {
   for (const { a, ac } of laeufe) {
-    if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.schluessel ?? a.id))) continue;
+    if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.dedupe_key ?? a.id))) continue;
     void k.auftraege.gehoertNoch(a).then(
       ja => {
         if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren());
       },
-      logAndContinue(`auftraege:stand ${a.art}`),
+      logAndContinue(`auftraege:stand ${a.type}`),
     );
   }
 }

@@ -134,11 +134,11 @@ async function hintergrund(_t, a) {
   const { b, bis } = a;
   await groesse(b, 390, true);
   try {
-    await geh(a, '#/hintergrund', `!!document.querySelector('#auftraege-karte .mon-einzeln')`, 'Hintergrund');
+    await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-karte .mon-einzeln')`, 'Hintergrund');
     await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
     await a.ruhig(1000);
     const m = await b.auswerten(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
-      rolle: !!document.querySelector('#auftraege-karte .mon-rolle')?.checkVisibility() })`);
+      rolle: !!document.querySelector('#jobs-karte .mon-rolle')?.checkVisibility() })`);
     assert.ok(m.rolle, 'Testdaten: Etikett „Wiederholung nach Fehler“');
     assert.ok(m.sw <= m.cw, `Seite breiter als das Fenster: ${m.sw} > ${m.cw}`);
   } finally {
@@ -163,10 +163,10 @@ async function hintergrund(_t, a) {
 
 async function finanzen(_t, a) {
   const { b } = a;
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr')`, 'Finanzen');
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr')`, 'Finanzen');
   // Der Stückpreis steht seit UX-Prüfung 25 unter dem Marktwert („je …“), nur bei mehr als einem Stück.
   const f = await b.auswerten(`(() => {
-    const zeilen = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].map(z => ({
+    const zeilen = [...document.querySelectorAll('[data-fin-type="sets"] tbody tr')].map(z => ({
       menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-wert .fin-je')?.textContent || '' }));
     return { zeilen, karte: document.getElementById('fin-einstand-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
   const einzeln = f.zeilen.filter(z => z.menge === '×1');
@@ -453,9 +453,9 @@ test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrenc
     bestand: async (db, uid) => {
       await musterHaushalt(db, uid);
       // Zwei offene Läufe einer Art, einer nach Fehlern: Etikett und langer Hinweis am Telefon.
-      await db.run(`INSERT INTO auftraege (art, faellig_ab, versuche, max_versuche, fehler)
-        VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
-      await db.run(`INSERT INTO auftraege (art, faellig_ab) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
+      await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
+        VALUES ('exchange_rates', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('exchange_rates', NOW() + interval '6 hours')`);
       const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
       const en = await db.get(
         `INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
@@ -469,7 +469,7 @@ test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrenc
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM auftraege WHERE art = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [

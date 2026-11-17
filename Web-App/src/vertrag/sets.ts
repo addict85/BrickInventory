@@ -68,12 +68,12 @@ export const MoveSetResponse = z.looseObject({
 export const Preisalarm = z.looseObject({
   set_number: z.string(),
   condition: z.string(),
-  richtung: z.string(),
-  schwelle: z.number(),
+  direction: z.string(),
+  threshold: z.number(),
   currency_code: z.string(),
-  ausgeloest: z.boolean(),
-  zuletzt_am: zeit.nullable(),
-  zuletzt_preis: z.number().nullable(),
+  triggered: z.boolean(),
+  last_triggered_at: zeit.nullable(),
+  last_price: z.number().nullable(),
   name: z.string().nullable().optional(),
   image_local: z.string().nullable().optional(),
   image_url: z.string().nullable().optional(),
@@ -321,8 +321,8 @@ export const routen = {
   },
   'PUT /api/v1/sets/:setNumber/alert': {
     eingabe: z.strictObject({
-      richtung: z.enum(['unter', 'ueber']),
-      schwelle: eingabe.geld('Schwelle', { nullbar: false }),
+      direction: z.enum(['unter', 'ueber']),
+      threshold: eingabe.geld('Schwelle', { nullbar: false }),
       condition: ZUSTAND.optional(),
     }),
     antwort: PreisalarmResponse,

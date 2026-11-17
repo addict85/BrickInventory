@@ -260,7 +260,7 @@ async function main() {
     const v = new Client({ connectionString: mitDb(basis, vorlage) });
     await v.connect();
     await v.query(
-      `INSERT INTO laufzustand (schluessel, wert) VALUES ('altbestand_v2', 'Testvorlage') ON CONFLICT DO NOTHING`,
+      `INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Testvorlage') ON CONFLICT DO NOTHING`,
     );
     await v.end();
     env = { ...env, TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };

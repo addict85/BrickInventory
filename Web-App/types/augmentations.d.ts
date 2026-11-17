@@ -19,7 +19,7 @@ declare module 'express-session' {
     mussPasswortAendern?: boolean;
     /** Wann in dieser Sitzung zuletzt das Passwort eingegeben wurde (ms); Grundlage der Gnadenfrist. */
     passwortBestaetigtAm?: number;
-    /** users.sitzungs_version bei der Anmeldung; weicht sie ab, ist die Sitzung beendet. */
+    /** users.session_version bei der Anmeldung; weicht sie ab, ist die Sitzung beendet. */
     sitzungsVersion?: number;
   }
 }

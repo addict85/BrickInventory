@@ -6,7 +6,7 @@
  *
  * Gegenproben (14.11.2026 gemessen):
  *   A  im Aufstock-Zweig die Nacharbeit nach der Transaktion eingestellt (wie das
- *      frühere addSet, Fehler mit versuche() verschluckt) → rot: „scheitert die
+ *      frühere addSet, Fehler mit attempts() verschluckt) → rot: „scheitert die
  *      Nacharbeit, ist nichts gebucht“
  *   B  im Aufstock-Zweig vor dem Buchen `await t.katalog.setInfo(sn)` → rot:
  *      „ein Import stockt beim Besitzer auf, ohne Netz“
@@ -47,9 +47,9 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     FREMD = `${50000 + (P % 9000)}-1`;
   const FUNKTION = `einweg_sperre_${P}`;
   const weg = async () => {
-    await db.exec(`DROP TRIGGER IF EXISTS ${FUNKTION} ON auftraege; DROP FUNCTION IF EXISTS ${FUNKTION}();`);
+    await db.exec(`DROP TRIGGER IF EXISTS ${FUNKTION} ON jobs; DROP FUNCTION IF EXISTS ${FUNKTION}();`);
     for (const sn of [SN, FREMD]) {
-      await db.run("DELETE FROM auftraege WHERE art = 'nacharbeit' AND nutzlast->>'set_number' = $1", [sn]);
+      await db.run("DELETE FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [sn]);
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [sn]);
     }
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND]]);
@@ -83,10 +83,10 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     });
     assert.equal(r.action, 'added');
     const auftrag = await db.get(
-      "SELECT nutzlast->>'art' AS art FROM auftraege WHERE art = 'nacharbeit' AND nutzlast->>'set_number' = $1",
+      "SELECT payload->>'type' AS type FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1",
       [SN],
     );
-    assert.equal(auftrag?.art, 'csv');
+    assert.equal(auftrag?.type, 'csv');
     assert.deepEqual(netz, []);
   });
 
@@ -131,11 +131,11 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     await db.exec(`
       CREATE FUNCTION ${FUNKTION}() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
-        IF NEW.art = 'nacharbeit' AND NEW.nutzlast->>'set_number' = '${SN}' THEN RAISE EXCEPTION 'Auftrag abgelehnt'; END IF;
+        IF NEW.type = 'nacharbeit' AND NEW.payload->>'set_number' = '${SN}' THEN RAISE EXCEPTION 'Auftrag abgelehnt'; END IF;
         RETURN NEW;
       END $$;
-      CREATE TRIGGER ${FUNKTION} BEFORE INSERT ON auftraege FOR EACH ROW EXECUTE FUNCTION ${FUNKTION}();`);
-    await db.run("DELETE FROM auftraege WHERE art = 'nacharbeit' AND nutzlast->>'set_number' = $1", [SN]);
+      CREATE TRIGGER ${FUNKTION} BEFORE INSERT ON jobs FOR EACH ROW EXECUTE FUNCTION ${FUNKTION}();`);
+    await db.run("DELETE FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [SN]);
     await assert.rejects(erfasse(h, { setNumber: SN, menge: 1, wennVorhanden: 'aufstocken' }), /Auftrag abgelehnt/);
     assert.equal(await menge(h, SN), 3);
   });

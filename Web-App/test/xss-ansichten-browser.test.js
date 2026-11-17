@@ -45,11 +45,11 @@ test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, time
       await haeltSet(db, uid, '99901-1', 1, { preis: 10 });
       await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [ort, uid, '99901-1']);
       await db.run(
-        `INSERT INTO teil_eigen (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
+        `INSERT INTO part_custom (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
         [uid, `${SPUR} Teil ${N}`, `${SPUR} Kategorie ${N}`],
       );
       await haeltTeil(db, uid, 'xss1', { storageId: ort, preis: 1 });
-      await db.run(`INSERT INTO figur_eigen (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [
+      await db.run(`INSERT INTO minifig_custom (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [
         uid,
         `${SPUR} Figur ${N}`,
       ]);

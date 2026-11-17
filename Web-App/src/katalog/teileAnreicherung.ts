@@ -59,7 +59,7 @@ async function enrichSetParts(k: KatalogKontext, setNumber: string) {
   > = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
 
-  // Die ZEILE in bl_zuordnung zählt, nicht ihr Wert: leer heisst „nachgesehen,
+  // Die ZEILE in bl_mapping zählt, nicht ihr Wert: leer heisst „nachgesehen,
   // keine abweichende Nummer".
   const lookedUp = await k.teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
@@ -231,7 +231,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
 
   if (!allPartNums.size) return;
 
-  // bl_zuordnung: die Nummer, einmal je Teil.
+  // bl_mapping: die Nummer, einmal je Teil.
   const rbBlRows = await k.teileAnreicherung.blZuordnungen([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
@@ -257,7 +257,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
     }
   }
 
-  // Vorrang: API > bl_zuordnung > eigene Nummer.
+  // Vorrang: API > bl_mapping > eigene Nummer.
   const finalBlMap: Record<string, string> = {};
   for (const pn of allPartNums as Iterable<string>) {
     finalBlMap[pn] = apiBlMap[pn] || rbBlMap[pn] || pn;
@@ -265,7 +265,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
 
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
-      // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_zuordnung.
+      // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_mapping.
       await merkeSetTeil(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
     }
   }

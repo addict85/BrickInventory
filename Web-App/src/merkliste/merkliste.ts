@@ -56,7 +56,7 @@ export interface Merkposten {
   image_local: string | null;
   owned: boolean;
   /** Reist mit: Ein Alarm, den man nirgends mehr sieht, ist vergessen. */
-  alarm: { richtung: string; schwelle: number; ausgeloest: boolean } | null;
+  alarm: { direction: string; threshold: number; triggered: boolean } | null;
   /** Am Merkposten statt am Katalog: Der Knopf braucht nur die Setnummer. */
   preisvergleich_url: string;
 }
@@ -178,7 +178,7 @@ export async function merkpostenVon(
 
   // Das Bild hier bestellen: Der Proxy legt nur für Vorschauen eine Notiz an,
   // das Detail fragt aber das volle Bild.
-  return rows.map(({ alarm_richtung, alarm_schwelle, alarm_ausgeloest, ...r }) => {
+  return rows.map(({ alarm_direction, alarm_threshold, alarm_triggered, ...r }) => {
     // Synchron und gecacht — kein Dateisystemzugriff je Zeile. Dieselbe Namensregel
     // wie beim Ablegen (src/bilder/setImages.ts).
     const lokal = bildFallsVorhanden(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
@@ -190,12 +190,12 @@ export async function merkpostenVon(
       preisvergleich_url: fuerSet(r.set_number, r.name),
       image_local: lokal,
       alarm:
-        alarm_richtung == null
+        alarm_direction == null
           ? null
           : {
-              richtung: alarm_richtung,
-              schwelle: Number(alarm_schwelle),
-              ausgeloest: !!alarm_ausgeloest,
+              direction: alarm_direction,
+              threshold: Number(alarm_threshold),
+              triggered: !!alarm_triggered,
             },
     };
   });

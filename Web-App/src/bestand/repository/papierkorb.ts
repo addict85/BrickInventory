@@ -77,43 +77,43 @@ export async function legeEintragAn(
   zeilen: Record<string, unknown[]>,
 ): Promise<number | null> {
   const r = await tx.get<{ id: number }>(
-    `INSERT INTO papierkorb (user_id, art, nummer, farbe_id, bezeichnung, zeilen)
+    `INSERT INTO trash (user_id, type, number, color_id, label, rows)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING id`,
     [userId, art, nummer, farbeId, name, JSON.stringify(zeilen)],
   );
   return r?.id ?? null;
 }
 
-/** Wie die Tabelle sie liefert; `art` prüft die Tabelle per CHECK. */
+/** Wie die Tabelle sie liefert; `type` prüft die Tabelle per CHECK. */
 export interface PapierkorbZeile {
   id: number;
   user_id: number;
-  art: PapierArt;
-  nummer: string;
-  farbe_id: number | null;
-  bezeichnung: string | null;
-  zeilen: Record<string, { quantity?: unknown }[]> | null;
-  geloescht_am: string;
+  type: PapierArt;
+  number: string;
+  color_id: number | null;
+  label: string | null;
+  rows: Record<string, { quantity?: unknown }[]> | null;
+  deleted_at: string;
   endgueltig_am: string;
 }
 
 export function eintraege(db: DbSchnittstelle, uids: number[], aufbewahrungTage: number) {
   return db.all<PapierkorbZeile>(
-    `SELECT id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am,
-            geloescht_am + make_interval(days => $2) AS endgueltig_am
-       FROM papierkorb WHERE user_id = ANY($1)
-      ORDER BY geloescht_am DESC, id DESC LIMIT 500`,
+    `SELECT id, user_id, type, number, color_id, label, rows, deleted_at,
+            deleted_at + make_interval(days => $2) AS endgueltig_am
+       FROM trash WHERE user_id = ANY($1)
+      ORDER BY deleted_at DESC, id DESC LIMIT 500`,
     [uids, aufbewahrungTage],
   );
 }
 
 export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) {
   return tx.get<{
-    art: string;
-    zeilen: Record<string, Record<string, unknown>[]> | null;
-    nummer: string;
+    type: string;
+    rows: Record<string, Record<string, unknown>[]> | null;
+    number: string;
     user_id: number;
-  }>('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
+  }>('SELECT * FROM trash WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
 /** Tabellen aus TABELLEN, nur Spalten, die es noch gibt und nicht berechnet sind (eine gelöschte fällt weg). */
@@ -158,19 +158,19 @@ export async function hatSetZeile(
 }
 
 export async function entferneEintrag(tx: DbSchnittstelle, id: number): Promise<void> {
-  await tx.run('DELETE FROM papierkorb WHERE id = $1', [id]);
+  await tx.run('DELETE FROM trash WHERE id = $1', [id]);
 }
 
 export async function entferneEintragDesKontos(db: DbSchnittstelle, id: number, uids: number[]): Promise<number> {
-  return (await db.run('DELETE FROM papierkorb WHERE id = $1 AND user_id = ANY($2)', [id, uids])).changes ?? 0;
+  return (await db.run('DELETE FROM trash WHERE id = $1 AND user_id = ANY($2)', [id, uids])).changes ?? 0;
 }
 
 export async function entferneAlle(db: DbSchnittstelle, uids: number[]): Promise<number> {
-  return (await db.run('DELETE FROM papierkorb WHERE user_id = ANY($1)', [uids])).changes ?? 0;
+  return (await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [uids])).changes ?? 0;
 }
 
 export async function entferneAeltere(db: DbSchnittstelle, tage: number): Promise<number> {
   return (
-    (await db.run('DELETE FROM papierkorb WHERE geloescht_am < NOW() - make_interval(days => $1)', [tage])).changes ?? 0
+    (await db.run('DELETE FROM trash WHERE deleted_at < NOW() - make_interval(days => $1)', [tage])).changes ?? 0
   );
 }

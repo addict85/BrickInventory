@@ -38,7 +38,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
     for (const tab of ['parts', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id=$1`, [U]).catch(() => {});
     // Die Katalogzeilen haengen an keinem Konto und bleiben sonst stehen.
-    await db.run(`DELETE FROM set_teile WHERE set_number='Z-1'`).catch(() => {});
+    await db.run(`DELETE FROM set_parts WHERE set_number='Z-1'`).catch(() => {});
   };
 
   try {
@@ -51,7 +51,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
     // Zweig zufällig richtig liegen, ohne die Umwandlung zu machen.
     // Das Ersatzteilkennzeichen steht seit Migration 0034 in
     // set_parts_catalog — es gehoert zur TEILELISTE eines Sets, nicht zum …
-    await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,quantity,is_spare)
+    await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,quantity,is_spare)
                   VALUES ('Z-1','3001',5,3,false),
                          ('Z-1','3002',1,1,true)
                   ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET is_spare=EXCLUDED.is_spare`);

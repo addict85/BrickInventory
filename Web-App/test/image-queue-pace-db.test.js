@@ -342,8 +342,8 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
 
-  await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
-  const vorher = await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
+  await db.run(`DELETE FROM run_state WHERE schluessel='imgqueue_last_run'`);
+  const vorher = await db.get(`SELECT wert AS value FROM run_state WHERE schluessel='imgqueue_last_run'`);
   assert.equal(vorher, undefined, 'Vorbedingung: noch kein Laufstand abgelegt');
 
   // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
@@ -370,7 +370,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     { env: process.env, stdio: 'pipe' },
   );
 
-  const zeile = await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
+  const zeile = await db.get(`SELECT wert AS value FROM run_state WHERE schluessel='imgqueue_last_run'`);
   assert.ok(
     zeile?.value,
     'Der Durchgang eines anderen Prozesses ist hier nicht sichtbar. Dann meldet ' +
@@ -413,7 +413,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
   }
 
-  await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`).catch(() => {});
+  await db.run(`DELETE FROM run_state WHERE schluessel='imgqueue_last_run'`).catch(() => {});
 });
 
 test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t => {

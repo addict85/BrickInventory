@@ -17,9 +17,9 @@ export const CurrentByCondition = z.looseObject({
 });
 
 export const MerkpostenAlarm = z.looseObject({
-  richtung: z.string(),
-  schwelle: z.number(),
-  ausgeloest: z.boolean(),
+  direction: z.string(),
+  threshold: z.number(),
+  triggered: z.boolean(),
 });
 
 export const Merkposten = z.looseObject({

@@ -6,7 +6,7 @@ import type { Spalten, Tabellen } from '../../../db/zeilen';
 /** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
 export type AlarmZeile = Spalten<
   'price_alerts',
-  'set_number' | 'condition' | 'richtung' | 'schwelle' | 'currency_code' | 'ausgeloest' | 'zuletzt_am' | 'zuletzt_preis'
+  'set_number' | 'condition' | 'direction' | 'threshold' | 'currency_code' | 'triggered' | 'last_triggered_at' | 'last_price'
 > & { besitzt: boolean };
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
@@ -29,17 +29,17 @@ export function schreibeAlarm(
   userId: number,
   setNumber: string,
   condition: string,
-  richtung: 'unter' | 'ueber',
-  schwelle: number,
+  direction: 'unter' | 'ueber',
+  threshold: number,
   waehrung: string,
 ) {
   return db.run(
-    `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
+    `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
      VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
-        SET richtung = $4, schwelle = $5, currency_code = $6,
-            ausgeloest = FALSE`,
-    [userId, setNumber, condition, richtung, schwelle, waehrung],
+        SET direction = $4, threshold = $5, currency_code = $6,
+            triggered = FALSE`,
+    [userId, setNumber, condition, direction, threshold, waehrung],
   );
 }
 
@@ -55,8 +55,8 @@ export function alarmeDesSets(
   blickfeld: number[],
 ) {
   return db.all<AlarmZeile>(
-    `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${besitzt(l)}
+    `SELECT set_number, condition, direction, threshold, currency_code,
+            triggered, last_triggered_at, last_price, ${besitzt(l)}
        FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
     [userId, setNumber, blickfeld],
   );
@@ -67,8 +67,8 @@ export function alarmeImBlickfeld(db: DbSchnittstelle, l: FinanzenLesevertrag, u
     AlarmZeile & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
   >(
     `SELECT DISTINCT ON (a.set_number, a.condition)
-            a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
-            a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
+            a.set_number, a.condition, a.direction, a.threshold, a.currency_code,
+            a.triggered, a.last_triggered_at, a.last_price,
             rb.name, rb.set_img_url, c.image_local, c.image_url,
             (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
@@ -95,14 +95,14 @@ export function alarmeDesKontos(
   blickfeld: number[],
 ) {
   return db.all<AlarmZeile>(
-    `SELECT set_number, condition, richtung, schwelle, currency_code,
-            ausgeloest, zuletzt_am, zuletzt_preis, ${besitzt(l)}
+    `SELECT set_number, condition, direction, threshold, currency_code,
+            triggered, last_triggered_at, last_price, ${besitzt(l)}
        FROM price_alerts a
-      WHERE user_id = $1 AND ausgeloest = TRUE
+      WHERE user_id = $1 AND triggered = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
         -- geschrieben wurden, tragen noch Mikrosekunden.
-        AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
-      ORDER BY zuletzt_am`,
+        AND last_triggered_at IS NOT NULL AND date_trunc('milliseconds', last_triggered_at) > $2
+      ORDER BY last_triggered_at`,
     [userId, marke, blickfeld],
   );
 }
@@ -111,12 +111,12 @@ export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
   return db.all<
     Spalten<
       'price_alerts',
-      'user_id' | 'set_number' | 'condition' | 'richtung' | 'schwelle' | 'currency_code' | 'ausgeloest'
+      'user_id' | 'set_number' | 'condition' | 'direction' | 'threshold' | 'currency_code' | 'triggered'
     > &
       Spalten<'users', 'email' | 'username'> & { sprache: NonNullable<Tabellen['user_settings']['value']> }
   >(
-    `SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
-            a.currency_code, a.ausgeloest, u.email, u.username,
+    `SELECT a.user_id, a.set_number, a.condition, a.direction, a.threshold,
+            a.currency_code, a.triggered, u.email, u.username,
             COALESCE(us.value, 'de') AS sprache
        FROM price_alerts a
        JOIN users u ON u.id = a.user_id
@@ -136,7 +136,7 @@ export function cachePreisFuerAlarm(db: DbSchnittstelle, set_number: string, con
 
 export function setzeAlarmZurueck(db: DbSchnittstelle, user_id: number, set_number: string, condition: string) {
   return db.run(
-    `UPDATE price_alerts SET ausgeloest = FALSE
+    `UPDATE price_alerts SET triggered = FALSE
                        WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
     [user_id, set_number, condition],
   );
@@ -150,7 +150,7 @@ export function loeseAlarmAus(
   preis: number,
 ) {
   return db.run(
-    `UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = NOW(), zuletzt_preis = $4
+    `UPDATE price_alerts SET triggered = TRUE, last_triggered_at = NOW(), last_price = $4
         WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
     [user_id, set_number, condition, preis],
   );
@@ -164,11 +164,11 @@ export function alarmeFuerExport(db: DbSchnittstelle, uid: number) {
   return db.all<{
     set_number: string;
     condition: string;
-    richtung: string;
-    schwelle: number | string;
+    direction: string;
+    threshold: number | string;
     currency_code: string;
   }>(
-    `SELECT set_number, condition, richtung, schwelle, currency_code
+    `SELECT set_number, condition, direction, threshold, currency_code
        FROM price_alerts
       WHERE user_id = $1
       ORDER BY set_number, condition`,

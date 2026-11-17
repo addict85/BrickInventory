@@ -81,7 +81,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     const w = erzeugeWorker(
       require('./helpers/sources').testDienste().auftraege,
       {
-        wechselkurse: {
+        exchange_rates: {
           ausfuehren: async () => {
             for (let i = 0; i < 3; i++) ergebnisse.push((await k.kontingentPruefenUndZaehlen('brickset')).allowed);
           },
@@ -89,7 +89,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
       },
       { parallel: 1 },
     );
-    await stelleAuftragEin('wechselkurse', {}, { userId: uid });
+    await stelleAuftragEin('exchange_rates', {}, { userId: uid });
     while (await w.verarbeiteEinen()) {
       /* bis die Tabelle leer ist */
     }

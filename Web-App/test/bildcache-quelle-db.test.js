@@ -8,7 +8,7 @@
  *   A  bilderAusKatalog() setzt image_url/image_local des Clients nicht mehr
  *      zurück → rot: „der lokale Pfad des Clients bleibt stehen“ und
  *      „die Bildadresse des Clients wird abgerufen“
- *   B  (03.11.2026) teilbilder() liest zusätzlich teil_farbe_eigen → rot:
+ *   B  (03.11.2026) teilbilder() liest zusätzlich part_color_custom → rot:
  *      „eine eingetippte Adresse wird für alle abgelegt“
  *   C  setNummerAusBildAdresse() wieder mit dem alten, nicht verankerten
  *      Muster auf der ganzen Adresse → rot: „…?/media/sets/10294-1.jpg ergibt
@@ -77,7 +77,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);
     await db.run('DELETE FROM users WHERE username = $1', [T]);
-    await db.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${jobId}`]);
+    await db.run('DELETE FROM jobs WHERE dedupe_key = $1', [`pdf:${jobId}`]);
     require('node:fs').rmSync(pdfDateiPfad(jobId), { force: true });
   };
   await aufraeumen();
@@ -89,7 +89,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
   // Geprüfte Adresse im Katalog, eingetippte in den eigenen Angaben eines Kontos.
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url) VALUES ($1, 5, $2)`, [`${T}a`, GUT]);
   const konto = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [T])).id;
-  await db.run(`INSERT INTO teil_farbe_eigen (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`, [
+  await db.run(`INSERT INTO part_color_custom (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`, [
     konto,
     `${T}b`,
     GETIPPT,

@@ -119,14 +119,14 @@ export async function hinterlegeSchluessel(
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
   if (!leseSchluessel(kanonisch)) fachfehler('ungueltig', 'geraeteschluessel_ungueltig');
   const da = await kx.geraeteSchluessel.eintragDer(f);
-  if (da?.attestiert) {
-    if (da.oeffentlich !== kanonisch) fachfehler('konflikt', 'geraeteschluessel_vorhanden');
+  if (da?.attested) {
+    if (da.public_key !== kanonisch) fachfehler('konflikt', 'geraeteschluessel_vorhanden');
     return 'gleich';
   }
   if (!(await kx.geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url'))))
     attestationAbgewiesen(f, 'challenge');
   if (await kx.geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
-  if ((await kx.geraeteSchluessel.eintragDer(f))?.oeffentlich !== kanonisch)
+  if ((await kx.geraeteSchluessel.eintragDer(f))?.public_key !== kanonisch)
     fachfehler('verboten', 'geraeteschluessel_frist');
   return 'gleich';
 }

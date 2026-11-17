@@ -41,14 +41,14 @@ export async function warteAufAuftrag<T, A extends AuftragsArt>(
   let zuletzt = '';
   for (;;) {
     const s = await k.auftraege.auftragsStand(id, uid);
-    if (s?.fortschritt && o.fortschritt) {
-      const j = JSON.stringify(s.fortschritt);
+    if (s?.progress && o.fortschritt) {
+      const j = JSON.stringify(s.progress);
       if (j !== zuletzt) {
         zuletzt = j;
-        o.fortschritt(s.fortschritt);
+        o.fortschritt(s.progress);
       }
     }
-    const abgelegt = (s?.ergebnis ?? {}) as Abgelegt;
+    const abgelegt = (s?.result ?? {}) as Abgelegt;
     if (abgelegt.fachfehler)
       throw new Fachfehler(abgelegt.fachfehler.art ?? 'ungueltig', abgelegt.fachfehler.code, abgelegt.fachfehler.vars);
     if (s?.status === 'erledigt') {

@@ -84,16 +84,16 @@ export async function passwortDurchVerwalter(
   passwort: string,
 ): Promise<Verwalterweg | null> {
   if (await k.uebernahmen.verwalterOderEbenGewesen(ziel, UEBERNAHME_STUNDEN)) {
-    const passwort_hash = await hashePasswort(passwort);
-    return { wirksamAb: await ankuendigen(k, { ziel_id: ziel, art: 'passwort', durch_id: durch, passwort_hash }) };
+    const password_hash = await hashePasswort(passwort);
+    return { wirksamAb: await ankuendigen(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }) };
   }
   if (!(await setzeFremdesPasswort(k, ziel, passwort, durch))) return null;
-  await nachDerUebernahme(k, { ziel_id: ziel, art: 'passwort', durch_id: durch, passwort_hash: null });
+  await nachDerUebernahme(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash: null });
   return { wirksamAb: null };
 }
 
 export async function faktorDurchVerwalter(k: KontoKontext, durch: number, ziel: number): Promise<Verwalterweg> {
-  const u: Uebernahme = { ziel_id: ziel, art: 'zweiter_faktor', durch_id: durch, passwort_hash: null };
+  const u: Uebernahme = { target_id: ziel, type: 'zweiter_faktor', initiated_by: durch, password_hash: null };
   if (await k.uebernahmen.verwalterOderEbenGewesen(ziel, UEBERNAHME_STUNDEN))
     return { wirksamAb: await ankuendigen(k, u) };
   await zweitenFaktorEntfernen(k, durch, ziel);
@@ -103,46 +103,46 @@ export async function faktorDurchVerwalter(k: KontoKontext, durch: number, ziel:
 
 /** Deaktivieren, Rolle entziehen oder Löschen eines Verwalters (oder eben gewesenen) ankündigen.
  * @returns ab wann es gilt, oder null: Das Ziel ist kein Verwalter, der Aufrufer handelt sofort. */
-async function abbauAnkuendigen(k: KontoKontext, durch: number, ziel: number, art: Abbau): Promise<Date | null> {
+async function abbauAnkuendigen(k: KontoKontext, durch: number, ziel: number, type: Abbau): Promise<Date | null> {
   const verwalter =
-    art === 'rolle_entziehen'
+    type === 'rolle_entziehen'
       ? (await k.konten.kontoKurz(ziel))?.is_admin === true
       : await k.uebernahmen.verwalterOderEbenGewesen(ziel, UEBERNAHME_STUNDEN);
-  return verwalter ? ankuendigen(k, { ziel_id: ziel, art, durch_id: durch, passwort_hash: null }) : null;
+  return verwalter ? ankuendigen(k, { target_id: ziel, type, initiated_by: durch, password_hash: null }) : null;
 }
 
 async function ankuendigen(k: KontoKontext, u: Uebernahme): Promise<Date> {
   const abbruch = crypto.randomBytes(32).toString('base64url');
   const bis = await zugangsTransaktion(k, async t => {
     const b = await t.uebernahmen.kuendigeAn(u, UEBERNAHME_STUNDEN, tokenAbdruck(abbruch));
-    await verwalterAktionMerken(t, u.durch_id, u.ziel_id, 'uebernahme_angekuendigt', u.art);
+    await verwalterAktionMerken(t, u.initiated_by, u.target_id, 'uebernahme_angekuendigt', u.type);
     return b;
   });
-  const angaben = { durch: await kontoAnzeigeName(k, u.durch_id), was: u.art, bis: bis.toISOString() };
+  const angaben = { durch: await kontoAnzeigeName(k, u.initiated_by), was: u.type, bis: bis.toISOString() };
   // Den Link bekommt nur das Ziel: Mit ihm bricht es ab, auch deaktiviert und ohne Anmeldung.
-  hinweisNebenher(k, u.ziel_id, 'uebernahme_angekuendigt', undefined, { ...angaben, abbruch });
+  hinweisNebenher(k, u.target_id, 'uebernahme_angekuendigt', undefined, { ...angaben, abbruch });
   verwalterHinweisNebenher(k, 'verwaltung_uebernahme_angekuendigt', {
     ...angaben,
-    konto: await kontoAnzeigeName(k, u.ziel_id),
+    konto: await kontoAnzeigeName(k, u.target_id),
   });
   return bis;
 }
 
 async function nachDerUebernahme(k: KontoKontext, u: Uebernahme): Promise<void> {
-  const [durch, konto] = [await kontoAnzeigeName(k, u.durch_id), await kontoAnzeigeName(k, u.ziel_id)];
-  const pw = u.art === 'passwort';
-  hinweisNebenher(k, u.ziel_id, pw ? 'passwort_durch_verwalter' : 'zweiter_faktor_entfernt', undefined, { durch });
+  const [durch, konto] = [await kontoAnzeigeName(k, u.initiated_by), await kontoAnzeigeName(k, u.target_id)];
+  const pw = u.type === 'passwort';
+  hinweisNebenher(k, u.target_id, pw ? 'passwort_durch_verwalter' : 'zweiter_faktor_entfernt', undefined, { durch });
   verwalterHinweisNebenher(k, pw ? 'verwaltung_passwort_gesetzt' : 'verwaltung_faktor_entfernt', { konto, durch });
 }
 
 async function abbauAusfuehren(k: KontoKontext, u: Uebernahme): Promise<void> {
-  const [durch, konto] = [await kontoAnzeigeName(k, u.durch_id), await kontoAnzeigeName(k, u.ziel_id)];
-  if (u.art === 'deaktivieren') await aktivSchreiben(k, u.durch_id, u.ziel_id, false);
-  else if (u.art === 'rolle_entziehen') await rolleSchreiben(k, u.durch_id, u.ziel_id, false);
-  else await kontoEntfernen(k, u.ziel_id, u.durch_id);
-  if (u.art !== 'loeschen')
-    hinweisNebenher(k, u.ziel_id, 'verwalter_aktion_ausgefuehrt', undefined, { durch, was: u.art });
-  verwalterHinweisNebenher(k, 'verwaltung_aktion_ausgefuehrt', { konto, durch, was: u.art });
+  const [durch, konto] = [await kontoAnzeigeName(k, u.initiated_by), await kontoAnzeigeName(k, u.target_id)];
+  if (u.type === 'deaktivieren') await aktivSchreiben(k, u.initiated_by, u.target_id, false);
+  else if (u.type === 'rolle_entziehen') await rolleSchreiben(k, u.initiated_by, u.target_id, false);
+  else await kontoEntfernen(k, u.target_id, u.initiated_by);
+  if (u.type !== 'loeschen')
+    hinweisNebenher(k, u.target_id, 'verwalter_aktion_ausgefuehrt', undefined, { durch, was: u.type });
+  verwalterHinweisNebenher(k, 'verwaltung_aktion_ausgefuehrt', { konto, durch, was: u.type });
 }
 
 /** Der Aufräumlauf (stündlich): fällige Ankündigungen, solange ihr Verwalter noch einer ist. */
@@ -152,28 +152,28 @@ export async function fuehreFaelligeUebernahmenAus(k: KontoKontext): Promise<num
     () => null,
     async t => {
       const { gilt } = await t.uebernahmen.nimmFaellige();
-      const erledigt = gilt.filter(u => istUebernahme(u.art));
+      const erledigt = gilt.filter(u => istUebernahme(u.type));
       for (const u of erledigt) {
-        if (u.passwort_hash) await t.konten.setzePasswortHash(u.ziel_id, u.passwort_hash);
-        else await t.faktoren.schalteAb(u.ziel_id);
-        await zugaengeBeenden(t, u.ziel_id);
+        if (u.password_hash) await t.konten.setzePasswortHash(u.target_id, u.password_hash);
+        else await t.faktoren.schalteAb(u.target_id);
+        await zugaengeBeenden(t, u.target_id);
         await verwalterAktionMerken(
           t,
-          u.durch_id,
-          u.ziel_id,
-          u.passwort_hash ? 'passwort_gesetzt' : 'zweiter_faktor_entfernt',
+          u.initiated_by,
+          u.target_id,
+          u.password_hash ? 'passwort_gesetzt' : 'zweiter_faktor_entfernt',
         );
       }
-      return { erledigt, abbau: gilt.filter(u => !istUebernahme(u.art)) };
+      return { erledigt, abbau: gilt.filter(u => !istUebernahme(u.type)) };
     },
   );
   for (const u of erledigt) {
-    vergissSitzungsVersion(k, u.ziel_id);
+    vergissSitzungsVersion(k, u.target_id);
     await nachDerUebernahme(k, u);
   }
   // Löschen zuletzt; ein Fehlschlag (letzter Verwalter) hält die übrigen nicht auf, der Lauf meldet ihn.
   const fehler: unknown[] = [];
-  for (const u of abbau.sort((a, b) => Number(a.art === 'loeschen') - Number(b.art === 'loeschen')))
+  for (const u of abbau.sort((a, b) => Number(a.type === 'loeschen') - Number(b.type === 'loeschen')))
     await abbauAusfuehren(k, u).catch((e: unknown) => fehler.push(e));
   if (fehler.length) throw new AggregateError(fehler, `${fehler.length} angekündigte Verwalteraktion(en) gescheitert`);
   return erledigt.length + abbau.length;
@@ -187,7 +187,7 @@ export async function uebernahmenAbbrechen(
 ): Promise<UebernahmeArt[]> {
   const arten = await k.uebernahmen.brichUebernahmenAb(uid);
   if (!arten.length) return arten;
-  for (const art of arten) await verwalterAktionMerken(k, uid, uid, 'uebernahme_abgebrochen', `${weg}:${art}`);
+  for (const type of arten) await verwalterAktionMerken(k, uid, uid, 'uebernahme_abgebrochen', `${weg}:${type}`);
   verwalterHinweisNebenher(k, 'verwaltung_uebernahme_abgebrochen', {
     konto: await kontoAnzeigeName(k, uid),
     was: arten.join(', '),
@@ -196,8 +196,8 @@ export async function uebernahmenAbbrechen(
 }
 
 /** Die Links aus Mails an den Inhaber, ohne Anmeldung; ein Abbruch gilt einmal, weil er die Zeilen löscht. */
-export async function mailLinkEinloesen(k: KontoKontext, art: 'abbrechen' | 'freigeben', token: string): Promise<void> {
-  if (art === 'freigeben') return anmeldungFreigeben(k, token);
+export async function mailLinkEinloesen(k: KontoKontext, type: 'abbrechen' | 'freigeben', token: string): Promise<void> {
+  if (type === 'freigeben') return anmeldungFreigeben(k, token);
   const ziel = token ? await k.uebernahmen.zielZumAbbruch(tokenAbdruck(token)) : null;
   if (ziel === null) fachfehler('konflikt', 'abbruch_link_ungueltig');
   await uebernahmenAbbrechen(k, ziel, 'link');

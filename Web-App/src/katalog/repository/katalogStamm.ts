@@ -84,10 +84,10 @@ export function schreibeTeilEigen(
   if (name === null && kategorie === null) return Promise.resolve();
   return dbh.run(
     `
-    INSERT INTO teil_eigen (user_id, part_number, part_name, category_name) VALUES ($1, $2, $3, $4)
+    INSERT INTO part_custom (user_id, part_number, part_name, category_name) VALUES ($1, $2, $3, $4)
     ON CONFLICT (user_id, part_number) DO UPDATE SET
-      part_name     = COALESCE(EXCLUDED.part_name, teil_eigen.part_name),
-      category_name = COALESCE(EXCLUDED.category_name, teil_eigen.category_name),
+      part_name     = COALESCE(EXCLUDED.part_name, part_custom.part_name),
+      category_name = COALESCE(EXCLUDED.category_name, part_custom.category_name),
       updated_at    = NOW()`,
     [uid, partNumber, name, kategorie],
   );
@@ -105,11 +105,11 @@ export function schreibeTeilFarbeEigen(
   if (name === null && code === null && bild === null) return Promise.resolve();
   return dbh.run(
     `
-    INSERT INTO teil_farbe_eigen (user_id, part_number, color_id, color_name, color_hex, image_url) VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO part_color_custom (user_id, part_number, color_id, color_name, color_hex, image_url) VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (user_id, part_number, color_id) DO UPDATE SET
-      color_name = COALESCE(EXCLUDED.color_name, teil_farbe_eigen.color_name),
-      color_hex  = COALESCE(EXCLUDED.color_hex, teil_farbe_eigen.color_hex),
-      image_url  = COALESCE(EXCLUDED.image_url, teil_farbe_eigen.image_url),
+      color_name = COALESCE(EXCLUDED.color_name, part_color_custom.color_name),
+      color_hex  = COALESCE(EXCLUDED.color_hex, part_color_custom.color_hex),
+      image_url  = COALESCE(EXCLUDED.image_url, part_color_custom.image_url),
       updated_at = NOW()`,
     [uid, partNumber, farbe, name, code, bild],
   );
@@ -125,10 +125,10 @@ export function schreibeFigurEigen(
   if (name === null && bild === null) return Promise.resolve();
   return dbh.run(
     `
-    INSERT INTO figur_eigen (user_id, fig_number, fig_name, image_url) VALUES ($1, $2, $3, $4)
+    INSERT INTO minifig_custom (user_id, fig_number, fig_name, image_url) VALUES ($1, $2, $3, $4)
     ON CONFLICT (user_id, fig_number) DO UPDATE SET
-      fig_name   = COALESCE(EXCLUDED.fig_name, figur_eigen.fig_name),
-      image_url  = COALESCE(EXCLUDED.image_url, figur_eigen.image_url),
+      fig_name   = COALESCE(EXCLUDED.fig_name, minifig_custom.fig_name),
+      image_url  = COALESCE(EXCLUDED.image_url, minifig_custom.image_url),
       updated_at = NOW()`,
     [uid, figNumber, name, bild],
   );
@@ -144,7 +144,7 @@ export function schreibeSetTeil(
 ) {
   return dbh.run(
     `
-    INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
+    INSERT INTO set_parts (set_number, part_number, color_id, quantity, is_spare)
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
@@ -203,7 +203,7 @@ export function schreibeSetTeile(
 ) {
   return dbh.run(
     `
-    INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
+    INSERT INTO set_parts (set_number, part_number, color_id, quantity, is_spare)
     SELECT $1, p, f, q, s FROM unnest($2::text[], $3::int[], $4::int[], $5::boolean[]) AS x(p, f, q, s)
     ON CONFLICT (set_number, part_number, color_id) DO UPDATE
       SET quantity = EXCLUDED.quantity, is_spare = EXCLUDED.is_spare, updated_at = NOW()`,
@@ -243,7 +243,7 @@ export function schreibeTeilbildLokal(dbh: Schreiber, partNumber: string, colorI
 export function schreibeSetFiguren(dbh: Schreiber, setNumber: string, nummern: string[], mengen: number[]) {
   return dbh.run(
     `
-    INSERT INTO set_figuren (set_number, fig_number, quantity)
+    INSERT INTO set_minifigs (set_number, fig_number, quantity)
     SELECT $1, * FROM unnest($2::text[], $3::int[])
     ON CONFLICT (set_number, fig_number) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
     [setNumber, nummern, mengen],
@@ -289,8 +289,8 @@ export function teilAusKatalog(db: DbSchnittstelle, partNumber: string, colorId:
       LEFT JOIN part_catalog       pc  ON pc.part_number  = q.nr
       LEFT JOIN rb_parts           rp  ON rp.part_num     = q.nr
       LEFT JOIN part_color_catalog pcc ON pcc.part_number = q.nr AND pcc.color_id = $2
-      LEFT JOIN teil_eigen         te  ON te.user_id = $3 AND te.part_number = q.nr
-      LEFT JOIN teil_farbe_eigen   tfe ON tfe.user_id = $3 AND tfe.part_number = q.nr AND tfe.color_id = $2`,
+      LEFT JOIN part_custom         te  ON te.user_id = $3 AND te.part_number = q.nr
+      LEFT JOIN part_color_custom   tfe ON tfe.user_id = $3 AND tfe.part_number = q.nr AND tfe.color_id = $2`,
     [partNumber, colorId, fuer],
   );
 }
@@ -303,7 +303,7 @@ export function figurAusKatalog(db: DbSchnittstelle, figNumber: string, fuer: nu
            mc.image_local
       FROM (SELECT $1::text AS nr) q
       LEFT JOIN minifigs_catalog mc ON mc.fig_number = q.nr
-      LEFT JOIN figur_eigen fe ON fe.user_id = $2 AND fe.fig_number = q.nr
+      LEFT JOIN minifig_custom fe ON fe.user_id = $2 AND fe.fig_number = q.nr
      WHERE mc.fig_number IS NOT NULL OR fe.fig_number IS NOT NULL`,
     [figNumber, fuer],
   );

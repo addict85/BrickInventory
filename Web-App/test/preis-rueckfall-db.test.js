@@ -53,12 +53,12 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 /** Führt den Auftrag aus, den die Bewertung für fehlende Preise eingestellt hat. */
 async function nachladen() {
   const a = await db.get(
-    `SELECT id, nutzlast FROM auftraege WHERE art = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`,
+    `SELECT id, payload FROM jobs WHERE type = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`,
   );
   if (!a) return false;
   const { preiseNachladen } = _req('src/finanzen/preiseNachladen.js');
-  await preiseNachladen(a.nutzlast, { signal: new AbortController().signal, fortschritt: async () => true });
-  await db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);
+  await preiseNachladen(a.payload, { signal: new AbortController().signal, progress: async () => true });
+  await db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   return true;
 }
 

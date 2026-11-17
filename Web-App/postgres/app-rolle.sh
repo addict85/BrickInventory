@@ -76,70 +76,70 @@ export DB_SYSTEM_WEB_USER="${DB_SYSTEM_WEB_USER:-brickinventory_system_web}"
 # Passwort-Hashes, Tokens, Sitzungen, TOTP, Einstellungswerte, Gutschein-PIN.
 export LESEN_SPALTEN='
 account_links: main_user_id, sub_user_id, created_at
-api_aufrufe: tag, api, konto, anzahl
-api_takt: api, naechster
+api_calls: day, api, account_id, count
+api_cadence: api, next_at
 app_logs: id, level, message, logged_at
-auftraege: id, art, user_id, schluessel, status, versuche, max_versuche, faellig_ab, belegt_von, fehler, erstellt, aktualisiert, frist_bis, gestartet, fortschritt
-auftrag_pausen: art, bis, grund, stufe
-auftrags_arten: art
-bl_zuordnung: art, rb_id, bl_id, fetched_at
+jobs: id, type, user_id, dedupe_key, status, attempts, max_attempts, due_at, locked_by, error_message, created_at, updated_at, deadline_at, started_at, progress
+job_pauses: type, until_at, reason, level
+job_types: type
+bl_mapping: type, rb_id, bl_id, fetched_at
 catalog_cache: set_number, is_gear, bl_type, fetched_at
 global_settings: key, updated_at
-gutschein_guthaben_schranke: id, letzter_abruf, sperre_bis
+voucher_balance_throttle: id, last_checked_at, locked_until
 household_former_links: main_user_id, sub_user_id, via_user_id, created_at
 image_misses: cache_key, checked_at, reason
 image_wanted: url, set_number, requested_at
-import_stand: user_id, status, total, done, current, results, error, started_at, updated_at, run_id
+import_status: user_id, status, total, done, current, results, error, started_at, updated_at, run_id
 instructions: id, user_id, set_number, url, description, local_path, downloaded_at
-laufzustand: schluessel, wert, aktualisiert
-minifig_acquisitions: id, user_id, fig_number, quantity, unit_price, condition, created_at, currency, price_estimated, tag
+run_state: key, value, updated_at
+minifig_acquisitions: id, user_id, fig_number, quantity, unit_price, condition, created_at, currency, price_estimated, day
 minifig_parts_cache: fig_number, data, fetched_at
-minifig_price_cache: id, fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at, geschaetzt, abdeckung
-minifig_price_history: id, fig_number, condition, currency_code, avg_price, qty_avg_price, recorded_at, geschaetzt, abdeckung
+minifig_price_cache: id, fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at, estimated, coverage
+minifig_price_history: id, fig_number, condition, currency_code, avg_price, qty_avg_price, recorded_at, estimated, coverage
 minifigs: id, user_id, set_number, fig_number, source, storage_id
 minifigs_catalog: fig_number, fig_name, image_url, image_local, updated_at
-papierkorb: id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am
-part_acquisitions: id, user_id, part_number, color_id, quantity, unit_price, condition, created_at, currency, price_estimated, tag
+trash: id, user_id, type, number, color_id, label, rows, deleted_at
+part_acquisitions: id, user_id, part_number, color_id, quantity, unit_price, condition, created_at, currency, price_estimated, day
 part_catalog: part_number, part_name, category_name, updated_at
 part_color_catalog: part_number, color_id, color_name, color_hex, image_url, image_local, updated_at
 part_price_cache: id, part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at
 part_price_history: id, part_number, color_id, condition, currency_code, avg_price, qty_avg_price, recorded_at
 parts: id, user_id, set_number, part_number, color_id, source, storage_id, added_at
-parts_katalog_offen: id, nummer
+parts_catalog_pending: id, number
 parts_summary: user_id, part_key, color_id, part_number, bl_part_number, part_name, color_name, color_hex, category_name, image_url, image_local, is_spare, total_quantity, in_sets, storage
 parts_summary_state: user_id, built_version, built_at
 parts_version_user: user_id, v
 passkeys: id, user_id, sign_count, transports, name, created_at, last_used
-price_alerts: user_id, set_number, condition, richtung, schwelle, currency_code, ausgeloest, zuletzt_am, zuletzt_preis, created_at
+price_alerts: user_id, set_number, condition, direction, threshold, currency_code, triggered, last_triggered_at, last_price, created_at
 price_cache: id, set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at
 price_history: id, set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at
-rate_limit_attempts: key, count, first_at, last_at, laufend, laufend_seit
+rate_limit_attempts: key, count, first_at, last_at, ongoing, ongoing_since
 rb_colors: id, name, rgb, is_trans, bl_color_id
 rb_inventories: id, set_num, version
 rb_inventory_minifigs: id, inventory_id, fig_num, quantity
 rb_inventory_parts: id, inventory_id, part_num, color_id, quantity, is_spare, img_url
 rb_part_categories: id, name
 rb_parts: part_num, name, part_cat_id, part_img_url
-rb_sets: set_num, name, year, theme_id, num_parts, set_img_url, herkunft
+rb_sets: set_num, name, year, theme_id, num_parts, set_img_url, source
 rb_themes: id, name, parent_id
 schema_migrations: name, applied_at, pruefsumme
-set_acquisitions: id, user_id, set_number, quantity, purchase_price, created_at, condition, currency, price_estimated, tag
+set_acquisitions: id, user_id, set_number, quantity, purchase_price, created_at, condition, currency, price_estimated, day
 set_catalog: set_number, minifigs, image_url, image_local, brickset_id, updated_at
-set_figuren: set_number, fig_number, quantity, updated_at
+set_minifigs: set_number, fig_number, quantity, updated_at
 set_minifigs_catalog: set_number, fig_number, fig_name, quantity, image_url, image_local, updated_at
 set_parts_catalog: set_number, part_number, part_name, color_id, color_name, color_hex, category_name, image_url, image_local, is_spare, quantity, updated_at
-set_teile: set_number, part_number, color_id, is_spare, quantity, updated_at
+set_parts: set_number, part_number, color_id, is_spare, quantity, updated_at
 sets: id, user_id, set_number, added_at, updated_at, storage_id
 shared_instructions: id, set_number, url, description, local_path, fetched_at
 storage_locations: id, user_id, name, created_at
 subsets_cache: set_number, data, fetched_at
 user_settings: user_id, key, updated_at
-users: id, username, email, first_name, last_name, is_admin, is_active, email_verified, token_expires, reset_token_expires, must_change_password, created_at, sitzungs_version
-verwaltungsprotokoll: id, zeit, verwalter_id, ziel_id, ziel_name, aktion, einzelheiten
-vouchers: id, user_id, amount, currency, pdf_path, created_at, updated_at, guthaben_geprueft_am
+users: id, username, email, first_name, last_name, is_admin, is_active, email_verified, token_expires, reset_token_expires, must_change_password, created_at, session_version
+admin_log: id, occurred_at, admin_id, target_id, target_name, action, details
+vouchers: id, user_id, amount, currency, pdf_path, created_at, updated_at, balance_checked_at
 wanted: id, user_id, set_number, condition, created_at
-wechselkurse: tag, waehrung, je_eur
-zweiter_faktor: user_id, aktiv, eingerichtet_am
+exchange_rates: day, currency, per_eur
+second_factor: user_id, active, created_at
 '
 
 # Kommandozeilen-Optionen schlagen ALTER DATABASE … SET; role=none hebt ein
@@ -315,7 +315,7 @@ BEGIN
                 AND a.attnum > 0 AND NOT a.attisdropped
                 AND NOT a.attname::text OPERATOR(pg_catalog.=) ANY (ARRAY['password_hash', 'email',
                   'verification_token', 'token_expires', 'reset_token', 'reset_token_expires',
-                  'email_neu', 'email_neu_token', 'email_neu_bis']));
+                  'new_email', 'new_email_token', 'new_email_until']));
   END IF;
   IF pg_catalog.to_regclass('public.user_sessions') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE ALL ON public.user_sessions FROM %I', rolle);
@@ -330,8 +330,8 @@ BEGIN
   IF pg_catalog.to_regclass('public.global_settings') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.global_settings FROM %I', rolle);
   END IF;
-  IF pg_catalog.to_regclass('public.verwaltungsprotokoll') IS NOT NULL THEN
-    EXECUTE pg_catalog.format('REVOKE UPDATE, DELETE, TRUNCATE ON public.verwaltungsprotokoll FROM %I, %I', rolle, sysrolle);
+  IF pg_catalog.to_regclass('public.admin_log') IS NOT NULL THEN
+    EXECUTE pg_catalog.format('REVOKE UPDATE, DELETE, TRUNCATE ON public.admin_log FROM %I, %I', rolle, sysrolle);
   END IF;
   IF pg_catalog.to_regprocedure('public.verwaltungsprotokoll_aufraeumen()') IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.verwaltungsprotokoll_aufraeumen() FROM PUBLIC';

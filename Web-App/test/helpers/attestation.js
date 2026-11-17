@@ -87,15 +87,15 @@ const DIGEST = createHash('sha256').update('brickinventory-test-signatur').diges
 const DIGEST_HEX = DIGEST.toString('hex').toUpperCase();
 
 /**
- * Eine geladene Widerrufsliste in laufzustand, wie sie der Auftrag `widerrufsliste`
+ * Eine geladene Widerrufsliste in run_state, wie sie der Auftrag `widerrufsliste`
  * ablegt; ohne sie nimmt der Server keinen Schlüssel an.
  * @param {{ run: (sql: string, p: unknown[]) => Promise<unknown> }} db
  * @param {string[]} [nummern] @param {Date} [stand]
  */
 function widerrufslisteAblegen(db, nummern = [], stand = new Date()) {
   return db.run(
-    `INSERT INTO laufzustand (schluessel, wert) VALUES ('attestation_widerruf', $1)
-     ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+    `INSERT INTO run_state (key, value) VALUES ('attestation_widerruf', $1)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     [JSON.stringify({ stand: stand.toISOString(), nummern })],
   );
 }

@@ -60,9 +60,9 @@ export type MerkZeile = {
   theme_id: number | null;
   num_parts: number | null;
   image_url: string | null;
-  alarm_richtung: string | null;
-  alarm_schwelle: number | null;
-  alarm_ausgeloest: boolean | null;
+  alarm_direction: string | null;
+  alarm_threshold: number | null;
+  alarm_triggered: boolean | null;
   marktpreis: number | null;
   owned: boolean;
 };
@@ -92,8 +92,8 @@ export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: 
     `SELECT w.set_number, w.condition, w.created_at, w.user_id,
             rb.name, rb.year, rb.theme_id, rb.num_parts,
             sc.image_url,
-            pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
-            pa.ausgeloest AS alarm_ausgeloest,
+            pa.direction AS alarm_direction, pa.threshold AS alarm_threshold,
+            pa.triggered AS alarm_triggered,
             ${marktpreisSql('pc')} AS marktpreis,
             EXISTS (SELECT 1 FROM ${setBestand('= ANY($1)')} s
                      WHERE s.set_number = w.set_number) AS owned

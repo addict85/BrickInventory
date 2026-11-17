@@ -59,8 +59,8 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     await db.run('DELETE FROM part_catalog WHERE part_number = ANY($1)', [[X, W, Y, Z]]);
-    await db.run(`DELETE FROM bl_zuordnung WHERE art = 'part' AND rb_id = ANY($1)`, [[X, W]]);
-    await db.run('DELETE FROM set_teile WHERE set_number = ANY($1)', [[SA, SB]]);
+    await db.run(`DELETE FROM bl_mapping WHERE type = 'part' AND rb_id = ANY($1)`, [[X, W]]);
+    await db.run('DELETE FROM set_parts WHERE set_number = ANY($1)', [[SA, SB]]);
     await db.pool.end().catch(() => {});
   });
   await haeltSet(db, a, SA, 1);
@@ -121,7 +121,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
   await t.test('die Anfrage eines Kontos zieht auch die anderen nach', async () => {
     await db.run(`UPDATE part_catalog SET part_name = 'Y neu' WHERE part_number = $1`, [Y]);
     assert.equal(await als(a, () => PS.zusammenfassungFrisch(a, { strict: true })), true);
-    assert.equal((await db.get('SELECT count(*)::int AS n FROM parts_katalog_offen')).n, 0);
+    assert.equal((await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n, 0);
     assert.equal(
       (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [b, Y])).part_name,
       'Y neu',
@@ -132,7 +132,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     // W und X teilen sich eine BrickLink-Nummer; die Gruppe heisst nach W.
     await haeltTeil(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
     await als(a, () => PS.rebuildNow(a));
-    await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, $3), ('part', $2, $3)`, [
+    await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $3), ('part', $2, $3)`, [
       X,
       W,
       `${X}bl`,
@@ -146,7 +146,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
       ],
     );
     // X wandert weiter; die Gruppe von W enthält X dann nicht mehr.
-    await db.run(`UPDATE bl_zuordnung SET bl_id = $2 WHERE art = 'part' AND rb_id = $1`, [X, `${X}neu`]);
+    await db.run(`UPDATE bl_mapping SET bl_id = $2 WHERE type = 'part' AND rb_id = $1`, [X, `${X}neu`]);
     assert.equal(await als(a, () => PS.zusammenfassungFrisch(a, { strict: true })), true);
     assert.deepEqual(
       (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),

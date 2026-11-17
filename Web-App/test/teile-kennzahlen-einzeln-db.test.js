@@ -77,7 +77,7 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[UA, UB]]);
-    await db.run('DELETE FROM set_teile WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
     await db.run('DELETE FROM part_catalog WHERE part_number = ANY($1)', [TEILE]);
     await db.pool.end().catch(() => {});
   }

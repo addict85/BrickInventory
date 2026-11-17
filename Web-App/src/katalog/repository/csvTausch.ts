@@ -108,11 +108,11 @@ export async function gleicheSetsAb(
   const verschwunden = `NOT EXISTS (SELECT 1 FROM ${schatten} n WHERE n.set_num = rb_sets.set_num)`;
   const bezug = l.setZaehlt('rb_sets.set_num');
   await imSchritt(c, async () => {
-    await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, herkunft) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
-                   ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, herkunft='csv'
-                   WHERE (${neu.map(s => `rb_sets.${s}`).join(',')}, rb_sets.herkunft)
+    await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, source) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
+                   ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, source='csv'
+                   WHERE (${neu.map(s => `rb_sets.${s}`).join(',')}, rb_sets.source)
                          IS DISTINCT FROM (${neu.map(s => `EXCLUDED.${s}`).join(',')}, 'csv')`);
-    await c.query(`UPDATE rb_sets SET herkunft = 'api' WHERE herkunft = 'csv' AND ${verschwunden} AND ${bezug}`);
+    await c.query(`UPDATE rb_sets SET source = 'api' WHERE source = 'csv' AND ${verschwunden} AND ${bezug}`);
     // set_catalog geht per ON DELETE CASCADE mit.
     await c.query(`DELETE FROM rb_sets WHERE ${verschwunden} AND NOT ${bezug}`);
     // Die Bildadresse des CSV gilt erst in set_catalog, der einzigen Bildquelle (0108).

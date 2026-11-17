@@ -61,7 +61,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   const zugangsende = _req('src/konto/zugangsende.js');
   const tokens = async () =>
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
-  const stand = () => db.get('SELECT password_hash, sitzungs_version FROM users WHERE id=$1', [uid]);
+  const stand = () => db.get('SELECT password_hash, session_version FROM users WHERE id=$1', [uid]);
   await db.run(`INSERT INTO api_tokens (token, user_id) VALUES ('t1', $1), ('t2', $1)`, [uid]);
   const link = A.tokenAbdruck('ruecksetz-link');
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + interval '1 hour' WHERE id = $2`, [
@@ -94,7 +94,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
     assert.equal(await K.setzePasswortZurueck(link, 'ein-neues-langes-Passwort'), uid);
     const nachher = await stand();
     assert.notEqual(nachher.password_hash, 'alt');
-    assert.ok(nachher.sitzungs_version > vorher.sitzungs_version);
+    assert.ok(nachher.session_version > vorher.session_version);
     assert.deepEqual(await tokens(), []);
   });
 });

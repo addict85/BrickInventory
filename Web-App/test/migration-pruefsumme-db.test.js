@@ -23,7 +23,7 @@ const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { runMigrations } = _req('db/migrate.js');
 
-const PROBE = '0077-wechselkurse.sql';
+const PROBE = '0077-exchange_rates.sql';
 
 test('Prüfsummen der Migrationen', { concurrency: 1 }, async t => {
   try {

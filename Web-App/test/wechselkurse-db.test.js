@@ -80,12 +80,12 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await db.run('DELETE FROM wechselkurse');
+    await db.run('DELETE FROM exchange_rates');
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SET]);
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]);
     await db.pool.end().catch(() => {});
   });
-  await db.run('DELETE FROM wechselkurse');
+  await db.run('DELETE FROM exchange_rates');
   const { kurseNachladen } = _req('src/finanzen/wechselkurse.js');
 
   await t.test('erst die Historie, dann die Tageskurse', async () => {
@@ -96,7 +96,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
     );
     assert.deepEqual(await kurseNachladen(lokal), { quelle: 'tag', kurse: 2 });
     assert.deepEqual(abgerufen, ['/stats/eurofxref/eurofxref-hist.zip', '/stats/eurofxref/eurofxref-daily.xml']);
-    const r = await db.get(`SELECT je_eur FROM wechselkurse WHERE waehrung = 'CHF' AND tag = '2026-01-07'`);
+    const r = await db.get(`SELECT je_eur FROM exchange_rates WHERE waehrung = 'CHF' AND tag = '2026-01-07'`);
     assert.equal(r.je_eur, 0.96);
   });
 

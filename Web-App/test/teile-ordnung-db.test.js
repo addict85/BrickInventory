@@ -43,11 +43,11 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
   const aufraeumen = async () => {
     for (const tab of ['parts', 'set_acquisitions', 'sets', 'parts_summary', 'parts_summary_state'])
       await db.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[U, U2]]);
-    await db.run(`DELETE FROM set_teile WHERE set_number IN ('ORD-1', 'ORD-2')`);
+    await db.run(`DELETE FROM set_parts WHERE set_number IN ('ORD-1', 'ORD-2')`);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[U, U2]]);
     for (const tab of ['part_color_catalog', 'part_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE part_number = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
-    await db.run(`DELETE FROM bl_zuordnung WHERE rb_id = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
+    await db.run(`DELETE FROM bl_mapping WHERE rb_id = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
   };
   await aufraeumen();
   t.after(async () => {

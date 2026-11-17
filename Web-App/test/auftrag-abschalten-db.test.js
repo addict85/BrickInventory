@@ -1,6 +1,6 @@
 /**
  * Ein Arbeiter, der beim Abschalten gerade einen Auftrag belegt, gibt ihn
- * zurück: stoppe() wartet auf die laufende Belegung, und was danach noch
+ * zurück: stoppe() waiting auf die laufende Belegung, und was danach noch
  * ankommt, wird nicht mehr ausgeführt, sondern freigegeben.
  *
  * Die Zeitfolge wird erzwungen: Eine Sperre auf der Tabelle hält die
@@ -25,15 +25,15 @@ const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
+  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('jobs').jobs };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
   require('./helpers/sources')
     .testDienste()
-    .auftraege.meldeArtAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
-  await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
+    .jobs.meldeArtAn({ type: ART, payload: require('zod').looseObject({}), ausfuehren: async () => {} });
+  await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
   const haengt = new Promise(r => {
@@ -43,7 +43,7 @@ test('Abschalten während einer Belegung', async t => {
     loslassen();
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
-    await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
+    await db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]).catch(() => {});
     await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
@@ -54,7 +54,7 @@ test('Abschalten während einer Belegung', async t => {
   let angefangen = false;
   // Hängt bis zum Testende: Ein angelaufener Auftrag bliebe so auf 'laeuft'.
   const w = erzeugeWorker(
-    require('./helpers/sources').testDienste().auftraege,
+    require('./helpers/sources').testDienste().jobs,
     {
       [ART]: {
         ausfuehren: () => {
@@ -67,12 +67,12 @@ test('Abschalten während einer Belegung', async t => {
   );
 
   await sperre.query('BEGIN');
-  await sperre.query('LOCK TABLE auftraege IN SHARE MODE');
+  await sperre.query('LOCK TABLE jobs IN SHARE MODE');
   w.starte();
   // Die Belegung steht jetzt in der Sperre.
   for (let i = 0; i < 50; i++) {
     const r = await db.get(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_class c ON c.oid = l.relation
-                             WHERE c.relname = 'auftraege' AND NOT l.granted
+                             WHERE c.relname = 'jobs' AND NOT l.granted
                                AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database())`);
     if (r.n > 0) break;
     await warte(20);
@@ -83,7 +83,7 @@ test('Abschalten während einer Belegung', async t => {
   await gestoppt;
   await warte(300);
 
-  const z = await db.get('SELECT status FROM auftraege WHERE id = $1', [id]);
+  const z = await db.get('SELECT status FROM jobs WHERE id = $1', [id]);
   assert.equal(angefangen, false, 'nach stoppe() läuft kein Bearbeiter mehr an');
   assert.notEqual(z.status, 'laeuft', 'der Auftrag bleibt nicht belegt');
 });

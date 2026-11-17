@@ -7,8 +7,8 @@
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  `if (letzterAbrufWarExtern())` vor der Takt-Pause entfernt → rot: „nach
- *      einem versorgten Set wartet niemand“
- *   B  in der Cloudflare-Leiter `stufe + 1` durch `stufe` ersetzt → rot: „die
+ *      einem versorgten Set waiting niemand“
+ *   B  in der Cloudflare-Leiter `level + 1` durch `level` ersetzt → rot: „die
  *      Cloudflare-Leiter steigt und endet am nächsten Tag“
  *   C  in mitSperre() die Prüfung `!rows[0]?.ok` durch `false` ersetzt → rot:
  *      „hält ein anderer Prozess die Sperre, wird nichts abgerufen“
@@ -21,7 +21,7 @@ const Module = require('node:module');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const abruf = { extern: false, fehler: null, aufrufe: 0 };
+const abruf = { extern: false, error_message: null, aufrufe: 0 };
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = echtesRequire.call(this, name, ...rest);
@@ -32,7 +32,7 @@ Module.prototype.require = function (name, ...rest) {
     letzterAbrufWarExtern: () => abruf.extern,
     setAnleitungenLaden: async () => {
       abruf.aufrufe++;
-      if (abruf.fehler) throw abruf.fehler;
+      if (abruf.error_message) throw abruf.error_message;
       return 1;
     },
   };
@@ -53,26 +53,26 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   const Q = _req('src/katalog/anleitungLaden.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('auftraege').auftraege,
+    ...require('./helpers/sources').testBereich('jobs').jobs,
   });
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
   const inSek = async () => {
     const p = await pause();
-    return p ? Math.round((new Date(p.bis).getTime() - Date.now()) / 1000) : null;
+    return p ? Math.round((new Date(p.until_at).getTime() - Date.now()) / 1000) : null;
   };
-  const zuruecksetzen = () => db.run(`DELETE FROM auftrag_pausen WHERE art = 'anleitung'`);
+  const zuruecksetzen = () => db.run(`DELETE FROM job_pauses WHERE type = 'anleitung'`);
   t.after(async () => {
     Module.prototype.require = echtesRequire;
     await zuruecksetzen();
-    await db.run(`DELETE FROM auftraege WHERE art = 'anleitung'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('nach einem versorgten Set wartet niemand', async () => {
+  await t.test('nach einem versorgten Set waiting niemand', async () => {
     await zuruecksetzen();
     abruf.extern = false;
-    abruf.fehler = null;
+    abruf.error_message = null;
     await Q.anleitungLaden({ set_number: '10001-1' });
     assert.equal(await pause(), null, 'ohne fremden Abruf keine Pause');
     abruf.extern = true;
@@ -83,20 +83,20 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
 
   await t.test('die Cloudflare-Leiter steigt und endet am nächsten Tag', async () => {
     await zuruecksetzen();
-    abruf.fehler = new Error('Cloudflare error 1015: rate limited');
+    abruf.error_message = new Error('Cloudflare error 1015: rate limited');
     const gesehen = [];
     for (let i = 0; i < 5; i++) {
       await assert.rejects(Q.anleitungLaden({ set_number: '10003-1' }), e => e instanceof AuftragVerschieben);
       gesehen.push(await inSek());
-      await db.run(`UPDATE auftrag_pausen SET bis = NOW() WHERE art = 'anleitung'`);
+      await db.run(`UPDATE job_pauses SET until_at = NOW() WHERE type = 'anleitung'`);
     }
     assert.deepEqual(
       gesehen.slice(0, 4).map(s => Math.round(s / 60)),
       [5, 10, 15, 20],
     );
     const morgen = Q.naechsterTag(new Date());
-    assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre bis morgen');
-    abruf.fehler = null;
+    assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre until_at morgen');
+    abruf.error_message = null;
     abruf.extern = false;
     await Q.anleitungLaden({ set_number: '10003-1' });
     assert.equal(await pause(), null, 'ein Erfolg setzt die Leiter zurück');
@@ -120,11 +120,11 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein Set steht nur einmal offen', async () => {
-    await db.run(`DELETE FROM auftraege WHERE art = 'anleitung'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
     const E = _req('src/katalog/anleitungsAuftrag.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
-    const z = await require('./helpers/sources').testDienste().auftraege.zaehleArt('anleitung');
+    const z = await require('./helpers/sources').testDienste().jobs.zaehleArt('anleitung');
     assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

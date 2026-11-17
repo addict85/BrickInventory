@@ -12,7 +12,7 @@ const db = testDaten();
 
 // idx_parts_blnum stand hier und ist weg: Er war ein Teilindex auf
 // parts.bl_part_number, und Migration 0037 hat die Spalte geloescht (die
-// BrickLink-Nummer steht jetzt in bl_zuordnung). Postgres entfernt
+// BrickLink-Nummer steht jetzt in bl_mapping). Postgres entfernt
 // abhaengige Indizes beim DROP COLUMN selbst.
 const ERWARTET = ['idx_set_figuren_fig', 'idx_sets_setnum'];
 
@@ -73,7 +73,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     // ── 2. Der Planer kann sie nehmen ──────────────────────────────────────
     //
     // Die BrickLink-Nachschlage zuerst, und dafuer braucht es die
-    // MIGRATIONEN: bl_zuordnung wird in 0037 angelegt, nicht in
+    // MIGRATIONEN: bl_mapping wird in 0037 angelegt, nicht in
     // db/basis.sql (eine Tabelle gehoert an genau eine Stelle,
     // scripts/check-schema-am-start.js prueft das).
     const c0 = await db.pool.connect();
@@ -85,12 +85,12 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
 
     // Zeichengleich die Abfrage aus src/katalog/blZuordnung.ts (blAbrufNummer).
     const blPlan = await plan(
-      `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_zuordnung
-        WHERE art = 'part' AND rb_id = 'x'`,
+      `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
+        WHERE type = 'part' AND rb_id = 'x'`,
     );
     assert.match(
       blPlan,
-      /Index (Only )?Scan.* on bl_zuordnung/,
+      /Index (Only )?Scan.* on bl_mapping/,
       `Die BrickLink-Nachschlage laeuft nicht ueber einen Index:\n${blPlan}`,
     );
 
@@ -104,10 +104,10 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     // sitzt, muss zu einem Tabellenscan fuehren. Sonst waere die
     // Zusicherung oben blind dafuer, ob der Planer ueberhaupt zwischen
     // beidem unterscheidet.
-    const ohneIndex = await plan(`SELECT rb_id FROM bl_zuordnung WHERE fetched_at < NOW()`);
+    const ohneIndex = await plan(`SELECT rb_id FROM bl_mapping WHERE fetched_at < NOW()`);
     assert.match(
       ohneIndex,
-      /Seq Scan on bl_zuordnung/,
+      /Seq Scan on bl_mapping/,
       `Gegenprobe: auch ohne Index kam kein Tabellenscan:\n${ohneIndex}`,
     );
   } finally {

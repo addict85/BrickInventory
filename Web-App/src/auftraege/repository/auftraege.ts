@@ -20,20 +20,20 @@ type Stand = { s: string } | undefined;
 
 export interface AuftragsListenZeile {
   id: string;
-  art: string;
+  type: string;
   status: string;
-  versuche: number;
-  max_versuche: number;
-  faellig_ab: Date | null;
-  frist_bis: Date | null;
-  gestartet: Date | null;
-  erstellt: Date | null;
-  aktualisiert: Date | null;
-  fortschritt: Fortschritt | null;
-  fehler: string | null;
+  attempts: number;
+  max_attempts: number;
+  due_at: Date | null;
+  deadline_at: Date | null;
+  started_at: Date | null;
+  created_at: Date | null;
+  updated_at: Date | null;
+  progress: Fortschritt | null;
+  error_message: string | null;
   user_id: number | null;
   geplant: boolean;
-  wartet: boolean;
+  waiting: boolean;
   set_number: string | null;
 }
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
@@ -44,9 +44,9 @@ export async function fuegeAuftragEin(
   o: Einstellen = {},
 ): Promise<string | null> {
   const z = await db.get<{ id: string }>(
-    `INSERT INTO auftraege (art, nutzlast, user_id, schluessel, max_versuche, faellig_ab, fortschritt)
+    `INSERT INTO jobs (type, payload, user_id, dedupe_key, max_attempts, due_at, progress)
      VALUES ($1, $2, $3, $4, $5, COALESCE($7::timestamptz, NOW() + make_interval(secs => $6)), $8)
-     ON CONFLICT (schluessel) WHERE status = 'offen' DO NOTHING
+     ON CONFLICT (dedupe_key) WHERE status = 'offen' DO NOTHING
      RETURNING id`,
     [
       art,
@@ -75,14 +75,14 @@ export async function fuegeListeAn(
   o: { schluessel: string; liste: string; hoechstens: number; userId: number },
 ): Promise<string> {
   const z = await db.get<{ id: string }>(
-    `INSERT INTO auftraege (art, nutzlast, user_id, schluessel) VALUES ($5, $2, $3, $1)
-     ON CONFLICT (schluessel) WHERE status = 'offen' DO UPDATE SET aktualisiert = NOW(),
-       nutzlast = jsonb_set(auftraege.nutzlast, ARRAY[$6::text], (
+    `INSERT INTO jobs (type, payload, user_id, dedupe_key) VALUES ($5, $2, $3, $1)
+     ON CONFLICT (dedupe_key) WHERE status = 'offen' DO UPDATE SET updated_at = NOW(),
+       payload = jsonb_set(jobs.payload, ARRAY[$6::text], (
          SELECT COALESCE(jsonb_agg(p ORDER BY n), '[]'::jsonb) FROM (
            SELECT p, MIN(n) AS n FROM (
-             SELECT p, n FROM jsonb_array_elements(auftraege.nutzlast->$6) WITH ORDINALITY AS alt(p, n)
+             SELECT p, n FROM jsonb_array_elements(jobs.payload->$6) WITH ORDINALITY AS alt(p, n)
              UNION ALL
-             SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.nutzlast->$6) WITH ORDINALITY AS neu(p, n)
+             SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.payload->$6) WITH ORDINALITY AS neu(p, n)
            ) beide GROUP BY p ORDER BY MIN(n) LIMIT $4) vereint))
      RETURNING id`,
     [o.schluessel, JSON.stringify(nutzlast), o.userId, o.hoechstens, art, o.liste],
@@ -93,8 +93,8 @@ export async function fuegeListeAn(
 /** Zurück nach 'offen', ausser ein neuerer offener Auftrag mit demselben Schlüssel
  * steht schon da: Dann übernimmt der, und dieser endet als 'abgebrochen' — zwei
  * offene mit einem Schlüssel verbietet der Index, das UPDATE scheiterte sonst. */
-const OFFEN_ODER_ERSETZT = `CASE WHEN EXISTS (SELECT 1 FROM auftraege z WHERE z.schluessel = auftraege.schluessel
-                                   AND z.status = 'offen' AND z.id <> auftraege.id)
+const OFFEN_ODER_ERSETZT = `CASE WHEN EXISTS (SELECT 1 FROM jobs z WHERE z.dedupe_key = jobs.dedupe_key
+                                   AND z.status = 'offen' AND z.id <> jobs.id)
             THEN 'abgebrochen' ELSE 'offen' END`;
 
 /** Entsteht der Zwilling zwischen Prüfung und Schreiben, sieht ihn der zweite Versuch. */
@@ -119,18 +119,18 @@ export async function belegeAuftrag(
   ausser: readonly string[] = [],
 ): Promise<AuftragsZeile | null> {
   const z = await db.get<RoheZeile>(
-    `UPDATE auftraege SET status = 'laeuft', versuche = versuche + 1, belegt_von = $1, wartet = false,
-            frist_bis = NOW() + make_interval(secs => $2), gestartet = NOW(), aktualisiert = NOW()
-      WHERE id = (SELECT a.id FROM auftraege a
-                   WHERE a.art = ANY($3)
+    `UPDATE jobs SET status = 'laeuft', attempts = attempts + 1, locked_by = $1, waiting = false,
+            deadline_at = NOW() + make_interval(secs => $2), started_at = NOW(), updated_at = NOW()
+      WHERE id = (SELECT a.id FROM jobs a
+                   WHERE a.type = ANY($3)
                      AND a.id::text <> ALL($5::text[])
-                     AND ((a.status = 'offen' AND a.faellig_ab <= NOW())
-                       OR (a.status = 'laeuft' AND a.frist_bis < NOW()))
-                     AND NOT EXISTS (SELECT 1 FROM auftrag_pausen p WHERE p.art = a.art AND p.bis > NOW())
-                     AND NOT ((a.art = ANY($4) OR EXISTS (SELECT 1 FROM auftrag_exklusiv e WHERE e.art = a.art))
-                          AND EXISTS (SELECT 1 FROM auftraege l WHERE l.art = a.art AND l.status = 'laeuft'
-                                         AND l.frist_bis >= NOW() AND l.id <> a.id))
-                   ORDER BY a.faellig_ab, a.id LIMIT 1
+                     AND ((a.status = 'offen' AND a.due_at <= NOW())
+                       OR (a.status = 'laeuft' AND a.deadline_at < NOW()))
+                     AND NOT EXISTS (SELECT 1 FROM job_pauses p WHERE p.type = a.type AND p.until_at > NOW())
+                     AND NOT ((a.type = ANY($4) OR EXISTS (SELECT 1 FROM job_exclusive_locks e WHERE e.type = a.type))
+                          AND EXISTS (SELECT 1 FROM jobs l WHERE l.type = a.type AND l.status = 'laeuft'
+                                         AND l.deadline_at >= NOW() AND l.id <> a.id))
+                   ORDER BY a.due_at, a.id LIMIT 1
                    FOR UPDATE SKIP LOCKED)
       RETURNING ${SPALTEN}`,
     [belegtVon, fristSek, [...arten], [...exklusiv], [...ausser]],
@@ -140,24 +140,24 @@ export async function belegeAuftrag(
 /** Herausnehmen ist eine Migration: Ein Worker ohne die Art ist sonst ein Test oder ein alter Stand. */
 export async function merkeExklusive(db: DbSchnittstelle, exklusiv: readonly string[]): Promise<void> {
   if (exklusiv.length)
-    await db.run('INSERT INTO auftrag_exklusiv (art) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING', [
+    await db.run('INSERT INTO job_exclusive_locks (type) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING', [
       [...exklusiv],
     ]);
 }
 /** @returns false, wenn der Auftrag nicht mehr diesem Lauf gehört (auch: abgebrochen) */
 export async function lebenszeichen(db: DbSchnittstelle, a: Belegung, fristSek: number): Promise<boolean> {
   const r = await db.run(
-    `UPDATE auftraege SET frist_bis = NOW() + make_interval(secs => $3), aktualisiert = NOW()
-      WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`,
-    [a.id, a.belegt_von, fristSek],
+    `UPDATE jobs SET deadline_at = NOW() + make_interval(secs => $3), updated_at = NOW()
+      WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
+    [a.id, a.locked_by, fristSek],
   );
   return (r?.changes ?? 0) > 0;
 }
 /** Nur lesen: Ein Statuswechsel weckt jeden Lauf, schreiben soll dabei keiner. */
 export async function gehoertNoch(db: DbSchnittstelle, a: Belegung): Promise<boolean> {
   return !!(await db.get<{ ja: number }>(
-    `SELECT 1 AS ja FROM auftraege WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`,
-    [a.id, a.belegt_von],
+    `SELECT 1 AS ja FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
+    [a.id, a.locked_by],
   ));
 }
 export function schreibeFortschritt(
@@ -167,18 +167,18 @@ export function schreibeFortschritt(
   fristSek: number,
 ): Promise<Stand> {
   return db.get<{ s: string }>(
-    `UPDATE auftraege SET fortschritt = $3, frist_bis = NOW() + make_interval(secs => $4), aktualisiert = NOW()
-      WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-    [a.id, a.belegt_von, JSON.stringify(f), fristSek],
+    `UPDATE jobs SET progress = $3, deadline_at = NOW() + make_interval(secs => $4), updated_at = NOW()
+      WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+    [a.id, a.locked_by, JSON.stringify(f), fristSek],
   );
 }
 /** PDF und CSV tragen ganze Listen; erledigt braucht die niemand mehr. */
 export function setzeErledigt(db: DbSchnittstelle, a: Belegung, nutzlastVerwerfen: boolean): Promise<Stand> {
   return db.get<{ s: string }>(
-    `UPDATE auftraege SET status = 'erledigt', belegt_von = NULL, fehler = NULL, frist_bis = NULL, aktualisiert = NOW(),
-            nutzlast = CASE WHEN $3 THEN '{}'::jsonb ELSE nutzlast END
-      WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-    [a.id, a.belegt_von, nutzlastVerwerfen],
+    `UPDATE jobs SET status = 'erledigt', locked_by = NULL, error_message = NULL, deadline_at = NULL, updated_at = NOW(),
+            payload = CASE WHEN $3 THEN '{}'::jsonb ELSE payload END
+      WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+    [a.id, a.locked_by, nutzlastVerwerfen],
   );
 }
 export function setzeFehlgeschlagen(
@@ -190,16 +190,16 @@ export function setzeFehlgeschlagen(
 ): Promise<Stand> {
   return nochmalBeiZwilling(() =>
     db.get<{ s: string }>(
-      `UPDATE auftraege SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
-              fehler = $4, belegt_von = NULL, frist_bis = NULL, aktualisiert = NOW(),
-              faellig_ab = NOW() + make_interval(secs => $5)
-        WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-      [a.id, a.belegt_von, endgueltig, fehler.slice(0, 2000), wartezeitSek],
+      `UPDATE jobs SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
+              error_message = $4, locked_by = NULL, deadline_at = NULL, updated_at = NOW(),
+              due_at = NOW() + make_interval(secs => $5)
+        WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+      [a.id, a.locked_by, endgueltig, fehler.slice(0, 2000), wartezeitSek],
     ),
   );
 }
 /** Zählt der Versuch nicht, bleibt die Zahl der Versuche, wie sie vor dem Belegen war.
- * `wartet`: Der Auftrag ist nicht gescheitert, die Verwaltung zeigt ihn als wartend. */
+ * `waiting`: Der Auftrag ist nicht gescheitert, die Verwaltung zeigt ihn als wartend. */
 export function setzeVerschoben(
   db: DbSchnittstelle,
   a: Belegung,
@@ -210,11 +210,11 @@ export function setzeVerschoben(
 ): Promise<Stand> {
   return nochmalBeiZwilling(() =>
     db.get<{ s: string }>(
-      `UPDATE auftraege SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
-              wartet = NOT $3, fehler = $4, faellig_ab = $5, belegt_von = NULL, frist_bis = NULL,
-              versuche = CASE WHEN $6 THEN versuche ELSE GREATEST(versuche - 1, 0) END, aktualisiert = NOW()
-        WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-      [a.id, a.belegt_von, endgueltig, grund.slice(0, 2000), bis, zaehlt],
+      `UPDATE jobs SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
+              waiting = NOT $3, error_message = $4, due_at = $5, locked_by = NULL, deadline_at = NULL,
+              attempts = CASE WHEN $6 THEN attempts ELSE GREATEST(attempts - 1, 0) END, updated_at = NOW()
+        WHERE id = $1 AND locked_by = $2 AND status = 'laeuft' RETURNING COALESCE(dedupe_key, id::text) AS s`,
+      [a.id, a.locked_by, endgueltig, grund.slice(0, 2000), bis, zaehlt],
     ),
   );
 }
@@ -229,8 +229,8 @@ export async function halteProzessSperre(c: Abfrager, prozess: string): Promise<
  * @returns zurückgegebene Aufträge */
 export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise<number> {
   const { rows } = await c.query<{ p: string }>(
-    `SELECT DISTINCT split_part(belegt_von, '/', 1) AS p FROM auftraege
-      WHERE status = 'laeuft' AND belegt_von LIKE '%/%' AND split_part(belegt_von, '/', 1) <> $1`,
+    `SELECT DISTINCT split_part(locked_by, '/', 1) AS p FROM jobs
+      WHERE status = 'laeuft' AND locked_by LIKE '%/%' AND split_part(locked_by, '/', 1) <> $1`,
     [prozess],
   );
   let n = 0;
@@ -239,9 +239,9 @@ export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise
     try {
       const zurueck = () =>
         c.query(
-          `UPDATE auftraege SET status = ${OFFEN_ODER_ERSETZT}, belegt_von = NULL, frist_bis = NULL,
-                  faellig_ab = NOW(), aktualisiert = NOW()
-            WHERE status = 'laeuft' AND split_part(belegt_von, '/', 1) = $1 AND belegt_von LIKE '%/%'`,
+          `UPDATE jobs SET status = ${OFFEN_ODER_ERSETZT}, locked_by = NULL, deadline_at = NULL,
+                  due_at = NOW(), updated_at = NOW()
+            WHERE status = 'laeuft' AND split_part(locked_by, '/', 1) = $1 AND locked_by LIKE '%/%'`,
           [p],
         );
       n += (await nochmalBeiZwilling(zurueck)).rowCount ?? 0;
@@ -256,30 +256,30 @@ export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise
 export async function gibZurueck(db: DbSchnittstelle, a: Belegung): Promise<void> {
   await nochmalBeiZwilling(() =>
     db.run(
-      `UPDATE auftraege SET status = ${OFFEN_ODER_ERSETZT}, versuche = GREATEST(versuche - 1, 0), belegt_von = NULL,
-              frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
-        WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`,
-      [a.id, a.belegt_von],
+      `UPDATE jobs SET status = ${OFFEN_ODER_ERSETZT}, attempts = GREATEST(attempts - 1, 0), locked_by = NULL,
+              deadline_at = NULL, due_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
+      [a.id, a.locked_by],
     ),
   );
 }
 export async function raeumeErledigteAuf(db: DbSchnittstelle): Promise<number> {
   const r = await db.run(
-    `DELETE FROM auftraege
-      WHERE (status IN ('erledigt', 'abgebrochen') AND aktualisiert < NOW() - INTERVAL '7 days')
-         OR (status = 'fehler' AND aktualisiert < NOW() - INTERVAL '30 days')`,
+    `DELETE FROM jobs
+      WHERE (status IN ('erledigt', 'abgebrochen') AND updated_at < NOW() - INTERVAL '7 days')
+         OR (status = 'fehler' AND updated_at < NOW() - INTERVAL '30 days')`,
   );
   return r?.changes ?? 0;
 }
 export async function liesPause(db: DbSchnittstelle, art: AuftragsArt): Promise<Pause | null> {
   return (
-    (await db.get<Spalten<'auftrag_pausen', 'art' | 'bis' | 'grund' | 'stufe'>>(
-      'SELECT art, bis, grund, stufe FROM auftrag_pausen WHERE art = $1',
+    (await db.get<Spalten<'job_pauses', 'type' | 'until_at' | 'reason' | 'level'>>(
+      'SELECT type, until_at, reason, level FROM job_pauses WHERE type = $1',
       [art],
     )) ?? null
   );
 }
-/** `stufe` zählt wiederholte Drosselungen (Cloudflare). */
+/** `level` zählt wiederholte Drosselungen (Cloudflare). */
 export async function pausiereArt(
   db: DbSchnittstelle,
   art: AuftragsArt,
@@ -288,20 +288,20 @@ export async function pausiereArt(
   stufe?: number,
 ): Promise<void> {
   await db.run(
-    `INSERT INTO auftrag_pausen (art, bis, grund, stufe) VALUES ($1, $2, $3, COALESCE($4, 0))
-     ON CONFLICT (art) DO UPDATE SET bis = EXCLUDED.bis, grund = EXCLUDED.grund,
-       stufe = COALESCE($4, auftrag_pausen.stufe)`,
+    `INSERT INTO job_pauses (type, until_at, reason, level) VALUES ($1, $2, $3, COALESCE($4, 0))
+     ON CONFLICT (type) DO UPDATE SET until_at = EXCLUDED.until_at, reason = EXCLUDED.reason,
+       level = COALESCE($4, job_pauses.level)`,
     [art, bis, grund, stufe ?? null],
   );
 }
 export async function loeschePause(db: DbSchnittstelle, art: AuftragsArt): Promise<void> {
-  await db.run('DELETE FROM auftrag_pausen WHERE art = $1', [art]);
+  await db.run('DELETE FROM job_pauses WHERE type = $1', [art]);
 }
 /** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
 export async function setzeAbgebrochen(db: DbSchnittstelle, id: string): Promise<AuftragsZeile | null> {
   const z = await db.get<RoheZeile>(
-    `UPDATE auftraege SET status = 'abgebrochen', frist_bis = NULL, aktualisiert = NOW(), wartet = false,
-            fehler = COALESCE(fehler, 'abgebrochen')
+    `UPDATE jobs SET status = 'abgebrochen', deadline_at = NULL, updated_at = NOW(), waiting = false,
+            error_message = COALESCE(error_message, 'abgebrochen')
       WHERE id = $1 AND status IN ('offen', 'laeuft') RETURNING ${SPALTEN}`,
     [id],
   );
@@ -309,10 +309,10 @@ export async function setzeAbgebrochen(db: DbSchnittstelle, id: string): Promise
 }
 export async function stelleWiederEin(db: DbSchnittstelle, id: string): Promise<boolean> {
   const r = await db.run(
-    `UPDATE auftraege a SET status = 'offen', versuche = 0, fehler = NULL, faellig_ab = NOW(), belegt_von = NULL, wartet = false,
-            aktualisiert = NOW()
+    `UPDATE jobs a SET status = 'offen', attempts = 0, error_message = NULL, due_at = NOW(), locked_by = NULL, waiting = false,
+            updated_at = NOW()
       WHERE a.id = $1 AND a.status IN ('fehler', 'abgebrochen')
-        AND NOT EXISTS (SELECT 1 FROM auftraege o WHERE o.schluessel = a.schluessel AND o.status = 'offen')`,
+        AND NOT EXISTS (SELECT 1 FROM jobs o WHERE o.dedupe_key = a.dedupe_key AND o.status = 'offen')`,
     [id],
   );
   return (r?.changes ?? 0) > 0;
@@ -320,22 +320,22 @@ export async function stelleWiederEin(db: DbSchnittstelle, id: string): Promise<
 /** Ein geplanter Termin bleibt. */
 export async function leereArt(db: DbSchnittstelle, art: AuftragsArt): Promise<number> {
   const r = await db.run(
-    `DELETE FROM auftraege WHERE art = $1 AND status = 'offen' AND (schluessel IS NULL OR schluessel NOT LIKE 'plan:%')`,
+    `DELETE FROM jobs WHERE type = $1 AND status = 'offen' AND (dedupe_key IS NULL OR dedupe_key NOT LIKE 'plan:%')`,
     [art],
   );
   return r?.changes ?? 0;
 }
 export async function macheFaellig(db: DbSchnittstelle, art: AuftragsArt, schluessel?: string): Promise<number> {
   const r = await db.run(
-    `UPDATE auftraege SET faellig_ab = NOW(), aktualisiert = NOW()
-      WHERE art = $1 AND status = 'offen' AND ($2::text IS NULL OR schluessel = $2)`,
+    `UPDATE jobs SET due_at = NOW(), updated_at = NOW()
+      WHERE type = $1 AND status = 'offen' AND ($2::text IS NULL OR dedupe_key = $2)`,
     [art, schluessel ?? null],
   );
   return r?.changes ?? 0;
 }
 export function statusZahlen(db: DbSchnittstelle, art: AuftragsArt) {
   return db.all<{ status: AuftragsStatus; n: number }>(
-    'SELECT status, COUNT(*)::int AS n FROM auftraege WHERE art = $1 GROUP BY status',
+    'SELECT status, COUNT(*)::int AS n FROM jobs WHERE type = $1 GROUP BY status',
     [art],
   );
 }
@@ -345,16 +345,16 @@ export function kontoRolle(db: DbSchnittstelle, l: AuftraegeLesevertrag, uid: nu
 }
 export const AUFTRAG_KANAL = 'auftraege';
 export const AUFTRAG_STAND_KANAL = 'auftrag_stand';
-export const SPALTEN = 'id, art, nutzlast, user_id, schluessel, status, versuche, max_versuche, belegt_von, fehler';
+export const SPALTEN = 'id, type, payload, user_id, dedupe_key, status, attempts, max_attempts, locked_by, error_message';
 /** Die Kennung kommt aus der Datenbank nicht immer als Text; nach aussen ist sie es. */
 type RoheZeile = Omit<AuftragsZeile, 'id'> & { id: unknown };
 export const alsZeile = (z: RoheZeile): AuftragsZeile => ({ ...z, id: String(z.id) });
 
 export async function setzeFaelligkeit(db: DbSchnittstelle, schluessel: string, faelligAb: Date): Promise<void> {
-  await db.run(
-    `UPDATE auftraege SET faellig_ab = $2, aktualisiert = NOW() WHERE schluessel = $1 AND status = 'offen'`,
-    [schluessel, faelligAb],
-  );
+  await db.run(`UPDATE jobs SET due_at = $2, updated_at = NOW() WHERE dedupe_key = $1 AND status = 'offen'`, [
+    schluessel,
+    faelligAb,
+  ]);
 }
 
 export async function zieheTerminVor(
@@ -364,23 +364,23 @@ export async function zieheTerminVor(
   nutzlast: object,
 ): Promise<boolean> {
   const r = await db.run(
-    `UPDATE auftraege SET faellig_ab = LEAST(faellig_ab, NOW() + make_interval(secs => $2)),
-            nutzlast = nutzlast || $3::jsonb, aktualisiert = NOW()
-      WHERE schluessel = $1 AND status = 'offen'`,
+    `UPDATE jobs SET due_at = LEAST(due_at, NOW() + make_interval(secs => $2)),
+            payload = payload || $3::jsonb, updated_at = NOW()
+      WHERE dedupe_key = $1 AND status = 'offen'`,
     [schluessel, sekunden, JSON.stringify(nutzlast)],
   );
   return (r.changes ?? 0) > 0;
 }
 
 export async function laeuftArt(db: DbSchnittstelle, art: string): Promise<boolean> {
-  return !!(await db.get<Treffer>(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]));
+  return !!(await db.get<Treffer>(`SELECT 1 FROM jobs WHERE type = $1 AND status = 'laeuft'`, [art]));
 }
 
 /** Der höchste Zähler `feld` der Nutzlast unter den wartenden Aufträgen dieses Schlüssels. */
 export async function hoechsterZaehler(db: DbSchnittstelle, schluessel: string, feld: string): Promise<number> {
   const z = await db.get<{ v: number }>(
-    `SELECT COALESCE(MAX((nutzlast->>$2)::int), 0) AS v FROM auftraege
-      WHERE schluessel = $1 AND status IN ('offen', 'laeuft')`,
+    `SELECT COALESCE(MAX((payload->>$2)::int), 0) AS v FROM jobs
+      WHERE dedupe_key = $1 AND status IN ('offen', 'laeuft')`,
     [schluessel, feld],
   );
   return z?.v ?? 0;
@@ -395,39 +395,39 @@ export async function schreibeWiedervorlage(
   o: { faelligAb: Date; fehler: string; maxVersuche: number },
 ): Promise<void> {
   await db.run(
-    `INSERT INTO auftraege (art, nutzlast, schluessel, max_versuche, faellig_ab, fehler)
+    `INSERT INTO jobs (type, payload, dedupe_key, max_attempts, due_at, error_message)
      VALUES ($5, $2, $1, $6, $3, $4)
-     ON CONFLICT (schluessel) WHERE status = 'offen'
-       DO UPDATE SET nutzlast = EXCLUDED.nutzlast, faellig_ab = EXCLUDED.faellig_ab,
-                     fehler = EXCLUDED.fehler, aktualisiert = NOW()`,
+     ON CONFLICT (dedupe_key) WHERE status = 'offen'
+       DO UPDATE SET payload = EXCLUDED.payload, due_at = EXCLUDED.due_at,
+                     error_message = EXCLUDED.error_message, updated_at = NOW()`,
     [schluessel, JSON.stringify(nutzlast), o.faelligAb, o.fehler, art, o.maxVersuche],
   );
 }
 
 export async function loescheOffenen(db: DbSchnittstelle, schluessel: string): Promise<void> {
-  await db.run(`DELETE FROM auftraege WHERE schluessel = $1 AND status = 'offen'`, [schluessel]);
+  await db.run(`DELETE FROM jobs WHERE dedupe_key = $1 AND status = 'offen'`, [schluessel]);
 }
 
 export interface WartendeZeile {
-  nutzlast: Record<string, unknown>;
-  faellig_ab: Date;
-  fehler: string | null;
-  erstellt: Date | null;
+  payload: Record<string, unknown>;
+  due_at: Date;
+  error_message: string | null;
+  created_at: Date | null;
 }
 
 /** Wartende und laufende einer Art, nach Fälligkeit. */
 export function wartendeDerArt(db: DbSchnittstelle, art: string) {
   return db.all<WartendeZeile>(
-    `SELECT nutzlast, faellig_ab, fehler, erstellt FROM auftraege
-      WHERE art = $1 AND status IN ('offen', 'laeuft') ORDER BY faellig_ab, id`,
+    `SELECT payload, due_at, error_message, created_at FROM jobs
+      WHERE type = $1 AND status IN ('offen', 'laeuft') ORDER BY due_at, id`,
     [art],
   );
 }
 
 export function zahlenDerArt(db: DbSchnittstelle, art: string) {
   return db.get<{ wartend: number; faellig: number }>(
-    `SELECT COUNT(*)::int AS wartend, COUNT(*) FILTER (WHERE faellig_ab <= NOW())::int AS faellig
-       FROM auftraege WHERE art = $1 AND status IN ('offen', 'laeuft')`,
+    `SELECT COUNT(*)::int AS wartend, COUNT(*) FILTER (WHERE due_at <= NOW())::int AS faellig
+       FROM jobs WHERE type = $1 AND status IN ('offen', 'laeuft')`,
     [art],
   );
 }
@@ -435,60 +435,57 @@ export function zahlenDerArt(db: DbSchnittstelle, art: string) {
 /** Ohne Nutzlast (ganze Listen) und ohne Konto, denn die Liste sieht der Verwalter. */
 export function auftragsListe(db: DbSchnittstelle, status: string[], art: string | null) {
   return db.all<AuftragsListenZeile>(
-    `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,
-            aktualisiert, fortschritt, fehler, COALESCE(schluessel LIKE 'plan:%', false) AS geplant, wartet,
-            nutzlast->>'set_number' AS set_number
-       FROM auftraege
-      WHERE status = ANY($1) AND ($2::text IS NULL OR art = $2)
+    `SELECT id::text AS id, type, status, attempts, max_attempts, due_at, deadline_at, started_at, created_at,
+            updated_at, progress, error_message, COALESCE(dedupe_key LIKE 'plan:%', false) AS geplant, waiting,
+            payload->>'set_number' AS set_number
+       FROM jobs
+      WHERE status = ANY($1) AND ($2::text IS NULL OR type = $2)
       ORDER BY CASE status WHEN 'laeuft' THEN 0 WHEN 'offen' THEN 1 WHEN 'fehler' THEN 2 ELSE 3 END,
-               faellig_ab, id
+               due_at, id
       LIMIT 200`,
     [status, art],
   );
 }
 
 export interface LetzterStand {
-  art: AuftragsArt;
+  type: AuftragsArt;
   status: AuftragsStatus;
-  fortschritt: Fortschritt | null;
-  fehler: string | null;
-  aktualisiert: Date | null;
+  progress: Fortschritt | null;
+  error_message: string | null;
+  updated_at: Date | null;
 }
 /** Je Art der laufende, sonst der zuletzt beendete, sonst der nächste geplante Auftrag. */
 export function letzteJeArt(db: DbSchnittstelle, arten: readonly AuftragsArt[]) {
   return db.all<LetzterStand>(
-    `SELECT DISTINCT ON (art) art, status, fortschritt, fehler, aktualisiert FROM auftraege
-      WHERE art = ANY($1)
-      ORDER BY art, CASE status WHEN 'laeuft' THEN 0 WHEN 'offen' THEN 2 ELSE 1 END, aktualisiert DESC`,
+    `SELECT DISTINCT ON (type) type, status, progress, error_message, updated_at FROM jobs
+      WHERE type = ANY($1)
+      ORDER BY type, CASE status WHEN 'laeuft' THEN 0 WHEN 'offen' THEN 2 ELSE 1 END, updated_at DESC`,
     [[...arten]],
   );
 }
 
 export function zahlenJeArtUndStatus(db: DbSchnittstelle) {
-  return db.all<{ art: string; status: string; anzahl: number }>(
-    `SELECT art, status, COUNT(*)::int AS anzahl FROM auftraege GROUP BY art, status ORDER BY art, status`,
+  return db.all<{ type: string; status: string; anzahl: number }>(
+    `SELECT type, status, COUNT(*)::int AS anzahl FROM jobs GROUP BY type, status ORDER BY type, status`,
   );
 }
 
 export function laufendePausen(db: DbSchnittstelle) {
-  return db.all<{ art: string; bis: Date; grund: string | null }>(
-    `SELECT art, bis, grund FROM auftrag_pausen WHERE bis > NOW() ORDER BY bis`,
+  return db.all<{ type: string; until_at: Date; reason: string | null }>(
+    `SELECT type, until_at, reason FROM job_pauses WHERE until_at > NOW() ORDER BY until_at`,
   );
 }
 
 export function auftragsStand(db: DbSchnittstelle, id: string, uid: number) {
-  return db.get<{ status: AuftragsStatus; fortschritt: Fortschritt | null; ergebnis: Record<string, unknown> | null }>(
-    'SELECT status, fortschritt, ergebnis FROM auftraege WHERE id = $1 AND user_id = $2',
+  return db.get<{ status: AuftragsStatus; progress: Fortschritt | null; result: Record<string, unknown> | null }>(
+    'SELECT status, progress, result FROM jobs WHERE id = $1 AND user_id = $2',
     [id, uid],
   );
 }
 
 /** Was später fällig war, kommt bis `bis` dran. */
 export function zieheTermineVor(db: DbSchnittstelle, art: string, bis: Date) {
-  return db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = $2 AND status = 'offen' AND faellig_ab > NOW()`, [
-    bis,
-    art,
-  ]);
+  return db.run(`UPDATE jobs SET due_at = $1 WHERE type = $2 AND status = 'offen' AND due_at > NOW()`, [bis, art]);
 }
 
 export async function schreibeErgebnis(
@@ -496,7 +493,7 @@ export async function schreibeErgebnis(
   id: string,
   ergebnis: Record<string, unknown> | null,
 ): Promise<void> {
-  await db.run('UPDATE auftraege SET ergebnis = $2 WHERE id = $1', [
+  await db.run('UPDATE jobs SET result = $2 WHERE id = $1', [
     id,
     ergebnis === null ? null : JSON.stringify(ergebnis),
   ]);
@@ -506,12 +503,12 @@ export async function schreibeErgebnis(
 export function eigeneZeile(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
   return db.get<{
     status: AuftragsStatus;
-    fehler: string | null;
+    error_message: string | null;
     user_id: number | null;
-    fortschritt: Fortschritt | null;
+    progress: Fortschritt | null;
   }>(
-    `SELECT status, fehler, user_id, fortschritt FROM auftraege
-      WHERE art = $3 AND schluessel = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1`,
+    `SELECT status, error_message, user_id, progress FROM jobs
+      WHERE type = $3 AND dedupe_key = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1`,
     [schluessel, uid, art],
   );
 }
@@ -519,15 +516,15 @@ export function eigeneZeile(db: DbSchnittstelle, art: string, schluessel: string
 /** Ein hängengebliebener zählt nach `fristSek` nicht mehr. */
 export function zaehleLaufendeZeilen(db: DbSchnittstelle, art: string, uid: number, fristSek: number) {
   return db.get<{ n: number }>(
-    `SELECT COUNT(*)::int AS n FROM auftraege
-      WHERE art = $3 AND user_id = $1 AND status IN ('offen', 'laeuft')
-        AND erstellt > NOW() - make_interval(secs => $2)`,
+    `SELECT COUNT(*)::int AS n FROM jobs
+      WHERE type = $3 AND user_id = $1 AND status IN ('offen', 'laeuft')
+        AND created_at > NOW() - make_interval(secs => $2)`,
     [uid, fristSek, art],
   );
 }
 
 export function loescheEigeneZeile(db: DbSchnittstelle, art: string, schluessel: string, uid: number) {
-  return db.run(`DELETE FROM auftraege WHERE art = $3 AND schluessel = $1 AND user_id = $2 AND status <> 'laeuft'`, [
+  return db.run(`DELETE FROM jobs WHERE type = $3 AND dedupe_key = $1 AND user_id = $2 AND status <> 'laeuft'`, [
     schluessel,
     uid,
     art,
@@ -536,10 +533,10 @@ export function loescheEigeneZeile(db: DbSchnittstelle, art: string, schluessel:
 
 /** Beendete nach Ablauf der Frist; liefert ihre Schlüssel, damit Dateien mitgehen. */
 export function loescheBeendeteZeilen(db: DbSchnittstelle, art: string, fristSek: number) {
-  return db.all<{ schluessel: string }>(
-    `DELETE FROM auftraege WHERE art = $2 AND status IN ('erledigt', 'fehler', 'abgebrochen')
-        AND aktualisiert < NOW() - make_interval(secs => $1)
-     RETURNING schluessel`,
+  return db.all<{ dedupe_key: string }>(
+    `DELETE FROM jobs WHERE type = $2 AND status IN ('erledigt', 'fehler', 'abgebrochen')
+        AND updated_at < NOW() - make_interval(secs => $1)
+     RETURNING dedupe_key`,
     [fristSek, art],
   );
 }

@@ -3,7 +3,7 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 import type { Spalten } from '../../../db/zeilen';
 
-/** Die BrickLink-Nummer hängt an der Figur (bl_zuordnung), nicht am Exemplar. */
+/** Die BrickLink-Nummer hängt an der Figur (bl_mapping), nicht am Exemplar. */
 
 export function figurZeileManuell(
   db: DbSchnittstelle,

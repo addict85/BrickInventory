@@ -8,7 +8,7 @@
  *   A  merkeTeil()/merkeTeilFarbe()/merkeFigur() ohne den Zweig für `von`
  *      (Eingaben wieder in den gemeinsamen Katalog) → rot: alle Teiltests
  *      ausser „Alice sieht ihre eigenen Angaben“
- *   B  in db/katalogSicht.ts teil_eigen ohne `te.user_id = konto` verbunden
+ *   B  in db/katalogSicht.ts part_custom ohne `te.user_id = konto` verbunden
  *      → rot: „Bob sieht Alices Eingaben …“, „jedes Konto behält …“ und
  *      beide Haushalt-Tests
  *   C  TEIL.name mit der eigenen Angabe vor dem geprüften Wert → rot: „der

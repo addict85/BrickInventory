@@ -2,12 +2,12 @@
  * Jede Route aus dem API-Vertrag, anders geschrieben: ganz in Grossbuchstaben,
  * mit grossem Anfangsbuchstaben nach /api/v1 und mit angehängtem „/“, „//“
  * oder „%2F“. Am echten Server mit Idempotency-Key. Eine andere Schreibung ist
- * eine andere Route (404) und hinterlässt nichts in `idempotenz`.
+ * eine andere Route (404) und hinterlässt nichts in `idempotency`.
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  server.ts ohne `case sensitive routing` und vertragsRouter() ohne
  *      caseSensitive → rot: „Grossschreibung ist eine andere Route“ (Routen
- *      antworten, Einträge in idempotenz) und „… nicht gespeichert“ (ein
+ *      antworten, Einträge in idempotency) und „… nicht gespeichert“ (ein
  *      GROSS geschriebenes token-rotieren hat den Token schon ersetzt)
  *   B  nur in der Idempotenz-Middleware `if (!route) return next();`
  *      gestrichen → rot: „Grossschreibung …“ (die 404 liegt unter dem Schlüssel)
@@ -95,20 +95,20 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
     await warte(250);
 
   let n = 0;
-  const rufe = async (m, url, schluessel = `schreibung-${++n}`) => {
+  const rufe = async (m, url, key = `schreibung-${++n}`) => {
     const r = await fetch(`http://127.0.0.1:${port}${url}`, {
       method: m,
       redirect: 'manual',
       body: m === 'GET' ? undefined : '{}',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'idempotency-key': schluessel },
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'idempotency-key': key },
     });
     const text = await r.text();
-    return { status: r.status, replay: r.headers.get('idempotent-replay'), text, schluessel };
+    return { status: r.status, replay: r.headers.get('idempotent-replay'), text, key };
   };
-  const gespeichert = async schluessel =>
+  const gespeichert = async key =>
     db.all(
-      'SELECT schluessel, status, antwort IS NOT NULL AS mit_antwort FROM idempotenz WHERE user_id = $1 AND schluessel = ANY($2)',
-      [uid, schluessel],
+      'SELECT key, status, response IS NOT NULL AS mit_antwort FROM idempotency WHERE user_id = $1 AND key = ANY($2)',
+      [uid, key],
     );
 
   assert.ok(ROUTEN.length > 150, `nur ${ROUTEN.length} Vertragsrouten — greift die Suche noch?`);
@@ -116,18 +116,18 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
 
   await t.test('Grossschreibung ist eine andere Route', async () => {
     const falsch = [],
-      schluessel = [];
+      key = [];
     for (const { m, url } of ROUTEN) {
       const rest = url.slice('/api/v1/'.length);
       for (const anders of [url.toUpperCase(), rest && `/api/v1/${rest[0].toUpperCase()}${rest.slice(1)}`]) {
         if (!anders || anders === url) continue;
         const r = await rufe(m, anders);
-        schluessel.push(r.schluessel);
+        key.push(r.key);
         if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
       }
     }
     assert.deepEqual(falsch, []);
-    assert.deepEqual(await gespeichert(schluessel), [], 'eine anders geschriebene Route hat in idempotenz geschrieben');
+    assert.deepEqual(await gespeichert(key), [], 'eine anders geschriebene Route hat in idempotency geschrieben');
   });
 
   await t.test('routeFuerAnfrage ordnet einen Schrägstrich am Ende derselben Route zu', () => {
@@ -145,16 +145,16 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
 
   await t.test('ein Schrägstrich am Ende ist eine andere Route', async () => {
     const falsch = [],
-      schluessel = [];
+      key = [];
     // `/api/v1/` steht so im Vertrag; `//` am Ende ist dort derselbe Pfad.
     for (const { m, url } of ROUTEN.filter(r => !r.url.endsWith('/')))
       for (const anders of [url + '/', url + '//']) {
         const r = await rufe(m, anders);
-        schluessel.push(r.schluessel);
+        key.push(r.key);
         if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
       }
     assert.deepEqual(falsch, []);
-    assert.deepEqual(await gespeichert(schluessel), []);
+    assert.deepEqual(await gespeichert(key), []);
   });
 
   await t.test('… und ein %2F am Ende kommt an keine geheime oder bestätigte Antwort', async () => {

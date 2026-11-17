@@ -96,7 +96,7 @@ test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
   );
   assert.equal(r.posten.length, 3, `${r.posten.length} brauchbare Posten statt 3`);
   assert.deepEqual(
-    r.posten.map(p => p.art),
+    r.posten.map(p => p.type),
     ['part', 'fig', 'set'],
   );
   assert.deepEqual(
@@ -142,7 +142,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
   // Drei Lagen, eine je Stufe — und eine vierte ohne alles.
   await db.run(`INSERT INTO part_catalog (part_number, part_name)
                 VALUES ('3001','Brick 2x4'), ('98765','Umgetauft'), ('11111','Nur im Katalog')`);
-  await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES
+  await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES
                   ('part','98765','4162'),    -- abweichende Nummer: eingetragen
                   ('part','3001', NULL)       -- nachgesehen: keine abweichende`);
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES
@@ -162,7 +162,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
   assert.equal(auf.length, 5);
 
   await t.test('Stufe 1: die eingetragene abweichende Nummer', () => {
-    assert.equal(auf[0].rbId, '98765', `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_zuordnung`);
+    assert.equal(auf[0].rbId, '98765', `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_mapping`);
     assert.equal(auf[0].sicherheit, 'zuordnung');
     assert.equal(auf[0].rbFarbe, 4, 'BL-Farbe 5 ist Rebrickable 4 (Red)');
   });
@@ -175,7 +175,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
     assert.equal(
       auf[1].sicherheit,
       'gleich_vermerkt',
-      `Stufe „${auf[1].sicherheit}" — ein NULL-Vermerk in bl_zuordnung ist eine ` +
+      `Stufe „${auf[1].sicherheit}" — ein NULL-Vermerk in bl_mapping ist eine ` +
         'Abbildung und kein blosser Katalogtreffer',
     );
     assert.equal(auf[1].rbFarbe, 15);

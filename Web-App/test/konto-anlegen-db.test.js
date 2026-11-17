@@ -97,8 +97,8 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
       assert.equal(r.status, 200, JSON.stringify(r.body));
       const k = await konto(NEU[2]);
       assert.equal(Number(k.is_admin), 1, 'die Checkbox „Admin“ wirkt nicht');
-      const p = (await db.all('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id', [k.id])).map(
-        z => z.aktion,
+      const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
+        z => z.action,
       );
       assert.deepEqual(p, ['konto_angelegt', 'verwalter_ernannt'], 'das Protokoll hält die Anlage nicht fest');
     },

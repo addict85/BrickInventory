@@ -1,12 +1,12 @@
 /**
  * Jeder Import läuft als Auftrag im Job-Prozess (src/auftraege/importAlsAuftrag.ts):
- * Die Anfrage reicht ein und wartet; ohne Job-Prozess bleibt der Auftrag offen.
+ * Die Anfrage reicht ein und waiting; ohne Job-Prozess bleibt der Auftrag offen.
  *
  * Gegenproben (05.11.2026 gemessen):
  *   A  in jobs/auftraegeStarten.ts csv_import immer über fuehreCsvImportAus
  *      (ohne Blick auf `quelle`) → rot: „mit Worker kommt das Ergebnis“
  *   B  importAlsAuftrag() vergisst das Ergebnis nicht (setzeErgebnis(id, null)
- *      gestrichen) → rot: derselbe Test (ergebnis bleibt in der Tabelle)
+ *      gestrichen) → rot: derselbe Test (result bleibt in der Tabelle)
  *   C  importAlsAuftrag() ruft importiereTeileCsv direkt statt einzureichen
  *      → rot: „ohne Worker bleibt der Auftrag offen“ (und der zweite Fall)
  *   D  fuehreImportAus() fängt den Fachfehler nicht ab → rot: „ein Fachfehler
@@ -57,16 +57,16 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
   await t.test('ohne Worker bleibt der Auftrag offen', async () => {
     await assert.rejects(
       importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
-      (/** @type {any} */ e) => e.code === 'import_laeuft_noch' && e.art === 'zeitueberschreitung',
+      (/** @type {any} */ e) => e.code === 'import_laeuft_noch' && e.type === 'zeitueberschreitung',
     );
     const a = await db.get(
-      `SELECT status, nutzlast->>'quelle' AS quelle FROM auftraege
-      WHERE art = 'csv_import' AND user_id = $1 ORDER BY id DESC LIMIT 1`,
+      `SELECT status, payload->>'quelle' AS quelle FROM jobs
+      WHERE type = 'csv_import' AND user_id = $1 ORDER BY id DESC LIMIT 1`,
       [uid],
     );
     assert.deepEqual(a, { status: 'offen', quelle: 'teile_csv' });
     assert.equal(await db.get("SELECT 1 FROM parts WHERE user_id = $1 AND part_number = 'ohne1'", [uid]), undefined);
-    await db.run("DELETE FROM auftraege WHERE art = 'csv_import' AND user_id = $1", [uid]);
+    await db.run("DELETE FROM jobs WHERE type = 'csv_import' AND user_id = $1", [uid]);
   });
 
   await t.test('mit Worker kommt das Ergebnis', async tt => {
@@ -77,18 +77,18 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     assert.equal(r.added + r.updated, 1, JSON.stringify(r));
     assert.ok(await db.get("SELECT 1 FROM parts WHERE user_id = $1 AND part_number = 'mit1'", [uid]));
     const a = await db.get(
-      `SELECT status, ergebnis FROM auftraege WHERE art = 'csv_import' AND user_id = $1
+      `SELECT status, result FROM jobs WHERE type = 'csv_import' AND user_id = $1
       ORDER BY id DESC LIMIT 1`,
       [uid],
     );
-    assert.deepEqual(a, { status: 'erledigt', ergebnis: null }, 'gelesen ist gelesen');
+    assert.deepEqual(a, { status: 'erledigt', result: null }, 'gelesen ist gelesen');
   });
 
   await t.test('ein Fachfehler kommt mit Code an', async tt => {
     importWorker(tt, _req);
     await assert.rejects(
       importAlsAuftrag(uid, 'alarme_csv', { waehrung: 'CHF', text: 'set_number\n1-1\n' }),
-      (/** @type {any} */ e) => e.code === 'alarm_schwelle_ungueltig' && e.art === 'ungueltig',
+      (/** @type {any} */ e) => e.code === 'alarm_schwelle_ungueltig' && e.type === 'ungueltig',
     );
   });
 });

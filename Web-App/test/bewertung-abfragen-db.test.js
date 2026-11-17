@@ -34,7 +34,7 @@ const wieOft = muster => gesehen.filter(q => muster.test(q)).length;
 async function aufraeumen() {
   await db.run('DELETE FROM parts WHERE user_id = $1', [UID]).catch(() => {});
   await db.run('DELETE FROM part_price_cache WHERE part_number LIKE $1', ['bwt-teil-%']).catch(() => {});
-  await db.run("DELETE FROM bl_zuordnung WHERE art='part' AND rb_id LIKE $1", ['bwt-teil-%']).catch(() => {});
+  await db.run("DELETE FROM bl_mapping WHERE type='part' AND rb_id LIKE $1", ['bwt-teil-%']).catch(() => {});
   await db.run('DELETE FROM users WHERE id = $1', [UID]).catch(() => {});
 }
 
@@ -56,7 +56,7 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
       // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
       // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.
       await db.run(
-        "INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = NULL",
+        "INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = NULL",
         [NR(i)],
       );
       // Warmer Preis-Cache — der Normalfall. Ohne ihn misst man den
@@ -90,16 +90,16 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
     // Quelle nicht mehr gibt (die Begründung steht in src/finanzen/rechnung/preise.ts).
     assert.equal(
-      wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/),
+      wieOft(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       0,
       'die Zuordnung wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht',
     );
 
     // ── 2. Statt dessen genau eine Sammelabfrage ───────────────────────────
     assert.equal(
-      wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id = ANY\(\$2\)/),
+      wieOft(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
       1,
-      'die Sammelabfrage auf bl_zuordnung fehlt oder lief mehrfach',
+      'die Sammelabfrage auf bl_mapping fehlt oder lief mehrfach',
     );
 
     // ── 3. Die Farbtabelle höchstens einmal ────────────────────────────────
@@ -126,9 +126,9 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
     zaehlen = false;
     assert.equal(
-      wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/),
+      wieOft(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       1,
-      'Gegenprobe: die Einzelabfrage auf bl_zuordnung wurde nicht mitgezählt',
+      'Gegenprobe: die Einzelabfrage auf bl_mapping wurde nicht mitgezählt',
     );
   } finally {
     db.pool.query = altQuery;

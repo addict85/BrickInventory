@@ -117,7 +117,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
     await anleitung();
     assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202);
     assert.ok(!(await vorhanden()), 'der Verwalter hat die alte Zeile nicht ersetzt');
-    const auftrag = await db.get(`SELECT status FROM auftraege WHERE art = 'anleitung' AND schluessel = $1`, [
+    const auftrag = await db.get(`SELECT status FROM jobs WHERE type = 'anleitung' AND dedupe_key = $1`, [
       `anleitung:${SET}`,
     ]);
     assert.equal(auftrag?.status, 'offen', 'das Neuladen steht als Auftrag an');

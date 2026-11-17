@@ -19,12 +19,12 @@ export function inventarTeileDerFigur(db: DbSchnittstelle, invId: number) {
        FROM rb_inventory_parts ip
        LEFT JOIN rb_parts  p ON p.part_num = ip.part_num
        LEFT JOIN rb_colors c ON c.id       = ip.color_id
-       LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = ip.part_num
+       LEFT JOIN bl_mapping m ON m.type = 'part' AND m.rb_id = ip.part_num
       WHERE ip.inventory_id = $1`,
     [invId],
   );
 }
 
 export function setMitFigur(db: DbSchnittstelle, figNumber: string) {
-  return db.get<{ set_number: string }>('SELECT set_number FROM set_figuren WHERE fig_number=$1 LIMIT 1', [figNumber]);
+  return db.get<{ set_number: string }>('SELECT set_number FROM set_minifigs WHERE fig_number=$1 LIMIT 1', [figNumber]);
 }

@@ -21,7 +21,8 @@ export interface GutscheinWerte {
   currency: string | null;
 }
 
-const SPALTEN = 'id, number, pin, amount, currency, pdf_path, created_at, updated_at, guthaben_geprueft_am';
+const SPALTEN =
+  'id, number, pin, amount, currency, pdf_path, created_at, updated_at, balance_checked_at AS guthaben_geprueft_am';
 
 /** Konto und Zeile im Kontext: Nummer oder PIN, in einen anderen Gutschein kopiert, bleiben unlesbar. */
 export const nummerKontext = (uid: number, id: number) => kontext('vouchers.number', uid, id);
@@ -29,8 +30,8 @@ export const pinKontext = (uid: number, id: number) => kontext('vouchers.pin', u
 export const nummerSuche = (uid: number, nummer: string) => suchwert('gutschein-nummer', `${uid}:${nummer}`);
 
 /** Konto im HMAC: Dieselbe Karte in zwei Konten soll nicht als gleich erkennbar sein. */
-export function nummerSpalten(uid: number, id: number, nummer: string): { number: string; nummer_suche: string } {
-  return { number: verschluessele(nummer, nummerKontext(uid, id)) as string, nummer_suche: nummerSuche(uid, nummer) };
+export function nummerSpalten(uid: number, id: number, nummer: string): { number: string; number_search: string } {
+  return { number: verschluessele(nummer, nummerKontext(uid, id)) as string, number_search: nummerSuche(uid, nummer) };
 }
 
 /** Falscher Schlüssel: leere Nummer, der Vertrag verlangt eine Zeichenkette. */
@@ -86,9 +87,9 @@ export async function gutscheinAnlegen(
   const id = await neueId(db);
   const n = nummerSpalten(uid, id, w.number);
   const z = await db.get<GutscheinZeile>(
-    `INSERT INTO vouchers (id, user_id, number, nummer_suche, pin, amount, currency) VALUES ($7,$1,$2,$3,$4,$5,$6)
-     ON CONFLICT (user_id, nummer_suche) DO NOTHING RETURNING ${SPALTEN}`,
-    [uid, n.number, n.nummer_suche, verschluessele(w.pin, pinKontext(uid, id)), w.amount, w.currency, id],
+    `INSERT INTO vouchers (id, user_id, number, number_search, pin, amount, currency) VALUES ($7,$1,$2,$3,$4,$5,$6)
+     ON CONFLICT (user_id, number_search) DO NOTHING RETURNING ${SPALTEN}`,
+    [uid, n.number, n.number_search, verschluessele(w.pin, pinKontext(uid, id)), w.amount, w.currency, id],
   );
   return z && lesbar(uid, z);
 }
@@ -97,7 +98,7 @@ export async function gutscheinAnlegen(
  * @returns ob der Gutschein neu angelegt wurde */
 export async function gutscheinErsetzen(db: DbSchnittstelle, uid: number, w: GutscheinWerte): Promise<boolean> {
   for (let versuch = 0; versuch < 3; versuch++) {
-    const da = await db.get<{ id: number }>('SELECT id FROM vouchers WHERE user_id = $1 AND nummer_suche = $2', [
+    const da = await db.get<{ id: number }>('SELECT id FROM vouchers WHERE user_id = $1 AND number_search = $2', [
       uid,
       nummerSuche(uid, w.number),
     ]);
@@ -123,9 +124,9 @@ export async function gutscheinAendern(
 ): Promise<GutscheinZeile | undefined> {
   const n = nummerSpalten(uid, id, w.number);
   const z = await db.get<GutscheinZeile>(
-    `UPDATE vouchers SET number=$1, nummer_suche=$2, pin=$3, amount=$4, currency=$5, updated_at=NOW()
+    `UPDATE vouchers SET number=$1, number_search=$2, pin=$3, amount=$4, currency=$5, updated_at=NOW()
       WHERE id=$6 AND user_id=$7 RETURNING ${SPALTEN}`,
-    [n.number, n.nummer_suche, verschluessele(w.pin, pinKontext(uid, id)), w.amount, w.currency, id, uid],
+    [n.number, n.number_search, verschluessele(w.pin, pinKontext(uid, id)), w.amount, w.currency, id, uid],
   );
   return z && lesbar(uid, z);
 }
@@ -159,7 +160,7 @@ export async function guthabenMerken(
   waehrung: string,
 ): Promise<GutscheinZeile | undefined> {
   const z = await db.get<GutscheinZeile>(
-    `UPDATE vouchers SET amount = $1, currency = $2, guthaben_geprueft_am = NOW(), updated_at = NOW()
+    `UPDATE vouchers SET amount = $1, currency = $2, balance_checked_at = NOW(), updated_at = NOW()
       WHERE id = $3 AND user_id = $4 RETURNING ${SPALTEN}`,
     [betrag, waehrung, id, uid],
   );
@@ -175,9 +176,9 @@ export async function nummernNachverschluesseln(db: DbSchnittstelle): Promise<nu
     user_id: number;
     number: string;
     pin: string | null;
-    nummer_suche: string | null;
+    number_search: string | null;
   }>(
-    "SELECT id, user_id, number, pin, nummer_suche FROM vouchers WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%' OR nummer_suche IS NULL",
+    "SELECT id, user_id, number, pin, number_search FROM vouchers WHERE number NOT LIKE 'v2:%' OR pin NOT LIKE 'v2:%' OR number_search IS NULL",
   )) {
     const nummer = altwertLesen(z.number, nummerKontext(z.user_id, z.id));
     if (nummer === null) continue;
@@ -186,7 +187,7 @@ export async function nummernNachverschluesseln(db: DbSchnittstelle): Promise<nu
     n +=
       (
         await db.run(
-          `UPDATE vouchers SET number = $1, nummer_suche = $2, pin = $3
+          `UPDATE vouchers SET number = $1, number_search = $2, pin = $3
       WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`,
           [neu, nummerSuche(z.user_id, nummer), pin, z.id, z.number, z.pin],
         )
@@ -204,18 +205,18 @@ export async function gutscheineNeuVerschluesseln(db: DbSchnittstelle): Promise<
     user_id: number;
     number: string;
     pin: string | null;
-    nummer_suche: string | null;
-  }>("SELECT id, user_id, number, pin, nummer_suche FROM vouchers WHERE number LIKE 'v2:%'")) {
+    number_search: string | null;
+  }>("SELECT id, user_id, number, pin, number_search FROM vouchers WHERE number LIKE 'v2:%'")) {
     const nummer = entschluessele(z.number, nummerKontext(z.user_id, z.id));
     if (nummer === null) continue;
     const neu = umschluesseln(z.number, nummerKontext(z.user_id, z.id)) ?? z.number;
     const pin = umschluesseln(z.pin, pinKontext(z.user_id, z.id)) ?? z.pin;
     const suche = nummerSuche(z.user_id, nummer);
-    if (neu === z.number && pin === z.pin && suche === z.nummer_suche) continue;
+    if (neu === z.number && pin === z.pin && suche === z.number_search) continue;
     n +=
       (
         await db.run(
-          `UPDATE vouchers SET number = $1, nummer_suche = $2, pin = $3
+          `UPDATE vouchers SET number = $1, number_search = $2, pin = $3
       WHERE id = $4 AND number = $5 AND pin IS NOT DISTINCT FROM $6`,
           [neu, suche, pin, z.id, z.number, z.pin],
         )

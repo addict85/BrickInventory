@@ -9,7 +9,7 @@ import { LOCKS } from '../../infra/lockNamespaces';
 export async function rohstand(db: DbSchnittstelle, userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
-            EXISTS (SELECT 1 FROM parts_katalog_offen) AS katalog_offen`,
+            EXISTS (SELECT 1 FROM parts_catalog_pending) AS katalog_offen`,
     [userId],
   );
   return { v: Number(r?.v) || 0, katalogOffen: !!r?.katalog_offen };
@@ -99,7 +99,7 @@ export async function sperreKatalogNachzug(tx: DbSchnittstelle): Promise<boolean
 export async function holeOffeneNummern(tx: DbSchnittstelle): Promise<string[]> {
   return [
     ...new Set(
-      (await tx.all<{ nummer: string }>('DELETE FROM parts_katalog_offen RETURNING nummer')).map(r => r.nummer),
+      (await tx.all<{ number: string }>('DELETE FROM parts_catalog_pending RETURNING number')).map(r => r.number),
     ),
   ];
 }

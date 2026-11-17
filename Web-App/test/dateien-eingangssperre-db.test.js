@@ -53,7 +53,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
   const [normal, wechsel, chef, chef2fa] = ids;
   await db.run('UPDATE users SET must_change_password = TRUE WHERE id = $1', [wechsel]);
   await db.run('UPDATE users SET is_admin = TRUE WHERE id = ANY($1)', [[chef, chef2fa]]);
-  await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', TRUE)`, [chef2fa]);
+  await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', TRUE)`, [chef2fa]);
   for (const id of ids) {
     fs.mkdirSync(path.join(WURZEL, 'data', 'uploads', String(id)), { recursive: true });
     fs.writeFileSync(path.join(WURZEL, 'data', 'uploads', String(id), 'a.pdf'), `pdf von ${id}`);

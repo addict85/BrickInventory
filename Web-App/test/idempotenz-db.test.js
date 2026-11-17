@@ -5,7 +5,7 @@
  * Serverfehler, Aufräumen).
  *
  * Gegenproben (31.10.2026 gemessen):
- *   A  app.use('/api/v1', idempotenz) in server.ts gestrichen → rot:
+ *   A  app.use('/api/v1', idempotency) in server.ts gestrichen → rot:
  *      „Wiederholung wirkt nicht zweimal" (Menge 4 statt 3), kein Replay-Kopf
  *   B  in beginne() den Vergleich des Fingerabdrucks entfernt → rot:
  *      „anderer Inhalt unter demselben Schlüssel" (200 statt 422)
@@ -70,7 +70,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     env: {
       ...process.env,
       DATABASE_URL: URL_DB,
-      SESSION_SECRET: 'idempotenz-test-geheimnis-lang-genug-1234',
+      SESSION_SECRET: 'idempotency-test-geheimnis-lang-genug-1234',
       PORT: String(port),
       TRUST_PROXY: 'false',
     },
@@ -90,14 +90,14 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
   for (let i = 0; i < 240 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
     await warte(250);
 
-  const put = async (wer, schluessel, body) => {
+  const put = async (wer, key, body) => {
     const r = await fetch(`http://127.0.0.1:${port}/api/v1/parts/3001id/5`, {
       method: 'PUT',
       body: JSON.stringify(body),
       headers: {
         authorization: `Bearer ${wer.token}`,
         'content-type': 'application/json',
-        ...(schluessel ? { 'idempotency-key': schluessel } : {}),
+        ...(key ? { 'idempotency-key': key } : {}),
       },
     });
     return { status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() };
@@ -154,19 +154,19 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(await dienst.beginne(a.id, 'k-lauf', abdruck), {
       art: 'wiederholung',
       status: 404,
-      antwort: '{"success":false}',
+      response: '{"success":false}',
     });
   });
 
   await t.test('das Aufräumen nimmt nur, was älter als die Frist ist', async () => {
     await db.run(
-      `UPDATE idempotenz SET angelegt = NOW() - make_interval(hours => $2)
-                   WHERE user_id = $1 AND schluessel = 'k-1'`,
+      `UPDATE idempotency SET created_at = NOW() - make_interval(hours => $2)
+                   WHERE user_id = $1 AND key = 'k-1'`,
       [a.id, dienst.FRIST_STUNDEN + 1],
     );
     assert.ok((await dienst.raeumeIdempotenzAuf()) >= 1);
-    const uebrig = (await db.all('SELECT schluessel FROM idempotenz WHERE user_id = $1 ORDER BY 1', [a.id])).map(
-      r => r.schluessel,
+    const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [a.id])).map(
+      r => r.key,
     );
     assert.deepEqual(uebrig, ['k-lauf']);
   });

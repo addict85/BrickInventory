@@ -77,10 +77,10 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
 
   await t.test('TOTP-Geheimnis', async () => {
     const zf = _req('src/faktoren/zweiterFaktor.js');
-    const geheimnis = await zf.beginneEinrichtung(uid);
-    const roh = (await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid])).geheimnis;
-    assert.ok(roh.startsWith('v2:') && !roh.includes(geheimnis), roh);
-    assert.equal(g.entschluessele(roh, zf.faktorKontext(uid)), geheimnis);
+    const secret = await zf.beginneEinrichtung(uid);
+    const roh = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
+    assert.ok(roh.startsWith('v2:') && !roh.includes(secret), roh);
+    assert.equal(g.entschluessele(roh, zf.faktorKontext(uid)), secret);
   });
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {

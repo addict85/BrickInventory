@@ -6,7 +6,7 @@
  *
  * Gegenproben (01.11.2026 gemessen):
  *   A  dienst.ts und middleware.ts auf Stand e21f747 → rot: alle fünf Fälle,
- *      zuerst „das TOTP-Geheimnis steht in keiner Spalte" (idempotenz: 1)
+ *      zuerst „das TOTP-Geheimnis steht in keiner Spalte" (idempotency: 1)
  *   B  antwortIstGeheim() liefert immer false → rot: Fälle 1–3 (Rumpf liegt,
  *      wenn auch verschlüsselt; die Wiederholung bekommt 200 mit Replay)
  *   C  in beende() verschluessele() weggelassen → rot: Fälle 4 und 5
@@ -46,7 +46,7 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const zf = _req('src/faktoren/zweiterFaktor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
-const { idempotenz, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
+const { idempotency, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
 const { nichtWiederholbar } = _req('src/vertrag/grund.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -89,18 +89,18 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     if (!req.originalUrl.startsWith('/api/v1/auth')) req.apiUser = { user_id: uid, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', idempotenz(require('./helpers/sources').testDienste().idempotenz));
+  app.use('/api/v1', idempotency(require('./helpers/sources').testDienste().idempotency));
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const post = (pfad, schluessel, body, methode = 'POST') =>
+  const post = (pfad, key, body, methode = 'POST') =>
     fetch(`http://127.0.0.1:${srv.address().port}/api/v1${pfad}`, {
       method: methode,
       body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json', 'idempotency-key': schluessel },
+      headers: { 'content-type': 'application/json', 'idempotency-key': key },
     }).then(async r => ({ status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() }));
-  const zeile = k => db.get('SELECT status, antwort FROM idempotenz WHERE user_id = $1 AND schluessel = $2', [uid, k]);
+  const zeile = k => db.get('SELECT status, response FROM idempotency WHERE user_id = $1 AND key = $2', [uid, k]);
 
   await t.test('die Wiederholung mit falschem Passwort bekommt weder PIN noch Antwort', async () => {
     const neu = await post('/vouchers', 'v-1', {
@@ -113,7 +113,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     const pfad = `/vouchers/${neu.body.voucher.id}/klartext`;
     const erst = await post(pfad, 'k-1', { password: PASS });
     assert.deepEqual([erst.status, erst.body.pin], [200, '4321'], JSON.stringify(erst.body));
-    assert.deepEqual(await zeile('k-1'), { status: 200, antwort: null });
+    assert.deepEqual(await zeile('k-1'), { status: 200, response: null });
     const falsch = await post(pfad, 'k-1', { password: 'falsch-falsch-falsch' });
     assert.equal(falsch.status, 409, JSON.stringify(falsch.body));
     assert.equal(falsch.body.code, 'idempotenz_nicht_wiederholbar');
@@ -128,7 +128,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     g = r.body.geheimnis;
     assert.match(g, /^[A-Z2-7]{32}$/);
     assert.deepEqual(await fundstellen(g), []);
-    assert.deepEqual(await zeile('zf-1'), { status: 200, antwort: null });
+    assert.deepEqual(await zeile('zf-1'), { status: 200, response: null });
   });
 
   await t.test('die Wiederholung bekommt 409 statt eines zweiten Geheimnisses', async () => {
@@ -152,9 +152,9 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.replay, null);
     const z = await zeile('p-1');
-    assert.ok(z.antwort.startsWith('v2:'), z.antwort);
+    assert.ok(z.response.startsWith('v2:'), z.response);
     assert.equal(
-      geheimnis.entschluessele(z.antwort, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')),
+      geheimnis.entschluessele(z.response, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')),
       JSON.stringify(erst.body),
     );
     const nochmal = await post('/storage/locations', 'p-1', { name: 'Kiste 1' });
@@ -170,7 +170,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
       .digest('hex');
     assert.deepEqual(await fundstellen(alt), [], 'der SHA-256 des Rumpfs mit Passwort liegt in der Tabelle');
     assert.match(
-      (await db.get("SELECT anfrage FROM idempotenz WHERE user_id = $1 AND schluessel = 'zf-1'", [uid])).anfrage,
+      (await db.get("SELECT request FROM idempotency WHERE user_id = $1 AND key = 'zf-1'", [uid])).request,
       /^h1:[0-9a-f]{64}$/,
     );
     const abdruck = rumpf => dienst.fingerabdruck('POST', pfad, rumpf);
@@ -193,13 +193,13 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
       geheimnis._vergissSchluessel();
     }
 
-    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status) VALUES ($1, 'sha-1', $2, 200)`, [
+    await db.run(`INSERT INTO idempotency (user_id, key, request, status) VALUES ($1, 'sha-1', $2, 200)`, [
       uid,
       alt,
     ]);
     assert.ok((await dienst.alteAbdrueckeLoeschen()) >= 1);
-    const uebrig = (await db.all('SELECT schluessel FROM idempotenz WHERE user_id = $1 ORDER BY 1', [uid])).map(
-      z => z.schluessel,
+    const uebrig = (await db.all('SELECT key FROM idempotency WHERE user_id = $1 ORDER BY 1', [uid])).map(
+      z => z.key,
     );
     assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });
@@ -209,18 +209,18 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
       name: 'Alt',
     });
     await db.run(
-      `INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort)
+      `INSERT INTO idempotency (user_id, key, request, status, response)
                   VALUES ($1, 'alt-1', $2, 200, '{"token":"klartext-aus-frueher"}')`,
       [uid, abdruck],
     );
     // Zur Zeit von 0086 war verschlüsselt gleich v1.
     await db.run(
-      `INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`,
+      `INSERT INTO idempotency (user_id, key, request, status, response) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`,
       [uid],
     );
-    await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotenz-ohne-klartext.sql'), 'utf8'));
+    await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotency-ohne-klartext.sql'), 'utf8'));
     assert.deepEqual(await fundstellen('klartext-aus-frueher'), []);
-    assert.equal((await zeile('v1-1')).antwort, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
+    assert.equal((await zeile('v1-1')).response, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
     const r = await post('/storage/locations', 'alt-1', { name: 'Alt' });
     assert.equal(r.status, 409);
     assert.equal(r.body.code, 'idempotenz_nicht_wiederholbar');
@@ -232,11 +232,11 @@ test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
   const GEHEIME_FELDER = ['token', 'codes', 'geheimnis', 'otpauth'];
   const gefunden = [],
     fehlt = [];
-  for (const [schluessel, route] of Object.entries(VERTRAG)) {
-    const [methode, pfad] = schluessel.split(' ');
-    if (methode === 'GET' || !route.antwort?.shape) continue;
-    if (!GEHEIME_FELDER.some(f => f in route.antwort.shape)) continue;
-    (antwortIstGeheim(methode, pfad.replace(/:\w+/g, '1')) ? gefunden : fehlt).push(schluessel);
+  for (const [key, route] of Object.entries(VERTRAG)) {
+    const [methode, pfad] = key.split(' ');
+    if (methode === 'GET' || !route.response?.shape) continue;
+    if (!GEHEIME_FELDER.some(f => f in route.response.shape)) continue;
+    (antwortIstGeheim(methode, pfad.replace(/:\w+/g, '1')) ? gefunden : fehlt).push(key);
   }
   assert.deepEqual(fehlt, []);
   assert.ok(gefunden.length >= 9, `nur ${gefunden.length} Routen erkannt: ${gefunden.join(', ')}`);
@@ -253,5 +253,5 @@ test('jede Route mit Bestätigung ist nicht wiederholbar', () => {
     .filter(([m, p]) => !antwortIstGeheim(m, p.replace(/:\w+/g, '1')))
     .map(x => x.join(' '));
   assert.deepEqual(wiederholbar, []);
-  assert.equal(nichtWiederholbar({ antwort: undefined }), false);
+  assert.equal(nichtWiederholbar({ response: undefined }), false);
 });

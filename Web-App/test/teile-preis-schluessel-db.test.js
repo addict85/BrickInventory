@@ -38,10 +38,10 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, WAEHRUNG]);
-  // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
+  // Die Zuordnung steht seit Migration 0037 in bl_mapping (type, rb_id, bl_id).
   await db.run(
-    `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part',$1,$2)
-                ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`,
+    `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part',$1,$2)
+                ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`,
     [RB, BL],
   );
 
@@ -122,7 +122,7 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
   } finally {
     await db.run(`DELETE FROM part_price_history WHERE part_number = ANY($1)`, [[RB, BL, RB2]]).catch(() => {});
     await db.run(`DELETE FROM part_price_cache   WHERE part_number = ANY($1)`, [[RB, BL, RB2]]).catch(() => {});
-    await db.run(`DELETE FROM bl_zuordnung WHERE art='part' AND rb_id = ANY($1)`, [[RB, RB2]]).catch(() => {});
+    await db.run(`DELETE FROM bl_mapping WHERE type='part' AND rb_id = ANY($1)`, [[RB, RB2]]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});

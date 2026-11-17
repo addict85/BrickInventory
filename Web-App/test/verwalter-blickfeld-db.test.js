@@ -34,7 +34,7 @@ const enthaeltSchluessel = (wert, name) =>
   (Object.hasOwn(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
 
 test('kein Antwortschema der Verwaltung nennt user_id', () => {
-  for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {
+  for (const r of ['GET /api/v1/admin/jobs', 'GET /api/v1/admin/image-diag/:setNumber']) {
     const schema = JSON.stringify(z.toJSONSchema(routeZu(r).antwort, { io: 'output', unrepresentable: 'any' }));
     assert.doesNotMatch(schema, /"user_id"/, r);
   }
@@ -61,12 +61,12 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [ids[1], SN]);
   const auftrag = (
     await db.get(
-      `INSERT INTO auftraege (art, nutzlast, user_id, status) VALUES ('brickset', $1, $2, 'fehler') RETURNING id`,
+      `INSERT INTO jobs (type, payload, user_id, status) VALUES ('brickset', $1, $2, 'fehler') RETURNING id`,
       [JSON.stringify({ set_number: SN }), ids[1]],
     )
   ).id;
   t.after(async () => {
-    await db.run('DELETE FROM auftraege WHERE id = $1', [auftrag]).catch(() => {});
+    await db.run('DELETE FROM jobs WHERE id = $1', [auftrag]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -83,10 +83,10 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
   });
 
   await t.test('die Auftragsliste ohne Konto', async () => {
-    const r = await fetch(`${base}/api/v1/admin/auftraege?status=fehler`);
+    const r = await fetch(`${base}/api/v1/admin/jobs?status=error_message`);
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
-    const eintrag = body.auftraege.find(a => a.id === String(auftrag));
+    const eintrag = body.jobs.find(a => a.id === String(auftrag));
     assert.ok(eintrag, 'Vorbedingung: der Auftrag steht in der Liste');
     assert.equal(eintrag.set_number, SN);
     assert.equal(enthaeltSchluessel(body, 'user_id'), false, JSON.stringify(eintrag));

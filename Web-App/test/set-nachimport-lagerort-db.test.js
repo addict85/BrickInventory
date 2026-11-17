@@ -43,7 +43,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-t1', 'Eins'), ('fig-t2', 'Zwei')
                 ON CONFLICT (fig_number) DO UPDATE SET fig_name = EXCLUDED.fig_name`);
   await db.run(
-    `INSERT INTO set_figuren (set_number, fig_number, quantity)
+    `INSERT INTO set_minifigs (set_number, fig_number, quantity)
                 VALUES ($1, 'fig-t1', 1), ($1, 'fig-t2', 2)`,
     [SN],
   );
@@ -75,7 +75,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
     });
 
     await t.test('eine weggefallene Figur geht, eine eingetippte bleibt', async () => {
-      await db.run(`DELETE FROM set_figuren WHERE set_number=$1 AND fig_number='fig-t2'`, [SN]);
+      await db.run(`DELETE FROM set_minifigs WHERE set_number=$1 AND fig_number='fig-t2'`, [SN]);
       assert.equal(await importiereFiguren(SN, uid), 1);
       assert.equal(await figur('fig-t2'), undefined);
       assert.ok(await figur('fig-t1'));
@@ -85,7 +85,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
     await t.test('Bau- und Ersatzteil derselben Farbe', async () => {
       assert.equal(await importiereTeile(SN, uid), 3);
       const liste = await db.get(
-        `SELECT quantity, is_spare FROM set_teile WHERE set_number=$1 AND part_number='tp-1'`,
+        `SELECT quantity, is_spare FROM set_parts WHERE set_number=$1 AND part_number='tp-1'`,
         [SN],
       );
       assert.deepEqual(liste, { quantity: 4, is_spare: false }, 'die Bauteilmenge zählt, nicht die Ersatzteile');
@@ -111,8 +111,8 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
   } finally {
     await db.run('DELETE FROM rb_inventory_parts WHERE inventory_id=$1', [INV]);
     await db.run('DELETE FROM rb_inventories WHERE id=$1', [INV]);
-    await db.run('DELETE FROM set_figuren WHERE set_number=$1', [SN]);
-    await db.run('DELETE FROM set_teile WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM set_minifigs WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end().catch(() => {});
   }

@@ -30,8 +30,8 @@ const { bis } = require('./helpers/zeit');
 const gesendet = [];
 S.ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  mailKontoHinweis: async (_an, _name, art, o) => {
-    gesendet.push({ art, bis: o.bis });
+  mailKontoHinweis: async (_an, _name, type, o) => {
+    gesendet.push({ type, bis: o.bis });
     return { success: true };
   },
 });
@@ -51,7 +51,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
       [NAME, await hashePasswort(PASS)],
     )
   ).id;
-  await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [uid]);
+  await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [uid]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM rate_limit_attempts').catch(() => {});
@@ -59,7 +59,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
   });
   const alt = code => crypto.createHash('sha256').update(code.replace(/-/g, '')).digest('hex');
   const code = async (hash, frist) =>
-    db.run('INSERT INTO zweiter_faktor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, $3)', [
+    db.run('INSERT INTO second_factor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, $3)', [
       uid,
       hash,
       frist,
@@ -84,7 +84,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     assert.equal(await anmelden('abcde-12345'), 200);
     await wartenAufMail();
     assert.deepEqual(
-      gesendet.map(g => [g.art, Date.parse(g.bis)]),
+      gesendet.map(g => [g.type, Date.parse(g.bis)]),
       [['alte_codes_ablauf', bis.getTime()]],
     );
     const stand = await S.alsKonto(uid, () => _req('src/faktoren/zweiterFaktor.js').stand(uid));
@@ -97,7 +97,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
   });
 
   await t.test('ein Code neuer Art hebt die Frist für seinen Satz auf', async () => {
-    await db.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
+    await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
     const neu = 'abcd-efgh-ijkl-mnop';
     const frist = new Date(Date.now() + 86_400_000);
     await code(suchwert('zweiter-faktor-code', `${uid}:${neu.replace(/-/g, '')}`), frist);
@@ -112,10 +112,10 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
       path.join(__dirname, '..', 'db', 'migrations', '0122-alte-wiederherstellungscodes-befristet.sql'),
       'utf8',
     );
-    await db.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
+    await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
     await code('neu-ohne-frist', null);
     await db.run(sql);
-    const z = await db.get('SELECT alt_gilt_bis FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
+    const z = await db.get('SELECT alt_gilt_bis FROM second_factor_codes WHERE user_id = $1', [uid]);
     assert.equal(z.alt_gilt_bis, null);
   });
 });

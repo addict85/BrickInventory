@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { getGlobalSetting, setGlobalSetting, globaleWerteLoeschen } = _req('src/einstellungen/settings.js');
-const { setzeZustand, liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
+const { setzeZustand, liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').run_state;
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;

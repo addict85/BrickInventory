@@ -81,7 +81,7 @@ async function seed() {
   await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories,
                                     rb_inventory_minifigs, sets CASCADE`);
   await db.run(`CREATE TABLE rb_sets (set_num TEXT PRIMARY KEY, name TEXT, year INTEGER, theme_id INTEGER, num_parts INTEGER, set_img_url TEXT,
-                                     herkunft TEXT NOT NULL DEFAULT 'csv')`);
+                                     source TEXT NOT NULL DEFAULT 'csv')`);
   await db.run(`CREATE TABLE rb_themes (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER)`);
   await db.run(`CREATE TABLE rb_inventories (id INTEGER PRIMARY KEY, version INTEGER, set_num TEXT)`);
   await db.run(
@@ -186,7 +186,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
     await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ('9001-1', '/images/sets/9001-1.jpg')
                   ON CONFLICT (set_number) DO UPDATE SET image_local = EXCLUDED.image_local`);
     await db.run(
-      `INSERT INTO rb_sets (set_num, name, herkunft) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`,
+      `INSERT INTO rb_sets (set_num, name, source) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`,
     );
     const r = await get('/catalog/sets?q=Future&limit=60');
     const bilder = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));

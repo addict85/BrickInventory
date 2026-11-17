@@ -122,7 +122,7 @@ export function protokollSeit(
 
 /** Nur Art 'part': Die Kennzahl stellt nachgesehene Teile der Zahl der Teile gegenüber. */
 export function zugeordneteTeile(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM bl_zuordnung WHERE art='part'`);
+  return anzahl(db, `SELECT COUNT(*)::int AS c FROM bl_mapping WHERE type='part'`);
 }
 
 export function bricklinkTeile(db: DbSchnittstelle): Promise<number> {
@@ -206,8 +206,8 @@ export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
 export function letzterLaufDerArt(db: DbSchnittstelle) {
   return db.get<{
     status: string;
-    faellig_ab: Date;
-    fortschritt: Record<string, unknown> | null;
-  }>(`SELECT status, faellig_ab, fortschritt FROM auftraege
-      WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
+    due_at: Date;
+    progress: Record<string, unknown> | null;
+  }>(`SELECT status, due_at, progress FROM jobs
+      WHERE type = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, due_at LIMIT 1`);
 }

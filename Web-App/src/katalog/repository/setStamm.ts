@@ -18,7 +18,7 @@ export function merkeSetKatalog(
   // Eine Anweisung: Die set_catalog-Zeile sieht die rb_sets-Zeile aus derselben.
   return dbh.run(
     `WITH stamm AS (
-                    INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft)
+                    INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, source)
                     VALUES ($1, COALESCE($2, 'Set ' || $1), $3,
                             COALESCE($6, (SELECT t.id FROM rb_themes t WHERE t.name = $4
                                            ORDER BY t.parent_id NULLS FIRST, t.id LIMIT 1)), $5, 'api')
@@ -26,7 +26,7 @@ export function merkeSetKatalog(
                       name = COALESCE($2, rb_sets.name), year = COALESCE($3, rb_sets.year),
                       theme_id = COALESCE(EXCLUDED.theme_id, rb_sets.theme_id),
                       num_parts = COALESCE($5, rb_sets.num_parts)
-                    WHERE rb_sets.herkunft = 'api')
+                    WHERE rb_sets.source = 'api')
                   INSERT INTO set_catalog (set_number, minifigs, image_url, image_local) VALUES ($1, $7, $8, $9)
                   ON CONFLICT (set_number) DO UPDATE SET
                     minifigs = COALESCE($7, set_catalog.minifigs),
@@ -43,7 +43,7 @@ const PLATZHALTER_SQL =
  * Kennt rb_sets das Set schon (CSV), bleibt dessen Zeile. */
 export async function merkeKatalogPlatzhalter(dbh: DbSchnittstelle, setNumber: string) {
   await dbh.run(
-    "INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1, 'Set ' || $1, 'api') ON CONFLICT (set_num) DO NOTHING",
+    "INSERT INTO rb_sets (set_num, name, source) VALUES ($1, 'Set ' || $1, 'api') ON CONFLICT (set_num) DO NOTHING",
     [setNumber],
   );
   await dbh.run('INSERT INTO set_catalog (set_number) VALUES ($1) ON CONFLICT (set_number) DO NOTHING', [setNumber]);

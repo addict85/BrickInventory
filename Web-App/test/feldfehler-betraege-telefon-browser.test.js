@@ -51,7 +51,7 @@ async function finanzenOffline(_t, a) {
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     // Seit Runde 24 (M2) steht der Fehler oben im Diagrammkasten, die Karten fallen weg.
-    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand oben');
+    await bis(`!!document.querySelector('#portfolio-chart .error_message-zustand')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
       hinweise: document.querySelectorAll('#tab-finance .fval-hinweis').length,
@@ -66,7 +66,7 @@ async function finanzenOffline(_t, a) {
   }
   // Zurück am Netz lädt die Liste von selbst; sonst hilft der Knopf.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
   await bis(
     `[...document.querySelectorAll('.zeitraum-wahl .period-btn')].every(k => !k.disabled)`,
     'Zeitraum wieder frei',
@@ -98,11 +98,11 @@ async function kaufpreisDialog(_t, a) {
     b.auswerten(`(() => { const f = ${feld}; f.focus(); f.value = ${JSON.stringify(wert)};
     f.dispatchEvent(new Event('input', { bubbles: true })); f.value = ${JSON.stringify(wert)}; f.blur(); return true; })()`);
   await eingeben('-5');
-  await bis(`!!document.querySelector('.acq-tabelle .feld-fehler:not([hidden])')`, 'Meldung am Preis');
+  await bis(`!!document.querySelector('.acq-tabelle .feld-error_message:not([hidden])')`, 'Meldung am Preis');
   const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-tabelle'), w = t.closest('.tw');
     const zeile = t.querySelector('tbody tr:first-child'), danach = zeile.nextElementSibling;
-    const meldung = t.querySelector('.feld-fehler');
-    return { text: meldung.textContent, eigeneZeile: !!danach?.classList.contains('feld-fehler-zeile') && danach.contains(meldung),
+    const meldung = t.querySelector('.feld-error_message');
+    return { text: meldung.textContent, eigeneZeile: !!danach?.classList.contains('feld-error_message-zeile') && danach.contains(meldung),
       spalten: danach?.cells[0]?.colSpan, zellen: zeile.cells.length, rollt: w.scrollWidth > w.clientWidth + 1,
       koepfe: [...t.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().right > w.getBoundingClientRect().right + 1).map(th => th.textContent.trim()),
       zustand: t.querySelector('tbody tr:first-child select').getBoundingClientRect().width }; })()`);
@@ -114,11 +114,11 @@ async function kaufpreisDialog(_t, a) {
   assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
   await eingeben('12,x');
   await bis(
-    `/„12,x“ ist kein Betrag/.test(${text('.acq-tabelle .feld-fehler')})`,
+    `/„12,x“ ist kein Betrag/.test(${text('.acq-tabelle .feld-error_message')})`,
     'Unlesbares heisst weiter „kein Betrag“',
   );
   await eingeben('199,99');
-  await bis(`document.querySelector('.feld-fehler-zeile')?.hidden === true`, 'Meldungszeile verschwindet');
+  await bis(`document.querySelector('.feld-error_message-zeile')?.hidden === true`, 'Meldungszeile verschwindet');
   await b.auswerten(SCHLIESSEN);
 }
 
@@ -127,7 +127,7 @@ async function finanzenTelefon(_t, a) {
   await groesse(b, 390, 844);
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-art="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
+    await bis(`!!document.querySelector('#fin-tbl [data-fin-type="figs"] tbody tr')`, 'Finanzen mit Figuren', 200);
     await ruhig();
     const zeile = name =>
       b.auswerten(`(() => { const r = [...document.querySelectorAll('#fin-tbl tbody tr')].find(x => x.textContent.includes(${JSON.stringify(name)}));
@@ -142,7 +142,7 @@ async function finanzenTelefon(_t, a) {
     assert.equal(doc.guv, null, 'zweiter Strich neben dem Wert');
     // N1: Zwischen „Brick 2 x 4“ und „(Schwarz)“ steht ein Wortabstand.
     const abstand =
-      await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-art="parts"] .zeile-oeffnen')].find(x => x.textContent.includes('(Schwarz)'));
+      await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-type="parts"] .zeile-oeffnen')].find(x => x.textContent.includes('(Schwarz)'));
       const farbe = [...k.querySelectorAll('span')].find(s => s.textContent.trim() === '(Schwarz)');
       const w = document.createTreeWalker(k, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode()) && !n.textContent.includes('Brick'));
       const r = document.createRange(); const i = n.textContent.indexOf('4'); r.setStart(n, i); r.setEnd(n, i + 1);
@@ -188,7 +188,7 @@ async function zeitpunkteMitTag(_t, a) {
   const spaeter = new Date(morgen);
   spaeter.setDate(spaeter.getDate() + 2);
   for (const wann of [morgen, spaeter])
-    await db.run(`INSERT INTO auftraege (art, faellig_ab) VALUES ('konto_dateien', $1)`, [wann.toISOString()]);
+    await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', $1)`, [wann.toISOString()]);
   await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
   await bis(`/Dateien gelöschter Konten/.test(document.getElementById('tab-monitor').textContent)`, 'Aufträge');
   await b.auswerten(`document.querySelector('.mon-einzeln')?.setAttribute('open', ''); true`);

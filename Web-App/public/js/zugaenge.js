@@ -40,7 +40,7 @@ async function kopplungPruefen() {
     // Der Code ist verbraucht; stehen bliebe nur ein Bild, das nichts mehr öffnet.
     G('qr-code').replaceChildren();
     if (G('qr-kopplung').hidden || G('qr-kopplung-feld').hidden)
-      zeigeKopplung(tRaw('qr.kopplung_frage', { geraet, netz: d.ip_bereich || '—' }), true);
+      zeigeKopplung(tRaw('qr.kopplung_frage', { geraet, netz: d.ip_range || '—' }), true);
   } else if (d.stand === 'bestaetigt') zeigeKopplung(tRaw('qr.kopplung_bestaetigt', { geraet }), false);
   else if (d.stand === 'abgeholt') {
     kopplungBeenden();
@@ -208,7 +208,7 @@ export async function loadTokens() {
       <td>${tokenDatum(tk.created_at)}</td>
       <td>${tokenDatum(tk.last_used)}</td>
       <td>${tk.scope === 'voll' ? tRaw('tokens.scope.voll') : tRaw('tokens.scope.app')}</td>
-      <td>${tk.ip_bereich || '—'}</td>
+      <td>${tk.ip_range || '—'}</td>
       <td>${tk.never_expires ? tRaw('tokens.never') : tokenDatum(tk.expires_at)}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
     </tr>`,

@@ -17,5 +17,5 @@ export async function zaehleLaufende(k: AuftraegeKontext, art: AuftragsArt, uid:
 
 /** @returns die Schlüssel der gelöschten, damit ihre Dateien mitgehen */
 export async function loescheBeendete(k: AuftraegeKontext, art: AuftragsArt, fristSek: number): Promise<string[]> {
-  return (await k.eigene.loescheBeendeteZeilen(art, fristSek)).map(r => r.schluessel);
+  return (await k.eigene.loescheBeendeteZeilen(art, fristSek)).map(r => r.dedupe_key);
 }

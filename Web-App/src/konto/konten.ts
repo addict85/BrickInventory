@@ -41,11 +41,11 @@ export async function kontenListe(k: KontoKontext) {
   const konten = await k.konten.alleKonten();
   const mitFaktor = await k.faktoren.aktiveUnter(konten.map(z => z.id));
   // Angekündigte Änderungen an Verwaltern (24 h): Die übrigen Verwalter sollen sie sehen, nicht nur per Mail.
-  const angekuendigt = new Map<number, { art: UebernahmeArt; wirksam_ab: string }[]>();
+  const angekuendigt = new Map<number, { type: UebernahmeArt; effective_at: string }[]>();
   for (const a of await k.uebernahmen.angekuendigte())
-    angekuendigt.set(a.ziel_id, [
-      ...(angekuendigt.get(a.ziel_id) ?? []),
-      { art: a.art, wirksam_ab: new Date(a.wirksam_ab).toISOString() },
+    angekuendigt.set(a.target_id, [
+      ...(angekuendigt.get(a.target_id) ?? []),
+      { type: a.type, effective_at: new Date(a.effective_at).toISOString() },
     ]);
   return konten.map(z => ({ ...z, zweiter_faktor: mitFaktor.has(z.id), angekuendigt: angekuendigt.get(z.id) ?? [] }));
 }

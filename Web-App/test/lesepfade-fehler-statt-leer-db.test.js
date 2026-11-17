@@ -43,7 +43,7 @@ test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => 
     `INSERT INTO rb_colors (id, name, rgb) VALUES ($1, 'Probefarbe', 'ABCDEF') ON CONFLICT (id) DO NOTHING`,
     [FARBE],
   );
-  await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, $2) ON CONFLICT DO NOTHING`, [
+  await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $2) ON CONFLICT DO NOTHING`, [
     TEIL,
     `${TEIL}bl`,
   ]);
@@ -51,7 +51,7 @@ test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => 
   await legeKatalogSetAn(db, SET, { name: 'Probeset' });
   t.after(async () => {
     await db.run('DELETE FROM rb_colors WHERE id = $1', [FARBE]).catch(() => {});
-    await db.run('DELETE FROM bl_zuordnung WHERE rb_id = $1', [TEIL]).catch(() => {});
+    await db.run('DELETE FROM bl_mapping WHERE rb_id = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -77,7 +77,7 @@ test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => 
 
   await t.test('BrickLink-Zuordnung', async () => {
     assert.equal(await blNummerVon('part', TEIL), `${TEIL}bl`);
-    await ohne('bl_zuordnung', () => assert.rejects(blNummerVon('part', TEIL), /bl_zuordnung/));
+    await ohne('bl_mapping', () => assert.rejects(blNummerVon('part', TEIL), /bl_mapping/));
   });
 
   await t.test('Anleitungen eines Sets', async () => {

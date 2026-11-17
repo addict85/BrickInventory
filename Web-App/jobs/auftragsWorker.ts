@@ -37,7 +37,7 @@ function haltePacht(d: AuftraegeDienste, a: AuftragsZeile, ac: AbortController, 
   const erneuere = async () => {
     if (ac.signal.aborted) return;
     const ok = await d.lebenszeichen(a, fristSek).catch((e: unknown) => {
-      logAndContinue(`auftraege:pacht ${a.art}`)(e);
+      logAndContinue(`auftraege:pacht ${a.type}`)(e);
       return true;
     });
     if (!ok) ac.abort(new AuftragVerloren());
@@ -73,7 +73,7 @@ async function zurueckInDieTabelle(d: AuftraegeDienste, a: AuftragsZeile): Promi
 
 /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan; ohne Zeitplan nichts. */
 async function folgeplan(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
-  await d.planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
+  await d.planeNaechsten(a.type).catch(logAndContinue(`auftraege:plan ${a.type}`));
 }
 
 function kontextFuer(
@@ -94,7 +94,7 @@ function kontextFuer(
     get beendet() {
       return istBeendet() || ac.signal.aborted;
     },
-    versuch: a.versuche,
+    versuch: a.attempts,
   };
 }
 
@@ -111,9 +111,9 @@ async function fuehreAuftragAus(
   const lasseLos = haltePacht(d, a, ac, fristSek);
   try {
     // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
-    if (!b || a.versuche > a.max_versuche)
-      throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
-    const geprueft = d.pruefeNutzlast(a.art, a.nutzlast);
+    if (!b || a.attempts > a.max_attempts)
+      throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.type}`);
+    const geprueft = d.pruefeNutzlast(a.type, a.payload);
     nutzlast = geprueft;
     await d.imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
     if (await d.erledigt(a)) await folgeplan(d, a);
@@ -135,7 +135,7 @@ async function nachFehler(
   // Nach einem Abbruch zählt der Grund des Signals, nicht die Ausnahme, die er im Handler auslöste.
   const grund: unknown = ac.signal.aborted ? ac.signal.reason : e;
   if (grund instanceof AuftragVerloren) {
-    console.warn(`[auftraege] ${a.art} #${a.id}: ${grund.message}`);
+    console.warn(`[auftraege] ${a.type} #${a.id}: ${grund.message}`);
     return;
   }
   if (grund instanceof AuftragUnterbrochen) {
@@ -150,7 +150,7 @@ async function nachFehler(
     return;
   }
   const text = fehlertext(e) || 'Unbekannter Fehler';
-  console.warn(`[auftraege] ${a.art} #${a.id} Versuch ${a.versuche}/${a.max_versuche}: ${text}`);
+  console.warn(`[auftraege] ${a.type} #${a.id} Versuch ${a.attempts}/${a.max_attempts}: ${text}`);
   if (await d.fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
     if (nutzlast) await d.imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, text, a));
     await folgeplan(d, a);
@@ -197,8 +197,8 @@ function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: Wo
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
     // Kein Rahmen um den Lauf: Die Ausführung setzt ihn je Konto (imNamenDesAuftrags).
-    lauf.fertig = fuehreAuftragAus(d, a, ac, bearbeiter[a.art], fristSek, () => beendet)
-      .catch(logAndContinue(`auftraege:${a.art}`))
+    lauf.fertig = fuehreAuftragAus(d, a, ac, bearbeiter[a.type], fristSek, () => beendet)
+      .catch(logAndContinue(`auftraege:${a.type}`))
       .finally(() => laufend.delete(a.id));
     return lauf;
   }

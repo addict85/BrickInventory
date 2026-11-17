@@ -138,7 +138,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     await db.run(`DELETE FROM part_color_catalog`);
     // Die Set-Teilelisten sind seit dem 20.10. die erste Bildquelle der
     // Farbänderung — ohne Leeren trüge der nächste Fall das Bild des vorigen.
-    await db.run(`DELETE FROM set_teile`);
+    await db.run(`DELETE FROM set_parts`);
   };
   const farbBild = async farbe =>
     db.get(

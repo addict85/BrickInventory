@@ -1,5 +1,5 @@
 /**
- * Googles Widerrufsliste kommt als geplanter Auftrag in laufzustand; der Abruf ist
+ * Googles Widerrufsliste kommt als geplanter Auftrag in run_state; der Abruf ist
  * über die Fremdquellen gestellt (testQuellen), kein Netz. Eine unlesbare Antwort
  * oder ein Netzfehler lässt die letzte gute Liste stehen.
  *
@@ -25,8 +25,8 @@ const db = testDaten();
 
 const AUSZUG = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-auszug.json'));
 const gespeichert = async () => {
-  const z = await db.get("SELECT wert FROM laufzustand WHERE schluessel = 'attestation_widerruf'");
-  return z ? JSON.parse(z.wert) : null;
+  const z = await db.get("SELECT value FROM run_state WHERE key = 'attestation_widerruf'");
+  return z ? JSON.parse(z.value) : null;
 };
 
 test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
@@ -35,8 +35,8 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
     await testZugang().benachrichtigung.close();
     await db.pool.end().catch(() => {});
   });
-  await db.run("DELETE FROM laufzustand WHERE schluessel = 'attestation_widerruf'");
-  await db.run("DELETE FROM auftraege WHERE art = 'widerrufsliste'");
+  await db.run("DELETE FROM run_state WHERE key = 'attestation_widerruf'");
+  await db.run("DELETE FROM jobs WHERE type = 'widerrufsliste'");
   let antwort = async () => AUSZUG;
   const abrufe = [];
   testQuellen(t, {
@@ -48,7 +48,7 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
   const d = testDienste();
 
   await t.test('der geplante Auftrag legt die Liste ab und plant den nächsten Lauf', async () => {
-    await d.auftraege.ziehePlanVor('widerrufsliste', 0);
+    await d.jobs.ziehePlanVor('widerrufsliste', 0);
     const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);
@@ -62,8 +62,8 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
     assert.ok(abrufe[0] instanceof AbortSignal, 'Der Abruf bekommt das Signal des Auftrags');
     const planZeile = () =>
       db.get(
-        `SELECT EXTRACT(EPOCH FROM faellig_ab - NOW())::int AS in_sek FROM auftraege
-          WHERE schluessel = 'plan:widerrufsliste' AND status = 'offen'`,
+        `SELECT EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek FROM jobs
+          WHERE dedupe_key = 'plan:widerrufsliste' AND status = 'offen'`,
       );
     await bis(async () => (await planZeile())?.in_sek > 60, 5000);
     const plan = await planZeile();

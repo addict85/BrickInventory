@@ -252,7 +252,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   for (const zeile of [
     'UPDATE part_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE minifig_acquisitions SET quantity = $1 WHERE id=$2',
-    `INSERT INTO set_teile (set_number,part_number,color_id,quantity) VALUES ($1,$2,$3,$4)
+    `INSERT INTO set_parts (set_number,part_number,color_id,quantity) VALUES ($1,$2,$3,$4)
        ON CONFLICT (set_number,part_number,color_id) DO UPDATE SET quantity = EXCLUDED.quantity`,
     'UPDATE sets SET storage_id = $1 WHERE id=$2',
   ]) {
@@ -297,7 +297,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // Set-Teil: die Stückzahl steht EINMAL im Katalog des Sets — gemeinsam für
   // alle Konten, die das Set halten.
   await db.run(
-    `INSERT INTO set_teile (set_number,part_number,color_id,quantity)
+    `INSERT INTO set_parts (set_number,part_number,color_id,quantity)
                 VALUES ($1,'3001',4,6)`,
     [SN],
   );
@@ -307,7 +307,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     [haupt, SN, kind],
   );
   await db.run(
-    `INSERT INTO set_figuren (set_number,fig_number,quantity)
+    `INSERT INTO set_minifigs (set_number,fig_number,quantity)
                 VALUES ($1,'sw0001',1)`,
     [SN],
   );
@@ -506,7 +506,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // Antwort einer Änderung FOLGT, ist bewiesen, woher sie kommt. Und sie muss
   // bei BEIDEN Konten folgen: Der Katalog ist gemeinsam.
   await db.run(
-    `UPDATE set_teile SET quantity = 9
+    `UPDATE set_parts SET quantity = 9
                  WHERE set_number=$1 AND part_number='3001'`,
     [SN],
   );

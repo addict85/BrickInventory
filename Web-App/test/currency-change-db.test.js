@@ -25,12 +25,12 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
 
   // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
   const Z = _req('src/auftraege/zeitplan.js');
-  await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
+  await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
   await Z.planeNaechsten('preise');
   const spaeter = () =>
-    db.run(`UPDATE auftraege SET faellig_ab = NOW() + INTERVAL '1 hour' WHERE art = 'preise' AND status = 'offen'`);
+    db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'preise' AND status = 'offen'`);
   const faellig = async () =>
-    (await db.get(`SELECT faellig_ab <= NOW() AS jetzt FROM auftraege WHERE art = 'preise' AND status = 'offen'`))
+    (await db.get(`SELECT due_at <= NOW() AS jetzt FROM jobs WHERE type = 'preise' AND status = 'offen'`))
       ?.jetzt === true;
   const warteAufLauf = async () => {
     for (let i = 0; i < 40; i++) {
@@ -88,7 +88,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
     assert.equal(r.status, 200, `v1-Settings-Route antwortete ${r.status}`);
     assert.ok(await warteAufLauf(), 'CHF → EUR über /api/v1 muss den Preis-Job ebenfalls anstossen');
   } finally {
-    await db.run(`DELETE FROM auftraege WHERE art = 'preise'`);
+    await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});

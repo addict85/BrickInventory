@@ -1,6 +1,6 @@
 /**
  * Eine von Hand eingetragene BrickLink-Nummer gilt nur für das Konto, das sie
- * einträgt (bl_zuordnung_eigen, Migration 0094). Zwei Konten ohne Haushalt:
+ * einträgt (bl_mapping_custom, Migration 0094). Zwei Konten ohne Haushalt:
  * Anna korrigiert beim Wanted-Import und an ihrer Figur, Bruno sieht weiter
  * die gemeinsame Zuordnung — in Preisabruf, Figurenpreis, Bewertung und …
  *
@@ -84,11 +84,11 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
   // Geprüft: 3003 heisst bei BrickLink gleich, die Figur sw0001.
   await db.run(
-    `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`,
+    `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`,
   );
   const gemeinsam = async () =>
-    (await db.all('SELECT art, rb_id, bl_id FROM bl_zuordnung ORDER BY art, rb_id')).map(
-      z => `${z.art}|${z.rb_id}|${z.bl_id}`,
+    (await db.all('SELECT type, rb_id, bl_id FROM bl_mapping ORDER BY type, rb_id')).map(
+      z => `${z.type}|${z.rb_id}|${z.bl_id}`,
     );
   const vorher = await gemeinsam();
 
@@ -104,15 +104,15 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
 
   await t.test('der Import schreibt nur Annas Zuordnung', async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
-      { index: 0, blId: 'sw0001a', art: 'fig', rbId: 'fig-000001' },
-      { index: 1, blId: '3001', art: 'part', rbId: '3003', rbFarbe: 4 },
+      { index: 0, blId: 'sw0001a', type: 'fig', rbId: 'fig-000001' },
+      { index: 1, blId: '3001', type: 'part', rbId: '3003', rbFarbe: 4 },
     ]);
     assert.equal(status, 200, JSON.stringify(body));
     assert.equal(body.korrekturen?.angewandt, 2, JSON.stringify(body.korrekturen));
     assert.deepEqual(await gemeinsam(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
-    const eigen = await db.all('SELECT user_id, art, rb_id, bl_id FROM bl_zuordnung_eigen ORDER BY art');
+    const eigen = await db.all('SELECT user_id, type, rb_id, bl_id FROM bl_mapping_custom ORDER BY type');
     assert.deepEqual(
-      eigen.map(z => `${z.user_id}|${z.art}|${z.rb_id}|${z.bl_id}`),
+      eigen.map(z => `${z.user_id}|${z.type}|${z.rb_id}|${z.bl_id}`),
       [`${ANNA}|fig|fig-000001|sw0001a`, `${ANNA}|part|3003|3001`],
     );
   });

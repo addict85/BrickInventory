@@ -1,11 +1,11 @@
 /**
  * Zwei Drosseln mit demselben Takt halten den Abstand auch untereinander —
- * so, wie zwei Prozesse es über die Tabelle api_takt tun.
+ * so, wie zwei Prozesse es über die Tabelle api_cadence tun.
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in waitForSlot() den Aufruf von warteAufTakt entfernt → rot: „zwei
  *      Drosseln teilen sich den Takt“
- *   B  im UPDATE von warteAufTakt GREATEST(api_takt.naechster, …) durch
+ *   B  im UPDATE von warteAufTakt GREATEST(api_cadence.next_at, …) durch
  *      clock_timestamp() ersetzt → rot: derselbe Test
  *   (30.10.2026 mit der Prüfung „nicht vor k Takten“ erneut gemessen: A und B rot)
  *
@@ -31,7 +31,7 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
   const { RateLimiter } = _req('src/fremdquellen/rateLimiter.js');
   const API = `test-${process.pid}`;
   const ABSTAND = 250;
-  await db.run('DELETE FROM api_takt WHERE api = $1', [API]);
+  await db.run('DELETE FROM api_cadence WHERE api = $1', [API]);
 
   await t.test('zwei Drosseln teilen sich den Takt', async () => {
     // Die eigene Drossel lässt sofort durch (Fenster 0) — jeder Abstand, der
@@ -50,5 +50,5 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
     assert.deepEqual(zufrueh, [], `Durchlässe nach Start: ${zeiten.join(', ')} ms`);
   });
 
-  await db.run('DELETE FROM api_takt WHERE api = $1', [API]);
+  await db.run('DELETE FROM api_cadence WHERE api = $1', [API]);
 });

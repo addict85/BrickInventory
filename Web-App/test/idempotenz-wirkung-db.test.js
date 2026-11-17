@@ -8,7 +8,7 @@
  * - db/database.ts: der Aufruf von commitBegleiter vor dem COMMIT entfernt →
  *   rot: „abgebrochen nach dem COMMIT“ (zwei Zeilen statt einer) und „ein
  *   Serverfehler nach dem COMMIT“ (Wiederholung lief, 200 statt 409).
- * - repository.ts: in belege() `AND NOT idempotenz.wirkung` gestrichen → rot:
+ * - repository.ts: in belege() `AND NOT idempotency.has_effect` gestrichen → rot:
  *   „abgebrochen nach dem COMMIT“ (die Wiederholung belegt neu und wirkt).
  * - Gegenrichtung: „ohne COMMIT darf sie neu“ bleibt grün, auch mit beiden
  *   Gegenproben; eine zurückgerollte Transaktion vermerkt nichts.
@@ -25,7 +25,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { idempotenz } = _req('src/idempotenz/http/middleware.js');
+const { idempotency } = _req('src/idempotenz/http/middleware.js');
 const dienst = _req('src/idempotenz/dienst.js');
 
 const NAME = `idem_wirkung_${process.pid}`;
@@ -41,7 +41,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     )
   ).id;
   const tabelle = `idem_wirkung_${process.pid}`;
-  await db.run(`CREATE TABLE ${tabelle} (schluessel text)`);
+  await db.run(`CREATE TABLE ${tabelle} (key text)`);
   t.after(async () => {
     await db.run(`DROP TABLE IF EXISTS ${tabelle}`).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
@@ -57,7 +57,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     /** @type {any} */ (req).apiUser = { user_id: uid };
     next();
   });
-  app.use('/api/v1', idempotenz(require('./helpers/sources').testDienste().idempotenz));
+  app.use('/api/v1', idempotency(require('./helpers/sources').testDienste().idempotency));
   app.post('/api/v1/parts', async (req, res) => {
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);
@@ -79,17 +79,17 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': k },
       body: '{"part_number":"3001"}',
     }).catch(() => null);
-  const wirkungen = async k => (await db.get(`SELECT COUNT(*)::int AS n FROM ${tabelle} WHERE schluessel = $1`, [k])).n;
+  const wirkungen = async k => (await db.get(`SELECT COUNT(*)::int AS n FROM ${tabelle} WHERE key = $1`, [k])).n;
   const verwaise = k =>
     db.run(
-      `UPDATE idempotenz SET angelegt = NOW() - make_interval(secs => $3)
-                                  WHERE user_id = $1 AND schluessel = $2`,
+      `UPDATE idempotency SET created_at = NOW() - make_interval(secs => $3)
+                                  WHERE user_id = $1 AND key = $2`,
       [uid, k, dienst.VERWAIST_NACH_S + 1],
     );
   const fertig = async k => {
     for (let i = 0; i < 50; i++) {
       if (
-        !(await db.get('SELECT 1 FROM idempotenz WHERE user_id = $1 AND schluessel = $2 AND status IS NULL', [uid, k]))
+        !(await db.get('SELECT 1 FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL', [uid, k]))
       )
         return;
       await new Promise(r => setTimeout(r, 20));

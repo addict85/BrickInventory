@@ -133,7 +133,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   await haeltTeil(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
   // Die Setliste für 3003 steht schon jetzt im Katalog; unten kommt nur die
   // Bestandszeile dazu (eine Katalogänderung zöge die Gruppe sofort nach).
-  await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
+  await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
                 ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = 9`);
 
   // Seit dem Fix baut zusammenfassungFrisch() NICHT mehr im Request auf. Der erste

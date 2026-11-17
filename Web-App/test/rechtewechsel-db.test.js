@@ -90,7 +90,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
 
   /** Die Ankündigung fällig machen und den Aufräumlauf ausführen. */
   const faellig = async () => {
-    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+    await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
       idZiel,
     ]);
     return _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus();
@@ -115,7 +115,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       body: { is_admin: false, admin_password: PASS },
     });
     assert.equal(entzug.status, 200, `Entzug scheiterte: ${JSON.stringify(entzug.body)}`);
-    assert.ok(entzug.body.wirksam_ab, 'Bei einem Verwalter wird der Entzug angekündigt');
+    assert.ok(entzug.body.effective_at, 'Bei einem Verwalter wird der Entzug angekündigt');
     assert.equal(await sitzungen(idZiel), 1, 'Vor der Frist bleibt die Sitzung');
     assert.equal(await faellig(), 1);
     assert.equal(
@@ -184,7 +184,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       body: { admin_password: PASS },
     });
     assert.equal(weg.status, 200, `Loeschen scheiterte: ${JSON.stringify(weg.body)}`);
-    assert.ok(weg.body.wirksam_ab, 'Bei einem Verwalter wird die Löschung angekündigt');
+    assert.ok(weg.body.effective_at, 'Bei einem Verwalter wird die Löschung angekündigt');
     assert.equal(await faellig(), 1);
     assert.equal(
       await sitzungen(idZiel),
@@ -199,11 +199,11 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     );
 
     // ── 5. Jede Verwalteraktion steht im Protokoll — auch die Löschung ──────
-    const prot = await db.all(`SELECT aktion, ziel_name FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id`, [
+    const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [
       idZiel,
     ]);
     assert.deepEqual(
-      prot.map(p => p.aktion),
+      prot.map(p => p.action),
       [
         'uebernahme_angekuendigt',
         'verwalter_entzogen',
@@ -213,7 +213,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       ],
     );
     assert.ok(
-      prot.every(p => p.ziel_name === ZIEL),
+      prot.every(p => p.target_name === ZIEL),
       'Der Name muss auch nach dem Löschen lesbar bleiben',
     );
   } finally {

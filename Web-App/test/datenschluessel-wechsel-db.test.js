@@ -81,8 +81,8 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     [G.verschluessele('api-geheim-123', apiKontext)],
   );
-  const geheimnis = await zf.beginneEinrichtung(uid);
-  const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt()));
+  const secret = await zf.beginneEinrichtung(uid);
+  const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(secret), zf.zeitschritt()));
   const g = await gut.gutscheinAnlegen(uid, { number: '6299-1234-5678', pin: '4711', amount: 25, currency: 'CHF' });
   const pdf = path.join(dateien.VOUCHER_DIR, String(uid), `${g.id}.pdf`);
   await dateien.schreibeGutscheinPdf(pdf, Buffer.from('%PDF-1.4 Gutschein'));
@@ -90,13 +90,13 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   /** Was der aktuelle Schlüssel lesen kann. */
   const liesAlles = async () => {
     const api = (await db.get(`SELECT value FROM global_settings WHERE key = 'rebrickable_api_key'`)).value;
-    const faktor = (await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid])).geheimnis;
+    const faktor = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
     const v = await db.get('SELECT number, pin, nummer_suche FROM vouchers WHERE id = $1', [g.id]);
     const datei = G.entschluesselePuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
     return {
       api: G.entschluessele(api, apiKontext),
       faktor: G.entschluessele(faktor, zf.faktorKontext(uid)),
-      nummer: G.entschluessele(v.number, gut.nummerKontext(uid, g.id)),
+      number: G.entschluessele(v.number, gut.nummerKontext(uid, g.id)),
       pin: G.entschluessele(v.pin, gut.pinKontext(uid, g.id)),
       pdf: datei?.toString() ?? null,
       suchePasst: v.nummer_suche === gut.nummerSuche(uid, '6299-1234-5678'),
@@ -104,8 +104,8 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   };
   const KLAR = {
     api: 'api-geheim-123',
-    faktor: geheimnis,
-    nummer: '6299-1234-5678',
+    faktor: secret,
+    number: '6299-1234-5678',
     pin: '4711',
     pdf: '%PDF-1.4 Gutschein',
     suchePasst: true,
@@ -140,7 +140,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
       assert.deepEqual(await liesAlles(), {
         api: null,
         faktor: null,
-        nummer: null,
+        number: null,
         pin: null,
         pdf: null,
         suchePasst: false,

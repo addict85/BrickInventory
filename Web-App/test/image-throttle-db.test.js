@@ -155,7 +155,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
 
     await t.test('404 wird dagegen gemerkt', async () => {
       // Die Pause aus dem vorigen Teilschritt steht in der Datenbank und gilt sonst weiter.
-      await db.run(`DELETE FROM auftrag_pausen WHERE art = 'bildbedarf'`);
+      await db.run(`DELETE FROM job_pauses WHERE type = 'bildbedarf'`);
       const IQ = _req('src/bilder/bildbedarfLauf.js');
       antwort = 404;
       versuche = 0;

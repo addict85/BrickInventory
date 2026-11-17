@@ -44,7 +44,7 @@ test('Migration 0105: Set-Stamm aus rb_sets', { concurrency: 1 }, async t => {
   // Stand vor 0105: rb_sets ohne herkunft, set_catalog mit eigenen Stammspalten.
   for (const tab of ['rb_sets', 'rb_themes', 'set_catalog'])
     await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING ALL)`);
-  await c.query('ALTER TABLE rb_sets DROP COLUMN herkunft');
+  await c.query('ALTER TABLE rb_sets DROP COLUMN source');
   await c.query(
     'ALTER TABLE set_catalog ADD COLUMN name text, ADD COLUMN year integer, ADD COLUMN theme text, ADD COLUMN pieces integer',
   );

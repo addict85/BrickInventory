@@ -36,14 +36,14 @@ test('Idempotenz: die Frist folgt der längsten Anfrage', { concurrency: 1 }, as
   const abdruck = dienst.fingerabdruck('POST', '/api/v1/sets', { set_number: '10294-1' });
   assert.deepEqual(await dienst.beginne(uid, 'k1', abdruck), { art: 'neu' });
   // Die Uhr der ersten Anfrage um 130 s zurück: Sie läuft noch (bis 300 s erlaubt).
-  await db.run(`UPDATE idempotenz SET angelegt = NOW() - INTERVAL '130 seconds' WHERE user_id = $1`, [uid]);
+  await db.run(`UPDATE idempotency SET created_at = NOW() - INTERVAL '130 seconds' WHERE user_id = $1`, [uid]);
   assert.deepEqual(
     await dienst.beginne(uid, 'k1', abdruck),
     { art: 'laeuft' },
     'nach 130 s läuft die erste Anfrage noch',
   );
   // Nach der Frist ist sie verwaist und darf neu belegt werden.
-  await db.run(`UPDATE idempotenz SET angelegt = NOW() - make_interval(secs => $2) WHERE user_id = $1`, [
+  await db.run(`UPDATE idempotency SET created_at = NOW() - make_interval(secs => $2) WHERE user_id = $1`, [
     uid,
     dienst.VERWAIST_NACH_S + 1,
   ]);

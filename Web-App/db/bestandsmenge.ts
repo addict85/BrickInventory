@@ -89,7 +89,7 @@ const ART = {
   part: {
     bestand: 'parts',
     erfassung: 'part_acquisitions',
-    katalog: 'set_teile',
+    katalog: 'set_parts',
     nummer: 'part_number',
     // Die Farbe gehört in beide Schlüssel; „ohne Angabe“ ist in der
     // Erfassung 0, in der Bestandszeile womöglich NULL.
@@ -160,11 +160,11 @@ export async function mengeDerPosition(
   return zeile ? parseInt(String(zeile.menge), 10) || 0 : null;
 }
 
-/** Der Tag einer Erfassung genau wie im eindeutigen Index (0070): `tag`, für
+/** Der Tag einer Erfassung genau wie im eindeutigen Index (0070): `day`, für
  * ältere Zeilen der UTC-Tag. Ein anderer Ausdruck träfe den Index nicht. */
 export function erfassungsTagSql(alias = ''): string {
   const a = alias ? `${alias}.` : '';
-  return `COALESCE(${a}tag, (${a}created_at AT TIME ZONE 'UTC')::date)`;
+  return `COALESCE(${a}day, (${a}created_at AT TIME ZONE 'UTC')::date)`;
 }
 
 /** Bedingung: Der Kaufpreis ist in der heutigen Kontowährung erfasst — ein

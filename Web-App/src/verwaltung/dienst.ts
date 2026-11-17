@@ -127,13 +127,13 @@ export async function preisJobStand(k: VerwaltungKontext) {
     lastDuration: letzter.lastDuration ?? null,
     lastUpdated: letzter.lastUpdated ?? 0,
     lastErrors: letzter.lastErrors ?? 0,
-    nextRun: plan && !laeuft ? new Date(plan.faellig_ab).toISOString() : null,
+    nextRun: plan && !laeuft ? new Date(plan.due_at).toISOString() : null,
     progress:
-      laeuft && plan?.fortschritt
+      laeuft && plan?.progress
         ? {
-            current: plan.fortschritt.erledigt ?? 0,
-            total: plan.fortschritt.gesamt ?? 0,
-            set: plan.fortschritt.text ?? null,
+            current: plan.progress.erledigt ?? 0,
+            total: plan.progress.gesamt ?? 0,
+            set: plan.progress.text ?? null,
           }
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],

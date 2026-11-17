@@ -174,8 +174,8 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.equal(assertLoginAllowed(z), null);
     assert.equal((await inListe()).wartet_auf_bestaetigung, false);
     assert.equal(
-      (await db.get('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id DESC LIMIT 1', [neu]))
-        .aktion,
+      (await db.get('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id DESC LIMIT 1', [neu]))
+        .action,
       'konto_freigeschaltet',
     );
     const nochmal = await rufe('PUT', `/auth/users/${neu}/freischalten`, { admin_password: PASS });

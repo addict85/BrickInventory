@@ -142,7 +142,7 @@ test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden 
       [nr, farbe, name],
     );
     await db.run(
-      `INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare) VALUES ($1,$2,$3,1,false)`,
+      `INSERT INTO set_parts (set_number, part_number, color_id, quantity, is_spare) VALUES ($1,$2,$3,1,false)`,
       [SN, nr, farbe],
     );
   }
@@ -150,7 +150,7 @@ test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden 
   for (const [nr, farbe] of TEILE) await haeltTeil(db, U, nr, { setNumber: SN, colorId: farbe, menge: 1 });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id=$1', [U]);
-    await db.run('DELETE FROM set_teile WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
     await db.run(`DELETE FROM part_color_catalog WHERE part_number IN ('pp1','pp2','pp3')`);
     await db.run(`DELETE FROM part_catalog WHERE part_number IN ('pp1','pp2','pp3')`);
     await db.pool.end().catch(() => {});

@@ -83,12 +83,12 @@ type Kauf = Record<string, unknown>;
 export interface PapierkorbEintrag {
   id: number;
   user_id: number;
-  art: Art;
-  nummer: string;
-  farbe_id: number | null;
-  bezeichnung: string | null;
+  type: Art;
+  number: string;
+  color_id: number | null;
+  label: string | null;
   anzahl: number;
-  geloescht_am: string;
+  deleted_at: string;
   endgueltig_am: string;
 }
 
@@ -96,13 +96,13 @@ export async function listePapierkorb(k: BestandKontext, uidsWahl: Schreiber | n
   const uids = await k.haushalt.schreibbereichAus(uidsWahl);
   const rows = await k.papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map(r => {
-    const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
-    const { zeilen: _z, ...rest } = r;
+    const erfassungen = r.rows?.[ERFASSUNGEN[r.type]] ?? [];
+    const { rows: _z, ...rest } = r;
     return { ...rest, anzahl: erfassungen.reduce((s, e) => s + (Number(e.quantity) || 0), 0) };
   });
 }
 
-export type Wiederherstellung = { art: Art; nummer: string; user_id: number };
+export type Wiederherstellung = { type: Art; number: string; user_id: number };
 
 /** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
  * wird nichts verändert und der Eintrag bleibt. */
@@ -116,16 +116,17 @@ export async function stelleWiederHer(
     return await k.transaktion(async (t): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(t.db, id, uids);
       if (!e) nichtGefunden();
-      const art = e.art as Art;
-      const kaeufe = art === 'set' && !e.zeilen?.sets?.length ? (e.zeilen?.set_acquisitions ?? []) : null;
+      const art = e.type as Art;
+      const kaeufe = art === 'set' && !e.rows?.sets?.length ? (e.rows?.set_acquisitions ?? []) : null;
       if (kaeufe) {
-        if (!(await stelleKaeufeWiederHer(t.db, t.lesevertrag, e, kaeufe))) nichtGefunden();
+        if (!(await stelleKaeufeWiederHer(t.db, t.lesevertrag, { user_id: e.user_id, nummer: e.number }, kaeufe)))
+          nichtGefunden();
         await repo.entferneEintrag(t.db, id);
-        return { art, nummer: e.nummer, user_id: e.user_id };
+        return { type: art, number: e.number, user_id: e.user_id };
       }
-      await repo.schreibeZurueck(t.db, art, e.zeilen ?? {});
+      await repo.schreibeZurueck(t.db, art, e.rows ?? {});
       await repo.entferneEintrag(t.db, id);
-      return { art, nummer: e.nummer, user_id: e.user_id };
+      return { type: art, number: e.number, user_id: e.user_id };
     });
   } catch (err) {
     if ((err as { code?: string })?.code === '23505') fachfehler('konflikt', 'papierkorb_schon_vorhanden');

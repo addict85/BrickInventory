@@ -58,7 +58,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   const codes = await require('./helpers/verwalter').verwalterMitFaktor(_req, chef);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   t.after(async () => {
-    await db.run('DELETE FROM verwaltungsprotokoll WHERE ziel_id = ANY($1)', [[chef, nutzer]]);
+    await db.run('DELETE FROM admin_log WHERE target_id = ANY($1)', [[chef, nutzer]]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, nutzer]]);
     await db.pool.end().catch(() => {});
   });
@@ -104,8 +104,8 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
       body: { is_active: aktiv, admin_password: pw, code: codes.shift() },
     });
   const protokoll = async () =>
-    (await db.all('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id', [nutzer])).map(
-      z => z.aktion,
+    (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [nutzer])).map(
+      z => z.action,
     );
 
   const chefKeks = (await anmelden(CHEF, { ohne_token: true, code: codes.shift() })).cookie;

@@ -263,7 +263,7 @@ export function gebrauchteManuelle(db: DbSchnittstelle, uids: number[]) {
 export async function hatUngeseheneBlNummer(db: DbSchnittstelle, uids: number[]): Promise<boolean> {
   return !!(await db.get<Treffer>(
     `SELECT 1 FROM parts p
-     LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
+     LEFT JOIN bl_mapping m ON m.type = 'part' AND m.rb_id = p.part_number
      WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`,
     [uids],
   ));
@@ -284,7 +284,7 @@ export function inventarAlsTeile(db: DbSchnittstelle, inventarId: number, setNum
         FROM rb_inventory_parts ip
         LEFT JOIN rb_parts p ON p.part_num = ip.part_num
         LEFT JOIN rb_colors c ON c.id = ip.color_id
-        LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
+        LEFT JOIN bl_mapping  m ON m.type = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1`,
     [inventarId, setNumber],
   );

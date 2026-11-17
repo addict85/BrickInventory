@@ -71,7 +71,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
 
   await t.test('Zeilenfehler im Importstand in der Sprache des Lesers', async () => {
     await db.run(
-      `INSERT INTO import_stand (user_id, status, total, done, results) VALUES ($1, 'done', 2, 2, $2::jsonb)
+      `INSERT INTO import_status (user_id, status, total, done, results) VALUES ($1, 'done', 2, 2, $2::jsonb)
                   ON CONFLICT (user_id) DO UPDATE SET status = 'done', results = EXCLUDED.results`,
       [
         uid,
@@ -114,7 +114,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
                   VALUES ($1, '75313-1', 1, 99.99, 'N', 'USD')`,
       [uid],
     );
-    await db.run(`DELETE FROM wechselkurse WHERE waehrung = 'USD'`).catch(() => {});
+    await db.run(`DELETE FROM exchange_rates WHERE waehrung = 'USD'`).catch(() => {});
     const r = await hole('/finance/valuation');
     const set = r.body.sets.find(s => s.set_number === '75313-1');
     assert.ok(set, JSON.stringify(r.body.sets.map(s => s.set_number)));

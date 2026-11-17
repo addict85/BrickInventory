@@ -73,7 +73,7 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       const f = alsAbrufFehler(e);
       const msg = fehlertext(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
-        const stufe = (await k.auftraege.liesPause('anleitung'))?.stufe ?? 0;
+        const stufe = (await k.auftraege.liesPause('anleitung'))?.level ?? 0;
         const bis =
           stufe < CF_PAUSEN_MS.length ? new Date(k.uhr.jetzt() + CF_PAUSEN_MS[stufe]!) : naechsterTag(k.uhr.datum());
         const grund =

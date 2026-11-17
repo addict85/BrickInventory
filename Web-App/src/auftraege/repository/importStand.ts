@@ -9,14 +9,14 @@ export async function markiereVerwaist(
   minuten: number,
 ): Promise<void> {
   await db.run(
-    `UPDATE import_stand SET status = 'error', current = NULL, error = $2, updated_at = NOW()
+    `UPDATE import_status SET status = 'error', current = NULL, error = $2, updated_at = NOW()
       WHERE user_id = $1 AND status IN ('running', 'pending')
         AND updated_at < NOW() - make_interval(mins => $3)`,
     [userId, fehler, minuten],
   );
 }
 
-/** Eine Zeile von import_stand; results ist jsonb. */
+/** Eine Zeile von import_status; results ist jsonb. */
 export interface ImportStandZeile {
   user_id: number;
   status: string | null;
@@ -31,7 +31,7 @@ export interface ImportStandZeile {
 }
 
 export function importStand(db: DbSchnittstelle, userId: number) {
-  return db.get<ImportStandZeile>('SELECT * FROM import_stand WHERE user_id = $1', [userId]);
+  return db.get<ImportStandZeile>('SELECT * FROM import_status WHERE user_id = $1', [userId]);
 }
 
 /** Die Schlüssel landen als SPALTENNAMEN im Abfragetext, wo keine Bindung
@@ -51,7 +51,7 @@ export async function schreibeImportStand(
 ): Promise<void> {
   const keys = spalten(fields);
   await db.run(
-    `INSERT INTO import_stand (user_id, ${keys.join(', ')}, updated_at)
+    `INSERT INTO import_status (user_id, ${keys.join(', ')}, updated_at)
      VALUES ($1, ${keys.map((_, i) => `$${i + 2}`).join(', ')}, NOW())
      ON CONFLICT (user_id) DO UPDATE SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')}, updated_at = NOW()`,
     [userId, ...keys.map(k => fields[k])],
@@ -68,7 +68,7 @@ export async function aendereImportStand(
   const keys = spalten(fields);
   const werte = [userId, ...keys.map(k => fields[k])];
   const r = await db.run(
-    `UPDATE import_stand SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')}, updated_at = NOW()
+    `UPDATE import_status SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(', ')}, updated_at = NOW()
       WHERE user_id = $1${lauf ? ` AND run_id = $${keys.length + 2} AND status = 'running'` : ''}`,
     lauf ? [...werte, lauf] : werte,
   );
@@ -77,7 +77,7 @@ export async function aendereImportStand(
 
 export function setzeLaufFort(db: DbSchnittstelle, userId: number, lauf: string) {
   return db.get<Pick<ImportStandZeile, 'results' | 'current'>>(
-    `UPDATE import_stand SET status = 'running', error = NULL, updated_at = NOW()
+    `UPDATE import_status SET status = 'running', error = NULL, updated_at = NOW()
       WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
       RETURNING results, current`,
     [userId, lauf],

@@ -28,9 +28,9 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [u.id]);
 
   // Marcos Lage nachgebaut: Die BrickLink-Nummer weicht ab, die Farbe auch.
-  // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
+  // Die Zuordnung steht seit Migration 0037 in bl_mapping (type, rb_id, bl_id).
   await db.run(
-    `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part','31000','bl31000')
+    `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part','31000','bl31000')
      ON CONFLICT DO NOTHING`,
   );
   await db.run(

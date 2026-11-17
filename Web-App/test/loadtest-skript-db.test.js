@@ -6,7 +6,7 @@
  * Gegenproben (13.11.2026, je einzeln):
  *   A  in scripts/loadtest.js den Pfad der Galerie auf das frühere `/api/sets/?page=1…`
  *      zurückgesetzt → rot (Exit-Code 1, „Galerie (Seite 1) → HTTP 404“)
- *   B  im Seed das Einfügen in set_teile weggelassen → rot (die Zählung nennt „parts 0“;
+ *   B  im Seed das Einfügen in set_parts weggelassen → rot (die Zählung nennt „parts 0“;
  *      leer gemessen wäre die Teile-Liste nichts wert)
  *
  * @superuser (Ratsche in test/rollen-trennung-db.test.js)

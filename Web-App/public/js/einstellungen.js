@@ -255,7 +255,7 @@ export async function loadProfile() {
     );
   // Die neue Adresse gilt erst nach dem Link; bis dahin steht sie nur hier.
   const hint = G('prof-email-hint');
-  if (hint) hint.textContent = u.email_neu ? tRaw('profile.email_pending', { email: u.email_neu }) : '';
+  if (hint) hint.textContent = u.new_email ? tRaw('profile.email_pending', { email: u.new_email }) : '';
 }
 
 /** Design-Wahl des Kontos: eigenes Design oder die Vorgabe des Verwalters. */

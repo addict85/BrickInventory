@@ -61,7 +61,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Prüfung', true);
   t.after(async () => {
-    await db.run("DELETE FROM auftraege WHERE art = 'pdf' AND user_id = $1", [uid]).catch(() => {});
+    await db.run("DELETE FROM jobs WHERE type = 'pdf' AND user_id = $1", [uid]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });

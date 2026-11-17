@@ -9,7 +9,7 @@
  *      „der Vorgänger ist als verbraucht vermerkt“
  *   B  in pruefeToken() meldeWiederverwendung() nicht aufgerufen → rot:
  *      „der Tausch mit dem verbrauchten sperrt die Familie“ (B gilt weiter)
- *   C  in sperreFamilie() `a.created_at = v.familie` gestrichen → rot:
+ *   C  in sperreFamilie() `a.created_at = v.token_family` gestrichen → rot:
  *      „das andere Gerät bleibt angemeldet“
  *   D  hinweisNebenher() in meldeWiederverwendung() entfernt → rot:
  *      „der Inhaber bekommt genau eine Mail“
@@ -87,7 +87,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
     return (await ruf('/me', token)).status === 200;
   };
   const verbraucht = async () =>
-    (await db.all('SELECT token FROM api_tokens_verbraucht WHERE user_id = $1', [uid])).map(z => z.token);
+    (await db.all('SELECT token FROM api_tokens_consumed WHERE user_id = $1', [uid])).map(z => z.token);
   // Jede Anmeldung meldet ihren neuen Zugang (token_neu); gezählt wird hier die Warnung.
   const warnungen = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.art !== 'token_neu');
   const mails = async anzahl => {
@@ -114,7 +114,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
   });
 
   await t.test('der Tausch mit dem verbrauchten sperrt die Familie', async () => {
-    await db.run(`UPDATE api_tokens_verbraucht SET verbraucht_am = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [
+    await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [
       uid,
     ]);
     assert.equal((await ruf('/token-rotieren', a, {})).status, 401);

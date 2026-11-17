@@ -68,9 +68,9 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
     );
   testBildwerk(t, { setBildLaden: async () => null });
 
-  const schluessel = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
-  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
-  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
+  const dedupe_key = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
+  const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [dedupe_key]);
+  await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [dedupe_key]);
   const konto = async name => {
     await db.run('DELETE FROM users WHERE username=$1', [name]);
     return (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
@@ -79,7 +79,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   const b = await konto(`csvauftrag-b-${process.pid}`);
   const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('auftraege').auftraege,
+    ...require('./helpers/sources').testBereich('jobs').jobs,
   });
   const { jobSet } = _req('src/auftraege/importAuftrag.js');
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
@@ -88,11 +88,11 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   });
   const nacharbeit = uid =>
     db.all(
-      `SELECT nutzlast->>'set_number' AS sn, nutzlast->>'art' AS art FROM auftraege
-      WHERE art = 'nacharbeit' AND user_id = $1 ORDER BY id`,
+      `SELECT payload->>'set_number' AS sn, payload->>'type' AS type FROM jobs
+      WHERE type = 'nacharbeit' AND user_id = $1 ORDER BY id`,
       [uid],
     );
-  const stand = () => db.get('SELECT status, done, results, current FROM import_stand WHERE user_id=$1', [a]);
+  const stand = () => db.get('SELECT status, done, results, current FROM import_status WHERE user_id=$1', [a]);
   const gebucht = (uid, nummern) =>
     db
       .all('SELECT set_number FROM sets WHERE user_id = $1 AND set_number = ANY($2) ORDER BY set_number', [
@@ -136,14 +136,14 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
           .setErfassen({ anfragender: b, setNumber: SN, menge: 1, kaufpreis: 10, zustand: 'N' }),
       );
       assert.equal(r.action, 'added');
-      assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'ergaenzen' }]);
+      assert.deepEqual(await nacharbeit(b), [{ sn: SN, type: 'ergaenzen' }]);
 
       loslassen();
       await sperre.fertig;
       assert.equal((await bisFertig()).status, 'done');
       assert.deepEqual(
         await nacharbeit(a),
-        [{ sn: '76001-1', art: 'csv' }],
+        [{ sn: '76001-1', type: 'csv' }],
         'der Import stellt seine Nacharbeit selbst ein',
       );
     });
@@ -172,7 +172,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
         }),
       );
       await db.run(
-        `INSERT INTO auftraege (art, nutzlast, user_id, status, versuche, frist_bis)
+        `INSERT INTO jobs (type, payload, user_id, status, attempts, deadline_at)
                     VALUES ('csv_import', $1, $2, 'laeuft', 1, NOW() - INTERVAL '1 minute')`,
         [JSON.stringify({ user_id: a, lauf, rows }), a],
       );

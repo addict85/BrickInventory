@@ -54,7 +54,7 @@ const KOPFFELDER = {
 // Seit 0034 steht die Beschreibung im Katalog; JOINs über den Primärschlüssel ändern die Gruppierung nicht.
 const KATALOGJOIN = {
   parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
-          LEFT JOIN set_teile spc ON spc.set_number  = x.set_number
+          LEFT JOIN set_parts spc ON spc.set_number  = x.set_number
                                          AND spc.part_number = x.part_number
                                          AND spc.color_id    = x.color_id`,
   minifigs: figurSichtJoin('x.user_id', 'x.fig_number'),

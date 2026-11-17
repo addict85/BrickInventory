@@ -54,7 +54,7 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     )
   ).id;
   const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Gesundheit', false, null, { scope: 'voll' });
-  const { setzeZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
+  const { setzeZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').run_state;
   await setzeZustand(
     'startup_status',
     JSON.stringify({

@@ -24,33 +24,33 @@ export const AuftragFortschritt = z.looseObject({
 
 export const Auftrag = z.looseObject({
   id: z.string(),
-  art: z.string(),
+  type: z.string(),
   status: z.string(),
-  versuche: z.number().int(),
-  max_versuche: z.number().int(),
-  faellig_ab: zeit.nullable(),
-  frist_bis: zeit.nullable(),
-  gestartet: zeit.nullable(),
-  erstellt: zeit.nullable(),
-  aktualisiert: zeit.nullable(),
-  fortschritt: AuftragFortschritt.nullable(),
-  fehler: z.string().nullable(),
+  attempts: z.number().int(),
+  max_attempts: z.number().int(),
+  due_at: zeit.nullable(),
+  deadline_at: zeit.nullable(),
+  started_at: zeit.nullable(),
+  created_at: zeit.nullable(),
+  updated_at: zeit.nullable(),
+  progress: AuftragFortschritt.nullable(),
+  error_message: z.string().nullable(),
   geplant: z.boolean(),
-  /** Verschoben (Kontingent, Drosselung): wartet bis faellig_ab, `fehler` nennt den Grund. */
-  wartet: z.boolean(),
+  /** Verschoben (Kontingent, Drosselung): wartet bis due_at, `error_message` nennt den Grund. */
+  waiting: z.boolean(),
   set_number: z.string().nullable(),
 });
 
 export const AuftragZaehler = z.looseObject({
-  art: z.string(),
+  type: z.string(),
   status: z.string(),
   anzahl: z.number().int(),
 });
 
 export const AuftragPause = z.looseObject({
-  art: z.string(),
-  bis: zeit.nullable(),
-  grund: z.string().nullable(),
+  type: z.string(),
+  until_at: zeit.nullable(),
+  reason: z.string().nullable(),
 });
 
 export const JobProzess = z.looseObject({

@@ -86,8 +86,8 @@ test('über die Dienste tragen Abrufe den eingetragenen Schlüssel und zählen',
   const heute = new Date().toISOString().slice(0, 10);
   const zaehler = async () =>
     Number(
-      (await db.get("SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'rebrickable' AND konto = 0", [heute]))
-        ?.anzahl || 0,
+      (await db.get("SELECT count FROM api_calls WHERE day = $1 AND api = 'rebrickable' AND account_id = 0", [heute]))
+        ?.count || 0,
     );
   const vorher = await zaehler();
 

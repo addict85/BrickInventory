@@ -73,15 +73,15 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
         [n, `${n}@example.org`, await bcrypt.hash(PASS, 4)],
       )
     ).id;
-  const geheimnis = zf.base32(crypto.randomBytes(20));
-  await db.run('INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, $2, true)', [
+  const secret = zf.base32(crypto.randomBytes(20));
+  await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [
     id[MIT],
-    verschluessele(geheimnis, zf.faktorKontext(id[MIT])),
+    verschluessele(secret, zf.faktorKontext(id[MIT])),
   ]);
   /** Ein frischer Code: Derselbe Schritt gilt nur einmal, deshalb vorher zurücksetzen. */
   const code = async () => {
-    await db.run('UPDATE zweiter_faktor SET letzter_schritt = 0 WHERE user_id = $1', [id[MIT]]);
-    return zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt());
+    await db.run('UPDATE second_factor SET last_step = 0 WHERE user_id = $1', [id[MIT]]);
+    return zf.hotp(zf.ausBase32(secret), zf.zeitschritt());
   };
   const { base } = testServer(_req, { t });
   const anmelden = async (name, passwort, mitCode) => {
@@ -135,7 +135,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     const r = await anmelden(OHNE, PASS);
     assert.equal(r.status, 429, JSON.stringify(r.body));
     assert.equal(r.body.code, 'konto_tagesgrenze');
-    assert.equal(r.body.zweiter_faktor, true, 'die Oberfläche bietet das Codefeld an');
+    assert.equal(r.body.second_factor, true, 'die Oberfläche bietet das Codefeld an');
     // Ohne Faktor hilft auch ein Code nicht; die Antwort verrät das Passwort nicht.
     assert.equal((await anmelden(OHNE, PASS, '123456')).body.code, 'konto_tagesgrenze');
     assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'konto_tagesgrenze');

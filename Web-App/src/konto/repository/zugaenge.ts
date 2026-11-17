@@ -12,10 +12,10 @@ export type TokenZeile = {
   sliding: boolean;
   never_expires: boolean;
   scope: TokenScope;
-  rotiert_am: string | Date | null;
-  vorgaenger: string | null;
+  rotated_at: string | Date | null;
+  previous_token: string | null;
   label: string | null;
-  ip_bereich: string | null;
+  ip_range: string | null;
   created_at: string | Date;
   username: string;
   konto_is_admin: boolean;
@@ -29,7 +29,7 @@ export function gueltigerToken(db: DbSchnittstelle, hash: string) {
   return db.get<TokenZeile>(
     `
     SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
-           t.scope, t.rotiert_am, t.vorgaenger, t.label, t.ip_bereich, t.created_at,
+           t.scope, t.rotated_at, t.previous_token, t.label, t.ip_range, t.created_at,
            u.username, u.is_admin AS konto_is_admin, u.must_change_password AS muss_passwort_aendern
     FROM api_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.token = $1 AND u.is_active
@@ -42,14 +42,14 @@ export function gueltigerToken(db: DbSchnittstelle, hash: string) {
 /** created_at reist beim Tausch über JavaScript und verliert dabei die Mikrosekunden. */
 const familie = (spalte: string) => `date_trunc('milliseconds', ${spalte})`;
 
-export async function beendeUeberlappung(db: DbSchnittstelle, vorgaenger: string, hash: string): Promise<void> {
+export async function beendeUeberlappung(db: DbSchnittstelle, previous_token: string, hash: string): Promise<void> {
   await db.run(
-    `WITH weg AS (DELETE FROM api_tokens WHERE token = $1 AND ersetzt_durch = $2 RETURNING token, user_id, created_at)
-    INSERT INTO api_tokens_verbraucht (token, user_id, familie)
+    `WITH weg AS (DELETE FROM api_tokens WHERE token = $1 AND replaced_by = $2 RETURNING token, user_id, created_at)
+    INSERT INTO api_tokens_consumed (token, user_id, token_family)
     SELECT token, user_id, ${familie('created_at')} FROM weg WHERE created_at IS NOT NULL ON CONFLICT DO NOTHING`,
-    [vorgaenger, hash],
+    [previous_token, hash],
   );
-  await db.run('UPDATE api_tokens SET vorgaenger = NULL WHERE token = $1', [hash]);
+  await db.run('UPDATE api_tokens SET previous_token = NULL WHERE token = $1', [hash]);
 }
 
 /** Die WHERE-Klausel lässt höchstens einen Schreibvorgang je Tag durch, auch
@@ -63,7 +63,7 @@ export async function beruehreToken(
   await db.run(
     `UPDATE api_tokens
         SET last_used = NOW(),
-            ip_bereich = COALESCE($3, ip_bereich),
+            ip_range = COALESCE($3, ip_range),
             expires_at = CASE WHEN sliding AND expires_at IS NOT NULL
                               THEN NOW() + make_interval(days => $2) ELSE expires_at END
       WHERE token = $1
@@ -88,13 +88,13 @@ export type NeuerToken = {
 export async function legeTokenAn(db: DbSchnittstelle, t: NeuerToken): Promise<void> {
   if (t.art === 'unbegrenzt') {
     await db.run(
-      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires, scope, ip_bereich)
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires, scope, ip_range)
        VALUES ($1,$2,$3,NULL,FALSE,NULL,TRUE,$4,$5) ON CONFLICT DO NOTHING`,
       [t.hash, t.userId, t.label, t.scope, t.bereich],
     );
   } else if (t.art === 'gleitend') {
     await db.run(
-      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_bereich)
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, scope, ip_range)
        VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE,
                CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $5::int) END, $6, $7)
        ON CONFLICT DO NOTHING`,
@@ -102,7 +102,7 @@ export async function legeTokenAn(db: DbSchnittstelle, t: NeuerToken): Promise<v
     );
   } else {
     await db.run(
-      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, scope, ip_bereich)
+      `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, scope, ip_range)
        VALUES ($1,$2,$3, NOW() + INTERVAL '7 days', FALSE, $4, $5) ON CONFLICT DO NOTHING`,
       [t.hash, t.userId, t.label, t.scope, t.bereich],
     );
@@ -118,13 +118,13 @@ export type TauschQuelle = {
   expires_at: Date | null;
   hard_expires_at: Date | null;
   created_at: Date;
-  ersetzt_durch: string | null;
+  replaced_by: string | null;
 };
 
 /** Gesperrt: Zwei Tausche desselben Tokens laufen nacheinander. */
 export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
   return tx.get<TauschQuelle>(
-    `SELECT user_id, label, scope, sliding, never_expires, expires_at, hard_expires_at, created_at, ersetzt_durch
+    `SELECT user_id, label, scope, sliding, never_expires, expires_at, hard_expires_at, created_at, replaced_by
        FROM api_tokens
       WHERE token = $1
         AND (expires_at      IS NULL OR expires_at      > NOW())
@@ -136,9 +136,9 @@ export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
 
 /** Der noch unbenutzte Nachfolger eines Tausches: wann und aus welchem Netz er entstand. */
 export function unbenutzterNachfolger(tx: DbSchnittstelle, nachfolger: string, alt: string) {
-  return tx.get<{ alter_s: number; ip_bereich: string | null }>(
-    `SELECT EXTRACT(EPOCH FROM NOW() - rotiert_am)::float AS alter_s, ip_bereich
-       FROM api_tokens WHERE token = $1 AND vorgaenger = $2`,
+  return tx.get<{ alter_s: number; ip_range: string | null }>(
+    `SELECT EXTRACT(EPOCH FROM NOW() - rotated_at)::float AS alter_s, ip_range
+       FROM api_tokens WHERE token = $1 AND previous_token = $2`,
     [nachfolger, alt],
   );
 }
@@ -156,7 +156,7 @@ export async function loescheUnbenutztenNachfolger(
   nachfolger: string,
   alt: string,
 ): Promise<void> {
-  await tx.run('DELETE FROM api_tokens WHERE token = $1 AND vorgaenger = $2', [nachfolger, alt]);
+  await tx.run('DELETE FROM api_tokens WHERE token = $1 AND previous_token = $2', [nachfolger, alt]);
 }
 
 /** Der Nachfolger erbt Label, Scope und Fristen; die Gleitfrist beginnt neu. */
@@ -168,13 +168,13 @@ export function legeNachfolgerAn(
   leerlaufTage: number,
   bereich: string | null,
 ) {
-  return tx.get<{ expires_at: Date | null; hard_expires_at: Date | null; rotiert_am: Date }>(
+  return tx.get<{ expires_at: Date | null; hard_expires_at: Date | null; rotated_at: Date }>(
     `INSERT INTO api_tokens (token, user_id, label, created_at, last_used, expires_at, sliding,
-                             hard_expires_at, never_expires, scope, ip_bereich, rotiert_am, vorgaenger)
+                             hard_expires_at, never_expires, scope, ip_range, rotated_at, previous_token)
      VALUES ($1, $2, $3, $4, NOW(),
              CASE WHEN $5 AND $6::timestamptz IS NOT NULL THEN NOW() + make_interval(days => $7) ELSE $6::timestamptz END,
              $5, $8, $9, $10, $11, NOW(), $12)
-     RETURNING LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, rotiert_am`,
+     RETURNING LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, rotated_at`,
     [
       neu,
       z.user_id,
@@ -195,7 +195,7 @@ export function legeNachfolgerAn(
 export function befristeVorgaenger(tx: DbSchnittstelle, alt: string, neu: string, sekunden: number) {
   return tx.get<{ expires_at: Date }>(
     `UPDATE api_tokens
-        SET ersetzt_durch = $2, sliding = FALSE, never_expires = FALSE,
+        SET replaced_by = $2, sliding = FALSE, never_expires = FALSE,
             expires_at = LEAST(COALESCE(expires_at, 'infinity'::timestamptz), NOW() + make_interval(secs => $3))
       WHERE token = $1 RETURNING expires_at`,
     [alt, neu, sekunden],
@@ -207,10 +207,10 @@ export function befristeVorgaenger(tx: DbSchnittstelle, alt: string, neu: string
 export function sperreFamilie(db: DbSchnittstelle, hash: string, schonfristSek: number) {
   return db.get<{ user_id: number; label: string | null }>(
     `
-    WITH v AS (DELETE FROM api_tokens_verbraucht WHERE token = $1 AND verbraucht_am < NOW() - make_interval(secs => $2)
-               RETURNING user_id, familie),
-         t AS (DELETE FROM api_tokens a USING v WHERE a.user_id = v.user_id AND ${familie('a.created_at')} = v.familie RETURNING a.label),
-         r AS (DELETE FROM api_tokens_verbraucht x USING v WHERE x.user_id = v.user_id AND x.familie = v.familie AND x.token <> $1)
+    WITH v AS (DELETE FROM api_tokens_consumed WHERE token = $1 AND consumed_at < NOW() - make_interval(secs => $2)
+               RETURNING user_id, token_family),
+         t AS (DELETE FROM api_tokens a USING v WHERE a.user_id = v.user_id AND ${familie('a.created_at')} = v.token_family RETURNING a.label),
+         r AS (DELETE FROM api_tokens_consumed x USING v WHERE x.user_id = v.user_id AND x.token_family = v.token_family AND x.token <> $1)
     SELECT v.user_id, (SELECT label FROM t LIMIT 1) AS label FROM v`,
     [hash, schonfristSek],
   );
@@ -219,8 +219,8 @@ export function sperreFamilie(db: DbSchnittstelle, hash: string, schonfristSek: 
 export async function loescheVerwaisteVerbrauchte(db: DbSchnittstelle): Promise<number> {
   return (
     (
-      await db.run(`DELETE FROM api_tokens_verbraucht v WHERE NOT EXISTS
-    (SELECT 1 FROM api_tokens t WHERE t.user_id = v.user_id AND ${familie('t.created_at')} = v.familie)`)
+      await db.run(`DELETE FROM api_tokens_consumed v WHERE NOT EXISTS
+    (SELECT 1 FROM api_tokens t WHERE t.user_id = v.user_id AND ${familie('t.created_at')} = v.token_family)`)
     ).changes || 0
   );
 }
@@ -267,7 +267,7 @@ export async function kappeTokens(
     (
       await db.run(
         `DELETE FROM api_tokens WHERE token IN (SELECT token FROM api_tokens
-    WHERE user_id = $1 AND token <> $2 AND ersetzt_durch IS NULL
+    WHERE user_id = $1 AND token <> $2 AND replaced_by IS NULL
     ORDER BY COALESCE(last_used, created_at) DESC OFFSET $3)`,
         [userId, eigener, behalten],
       )
@@ -291,7 +291,7 @@ export async function loescheSitzungenDesKontos(
 /** null: Konto fehlt oder ist gesperrt. */
 export async function sitzungsVersion(db: DbSchnittstelle, uid: number): Promise<number | null> {
   const r = await db.get<{ v: number | null }>(
-    'SELECT CASE WHEN is_active THEN sitzungs_version END AS v FROM users WHERE id = $1',
+    'SELECT CASE WHEN is_active THEN session_version END AS v FROM users WHERE id = $1',
     [uid],
   );
   return r?.v ?? null;
@@ -299,7 +299,7 @@ export async function sitzungsVersion(db: DbSchnittstelle, uid: number): Promise
 
 export async function zaehleSitzungsVersionHoch(db: DbSchnittstelle, uid: number): Promise<number> {
   const r = await db.get<{ v: number }>(
-    'UPDATE users SET sitzungs_version = sitzungs_version + 1 WHERE id = $1 RETURNING sitzungs_version AS v',
+    'UPDATE users SET session_version = session_version + 1 WHERE id = $1 RETURNING session_version AS v',
     [uid],
   );
   return r?.v ?? 0;
@@ -357,7 +357,7 @@ export async function kontoZurAnmeldung(db: DbSchnittstelle, name: string) {
       email_verified: boolean;
       is_admin: boolean;
       email: string | null;
-      registrierung_offen: boolean;
+      registration_pending: boolean;
     }>
   >('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
   if (treffer.length > 1)

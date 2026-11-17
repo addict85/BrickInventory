@@ -34,7 +34,7 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     ZIEL = `entf-ziel-${P}`;
   const weg = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[VERW, ZIEL]]);
-    await db.run("DELETE FROM auftraege WHERE art = 'konto_dateien'");
+    await db.run("DELETE FROM jobs WHERE type = 'konto_dateien'");
   };
   await weg();
   const verw = (
@@ -58,7 +58,7 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     ).n,
     protokoll: (
       await db.get(
-        "SELECT COUNT(*)::int AS n FROM verwaltungsprotokoll WHERE ziel_id = $1 AND aktion = 'konto_geloescht'",
+        "SELECT COUNT(*)::int AS n FROM admin_log WHERE target_id = $1 AND action = 'konto_geloescht'",
         [uid],
       )
     ).n,
@@ -109,11 +109,11 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     }
     assert.equal(r, 'eingereiht');
     const a = await db.get(
-      "SELECT nutzlast, schluessel FROM auftraege WHERE art = 'konto_dateien' AND schluessel = $1",
+      "SELECT payload, dedupe_key FROM jobs WHERE type = 'konto_dateien' AND dedupe_key = $1",
       ['konto_dateien:987654'],
     );
     assert.ok(a, 'kein Auftrag zum Wiederholen');
-    assert.equal(a.nutzlast.user_id, 987654);
+    assert.equal(a.payload.user_id, 987654);
     assert.equal(await kontoDateienEntfernen(987654), 'entfernt', 'ohne Störung geht es gleich');
   });
 });

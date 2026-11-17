@@ -48,7 +48,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
   t.after(async () => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
-    await db.run('DELETE FROM verwaltungsprotokoll WHERE verwalter_id = $1', [uid]);
+    await db.run('DELETE FROM admin_log WHERE admin_id = $1', [uid]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
@@ -66,7 +66,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
       body: JSON.stringify({ admin_password: PASS, ...rumpf }),
     }).then(async r => [r.status, await r.json()]);
   const eigene = async () =>
-    (await (await fetch(`${base}/api/v1/admin/protokoll`)).json()).eintraege.filter(e => e.verwalter_id === uid);
+    (await (await fetch(`${base}/api/v1/admin/protokoll`)).json()).eintraege.filter(e => e.admin_id === uid);
   const GEHEIM = 'Rebrickable-Geheim-4711';
 
   await t.test('eine Änderung steht mit den Schlüsseln, nicht mit den Werten', async () => {
@@ -78,8 +78,8 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     assert.equal(status, 200, JSON.stringify(b));
     const e = await eigene();
     assert.equal(e.length, 1, JSON.stringify(e));
-    assert.equal(e[0].aktion, 'einstellungen_geaendert');
-    assert.deepEqual(e[0].einzelheiten.split(', ').sort(), [
+    assert.equal(e[0].action, 'einstellungen_geaendert');
+    assert.deepEqual(e[0].details.split(', ').sort(), [
       'rebrickable_api_key',
       'registration_enabled',
       'smtp_host',

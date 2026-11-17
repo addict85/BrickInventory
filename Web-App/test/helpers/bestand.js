@@ -112,7 +112,7 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
     // Die Katalogzahl — ohne sie faellt teilmengeAus() auf den Rueckfall 1
     // zurueck, und ein Set mit vier gleichen Steinen zaehlte als einer.
     await db.run(
-      `INSERT INTO set_teile (set_number, part_number, color_id, quantity)
+      `INSERT INTO set_parts (set_number, part_number, color_id, quantity)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = $4`,
       [setNumber, partNumber, colorId, menge],
@@ -151,7 +151,7 @@ async function haeltFigur(db, userId, figNumber, opt = {}) {
   );
   if (setNumber) {
     await db.run(
-      `INSERT INTO set_figuren (set_number, fig_number, quantity)
+      `INSERT INTO set_minifigs (set_number, fig_number, quantity)
        VALUES ($1,$2,$3)
        ON CONFLICT (set_number, fig_number) DO UPDATE SET quantity = $3`,
       [setNumber, figNumber, menge],
@@ -228,11 +228,11 @@ async function katalogSet(db, setNumber, f = {}) {
     await db.run('INSERT INTO rb_themes (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [themeId, f.theme]);
   }
   await db.run(
-    `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft)
+    `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, source)
                 VALUES (set_nummer_mit_version($1), COALESCE($2, 'Set ' || set_nummer_mit_version($1)), $3, $4, $5, $6)
                 ON CONFLICT (set_num) DO UPDATE SET name = COALESCE($2, rb_sets.name),
                   year = COALESCE($3, rb_sets.year), theme_id = COALESCE($4, rb_sets.theme_id),
-                  num_parts = COALESCE($5, rb_sets.num_parts), herkunft = $6`,
+                  num_parts = COALESCE($5, rb_sets.num_parts), source = $6`,
     [setNumber, f.name ?? null, f.year ?? null, themeId, f.pieces ?? null, f.herkunft ?? 'api'],
   );
   await db.run(

@@ -95,7 +95,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
 
   await t.test('mit zweitem Faktor reicht das Passwort nicht', async () => {
     const id = await konto(NAMEN[1]);
-    await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [id]);
+    await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [id]);
     const r = await als(id)({ password: PASS });
     assert.equal(r.body.code, 'zweiter_faktor_noetig', JSON.stringify(r.body));
     assert.ok(await da(id));

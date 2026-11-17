@@ -48,7 +48,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.verwalter.verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
-    if (r.wirksamAb) return { wirksam_ab: r.wirksamAb.toISOString() };
+    if (r.wirksamAb) return { effective_at: r.wirksamAb.toISOString() };
     if (r.geaendert && soll)
       d.konto.verwalterHinweisNebenher('verwalter_ernannt', {
         konto: (await d.konto.kontoKurzVon(targetId))?.username ?? String(targetId),
@@ -67,7 +67,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.verwalter.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
-    return r.wirksamAb ? { is_active: true, wirksam_ab: r.wirksamAb.toISOString() } : { is_active: soll };
+    return r.wirksamAb ? { is_active: true, effective_at: r.wirksamAb.toISOString() } : { is_active: soll };
   });
 
   // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
@@ -92,13 +92,13 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.verwalter.passwortDurchVerwalter(angemeldeteNutzerId(req), targetId, password ?? '');
     if (!r) nichtGefunden('benutzer_nicht_gefunden');
-    return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
+    return r.wirksamAb ? { effective_at: r.wirksamAb.toISOString() } : {};
   });
 
   router.endpunkt('DELETE /api/v1/auth/users/:id', requireAdmin, async (req, res) => {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const wirksam = await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
-    return wirksam ? { wirksam_ab: wirksam.toISOString() } : {};
+    return wirksam ? { effective_at: wirksam.toISOString() } : {};
   });
 
   // Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
@@ -107,7 +107,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (id === nutzerId(req)) fachfehler('ungueltig', 'eigener_zweiter_faktor');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.verwalter.faktorDurchVerwalter(angemeldeteNutzerId(req), id);
-    return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
+    return r.wirksamAb ? { effective_at: r.wirksamAb.toISOString() } : {};
   });
   return router;
 }

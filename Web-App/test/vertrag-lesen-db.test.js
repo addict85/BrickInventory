@@ -97,7 +97,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   };
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, sub, oben, getrennt]]).catch(() => {});
-    for (const tab of ['set_teile', 'set_figuren', 'price_cache', 'price_history', 'set_catalog'])
+    for (const tab of ['set_parts', 'set_minifigs', 'price_cache', 'price_history', 'set_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = $1`, [SET]).catch(() => {});
     for (const tab of ['part_price_cache', 'part_price_history', 'part_catalog', 'part_color_catalog'])
       await db.run(`DELETE FROM ${tab} WHERE part_number = $1`, [TEIL]).catch(() => {});
@@ -117,7 +117,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     .catch(() => {});
   await katalogSet(db, SET, { name: 'Vertragsprobe', year: 2024, theme: 'Test', pieces: 100, minifigs: 1 });
   await db.run(
-    `INSERT INTO set_teile (set_number, part_number, color_id, quantity)
+    `INSERT INTO set_parts (set_number, part_number, color_id, quantity)
                 VALUES ($1, $2, $3, 4) ON CONFLICT DO NOTHING`,
     [SET, TEIL, FARBE],
   );
@@ -130,7 +130,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     [TEIL, FARBE],
   );
   await db.run(
-    `INSERT INTO set_figuren (set_number, fig_number, quantity)
+    `INSERT INTO set_minifigs (set_number, fig_number, quantity)
                 VALUES ($1, $2, 1) ON CONFLICT DO NOTHING`,
     [SET, FIGUR],
   );
@@ -221,19 +221,19 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   ]);
   await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
-  // /admin/auftraege keine leeren Listen liefert.
+  // /admin/jobs keine leeren Listen liefert.
   const auftrag = await {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('auftraege').auftraege,
-  }.stelleAuftragEin('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
-  await db.run(`UPDATE auftraege SET fortschritt = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
+    ...require('./helpers/sources').testBereich('jobs').jobs,
+  }.stelleAuftragEin('anleitung', { set_number: SET }, { dedupe_key: `vertrag-get:${process.pid}` });
+  await db.run(`UPDATE jobs SET progress = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
     auftrag,
   ]);
-  await db.run(`INSERT INTO auftrag_pausen (art, bis, grund) VALUES ('wechselkurse', NOW() + INTERVAL '1 hour', 'Vertrag')
-                ON CONFLICT (art) DO UPDATE SET bis = EXCLUDED.bis, grund = EXCLUDED.grund`);
+  await db.run(`INSERT INTO job_pauses (type, until_at, reason) VALUES ('exchange_rates', NOW() + INTERVAL '1 hour', 'Vertrag')
+                ON CONFLICT (type) DO UPDATE SET until_at = EXCLUDED.until_at, reason = EXCLUDED.reason`);
   aufraeumen.push(
-    [`DELETE FROM auftraege WHERE id = $1`, [auftrag]],
-    [`DELETE FROM auftrag_pausen WHERE grund = 'Vertrag'`, []],
+    [`DELETE FROM jobs WHERE id = $1`, [auftrag]],
+    [`DELETE FROM job_pauses WHERE reason = 'Vertrag'`, []],
   );
   await haeltSet(db, uid, SET, 2, { preis: 49.9 });
   await haeltTeil(db, uid, TEIL, { setNumber: SET, colorId: FARBE, menge: 4 });

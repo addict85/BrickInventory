@@ -52,10 +52,10 @@ https.get = (url, _opts, cb) => {
 const zaehler = async () =>
   Number(
     (
-      await db.get(`SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink' AND konto = 0`, [
+      await db.get(`SELECT count FROM api_calls WHERE day = $1 AND api = 'bricklink' AND account_id = 0`, [
         new Date().toISOString().slice(0, 10),
       ])
-    )?.anzahl || 0,
+    )?.count || 0,
   );
 
 test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
@@ -70,7 +70,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
       v,
     ]);
   const neuerTag = async () => {
-    await db.run(`DELETE FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink'`, [heute]);
+    await db.run(`DELETE FROM api_calls WHERE day = $1 AND api = 'bricklink'`, [heute]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     aufrufe.length = 0;
   };

@@ -34,7 +34,7 @@ export async function kontingentPruefenUndZaehlen(k: FremdquellenKontext, apiNam
   const konto = aktuellesKonto();
   const zaehle = async (tx: DbSchnittstelle, id: number, grenze: number): Promise<number | null> => {
     const z = await repo.zaehleApiAufruf(tx, tag, apiName, id, grenze);
-    return z ? Number(z.anzahl) : null;
+    return z ? Number(z.count) : null;
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
   return k
@@ -57,7 +57,7 @@ export async function kontingentPruefenUndZaehlen(k: FremdquellenKontext, apiNam
 export async function kontingentUebersicht(k: FremdquellenKontext, apiName: ApiName) {
   const tag = heute(k);
   const [z, limit] = await Promise.all([k.apiKontingent.aufrufeHeute(tag, apiName), grenzeDerQuelle(k, apiName)]);
-  const count = Number(z?.anzahl || 0);
+  const count = Number(z?.count || 0);
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
 }
 
@@ -68,7 +68,7 @@ export async function kontingentFrei(kx: FremdquellenKontext, apiName: ApiName) 
   const konto = aktuellesKonto();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
   const z = await kx.apiKontingent.aufrufeJeKonto(s.date, apiName, konto.id, ALLE_KONTEN);
-  const stand = (k: number) => Number(z.find(r => Number(r.konto) === k)?.anzahl || 0);
+  const stand = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
   return {
     allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
     limit: s.limit,

@@ -58,10 +58,10 @@ async function konto(name, { admin = false } = {}) {
 /** Zweiten Faktor einschalten; liefert die Wiederherstellungscodes. */
 async function mitFaktor(uid) {
   await zf.beginneEinrichtung(uid);
-  const z = await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid]);
-  const code = zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt());
+  const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
+  const code = zf.hotp(zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid))), zf.zeitschritt());
   const codes = await zf.bestaetigeEinrichtung(uid, code);
-  assert.ok(Array.isArray(codes) && codes.length >= 3, 'Vorbedingung: Faktor aktiv');
+  assert.ok(Array.isArray(codes) && codes.length >= 3, 'Vorbedingung: Faktor active');
   return codes;
 }
 

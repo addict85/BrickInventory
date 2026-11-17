@@ -153,7 +153,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   // Ein Set mit zwei Teilen: eines Pflichtteil, eines Ersatzteil.
   await katalogSet(db, '75192-1', { name: 'Falcon' });
   await haeltSet(db, uid, '75192-1', 2);
-  await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,is_spare,quantity)
+  await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,is_spare,quantity)
     VALUES ('75192-1','3001',4,false,6), ('75192-1','3002',1,true,2)`);
   await db.run(`INSERT INTO part_catalog (part_number,part_name,category_name)
     VALUES ('3001','Brick 2x4','Bricks'),('3002','Brick 2x3','Bricks')`);

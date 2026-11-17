@@ -1,7 +1,7 @@
 /**
  * UX-Prüfung 22 im echten Chrome, im Haushalt mit Lagerort: M4 und N1–N13
  * (Namen der Kacheln bis Set-Detail). M3 prüft sammlung-kopf-browser, M1 und
- * M2 fehler-ohne-sprung-browser.
+ * M2 error_message-ohne-sprung-browser.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  kachelName(): Teile ohne aria-hidden → rot: „Kachelnamen“, „Merkliste“
@@ -274,9 +274,9 @@ async function telefon(_t, a) {
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
       return { kopf: k.checkVisibility() && k.textContent, ueberstand: h.bottom - document.querySelector('header').getBoundingClientRect().bottom }; })()`);
     assert.ok(!(doppelt.kopf && doppelt.ueberstand > 0), `Titel doppelt: ${JSON.stringify(doppelt)}`);
-    await bis(`!!document.querySelector('#auftraege-karte .mon-einzeln > summary')`, 'Einzelne Aufträge');
+    await bis(`!!document.querySelector('#jobs-karte .mon-einzeln > summary')`, 'Einzelne Aufträge');
     const zeichen =
-      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#auftraege-karte .mon-einzeln > summary'), '::before');
+      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#jobs-karte .mon-einzeln > summary'), '::before');
       return { inhalt: v.content, breite: parseFloat(v.width) }; })()`);
     assert.ok(zeichen.inhalt !== 'none' && zeichen.breite > 3, `kein Aufklappzeichen (${JSON.stringify(zeichen)})`);
   } finally {
@@ -292,14 +292,14 @@ test('Kachelnamen, Raster, 200 % Schrift, Telefon', { concurrency: 1, timeout: 4
       await musterHaushalt(db, uid);
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
       // Ein Auftrag, damit „Einzelne Aufträge“ als aufklappbare Liste erscheint.
-      await db.run(`INSERT INTO auftraege (art, faellig_ab) VALUES ('konto_dateien', NOW() + interval '5 hours')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', NOW() + interval '5 hours')`);
     },
   });
   if (a.grund) {
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM auftraege WHERE art = 'konto_dateien' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'konto_dateien' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [

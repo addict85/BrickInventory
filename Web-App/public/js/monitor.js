@@ -426,16 +426,16 @@ const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ?
 const auftragsZeile = (a, mehrfach) => {
   const offen = a.status === 'offen' || a.status === 'laeuft';
   const rolle =
-    !offen || !mehrfach.has(a.art)
+    !offen || !mehrfach.has(a.type)
       ? ''
       : a.geplant
         ? tRaw('monitor.auftraege.regulaer')
-        : a.versuche > 1 || a.fehler
+        : a.attempts > 1 || a.error_message
           ? tRaw('monitor.auftraege.wiederholung')
           : '';
-  const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'wann');
+  const zeit = fmtDatum(a.status === 'laeuft' ? a.started_at : a.due_at, 'wann');
   // Verschoben ist nicht gescheitert: Das sagt der Server (wartet), nicht der Text des Grundes.
-  const wartet = a.status === 'offen' && a.wartet && !!a.faellig_ab && new Date(a.faellig_ab) > new Date();
+  const wartet = a.status === 'offen' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
   const wann = wartet
     ? t('monitor.auftraege.wartet_bis', { zeit })
     : a.status === 'offen'
@@ -443,14 +443,14 @@ const auftragsZeile = (a, mehrfach) => {
       : a.status === 'laeuft'
         ? zeit
         : '';
-  const stand = a.fortschritt?.gesamt
-    ? `${Math.round(a.fortschritt.erledigt ?? 0)} / ${a.fortschritt.gesamt}`
-    : a.fortschritt?.text || '';
+  const stand = a.progress?.gesamt
+    ? `${Math.round(a.progress.erledigt ?? 0)} / ${a.progress.gesamt}`
+    : a.progress?.text || '';
   const hinweis = [
-    wartet && a.fehler ? html`<span class="mon-leise">${a.fehler}</span>` : '',
-    !wartet && a.fehler && (a.status === 'offen' || a.status === 'fehler') ? fehlerKasten(a.fehler) : '',
-    a.versuche > 1 && !wartet
-      ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>`
+    wartet && a.error_message ? html`<span class="mon-leise">${a.error_message}</span>` : '',
+    !wartet && a.error_message && (a.status === 'offen' || a.status === 'fehler') ? fehlerKasten(a.error_message) : '',
+    a.attempts > 1 && !wartet
+      ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.attempts, max: a.max_attempts })}</span>`
       : '',
     stand ? html`<span class="mon-leise">${stand}</span>` : '',
   ]
@@ -461,7 +461,7 @@ const auftragsZeile = (a, mehrfach) => {
       ? knopf('auftragAbbrechen', a.id, tRaw('monitor.auftraege.abbrechen'))
       : '';
   return html`<tr>
-    <td><strong>${artName(a.art)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}${rolle ? html` <span class="mon-rolle">${rolle}</span>` : ''}</td>
+    <td><strong>${artName(a.type)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}${rolle ? html` <span class="mon-rolle">${rolle}</span>` : ''}</td>
     <td><span class="mon-zustand mon-${wartet ? 'wartet' : a.status}">${wartet ? tRaw('monitor.auftraege.wartet') : statusName(a.status)}</span></td>
     <td>${ungeprueft(wann)}</td>
     <td>${ungeprueft(hinweis)}</td>
@@ -482,15 +482,15 @@ async function zeigeAuftraege() {
   /** @type {Record<string, Record<string, number>>} */
   const zahl = {};
   for (const z of d.zusammenfassung) {
-    zahl[z.art] ||= {};
-    zahl[z.art][z.status] = z.anzahl;
+    zahl[z.type] ||= {};
+    zahl[z.type][z.status] = z.anzahl;
   }
   // Der nächste Lauf je Art: der früheste wartende Auftrag dieser Art.
   /** @type {Record<string, string>} */
   const naechster = {};
   for (const a of d.auftraege)
-    if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art]))
-      naechster[a.art] = a.faellig_ab;
+    if (a.status === 'offen' && a.due_at && (!naechster[a.type] || a.due_at < naechster[a.type]))
+      naechster[a.type] = a.due_at;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const ziffer = (/** @type {number | undefined} */ n, klasse = '') =>
     html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
@@ -498,11 +498,11 @@ async function zeigeAuftraege() {
   /** @type {Record<string, number>} */
   const nachFehler = {};
   for (const a of d.auftraege)
-    if (a.status === 'offen' && (a.versuche > 1 || a.fehler)) nachFehler[a.art] = (nachFehler[a.art] || 0) + 1;
-  const jeArt = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.art);
+    if (a.status === 'offen' && (a.attempts > 1 || a.error_message)) nachFehler[a.type] = (nachFehler[a.type] || 0) + 1;
+  const jeArt = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.type);
   const mehrfach = new Set(jeArt.filter((art, i) => jeArt.indexOf(art) !== i));
   const pause = (/** @type {AuftragPause} */ p) =>
-    t('monitor.auftraege.pause', { art: artName(p.art), bis: fmtDatum(p.bis, 'wann'), grund: p.grund || '' });
+    t('monitor.auftraege.pause', { art: artName(p.type), bis: fmtDatum(p.until_at, 'wann'), grund: p.reason || '' });
   setzeHtml(
     el,
     html`

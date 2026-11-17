@@ -132,7 +132,7 @@ export async function fuelleSetLuecken(
             year = COALESCE(year, $2), num_parts = COALESCE(num_parts, $4),
             theme_id = COALESCE(theme_id, (SELECT t.id FROM rb_themes t WHERE t.name = $3
                                             ORDER BY t.parent_id NULLS FIRST, t.id LIMIT 1))
-      WHERE set_num = $5 AND herkunft = 'api'`,
+      WHERE set_num = $5 AND source = 'api'`,
     [i.name ?? null, i.year ?? null, i.theme ?? null, i.pieces ?? null, setNumber],
   );
   await db.run('UPDATE set_catalog SET minifigs = COALESCE(minifigs, $1) WHERE set_number = $2', [
@@ -145,7 +145,7 @@ export async function setsOhneAnleitungsabruf(db: DbSchnittstelle, l: KatalogLes
   const rows = await db.all<{ set_number: string }>(
     `SELECT DISTINCT s.set_number FROM ${l.setBestand()} s
      WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
-       AND NOT EXISTS (SELECT 1 FROM auftraege a WHERE a.schluessel = 'anleitung:' || s.set_number
+       AND NOT EXISTS (SELECT 1 FROM jobs a WHERE a.dedupe_key = 'anleitung:' || s.set_number
                          AND a.status IN ('offen', 'laeuft', 'erledigt'))`,
   );
   return rows.map(r => r.set_number);

@@ -387,23 +387,23 @@ async function zeigeBestaetigungsziel(angemeldet) {
     formularFehler(G('verify-err'), v?.error || tRaw('settings.error'));
     // Angemeldet trotzdem sagen, was für das eigene Konto wartet; bestätigen lässt sich der Link nicht.
     if (u) {
-      el.textContent = u.email_neu
-        ? tRaw('verify.ausstehend', { email: u.email_neu, konto: u.username })
+      el.textContent = u.new_email
+        ? tRaw('verify.ausstehend', { email: u.new_email, konto: u.username })
         : tRaw('verify.nichts_ausstehend', { konto: u.username });
-      bestaetigungAngemeldet(u.email_neu);
+      bestaetigungAngemeldet(u.new_email);
     }
     return;
   }
   el.textContent =
     u && u.username !== v.username
       ? tRaw('verify.fremdes_konto', { konto: v.username, ich: u.username })
-      : u?.email_neu
-        ? tRaw('verify.ausstehend', { email: u.email_neu, konto: u.username })
+      : u?.new_email
+        ? tRaw('verify.ausstehend', { email: u.new_email, konto: u.username })
         : tRaw('verify.konto', { konto: v.username });
   btn.removeAttribute('data-i18n');
   btn.textContent = tRaw('verify.button_konto', { konto: v.username });
   btn.disabled = false;
-  if (u) bestaetigungAngemeldet(u.email_neu);
+  if (u) bestaetigungAngemeldet(u.new_email);
 }
 /**
  * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist „Bestätigen“ nicht mehr der

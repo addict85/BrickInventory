@@ -20,7 +20,7 @@ export interface TokenBenutzer {
   sliding?: boolean;
   never_expires?: boolean;
   scope: TokenScope;
-  rotiert_am?: string | Date | null;
+  rotated_at?: string | Date | null;
   vorgaenger?: string | null;
   [k: string]: unknown;
 }

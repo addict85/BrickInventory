@@ -21,7 +21,7 @@ export const figurBestand = (konten?: Konten) =>
 /** Lagerorte (src/bestand): id, user_id, name. */
 export const lagerorte = (konten?: Konten) => `(SELECT id, user_id, name FROM storage_locations${nur(konten)})`;
 
-const ERFASSUNG = 'id, user_id, quantity, condition, created_at, currency, price_estimated, tag';
+const ERFASSUNG = 'id, user_id, quantity, condition, created_at, currency, price_estimated, day';
 
 /** Käufe eines Sets (src/bestand): die Erfassungsspalten, set_number, purchase_price. */
 export const setErfassungen = (konten?: Konten) =>

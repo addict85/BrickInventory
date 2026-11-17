@@ -1,6 +1,6 @@
 /**
  * Migration 0109: Zustand ist in Merkliste, Preisalarm und Preisspeichern
- * 'N' oder 'U', Auftragsarten stehen in auftrags_arten. Die Migration läuft auf
+ * 'N' oder 'U', Auftragsarten stehen in job_types. Die Migration läuft auf
  * einem Altbestand in einem eigenen Schema (search_path); danach prüft der Test
  * die Regeln an der echten Datenbank.
  *
@@ -10,8 +10,8 @@
  *   B  im UPDATE wanted die Bedingung `w.id = (SELECT min(y.id) …)` entfernt →
  *      rot: die Migration scheitert an wanted_user_id_set_number_condition_key
  *   C  in startup/verdrahtung.ts eine Art 'neu' ohne Migration angemeldet → rot:
- *      „auftrags_arten kennt genau die angemeldeten Arten“ (15.11.2026)
- *   D  das ALTER TABLE auftraege ADD CONSTRAINT auftraege_art_fkey entfernt →
+ *      „job_types kennt genau die angemeldeten Arten“ (15.11.2026)
+ *   D  das ALTER TABLE jobs ADD CONSTRAINT auftraege_art_fkey entfernt →
  *      rot: „danach weist das Schema Unbekanntes ab“
  */
 const test = require('node:test');
@@ -39,8 +39,8 @@ const TABELLEN = [
   'part_price_history',
   'minifig_price_cache',
   'minifig_price_history',
-  'auftraege',
-  'auftrag_pausen',
+  'jobs',
+  'job_pauses',
 ];
 
 test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
@@ -65,8 +65,8 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
                    VALUES (1, '1-1', 'u', 'unter', 5, 'EUR'), (1, '2-1', '?', 'unter', 5, 'EUR')`);
     await c.query(`INSERT INTO price_cache (set_number, condition, currency_code) VALUES
       ('1-1', 'N', 'EUR'), ('1-1', 'n', 'EUR')`);
-    await c.query(`INSERT INTO auftraege (art) VALUES ('preise'), ('verschwunden')`);
-    await c.query(`INSERT INTO auftrag_pausen (art, bis) VALUES ('preise', NOW()), ('weg', NOW())`);
+    await c.query(`INSERT INTO jobs (type) VALUES ('preise'), ('verschwunden')`);
+    await c.query(`INSERT INTO job_pauses (type, until_at) VALUES ('preise', NOW()), ('weg', NOW())`);
 
     await c.query(MIGRATION);
 
@@ -87,12 +87,12 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     });
 
     await tt.test('Aufträge und Pausen unbekannter Art fallen', async () => {
-      assert.deepEqual((await c.query('SELECT art FROM auftraege')).rows, [{ art: 'preise' }]);
-      assert.deepEqual((await c.query('SELECT art FROM auftrag_pausen')).rows, [{ art: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT type FROM jobs')).rows, [{ type: 'preise' }]);
+      assert.deepEqual((await c.query('SELECT type FROM job_pauses')).rows, [{ type: 'preise' }]);
     });
 
     await tt.test('danach weist das Schema Unbekanntes ab', async () => {
-      await assert.rejects(c.query(`INSERT INTO auftraege (art) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
+      await assert.rejects(c.query(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
       await assert.rejects(
         c.query(`INSERT INTO price_history (set_number, condition, currency_code) VALUES ('9-1', 'u', 'EUR')`),
         /price_history_zustand/,
@@ -101,12 +101,12 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     await c.query('SET search_path TO public');
   });
 
-  await t.test('auftrags_arten kennt genau die angemeldeten Arten', async () => {
+  await t.test('job_types kennt genau die angemeldeten Arten', async () => {
     const angemeldet = require('./helpers/sources')
       .testDienste()
-      .auftraege.angemeldeteArten()
-      .map(a => a.art);
-    const inDb = (await db.all('SELECT art FROM auftrags_arten ORDER BY art')).map(z => z.art);
+      .jobs.angemeldeteArten()
+      .map(a => a.type);
+    const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
     assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);
     assert.deepEqual(inDb, [...angemeldet].sort());
   });
@@ -122,6 +122,6 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
   });
 
   await t.test('eine unbekannte Auftragsart wird abgewiesen', async () => {
-    await assert.rejects(db.run(`INSERT INTO auftraege (art) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
+    await assert.rejects(db.run(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
   });
 });

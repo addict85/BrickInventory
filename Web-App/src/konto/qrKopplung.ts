@@ -96,7 +96,7 @@ export async function verwirfAbholung(k: KontoKontext, abholung: string | null |
 
 export async function kopplungsStand(k: KontoKontext, kopplung: number, uid: number) {
   const z = await k.qrKopplung.qrKopplungDesKontos(kopplung, uid);
-  return z ? { stand: z.stand, geraet: z.geraet, ip_bereich: z.ip_bereich } : null;
+  return z ? { stand: z.stand, geraet: z.geraet, ip_range: z.ip_range } : null;
 }
 
 function codePasst(gespeichert: string | null, eingabe: string | number | null | undefined): boolean {

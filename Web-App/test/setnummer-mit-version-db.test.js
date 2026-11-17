@@ -146,8 +146,8 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
       ]);
 
       // Ab jetzt normalisiert die Datenbank beim Schreiben.
-      await c.query(`INSERT INTO set_teile (set_number, part_number, color_id) VALUES ($1,'P9',4)`, [`N${PID}`]);
-      assert.deepEqual(await q('SELECT set_number FROM set_teile WHERE part_number=$1', ['P9']), [
+      await c.query(`INSERT INTO set_parts (set_number, part_number, color_id) VALUES ($1,'P9',4)`, [`N${PID}`]);
+      assert.deepEqual(await q('SELECT set_number FROM set_parts WHERE part_number=$1', ['P9']), [
         { set_number: `N${PID}-1` },
       ]);
     } finally {
@@ -183,7 +183,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
       );
     } finally {
       await db.run('DELETE FROM users WHERE id=$1', [uid]);
-      await db.run('DELETE FROM set_teile WHERE set_number=$1', [`F${PID}-1`]);
+      await db.run('DELETE FROM set_parts WHERE set_number=$1', [`F${PID}-1`]);
     }
   });
 
@@ -199,7 +199,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
       await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts) VALUES ($1,'Aus Rebrickable',2020,100)`, [
         `${S}a-1`,
       ]);
-      await db.run(`INSERT INTO rb_sets (set_num, name, herkunft) VALUES ($1,$2,'api'), ($3,'Aus dem Abruf','api')`, [
+      await db.run(`INSERT INTO rb_sets (set_num, name, source) VALUES ($1,$2,'api'), ($3,'Aus dem Abruf','api')`, [
         `${S}b-1`,
         `Set ${S}b-1`,
         `${S}c-1`,
@@ -229,7 +229,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
       await c.query('BEGIN');
       // Stand vor 0075 (und 0085): Text in rb_inventory_parts, Zahlen ohne CHECK-Regeln.
       await c.query('DROP VIEW set_parts_catalog');
-      for (const tab of ['set_teile', 'parts_summary'])
+      for (const tab of ['set_parts', 'parts_summary'])
         await c.query(`ALTER TABLE ${tab} ALTER COLUMN is_spare DROP NOT NULL, ALTER COLUMN is_spare DROP DEFAULT,
                          ALTER COLUMN is_spare TYPE integer USING is_spare::int`);
       await c.query(`ALTER TABLE rb_inventory_parts ALTER COLUMN is_spare DROP NOT NULL, ALTER COLUMN is_spare DROP DEFAULT,
@@ -256,7 +256,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
       );
       await c.query('SAVEPOINT s');
       await assert.rejects(
-        c.query(`INSERT INTO set_teile (set_number, part_number, color_id, is_spare) VALUES ('X-1','E5',1,2)`),
+        c.query(`INSERT INTO set_parts (set_number, part_number, color_id, is_spare) VALUES ('X-1','E5',1,2)`),
         /set_teile_ersatzteil_null_eins/,
       );
       await c.query('ROLLBACK TO SAVEPOINT s');

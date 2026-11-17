@@ -72,7 +72,7 @@ const JE_BEREICH = {
   faktoren: 18,
   konto: 65,
   profil: 3,
-  idempotenz: 8,
+  idempotency: 8,
   fremdquellen: 12,
   bilder: 29,
   katalog: 64,

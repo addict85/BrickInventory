@@ -48,8 +48,8 @@ const figsCsvSql = (l: BestandLesevertrag) => `
          CASE WHEN a.id IS NULL THEN ''
               ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
-    LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
-    LEFT JOIN bl_zuordnung_eigen ze ON ze.user_id = f.user_id AND ze.art = 'fig' AND ze.rb_id = f.fig_number
+    LEFT JOIN bl_mapping z ON z.type = 'fig' AND z.rb_id = f.fig_number
+    LEFT JOIN bl_mapping_custom ze ON ze.user_id = f.user_id AND ze.type = 'fig' AND ze.rb_id = f.fig_number
     LEFT JOIN ${l.figurErfassungen('= $1')} a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
     ${figurSichtJoin('f.user_id', 'f.fig_number')}

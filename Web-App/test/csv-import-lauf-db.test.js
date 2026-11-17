@@ -86,7 +86,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
     const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 200, await r.text());
   };
-  const auftrag = () => db.get('SELECT status, done, results FROM import_stand WHERE user_id=$1', [uid]);
+  const auftrag = () => db.get('SELECT status, done, results FROM import_status WHERE user_id=$1', [uid]);
   const bisFertig = async () => {
     for (let i = 0; i < 100; i++) {
       const a = await auftrag();

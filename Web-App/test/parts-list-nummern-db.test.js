@@ -39,8 +39,8 @@ async function seed() {
                 VALUES (900,'3070b',0,4,false), (900,'3069b',0,2,false), (900,'3001',0,7,false)`);
   await db.run(`INSERT INTO rb_parts (part_num, name) VALUES
                 ('3070b','Tile 1x1'), ('3069b','Tile 1x2'), ('3001','Brick 2x4')`);
-  // Seit Migration 0037 in bl_zuordnung, mit Art-Unterscheidung.
-  await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES
+  // Seit Migration 0037 in bl_mapping, mit Art-Unterscheidung.
+  await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES
                 ('part','3070b','3070'), ('part','3069b','3070')`);
 }
 

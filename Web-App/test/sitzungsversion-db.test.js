@@ -1,7 +1,7 @@
 /**
  * Eine beendete Sitzung kommt nicht wieder: Auch wenn eine laufende Anfrage
  * die gelöschte Zeile nach dem Rechteentzug per Upsert zurückschreibt, gilt
- * sie nicht mehr (users.sitzungs_version, src/konto/sitzungsVersion.ts).
+ * sie nicht mehr (users.session_version, src/konto/sitzungsVersion.ts).
  * Echter connect-pg-simple-Store, echte Routen, echte Kekse; das Zurückschreiben
  * wird nachgestellt, indem die alte Zeile wieder eingefügt wird.
  *
@@ -117,7 +117,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       });
       assert.equal(r.status, 200, await r.text());
       // Einem Verwalter wird die Rolle erst nach der Frist entzogen: fällig machen und ausführen.
-      await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+      await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
         id.sv_zweiter,
       ]);
       assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);

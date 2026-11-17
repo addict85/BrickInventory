@@ -61,7 +61,7 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
   await c.query(MIGRATION);
   // Ein Platzhalter NACH der Migration, für die Frage, was die View zeigt.
   await c.query(`INSERT INTO part_catalog (part_number, part_name, name_von) VALUES ('3003', 'Brunos Stein', 43)`);
-  await c.query(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('75192-1', '3003', 0, 1)`);
+  await c.query(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('75192-1', '3003', 0, 1)`);
 
   const zeile = async nr =>
     (await c.query(`SELECT * FROM set_parts_catalog WHERE set_number = '75192-1' AND part_number = $1`, [nr])).rows[0];
@@ -70,7 +70,7 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
     const spalten = (
       await c.query(
         `SELECT column_name FROM information_schema.columns
-      WHERE table_schema = $1 AND table_name = 'set_teile' ORDER BY column_name`,
+      WHERE table_schema = $1 AND table_name = 'set_parts' ORDER BY column_name`,
         [SCHEMA],
       )
     ).rows.map(r => r.column_name);

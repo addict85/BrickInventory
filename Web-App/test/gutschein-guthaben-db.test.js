@@ -122,8 +122,8 @@ async function schrankeFrei() {
  */
 async function letzterAbrufVor(sekunden) {
   await db.run(
-    `UPDATE gutschein_guthaben_schranke
-        SET letzter_abruf = NOW() - make_interval(secs => $1) WHERE id = 1`,
+    `UPDATE voucher_balance_throttle
+        SET last_checked_at = NOW() - make_interval(secs => $1) WHERE id = 1`,
     [sekunden],
   );
 }
@@ -162,13 +162,13 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     );
     assert.equal(d.waehrung_geaendert, false);
 
-    const z = await db.get('SELECT amount, currency, guthaben_geprueft_am, updated_at FROM vouchers WHERE id=$1', [
+    const z = await db.get('SELECT amount, currency, balance_checked_at, updated_at FROM vouchers WHERE id=$1', [
       MIT_PIN,
     ]);
     assert.equal(Number(z.amount), 250, 'In der Tabelle steht der neue Betrag');
     assert.equal(z.currency, 'CHF');
     assert.ok(
-      z.guthaben_geprueft_am,
+      z.balance_checked_at,
       'guthaben_geprueft_am ist leer. Ohne den Zeitpunkt ist „250 CHF" keine ' +
         'Auskunft — niemand weiss, von wann der Stand ist.',
     );
@@ -435,7 +435,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
       S.KONTO_JE_STUNDE,
     ]);
     await schrankeFrei();
-    await db.run(`UPDATE gutschein_guthaben_schranke SET sperre_bis = NOW() + INTERVAL '10 minutes' WHERE id = 1`);
+    await db.run(`UPDATE voucher_balance_throttle SET locked_until = NOW() + INTERVAL '10 minutes' WHERE id = 1`);
     const vorher = abfragen();
     const r = await abfrage(srv.base, MIT_PIN);
     const d = await r.json();
@@ -448,10 +448,10 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     await schrankeFrei();
     naechsteAntwort = antwort({ status: 403, text: 'Bot' });
     assert.equal((await abfrage(srv.base, MIT_PIN)).status, 429);
-    const s = await db.get('SELECT letzter_abruf, sperre_bis FROM gutschein_guthaben_schranke WHERE id = 1');
+    const s = await db.get('SELECT last_checked_at, locked_until FROM voucher_balance_throttle WHERE id = 1');
     assert.deepEqual(
       s,
-      { letzter_abruf: null, sperre_bis: null },
+      { last_checked_at: null, locked_until: null },
       'das gesperrte Konto belegt den Platz oder löst die Pause aus',
     );
     naechsteAntwort = guthaben(9900);

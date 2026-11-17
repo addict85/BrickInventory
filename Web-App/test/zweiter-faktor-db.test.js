@@ -4,7 +4,7 @@
  *
  * Gegenproben (25.10., gemessen):
  *   A  istAktiv-Prüfung in pruefeAnmeldedaten() entfernt → rot: „ohne Code angemeldet"
- *   B  `letzter_schritt < $2` in pruefeCode() entfernt   → rot: „derselbe Code zweimal"
+ *   B  `last_step < $2` in pruefeCode() entfernt   → rot: „derselbe Code zweimal"
  *   C  anmeldungGescheitert beim falschen Code entfernt    → rot: „keine Sperre"
  *   D  hotp(): Offset aus dem ersten statt letzten Byte  → rot: RFC-Vektoren
  *   E  change-password wieder mit 401                    → rot: „die Clients melden dann ab"
@@ -113,15 +113,15 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   /** Ein Code, der zum aktuellen Geheimnis passt — wahlweise einen Schritt versetzt. */
   const codeFuer = async (name, versatz = 0) => {
     const z = await db.get(
-      'SELECT f.user_id, f.geheimnis FROM zweiter_faktor f JOIN users u ON u.id = f.user_id WHERE u.username = $1',
+      'SELECT f.user_id, f.secret FROM second_factor f JOIN users u ON u.id = f.user_id WHERE u.username = $1',
       [name],
     );
     return zf.hotp(
-      zf.ausBase32(_req('src/infra/geheimnis.js').entschluessele(z.geheimnis, zf.faktorKontext(z.user_id))),
+      zf.ausBase32(_req('src/infra/geheimnis.js').entschluessele(z.secret, zf.faktorKontext(z.user_id))),
       zf.zeitschritt() + versatz,
     );
   };
-  /** Einrichten bis aktiv; gibt den Token und die Wiederherstellungscodes zurück. */
+  /** Einrichten bis active; gibt den Token und die Wiederherstellungscodes zurück. */
   const einrichten = async name => {
     const token = (await anmelden(name)).body.token;
     assert.equal(
@@ -152,12 +152,12 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     );
     assert.deepEqual((await ruf('/zweiter-faktor', null, token)).body, {
       success: true,
-      aktiv: true,
+      active: true,
       codes_uebrig: 10,
       // Frisch erzeugte Codes sind neuer Art und tragen keine Frist (Migration 0122).
       alte_codes_bis: null,
     });
-    const roh = JSON.stringify(await db.all('SELECT code_hash FROM zweiter_faktor_codes'));
+    const roh = JSON.stringify(await db.all('SELECT code_hash FROM second_factor_codes'));
     assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'Wiederherstellungscodes stehen im Klartext');
     // 80 Bit: 16 Base32-Zeichen in Vierergruppen; gespeichert als HMAC, nicht als blankes SHA-256.
     for (const c of codes) assert.match(c, /^[a-z2-7]{4}(-[a-z2-7]{4}){3}$/);
@@ -166,17 +166,17 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     // Ein Code der alten Form (10 Zeichen, SHA-256) gilt bis zu seiner Frist (0122), einmal.
     const uid = (await db.get('SELECT id FROM users WHERE username = $1', [NAME])).id;
     await db.run(
-      `INSERT INTO zweiter_faktor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
+      `INSERT INTO second_factor_codes (user_id, code_hash, alt_gilt_bis) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
       [uid, sha('abcde23456')],
     );
     assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'alter Code gilt nicht mehr');
     assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
-    await db.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NOT NULL', [uid]);
+    await db.run('DELETE FROM second_factor_codes WHERE user_id = $1 AND verbraucht_am IS NOT NULL', [uid]);
 
     // Ohne Code: Absage mit Hinweis, kein Token.
     const ohne = await anmelden(NAME);
     assert.equal(ohne.status, 401);
-    assert.equal(ohne.body.zweiter_faktor, true, 'ohne Code angemeldet');
+    assert.equal(ohne.body.second_factor, true, 'ohne Code angemeldet');
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
     assert.equal(ohne.body.token, undefined);
 
@@ -205,7 +205,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     assert.equal(
       (
         await db.get(
-          'SELECT COUNT(*)::int n FROM zweiter_faktor_codes f JOIN users u ON u.id=f.user_id WHERE u.username=$1',
+          'SELECT COUNT(*)::int n FROM second_factor_codes f JOIN users u ON u.id=f.user_id WHERE u.username=$1',
           [NAME],
         )
       ).n,

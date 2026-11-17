@@ -9,7 +9,7 @@ sich hier (der Test vergleicht beide).
 | Rolle (`ROLLE`) | Aufgabe |
 |---|---|
 | `web` | HTTP: Oberfläche (`public/`), API unter `/api/v1`, Bild-Proxy |
-| `jobs` | Hintergrundarbeit aus der Auftragstabelle (`auftraege`), Zeitpläne |
+| `jobs` | Hintergrundarbeit aus der Auftragstabelle (`jobs`), Zeitpläne |
 | `beides` | beides in einem Prozess (Entwicklung, kleine Installationen) |
 
 Beide Rollen migrieren beim Start; `initSchemaOnce` lässt genau einen
@@ -179,7 +179,7 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 
 Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** auf
 `user_id`: In 34 Tabellen mit Kontodaten (Bestand, Käufe, Merkliste, Einstellungen
-je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `zweiter_faktor`, Aufträge)
+je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `second_factor`, Aufträge)
 sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
 Unterkonten, ohne Konto keine. Zugangsdaten (Passkeys, zweiter Faktor, Tokens,
 Geräteschlüssel, Schrittfreigaben) sieht nur das Konto selbst, kein Hauptkonto
@@ -196,7 +196,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
 - Der Haushalt (Migration 0115): `account_links` liest jedes Konto, anlegen darf
   nur der Systemrahmen, lösen nur ein beteiligtes Konto; `account_link_invites`
   und `household_former_links` sieht nur ein beteiligtes Konto.
-- Ohne Zeilenschutz sind `users`, `verwaltungsprotokoll`, `rate_limit_attempts`,
+- Ohne Zeilenschutz sind `users`, `admin_log`, `rate_limit_attempts`,
   `global_settings`, Kataloge, Preis- und Bildzwischenspeicher, Laufzustände.
   Hier schützt der Filter im Repository, bei den ersten dreien zusätzlich das
   Recht der Rolle (unten).
@@ -208,7 +208,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
   `last_name`, `global_settings` liest sie nur (Migration 0117). Anmeldung,
   Sitzungsspeicher, Passwort, Rechte, Adresse, Sitzungsversion und globale
   Einstellungen laufen über die Systemrolle (`imSystem(…)` im Kontext des
-  Bereichs). `verwaltungsprotokoll` ist für beide Rollen nur anfügbar; aufgeräumt
+  Bereichs). `admin_log` ist für beide Rollen nur anfügbar; aufgeräumt
   wird über `verwaltungsprotokoll_aufraeumen()` (feste Frist, Eigentümerin).
 - Gutscheine und Idempotenzeinträge sieht wie die Zugangsdaten nur das eigene
   Konto (Migration 0118). Kopien vor Migrationen (`vor_migration_*`) haben RLS ohne Policy und
@@ -298,21 +298,21 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/infra` | `app_logs` |
 | `src/drossel` | `rate_limit_attempts` |
 | `src/einstellungen` | `global_settings`, `user_settings` |
-| `src/auftraege` | `auftraege`, `auftrag_exklusiv`, `auftrag_pausen`, `auftrags_arten`, `import_stand`, `laufzustand` |
-| `src/fremdquellen` | `api_aufrufe`, `api_takt` |
+| `src/auftraege` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
+| `src/fremdquellen` | `api_calls`, `api_cadence` |
 | `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
-| `src/geraete` | `geraete_nonces`, `geraete_schluessel`, `schritt_challenges`, `schritt_freigaben` |
-| `src/faktoren` | `passkeys`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes` |
-| `src/konto` | `api_tokens`, `api_tokens_verbraucht`, `qr_login_tokens`, `user_sessions`, `users`, `verwalter_uebernahmen`, `verwaltungsprotokoll` |
+| `src/geraete` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |
+| `src/faktoren` | `passkeys`, `webauthn_challenges`, `second_factor`, `second_factor_codes` |
+| `src/konto` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
 | `src/bilder` | `image_misses`, `image_wanted` |
-| `src/idempotenz` | `idempotenz` |
-| `src/katalog` | `bl_zuordnung`, `bl_zuordnung_eigen`, `catalog_cache`, `figur_eigen`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_figuren`, `set_teile`, `shared_instructions`, `subsets_cache`, `teil_eigen`, `teil_farbe_eigen` |
-| `src/finanzen` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `wechselkurse` |
-| `src/bestand` | `minifig_acquisitions`, `minifigs`, `papierkorb`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
+| `src/idempotenz` | `idempotency` |
+| `src/katalog` | `bl_mapping`, `bl_mapping_custom`, `catalog_cache`, `minifig_custom`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_minifigs`, `set_parts`, `shared_instructions`, `subsets_cache`, `part_custom`, `part_color_custom` |
+| `src/finanzen` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `exchange_rates` |
+| `src/bestand` | `minifig_acquisitions`, `minifigs`, `trash`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
 | `src/sets` | `instructions` |
-| `src/teile` | `parts_katalog_offen`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
+| `src/teile` | `parts_catalog_pending`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
 | `src/merkliste` | `wanted` |
-| `src/gutscheine` | `gutschein_guthaben_schranke`, `vouchers` |
+| `src/gutscheine` | `voucher_balance_throttle`, `vouchers` |
 
 ## API-Vertrag
 

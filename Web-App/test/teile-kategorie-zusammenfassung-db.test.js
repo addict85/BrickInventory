@@ -46,7 +46,7 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
                 VALUES ('kz1', 'Eins', '98701'), ('kz2', 'Zwei', NULL), ('kz3', 'Drei', '98702')
                 ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);
   await db.run(
-    `INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
+    `INSERT INTO set_parts (set_number, part_number, color_id, quantity, is_spare)
                 VALUES ($1, 'kz1', 5, 4, false), ($1, 'kz2', 5, 2, true), ($1, 'kz3', 1, 3, false)`,
     [SN],
   );
@@ -89,7 +89,7 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [U]);
-    await db.run('DELETE FROM set_teile WHERE set_number=$1', [SN]);
+    await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
     await db.run(`DELETE FROM part_catalog WHERE part_number IN ('kz1','kz2','kz3')`);
     await db.run(`DELETE FROM rb_parts WHERE part_num = 'kz2'`);
     await db.run('DELETE FROM rb_part_categories WHERE id IN (98701, 98702)');

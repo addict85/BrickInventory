@@ -5,7 +5,7 @@
  * Hier die Liste und der echte Web-Prozess mit ihr allein; testServer nimmt sie überall.
  *
  * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in 0119 'vouchers' in die Liste `konto` → rot: „genau diese Tabellenrechte“ und
+ *   A  in 0119 'vouchers' in die Liste `account_id` → rot: „genau diese Tabellenrechte“ und
  *      „… bleiben Gutscheine zu“ (die Abfrage gelingt)
  *   B  in db/database.ts poolDesRahmens() ohne `web` (immer systemPool) → rot: „Anfragen
  *      nehmen …“ (current_user ist die Systemrolle), „… bleiben Gutscheine zu“ und „… aus
@@ -15,7 +15,7 @@
  *      Kopien im Katalog nicht und löscht still nichts)
  *   D  in startup/datenbank.ts bereiteDatenbankVor() ohne den Zweig `jobs === false` → rot:
  *      „der Web-Prozess startet …“ (permission denied for table vouchers, kein Start)
- *   E  warteAufAltbestand() kehrt sofort zurück → rot: „… wartet auf die Umschlüsselung“
+ *   E  warteAufAltbestand() kehrt sofort zurück → rot: „… waiting auf die Umschlüsselung“
  *   F  in src/teile/partsSummary.ts katalogEinmalNachziehen() ohne den Zweig für `web` →
  *      rot: „eine Anfrage zieht den Katalog nicht selbst nach …“
  *   G  in 0120 die Schleife mit REVOKE gestrichen → rot: „jede Sicht liest …“ (die neue Sicht
@@ -45,23 +45,23 @@ const WEB = process.env.PGSYSTEM_WEB_USER;
 const VOLL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].join(', ');
 const MIT_ALLEN_RECHTEN = [
   // Zugang, Haushalt, Verwaltung, Kontoeinstellungen und Aufträge
-  ...['account_link_invites', 'account_links', 'api_tokens', 'api_tokens_verbraucht', 'auftraege'],
-  ...['geraete_nonces', 'geraete_schluessel', 'global_settings', 'household_former_links', 'passkeys'],
-  ...['qr_login_tokens', 'rate_limit_attempts', 'schritt_challenges', 'schritt_freigaben', 'user_sessions'],
-  ...['user_settings', 'users', 'verwalter_uebernahmen', 'webauthn_challenges', 'zweiter_faktor'],
-  'zweiter_faktor_codes',
+  ...['account_link_invites', 'account_links', 'api_tokens', 'api_tokens_consumed', 'jobs'],
+  ...['device_nonces', 'device_keys', 'global_settings', 'household_former_links', 'passkeys'],
+  ...['qr_login_tokens', 'rate_limit_attempts', 'step_up_challenges', 'step_up_approvals', 'user_sessions'],
+  ...['user_settings', 'users', 'admin_takeovers', 'webauthn_challenges', 'zweiter_faktor'],
+  'second_factor_codes',
   // ohne Kontobezug: Katalog, Preis- und Bildspeicher, Laufzustand
-  ...['api_aufrufe', 'api_takt', 'app_logs', 'auftrag_exklusiv', 'auftrag_pausen', 'auftrags_arten'],
-  ...['bl_zuordnung', 'catalog_cache', 'image_misses', 'image_wanted', 'laufzustand', 'minifig_parts_cache'],
+  ...['api_calls', 'api_cadence', 'app_logs', 'job_exclusive_locks', 'job_pauses', 'job_types'],
+  ...['bl_mapping', 'catalog_cache', 'image_misses', 'image_wanted', 'run_state', 'minifig_parts_cache'],
   ...['minifig_price_cache', 'minifig_price_history', 'minifigs_catalog', 'part_catalog', 'part_color_catalog'],
-  ...['part_price_cache', 'part_price_history', 'parts_katalog_offen', 'price_cache', 'price_history'],
+  ...['part_price_cache', 'part_price_history', 'parts_catalog_pending', 'price_cache', 'price_history'],
   ...['rb_colors', 'rb_inventories', 'rb_inventory_minifigs', 'rb_inventory_parts', 'rb_part_categories'],
-  ...['rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_figuren', 'set_teile', 'shared_instructions'],
-  ...['subsets_cache', 'wechselkurse'],
+  ...['rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_minifigs', 'set_parts', 'shared_instructions'],
+  ...['subsets_cache', 'exchange_rates'],
 ];
 const SOLL = {
   ...Object.fromEntries(MIT_ALLEN_RECHTEN.map(t => [t, VOLL])),
-  verwaltungsprotokoll: 'SELECT, INSERT',
+  admin_log: 'SELECT, INSERT',
   parts_version_user: 'SELECT, INSERT, UPDATE',
   set_minifigs_catalog: 'SELECT',
   set_parts_catalog: 'SELECT',
@@ -198,23 +198,23 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     const uid = (
       await db.get(`INSERT INTO users (username, password_hash) VALUES ('systemweb-teile', 'x') RETURNING id`)
     ).id;
-    await db.run(`DELETE FROM auftraege WHERE art = 'katalog_nachzug'`);
-    await db.run(`INSERT INTO parts_katalog_offen (nummer) VALUES ('3001')`);
+    await db.run(`DELETE FROM jobs WHERE type = 'katalog_nachzug'`);
+    await db.run(`INSERT INTO parts_catalog_pending (number) VALUES ('3001')`);
     const { zusammenfassungFrisch } = _req('src/teile/partsSummary.js');
     await alsWebAnfrage({ session: { userId: uid } }, () => zusammenfassungFrisch(uid));
-    const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_katalog_offen')).n;
+    const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n;
     assert.equal(await offen(), 1, 'die Anfrage hat die Warteschlange geleert');
-    assert.ok(await db.get(`SELECT 1 FROM auftraege WHERE art = 'katalog_nachzug' AND status = 'offen'`));
+    assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'katalog_nachzug' AND status = 'offen'`));
     const nachzug = quellen
       .testDienste()
-      .auftraege.angemeldeteArten()
-      .find(a => a.art === 'katalog_nachzug');
+      .jobs.angemeldeteArten()
+      .find(a => a.type === 'katalog_nachzug');
     await imSystemkontext('Test', () => nachzug.ausfuehren({}, {}));
     assert.equal(await offen(), 0, 'der Auftrag leert sie');
   });
 
-  await t.test('der Web-Prozess startet mit der Web-Systemrolle und wartet auf die Umschlüsselung', async tt => {
-    await db.run(`DELETE FROM laufzustand WHERE schluessel = 'altbestand_v2'`);
+  await t.test('der Web-Prozess startet mit der Web-Systemrolle und waiting auf die Umschlüsselung', async tt => {
+    await db.run(`DELETE FROM run_state WHERE key = 'altbestand_v2'`);
     const port = await freierPort();
     const { PGSYSTEM_WEB_USER: _u, PGSYSTEM_WEB_PASSWORD: _p, ...ohneWeb } = process.env;
     const env = {
@@ -251,7 +251,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     for (let i = 0; i < 80 && !/warte, bis der Dienst jobs/.test(log) && srv.exitCode === null; i++) await warte(250);
     assert.match(log, /warte, bis der Dienst jobs/, log.slice(-1500));
     assert.equal(await bereit(), null, 'ohne Marke nimmt der Web-Prozess keine Anfrage an');
-    await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ('altbestand_v2', 'Test')`);
+    await db.run(`INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Test')`);
     let status = null;
     for (let i = 0; i < 120 && status !== 200 && srv.exitCode === null; i++) {
       status = await bereit();

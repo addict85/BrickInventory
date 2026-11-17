@@ -1,6 +1,6 @@
 /**
  * Vorschauen aus der Zeit des quadratischen Zuschnitts (200 × 200 zu nicht quadratischem Original) werden
- * einmal neu eingepasst: eigene Bilder neu erzeugt, im Proxy-Cache gelöscht. Ein Merker in laufzustand hält
+ * einmal neu eingepasst: eigene Bilder neu erzeugt, im Proxy-Cache gelöscht. Ein Merker in run_state hält
  * es bei einem Lauf; richtige Vorschauen und quadratische Bilder bleiben unberührt.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), in src/bilder/vorschauenEinpassen.ts:

@@ -62,16 +62,16 @@ export async function geschaetzteFigurenpreise(
 ) {
   const aus = new Map<string, { preis: number; abdeckung: number | null }>();
   if (!figuren.length) return aus;
-  const zeilen = await db.all<{ fig_number: string; condition: string; marktpreis: string; abdeckung: string | null }>(
-    `SELECT fig_number, condition, ${marktpreisSql()} AS marktpreis, abdeckung FROM minifig_price_cache
-      WHERE fig_number = ANY($1) AND currency_code = $2 AND geschaetzt AND ${marktpreisSql()} IS NOT NULL
+  const zeilen = await db.all<{ fig_number: string; condition: string; marktpreis: string; coverage: string | null }>(
+    `SELECT fig_number, condition, ${marktpreisSql()} AS marktpreis, coverage FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND estimated AND ${marktpreisSql()} IS NOT NULL
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [[...new Set(figuren)], waehrung, ttlStunden],
   );
   for (const z of zeilen)
     aus.set(`${z.fig_number}|${z.condition}`, {
       preis: Number(z.marktpreis),
-      abdeckung: z.abdeckung == null ? null : Number(z.abdeckung),
+      abdeckung: z.coverage == null ? null : Number(z.coverage),
     });
   return aus;
 }
@@ -83,9 +83,9 @@ export function geschaetzterFigurenpreis(
   waehrung: string,
   ttlStunden: number,
 ) {
-  return db.get<{ marktpreis: string | null; abdeckung: string | null }>(
-    `SELECT ${marktpreisSql()} AS marktpreis, abdeckung FROM minifig_price_cache
-        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
+  return db.get<{ marktpreis: string | null; coverage: string | null }>(
+    `SELECT ${marktpreisSql()} AS marktpreis, coverage FROM minifig_price_cache
+        WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND estimated
           AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, zustand, waehrung, ttlStunden],
   );
@@ -100,9 +100,9 @@ export function merkeGeschaetztenFigurenpreis(
   abdeckung: number,
 ) {
   return db.run(
-    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
        VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT (fig_number,condition,currency_code)
-       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW(), geschaetzt=TRUE, abdeckung=$5`,
+       DO UPDATE SET avg_price=$4, qty_avg_price=$4, fetched_at=NOW(), estimated=TRUE, coverage=$5`,
     [figNumber, zustand, waehrung, preis, abdeckung],
   );
 }
@@ -116,7 +116,7 @@ export function merkeGeschaetztenFigurenverlauf(
   abdeckung: number,
 ) {
   return db.run(
-    `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, geschaetzt, abdeckung)
+    `INSERT INTO minifig_price_history (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
        VALUES ($1,$2,$3,$4,$4,TRUE,$5) ON CONFLICT DO NOTHING`,
     [figNumber, zustand, waehrung, preis, abdeckung],
   );

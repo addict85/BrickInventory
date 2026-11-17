@@ -64,7 +64,7 @@ export function inventarTeileDesSets(db: DbSchnittstelle, invId: number) {
          FROM rb_inventory_parts ip
          LEFT JOIN rb_parts      p ON p.part_num = ip.part_num
          LEFT JOIN rb_colors     c ON c.id       = ip.color_id
-         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
+         LEFT JOIN bl_mapping  m ON m.type = 'part' AND m.rb_id = ip.part_num
         WHERE ip.inventory_id = $1
           AND NOT ip.is_spare`,
     [invId],

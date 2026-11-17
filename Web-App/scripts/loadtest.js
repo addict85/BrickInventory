@@ -122,12 +122,12 @@ async function seed() {
   );
   // BrickLink-Nummern schon nachgesehen: Sonst startet jede Teile-Liste ein Nachladen über das Netz.
   await db.run(
-    `INSERT INTO bl_zuordnung (art, rb_id, bl_id)
+    `INSERT INTO bl_mapping (type, rb_id, bl_id)
      SELECT 'part', part_number, part_number FROM part_catalog ON CONFLICT DO NOTHING`,
   );
-  // Die Stückzahl eines Teils aus einem Set steht im Inhalt des Sets (set_teile), nicht in parts.
+  // Die Stückzahl eines Teils aus einem Set steht im Inhalt des Sets (set_parts), nicht in parts.
   await db.run(
-    `INSERT INTO set_teile (set_number, part_number, color_id, quantity)
+    `INSERT INTO set_parts (set_number, part_number, color_id, quantity)
      SELECT (10000+g)||'-1', (3000 + (g*13 + p) % 900)::text, (p % 60), 1 + (p % 4)
        FROM generate_series(1, $1) g, generate_series(1, 75) p
      ON CONFLICT DO NOTHING`,
@@ -135,7 +135,7 @@ async function seed() {
   );
   await db.run(
     `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-     SELECT $1, set_number, part_number, color_id, 'set' FROM set_teile`,
+     SELECT $1, set_number, part_number, color_id, 'set' FROM set_parts`,
     [USER.id],
   );
 
@@ -147,7 +147,7 @@ async function seed() {
     [N_SETS],
   );
   await db.run(
-    `INSERT INTO set_figuren (set_number, fig_number, quantity)
+    `INSERT INTO set_minifigs (set_number, fig_number, quantity)
      SELECT (10000+g)||'-1', 'fig'||((g*3+m)%2500), 1
        FROM generate_series(1, $1) g, generate_series(1, 4) m
      ON CONFLICT DO NOTHING`,
@@ -155,7 +155,7 @@ async function seed() {
   );
   await db.run(
     `INSERT INTO minifigs (user_id, set_number, fig_number, source)
-     SELECT $1, set_number, fig_number, 'set' FROM set_figuren`,
+     SELECT $1, set_number, fig_number, 'set' FROM set_minifigs`,
     [USER.id],
   );
 

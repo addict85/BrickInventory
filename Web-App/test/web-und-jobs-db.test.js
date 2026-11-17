@@ -6,7 +6,7 @@
  *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
  *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
  *   B  in aktuellerStartZustand (src/auftraege/startZustand.ts) das Nachlesen aus
- *      laufzustand entfernt → rot: „der Web-Prozess sieht den Startzustand des
+ *      run_state entfernt → rot: „der Web-Prozess sieht den Startzustand des
  *      Job-Prozesses“
  *   C  in server.ts app.use(nurEigeneHerkunft) entfernt → rot: „weist
  *      schreibende Anfragen fremder Seiten ab“ (200)
@@ -124,17 +124,17 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
   // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
-      `INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
-                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+      `INSERT INTO run_state (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
+                  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
       [k],
     );
-  await db.run(`DELETE FROM laufzustand WHERE schluessel = 'startup_status'`);
+  await db.run(`DELETE FROM run_state WHERE key = 'startup_status'`);
 
   const NAME = `rollen_${process.pid}`,
     PASS = 'Passwort12345',
     MARKE = `rollen-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
+  await db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);
   await db.get(
     `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
     [NAME, await bcrypt.hash(PASS, 4)],
@@ -146,7 +146,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
   let jobs = null;
   /** Der Auftrag, den der Web-Prozess liegen liess; der Job-Prozess soll ihn erledigen. */
   let erster = 0;
-  const auftrag = id => db.get('SELECT status, versuche FROM auftraege WHERE id = $1', [id]);
+  const auftrag = id => db.get('SELECT status, attempts FROM jobs WHERE id = $1', [id]);
 
   try {
     for (let i = 0; i < 240 && !/localhost:\d+/.test(web.log); i++) await warte(250);
@@ -154,11 +154,11 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
 
     await t.test('der Web-Prozess arbeitet keine Aufträge ab', async () => {
       const id = (
-        await db.get(`INSERT INTO auftraege (art, nutzlast) VALUES ('bilder', $1) RETURNING id`, [
+        await db.get(`INSERT INTO jobs (type, payload) VALUES ('bilder', $1) RETURNING id`, [
           JSON.stringify({ set_number: `rollen-nichtda-${process.pid}`, marke: MARKE }),
         ])
       ).id;
-      await db.run(`SELECT pg_notify('auftraege', 'bilder')`);
+      await db.run(`SELECT pg_notify('jobs', 'bilder')`);
       await warte(1500);
       assert.equal((await auftrag(id)).status, 'offen', 'Der Web-Prozess hat einen Auftrag belegt');
       erster = id;
@@ -222,7 +222,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       // Ein Auftrag mit langer Frist, den der Job-Prozess belegt, aber nie zu Ende bringt:
       // Die Art kennt er nicht, also simuliert der Test die Belegung selbst mit seiner Kennung.
       const id = (
-        await db.get(`INSERT INTO auftraege (art, nutzlast) VALUES ('bilder', $1) RETURNING id`, [
+        await db.get(`INSERT INTO jobs (type, payload) VALUES ('bilder', $1) RETURNING id`, [
           JSON.stringify({ set_number: `rollen-zwei-${process.pid}`, marke: MARKE }),
         ])
       ).id;
@@ -232,14 +232,14 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal(jobs.exitCode, 0, jobs.log.slice(-1500));
       assert.equal(web.exitCode, 0, web.log.slice(-1500));
       for (const p of [jobs, web]) assert.match(p.log, /\[shutdown\] Datenbankverbindungen geschlossen/);
-      assert.match(jobs.log, /\[auftraege\] beendet/, 'Der Job-Prozess hat seinen Worker nicht angehalten');
+      assert.match(jobs.log, /\[jobs\] beendet/, 'Der Job-Prozess hat seinen Worker nicht angehalten');
       const z = await auftrag(id);
       assert.notEqual(z.status, 'laeuft', 'Ein Auftrag blieb belegt');
     });
   } finally {
     await beende(web);
     if (jobs) await beende(jobs);
-    await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
+    await db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]).catch(() => {});
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db.pool.end().catch(() => {});
   }

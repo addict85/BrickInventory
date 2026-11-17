@@ -7,15 +7,15 @@ export interface QrZeile {
   user_id: number;
   token_days: number | null;
   geraet: string | null;
-  ip_bereich: string | null;
+  ip_range: string | null;
   code_hash: string | null;
   stand: QrStand;
 }
 
-const STAND = `CASE WHEN abgelehnt_am IS NOT NULL THEN 'abgelehnt' WHEN abgeholt_am IS NOT NULL THEN 'abgeholt'
-  WHEN expires_at <= NOW() THEN 'abgelaufen' WHEN bestaetigt_am IS NOT NULL THEN 'bestaetigt'
+const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'abgelehnt' WHEN picked_up_at IS NOT NULL THEN 'abgeholt'
+  WHEN expires_at <= NOW() THEN 'abgelaufen' WHEN confirmed_at IS NOT NULL THEN 'bestaetigt'
   WHEN used_at IS NOT NULL THEN 'wartet' ELSE 'offen' END`;
-const SPALTEN = `id::int AS id, user_id, token_days, geraet, ip_bereich, code_hash, ${STAND} AS stand`;
+const SPALTEN = `id::int AS id, user_id, token_days, device AS geraet, ip_range, code_hash, ${STAND} AS stand`;
 
 export async function raeumeQrKopplungenAuf(db: DbSchnittstelle): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
@@ -33,7 +33,7 @@ export async function legeQrKopplungAn(
   const z = await db.get<{ id: number }>(
     `INSERT INTO qr_login_tokens (token, user_id, expires_at, token_days) SELECT $1, $2, $3, $4
       WHERE (SELECT COUNT(*) FROM qr_login_tokens
-              WHERE expires_at > NOW() AND abgeholt_am IS NULL AND abgelehnt_am IS NULL) < $5
+              WHERE expires_at > NOW() AND picked_up_at IS NULL AND rejected_at IS NULL) < $5
       RETURNING id::int AS id`,
     [hash, uid, bis, tage, hoechstens],
   );
@@ -47,7 +47,7 @@ export function melde(
   a: { abholung: string; codeHash: string; geraet: string; ipBereich: string | null; fristS: number },
 ): Promise<QrZeile | undefined> {
   return db.get<QrZeile>(
-    `UPDATE qr_login_tokens SET used_at = NOW(), abholung = $2, code_hash = $3, geraet = $4, ip_bereich = $5,
+    `UPDATE qr_login_tokens SET used_at = NOW(), pickup_code = $2, code_hash = $3, device = $4, ip_range = $5,
             expires_at = NOW() + make_interval(secs => $6)
       WHERE token = $1 AND used_at IS NULL AND expires_at > NOW() RETURNING ${SPALTEN}`,
     [hash, a.abholung, a.codeHash, a.geraet, a.ipBereich, a.fristS],
@@ -55,7 +55,7 @@ export function melde(
 }
 
 export function nachAbholung(db: DbSchnittstelle, abholung: string): Promise<QrZeile | undefined> {
-  return db.get<QrZeile>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE abholung = $1`, [abholung]);
+  return db.get<QrZeile>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE pickup_code = $1`, [abholung]);
 }
 
 export function qrKopplungDesKontos(db: DbSchnittstelle, id: number, uid: number): Promise<QrZeile | undefined> {
@@ -66,8 +66,8 @@ export function qrKopplungDesKontos(db: DbSchnittstelle, id: number, uid: number
 export async function markiereAbgeholt(db: DbSchnittstelle, id: number): Promise<boolean> {
   return !!(
     await db.run(
-      `UPDATE qr_login_tokens SET abgeholt_am = NOW()
-    WHERE id = $1 AND bestaetigt_am IS NOT NULL AND abgeholt_am IS NULL AND abgelehnt_am IS NULL AND expires_at > NOW()`,
+      `UPDATE qr_login_tokens SET picked_up_at = NOW()
+    WHERE id = $1 AND confirmed_at IS NOT NULL AND picked_up_at IS NULL AND rejected_at IS NULL AND expires_at > NOW()`,
       [id],
     )
   ).changes;
@@ -76,8 +76,8 @@ export async function markiereAbgeholt(db: DbSchnittstelle, id: number): Promise
 export async function markiereBestaetigt(db: DbSchnittstelle, id: number): Promise<boolean> {
   return !!(
     await db.run(
-      `UPDATE qr_login_tokens SET bestaetigt_am = NOW()
-    WHERE id = $1 AND used_at IS NOT NULL AND bestaetigt_am IS NULL AND abgelehnt_am IS NULL AND expires_at > NOW()`,
+      `UPDATE qr_login_tokens SET confirmed_at = NOW()
+    WHERE id = $1 AND used_at IS NOT NULL AND confirmed_at IS NULL AND rejected_at IS NULL AND expires_at > NOW()`,
       [id],
     )
   ).changes;
@@ -86,7 +86,7 @@ export async function markiereBestaetigt(db: DbSchnittstelle, id: number): Promi
 /** @returns die Zahl der Fehlversuche danach */
 export async function zaehleQrFehlversuch(db: DbSchnittstelle, id: number): Promise<number> {
   const z = await db.get<{ n: number }>(
-    'UPDATE qr_login_tokens SET fehlversuche = fehlversuche + 1 WHERE id = $1 RETURNING fehlversuche AS n',
+    'UPDATE qr_login_tokens SET failed_attempts = failed_attempts + 1 WHERE id = $1 RETURNING failed_attempts AS n',
     [id],
   );
   return z?.n ?? 0;
@@ -94,7 +94,7 @@ export async function zaehleQrFehlversuch(db: DbSchnittstelle, id: number): Prom
 
 export async function markiereAbgelehnt(db: DbSchnittstelle, id: number): Promise<void> {
   await db.run(
-    'UPDATE qr_login_tokens SET abgelehnt_am = COALESCE(abgelehnt_am, NOW()) WHERE id = $1 AND abgeholt_am IS NULL',
+    'UPDATE qr_login_tokens SET rejected_at = COALESCE(rejected_at, NOW()) WHERE id = $1 AND picked_up_at IS NULL',
     [id],
   );
 }

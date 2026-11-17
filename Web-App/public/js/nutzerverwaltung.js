@@ -70,13 +70,13 @@ const ANGEKUENDIGT = {
 function angekuendigt(u) {
   return (u.angekuendigt ?? []).map(
     a =>
-      html`<span class="rb ru">${tRaw('users.angekuendigt', { was: (ANGEKUENDIGT[a.art] || (() => a.art))(), zeit: fmtDatum(a.wirksam_ab, 'tagzeit') })}</span>`,
+      html`<span class="rb ru">${tRaw('users.angekuendigt', { was: (ANGEKUENDIGT[a.type] || (() => a.type))(), zeit: fmtDatum(a.effective_at, 'tagzeit') })}</span>`,
   );
 }
 /** Die Antwort einer Verwalteraktion: angekündigt (Verwalterkonto) oder sofort. @param {{ wirksam_ab?: string }} d @param {string} sofort */
 const meldeErgebnis = (d, sofort) =>
   toast(
-    d.wirksam_ab ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') }) : sofort,
+    d.effective_at ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.effective_at, 'tagzeit') }) : sofort,
     'success',
   );
 // Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im Quelltext steht und die
@@ -108,8 +108,8 @@ async function ladeProtokoll() {
     G('vw-protokoll'),
     eintraege.length
       ? html`<div class="tw"><table class="dt" aria-label="${tRaw('users.protokoll')}"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(
-          e => html`<tr><td>${fmtDatum(String(e.zeit), 'tagzeit')}</td><td>${e.verwalter_name || '—'}</td>
-      <td>${(AKTIONEN[String(e.aktion)] || (() => String(e.aktion)))()}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name || '#' + e.ziel_id}</td></tr>`,
+          e => html`<tr><td>${fmtDatum(String(e.occurred_at), 'tagzeit')}</td><td>${e.verwalter_name || '—'}</td>
+      <td>${(AKTIONEN[String(e.action)] || (() => String(e.action)))()}${e.details ? html`: ${e.details}` : ''}</td><td>${e.target_name || '#' + e.target_id}</td></tr>`,
         )}</tbody></table></div>`
       : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`,
   );
@@ -236,8 +236,8 @@ G('btn-rpw').onclick = async () => {
   if (d === null) return;
   if (d.success) {
     toast(
-      d.wirksam_ab
-        ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') })
+      d.effective_at
+        ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.effective_at, 'tagzeit') })
         : tRaw('users.pw_reset'),
       'success',
     );

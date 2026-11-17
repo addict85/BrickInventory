@@ -26,7 +26,7 @@ export function setTeileKatalog(db: DbSchnittstelle, setNumber: string) {
 /** Eine Zeile heisst „nachgesehen", auch mit leerer bl_id. */
 export function blZuordnungen(db: DbSchnittstelle, teilnummern: string[]) {
   return db.all<{ rb_id: string; bl_id: string | null }>(
-    `SELECT rb_id, bl_id FROM bl_zuordnung
+    `SELECT rb_id, bl_id FROM bl_mapping
      WHERE art = 'part' AND rb_id = ANY($1::text[])`,
     [teilnummern],
   );

@@ -19,7 +19,7 @@ export interface Konto {
   [spalte: string]: unknown;
 }
 export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'> & {
-  email_neu: string | null;
+  new_email: string | null;
 };
 export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & {
   wartet_auf_bestaetigung: boolean;
@@ -34,7 +34,7 @@ export function kontoKurz(db: DbSchnittstelle, id: number): Promise<KontoKurz | 
 
 /** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0115). */
 const KONTO_SPALTEN = `id, username, email, first_name, last_name, is_admin, is_active, email_verified,
-  must_change_password, created_at, sitzungs_version, registrierung_offen, email_neu`;
+  must_change_password, created_at, session_version, registration_pending, new_email`;
 
 export function kontoVoll(db: DbSchnittstelle, id: number): Promise<Konto | undefined> {
   return db.get<Konto>(`SELECT ${KONTO_SPALTEN} FROM users WHERE id=$1`, [id]);
@@ -42,7 +42,7 @@ export function kontoVoll(db: DbSchnittstelle, id: number): Promise<Konto | unde
 
 export function profilZeile(db: DbSchnittstelle, id: number): Promise<Profil | undefined> {
   return db.get<Profil>(
-    'SELECT id, username, email, first_name, last_name, email_verified, email_neu FROM users WHERE id=$1',
+    'SELECT id, username, email, first_name, last_name, email_verified, new_email FROM users WHERE id=$1',
     [id],
   );
 }
@@ -78,8 +78,8 @@ export async function aendereBenutzernamen(db: DbSchnittstelle, id: number, name
 export async function verwirfAusstehendeAdresse(db: DbSchnittstelle, id: number): Promise<string | null> {
   const r = await db.get<{ adresse: string }>(
     `UPDATE users u SET ${OHNE_EMAIL_NEU} FROM users alt
-      WHERE u.id = $1 AND alt.id = u.id AND alt.email_neu IS NOT NULL AND NOT alt.registrierung_offen
-      RETURNING alt.email_neu AS adresse`,
+      WHERE u.id = $1 AND alt.id = u.id AND alt.new_email IS NOT NULL AND NOT alt.registration_pending
+      RETURNING alt.new_email AS adresse`,
     [id],
   );
   return r?.adresse ?? null;
@@ -92,7 +92,7 @@ export async function merkeEmailNeu(
   tokenHash: string,
   bis: Date,
 ): Promise<void> {
-  await db.run('UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = $4 WHERE id = $1', [
+  await db.run('UPDATE users SET new_email = $2, new_email_token = $3, new_email_until = $4 WHERE id = $1', [
     id,
     email,
     tokenHash,
@@ -100,31 +100,31 @@ export async function merkeEmailNeu(
   ]);
 }
 
-const OHNE_EMAIL_NEU = 'email_neu = NULL, email_neu_token = NULL, email_neu_bis = NULL';
+const OHNE_EMAIL_NEU = 'new_email = NULL, new_email_token = NULL, new_email_until = NULL';
 
 export async function kontoZuEmailToken(db: DbSchnittstelle, hash: string): Promise<number | undefined> {
   return (
-    await db.get<{ id: number }>('SELECT id FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [hash])
+    await db.get<{ id: number }>('SELECT id FROM users WHERE new_email_token = $1 AND new_email_until > NOW()', [hash])
   )?.id;
 }
 
 /** Erst hier wird die Adresse vergeben: Was beim Antrag frei war, kann inzwischen belegt sein.
  * In der Transaktion des Aufrufers (FOR UPDATE). @returns false, wenn die Adresse vergeben ist */
 export async function uebernimmEmailNeu(tx: DbSchnittstelle, id: number, hash: string): Promise<boolean> {
-  const neu = await tx.get<{ email_neu: string }>(
-    'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE',
+  const neu = await tx.get<{ new_email: string }>(
+    'SELECT new_email FROM users WHERE id = $1 AND new_email_token = $2 FOR UPDATE',
     [id, hash],
   );
   if (!neu) return false;
   if (
     await tx.get<unknown>(
       'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
-      [neu.email_neu, id],
+      [neu.new_email, id],
     )
   )
     return false;
   await tx.run(
-    `UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
+    `UPDATE users SET email = new_email, email_verified = true, registration_pending = false,
                ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`,
     [id],
   );
@@ -133,7 +133,7 @@ export async function uebernimmEmailNeu(tx: DbSchnittstelle, id: number, hash: s
 
 /** Auch ein Fehlschlag verbraucht den Link. */
 export async function verwirfEmailNeu(db: DbSchnittstelle, id: number, hash: string): Promise<void> {
-  await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND email_neu_token = $2`, [id, hash]);
+  await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND new_email_token = $2`, [id, hash]);
 }
 
 /** Nur der Name: Wer den Link hat, sieht vor dem Einlösen, zu welchem Konto er gehört. */
@@ -141,7 +141,7 @@ export async function nameZuEmailToken(db: DbSchnittstelle, hash: string): Promi
   return (
     (
       await db.get<{ username: string }>(
-        'SELECT username FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()',
+        'SELECT username FROM users WHERE new_email_token = $1 AND new_email_until > NOW()',
         [hash],
       )
     )?.username ?? null
@@ -152,7 +152,7 @@ export async function offeneRegistrierungen(db: DbSchnittstelle, email: string):
   return Number(
     (
       await db.get<{ n: string }>(
-        'SELECT COUNT(*) AS n FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1) AND email_neu_bis > NOW()',
+        'SELECT COUNT(*) AS n FROM users WHERE registration_pending AND LOWER(new_email) = LOWER($1) AND new_email_until > NOW()',
         [email],
       )
     )?.n ?? 0,
@@ -165,21 +165,21 @@ export async function schalteRegistrierungFrei(
   tx: DbSchnittstelle,
   id: number,
 ): Promise<'ok' | 'nicht_wartend' | 'vergeben'> {
-  const k = await tx.get<{ email_neu: string | null }>(
-    'SELECT email_neu FROM users WHERE id = $1 AND registrierung_offen AND NOT email_verified FOR UPDATE',
+  const k = await tx.get<{ new_email: string | null }>(
+    'SELECT new_email FROM users WHERE id = $1 AND registration_pending AND NOT email_verified FOR UPDATE',
     [id],
   );
   if (!k) return 'nicht_wartend';
   if (
-    k.email_neu &&
+    k.new_email &&
     (await tx.get<Treffer>(
       'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
-      [k.email_neu, id],
+      [k.new_email, id],
     ))
   )
     return 'vergeben';
   await tx.run(
-    `UPDATE users SET email = COALESCE(email_neu, email), email_verified = true, registrierung_offen = false,
+    `UPDATE users SET email = COALESCE(new_email, email), email_verified = true, registration_pending = false,
                ${OHNE_EMAIL_NEU} WHERE id = $1`,
     [id],
   );
@@ -190,7 +190,7 @@ export async function schalteRegistrierungFrei(
 export async function ausstehendOhneLink(db: DbSchnittstelle): Promise<number[]> {
   return (
     await db.all<{ id: number }>(
-      'SELECT id FROM users WHERE email_neu IS NOT NULL AND email_neu_bis IS NULL AND NOT registrierung_offen ORDER BY id',
+      'SELECT id FROM users WHERE new_email IS NOT NULL AND new_email_until IS NULL AND NOT registration_pending ORDER BY id',
     )
   ).map(z => z.id);
 }
@@ -198,7 +198,7 @@ export async function ausstehendOhneLink(db: DbSchnittstelle): Promise<number[]>
 export function alleKonten(db: DbSchnittstelle): Promise<KontoInListe[]> {
   return db.all<KontoInListe>(
     `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
-            (u.registrierung_offen AND NOT u.email_verified) AS wartet_auf_bestaetigung
+            (u.registration_pending AND NOT u.email_verified) AS wartet_auf_bestaetigung
        FROM users u ORDER BY u.id`,
   );
 }
@@ -358,7 +358,7 @@ export async function loescheEigenesKonto(db: Db, id: number): Promise<boolean> 
  * Transaktion des Aufrufers, damit keine Spur ohne ihr Konto bleibt. */
 export async function loescheOffeneRegistrierungen(tx: DbSchnittstelle, tage: number): Promise<number> {
   const weg = await tx.all<{ id: number }>(
-    `DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
+    `DELETE FROM users WHERE registration_pending AND NOT email_verified AND NOT is_admin
       AND created_at < NOW() - make_interval(days => $1::int) RETURNING id`,
     [tage],
   );
@@ -392,8 +392,8 @@ export async function registriereKonto(
   },
 ): Promise<number | null> {
   await db.run(
-    `INSERT INTO users (username, email_neu, email_neu_token, email_neu_bis, first_name, last_name, password_hash,
-                        is_admin, is_active, email_verified, registrierung_offen) VALUES ($1,$2,$3,$4,$5,$6,$7,false,true,false,true)`,
+    `INSERT INTO users (username, new_email, new_email_token, new_email_until, first_name, last_name, password_hash,
+                        is_admin, is_active, email_verified, registration_pending) VALUES ($1,$2,$3,$4,$5,$6,$7,false,true,false,true)`,
     [k.username, k.email, k.tokenHash, k.bis, k.first_name || null, k.last_name || null, k.hash],
   );
   const neu = await db.get<{ id: number }>('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
@@ -437,12 +437,12 @@ export function erneuereEmailTokenWennFrei(
   pauseMin: number,
 ) {
   return db.get<{ id: number; email: string }>(
-    `UPDATE users u SET email_neu_token = $2, email_neu_bis = NOW() + make_interval(hours => $3::int)
-       FROM (SELECT MIN(id) AS id FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1)
+    `UPDATE users u SET new_email_token = $2, new_email_until = NOW() + make_interval(hours => $3::int)
+       FROM (SELECT MIN(id) AS id FROM users WHERE registration_pending AND LOWER(new_email) = LOWER($1)
              HAVING COUNT(*) = 1) e
       WHERE u.id = e.id AND u.is_active
-        AND (u.email_neu_bis IS NULL OR u.email_neu_bis < NOW() + make_interval(hours => $3::int, mins => -$4::int))
-      RETURNING u.id, u.email_neu AS email`,
+        AND (u.new_email_until IS NULL OR u.new_email_until < NOW() + make_interval(hours => $3::int, mins => -$4::int))
+      RETURNING u.id, u.new_email AS email`,
     [email, hash, gueltigStd, pauseMin],
   );
 }
@@ -479,16 +479,16 @@ export interface Zugang {
   hard_expires_at: Date | null;
   expires_at: Date | null;
   scope: 'app' | 'voll';
-  ip_bereich: string | null;
+  ip_range: string | null;
   never_expires: boolean;
-  rotiert_am: Date;
+  rotated_at: Date;
 }
 
 /** Ein getauschter Token in seiner Überlappung zählt nicht mehr als eigenes Gerät. */
 export function zugaengeDesKontos(db: DbSchnittstelle, uid: number): Promise<Zugang[]> {
   return db.all<Zugang>(
     `SELECT token, label, created_at, last_used, hard_expires_at, LEAST(expires_at, hard_expires_at) AS expires_at,
-            scope, ip_bereich, never_expires, rotiert_am
+            scope, ip_range, never_expires, rotated_at
        FROM api_tokens
       WHERE user_id = $1 AND ersetzt_durch IS NULL
         AND (expires_at IS NULL OR expires_at > NOW())
@@ -507,12 +507,12 @@ export function tokenStand(
       expires_at: Date | null;
       hard_expires_at: Date | null;
       never_expires: boolean;
-      rotiert_am: Date;
+      rotated_at: Date;
     }
   | undefined
 > {
   return db.get(
-    `SELECT scope, LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, never_expires, rotiert_am
+    `SELECT scope, LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, never_expires, rotated_at
        FROM api_tokens WHERE token = $1`,
     [hash],
   );

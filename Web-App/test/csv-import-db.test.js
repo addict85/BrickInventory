@@ -17,8 +17,8 @@
  *
  * Gegenproben zu „rb_sets bildet den Dump nach“ (10.11.2026, in
  * gleicheSetsAb(), src/katalog/repository/csvTausch.ts, je einzeln):
- *   E  im Upsert `herkunft='csv'` weggelassen → rot: „geändert“ (B bleibt 'api')
- *   F  das UPDATE auf herkunft='api' entfernt → rot: „mit Bezug“ (C bleibt 'csv')
+ *   E  im Upsert `source='csv'` weggelassen → rot: „geändert“ (B bleibt 'api')
+ *   F  das UPDATE auf source='api' entfernt → rot: „mit Bezug“ (C bleibt 'csv')
  *   G  das DELETE entfernt → rot: „ohne Bezug“ (D und F bleiben)
  *   H  im Bezug die Merkliste (wanted) entfernt → rot: „mit Bezug“ (E fehlt)
  *   I  das abschliessende INSERT INTO set_catalog entfernt → rot: „neu“ (G ohne Zeile)
@@ -175,7 +175,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     await db.run('DELETE FROM rb_sets');
     const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('csv-abgleich','x') RETURNING id`))
       .id;
-    await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft) VALUES
+    await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, source) VALUES
       ('1-1','A alt',2000,1,10,'csv'), ('2-1','Set 2-1',NULL,NULL,NULL,'api'), ('3-1','C',2001,1,10,'csv'),
       ('4-1','D',2002,1,10,'csv'), ('5-1','E',2003,1,10,'api'), ('6-1','F',2004,1,10,'api')`);
     await db.run(
@@ -194,19 +194,19 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     const zeilen = Object.fromEntries(
       (
         await db.all(
-          `SELECT r.set_num, r.name, r.theme_id, r.num_parts, r.set_img_url, r.herkunft, (c.set_number IS NOT NULL) AS katalog
+          `SELECT r.set_num, r.name, r.theme_id, r.num_parts, r.set_img_url, r.source, (c.set_number IS NOT NULL) AS katalog
          FROM rb_sets r LEFT JOIN set_catalog c ON c.set_number = r.set_num`,
         )
       ).map(z => [z.set_num, z]),
     );
     assert.deepEqual(
-      zeilen['7-1'] && [zeilen['7-1'].herkunft, zeilen['7-1'].katalog],
+      zeilen['7-1'] && [zeilen['7-1'].source, zeilen['7-1'].katalog],
       ['csv', true],
       'neu: eingefügt, mit set_catalog',
     );
     assert.deepEqual(
       ['1-1', '2-1'].map(
-        n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].herkunft],
+        n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].source],
       ),
       [
         ['A neu', 2, 11, 'csv'],
@@ -216,7 +216,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     );
     assert.equal(zeilen['1-1'].set_img_url, 'https://cdn/1.jpg');
     assert.deepEqual(
-      ['3-1', '5-1'].map(n => zeilen[n] && [zeilen[n].herkunft, zeilen[n].katalog]),
+      ['3-1', '5-1'].map(n => zeilen[n] && [zeilen[n].source, zeilen[n].katalog]),
       [
         ['api', true],
         ['api', true],

@@ -81,7 +81,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
     assert.equal(p.total, 8, 'acht Datenzeilen gelesen');
     assert.equal(p.vorhanden, 1);
     assert.deepEqual(p.vorhanden_nummern, ['10305-1']);
-    assert.equal(await db.get('SELECT 1 FROM import_stand WHERE user_id=$1', [uid]), undefined, 'kein Lauf angelegt');
+    assert.equal(await db.get('SELECT 1 FROM import_status WHERE user_id=$1', [uid]), undefined, 'kein Lauf angelegt');
   });
 
   await sende(false);

@@ -11,9 +11,9 @@
  *   B  in ergaenzePreisAuftrag `DO UPDATE …` durch `DO NOTHING` ersetzt → rot:
  *      „je Konto und Währung …“ (die neuen Posten fehlen)
  *   C  in setzeVerschoben wieder fest 'offen' statt OFFEN_ODER_ERSETZT → rot:
- *      „der laufende geht zurück, während sein Folgeauftrag wartet“ (23505)
+ *      „der laufende geht zurück, während sein Folgeauftrag waiting“ (23505)
  *   D  in gibZurueck dasselbe → rot: derselbe Test (23505 beim Zurückgeben)
- *   E  in belegeAuftrag `wartet = false` entfernt → rot: „verschoben wartet, belegt nicht mehr“
+ *   E  in belegeAuftrag `waiting = false` entfernt → rot: „verschoben waiting, belegt nicht mehr“
  *   F  in setzeFortschritt Math.floor entfernt → rot: „Fortschritt ganzzahlig …“ (5.532)
  *   G  in fortschrittsKette `.then(melde, melde)` wieder `.then(melde)` → rot: derselbe Test
  *      (die Meldung nach der gescheiterten scheitert auch)
@@ -32,7 +32,7 @@ const { buildAndRequire, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
-const set = n => ({ art: 'set', nummer: `${n}-1`, zustand: 'N' });
+const set = n => ({ type: 'set', nummer: `${n}-1`, zustand: 'N' });
 
 test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
@@ -43,20 +43,20 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   const D_ = _req('src/auftraege/dienst.js');
   const { merkePreiseVor } = _req('src/finanzen/preisPosten.js');
   const D = { ...D_, merkePreiseVor: n => alsKonto(uid, () => merkePreiseVor(n)) };
-  const repo = require('./helpers/sources').testBereich('auftraege').auftraege;
+  const repo = require('./helpers/sources').testBereich('jobs').jobs;
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-  const leeren = () => db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);
+  const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   const zeilen = () =>
     db.all(
-      `SELECT id::text AS id, status, wartet, nutzlast->'posten' AS posten, nutzlast->>'waehrung' AS waehrung
-         FROM auftraege WHERE art = 'preise_nachladen' AND user_id = $1 ORDER BY id`,
+      `SELECT id::text AS id, status, waiting, payload->'posten' AS posten, payload->>'waehrung' AS waehrung
+         FROM jobs WHERE type = 'preise_nachladen' AND user_id = $1 ORDER BY id`,
       [uid],
     );
   t.after(async () => {
     await leeren();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await require('./helpers/sources')
-      .testBereich('auftraege')
+      .testBereich('jobs')
       .db.benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
@@ -116,7 +116,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     );
   });
 
-  await t.test('der laufende geht zurück, während sein Folgeauftrag wartet', async () => {
+  await t.test('der laufende geht zurück, während sein Folgeauftrag waiting', async () => {
     const bis = new Date(Date.now() + 6 * 3600_000);
     for (const zurueck of [
       a => D.verschoben(a, bis, 'BrickLink-Tageskontingent erschöpft', false),
@@ -139,18 +139,18 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     }
   });
 
-  await t.test('verschoben wartet, belegt nicht mehr', async () => {
+  await t.test('verschoben waiting, belegt nicht mehr', async () => {
     await leeren();
     await D.merkePreiseVor({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const lauf = await repo.belegeAuftrag(['preise_nachladen'], 60);
     await D.verschoben(lauf, new Date(Date.now() - 1000), 'BrickLink-Tageskontingent erschöpft', false);
     assert.deepEqual(
-      (await zeilen()).map(x => [x.status, x.wartet]),
+      (await zeilen()).map(x => [x.status, x.waiting]),
       [['offen', true]],
     );
     await repo.belegeAuftrag(['preise_nachladen'], 60);
     assert.deepEqual(
-      (await zeilen()).map(x => [x.status, x.wartet]),
+      (await zeilen()).map(x => [x.status, x.waiting]),
       [['laeuft', false]],
     );
   });
@@ -158,16 +158,16 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   await t.test('Fortschritt ganzzahlig, und eine gescheiterte Meldung hält die folgenden nicht an', async () => {
     await leeren();
     const id = await D.merkePreiseVor({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
-    const stand = () => db.get('SELECT fortschritt FROM auftraege WHERE id = $1', [id]).then(r => r.fortschritt);
+    const stand = () => db.get('SELECT progress FROM jobs WHERE id = $1', [id]).then(r => r.progress);
     const gesehen = [];
-    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, {
       preise_nachladen: {
         ausfuehren: async (_n, k) => {
-          await k.fortschritt({ erledigt: 5.532, gesamt: 8 });
+          await k.progress({ erledigt: 5.532, gesamt: 8 });
           gesehen.push(await stand());
           // BigInt lässt sich nicht als JSON schreiben: Diese eine Meldung scheitert.
-          await assert.rejects(k.fortschritt({ erledigt: 6, gross: 1n }));
-          gesehen.push(await k.fortschritt({ erledigt: 7, gesamt: 8 }));
+          await assert.rejects(k.progress({ erledigt: 6, gross: 1n }));
+          gesehen.push(await k.progress({ erledigt: 7, gesamt: 8 }));
           gesehen.push(await stand());
         },
       },

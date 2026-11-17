@@ -2,12 +2,12 @@
 /**
  * Der Worker hält das Lease eines Auftrags selbst, exklusive Arten bleiben
  * über Verbindungen hinweg einzeln, und ein Abbruch erreicht auch einen
- * Auftrag, der gerade auf einen Download wartet.
+ * Auftrag, der gerade auf einen Download waiting.
  *
  * Gegenproben (05.11.2026 gemessen):
  *   A  in fuehreAuftragAus() `haltePacht(...)` durch `() => {}` ersetzt → rot: „ein
- *      Auftrag ohne eigenes Lebenszeichen läuft genau einmal“ (5 Starts, Status fehler)
- *   C  Trigger auftrag_exklusiv gelöscht (DROP TRIGGER) → rot: „B belegt,
+ *      Auftrag ohne eigenes Lebenszeichen läuft genau einmal“ (5 Starts, Status error_message)
+ *   C  Trigger job_exclusive_locks gelöscht (DROP TRIGGER) → rot: „B belegt,
  *      solange A noch nicht festgeschrieben hat“
  *   D  im Worker `listen(AUFTRAG_STAND_KANAL, …)` entfernt → rot: „Abbruch
  *      eines csv_sync im Download dauerte 5000 ms“
@@ -54,7 +54,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege },
+    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('jobs').jobs },
   );
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
@@ -63,56 +63,56 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   });
 
   await t.test('ein Auftrag ohne eigenes Lebenszeichen läuft genau einmal', async () => {
-    await db.run("DELETE FROM auftraege WHERE art = 'wechselkurse'");
+    await db.run("DELETE FROM jobs WHERE type = 'exchange_rates'");
     let starts = 0;
     // Zwei Worker wie zwei Prozesse: Der zweite darf die Zeile nicht übernehmen, solange der erste arbeitet.
     // Die Arbeit dauert länger als die Frist (1 s): Nur das eigene Lebenszeichen hält die Zeile.
     const bearbeiter = {
-      wechselkurse: {
+      exchange_rates: {
         ausfuehren: async () => {
           starts++;
           await warte(4500);
         },
       },
     };
-    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().jobs, bearbeiter, {
       parallel: 2,
       fristSek: 1,
       taktMs: 300,
     });
-    const w2 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+    const w2 = erzeugeWorker(require('./helpers/sources').testDienste().jobs, bearbeiter, {
       parallel: 2,
       fristSek: 1,
       taktMs: 300,
     });
-    const id = await A.stelleAuftragEin('wechselkurse', {}, { schluessel: `pacht-${process.pid}` });
-    const status = async () => (await db.get('SELECT status FROM auftraege WHERE id = $1', [id])).status;
+    const id = await A.stelleAuftragEin('exchange_rates', {}, { dedupe_key: `pacht-${process.pid}` });
+    const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
     w.starte();
     await bis(async () => (await status()) === 'laeuft');
     w2.starte();
     await bis(async () => (await status()) === 'erledigt', 8000);
     await w.stoppe(100);
     await w2.stoppe(100);
-    const z = await db.get('SELECT status, versuche FROM auftraege WHERE id = $1', [id]);
+    const z = await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [id]);
     assert.deepEqual(
       { starts, ...z },
-      { starts: 1, status: 'erledigt', versuche: 1 },
+      { starts: 1, status: 'erledigt', attempts: 1 },
       'ein Auftrag ohne eigenes Lebenszeichen läuft genau einmal',
     );
   });
 
   await t.test('die zweite Verbindung belegt keinen zweiten csv_sync', async () => {
-    await db.run("DELETE FROM auftraege WHERE art = 'csv_sync'");
+    await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
     await db.run(
-      `INSERT INTO auftraege (art, nutzlast, schluessel) VALUES ('csv_sync', '{}', 'x1'), ('csv_sync', '{}', 'x2')`,
+      `INSERT INTO jobs (type, payload, dedupe_key) VALUES ('csv_sync', '{}', 'x1'), ('csv_sync', '{}', 'x2')`,
     );
     const a = await db.pool.connect();
     try {
       await a.query('BEGIN');
       // Verbindung A belegt und hält ihre Transaktion offen; B belegt über den Dienst.
       const ra =
-        await a.query(`UPDATE auftraege SET status = 'laeuft', belegt_von = 'A', frist_bis = NOW() + INTERVAL '5 min'
-                                 WHERE schluessel = 'x1' RETURNING id`);
+        await a.query(`UPDATE jobs SET status = 'laeuft', locked_by = 'A', deadline_at = NOW() + INTERVAL '5 min'
+                                 WHERE dedupe_key = 'x1' RETURNING id`);
       assert.equal(ra.rowCount, 1);
       assert.equal(
         await A.belegeAuftrag(['csv_sync'], 60, 'B', ['csv_sync']),
@@ -128,20 +128,20 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
       null,
       'B belegt nach dem Festschreiben von A',
     );
-    const laufend = await db.all("SELECT belegt_von FROM auftraege WHERE art = 'csv_sync' AND status = 'laeuft'");
+    const laufend = await db.all("SELECT locked_by FROM jobs WHERE type = 'csv_sync' AND status = 'laeuft'");
     assert.deepEqual(
-      laufend.map(z => z.belegt_von),
+      laufend.map(z => z.locked_by),
       ['A'],
       'die zweite Verbindung belegt keinen zweiten csv_sync',
     );
-    await db.run("DELETE FROM auftraege WHERE art = 'csv_sync'");
+    await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
   });
 
   await t.test('Abbruch eines csv_sync im Download endet in höchstens 2 s', async () => {
-    await db.run("DELETE FROM auftraege WHERE art = 'csv_sync'");
+    await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
     const BEARBEITER = _req('jobs/auftraegeStarten.js').bearbeiter(require('./helpers/sources').testDienste());
     const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().auftraege,
+      require('./helpers/sources').testDienste().jobs,
       { csv_sync: BEARBEITER.csv_sync },
       { fristSek: 60, taktMs: 100 },
     );
@@ -157,6 +157,6 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     await bis(() => w.laufend() === 0);
     const dauer = Date.now() - start;
     assert.ok(dauer <= 2000, `Abbruch eines csv_sync im Download dauerte ${dauer} ms`);
-    assert.equal((await db.get('SELECT status FROM auftraege WHERE id = $1', [id])).status, 'abgebrochen');
+    assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'abgebrochen');
   });
 });

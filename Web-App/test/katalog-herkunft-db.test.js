@@ -1,13 +1,13 @@
 /**
- * Was ein Konto eintippt, gehört ihm (teil_eigen, teil_farbe_eigen,
- * figur_eigen) und nie dem gemeinsamen Katalog: Ein anderes Konto zählt es
+ * Was ein Konto eintippt, gehört ihm (part_custom, part_color_custom,
+ * minifig_custom) und nie dem gemeinsamen Katalog: Ein anderes Konto zählt es
  * nicht als bekannt und fragt Rebrickable; der geprüfte Wert hat Vorrang.
  * Eingetippte Bilder kommen nur von den Hosts, die der Bild-Proxy zeigt.
  *
  * Gegenproben (am 03.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  merkeTeil()/merkeTeilFarbe()/merkeFigur() ohne den Zweig für `von`
  *      (Eingabe in den gemeinsamen Katalog) → rot: alle fünf Teiltests
- *   B  teilAusKatalog() verbindet teil_eigen und teil_farbe_eigen ohne
+ *   B  teilAusKatalog() verbindet part_custom und part_color_custom ohne
  *      `user_id = $3` → rot: „ein anderes Konto fragt trotzdem Rebrickable“
  *      und „der geprüfte Wert hat Vorrang …“ (nur der Name allein bleibt
  *      grün: Annas Bild fehlt Bruno und löst den Abruf schon aus)
@@ -87,8 +87,8 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
     db.get(
       `SELECT te.part_name, tfe.image_url
        FROM (SELECT $1::int AS u, $2::text AS nr) q
-       LEFT JOIN teil_eigen te ON te.user_id = q.u AND te.part_number = q.nr
-       LEFT JOIN teil_farbe_eigen tfe ON tfe.user_id = q.u AND tfe.part_number = q.nr AND tfe.color_id = 4`,
+       LEFT JOIN part_custom te ON te.user_id = q.u AND te.part_number = q.nr
+       LEFT JOIN part_color_custom tfe ON tfe.user_id = q.u AND tfe.part_number = q.nr AND tfe.color_id = 4`,
       [uid, nr],
     );
 
@@ -150,7 +150,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
       'Chewbacca',
     );
     assert.equal(
-      (await db.get('SELECT fig_name FROM figur_eigen WHERE user_id = $1 AND fig_number = $2', [A, 'sw0011'])).fig_name,
+      (await db.get('SELECT fig_name FROM minifig_custom WHERE user_id = $1 AND fig_number = $2', [A, 'sw0011'])).fig_name,
       'Annas Figur',
     );
   });

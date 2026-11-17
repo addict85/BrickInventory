@@ -48,8 +48,8 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const hoeher = () => db.run('UPDATE users SET sitzungs_version = sitzungs_version + 1 WHERE id = $1', [uid]);
-  const inDb = async () => (await db.get('SELECT sitzungs_version AS v FROM users WHERE id = $1', [uid])).v;
+  const hoeher = () => db.run('UPDATE users SET session_version = session_version + 1 WHERE id = $1', [uid]);
+  const inDb = async () => (await db.get('SELECT session_version AS v FROM users WHERE id = $1', [uid])).v;
 
   await t.test('ohne Horch-Verbindung gilt nur die Datenbank', async () => {
     await sv.aktuelleSitzungsVersion(uid);

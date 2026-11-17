@@ -127,7 +127,7 @@ export async function stand(
   uid: number,
 ): Promise<{ aktiv: boolean; codes_uebrig: number; alte_codes_bis: string | null }> {
   const r = await k.zweiterFaktor.faktorStand(uid);
-  return { aktiv: r.aktiv, codes_uebrig: r.uebrig, alte_codes_bis: r.altBis ? r.altBis.toISOString() : null };
+  return { aktiv: r.active, codes_uebrig: r.uebrig, alte_codes_bis: r.altBis ? r.altBis.toISOString() : null };
 }
 
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
@@ -141,7 +141,7 @@ export async function bestaetigeEinrichtung(k: FaktorenKontext, uid: number, cod
     const z = await repo.unbestaetigtesGeheimnisSperren(t.db, uid);
     if (!z) return null;
     const schritt = passenderSchritt(
-      entschluessele(z.geheimnis, faktorKontext(uid)) ?? '',
+      entschluessele(z.secret, faktorKontext(uid)) ?? '',
       String(code ?? '').trim(),
       t.uhr.jetzt(),
     );
@@ -165,7 +165,7 @@ export async function pruefeCode(
     if (!mitEinmalcode) return null;
     const z = await k.zweiterFaktor.aktivesGeheimnis(uid);
     const schritt = z
-      ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe, k.uhr.jetzt())
+      ? passenderSchritt(entschluessele(z.secret, faktorKontext(uid)) ?? '', eingabe, k.uhr.jetzt())
       : null;
     if (schritt === null) return null;
     return (await k.zweiterFaktor.verbraucheSchritt(uid, schritt)) ? 'totp' : null;

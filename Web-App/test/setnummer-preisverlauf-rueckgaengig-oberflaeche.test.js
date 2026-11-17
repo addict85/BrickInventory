@@ -212,12 +212,12 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
     },
     '/v1/admin/auftraege': {
       success: true,
-      zusammenfassung: [{ art: 'wechselkurse', status: 'fehler', anzahl: 1 }],
+      zusammenfassung: [{ art: 'exchange_rates', status: 'fehler', anzahl: 1 }],
       job_prozess: { laeuft: true },
       pausen: [],
       bildbedarf: 0,
       auftraege: [
-        { id: '9', art: 'wechselkurse', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 },
+        { id: '9', art: 'exchange_rates', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 },
       ],
     },
   });

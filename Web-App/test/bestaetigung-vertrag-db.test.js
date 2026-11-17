@@ -50,7 +50,7 @@ const PASS = 'Vertrag-Passwort-1';
 const ZUSATZ = {
   'POST /api/v1/auth/users': { username: `bv_neu_${process.pid}`, password: 'Lang-genug-Passwort-1', is_admin: true },
   'PUT /api/v1/auth/users/:id/admin': { is_admin: true },
-  'PUT /api/v1/auth/users/:id/aktiv': { is_active: false },
+  'PUT /api/v1/auth/users/:id/active': { is_active: false },
   'PUT /api/v1/auth/users/:id/password': { password: 'Lang-genug-Passwort-2' },
   'POST /api/v1/auth/change-password': { newPassword: 'Lang-genug-Passwort-3' },
   'PUT /api/v1/auth/profile': { email: `bv_${process.pid}@neu.example` },
@@ -64,7 +64,7 @@ const PFLICHT = [
   'POST /api/v1/auth/qr-token',
   'POST /api/v1/auth/users',
   'PUT /api/v1/auth/users/:id/admin',
-  'PUT /api/v1/auth/users/:id/aktiv',
+  'PUT /api/v1/auth/users/:id/active',
   'PUT /api/v1/auth/users/:id/password',
   'DELETE /api/v1/auth/users/:id',
   'DELETE /api/v1/auth/users/:id/zweiter-faktor',
@@ -78,8 +78,8 @@ const PFLICHT = [
   'POST /api/v1/settings',
   'POST /api/v1/settings/sessions/andere-beenden',
   'DELETE /api/v1/settings/tokens/:tokenId',
-  'DELETE /api/v1/papierkorb',
-  'DELETE /api/v1/papierkorb/:id',
+  'DELETE /api/v1/trash',
+  'DELETE /api/v1/trash/:id',
   'DELETE /api/v1/vouchers/:id',
   'POST /api/v1/vouchers/:id/klartext',
   'POST /api/v1/vouchers/:id/pdf-freigabe',
@@ -101,12 +101,12 @@ async function konto(name, admin) {
 }
 async function mitFaktor(uid) {
   await zf.beginneEinrichtung(uid);
-  const z = await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid]);
+  const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
   const codes = await zf.bestaetigeEinrichtung(
     uid,
-    zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt()),
+    zf.hotp(zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid))), zf.zeitschritt()),
   );
-  assert.ok(Array.isArray(codes), 'Vorbedingung: Faktor aktiv');
+  assert.ok(Array.isArray(codes), 'Vorbedingung: Faktor active');
   return codes;
 }
 

@@ -1,4 +1,4 @@
-// BrickLink-Nummern stehen nur in bl_zuordnung.
+// BrickLink-Nummern stehen nur in bl_mapping.
 
 import type { BlArt } from '../../db/blZuordnungSql';
 import { schreibeBlNummern } from './repository/blZuordnung';

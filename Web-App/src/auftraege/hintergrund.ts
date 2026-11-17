@@ -48,7 +48,7 @@ export async function auftragAbbrechen(k: AuftraegeKontext, kennung: number) {
   const id = String(kennung);
   const a = await brichAb(k, id);
   if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
-  await planeNaechsten(k, a.art);
+  await planeNaechsten(k, a.type);
   return { id, status: 'abgebrochen' };
 }
 

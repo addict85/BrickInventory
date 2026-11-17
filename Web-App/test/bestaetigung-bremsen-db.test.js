@@ -66,10 +66,10 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
   });
 
   await zf.beginneEinrichtung(uid);
-  const z = await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid]);
+  const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
   const codes = await zf.bestaetigeEinrichtung(
     uid,
-    zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt()),
+    zf.hotp(zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid))), zf.zeitschritt()),
   );
   let naechster = 0;
   const richtig = () => codes[naechster++];

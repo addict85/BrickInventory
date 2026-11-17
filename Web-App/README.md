@@ -188,7 +188,7 @@ postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
 `compose.yaml` startet zwei Dienste aus demselben Bau: `app` (`ROLLE: web`)
 beantwortet Anfragen, `jobs` (`ROLLE: jobs`) arbeitet die Hintergrundarbeit
 ab — Preise, Anleitungen, Bilder, PDF, Importe, Katalogabgleich, Aufräumen.
-Alles davon steht als Auftrag in der Tabelle `auftraege`, auch die Zeitpläne;
+Alles davon steht als Auftrag in der Tabelle `jobs`, auch die Zeitpläne;
 „Monitoring → Hintergrundarbeiten“ zeigt sie samt Fehlern und lässt sie
 abbrechen, wiederholen oder vorziehen. Ohne Compose (`npm start`) gilt
 `ROLLE=beides`: ein Prozess für alles. Ein Update von einer Fassung mit

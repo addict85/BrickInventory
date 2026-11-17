@@ -49,6 +49,8 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
     await c.query(`SET search_path TO ${SCHEMA}, public`);
     for (const tab of ['rb_sets', 'rb_themes', 'set_catalog', 'catalog_cache'])
       await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING ALL)`);
+    // Migration 0124 (nach 0108) hat die Spalte umbenannt; die Migration von damals kennt noch den alten Namen.
+    await c.query(`ALTER TABLE rb_sets RENAME COLUMN source TO herkunft`);
     await c.query(`ALTER TABLE catalog_cache ADD COLUMN name text, ADD COLUMN year integer, ADD COLUMN theme text,
                    ADD COLUMN pieces integer, ADD COLUMN image_url text`);
     await c.query(`INSERT INTO rb_themes (id, name, parent_id) VALUES (1, 'Star Wars', NULL)`);
@@ -120,8 +122,8 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
       theme_id: 158,
     });
     assert.deepEqual(
-      await db.get(`SELECT name, year, theme_id, num_parts, herkunft FROM rb_sets WHERE set_num = '4242-1'`),
-      { name: 'Abgerufen', year: 2021, theme_id: 158, num_parts: 99, herkunft: 'api' },
+      await db.get(`SELECT name, year, theme_id, num_parts, source FROM rb_sets WHERE set_num = '4242-1'`),
+      { name: 'Abgerufen', year: 2021, theme_id: 158, num_parts: 99, source: 'api' },
     );
     const z = await cache.katalogSetZu(db, '4242-1');
     assert.equal(z.name, 'Abgerufen');

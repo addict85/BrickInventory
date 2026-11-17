@@ -16,15 +16,33 @@ export interface Tabellen {
     sub_user_id: number;
     created_at: Date;
   };
-  api_aufrufe: {
-    tag: Date;
-    api: string;
-    konto: number;
-    anzahl: number;
+  admin_log: {
+    id: number;
+    occurred_at: Date;
+    admin_id: number | null;
+    target_id: number | null;
+    target_name: string | null;
+    action: string;
+    details: string | null;
   };
-  api_takt: {
+  admin_takeovers: {
+    target_id: number;
+    type: string;
+    initiated_by: number;
+    password_hash: string | null;
+    created_at: Date;
+    effective_at: Date;
+    cancel_hash: string | null;
+  };
+  api_cadence: {
     api: string;
-    naechster: Date;
+    next_at: Date;
+  };
+  api_calls: {
+    day: Date;
+    api: string;
+    account_id: number;
+    count: number;
   };
   api_tokens: {
     token: string;
@@ -37,16 +55,16 @@ export interface Tabellen {
     never_expires: boolean;
     label: string | null;
     scope: string;
-    ip_bereich: string | null;
-    rotiert_am: Date;
-    vorgaenger: string | null;
-    ersetzt_durch: string | null;
+    ip_range: string | null;
+    rotated_at: Date;
+    previous_token: string | null;
+    replaced_by: string | null;
   };
-  api_tokens_verbraucht: {
+  api_tokens_consumed: {
     token: string;
     user_id: number;
-    familie: Date;
-    verbraucht_am: Date;
+    token_family: Date;
+    consumed_at: Date;
   };
   app_logs: {
     id: string;
@@ -54,47 +72,15 @@ export interface Tabellen {
     message: string;
     logged_at: Date;
   };
-  auftraege: {
-    id: string;
-    art: string;
-    nutzlast: unknown;
-    user_id: number | null;
-    schluessel: string | null;
-    status: string;
-    versuche: number;
-    max_versuche: number;
-    faellig_ab: Date;
-    belegt_von: string | null;
-    fehler: string | null;
-    erstellt: Date;
-    aktualisiert: Date;
-    frist_bis: Date | null;
-    gestartet: Date | null;
-    fortschritt: unknown | null;
-    ergebnis: unknown | null;
-    wartet: boolean;
-  };
-  auftrag_exklusiv: {
-    art: string;
-  };
-  auftrag_pausen: {
-    art: string;
-    bis: Date;
-    grund: string | null;
-    stufe: number;
-  };
-  auftrags_arten: {
-    art: string;
-  };
-  bl_zuordnung: {
-    art: string;
+  bl_mapping: {
+    type: string;
     rb_id: string;
     bl_id: string | null;
     fetched_at: Date | null;
   };
-  bl_zuordnung_eigen: {
+  bl_mapping_custom: {
     user_id: number;
-    art: string;
+    type: string;
     rb_id: string;
     bl_id: string;
     updated_at: Date;
@@ -105,37 +91,30 @@ export interface Tabellen {
     bl_type: string | null;
     fetched_at: Date | null;
   };
-  figur_eigen: {
+  device_keys: {
     user_id: number;
-    fig_number: string;
-    fig_name: string | null;
-    image_url: string | null;
-    updated_at: Date;
+    token_family: Date;
+    public_key: string;
+    created_at: Date;
+    attested: boolean;
   };
-  geraete_nonces: {
+  device_nonces: {
     nonce: string;
     user_id: number;
-    familie: Date;
-    aus_qr: boolean;
-    angelegt_am: Date;
-    ablauf: Date;
+    token_family: Date;
+    from_qr: boolean;
+    created_at: Date;
+    expires_at: Date;
   };
-  geraete_schluessel: {
-    user_id: number;
-    familie: Date;
-    oeffentlich: string;
-    angelegt_am: Date;
-    attestiert: boolean;
+  exchange_rates: {
+    day: Date;
+    currency: string;
+    per_eur: number;
   };
   global_settings: {
     key: string;
     value: string;
     updated_at: Date | null;
-  };
-  gutschein_guthaben_schranke: {
-    id: number;
-    letzter_abruf: Date | null;
-    sperre_bis: Date | null;
   };
   household_former_links: {
     main_user_id: number;
@@ -143,14 +122,14 @@ export interface Tabellen {
     via_user_id: number | null;
     created_at: Date;
   };
-  idempotenz: {
+  idempotency: {
     user_id: number;
-    schluessel: string;
-    anfrage: string;
+    key: string;
+    request: string;
     status: number | null;
-    antwort: string | null;
-    angelegt: Date;
-    wirkung: boolean;
+    response: string | null;
+    created_at: Date;
+    has_effect: boolean;
   };
   image_misses: {
     cache_key: string;
@@ -162,7 +141,7 @@ export interface Tabellen {
     set_number: string | null;
     requested_at: Date;
   };
-  import_stand: {
+  import_status: {
     user_id: number;
     status: string;
     total: number;
@@ -183,10 +162,37 @@ export interface Tabellen {
     local_path: string | null;
     downloaded_at: Date | null;
   };
-  laufzustand: {
-    schluessel: string;
-    wert: string;
-    aktualisiert: Date;
+  job_exclusive_locks: {
+    type: string;
+  };
+  job_pauses: {
+    type: string;
+    until_at: Date;
+    reason: string | null;
+    level: number;
+  };
+  job_types: {
+    type: string;
+  };
+  jobs: {
+    id: string;
+    type: string;
+    payload: unknown;
+    user_id: number | null;
+    dedupe_key: string | null;
+    status: string;
+    attempts: number;
+    max_attempts: number;
+    due_at: Date;
+    locked_by: string | null;
+    error_message: string | null;
+    created_at: Date;
+    updated_at: Date;
+    deadline_at: Date | null;
+    started_at: Date | null;
+    progress: unknown | null;
+    result: unknown | null;
+    waiting: boolean;
   };
   minifig_acquisitions: {
     id: number;
@@ -198,7 +204,14 @@ export interface Tabellen {
     created_at: Date;
     currency: string;
     price_estimated: boolean;
-    tag: Date | null;
+    day: Date | null;
+  };
+  minifig_custom: {
+    user_id: number;
+    fig_number: string;
+    fig_name: string | null;
+    image_url: string | null;
+    updated_at: Date;
   };
   minifig_parts_cache: {
     fig_number: string;
@@ -213,8 +226,8 @@ export interface Tabellen {
     avg_price: number | null;
     qty_avg_price: number | null;
     fetched_at: Date | null;
-    geschaetzt: boolean;
-    abdeckung: number | null;
+    estimated: boolean;
+    coverage: number | null;
   };
   minifig_price_history: {
     id: number;
@@ -224,8 +237,8 @@ export interface Tabellen {
     avg_price: number | null;
     qty_avg_price: number | null;
     recorded_at: Date;
-    geschaetzt: boolean;
-    abdeckung: number | null;
+    estimated: boolean;
+    coverage: number | null;
   };
   minifigs: {
     id: number;
@@ -242,16 +255,6 @@ export interface Tabellen {
     image_local: string | null;
     updated_at: Date | null;
   };
-  papierkorb: {
-    id: number;
-    user_id: number;
-    art: string;
-    nummer: string;
-    farbe_id: number | null;
-    bezeichnung: string | null;
-    zeilen: unknown;
-    geloescht_am: Date;
-  };
   part_acquisitions: {
     id: number;
     user_id: number;
@@ -263,7 +266,7 @@ export interface Tabellen {
     created_at: Date;
     currency: string;
     price_estimated: boolean;
-    tag: Date | null;
+    day: Date | null;
   };
   part_catalog: {
     part_number: string;
@@ -279,6 +282,22 @@ export interface Tabellen {
     image_url: string | null;
     image_local: string | null;
     updated_at: Date | null;
+  };
+  part_color_custom: {
+    user_id: number;
+    part_number: string;
+    color_id: number;
+    color_name: string | null;
+    color_hex: string | null;
+    image_url: string | null;
+    updated_at: Date;
+  };
+  part_custom: {
+    user_id: number;
+    part_number: string;
+    part_name: string | null;
+    category_name: string | null;
+    updated_at: Date;
   };
   part_price_cache: {
     id: number;
@@ -310,9 +329,9 @@ export interface Tabellen {
     storage_id: number | null;
     added_at: Date | null;
   };
-  parts_katalog_offen: {
+  parts_catalog_pending: {
     id: string;
-    nummer: string;
+    number: string;
   };
   parts_summary: {
     user_id: number;
@@ -355,12 +374,12 @@ export interface Tabellen {
     user_id: number;
     set_number: string;
     condition: string;
-    richtung: string;
-    schwelle: number;
+    direction: string;
+    threshold: number;
     currency_code: string;
-    ausgeloest: boolean;
-    zuletzt_am: Date | null;
-    zuletzt_preis: number | null;
+    triggered: boolean;
+    last_triggered_at: Date | null;
+    last_price: number | null;
     created_at: Date;
   };
   price_cache: {
@@ -393,22 +412,22 @@ export interface Tabellen {
     used_at: Date | null;
     token_days: number | null;
     id: string;
-    abholung: string | null;
+    pickup_code: string | null;
     code_hash: string | null;
-    geraet: string | null;
-    ip_bereich: string | null;
-    fehlversuche: number;
-    bestaetigt_am: Date | null;
-    abgelehnt_am: Date | null;
-    abgeholt_am: Date | null;
+    device: string | null;
+    ip_range: string | null;
+    failed_attempts: number;
+    confirmed_at: Date | null;
+    rejected_at: Date | null;
+    picked_up_at: Date | null;
   };
   rate_limit_attempts: {
     key: string;
     count: number;
     first_at: Date;
     last_at: Date | null;
-    laufend: number;
-    laufend_seit: Date | null;
+    ongoing: number;
+    ongoing_since: Date | null;
   };
   rb_colors: {
     id: number;
@@ -454,32 +473,36 @@ export interface Tabellen {
     theme_id: number | null;
     num_parts: number | null;
     set_img_url: string | null;
-    herkunft: string;
+    source: string;
   };
   rb_themes: {
     id: number;
     name: string | null;
     parent_id: number | null;
   };
+  run_state: {
+    key: string;
+    value: string;
+    updated_at: Date;
+  };
   schema_migrations: {
     name: string;
     applied_at: Date;
     pruefsumme: string | null;
   };
-  schritt_challenges: {
-    challenge: string;
+  second_factor: {
     user_id: number;
-    familie: Date;
-    aktion: string;
-    angelegt_am: Date;
-    ablauf: Date;
+    secret: string;
+    active: boolean;
+    last_step: string;
+    created_at: Date;
   };
-  schritt_freigaben: {
+  second_factor_codes: {
+    id: number;
     user_id: number;
-    familie: Date;
-    aktion: string;
-    bis: Date;
-    hoechstens: Date;
+    code_hash: string;
+    consumed_at: Date | null;
+    old_valid_until: Date | null;
   };
   set_acquisitions: {
     id: number;
@@ -491,7 +514,7 @@ export interface Tabellen {
     condition: string;
     currency: string;
     price_estimated: boolean;
-    tag: Date | null;
+    day: Date | null;
   };
   set_catalog: {
     set_number: string;
@@ -501,13 +524,13 @@ export interface Tabellen {
     brickset_id: number | null;
     updated_at: Date | null;
   };
-  set_figuren: {
+  set_minifigs: {
     set_number: string;
     fig_number: string;
     quantity: number;
     updated_at: Date;
   };
-  set_teile: {
+  set_parts: {
     set_number: string;
     part_number: string;
     color_id: number;
@@ -531,6 +554,21 @@ export interface Tabellen {
     local_path: string | null;
     fetched_at: Date | null;
   };
+  step_up_approvals: {
+    user_id: number;
+    token_family: Date;
+    action: string;
+    until_at: Date;
+    max_until: Date;
+  };
+  step_up_challenges: {
+    challenge: string;
+    user_id: number;
+    token_family: Date;
+    action: string;
+    created_at: Date;
+    expires_at: Date;
+  };
   storage_locations: {
     id: number;
     user_id: number;
@@ -542,21 +580,15 @@ export interface Tabellen {
     data: string;
     fetched_at: Date | null;
   };
-  teil_eigen: {
+  trash: {
+    id: number;
     user_id: number;
-    part_number: string;
-    part_name: string | null;
-    category_name: string | null;
-    updated_at: Date;
-  };
-  teil_farbe_eigen: {
-    user_id: number;
-    part_number: string;
-    color_id: number;
-    color_name: string | null;
-    color_hex: string | null;
-    image_url: string | null;
-    updated_at: Date;
+    type: string;
+    number: string;
+    color_id: number | null;
+    label: string | null;
+    rows: unknown;
+    deleted_at: Date;
   };
   user_sessions: {
     sid: string;
@@ -585,29 +617,16 @@ export interface Tabellen {
     reset_token_expires: Date | null;
     must_change_password: boolean;
     created_at: Date | null;
-    sitzungs_version: number;
-    registrierung_offen: boolean;
-    email_neu: string | null;
-    email_neu_token: string | null;
-    email_neu_bis: Date | null;
+    session_version: number;
+    registration_pending: boolean;
+    new_email: string | null;
+    new_email_token: string | null;
+    new_email_until: Date | null;
   };
-  verwalter_uebernahmen: {
-    ziel_id: number;
-    art: string;
-    durch_id: number;
-    passwort_hash: string | null;
-    angelegt_am: Date;
-    wirksam_ab: Date;
-    abbruch_hash: string | null;
-  };
-  verwaltungsprotokoll: {
+  voucher_balance_throttle: {
     id: number;
-    zeit: Date;
-    verwalter_id: number | null;
-    ziel_id: number | null;
-    ziel_name: string | null;
-    aktion: string;
-    einzelheiten: string | null;
+    last_checked_at: Date | null;
+    locked_until: Date | null;
   };
   vouchers: {
     id: number;
@@ -619,8 +638,8 @@ export interface Tabellen {
     pdf_path: string | null;
     created_at: Date;
     updated_at: Date;
-    guthaben_geprueft_am: Date | null;
-    nummer_suche: string | null;
+    balance_checked_at: Date | null;
+    number_search: string | null;
   };
   wanted: {
     id: number;
@@ -632,27 +651,8 @@ export interface Tabellen {
   webauthn_challenges: {
     challenge: string;
     user_id: number | null;
-    zweck: string;
+    purpose: string;
     expires_at: Date;
-  };
-  wechselkurse: {
-    tag: Date;
-    waehrung: string;
-    je_eur: number;
-  };
-  zweiter_faktor: {
-    user_id: number;
-    geheimnis: string;
-    aktiv: boolean;
-    letzter_schritt: string;
-    eingerichtet_am: Date;
-  };
-  zweiter_faktor_codes: {
-    id: number;
-    user_id: number;
-    code_hash: string;
-    verbraucht_am: Date | null;
-    alt_gilt_bis: Date | null;
   };
 }
 

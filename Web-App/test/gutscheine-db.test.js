@@ -307,7 +307,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
         [400, 'aktuelles_passwort_falsch'],
         'Freigabe nur mit Passwort',
       );
-      await db.run("DELETE FROM verwaltungsprotokoll WHERE aktion IN ('gutschein_pdf', 'gutschein_export')");
+      await db.run("DELETE FROM admin_log WHERE action IN ('gutschein_pdf', 'gutschein_export')");
       const f = await (
         await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })
       ).json();
@@ -354,9 +354,9 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.deepEqual(
         (
           await db.all(
-            "SELECT aktion, ziel_id FROM verwaltungsprotokoll WHERE aktion IN ('gutschein_pdf', 'gutschein_export') ORDER BY id",
+            "SELECT action, target_id FROM admin_log WHERE action IN ('gutschein_pdf', 'gutschein_export') ORDER BY id",
           )
-        ).map(z => z.aktion),
+        ).map(z => z.action),
         ['gutschein_pdf', 'gutschein_pdf', 'gutschein_pdf', 'gutschein_pdf', 'gutschein_export'],
         'die Freigabe steht im Protokoll',
       );
@@ -474,7 +474,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       );
       const fremd = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksEnkel, 'POST', { password: PASS });
       assert.equal(fremd.status, 404, 'ein fremdes Konto liest den Klartext');
-      await db.run("DELETE FROM verwaltungsprotokoll WHERE aktion = 'gutschein_klartext'");
+      await db.run("DELETE FROM admin_log WHERE action = 'gutschein_klartext'");
       const k = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS });
       assert.deepEqual(await k.json(), {
         success: true,
@@ -484,9 +484,9 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       });
       assert.deepEqual(
         await db.all(
-          "SELECT verwalter_id, ziel_id, einzelheiten FROM verwaltungsprotokoll WHERE aktion = 'gutschein_klartext'",
+          "SELECT admin_id, target_id, details FROM admin_log WHERE action = 'gutschein_klartext'",
         ),
-        [{ verwalter_id: U.opa, ziel_id: U.opa, einzelheiten: '…1166' }],
+        [{ admin_id: U.opa, target_id: U.opa, details: '…1166' }],
         'der Abruf steht im Protokoll',
       );
     });

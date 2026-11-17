@@ -123,8 +123,8 @@ export type AppToken = {
   token_prefix: string | null;
   hard_expires_at: string | null;
   scope: string;
-  ip_bereich: string | null;
-  rotiert_am: string;
+  ip_range: string | null;
+  rotated_at: string;
   [feld: string]: unknown;
 };
 export type AuftraegeResponse = {
@@ -138,19 +138,19 @@ export type AuftraegeResponse = {
 };
 export type Auftrag = {
   id: string;
-  art: string;
+  type: string;
   status: string;
-  versuche: number;
-  max_versuche: number;
-  faellig_ab: string | null;
-  frist_bis: string | null;
-  gestartet: string | null;
-  erstellt: string | null;
-  aktualisiert: string | null;
-  fortschritt: AuftragFortschritt | null;
-  fehler: string | null;
+  attempts: number;
+  max_attempts: number;
+  due_at: string | null;
+  deadline_at: string | null;
+  started_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  progress: AuftragFortschritt | null;
+  error_message: string | null;
   geplant: boolean;
-  wartet: boolean;
+  waiting: boolean;
   set_number: string | null;
   [feld: string]: unknown;
 };
@@ -167,9 +167,9 @@ export type AuftragFortschritt = {
   [feld: string]: unknown;
 };
 export type AuftragPause = {
-  art: string;
-  bis: string | null;
-  grund: string | null;
+  type: string;
+  until_at: string | null;
+  reason: string | null;
   [feld: string]: unknown;
 };
 export type AuftragsArtLeerung = {
@@ -185,7 +185,7 @@ export type AuftragsArtStart = {
   [feld: string]: unknown;
 };
 export type AuftragZaehler = {
-  art: string;
+  type: string;
   status: string;
   anzahl: number;
   [feld: string]: unknown;
@@ -1184,7 +1184,7 @@ export type KontenListe = {
 export type KontoAktiv = {
   success: true;
   is_active: boolean;
-  wirksam_ab?: string;
+  effective_at?: string;
   [feld: string]: unknown;
 };
 export type KontoInListe = {
@@ -1196,8 +1196,8 @@ export type KontoInListe = {
   zweiter_faktor: boolean;
   wartet_auf_bestaetigung: boolean;
   angekuendigt: Array<{
-    art: 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
-    wirksam_ab: string;
+    type: 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
+    effective_at: string;
     [feld: string]: unknown;
   }>;
   [feld: string]: unknown;
@@ -1393,9 +1393,9 @@ export type Merkposten = {
   [feld: string]: unknown;
 };
 export type MerkpostenAlarm = {
-  richtung: string;
-  schwelle: number;
-  ausgeloest: boolean;
+  direction: string;
+  threshold: number;
+  triggered: boolean;
   [feld: string]: unknown;
 };
 export type MerkpostenAntwort = {
@@ -1465,13 +1465,13 @@ export type Papierkorb = {
 };
 export type PapierkorbEintrag = {
   id: number;
-  art: 'set' | 'teil' | 'figur';
-  nummer: string;
-  farbe_id: number | null;
-  bezeichnung: string | null;
+  type: 'set' | 'teil' | 'figur';
+  number: string;
+  color_id: number | null;
+  label: string | null;
   anzahl: number;
   user_id: number;
-  geloescht_am: string;
+  deleted_at: string;
   endgueltig_am: string;
   [feld: string]: unknown;
 };
@@ -1761,12 +1761,12 @@ export type POST_api_v1_sets_import_csv_cancel = {
 export type Preisalarm = {
   set_number: string;
   condition: string;
-  richtung: string;
-  schwelle: number;
+  direction: string;
+  threshold: number;
   currency_code: string;
-  ausgeloest: boolean;
-  zuletzt_am: string | null;
-  zuletzt_preis: number | null;
+  triggered: boolean;
+  last_triggered_at: string | null;
+  last_price: number | null;
   name?: string | null;
   image_local?: string | null;
   image_url?: string | null;
@@ -1864,7 +1864,7 @@ export type Profil = {
   first_name: string | null;
   last_name: string | null;
   email_verified: boolean;
-  email_neu: string | null;
+  new_email: string | null;
   [feld: string]: unknown;
 };
 export type ProfilGespeichert = {
@@ -1918,7 +1918,7 @@ export type QrKopplungStand = {
   success: true;
   stand: 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
   geraet: string | null;
-  ip_bereich: string | null;
+  ip_range: string | null;
   [feld: string]: unknown;
 };
 export type QrMeldung = {
@@ -2207,7 +2207,7 @@ export type TokenAngaben = {
   expires_at?: string | null;
   hard_expires_at: string | null;
   never_expires: boolean;
-  rotiert_am?: string | null;
+  rotated_at?: string | null;
   rotation_faellig?: boolean;
   [feld: string]: unknown;
 };
@@ -2224,7 +2224,7 @@ export type TokenInfo = {
   expires_at?: string | null;
   hard_expires_at: string | null;
   never_expires: boolean;
-  rotiert_am?: string | null;
+  rotated_at?: string | null;
   rotation_faellig: boolean;
   [feld: string]: unknown;
 };
@@ -2344,7 +2344,7 @@ export type ValuationSet = {
 };
 export type VerwalterWeg = {
   success: true;
-  wirksam_ab?: string;
+  effective_at?: string;
   [feld: string]: unknown;
 };
 export type VerwaltungDesign = {
@@ -2432,8 +2432,8 @@ export type WantedXmlErgebnis = {
 };
 export type Wiederhergestellt = {
   success: true;
-  art: 'set' | 'teil' | 'figur';
-  nummer: string;
+  type: 'set' | 'teil' | 'figur';
+  number: string;
   user_id: number;
   [feld: string]: unknown;
 };

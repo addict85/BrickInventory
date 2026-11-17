@@ -22,11 +22,11 @@ const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 function zeile(e, konten) {
   const frist = fmtDatum(e.endgueltig_am);
   const konto = konten.get(e.user_id);
-  const was = [e.nummer, e.bezeichnung, tRaw('trash.menge', { n: e.anzahl }), konto].filter(Boolean).join(' · ');
+  const was = [e.number, e.label, tRaw('trash.menge', { n: e.anzahl }), konto].filter(Boolean).join(' · ');
   return html`<div class="pk-zeile" data-pk-id="${e.id}">
-    <span aria-hidden="true">${ico(ICON[e.art] || 'loeschen')}</span>
-    <span class="pk-name"><span class="pk-nr">${e.nummer}</span>
-      ${e.bezeichnung ? html`${' · '}${e.bezeichnung}` : ''}
+    <span aria-hidden="true">${ico(ICON[e.type] || 'loeschen')}</span>
+    <span class="pk-name"><span class="pk-nr">${e.number}</span>
+      ${e.label ? html`${' · '}${e.label}` : ''}
       <span>${' · '}${tRaw('trash.menge', { n: e.anzahl })}</span>
       ${konto ? html`<span>${' · '}${konto}</span>` : ''}</span>
     <span class="pk-frist">${tRaw('trash.until', { datum: frist })}</span>

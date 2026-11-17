@@ -41,24 +41,24 @@ const ganz = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math
 
 function alsKachel(k: { label: string; total: number }, z: LetzterStand | undefined): Kachel {
   if (!z) return { label: k.label, status: 'idle', progress: 0, total: k.total, sub: null, lastRun: null };
-  const f = z.fortschritt ?? {};
+  const f = z.progress ?? {};
   return {
     label: typeof f.schritt === 'string' ? f.schritt : k.label,
     status: STATUS[z.status] ?? 'idle',
     progress: ganz(f.erledigt),
     total: ganz(f.gesamt) || k.total,
-    sub: z.status === 'fehler' ? z.fehler : typeof f.text === 'string' ? f.text : null,
-    lastRun: z.aktualisiert ? new Date(z.aktualisiert).toISOString() : null,
+    sub: z.status === 'fehler' ? z.error_message : typeof f.text === 'string' ? f.text : null,
+    lastRun: z.updated_at ? new Date(z.updated_at).toISOString() : null,
   };
 }
 
 export async function kacheln(kx: VerwaltungKontext): Promise<Record<string, Kachel>> {
   const zeilen = await kx.auftraege.letzteJeArt(Object.values(KACHELN).map(k => k.art));
-  const je = new Map(zeilen.map(z => [z.art, z]));
+  const je = new Map(zeilen.map(z => [z.type, z]));
   const aus: Record<string, Kachel> = { ...OHNE_AUFTRAG };
   for (const [name, k] of Object.entries(KACHELN)) aus[name] = alsKachel(k, je.get(k.art));
   const csv = je.get('csv_sync');
-  if (csv?.status === 'laeuft' && csv.fortschritt?.schritt === 'BrickLink IDs nachladen')
+  if (csv?.status === 'laeuft' && csv.progress?.schritt === 'BrickLink IDs nachladen')
     aus.blIds = { ...alsKachel({ label: 'BrickLink IDs nachladen', total: 0 }, csv) };
   return aus;
 }

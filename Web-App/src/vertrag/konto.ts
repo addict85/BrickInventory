@@ -14,8 +14,8 @@ export const AppToken = z.looseObject({
   token_prefix: z.string().nullable(),
   hard_expires_at: zeit.nullable(),
   scope: z.string(),
-  ip_bereich: z.string().nullable(),
-  rotiert_am: zeit,
+  ip_range: z.string().nullable(),
+  rotated_at: zeit,
 });
 
 export const ForgotPasswordResponse = z.looseObject({
@@ -36,7 +36,7 @@ export const TokenAngaben = z.looseObject({
   expires_at: zeit.nullable().optional(),
   hard_expires_at: zeit.nullable(),
   never_expires: z.boolean(),
-  rotiert_am: zeit.nullable().optional(),
+  rotated_at: zeit.nullable().optional(),
   rotation_faellig: z.boolean().optional(),
 });
 
@@ -82,7 +82,7 @@ export const Profil = z.looseObject({
   last_name: z.string().nullable(),
   email_verified: z.boolean(),
   /** Beantragt, aber noch nicht bestätigt; bis dahin gilt `email`. */
-  email_neu: z.string().nullable(),
+  new_email: z.string().nullable(),
 });
 
 export const ProfilResponse = z.looseObject({
@@ -158,8 +158,8 @@ export const KontoInListe = z.looseObject({
   wartet_auf_bestaetigung: z.boolean(),
   angekuendigt: z.array(
     z.looseObject({
-      art: z.enum(['passwort', 'zweiter_faktor', 'deaktivieren', 'rolle_entziehen', 'loeschen']),
-      wirksam_ab: z.string(),
+      type: z.enum(['passwort', 'zweiter_faktor', 'deaktivieren', 'rolle_entziehen', 'loeschen']),
+      effective_at: z.string(),
     }),
   ),
 });
@@ -167,7 +167,7 @@ export const KontenListe = z.looseObject({ success: z.literal(true), users: z.ar
 export const KontoAktiv = z.looseObject({
   success: z.literal(true),
   is_active: z.boolean(),
-  wirksam_ab: z.string().optional(),
+  effective_at: z.string().optional(),
 });
 
 export const TokenErstellt = z.looseObject({
@@ -244,7 +244,7 @@ export const QrKopplungStand = z.looseObject({
   success: z.literal(true),
   stand: z.enum(['offen', 'wartet', 'bestaetigt', 'abgeholt', 'abgelehnt', 'abgelaufen']),
   geraet: z.string().nullable(),
-  ip_bereich: z.string().nullable(),
+  ip_range: z.string().nullable(),
 });
 export const ProfilGespeichert = GenericResponse.extend({
   emailChanged: z.boolean().optional(),
@@ -257,7 +257,7 @@ export const ProfilGespeichert = GenericResponse.extend({
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
 /** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/konto/verwalterAktionen.ts). */
-export const VerwalterWeg = Erfolg.extend({ wirksam_ab: z.string().optional() });
+export const VerwalterWeg = Erfolg.extend({ effective_at: z.string().optional() });
 const PASSWORT = 1024;
 const code = z
   .union([z.string().max(64), z.number()])

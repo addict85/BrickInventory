@@ -95,7 +95,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
       /parts_source_check/,
     );
     await assert.rejects(
-      db.run(`INSERT INTO import_stand (user_id, status) VALUES ($1, 'fertig')`, [uid]),
+      db.run(`INSERT INTO import_status (user_id, status) VALUES ($1, 'fertig')`, [uid]),
       /csv_import_jobs_status_check/,
     );
   });
@@ -107,7 +107,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
       // Die Migration stammt aus der Zeit vor 0083: deren Tabellen für die Dauer der Probe nachstellen.
       await c.query(`CREATE TABLE instruction_queue (set_number TEXT, status TEXT,
                        CONSTRAINT instruction_queue_status_check CHECK (status IN ('pending','done','failed')))`);
-      await c.query('ALTER TABLE import_stand RENAME TO csv_import_jobs');
+      await c.query('ALTER TABLE import_status RENAME TO csv_import_jobs');
       for (const [tab, name] of SCHLUESSEL) await c.query(`ALTER TABLE ${tab} DROP CONSTRAINT ${name}`);
       await c.query(
         `INSERT INTO parts (user_id, set_number, part_number, color_id) VALUES ($1, 'verwaist-1', '3001', 0)`,

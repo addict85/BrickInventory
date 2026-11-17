@@ -2,10 +2,10 @@ import type { DbSchnittstelle } from '../../../db/database';
 
 export type UebernahmeArt = 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
 export interface Uebernahme {
-  ziel_id: number;
-  art: UebernahmeArt;
-  durch_id: number;
-  passwort_hash: string | null;
+  target_id: number;
+  type: UebernahmeArt;
+  initiated_by: number;
+  password_hash: string | null;
 }
 
 export async function kuendigeAn(
@@ -14,23 +14,23 @@ export async function kuendigeAn(
   stunden: number,
   abbruchHash: string,
 ): Promise<Date> {
-  const r = await db.get<{ wirksam_ab: Date }>(
-    `INSERT INTO verwalter_uebernahmen (ziel_id, art, durch_id, passwort_hash, wirksam_ab, abbruch_hash)
+  const r = await db.get<{ effective_at: Date }>(
+    `INSERT INTO admin_takeovers (target_id, type, initiated_by, password_hash, effective_at, cancel_hash)
      VALUES ($1, $2, $3, $4, NOW() + make_interval(hours => $5), $6)
-     ON CONFLICT (ziel_id, art) DO UPDATE SET durch_id = EXCLUDED.durch_id, passwort_hash = EXCLUDED.passwort_hash,
-       angelegt_am = NOW(), wirksam_ab = EXCLUDED.wirksam_ab, abbruch_hash = EXCLUDED.abbruch_hash
-     RETURNING wirksam_ab`,
-    [u.ziel_id, u.art, u.durch_id, u.passwort_hash, stunden, abbruchHash],
+     ON CONFLICT (target_id, type) DO UPDATE SET initiated_by = EXCLUDED.initiated_by, password_hash = EXCLUDED.password_hash,
+       created_at = NOW(), effective_at = EXCLUDED.effective_at, cancel_hash = EXCLUDED.cancel_hash
+     RETURNING effective_at`,
+    [u.target_id, u.type, u.initiated_by, u.password_hash, stunden, abbruchHash],
   );
-  return r!.wirksam_ab;
+  return r!.effective_at;
 }
 
 /** Wer die Rolle eben verlor, zählt noch als Verwalter: Sonst entzöge man sie erst und übernähme dann sofort. */
 export async function verwalterOderEbenGewesen(db: DbSchnittstelle, ziel: number, stunden: number): Promise<boolean> {
   const r = await db.get<{ ja: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND is_admin)
-         OR EXISTS (SELECT 1 FROM verwaltungsprotokoll WHERE ziel_id = $1 AND aktion = 'verwalter_entzogen'
-                     AND zeit > NOW() - make_interval(hours => $2)) AS ja`,
+         OR EXISTS (SELECT 1 FROM admin_log WHERE target_id = $1 AND action = 'verwalter_entzogen'
+                     AND occurred_at > NOW() - make_interval(hours => $2)) AS ja`,
     [ziel, stunden],
   );
   return r?.ja === true;
@@ -40,35 +40,35 @@ export async function verwalterOderEbenGewesen(db: DbSchnittstelle, ziel: number
  * Ziel seither deaktiviert wurde oder jetzt wird: Es könnte sich nicht mehr anmelden, um abzubrechen. */
 export async function nimmFaellige(db: DbSchnittstelle): Promise<{ gilt: Uebernahme[]; verworfen: number }> {
   const weg = await db.all<Uebernahme & { gilt: boolean }>(
-    `WITH weg AS (DELETE FROM verwalter_uebernahmen WHERE wirksam_ab <= NOW() RETURNING *)
-     SELECT w.ziel_id, w.art, w.durch_id, w.passwort_hash,
-       EXISTS (SELECT 1 FROM users d WHERE d.id = w.durch_id AND d.is_admin AND d.is_active)
-       AND (w.art NOT IN ('passwort', 'zweiter_faktor') OR NOT (
-         EXISTS (SELECT 1 FROM verwaltungsprotokoll p WHERE p.ziel_id = w.ziel_id
-                   AND p.aktion = 'konto_deaktiviert' AND p.zeit >= w.angelegt_am)
-         OR EXISTS (SELECT 1 FROM weg x WHERE x.ziel_id = w.ziel_id AND x.art = 'deaktivieren'))) AS gilt
+    `WITH weg AS (DELETE FROM admin_takeovers WHERE effective_at <= NOW() RETURNING *)
+     SELECT w.target_id, w.type, w.initiated_by, w.password_hash,
+       EXISTS (SELECT 1 FROM users d WHERE d.id = w.initiated_by AND d.is_admin AND d.is_active)
+       AND (w.type NOT IN ('passwort', 'zweiter_faktor') OR NOT (
+         EXISTS (SELECT 1 FROM admin_log p WHERE p.target_id = w.target_id
+                   AND p.action = 'konto_deaktiviert' AND p.occurred_at >= w.created_at)
+         OR EXISTS (SELECT 1 FROM weg x WHERE x.target_id = w.target_id AND x.type = 'deaktivieren'))) AS gilt
        FROM weg w`,
   );
   return { gilt: weg.filter(z => z.gilt), verworfen: weg.filter(z => !z.gilt).length };
 }
 
 export async function brichUebernahmenAb(db: DbSchnittstelle, ziel: number): Promise<UebernahmeArt[]> {
-  const r = await db.all<{ art: UebernahmeArt }>('DELETE FROM verwalter_uebernahmen WHERE ziel_id = $1 RETURNING art', [
+  const r = await db.all<{ type: UebernahmeArt }>('DELETE FROM admin_takeovers WHERE target_id = $1 RETURNING type', [
     ziel,
   ]);
-  return r.map(z => z.art);
+  return r.map(z => z.type);
 }
 
 /** Das Ziel zum Link aus der Mail; der Link gilt einmal, weil der Abbruch die Zeilen löscht. */
 export async function zielZumAbbruch(db: DbSchnittstelle, abbruchHash: string): Promise<number | null> {
-  const r = await db.get<{ ziel_id: number }>('SELECT ziel_id FROM verwalter_uebernahmen WHERE abbruch_hash = $1', [
+  const r = await db.get<{ target_id: number }>('SELECT target_id FROM admin_takeovers WHERE cancel_hash = $1', [
     abbruchHash,
   ]);
-  return r?.ziel_id ?? null;
+  return r?.target_id ?? null;
 }
 
 export function angekuendigte(db: DbSchnittstelle) {
-  return db.all<{ ziel_id: number; art: UebernahmeArt; wirksam_ab: Date }>(
-    'SELECT ziel_id, art, wirksam_ab FROM verwalter_uebernahmen ORDER BY wirksam_ab',
+  return db.all<{ target_id: number; type: UebernahmeArt; effective_at: Date }>(
+    'SELECT target_id, type, effective_at FROM admin_takeovers ORDER BY effective_at',
   );
 }

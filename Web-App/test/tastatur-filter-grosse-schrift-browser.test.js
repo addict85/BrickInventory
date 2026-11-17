@@ -92,16 +92,16 @@ async function enterAusJedemFeld(_t, a) {
     assert.match(await b.auswerten(text('#add-unbekannt')), /schon in deiner Sammlung/);
   }
   // Teil und Figur: ohne Nummer meldet der Dialog es am Ergebnis, aus dem Preisfeld abgeschickt.
-  for (const [hash, art, feld, ergebnis, meldung] of [
+  for (const [hash, type, feld, result, meldung] of [
     ['#/teile', 'part', 'ap-price-inline', 'ap-inline-result', 'Teilenummer erforderlich'],
     ['#/minifiguren', 'fig', 'af-price-inline', 'af-inline-result', 'Figur-Nummer erforderlich'],
   ]) {
-    await geh(a, hash, `document.querySelector('.tab.active [data-arg="${art}"][data-click="oeffneErfassen"]')`, art);
-    await b.auswerten(`(() => { document.querySelector('.tab.active [data-click="oeffneErfassen"][data-arg="${art}"]').click();
-      document.getElementById('${ergebnis}').textContent = ''; document.getElementById('${feld}').focus(); return true; })()`);
+    await geh(a, hash, `document.querySelector('.tab.active [data-arg="${type}"][data-click="oeffneErfassen"]')`, type);
+    await b.auswerten(`(() => { document.querySelector('.tab.active [data-click="oeffneErfassen"][data-arg="${type}"]').click();
+      document.getElementById('${result}').textContent = ''; document.getElementById('${feld}').focus(); return true; })()`);
     await taste(b, 'Enter', 13);
-    await bis(`/erforderlich/.test(${text(`#${ergebnis}`)})`, `Enter aus ${feld}`, 50);
-    assert.equal(await b.auswerten(text(`#${ergebnis}`)), meldung);
+    await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter aus ${feld}`, 50);
+    assert.equal(await b.auswerten(text(`#${result}`)), meldung);
   }
   await b.auswerten(SCHLIESSEN);
 }
@@ -140,19 +140,19 @@ async function finanzenFehler(_t, a) {
   try {
     await b.auswerten(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
     await bis(
-      `!window.__alt && !!document.querySelector('#portfolio-chart .fehler-zustand button, #fin-tbl .fehler-zustand button')`,
+      `!window.__alt && !!document.querySelector('#portfolio-chart .error_message-zustand button, #fin-tbl .error_message-zustand button')`,
       'Fehler',
       300,
     );
     await a.ruhig();
-    const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .fehler-zustand button');
+    const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .error_message-zustand button');
       return { imKasten: !!k?.closest('#portfolio-chart'), unten: k?.getBoundingClientRect().bottom, hoehe: innerHeight,
         karten: document.getElementById('fin-sum').checkVisibility(), strich: [...document.querySelectorAll('#fin-sum .fval')].filter(f => f.checkVisibility() && f.textContent.trim() === '—').length }; })()`);
     assert.ok(m.imKasten, `Fehler nicht im Diagrammkasten: ${JSON.stringify(m)}`);
     assert.ok(m.unten <= m.hoehe, `„Erneut versuchen“ nicht im ersten Bildschirm: ${JSON.stringify(m)}`);
     assert.equal(m.karten, false, 'Karten ohne Zahl stehen über dem Fehler');
     await b.auswerten(
-      `window.__fehler = false; document.querySelector('#portfolio-chart .fehler-zustand button').click(); true`,
+      `window.__fehler = false; document.querySelector('#portfolio-chart .error_message-zustand button').click(); true`,
     );
     await bis(
       `document.getElementById('fin-sum').checkVisibility() && /€/.test(${text('#fin-einstand')})`,
@@ -419,13 +419,13 @@ async function rueckgaengig(_t, a) {
 
 async function abbrechenEinzeilig(_t, a) {
   const { b, bis } = a;
-  await geh(a, '#/hintergrund', `!!document.querySelector('#auftraege-karte .mon-einzeln')`, 'Hintergrund');
+  await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-karte .mon-einzeln')`, 'Hintergrund');
   await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
   await bis(
-    `[...document.querySelectorAll('#auftraege-karte .mon-knoepfe .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
+    `[...document.querySelectorAll('#jobs-karte .mon-knoepfe .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
     'Abbrechen',
   );
-  const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#auftraege-karte .mon-knoepfe .btn')];
+  const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#jobs-karte .mon-knoepfe .btn')];
     const hoehe = t => Math.max(...k.filter(x => x.textContent.trim() === t).map(x => x.getBoundingClientRect().height));
     return { abbrechen: hoehe('Abbrechen'), jetzt: hoehe('Jetzt starten') }; })()`);
   assert.ok(h.abbrechen <= h.jetzt + 1, `„Abbrechen“ bricht um: ${JSON.stringify(h)}`);
@@ -460,14 +460,14 @@ test('Tastatur in Formularen, Filterleiste, grosse Schrift', { concurrency: 1, t
     alleDesigns: true,
     bestand: async (db, uid) => {
       kid = await musterHaushalt(db, uid);
-      await db.run(`INSERT INTO auftraege (art, faellig_ab) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
+      await db.run(`INSERT INTO jobs (type, due_at) VALUES ('exchange_rates', NOW() + interval '6 hours')`);
     },
   });
   if (a.grund) {
     t.skip(a.grund);
     return;
   }
-  t.after(() => a.db.run(`DELETE FROM auftraege WHERE art = 'wechselkurse' AND status = 'offen'`).catch(() => {}));
+  t.after(() => a.db.run(`DELETE FROM jobs WHERE type = 'exchange_rates' AND status = 'offen'`).catch(() => {}));
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, kid: number) => Promise<void>][]} */
   const pruefungen = [

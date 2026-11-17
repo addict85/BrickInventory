@@ -6,8 +6,8 @@
 export function teilSichtJoin(konto: string, nummer: string, farbe: string): string {
   return `LEFT JOIN part_catalog pc ON pc.part_number = ${nummer}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = ${nummer} AND pcc.color_id = ${farbe}
-    LEFT JOIN teil_eigen te ON te.user_id = ${konto} AND te.part_number = ${nummer}
-    LEFT JOIN teil_farbe_eigen tfe ON tfe.user_id = ${konto} AND tfe.part_number = ${nummer} AND tfe.color_id = ${farbe}`;
+    LEFT JOIN part_custom te ON te.user_id = ${konto} AND te.part_number = ${nummer}
+    LEFT JOIN part_color_custom tfe ON tfe.user_id = ${konto} AND tfe.part_number = ${nummer} AND tfe.color_id = ${farbe}`;
 }
 
 export const TEIL = {
@@ -22,7 +22,7 @@ export const TEIL = {
 /** LEFT JOINs mc (gemeinsam) und fe (eigene Angaben von `konto`). */
 export function figurSichtJoin(konto: string, nummer: string): string {
   return `LEFT JOIN minifigs_catalog mc ON mc.fig_number = ${nummer}
-    LEFT JOIN figur_eigen fe ON fe.user_id = ${konto} AND fe.fig_number = ${nummer}`;
+    LEFT JOIN minifig_custom fe ON fe.user_id = ${konto} AND fe.fig_number = ${nummer}`;
 }
 
 export const FIGUR = {

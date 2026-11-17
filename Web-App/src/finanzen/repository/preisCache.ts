@@ -124,7 +124,7 @@ export function teilepreiseFrisch(
 export function figurenpreiseFrisch(db: DbSchnittstelle, figuren: string[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price, fetched_at FROM minifig_price_cache
-      WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT geschaetzt
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT estimated
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [figuren, currency, ttlStunden],
   );
@@ -152,7 +152,7 @@ export function figurpreisFrisch(
   ttlStunden: number,
 ) {
   return db.get<Preiszeile>(
-    `SELECT avg_price, qty_avg_price, fetched_at FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
+    `SELECT avg_price, qty_avg_price, fetched_at FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT estimated AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, condition, currency, ttlStunden],
   );
 }
@@ -202,7 +202,7 @@ export function merkeFigurpreis(
   return db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
         VALUES ($1,$2,$3,$4,$5) ON CONFLICT (fig_number,condition,currency_code)
-        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW(), geschaetzt=FALSE, abdeckung=NULL`,
+        DO UPDATE SET avg_price=$4, qty_avg_price=$5, fetched_at=NOW(), estimated=FALSE, coverage=NULL`,
     [figNumber, condition, currency, avg, qavg],
   );
 }

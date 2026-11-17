@@ -252,8 +252,8 @@ export async function jobUebersicht(k: VerwaltungKontext) {
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
     anleitungsAuftraege(k, ab),
-    zahl(ab, k.verwaltung.zugeordneteTeile(), 'bl_zuordnung'),
-    zahl(ab, k.verwaltung.bricklinkTeile(), 'bl_zuordnung'),
+    zahl(ab, k.verwaltung.zugeordneteTeile(), 'bl_mapping'),
+    zahl(ab, k.verwaltung.bricklinkTeile(), 'bl_mapping'),
     zahl(ab, k.verwaltung.rbTeile(), 'katalog'),
     zahl(ab, k.verwaltung.rbInventarTeile(), 'katalog'),
     k.auftraege.liesZustand('rb_csv_last_sync'),

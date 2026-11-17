@@ -192,7 +192,7 @@ async function nachFehlschlag(
 async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await k.auftraege.liesPause('bildbedarf');
-  if (pause && new Date(pause.bis).getTime() > k.uhr.jetzt()) return erg; // CDN hat gedrosselt, siehe unten
+  if (pause && new Date(pause.until_at).getTime() > k.uhr.jetzt()) return erg; // CDN hat gedrosselt, siehe unten
   const rows = await nimmBildwuensche(k, NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) {
     merkeLauf(k, erg);
@@ -306,8 +306,8 @@ export async function bildbedarfAbarbeiten(kx: BilderKontext, k: AuftragsKontext
     const e = await taktDurchgang(kx);
     if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
     const pause = await kx.auftraege.liesPause('bildbedarf');
-    if (pause && new Date(pause.bis).getTime() > kx.uhr.jetzt())
-      throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
+    if (pause && new Date(pause.until_at).getTime() > kx.uhr.jetzt())
+      throw new AuftragVerschieben(new Date(pause.until_at), pause.reason ?? 'CDN drosselt');
     if (!e.gesamt) return;
     if (!(await k.fortschritt({ text: meldung(e) }))) return; // abgebrochen
     await warte(TAKT_MS);

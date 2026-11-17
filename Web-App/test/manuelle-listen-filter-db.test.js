@@ -78,7 +78,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
                   ('3001','Brick 2 x 4'), ('3002','Brick 2 x 2'), ('3003','Brick 2 x 3')`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name) VALUES
                   ('3001',4,'Red'), ('3002',4,'Red'), ('3003',4,'Red')`);
-  await db.run(`INSERT INTO bl_zuordnung (art,rb_id,bl_id) VALUES ('part','3002','9999')`);
+  await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES ('part','3002','9999')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
   const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
   await haeltTeil(db, UID, '3001', { colorId: 4, menge: 10, storageId: ORT });

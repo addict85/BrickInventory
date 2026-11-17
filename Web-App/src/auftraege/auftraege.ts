@@ -33,15 +33,15 @@ export function pruefeAbbruch(lauf: AuftragsLauf | undefined): void {
 
 export interface AuftragsZeile {
   id: string;
-  art: AuftragsArt;
-  nutzlast: Record<string, unknown>;
+  type: AuftragsArt;
+  payload: Record<string, unknown>;
   user_id: number | null;
-  schluessel: string | null;
+  dedupe_key: string | null;
   status: AuftragsStatus;
-  versuche: number;
-  max_versuche: number;
-  belegt_von: string | null;
-  fehler: string | null;
+  attempts: number;
+  max_attempts: number;
+  locked_by: string | null;
+  error_message: string | null;
 }
 
 export interface Einstellen {
@@ -55,15 +55,15 @@ export interface Einstellen {
   fortschritt?: Fortschritt;
 }
 
-export type Belegung = Pick<AuftragsZeile, 'id' | 'belegt_von'>;
+export type Belegung = Pick<AuftragsZeile, 'id' | 'locked_by'>;
 
 /** Drosselt eine Gegenseite, wartet die ganze Art, nicht ein Auftrag. */
 
 export interface Pause {
-  art: string;
-  bis: Date;
-  grund: string | null;
-  stufe: number;
+  type: string;
+  until_at: Date;
+  reason: string | null;
+  level: number;
 }
 
 /** Was ein Bearbeiter vom Worker bekommt; die Fachdienste kennen nur dies, nicht den Worker. */

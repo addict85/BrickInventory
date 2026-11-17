@@ -22,7 +22,7 @@
  *      „Preisverlauf aus der zweiten Datenbank“ und „der Prozesszugang …“
  *   F  teilelisteDesSets() ruft neuestesInventar(setNum) ohne sk.katalog → rot:
  *      „Teileliste aus dem Katalog …“ und „der Prozesszugang …“
- *   G  derselbe stelleAuftragEin('bilder', …) ohne sk.auftraege → rot:
+ *   G  derselbe stelleAuftragEin('bilder', …) ohne sk.jobs → rot:
  *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
  *      Prozesszugang …“
  *   H  src/haushalt/haushalt.ts wieder mit einem Gedächtnis für alle Zugänge →
@@ -166,18 +166,18 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
       [['3001', 4]],
     );
     const { n } = await zweite.get(
-      "SELECT count(*)::int AS n FROM auftraege WHERE art = 'bilder' AND nutzlast->>'set_number' = $1",
+      "SELECT count(*)::int AS n FROM jobs WHERE type = 'bilder' AND payload->>'set_number' = $1",
       [SN],
     );
     assert.equal(n, 1, 'der Bilderauftrag steht in der zweiten Datenbank');
   });
 
   await t.test('Löschen über Haushalt und Papierkorb der zweiten Datenbank', async () => {
-    const papierkorb = await sets.loescheSetFuer({ nutzer: uid }, SN);
-    assert.equal(papierkorb.length, 1);
+    const trash = await sets.loescheSetFuer({ nutzer: uid }, SN);
+    assert.equal(trash.length, 1);
     assert.equal((await zweite.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [uid])).n, 0);
     assert.equal(
-      (await zweite.get("SELECT count(*)::int AS n FROM papierkorb WHERE user_id = $1 AND art = 'set'", [uid])).n,
+      (await zweite.get("SELECT count(*)::int AS n FROM trash WHERE user_id = $1 AND type = 'set'", [uid])).n,
       1,
     );
   });

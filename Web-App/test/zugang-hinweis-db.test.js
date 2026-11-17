@@ -38,8 +38,8 @@ const { routerServer } = require('./helpers/server');
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
-  mailKontoHinweis: async (an, _name, art, o) => {
-    gesendet.push({ an, art, ...o });
+  mailKontoHinweis: async (an, _name, type, o) => {
+    gesendet.push({ an, type, ...o });
     return { success: true };
   },
 });
@@ -84,11 +84,11 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     return JSON.parse(text);
   };
   /** Die Mails gehen nebenher; bis sie da sind, kurz warten. */
-  const mails = async (art, anzahl) => {
-    for (let i = 0; i < 60 && gesendet.filter(m => m.art === art).length < anzahl; i++)
+  const mails = async (type, anzahl) => {
+    for (let i = 0; i < 60 && gesendet.filter(m => m.type === type).length < anzahl; i++)
       await new Promise(r => setTimeout(r, 25));
     return gesendet
-      .filter(m => m.art === art && NAMEN.some(n => m.an === `${n}@example.org`))
+      .filter(m => m.type === type && NAMEN.some(n => m.an === `${n}@example.org`))
       .map(m => ({ an: m.an.split('@')[0], konto: m.konto, durch: m.durch, name: m.passkey }))
       .sort((a, b) => a.an.localeCompare(b.an));
   };
@@ -136,14 +136,14 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
   const faellig = async () => {
-    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+    await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
       zwei,
     ]);
     assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
   };
 
   await t.test('entfernter zweiter Faktor', async () => {
-    await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [zwei]);
+    await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [zwei]);
     await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
     assert.deepEqual(
       (await mails('uebernahme_angekuendigt', 1)).map(m => [m.an, m.durch]),
@@ -191,8 +191,8 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
     const zf = _req('src/faktoren/zweiterFaktor.js');
-    const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
-    const code = versatz => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
+    const { secret } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
+    const code = versatz => zf.hotp(zf.ausBase32(secret), zf.zeitschritt() + versatz);
     await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
     assert.deepEqual(
       (await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an),
