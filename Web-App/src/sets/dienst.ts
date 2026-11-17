@@ -116,7 +116,7 @@ function entfallenAntwort(zeilen: Record<string, unknown>[]) {
     currency: z.currency == null ? null : String(z.currency),
     price_estimated: !!z.price_estimated,
     condition: String(z.condition ?? 'N'),
-    date: z.tag == null ? null : String(z.tag),
+    date: z.day == null ? null : String(z.day),
   }));
 }
 

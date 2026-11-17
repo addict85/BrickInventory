@@ -85,7 +85,9 @@ export async function passwortDurchVerwalter(
 ): Promise<Verwalterweg | null> {
   if (await k.uebernahmen.verwalterOderEbenGewesen(ziel, UEBERNAHME_STUNDEN)) {
     const password_hash = await hashePasswort(passwort);
-    return { wirksamAb: await ankuendigen(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }) };
+    return {
+      wirksamAb: await ankuendigen(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash }),
+    };
   }
   if (!(await setzeFremdesPasswort(k, ziel, passwort, durch))) return null;
   await nachDerUebernahme(k, { target_id: ziel, type: 'passwort', initiated_by: durch, password_hash: null });
@@ -196,7 +198,11 @@ export async function uebernahmenAbbrechen(
 }
 
 /** Die Links aus Mails an den Inhaber, ohne Anmeldung; ein Abbruch gilt einmal, weil er die Zeilen löscht. */
-export async function mailLinkEinloesen(k: KontoKontext, type: 'abbrechen' | 'freigeben', token: string): Promise<void> {
+export async function mailLinkEinloesen(
+  k: KontoKontext,
+  type: 'abbrechen' | 'freigeben',
+  token: string,
+): Promise<void> {
   if (type === 'freigeben') return anmeldungFreigeben(k, token);
   const ziel = token ? await k.uebernahmen.zielZumAbbruch(tokenAbdruck(token)) : null;
   if (ziel === null) fachfehler('konflikt', 'abbruch_link_ungueltig');

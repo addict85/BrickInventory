@@ -1260,8 +1260,8 @@
       "abfrage": [],
       "rumpf": "PreisalarmRequest",
       "rumpffelder": [
-        "richtung",
-        "schwelle",
+        "direction",
+        "threshold",
         "condition"
       ]
     },
@@ -1850,7 +1850,6 @@
     "adresse",
     "aktion",
     "aktiv",
-    "aktualisiert",
     "aktuell",
     "alarm",
     "alert",
@@ -1878,7 +1877,6 @@
     "auftraege",
     "auftrag_id",
     "ausgang",
-    "ausgeloest",
     "ausgestellt",
     "ausstehend",
     "auth",
@@ -1896,10 +1894,8 @@
     "besitzer",
     "besitzt",
     "bestand",
-    "bezeichnung",
     "bild",
     "bildbedarf",
-    "bis",
     "blFarbe",
     "blId",
     "bl_color_id",
@@ -1943,22 +1939,26 @@
     "dauer_minuten",
     "db",
     "db_pool",
+    "deadline_at",
     "default_condition",
     "default_price_condition",
     "degradiert",
     "deleted",
+    "deleted_at",
     "description",
+    "direction",
     "display_value",
     "done",
     "download",
     "downloaded_at",
+    "due_at",
+    "effective_at",
     "effective_condition",
     "eigenes",
     "eintraege",
     "email",
     "emailChanged",
     "emailSent",
-    "email_neu",
     "email_sent",
     "email_verified",
     "enabled",
@@ -1973,8 +1973,8 @@
     "err",
     "error",
     "error_code",
+    "error_message",
     "errors",
-    "erstellt",
     "etaSeconds",
     "exact",
     "exists",
@@ -1982,11 +1982,9 @@
     "expires_in",
     "exported_at",
     "exported_by",
-    "faellig_ab",
     "farbHex",
     "farbName",
     "farbeOffen",
-    "farbe_id",
     "fehler",
     "fetched_at",
     "figNumber",
@@ -1999,12 +1997,10 @@
     "firstRealIndex",
     "first_name",
     "former_links",
-    "fortschritt",
     "fp",
     "fp_hex",
     "frac",
     "fremdeArten",
-    "frist_bis",
     "from_cache",
     "from_user_id",
     "geaendert",
@@ -2014,7 +2010,6 @@
     "geheimnis",
     "gelesen",
     "geloescht",
-    "geloescht_am",
     "geplant",
     "geraet",
     "gesamt",
@@ -2050,7 +2045,7 @@
     "instructions",
     "inviter",
     "ip",
-    "ip_bereich",
+    "ip_range",
     "isAdmin",
     "isWarning",
     "is_active",
@@ -2092,6 +2087,8 @@
     "lastUpdated",
     "last_error",
     "last_name",
+    "last_price",
+    "last_triggered_at",
     "last_used",
     "lebenszeichen",
     "letzter_kauf",
@@ -2115,9 +2112,9 @@
     "marktpreis",
     "max",
     "maxPreis",
+    "max_attempts",
     "max_price",
     "max_purchase_price",
-    "max_versuche",
     "mehrere",
     "members",
     "menge",
@@ -2143,6 +2140,7 @@
     "neuer_inhaber",
     "never_expires",
     "newPassword",
+    "new_email",
     "new_quantity",
     "nextRun",
     "no_price",
@@ -2239,6 +2237,7 @@
     "rbFarbe",
     "rbId",
     "ready",
+    "reason",
     "rebrickable",
     "recorded_at",
     "remaining",
@@ -2246,16 +2245,14 @@
     "resolved",
     "results",
     "retry_after",
-    "richtung",
+    "rotated_at",
     "rotation_faellig",
-    "rotiert_am",
     "running",
     "schedules",
     "schluessel",
     "schluessel_nonce",
     "schritt",
     "schritte",
-    "schwelle",
     "scope",
     "seit",
     "set",
@@ -2279,6 +2276,7 @@
     "stand",
     "standardZustand",
     "started",
+    "started_at",
     "startup",
     "stats",
     "status",
@@ -2298,6 +2296,7 @@
     "theme_id",
     "theme_name",
     "themes",
+    "threshold",
     "ticket",
     "tiefe",
     "time",
@@ -2323,6 +2322,7 @@
     "total_value",
     "totals",
     "transports",
+    "triggered",
     "ttl",
     "ttl_hours",
     "ttl_stunden",
@@ -2335,6 +2335,7 @@
     "unique_parts",
     "unit_price",
     "unsicher",
+    "until_at",
     "updated",
     "updated_at",
     "uptime_seconds",
@@ -2356,7 +2357,6 @@
     "version",
     "versionCode",
     "versionName",
-    "versuche",
     "verworfen",
     "via",
     "vor",
@@ -2372,6 +2372,7 @@
     "waehrung_geaendert",
     "waehrung_hinweis",
     "waehrung_konto",
+    "waiting",
     "war_neu",
     "warn",
     "wartenSek",
@@ -2380,7 +2381,6 @@
     "wert",
     "wert_gesamt",
     "werte",
-    "wirksam_ab",
     "x",
     "x_label",
     "y",
@@ -2394,8 +2394,6 @@
     "zeile",
     "zert_sha256",
     "zugaenge",
-    "zuletzt_am",
-    "zuletzt_preis",
     "zusammenfassung",
     "zusammengefuehrt",
     "zusammengelegt",
@@ -2621,8 +2619,8 @@
         "token_prefix",
         "hard_expires_at",
         "scope",
-        "ip_bereich",
-        "rotiert_am"
+        "ip_range",
+        "rotated_at"
       ],
       "pflicht": [
         "token_id"
@@ -2649,34 +2647,34 @@
     "Auftrag": {
       "felder": [
         "id",
-        "art",
+        "type",
         "status",
-        "versuche",
-        "max_versuche",
-        "faellig_ab",
-        "frist_bis",
-        "gestartet",
-        "erstellt",
-        "aktualisiert",
-        "fortschritt",
-        "fehler",
+        "attempts",
+        "max_attempts",
+        "due_at",
+        "deadline_at",
+        "started_at",
+        "created_at",
+        "updated_at",
+        "progress",
+        "error_message",
         "geplant",
-        "wartet",
+        "waiting",
         "set_number"
       ],
       "pflicht": [
         "id",
-        "art",
+        "type",
         "status",
-        "versuche",
-        "max_versuche",
-        "faellig_ab",
-        "frist_bis",
-        "gestartet",
-        "erstellt",
-        "aktualisiert",
-        "fortschritt",
-        "fehler",
+        "attempts",
+        "max_attempts",
+        "due_at",
+        "deadline_at",
+        "started_at",
+        "created_at",
+        "updated_at",
+        "progress",
+        "error_message",
         "geplant",
         "set_number"
       ]
@@ -2703,14 +2701,14 @@
     },
     "AuftragPause": {
       "felder": [
-        "art",
-        "bis",
-        "grund"
+        "type",
+        "until_at",
+        "reason"
       ],
       "pflicht": [
-        "art",
-        "bis",
-        "grund"
+        "type",
+        "until_at",
+        "reason"
       ]
     },
     "AuftragsArtLeerung": {
@@ -2739,12 +2737,12 @@
     },
     "AuftragZaehler": {
       "felder": [
-        "art",
+        "type",
         "status",
         "anzahl"
       ],
       "pflicht": [
-        "art",
+        "type",
         "status",
         "anzahl"
       ]
@@ -3769,7 +3767,7 @@
       "felder": [
         "success",
         "is_active",
-        "wirksam_ab"
+        "effective_at"
       ],
       "pflicht": []
     },
@@ -3788,8 +3786,8 @@
     },
     "KontoInListeAngekuendigtEintrag": {
       "felder": [
-        "art",
-        "wirksam_ab"
+        "type",
+        "effective_at"
       ],
       "pflicht": []
     },
@@ -4018,9 +4016,9 @@
     },
     "MerkpostenAlarm": {
       "felder": [
-        "richtung",
-        "schwelle",
-        "ausgeloest"
+        "direction",
+        "threshold",
+        "triggered"
       ],
       "pflicht": []
     },
@@ -4209,13 +4207,13 @@
     "PapierkorbEintrag": {
       "felder": [
         "id",
-        "art",
-        "nummer",
-        "farbe_id",
-        "bezeichnung",
+        "type",
+        "number",
+        "color_id",
+        "label",
         "anzahl",
         "user_id",
-        "geloescht_am",
+        "deleted_at",
         "endgueltig_am"
       ],
       "pflicht": []
@@ -4446,7 +4444,7 @@
     "PasswortGesetzt": {
       "felder": [
         "success",
-        "wirksam_ab"
+        "effective_at"
       ],
       "pflicht": []
     },
@@ -4637,12 +4635,12 @@
       "felder": [
         "set_number",
         "condition",
-        "richtung",
-        "schwelle",
+        "direction",
+        "threshold",
         "currency_code",
-        "ausgeloest",
-        "zuletzt_am",
-        "zuletzt_preis",
+        "triggered",
+        "last_triggered_at",
+        "last_price",
         "name",
         "image_local",
         "image_url",
@@ -4660,13 +4658,13 @@
     },
     "PreisalarmRequest": {
       "felder": [
-        "richtung",
-        "schwelle",
+        "direction",
+        "threshold",
         "condition"
       ],
       "pflicht": [
-        "richtung",
-        "schwelle"
+        "direction",
+        "threshold"
       ]
     },
     "PreisalarmResponse": {
@@ -4782,7 +4780,7 @@
         "first_name",
         "last_name",
         "email_verified",
-        "email_neu"
+        "new_email"
       ],
       "pflicht": [
         "id",
@@ -4886,7 +4884,7 @@
         "success",
         "stand",
         "geraet",
-        "ip_bereich"
+        "ip_range"
       ],
       "pflicht": []
     },
@@ -5326,7 +5324,7 @@
         "expires_at",
         "hard_expires_at",
         "never_expires",
-        "rotiert_am",
+        "rotated_at",
         "rotation_faellig"
       ],
       "pflicht": [
@@ -5634,8 +5632,8 @@
     "Wiederhergestellt": {
       "felder": [
         "success",
-        "art",
-        "nummer",
+        "type",
+        "number",
         "user_id"
       ],
       "pflicht": []

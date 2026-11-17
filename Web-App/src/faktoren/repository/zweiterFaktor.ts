@@ -67,10 +67,10 @@ export function aktivesGeheimnis(db: DbSchnittstelle, uid: number) {
 
 /** Die Bedingung steht im UPDATE: Zwei gleichzeitige Anmeldungen kommen nicht beide durch. */
 export async function verbraucheSchritt(db: DbSchnittstelle, uid: number, schritt: number): Promise<boolean> {
-  const r = await db.run(
-    'UPDATE second_factor SET last_step = $2 WHERE user_id = $1 AND active AND last_step < $2',
-    [uid, schritt],
-  );
+  const r = await db.run('UPDATE second_factor SET last_step = $2 WHERE user_id = $1 AND active AND last_step < $2', [
+    uid,
+    schritt,
+  ]);
   return (r.changes ?? 0) > 0;
 }
 
@@ -87,9 +87,10 @@ export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: str
 
 /** Ein Code neuer Art hat gegolten: Die übrigen dieses Satzes sind es auch, ihre Frist entfällt. */
 export async function codesSindNeu(db: DbSchnittstelle, uid: number): Promise<void> {
-  await db.run('UPDATE second_factor_codes SET old_valid_until = NULL WHERE user_id = $1 AND old_valid_until IS NOT NULL', [
-    uid,
-  ]);
+  await db.run(
+    'UPDATE second_factor_codes SET old_valid_until = NULL WHERE user_id = $1 AND old_valid_until IS NOT NULL',
+    [uid],
+  );
 }
 
 /** Codes und Faktor zusammen: in der Transaktion des Aufrufers (src/faktoren/zweiterFaktor.ts, schalteAb). */

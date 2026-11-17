@@ -259,9 +259,7 @@ async function main() {
     // Wie nach dem ersten Start des Dienstes jobs: Ein Web-Prozess wartet sonst auf die Umschlüsselung.
     const v = new Client({ connectionString: mitDb(basis, vorlage) });
     await v.connect();
-    await v.query(
-      `INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Testvorlage') ON CONFLICT DO NOTHING`,
-    );
+    await v.query(`INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Testvorlage') ON CONFLICT DO NOTHING`);
     await v.end();
     env = { ...env, TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
   }

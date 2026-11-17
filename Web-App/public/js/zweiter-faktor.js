@@ -264,7 +264,9 @@ export async function zfZuruecksetzen(uid, name) {
     return;
   }
   toast(
-    d.effective_at ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.effective_at, 'tagzeit') }) : tRaw('zf.disabled'),
+    d.effective_at
+      ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.effective_at, 'tagzeit') })
+      : tRaw('zf.disabled'),
     'success',
   );
   loadUsers();

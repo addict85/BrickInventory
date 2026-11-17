@@ -29,8 +29,8 @@ async function legeAlarmAn() {
     return;
   }
   const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-    richtung: G('alarm-neu-richtung').value,
-    schwelle,
+    direction: G('alarm-neu-richtung').value,
+    threshold: schwelle,
     condition: G('alarm-neu-zustand').value,
   });
   if (!d?.success) {
@@ -68,14 +68,14 @@ export async function ladeAlarmUebersicht() {
     el,
     alarme.map(a => {
       const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
-      const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
+      const richtung = a.direction === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
       // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das Aendern den falschen der beiden
       // moeglichen Alarme eines Sets.
       const schluessel = `${a.set_number}|${a.condition}`;
-      const stand = a.zuletzt_preis == null ? '' : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
+      const stand = a.last_price == null ? '' : t('alerts.last', { preis: fmtN(a.last_price, a.currency_code) });
       // „scharf“ gegen „unscharf“ nicht über die Farbe allein, denn grün und grau sind für Rot-Grün-Schwache
       // gleich: Wort, Fläche (gefüllt/umrandet) und Zeichen (●/○) tragen es je für sich, wie in der App.
-      const marke = a.ausgeloest
+      const marke = a.triggered
         ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
         : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
       // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die Adresse aus der eigenen Sammlung,
@@ -98,7 +98,7 @@ export async function ladeAlarmUebersicht() {
       <div class="alarm-ue-stand">${ungeprueft(marke)}<span class="alarm-ue-zuletzt">${stand}</span></div>
       <div class="alarm-ue-schwelle">
         <span class="alarm-ue-richtung">${richtung}</span>
-        <span class="alarm-ue-betrag"><input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.schwelle)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
+        <span class="alarm-ue-betrag"><input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.threshold)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
                data-change="aendereAlarmSchwelle" data-arg="${schluessel}" data-val="1" data-click="stopEvent" class="alarm-ue-feld" />
         <span class="alarm-ue-waehrung">${a.currency_code}</span></span>
       </div>
@@ -135,7 +135,7 @@ async function aendereAlarmSchwelle(schluessel, wert) {
   const { setNumber, condition } = alarmSchluessel(schluessel);
   // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht bekommt keinen eigenen Schreibweg
   // (siehe routes/api_v1/sets.ts).
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`, { condition, schwelle });
+  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`, { condition, threshold: schwelle });
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
   await ladeAlarmUebersicht();
 }
@@ -167,8 +167,8 @@ async function loescheAlarm(schluessel, setNumber) {
           bleibt: true,
           fn: async () => {
             const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-              richtung: vorher.richtung === 'ueber' ? 'ueber' : 'unter',
-              schwelle: Number(vorher.schwelle),
+              direction: vorher.direction === 'ueber' ? 'ueber' : 'unter',
+              threshold: Number(vorher.threshold),
               condition,
             });
             if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');

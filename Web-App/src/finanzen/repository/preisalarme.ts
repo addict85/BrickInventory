@@ -6,7 +6,14 @@ import type { Spalten, Tabellen } from '../../../db/zeilen';
 /** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
 export type AlarmZeile = Spalten<
   'price_alerts',
-  'set_number' | 'condition' | 'direction' | 'threshold' | 'currency_code' | 'triggered' | 'last_triggered_at' | 'last_price'
+  | 'set_number'
+  | 'condition'
+  | 'direction'
+  | 'threshold'
+  | 'currency_code'
+  | 'triggered'
+  | 'last_triggered_at'
+  | 'last_price'
 > & { besitzt: boolean };
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */

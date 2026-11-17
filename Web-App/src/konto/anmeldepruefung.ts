@@ -35,7 +35,7 @@ export interface KontoZustand {
   email_verified: boolean;
   email?: string | null;
   is_admin: boolean;
-  registrierung_offen?: boolean;
+  registration_pending?: boolean;
   [k: string]: unknown;
 }
 
@@ -68,7 +68,7 @@ export function assertLoginAllowed(
   user: KontoZustand,
 ): { art: FehlerArt; code: FehlerCode; unverified?: boolean } | null {
   if (!user.is_active) return { art: 'verboten', code: 'konto_deaktiviert' };
-  if (user.registrierung_offen === true && !user.is_admin)
+  if (user.registration_pending === true && !user.is_admin)
     return { art: 'verboten', code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }

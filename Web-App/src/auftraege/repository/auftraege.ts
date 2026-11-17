@@ -345,7 +345,8 @@ export function kontoRolle(db: DbSchnittstelle, l: AuftraegeLesevertrag, uid: nu
 }
 export const AUFTRAG_KANAL = 'auftraege';
 export const AUFTRAG_STAND_KANAL = 'auftrag_stand';
-export const SPALTEN = 'id, type, payload, user_id, dedupe_key, status, attempts, max_attempts, locked_by, error_message';
+export const SPALTEN =
+  'id, type, payload, user_id, dedupe_key, status, attempts, max_attempts, locked_by, error_message';
 /** Die Kennung kommt aus der Datenbank nicht immer als Text; nach aussen ist sie es. */
 type RoheZeile = Omit<AuftragsZeile, 'id'> & { id: unknown };
 export const alsZeile = (z: RoheZeile): AuftragsZeile => ({ ...z, id: String(z.id) });
@@ -493,10 +494,7 @@ export async function schreibeErgebnis(
   id: string,
   ergebnis: Record<string, unknown> | null,
 ): Promise<void> {
-  await db.run('UPDATE jobs SET result = $2 WHERE id = $1', [
-    id,
-    ergebnis === null ? null : JSON.stringify(ergebnis),
-  ]);
+  await db.run('UPDATE jobs SET result = $2 WHERE id = $1', [id, ergebnis === null ? null : JSON.stringify(ergebnis)]);
 }
 
 /** Nur der eigene: Der Schlüssel steht in der Adresse, er allein ist kein Recht. */

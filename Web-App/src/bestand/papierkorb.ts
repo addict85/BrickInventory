@@ -67,7 +67,7 @@ async function stelleKaeufeWiederHer(
   for (const k of kaeufe) {
     const menge = Number(k.quantity) || 0;
     if (await kauf.stockeErfassungAuf(tx, 'set', Number(k.id), e.user_id, menge)) continue;
-    const gleich = await kauf.gleicheErfassungAmTag(tx, 'set', e.user_id, [e.nummer], String(k.tag), -1, {
+    const gleich = await kauf.gleicheErfassungAmTag(tx, 'set', e.user_id, [e.nummer], String(k.day), -1, {
       zustand: String(k.condition ?? 'N'),
       preis: k.purchase_price == null ? null : Number(k.purchase_price),
       geschaetzt: !!k.price_estimated,

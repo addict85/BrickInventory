@@ -214,8 +214,8 @@ export async function ladeAlarm(sn) {
   if (wahl && alle.length && !alle.some(x => x.condition === alarmZustand()))
     wahl.value = alle[0]?.condition === 'U' ? 'U' : 'N';
   const a = alle.find(x => x.condition === alarmZustand());
-  dir.value = a?.richtung || 'unter';
-  val.value = a ? betragFuerFeld(a.schwelle) : '';
+  dir.value = a?.direction || 'unter';
+  val.value = a ? betragFuerFeld(a.threshold) : '';
   zeigeAlarmMerker(a);
 }
 
@@ -229,8 +229,8 @@ function zeigeAlarmMerker(a) {
   if (!st) return;
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der Unterschied zwischen „der Alarm steht"
   // und „der Alarm hat gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
-  st.textContent = !a ? '' : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
-  st.className = a ? `alarm-stand alarm-marke alarm-marke-${a.ausgeloest ? 'aus' : 'an'}` : 'alarm-stand';
+  st.textContent = !a ? '' : a.triggered ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
+  st.className = a ? `alarm-stand alarm-marke alarm-marke-${a.triggered ? 'aus' : 'an'}` : 'alarm-stand';
 }
 
 /**
@@ -310,7 +310,11 @@ async function sendeAlarm(sn, richtung, roh) {
   const cond = alarmZustand();
   const d = loeschen
     ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
-    : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, { richtung, schwelle: zahl, condition: cond });
+    : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+        direction: richtung,
+        threshold: zahl,
+        condition: cond,
+      });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -346,13 +350,13 @@ export async function zeigeOffeneAlarme() {
   const unter = tRaw('detail.alert_below'),
     ueber = tRaw('detail.alert_above');
   for (const a of d.alerts || []) {
-    const richtung = a.richtung === 'unter' ? unter : ueber;
+    const richtung = a.direction === 'unter' ? unter : ueber;
     // Beträge wie überall in der Oberfläche („712,40 €“), in der Währung des Alarms.
-    const schwelle = fmtN(a.schwelle, a.currency_code);
+    const schwelle = fmtN(a.threshold, a.currency_code);
     const txt =
-      a.zuletzt_preis == null
+      a.last_price == null
         ? `${a.set_number}: ${richtung} ${schwelle}`
-        : `${a.set_number}: ${fmtN(a.zuletzt_preis, a.currency_code)} (${richtung} ${schwelle})`;
+        : `${a.set_number}: ${fmtN(a.last_price, a.currency_code)} (${richtung} ${schwelle})`;
     toast(txt, 'info');
   }
 }

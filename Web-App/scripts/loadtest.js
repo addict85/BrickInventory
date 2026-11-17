@@ -67,7 +67,7 @@ async function seed() {
   console.log(`Seed: ${N_SETS} Sets, Teile und Preisverlauf …`);
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
-  await db.initSchema();
+  await db.initSchemaOnce();
 
   await db.run(`INSERT INTO users (username, password_hash) VALUES ($1, 'x')`, [USER.username]);
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;

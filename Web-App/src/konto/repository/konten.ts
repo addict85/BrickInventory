@@ -490,7 +490,7 @@ export function zugaengeDesKontos(db: DbSchnittstelle, uid: number): Promise<Zug
     `SELECT token, label, created_at, last_used, hard_expires_at, LEAST(expires_at, hard_expires_at) AS expires_at,
             scope, ip_range, never_expires, rotated_at
        FROM api_tokens
-      WHERE user_id = $1 AND ersetzt_durch IS NULL
+      WHERE user_id = $1 AND replaced_by IS NULL
         AND (expires_at IS NULL OR expires_at > NOW())
         AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
       ORDER BY created_at DESC`,
@@ -526,9 +526,9 @@ export async function zugangLoeschen(
   kennung: string,
 ): Promise<{ anzahl: number; label: string | null }> {
   const r = await db.get<{ n: number; label: string | null }>(
-    `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND (left(token, 16) = $2 OR left(ersetzt_durch, 16) = $2)
-                  RETURNING ersetzt_durch, label)
-     SELECT count(*) FILTER (WHERE ersetzt_durch IS NULL)::int AS n, max(label) AS label FROM weg`,
+    `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND (left(token, 16) = $2 OR left(replaced_by, 16) = $2)
+                  RETURNING replaced_by, label)
+     SELECT count(*) FILTER (WHERE replaced_by IS NULL)::int AS n, max(label) AS label FROM weg`,
     [uid, kennung],
   );
   return { anzahl: r?.n ?? 0, label: r?.label ?? null };
@@ -542,10 +542,10 @@ export async function andereZugaengeLoeschen(
 ): Promise<number> {
   const r = await db.get<{ n: number }>(
     `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND ($2::text IS NULL OR (token <> $2
-                    AND ersetzt_durch IS DISTINCT FROM $2
-                    AND token IS DISTINCT FROM (SELECT ersetzt_durch FROM api_tokens WHERE token = $2)))
-                  RETURNING ersetzt_durch)
-     SELECT count(*) FILTER (WHERE ersetzt_durch IS NULL)::int AS n FROM weg`,
+                    AND replaced_by IS DISTINCT FROM $2
+                    AND token IS DISTINCT FROM (SELECT replaced_by FROM api_tokens WHERE token = $2)))
+                  RETURNING replaced_by)
+     SELECT count(*) FILTER (WHERE replaced_by IS NULL)::int AS n FROM weg`,
     [uid, eigener],
   );
   return r?.n ?? 0;

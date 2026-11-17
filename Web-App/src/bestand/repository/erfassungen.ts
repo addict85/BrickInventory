@@ -74,7 +74,7 @@ export async function setzeErfassungsDatum(
   konten: number[],
 ): Promise<void> {
   await tx.run(
-    `UPDATE ${SHAPES[art].table} SET created_at=$1::date + interval '12 hours', tag=$1::date
+    `UPDATE ${SHAPES[art].table} SET created_at=$1::date + interval '12 hours', day=$1::date
                  WHERE id=$2 AND user_id = ANY($3)`,
     [datum, id, konten],
   );

@@ -73,7 +73,7 @@ function angekuendigt(u) {
       html`<span class="rb ru">${tRaw('users.angekuendigt', { was: (ANGEKUENDIGT[a.type] || (() => a.type))(), zeit: fmtDatum(a.effective_at, 'tagzeit') })}</span>`,
   );
 }
-/** Die Antwort einer Verwalteraktion: angekündigt (Verwalterkonto) oder sofort. @param {{ wirksam_ab?: string }} d @param {string} sofort */
+/** Die Antwort einer Verwalteraktion: angekündigt (Verwalterkonto) oder sofort. @param {{ effective_at?: string }} d @param {string} sofort */
 const meldeErgebnis = (d, sofort) =>
   toast(
     d.effective_at ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.effective_at, 'tagzeit') }) : sofort,

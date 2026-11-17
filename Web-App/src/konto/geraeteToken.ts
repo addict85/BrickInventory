@@ -129,9 +129,9 @@ export async function pruefeToken(
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
   row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
-  if (row.vorgaenger) {
-    await k.zugaenge.beendeUeberlappung(row.vorgaenger, hashed);
-    row.vorgaenger = null;
+  if (row.previous_token) {
+    await k.zugaenge.beendeUeberlappung(row.previous_token, hashed);
+    row.previous_token = null;
     leereTokenCache(k);
   }
 

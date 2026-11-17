@@ -78,9 +78,9 @@ function zeile(w) {
 
   const alarm = w.alarm
     ? html`<span class="mk-etikett">
-         ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
-         ${tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below')}
-         ${fmtN(Number(w.alarm.schwelle), kontoWaehrung)}
+         ${ico(w.alarm.triggered ? 'alarm' : 'uhr')}
+         ${tRaw(w.alarm.direction === 'ueber' ? 'detail.alert_above' : 'detail.alert_below')}
+         ${fmtN(Number(w.alarm.threshold), kontoWaehrung)}
        </span>`
     : '';
 

@@ -170,7 +170,5 @@ export async function entferneAlle(db: DbSchnittstelle, uids: number[]): Promise
 }
 
 export async function entferneAeltere(db: DbSchnittstelle, tage: number): Promise<number> {
-  return (
-    (await db.run('DELETE FROM trash WHERE deleted_at < NOW() - make_interval(days => $1)', [tage])).changes ?? 0
-  );
+  return (await db.run('DELETE FROM trash WHERE deleted_at < NOW() - make_interval(days => $1)', [tage])).changes ?? 0;
 }

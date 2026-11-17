@@ -62,12 +62,7 @@ export async function schliesseAb(
 
 /** Eine fertige Antwort bleibt bis zum Ablauf der Frist; ein Eintrag mit Wirkung
  * wird ohne Antwort abgeschlossen, statt eine zweite zuzulassen. */
-export async function loescheLaufenden(
-  db: DbSchnittstelle,
-  uid: number,
-  key: string,
-  status: number,
-): Promise<void> {
+export async function loescheLaufenden(db: DbSchnittstelle, uid: number, key: string, status: number): Promise<void> {
   await db.run(
     `WITH weg AS (DELETE FROM idempotency WHERE user_id = $1 AND key = $2 AND status IS NULL AND NOT has_effect)
      UPDATE idempotency SET status = $3, response = NULL WHERE user_id = $1 AND key = $2 AND status IS NULL AND has_effect`,
@@ -81,7 +76,8 @@ export async function loescheAndereAbdruecke(db: DbSchnittstelle, praefix: strin
 
 export async function loescheAelterAls(db: DbSchnittstelle, stunden: number): Promise<number> {
   return (
-    (await db.run('DELETE FROM idempotency WHERE created_at < NOW() - make_interval(hours => $1)', [stunden])).changes || 0
+    (await db.run('DELETE FROM idempotency WHERE created_at < NOW() - make_interval(hours => $1)', [stunden]))
+      .changes || 0
   );
 }
 

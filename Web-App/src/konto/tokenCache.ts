@@ -21,7 +21,7 @@ export interface TokenBenutzer {
   never_expires?: boolean;
   scope: TokenScope;
   rotated_at?: string | Date | null;
-  vorgaenger?: string | null;
+  previous_token?: string | null;
   [k: string]: unknown;
 }
 
