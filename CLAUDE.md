@@ -24,7 +24,18 @@ Gemessen am 25.10.2026: 50,5 % der Zeilen in `server.ts`, `routes/` und
 
 ## Sprache
 
-Commit-Nachrichten, Kommentare, Testnamen und Oberflächentexte sind Deutsch.
+Seit Runde 30 (17.11.2026, Entscheid des Nutzers) ist der Quellcode auf
+Englisch: Bezeichner (Variablen, Klassen, Funktionen, Methoden), Kommentare,
+Testnamen, Datei- und Verzeichnisnamen sowie das Datenbankschema und der
+API-Vertrag (OpenAPI, Zod-Schemas, erzeugte Kotlin-Typen, `app-schnittstelle.json`).
+Davor war der Code durchgehend Deutsch; die Umstellung läuft bereichsweise und
+ist in `test/ratschen.test.js` bzw. `QuelltextRatscheTest.kt` als Ratsche
+festgehalten (deutsche Bezeichner dürfen nur noch sinken).
+
+Deutsch bleiben: Commit-Nachrichten und Oberflächentexte (das, was Nutzer auf
+Deutsch sehen — `public/locales/de.js`, `values-de/strings.xml`, Mailtexte,
+Fehlermeldungen in der Oberfläche). Diese Texte sind kein Code und bleiben für
+Schweizer Nutzer verständlich.
 
 ## Tests
 
