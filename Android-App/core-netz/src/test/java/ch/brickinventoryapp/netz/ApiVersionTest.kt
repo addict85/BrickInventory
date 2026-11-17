@@ -7,11 +7,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Wer muss aktualisieren? Der Server nennt seine Schnittstellenfassung und die
- * kleinste App-Fassung, mit der er arbeitet; die App vergleicht mit ihrer.
+ * Who has to update? The server names its own contract version and the
+ * smallest app version it still works with; the app compares against its own.
  *
- * Gegenprobe (am 27.10. mit kotlinc gemessen): in versionsHinweis die beiden
- * Zweige vertauscht → rot: „eine zu alte App" und „ein zu alter Server".
+ * Gegenprobe (measured 27.10. with kotlinc): swapped the two branches in
+ * versionsHinweis → red: "eine zu alte App" and "ein zu alter Server".
  */
 class ApiVersionTest {
 

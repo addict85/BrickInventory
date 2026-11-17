@@ -3,23 +3,23 @@ package ch.brickinventoryapp.netz.util
 import ch.brickinventoryapp.core.netz.BuildConfig
 
 /**
- * Die einzige Stelle der App, die ins Logcat schreibt, und das nur im Debug-Build:
- * Ausnahmetexte tragen Adressen samt Abfrage, und Logcat liest jeder mit adb oder
- * einem Fehlerbericht mit. Rohes android.util.Log verbietet ProtokollTest.
+ * The app's only place that writes to Logcat, and only in a debug build:
+ * exception texts carry addresses including the query string, and anyone with
+ * adb or a bug report reads Logcat along with it. ProtokollTest forbids raw android.util.Log.
  */
 object Protokoll {
     enum class Stufe { NOTIZ, WARNUNG }
 
-    /** Ob geschrieben wird; im Gerät der Debug-Schalter. Öffentlich, weil die Tests in core-data ihn umstellen. */
+    /** Whether anything is written; the debug switch on the device. Public because the tests in core-data flip it. */
     @Volatile var aktiv: Boolean = BuildConfig.DEBUG
 
-    /** Wohin; im Test eine Liste statt des Logcats. */
+    /** Where to; in a test a list instead of Logcat. */
     @Volatile var ziel: (stufe: Stufe, tag: String, text: String, fehler: Throwable?) -> Unit = vorgabe()
 
     /**
-     * Logcat gibt es nur auf dem Gerät (java.vm.name ist dort „Dalvik“, wie OkHttp prüft). In einem
-     * JVM-Test ist android.util.Log eine Attrappe, die wirft; ein Test soll an seiner Regel scheitern,
-     * nicht an einer Protokollzeile. Dort geht die Zeile nach stderr.
+     * Logcat only exists on the device (java.vm.name is "Dalvik" there, as OkHttp checks). In a
+     * JVM test, android.util.Log is a throwing stub; a test should fail on its own rule, not on
+     * a log line. There, the line goes to stderr instead.
      */
     internal fun vorgabe(vm: String? = System.getProperty("java.vm.name")): (Stufe, String, String, Throwable?) -> Unit =
         if (vm == "Dalvik") { stufe, tag, text, fehler ->

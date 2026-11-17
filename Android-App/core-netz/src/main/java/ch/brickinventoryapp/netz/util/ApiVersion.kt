@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.netz.util
 
 /**
- * Die Fassung der Schnittstelle, gegen die diese App gebaut ist. Der Server
- * nennt in jeder Antwort seine eigene (X-Api-Version) und die kleinste, mit
- * der er noch zusammenarbeitet (X-Api-Min-App). Erhöht wird die Zahl nur bei
- * einer Änderung, die alte Gegenstücke bricht.
+ * The contract version this app is built against. The server states its own
+ * (X-Api-Version) in every response, plus the lowest one it still works with
+ * (X-Api-Min-App). The number only goes up on a change that breaks older
+ * counterparts.
  */
 const val APP_API_VERSION = 2
 
 enum class VersionsHinweis { APP_ZU_ALT, SERVER_ZU_ALT }
 
-/** Null heisst: passt, oder der Server sagt nichts dazu (ältere Fassung). */
+/** Null means: it fits, or the server says nothing about it (an older version). */
 internal fun versionsHinweis(serverApi: Int?, minApp: Int?, appApi: Int = APP_API_VERSION): VersionsHinweis? = when {
     minApp != null && appApi < minApp -> VersionsHinweis.APP_ZU_ALT
     serverApi != null && serverApi < appApi -> VersionsHinweis.SERVER_ZU_ALT

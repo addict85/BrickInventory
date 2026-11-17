@@ -15,21 +15,20 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * Umleitungen im API-, SSE- und PDF-Weg (pruef6, N1). OkHttp folgte einem 307
- * zu jedem Host und schickte Methode und Rumpf mit — das Passwort von
- * /auth/login, die PIN eines Gutscheins. Der Client folgt darum keiner
- * Umleitung (ServerClient.kt, hier ebenso eingestellt); der Wächter folgt nur
- * innerhalb derselben Herkunft. Zwei Testserver auf verschiedenen Ports sind
- * zwei Herkünfte.
+ * Redirects on the API, SSE and PDF path (pruef6, N1). OkHttp followed a 307
+ * to any host and sent method and body along — the password from
+ * /auth/login, a voucher's PIN. The client therefore follows no redirect
+ * (ServerClient.kt, configured the same way here); the guard only follows
+ * within the same origin. Two test servers on different ports are two origins.
  *
  * Gegenproben:
- *   A  in naechsteUmleitung() die Prüfung der Herkunft entfernt → rot „eine
- *      Umleitung zu einem anderen Host erreicht ihn nicht“ (200 von B statt 307)
- *   B  senden() folgt keiner Umleitung (nur `chain.proceed`) → rot „eine
- *      Umleitung auf demselben Server behält Methode, Rumpf und Token“ und
- *      „nach 303 geht es mit GET ohne Rumpf weiter“ (307 bzw. 303 beim Aufrufer)
- *   C  307/308 wie 303 behandelt (immer GET) → rot „eine Umleitung auf demselben
- *      Server behält …“ (GET statt POST)
+ *   A  in naechsteUmleitung(), removed the origin check → red "eine
+ *      Umleitung zu einem anderen Host erreicht ihn nicht" (200 from B instead of 307)
+ *   B  senden() follows no redirect (just `chain.proceed`) → red "eine
+ *      Umleitung auf demselben Server behält Methode, Rumpf und Token" and
+ *      "nach 303 geht es mit GET ohne Rumpf weiter" (307 resp. 303 reaches the caller)
+ *   C  307/308 treated like 303 (always GET) → red "eine Umleitung auf demselben
+ *      Server behält …" (GET instead of POST)
  */
 class UmleitungTest {
 

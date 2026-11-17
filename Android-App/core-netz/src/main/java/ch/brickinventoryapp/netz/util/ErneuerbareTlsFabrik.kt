@@ -5,15 +5,16 @@ import java.net.Socket
 import javax.net.ssl.SSLSocketFactory
 
 /**
- * Die TLS-Fabrik der Server-Clients, deren SSLContext sich ersetzen lässt. Eine
- * wiederaufgenommene TLS-Sitzung prüft keine Kette; nach dem Ausschalten der
- * Nutzer-CAs nähme der alte Kontext eine über sie vertraute Sitzung sonst wieder
- * auf. OkHttp hält die Fabrik fest, darum wechselt hier der Inhalt, nicht der Client.
+ * The TLS factory of the server clients, whose SSLContext can be swapped out. A
+ * resumed TLS session skips chain validation; after turning off user CAs, the
+ * old context would otherwise resume a session trusted through them. OkHttp
+ * holds on to the factory itself, so here it is the content that changes, not
+ * the client.
  */
 class ErneuerbareTlsFabrik(private val baue: () -> SSLSocketFactory) : SSLSocketFactory() {
     @Volatile private var jetzt: SSLSocketFactory = baue()
 
-    /** Neuer Kontext, leerer Sitzungsspeicher; laufende Verbindungen behalten den alten. */
+    /** New context, empty session cache; connections already running keep the old one. */
     fun erneuere() { jetzt = baue() }
 
     override fun getDefaultCipherSuites(): Array<String> = jetzt.defaultCipherSuites
