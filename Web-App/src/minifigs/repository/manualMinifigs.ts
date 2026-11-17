@@ -3,9 +3,9 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 import type { Spalten } from '../../../db/zeilen';
 
-/** Die BrickLink-Nummer hängt an der Figur (bl_mapping), nicht am Exemplar. */
+/** The BrickLink number sits on the minifig (bl_mapping), not on the instance. */
 
-export function figurZeileManuell(
+export function manualMinifigRow(
   db: DbSchnittstelle,
   uid: number,
   figNumber: string,
@@ -16,7 +16,7 @@ export function figurZeileManuell(
   );
 }
 
-export function figurZeileMitZustand(db: DbSchnittstelle, uid: number, figNumber: string) {
+export function minifigRowWithCondition(db: DbSchnittstelle, uid: number, figNumber: string) {
   return db.get<{ id: number; bl_fig_number: string | null; condition: string | null }>(
     `SELECT m.id, ${blNummerSql('m.fig_number', 'z')} AS bl_fig_number,
             (SELECT a.condition FROM minifig_acquisitions a
@@ -29,7 +29,7 @@ export function figurZeileMitZustand(db: DbSchnittstelle, uid: number, figNumber
   );
 }
 
-export function figurErfassungen(db: DbSchnittstelle, uids: number[], figNumber: string) {
+export function minifigAcquisitions(db: DbSchnittstelle, uids: number[], figNumber: string) {
   return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,

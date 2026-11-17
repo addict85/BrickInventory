@@ -11,7 +11,7 @@ import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 export function baueMinifigsRouter(
   d: Pick<
     Dienste,
-    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'figuren' | 'sammlung'
+    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'sammlung'
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
@@ -19,20 +19,20 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
     // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
-    const r = await d.figuren.figurenLesen(sichtVon(req), req.abfrage);
+    const r = await d.minifigs.readMinifigs(sichtVon(req), req.abfrage);
     return { figs: r.figs, total: r.total };
   });
 
   router.endpunkt('POST /api/v1/minifigs', requireToken, async req => {
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const result = await d.figuren.legeManuelleFigurAn(owner, req.eingabe);
+    const result = await d.minifigs.addManualMinifig(owner, req.eingabe);
     return { ...result };
   });
 
   router.endpunkt('PUT /api/v1/minifigs/:figNumber', requireToken, async req => {
     // Ohne den Parameter das eigene Konto.
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    const r = await d.figuren.aendereManuelleFigur(besitzer, req.pfad.figNumber, req.eingabe);
+    const r = await d.minifigs.updateManualMinifig(besitzer, req.pfad.figNumber, req.eingabe);
     return { ...r };
   });
 
@@ -58,7 +58,7 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs/manual', requireToken, async req => {
     const ab = new Abstriche();
-    const alle = await d.figuren.manuelleFigurenLesen(
+    const alle = await d.minifigs.readManualMinifigs(
       sichtVon(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '' },
@@ -70,7 +70,7 @@ export function baueMinifigsRouter(
 
   /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
   router.endpunkt('GET /api/v1/minifigs/stats', requireToken, async req => {
-    const stats = await d.figuren.figurenKennzahlen(sichtVon(req));
+    const stats = await d.minifigs.minifigStats(sichtVon(req));
     return { stats };
   });
 
@@ -83,7 +83,7 @@ export function baueMinifigsRouter(
   });
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/parts', requireToken, async req => {
-    return { ...(await d.figuren.teileDerFigur(req.pfad.figNumber)) };
+    return { ...(await d.minifigs.partsOfMinifig(req.pfad.figNumber)) };
   });
 
   router.endpunkt(

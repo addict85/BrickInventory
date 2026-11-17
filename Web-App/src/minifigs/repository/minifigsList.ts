@@ -5,13 +5,13 @@ import type { Zeile, DbSchnittstelle } from '../../../db/database';
 import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
-// Eine Suche für beide Figurenlisten; gesucht wird die Nummer auf der Kachel.
-function figurenSuche(nummer: string, name: string, pi: number) {
+// One search for both minifig lists; it searches the number shown on the tile.
+function minifigSearch(nummer: string, name: string, pi: number) {
   return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E})`;
 }
 
-/** Gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
-export async function figurenGruppiert(
+/** Groups are counted, or a minifig from five sets would count five times. */
+export async function groupedMinifigs(
   db: DbSchnittstelle,
   uids: number[],
   f: {
@@ -32,9 +32,9 @@ export async function figurenGruppiert(
   if (source === 'set') where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
   if (search) {
-    // Der Figurenname steht im Katalog; figurSichtJoin hängt an jeder Abfrage,
-    // die diese Bedingung benutzt.
-    where += ` AND ${figurenSuche('m.fig_number', FIGUR.name, pi)}`;
+    // The minifig's name sits in the catalog; figurSichtJoin follows every
+    // query that uses this condition.
+    where += ` AND ${minifigSearch('m.fig_number', FIGUR.name, pi)}`;
     params.push(enthaeltMuster(search));
     pi++;
   }
@@ -44,7 +44,7 @@ export async function figurenGruppiert(
     figParams.push(f.seite.groesse, f.seite.versatz);
     figLimit = ` LIMIT $${figParams.length - 1} OFFSET $${figParams.length}`;
   }
-  // Die Zählung braucht keinen Join auf sets.
+  // The count needs no join on sets.
   const figCount = f.seite
     ? await db.get<{ c: number }>(
         `SELECT COUNT(*)::int AS c FROM (
@@ -58,40 +58,40 @@ export async function figurenGruppiert(
   const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null; owner_ids: number[] | null }>>(
     `
     SELECT MIN(m.id) AS id,
-           -- Besitzer der GRUPPE: Die Zeile fasst die Figur über alle Konten
-           -- zusammen und hat keine einzelne user_id mehr.
+           -- Owners of the GROUP: the row sums the minifig across every account
+           -- and no longer has a single user_id.
            array_agg(DISTINCT m.user_id) AS owner_ids,
            MIN(TRIM(m.fig_number)) AS fig_number,
-           -- MAX, weil die Gruppe mehrere Schreibweisen derselben Nummer zusammenfasst.
+           -- MAX, because the group merges several spellings of the same number.
            MAX(${FIGUR.name}) AS fig_name,
-           -- Manuell die Summe der Erfassungen, aus einem Set die Katalogzahl.
+           -- Manually the sum of acquisitions, from a set the catalog count.
            SUM(${teilmengeAus('m', 'fig')})::int AS quantity,
            MAX(${FIGUR.bild}) AS image_url,
            MAX(${FIGUR.bildDatei}) AS image_local,
            m.source,
-           -- Preis aus der neuesten Erfassung; MAX, weil die Gruppe mehrere
-           -- Schreibweisen derselben Nummer zusammenfasst.
+           -- Price from the latest acquisition; MAX, because the group merges
+           -- several spellings of the same number.
            MAX(neu.unit_price) AS unit_price,
            MIN(m.set_number) AS set_number,
-           -- Die Set-Menge als Faktor; 1 ohne Erfassung, damit eine manuelle
-           -- Figur einfach zählt.
+           -- The set's quantity as a factor; 1 without an acquisition, so a
+           -- manual minifig simply counts.
            SUM(${teilmengeAus('m', 'fig')} * ${mengeAus('sm', 1)})::int AS total_quantity,
            STRING_AGG(DISTINCT m.set_number, ',') FILTER (WHERE m.set_number IS NOT NULL) AS in_sets,
-           -- Lagerort der GRUPPE: Liegt die Figur an zwei Orten, stehen beide da.
+           -- Storage location of the GROUP: if the minifig sits in two places, both show.
            NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage,
            MAX(s.added_at) AS set_added_at
     FROM minifigs m
     ${mengeJoin('m')}
     ${teilmengeJoin('m', 'fig')}
-    -- Die sets-Zeile nur für added_at; die Menge kommt aus mengeJoin().
+    -- The sets row only for added_at; the quantity comes from mengeJoin().
     LEFT JOIN ${setBestand()} s ON s.user_id = m.user_id AND s.set_number = m.set_number
-    -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste fällt.
+    -- LEFT JOIN, so a minifig without a location doesn't fall out of the list.
     LEFT JOIN ${lagerorte()} lo ON lo.id = m.storage_id
-    -- Über den Primärschlüssel, also höchstens eine Zeile je Treffer.
+    -- Over the primary key, so at most one row per match.
     ${figurSichtJoin('m.user_id', 'm.fig_number')}
-    -- Die neueste Erfassung je Figur — dieselbe Ordnung wie latestSql in
-    -- routes/api_v1/acquisitions.ts, damit „neuester Preis" und „neueste
-    -- Erfassung" dasselbe heissen.
+    -- The latest acquisition per minifig — same ordering as latestSql in
+    -- routes/api_v1/acquisitions.ts, so "latest price" and "latest
+    -- acquisition" mean the same thing.
     LEFT JOIN LATERAL (
       SELECT a.unit_price
         FROM minifig_acquisitions a
@@ -100,9 +100,9 @@ export async function figurenGruppiert(
        LIMIT 1
     ) neu ON TRUE
     WHERE ${where}
-    -- LOWER(TRIM(...)): Import-Pfade (Rebrickable-API vs. CSV-Katalog) können
-    -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
-    -- würden die Gruppierung sonst unsichtbar aushebeln.
+    -- LOWER(TRIM(...)): import paths (Rebrickable API vs. CSV catalog) can
+    -- return the same minifig number with whitespace/case variants — those
+    -- would otherwise silently defeat the grouping.
     GROUP BY LOWER(TRIM(m.fig_number)), m.source
     ORDER BY MAX(${FIGUR.name}) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`,
     figParams,
@@ -110,18 +110,18 @@ export async function figurenGruppiert(
   return { figCount, figs };
 }
 
-export async function manuelleFigurenListe(
+export async function manualMinifigsList(
   db: DbSchnittstelle,
   uids: number[],
   search: string | null | undefined,
   seite: { groesse: number; versatz: number } | null,
 ) {
   const params: unknown[] = [uids];
-  // Platzhalter vor LIMIT/OFFSET.
+  // Placeholders before LIMIT/OFFSET.
   let suche = '';
   if (search) {
     params.push(enthaeltMuster(search));
-    suche = ` AND ${figurenSuche('m.fig_number', FIGUR.name, params.length)}`;
+    suche = ` AND ${minifigSearch('m.fig_number', FIGUR.name, params.length)}`;
   }
   let limit = '';
   if (seite) {
@@ -129,21 +129,19 @@ export async function manuelleFigurenListe(
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null }>>(
-    // Name und Bild: geprüft aus dem Katalog, sonst die eigene Angabe des Kontos.
+    // Name and image: verified from the catalog, else the account's own entry.
     `SELECT m.id, m.user_id, m.set_number, m.fig_number,
-            -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
-            -- stand m.bl_fig_number, eine Abschrift je Konto. Der Feldname
-            -- nach aussen bleibt.
+            -- The BrickLink number from the mapping (migration 0037); used to be
+            -- m.bl_fig_number, a per-account copy. The outward field name stays.
             ${blNummerSql('m.fig_number', 'blz')} AS bl_fig_number,
-            -- Die Stückzahl aus den Erfassungen (Migration 0038); hier stand
-            -- m.quantity. Diese Liste zeigt nur manuelle Figuren.
+            -- The quantity from acquisitions (migration 0038); used to be
+            -- m.quantity. This list shows only manual minifigs.
             ${teilmengeAus('m', 'fig')} AS quantity,
             m.source, m.storage_id,
-            -- Preis und Zustand aus der NEUESTEN Erfassung (Migration 0035).
-            -- Die beiden Bedeutungen bleiben unterschieden, so wie
-            -- src/finanzen/preisRegel.ts sie ausschreibt: unit_price ist der
-            -- eingegebene Preis und darf leer sein, purchase_price ist der
-            -- ANZEIGEWERT und ist nie leer.
+            -- Price and condition from the LATEST acquisition (migration 0035).
+            -- The two meanings stay distinct, as src/finanzen/preisRegel.ts
+            -- spells them out: unit_price is the entered price and may be
+            -- empty, purchase_price is the DISPLAY value and is never empty.
             neu.unit_price,
             COALESCE(neu.unit_price, 0) AS purchase_price,
             COALESCE(neu.condition, 'N') AS condition,
@@ -168,7 +166,7 @@ export async function manuelleFigurenListe(
   return figs;
 }
 
-export function zustandszahlenManuellerFiguren(db: DbSchnittstelle, uids: number[]) {
+export function conditionCountsOfManualMinifigs(db: DbSchnittstelle, uids: number[]) {
   return db.all<{ fkey: string; acq_count: number; used_count: number }>(
     `SELECT LOWER(TRIM(a.fig_number)) AS fkey,
             COUNT(*)::int AS acq_count,
@@ -180,7 +178,7 @@ export function zustandszahlenManuellerFiguren(db: DbSchnittstelle, uids: number
   );
 }
 
-export function figurenKennzahlen(db: DbSchnittstelle, uids: number[]) {
+export function minifigStats(db: DbSchnittstelle, uids: number[]) {
   return db.get<{ types: number; total_quantity: number; manual: number }>(
     `
     SELECT COUNT(*)::int AS types,

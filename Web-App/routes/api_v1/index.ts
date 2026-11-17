@@ -39,7 +39,7 @@ export function baueApiRouter(
     | 'bestand'
     | 'sets'
     | 'teile'
-    | 'figuren'
+    | 'minifigs'
     | 'merkliste'
     | 'gutscheine'
     | 'sammlung'

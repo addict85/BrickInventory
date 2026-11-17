@@ -155,7 +155,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
   const H = _req('src/teile/abfragen.js');
-  const M = _req('src/figuren/abfragen.js');
+  const M = _req('src/minifigs/queries.js');
 
   const teile = await H.manuelleTeileListe([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
@@ -166,7 +166,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
     `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` + 'Nummer nicht aus bl_mapping',
   );
 
-  const figs = await M.manuelleFigurenAbfrage([uid], uid);
+  const figs = await M.readManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-9');
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
   assert.equal(fig.bl_fig_number, 'sw9999', `bl_fig_number kam als ${fig.bl_fig_number} statt sw9999`);
@@ -187,7 +187,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
     `Die Teileliste folgt der Zuordnung nicht: ${teil2.bl_part_number} statt 3070neu`,
   );
 
-  const figs2 = await M.manuelleFigurenAbfrage([uid], uid);
+  const figs2 = await M.readManualMinifigs([uid], uid);
   const fig2 = (Array.isArray(figs2) ? figs2 : figs2.minifigs || []).find(f => f.fig_number === 'fig-9');
   assert.equal(
     fig2.bl_fig_number,

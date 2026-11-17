@@ -80,7 +80,7 @@ const JE_BEREICH = {
   bestand: 43, // mit den Schreibwegen, die sets, teile und figuren abgaben (Tabellenbesitz)
   sets: 41,
   teile: 13,
-  figuren: 8,
+  minifigs: 8,
   merkliste: 9,
   gutscheine: 16,
   sammlung: 8,

@@ -829,7 +829,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
 
     const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
-    const { manuelleFigurAnlegen, manuelleFigurAendern, importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
+    const { addManualMinifig, updateManualMinifig, importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
     const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
     await alsKonto(A, async () => {
       await manuellesTeilAnlegen(A, {
@@ -842,7 +842,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
         quantity: 1,
         unit_price: 1,
       });
-      await manuelleFigurAnlegen(A, {
+      await addManualMinifig(A, {
         fig_number: 'fig-000002',
         fig_name: `${MARKE} Figur`,
         image_url: bild,
@@ -852,9 +852,9 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       });
     });
     await alsKonto(B, async () => {
-      await manuelleFigurAnlegen(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
-      await manuelleFigurAendern(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
-      await importiereFigurenCsv(
+      await addManualMinifig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+      await updateManualMinifig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
+      await importMinifigsCsv(
         B,
         `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`,
       );

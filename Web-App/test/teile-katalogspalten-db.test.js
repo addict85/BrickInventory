@@ -243,8 +243,8 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog', { concurrenc
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);
   await haeltFigur(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
 
-  const handlers = _req('src/figuren/abfragen.js');
-  const liste = await handlers.figurenAbfrage(uid, {});
+  const handlers = _req('src/minifigs/queries.js');
+  const liste = await handlers.readMinifigs(uid, {});
   const figs = liste.minifigs || liste.figs || liste;
   const f = (Array.isArray(figs) ? figs : []).find(x => x.fig_number === 'fig-000123');
   assert.ok(f, `Die Figur fehlt in der Antwort: ${JSON.stringify(liste).slice(0, 400)}`);
@@ -253,7 +253,7 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog', { concurrenc
   assert.equal(Number(f.total_quantity), 3, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
 
   // Die Suche läuft über den Katalognamen.
-  const gesucht = await handlers.figurenAbfrage(uid, { search: 'chewb' });
+  const gesucht = await handlers.readMinifigs(uid, { search: 'chewb' });
   const gFigs = gesucht.minifigs || gesucht.figs || gesucht;
   assert.equal(
     (Array.isArray(gFigs) ? gFigs : []).length,

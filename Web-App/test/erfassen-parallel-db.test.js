@@ -164,7 +164,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
 
   // Manuelle Einträge prüfen im Dienst, Sets im Vertrag (eingabe.stueckzahl und
   // eingabe.preis rufen dieselben Prüfer) — eine Regel.
-  for (const rel of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts']) {
+  for (const rel of ['src/teile/manuelleTeile.ts', 'src/minifigs/manualMinifigs.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /geldEingabe\(/, `${rel}: Preis ungeprüft`);
@@ -224,7 +224,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   for (const [rel, dienst] of [
     ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
     ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
-    ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts'],
+    ['routes/api_v1/minifigs.ts', 'src/minifigs/manualMinifigs.ts'],
   ]) {
     const src = ohneKommentare(
       fs.readFileSync(path.join(ROOT, rel), 'utf8') +

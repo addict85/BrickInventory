@@ -3,75 +3,75 @@ import { asIds, type Sicht } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { mitVersion } from '../infra/setNummer';
 import { Abstriche } from '../infra/ergebnis';
-import type { FigurenKontext } from './kontext';
+import type { MinifigsContext } from './context';
 
-// Leseabfragen für Minifiguren.
+// Read queries for minifigs.
 
-/** Ohne page_size unverändertes Verhalten — die Android-App ruft so auf. */
-type FigurenWunsch = {
+/** Without page_size, unchanged behavior — the Android app calls it this way. */
+type MinifigsQuery = {
   search?: string | undefined;
   source?: string | undefined;
   set_number?: string | undefined;
   page?: number | undefined;
   page_size?: number | null | undefined;
 };
-export async function figurenAbfrage(
-  k: FigurenKontext,
+export async function readMinifigs(
+  k: MinifigsContext,
   userIdWahl: Sicht | number | number[],
-  { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {},
+  { search, source, set_number, page = 1, page_size = null }: MinifigsQuery = {},
 ) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
-  // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
+  // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const { figCount, figs } = await k.figurenListe.figurenGruppiert(uids, {
+  const { figCount, figs } = await k.minifigsList.groupedMinifigs(uids, {
     search: search ?? null,
     source: source ?? null,
     setNumber: set_number ? mitVersion(set_number) : null,
     seite: size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   });
 
-  // Eine „Gebraucht"-Erfassung genügt, damit die Figur als gebraucht gilt.
-  const usedFigRows = await k.figurenListe.zustandszahlenManuellerFiguren(uids);
-  const zustandJeFigur = new Map<string, { acq_count: number; used_count: number }>(
+  // One "used" acquisition is enough for the minifig to count as used.
+  const usedFigRows = await k.minifigsList.conditionCountsOfManualMinifigs(uids);
+  const conditionByMinifig = new Map<string, { acq_count: number; used_count: number }>(
     usedFigRows.map(r => [r.fkey, r] as [string, { acq_count: number; used_count: number }]),
   );
 
-  const zustand = (f: { fig_number: unknown }) => zustandJeFigur.get(String(f.fig_number).trim().toLowerCase());
+  const condition = (f: { fig_number: unknown }) => conditionByMinifig.get(String(f.fig_number).trim().toLowerCase());
   const mappedFigs = figs.map(({ owner_ids, ...f }) => ({
     ...f,
-    // owner_ids nur im Haushalt: Im Einzelkonto wäre „gehört mir" Rauschen.
+    // owner_ids only in a household: in a single account "mine" would be noise.
     ...(uids.length > 1 ? { owner_ids: (owner_ids || []).map((n: unknown) => parseInt(String(n), 10)) } : {}),
     image_local: resolveImageLocal(f.image_local),
-    // Ohne Erfassung 'N'.
-    condition: conditionFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
-    conditions: conditionsFromAcquisitions(zustand(f)?.acq_count, zustand(f)?.used_count),
+    // 'N' without an acquisition.
+    condition: conditionFromAcquisitions(condition(f)?.acq_count, condition(f)?.used_count),
+    conditions: conditionsFromAcquisitions(condition(f)?.acq_count, condition(f)?.used_count),
   }));
 
-  // Mit Gesamtzahl für den Endlos-Scroll, wie bei setsLesen.
+  // With a total count for infinite scroll, as with setsLesen.
   return {
     figs: await k.haushalt.besitzerAnhaengen(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 
-// Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
-export async function figurenKennzahlenLesen(k: FigurenKontext, userIdWahl: Sicht | number | number[]) {
+// One count for the webapp and the app; the app used to count itself, differently.
+export async function minifigStats(k: MinifigsContext, userIdWahl: Sicht | number | number[]) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  const row = await k.figurenListe.figurenKennzahlen(uids);
+  const row = await k.minifigsList.minifigStats(uids);
   return {
     types: row?.types ?? 0,
     total_quantity: row?.total_quantity ?? 0,
     manual: row?.manual ?? 0,
-    // Alter Name der Webapp-Antwort, damit die Kachel nicht von der Umbenennung abhängt.
+    // Old name of the webapp response, so the tile doesn't depend on the rename.
     unique_figs: row?.types ?? 0,
   };
 }
 
-/** @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten. */
-export async function manuelleFigurenAbfrage(
-  k: FigurenKontext,
+/** @param viewerId whose settings apply (currency); `userId` says whose data. */
+export async function readManualMinifigs(
+  k: MinifigsContext,
   userIdWahl: Sicht | number | number[],
   viewerId: number,
   {
@@ -84,22 +84,22 @@ export async function manuelleFigurenAbfrage(
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const figs = await k.figurenListe.manuelleFigurenListe(
+  const figs = await k.minifigsList.manualMinifigsList(
     uids,
     search,
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
-  const mitZustand = await k.bestand.setzeManuellenZustand(uids, mapped, 'fig');
+  const withCondition = await k.bestand.setzeManuellenZustand(uids, mapped, 'fig');
 
-  // Der Marktpreis NUR aus dem Cache, in einer Abfrage für die ganze Liste:
-  // Ein Live-Abruf je Eintrag liesse die Liste auf BrickLink warten.
+  // The market price ONLY from the cache, in one query for the whole list: a
+  // live lookup per entry would make the list wait on BrickLink.
   const preise = await ab.oder(
     'marktpreise',
-    k.finanzen.marktpreiseAusCacheFuerFiguren(mitZustand, viewerId),
+    k.finanzen.marktpreiseAusCacheFuerFiguren(withCondition, viewerId),
     new Map<string, number>(),
   );
-  const mitPreis = mitZustand.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
+  const mitPreis = withCondition.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
   return k.haushalt.besitzerAnhaengen(uids, mitPreis);
 }

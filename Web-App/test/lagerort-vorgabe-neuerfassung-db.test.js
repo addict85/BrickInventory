@@ -40,7 +40,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben (testQuellen): Ohne Namen im Rumpf fragt manuellesTeilAnlegen/manuelleFigurAnlegen
+// Rebrickable vorgeben (testQuellen): Ohne Namen im Rumpf fragt manuellesTeilAnlegen/addManualMinifig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
 // nicht um den Namen — der Abruf soll nicht ueber das Netz greifen.
 testQuellen(null, {
@@ -92,7 +92,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     setzeVorgabe: bestand.setzeVorgabe,
   };
   const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
-  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
+  const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
   await setzeVorgabe(UID, await ortId('Kiste 7'));
 
@@ -113,7 +113,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   });
 
   await t.test('eine Figur ohne Ortangabe bekommt sie auch', async () => {
-    await manuelleFigurAnlegen(UID, { fig_number: 'fig-000123', quantity: 1 });
+    await addManualMinifig(UID, { fig_number: 'fig-000123', quantity: 1 });
     const z = await db.get(
       `SELECT l.name FROM minifigs m LEFT JOIN storage_locations l ON l.id = m.storage_id
         WHERE m.user_id=$1 AND m.fig_number='fig-000123'`,

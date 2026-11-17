@@ -635,7 +635,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.ok(!nurA.includes('m-B'), 'der Filter zeigt das Teil des Geschwisterkontos');
     assert.ok(alle.includes('m-A') && alle.includes('m-B'), 'ohne Filter müssen beide erscheinen');
 
-    const figsA = nummern(await handlers.manuelleFigurenAbfrage(await household.blickfeldIds(U.eltern, U.kindA)));
+    const figsA = nummern(await handlers.readManualMinifigs(await household.blickfeldIds(U.eltern, U.kindA)));
     assert.ok(figsA.includes('mf-A'));
     assert.ok(!figsA.includes('mf-B'), 'der Filter zeigt die Figur des Geschwisterkontos');
   });

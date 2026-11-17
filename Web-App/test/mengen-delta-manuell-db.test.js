@@ -49,7 +49,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
   const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
-  const { manuelleFigurAendern } = _req('src/figuren/manuelleFiguren.js');
+  const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const teil = async () =>
     Number(
       (
@@ -76,8 +76,8 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
     ]);
     assert.equal(await teil(), 4);
     await Promise.all([
-      manuelleFigurAendern(uid, FIGUR, { quantity_delta: 1 }),
-      manuelleFigurAendern(uid, FIGUR, { quantity_delta: 1 }),
+      updateManualMinifig(uid, FIGUR, { quantity_delta: 1 }),
+      updateManualMinifig(uid, FIGUR, { quantity_delta: 1 }),
     ]);
     assert.equal(await figur(), 3);
   });

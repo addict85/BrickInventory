@@ -72,9 +72,9 @@ async function aufbau(t) {
 test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen und sagen es', async t => {
   if (!(await aufbau(t))) return;
   const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
-  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
+  const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const teil = await manuellesTeilAnlegen(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
-  const fig = await manuelleFigurAnlegen(U, { fig_number: FIG, condition: 'N' });
+  const fig = await addManualMinifig(U, { fig_number: FIG, condition: 'N' });
   assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
   const { manuellerTeilekauf } = _req('src/teile/manuelleTeile.js');
   const r = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });

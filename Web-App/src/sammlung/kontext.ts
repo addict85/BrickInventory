@@ -9,7 +9,7 @@ import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { SetsDienste } from '../sets';
 import type { TeileDienste } from '../teile';
-import type { FigurenDienste } from '../figuren';
+import type { MinifigsServices } from '../minifigs';
 import type { MerklisteDienste } from '../merkliste';
 import type { Uhr } from '../infra/uhr';
 
@@ -23,7 +23,7 @@ export interface SammlungAbhaengigkeiten {
   bestand: BestandDienste;
   sets: SetsDienste;
   teile: TeileDienste;
-  figuren: FigurenDienste;
+  minifigs: MinifigsServices;
   merkliste: MerklisteDienste;
 }
 

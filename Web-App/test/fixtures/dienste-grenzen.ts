@@ -51,7 +51,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.teile.teileListe,
     // @ts-expect-error
-    d.figuren.db,
+    d.minifigs.db,
     // @ts-expect-error
     d.merkliste.db,
     // @ts-expect-error

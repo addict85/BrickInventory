@@ -66,16 +66,16 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   const uids = await blickfeldIds(haupt, 'all');
   const S = require('./helpers/sources').bereichsSeite('sets');
   const P = _req('src/teile/abfragen.js');
-  const M = _req('src/figuren/abfragen.js');
+  const M = _req('src/minifigs/queries.js');
 
   /** @type {[string, () => Promise<any[]>][]} */
   const listen = [
     ['/v1/sets', async () => (await S.setsLesen(uids, { page_size: 60 })).sets],
-    // manuelleTeileListe/manuelleFigurenAbfrage liefern ein NACKTES Array; die Route
+    // manuelleTeileListe/readManualMinifigs liefern ein NACKTES Array; die Route
     // verpackt es. Die drei anderen Listen liefern ein Objekt mit `total`.
     ['/v1/parts/manual', async () => await P.manuelleTeileListe(uids, {})],
-    ['/v1/minifigs', async () => (await M.figurenAbfrage(uids, { source: 'set' })).figs],
-    ['/v1/minifigs/manual', async () => await M.manuelleFigurenAbfrage(uids, {})],
+    ['/v1/minifigs', async () => (await M.readMinifigs(uids, { source: 'set' })).figs],
+    ['/v1/minifigs/manual', async () => await M.readManualMinifigs(uids, {})],
   ];
 
   for (const [name, hole] of listen) {
@@ -137,13 +137,13 @@ test('im Einzelkonto steht keine Plakette', async t => {
   };
   const uids = await blickfeldIds(allein, 'all');
   const S = require('./helpers/sources').bereichsSeite('sets');
-  const M = _req('src/figuren/abfragen.js');
+  const M = _req('src/minifigs/queries.js');
 
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in
   // jeder Antwort. Dieselbe Entscheidung wie bei den Sets seit jeher.
   for (const [name, zeilen] of [
     ['/v1/sets', (await S.setsLesen(uids, { page_size: 60 })).sets],
-    ['/v1/minifigs', (await M.figurenAbfrage(uids, { source: 'set' })).figs],
+    ['/v1/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],
   ]) {
     assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);
     for (const z of zeilen) {

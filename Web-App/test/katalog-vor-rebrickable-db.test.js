@@ -110,7 +110,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
                   ('fig-000456','Luke',NULL)`);
 
   const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
-  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
+  const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
   const legeTeil = async (nr, farbe) => {
@@ -185,14 +185,14 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
 
   await t.test('Figur mit Name und Bild — kein Abruf', async () => {
     abrufe = [];
-    const r = await manuelleFigurAnlegen(UID, { fig_number: 'fig-000123', quantity: 1 });
+    const r = await addManualMinifig(UID, { fig_number: 'fig-000123', quantity: 1 });
     assert.deepEqual(abrufe, [], 'minifigs_catalog fuehrt Name und Bild');
     assert.equal(r.fig_name, 'Chewbacca');
   });
 
   await t.test('Figur ohne Bild — es wird gefragt', async () => {
     abrufe = [];
-    await manuelleFigurAnlegen(UID, { fig_number: 'fig-000456', quantity: 1 });
+    await addManualMinifig(UID, { fig_number: 'fig-000456', quantity: 1 });
     assert.deepEqual(abrufe, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');
   });
 });

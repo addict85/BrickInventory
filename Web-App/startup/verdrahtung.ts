@@ -10,7 +10,7 @@ import { erzeugeMail } from '../src/mail';
 import { createIdempotency } from '../src/idempotency';
 import { erzeugeBestand } from '../src/bestand';
 import { erzeugeTeile } from '../src/teile';
-import { erzeugeFiguren } from '../src/figuren';
+import { createMinifigs } from '../src/minifigs';
 import { erzeugeMerkliste } from '../src/merkliste';
 import { erzeugeGutscheine } from '../src/gutscheine';
 import { erzeugeSammlung } from '../src/sammlung';
@@ -191,9 +191,9 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     { db, uhr, einstellungen, auftraege, haushalt, katalog, fremdquellen, finanzen, bestand },
     zeige('teile'),
   );
-  const figuren = erzeugeFiguren(
+  const minifigs = createMinifigs(
     { db, uhr, einstellungen, haushalt, katalog, fremdquellen, auftraege, finanzen, bestand },
-    zeige('figuren'),
+    zeige('minifigs'),
   );
   const merkliste = erzeugeMerkliste(
     { db, uhr, einstellungen, haushalt, katalog, fremdquellen, bilder, finanzen, sets },
@@ -201,7 +201,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   );
   const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, drossel }, zeige('gutscheine'));
   const sammlung = erzeugeSammlung(
-    { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, figuren, merkliste },
+    { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, minifigs, merkliste },
     zeige('sammlung'),
   );
   const verwaltung = erzeugeVerwaltung(
@@ -225,7 +225,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     },
     zeige('verwaltung'),
   );
-  return { ...grund, finanzen, bestand, sets, teile, figuren, merkliste, gutscheine, sammlung, verwaltung };
+  return { ...grund, finanzen, bestand, sets, teile, minifigs, merkliste, gutscheine, sammlung, verwaltung };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

@@ -520,7 +520,7 @@ const HANDLER_MODULE = [
   'src/teile/abfragen',
   'src/sets/lesen',
   'src/sets/loeschen',
-  'src/figuren/abfragen',
+  'src/minifigs/queries',
   'src/bestand/kennzahlen',
 ];
 function handlerQuelle() {

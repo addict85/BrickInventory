@@ -4,7 +4,7 @@
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Der Lagerort-Aufruf in setErfassen() entfernt       → Schritt 1 rot.
  *   b) desgleichen in manuellesTeilAnlegen()                      → Schritt 3 rot.
- *   c) desgleichen in manuelleFigurAnlegen()                       → Schritt 4 rot.
+ *   c) desgleichen in addManualMinifig()                       → Schritt 4 rot.
  *   d) `storage` in uebernimm() nicht durchgereicht        → Schritt 5 rot.
  *   e) minifigs in lagerorte() nicht mitgezählt            → Schritt 6 rot.
  *   f) minifigs in loescheOrt() nicht mitgezählt           → Schritt 7 rot.
@@ -83,7 +83,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   await seed();
   const setService = require('./helpers/sources').bereichsSeite('sets');
   const teile = _req('src/teile/manuelleTeile.js');
-  const figuren = _req('src/figuren/manuelleFiguren.js');
+  const figuren = _req('src/minifigs/manualMinifigs.js');
   const merkliste = _req('src/merkliste/merkliste.js');
   const L = {
     ..._req('src/bestand/lagerort.js'),
@@ -125,7 +125,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
 
   await t.test('4. Eine manuell erfasste Minifigur bekommt ihren Lagerort', async () => {
     // Bis Migration 0024 gab es die Spalte gar nicht.
-    await figuren.manuelleFigurAnlegen(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
+    await figuren.addManualMinifig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
       `SELECT l.name AS storage FROM minifigs t
          LEFT JOIN storage_locations l ON l.id = t.storage_id

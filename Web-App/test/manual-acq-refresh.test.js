@@ -103,7 +103,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     await db.pool.end().catch(() => {});
   });
   const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
-  const { manuelleFigurAendern } = _req('src/figuren/manuelleFiguren.js');
+  const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { kaufAmTagErfassen } = _req('src/bestand/acquisitions.js');
   const { testServer } = require('./helpers/server');
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
@@ -120,7 +120,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     ]);
     await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, 'ma-fig-leer', 'manual')`, [uid]);
     await manuellesTeilAendern(uid, 'ma-leer', 5, { quantity: 3 });
-    await manuelleFigurAendern(uid, 'ma-fig-leer', { quantity: 2 });
+    await updateManualMinifig(uid, 'ma-fig-leer', { quantity: 2 });
     assert.deepEqual(
       (await teilZeilen('ma-leer')).map(r => r.quantity),
       [3],
@@ -321,7 +321,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   // gälte die Tagesregel (erfassung-je-zustand-db.test.js) nicht für jeden Weg.
   for (const f of [
     'src/teile/manuelleTeile.ts',
-    'src/figuren/manuelleFiguren.ts',
+    'src/minifigs/manualMinifigs.ts',
     'routes/api_v1/sets.ts',
     'routes/api_v1/setsImport.ts',
     'src/sets/dienst.ts',
@@ -338,7 +338,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     'routes/api_v1/sets.ts',
     'routes/api_v1/setsImport.ts',
     'src/teile/manuelleTeile.ts',
-    'src/figuren/manuelleFiguren.ts',
+    'src/minifigs/manualMinifigs.ts',
     'routes/api_v1/acquisitions.ts',
     'src/sammlung/erfassungen.ts',
   ]) {

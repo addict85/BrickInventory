@@ -341,7 +341,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
 
   const P = _req('src/teile/abfragen.js');
-  const M = _req('src/figuren/abfragen.js');
+  const M = _req('src/minifigs/queries.js');
   const S = _req('src/bestand/kennzahlen.js');
   const SH = _req('src/bestand/gemeinsam.js');
 
@@ -394,7 +394,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'total_quantity muss eine Zahl sein, keine Zeichenkette',
   );
 
-  const figListe = await M.figurenAbfrage([haupt], { page_size: 60 });
+  const figListe = await M.readMinifigs([haupt], { page_size: 60 });
   const figVon = (l, nr) => (l.figs || []).find(x => x.fig_number === nr);
   assert.equal(
     Number(figVon(figListe, 'sw0001').total_quantity),
@@ -427,7 +427,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   const manZeile = man.find(x => x.part_number === '3070b');
   assert.ok(manZeile, 'Die manuelle Position fehlt in der Liste');
   assert.equal(Number(manZeile.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manZeile.quantity}`);
-  const manFig = (await M.manuelleFigurenAbfrage([haupt], haupt, { page_size: 60 })).find(
+  const manFig = (await M.readManualMinifigs([haupt], haupt, { page_size: 60 })).find(
     x => x.fig_number === 'fig-m',
   );
   assert.ok(manFig, 'Die manuelle Figur fehlt in der Liste');

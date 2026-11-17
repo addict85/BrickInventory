@@ -945,7 +945,7 @@ const STUFEN = [
   ['src/finanzen'],
   ['src/bestand'],
   ['src/sets'],
-  ['src/teile', 'src/figuren', 'src/merkliste', 'src/gutscheine'],
+  ['src/teile', 'src/minifigs', 'src/merkliste', 'src/gutscheine'],
   ['src/sammlung', 'src/verwaltung'],
   ['src/dienste.ts'],
   ['jobs', 'routes'],

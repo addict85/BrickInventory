@@ -67,7 +67,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   const { teileCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
   const { setsAlsCsv } = require('./helpers/sources').bereichsSeite('sets');
   const { importiereTeileCsv } = _req('src/teile/manuelleTeile.js');
-  const { importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
+  const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
 
   const erfassungen = (tabelle, nummer, farbe, u) =>
@@ -88,7 +88,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   });
 
   await t.test('Figuren kommen unverändert an', async () => {
-    const r = await importiereFigurenCsv(B, await figurenCsv(A));
+    const r = await importMinifigsCsv(B, await figurenCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
       await erfassungen('minifig_acquisitions', 'fig_number', false, B),

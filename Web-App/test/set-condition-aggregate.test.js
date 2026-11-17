@@ -216,7 +216,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const src =
     fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
     '\n' +
-    fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
+    fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
   const est = src.slice(
     src.indexOf('async function estimateFigPriceFromParts'),
     src.indexOf('async function aktuellerFigurMarktpreis'),
@@ -242,10 +242,10 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
-  const src = fs.readFileSync(path.join(ROOT, 'src/figuren/manuelleFiguren.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
   const fn = src.slice(
-    src.indexOf('async function manuelleFigurAnlegen'),
-    src.indexOf('async function manuelleFigurAnlegen') + 6000,
+    src.indexOf('async function addManualMinifig'),
+    src.indexOf('async function addManualMinifig') + 6000,
   );
 
   const writes = [

@@ -85,7 +85,7 @@ async function ergebnisVon(
     case 'teile_csv':
       return csvImportBericht(await kx.teile.importiereTeileCsv(uid, n.eingabe.text));
     case 'figuren_csv':
-      return csvImportBericht(await kx.figuren.importiereFigurenCsv(uid, n.eingabe.text));
+      return csvImportBericht(await kx.minifigs.importMinifigsCsv(uid, n.eingabe.text));
     case 'merkliste_csv':
       return csvImportBericht(await kx.merkliste.importiereMerklisteCsv(n.eingabe.owner, n.eingabe.text));
     case 'alarme_csv':

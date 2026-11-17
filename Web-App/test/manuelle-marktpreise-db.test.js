@@ -11,7 +11,7 @@ const { buildAndRequire, handlerModul, testDaten } = require('./helpers/sources'
 const _req = buildAndRequire();
 const db = testDaten();
 const H = handlerModul(_req);
-const MF = _req('src/figuren/abfragen.js');
+const MF = _req('src/minifigs/queries.js');
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
 const U = 990701;
@@ -54,7 +54,7 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async t => {
     // Diese Reihenfolge ist Absicht. Stünde sie hinten, könnte ein Fehler in
     // Zusicherung 1 sie nie erreichen — und gerade sie schützt davor, dass
     // die Liste bei fehlendem Preis scheitert statt leer zu bleiben.
-    const figsOhne = await MF.manuelleFigurenAbfrage([U], U);
+    const figsOhne = await MF.readManualMinifigs([U], U);
     const teileOhne = await H.manuelleTeileListe([U], U);
     assert.equal(figsOhne.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
     assert.equal(teileOhne.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
@@ -73,7 +73,7 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async t => {
       [TEIL, FARBE],
     );
 
-    const figs = await MF.manuelleFigurenAbfrage([U], U);
+    const figs = await MF.readManualMinifigs([U], U);
     const teile = await H.manuelleTeileListe([U], U);
     assert.equal(
       Number(figs[0].avg_price),

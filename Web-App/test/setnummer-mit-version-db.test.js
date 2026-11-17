@@ -184,12 +184,12 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
           `Filter ${filter}`,
         );
       }
-      const { figurenAbfrage } = _req('src/figuren/abfragen.js');
+      const { readMinifigs } = _req('src/minifigs/queries.js');
       await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1,$2,'SNFIG','set')`, [
         uid,
         `F${PID}`,
       ]);
-      const f = await figurenAbfrage([uid], { set_number: `F${PID}` });
+      const f = await readMinifigs([uid], { set_number: `F${PID}` });
       assert.deepEqual(
         (f.figs || f.minifigs || []).map(m => m.fig_number),
         ['SNFIG'],

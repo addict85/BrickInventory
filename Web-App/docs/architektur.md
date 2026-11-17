@@ -238,7 +238,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 14 | `src/finanzen` |
 | 15 | `src/bestand` |
 | 16 | `src/sets` |
-| 17 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 17 | `src/teile`, `src/minifigs`, `src/merkliste`, `src/gutscheine` |
 | 18 | `src/sammlung`, `src/verwaltung` |
 | 19 | `src/dienste.ts` |
 | 20 | `jobs`, `routes` |

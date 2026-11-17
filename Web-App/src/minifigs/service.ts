@@ -1,0 +1,49 @@
+import { logAndContinue } from '../infra/fehler';
+import { mitVersion } from '../infra/setNummer';
+import type { KatalogZeile } from './zeilen';
+import type { MinifigsContext } from './context';
+export type { FigurTeil, KatalogZeile } from './zeilen';
+
+function catalogParts(k: MinifigsContext, figNumber: string): Promise<KatalogZeile[]> {
+  return k.minifigParts.catalogPartsOfMinifig(figNumber);
+}
+
+/** If BrickLink numbers are missing, enrichment runs before the response; a follow-up
+ * job loads the images afterwards so the response doesn't wait on them. */
+export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
+  // Minifigs carry no version suffix, but a 'fig-' prefix instead.
+  // A read error is not "unknown minifig" (not_found): it is rethrown.
+  const invId = await kx.katalog.inventarFuerKandidaten([figNumber, figNumber.replace('fig-', '')]);
+  if (!invId) return { parts: [], source: 'not_found' };
+
+  const teile = await kx.minifigParts.inventoryPartsOfMinifig(invId);
+
+  let kat = await catalogParts(kx, figNumber);
+  if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
+    const parentSet = await kx.minifigParts.setWithMinifig(figNumber);
+    const enrich = parentSet
+      ? kx.katalog.reichereSetFigurenAn(parentSet.set_number)
+      : kx.katalog.reichereSetTeileAn(figNumber);
+    await enrich.catch(logAndContinue('figuren:anreichern'));
+    kat = await catalogParts(kx, figNumber);
+  }
+  const byPart = new Map(kat.map(r => [`${r.part_number}|${r.color_id}`, r]));
+  const parts = teile.map(p => {
+    const k = byPart.get(`${p.part_number}|${p.color_id}`);
+    return {
+      ...p,
+      bl_part_number: k?.bl_part_number || p.bl_part_number,
+      image_url: k?.image_local || k?.image_url || null,
+    };
+  });
+  setImmediate(() => {
+    kx.auftraege
+      .stelleAuftragEin(
+        'bilder',
+        { set_number: figNumber, nur_bilder: true },
+        { schluessel: `bilder:${mitVersion(figNumber)}:nur`, maxVersuche: 3 },
+      )
+      .catch(logAndContinue('figuren:downloadSetImages'));
+  });
+  return { parts, source: kat.length ? 'enriched' : 'csv_cache' };
+}

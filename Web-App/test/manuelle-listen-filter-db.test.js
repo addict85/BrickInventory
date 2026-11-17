@@ -13,7 +13,7 @@
  *        zusammen" und „das Set-Teil bleibt draussen". Der erste meldet
  *        „die Suche nach 3001 liefert 3001,3002,3003 — erwartet nur 3001".
  *        Das ist Marcos Befund, in Zahlen.
- *   B  `search` in manuelleFigurenAbfrage ignoriert
+ *   B  `search` in readManualMinifigs ignoriert
  *      → `pass 9 / fail 2`. Rot ist der Figuren-Fall. Dass es nur einer ist,
  *        ist der Grund, warum diese Lücke so lange unbemerkt blieb: Niemand
  *        sucht im Reiter Minifiguren nach einer manuell erfassten Figur,
@@ -94,10 +94,10 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
   await haeltFigur(db, UID, 'fig-000456', { menge: 2 });
 
   const teile = _req('src/teile/abfragen.js');
-  const figuren = _req('src/figuren/abfragen.js');
+  const figuren = _req('src/minifigs/queries.js');
   const nummern = async opt => (await teile.manuelleTeileListe([UID], UID, opt)).map(p => String(p.part_number)).sort();
   const figNummern = async opt =>
-    (await figuren.manuelleFigurenAbfrage([UID], UID, opt)).map(f => String(f.fig_number)).sort();
+    (await figuren.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
   await t.test('ohne Suchtext steht alles da', async () => {
     assert.deepEqual(

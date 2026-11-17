@@ -5,7 +5,7 @@ import type { BestandDienste } from './bestand';
 import type { BilderDienste } from './bilder';
 import type { DrosselDienste } from './drossel';
 import type { EinstellungenDienste } from './einstellungen';
-import type { FigurenDienste } from './figuren';
+import type { MinifigsServices } from './minifigs';
 import type { GeraeteDienste } from './geraete';
 import type { FaktorenDienste } from './faktoren';
 import type { FinanzenDienste } from './finanzen';
@@ -50,7 +50,7 @@ export interface Dienste {
   bestand: BestandDienste;
   sets: SetsDienste;
   teile: TeileDienste;
-  figuren: FigurenDienste;
+  minifigs: MinifigsServices;
   merkliste: MerklisteDienste;
   gutscheine: GutscheineDienste;
   sammlung: SammlungDienste;

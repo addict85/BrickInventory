@@ -73,7 +73,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
     B = await neu('bruno');
 
   const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
-  const { manuelleFigurAnlegen } = _req('src/figuren/manuelleFiguren.js');
+  const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { katalogTeil } = _req('src/katalog/katalogPflege.js');
   const gemeinsam = nr =>
     db.get(
@@ -141,9 +141,9 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   });
 
   await t.test('Figuren: die Eingabe bleibt beim Konto, die geprüfte Quelle füllt den Katalog', async () => {
-    await manuelleFigurAnlegen(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
+    await addManualMinifig(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
     abrufe = [];
-    await manuelleFigurAnlegen(B, { fig_number: 'sw0011', quantity: 1 });
+    await addManualMinifig(B, { fig_number: 'sw0011', quantity: 1 });
     assert.deepEqual(abrufe, ['getMinifigInfo sw0011']);
     assert.equal(
       (await db.get('SELECT fig_name FROM minifigs_catalog WHERE fig_number = $1', ['sw0011'])).fig_name,

@@ -143,7 +143,7 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
   );
 
   const H = _req('src/teile/abfragen.js');
-  const M = _req('src/figuren/abfragen.js');
+  const M = _req('src/minifigs/queries.js');
 
   const teile = await H.manuelleTeileListe([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');
@@ -152,7 +152,7 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
   assert.equal(Number(teil.purchase_price), 2.0, 'purchase_price ist der Anzeigewert und darf nicht leer sein');
   assert.equal(teil.condition, 'U', 'Eine gebrauchte Erfassung macht das Teil gebraucht (conditionFromAcquisitions)');
 
-  const figs = await M.manuelleFigurenAbfrage([uid], uid);
+  const figs = await M.readManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-5');
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
   assert.equal(Number(fig.unit_price), 7.5, 'unit_price muss der Preis der NEUESTEN Erfassung sein');

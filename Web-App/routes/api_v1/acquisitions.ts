@@ -14,7 +14,7 @@ function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
 
 /** Summe in der Kontowährung (src/bestand/acquisitions.ts), in der Form des Vertrags. */
 async function inKontowaehrung<T extends Parameters<Dienste['bestand']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+  d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>,
   rows: T[],
   betrachter: number,
 ) {
@@ -32,7 +32,7 @@ type Aenderung = Erfassungsanfrage<Anfrage<'PUT /api/v1/sets/:setNumber/acquisit
 
 const aendern =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
@@ -41,7 +41,7 @@ const aendern =
 
 const loeschen =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
@@ -51,7 +51,7 @@ const setSchluessel: Schluessel = p => [String(p.setNumber)];
 const teilSchluessel: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
 const figurSchluessel: Schluessel = p => [String(p.figNumber)];
 
-export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>) {
+export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -88,7 +88,7 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 't
   );
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/acquisitions', requireToken, async req => {
-    const rows = await d.figuren.figurErfassungen(sichtVon(req), req.pfad.figNumber);
+    const rows = await d.minifigs.minifigAcquisitions(sichtVon(req), req.pfad.figNumber);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
   router.endpunkt(

@@ -1,4 +1,4 @@
-/** Zeilen der Figuren-Repositories; Grund wie in src/sets/zeilen.ts. */
+/** Rows of the minifig repositories; same reasoning as src/sets/zeilen.ts. */
 export interface FigurTeil {
   part_number: string;
   bl_part_number: string;

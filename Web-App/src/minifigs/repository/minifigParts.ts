@@ -2,7 +2,7 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { FigurTeil, KatalogZeile } from '../zeilen';
 import type { DbSchnittstelle } from '../../../db/database';
 
-export function katalogTeileDerFigur(db: DbSchnittstelle, figNumber: string) {
+export function catalogPartsOfMinifig(db: DbSchnittstelle, figNumber: string) {
   return db.all<KatalogZeile>(
     `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number, c.image_url, c.image_local
        FROM set_parts_catalog c ${blJoin('c.part_number', 'part', null)}
@@ -11,7 +11,7 @@ export function katalogTeileDerFigur(db: DbSchnittstelle, figNumber: string) {
   );
 }
 
-export function inventarTeileDerFigur(db: DbSchnittstelle, invId: number) {
+export function inventoryPartsOfMinifig(db: DbSchnittstelle, invId: number) {
   return db.all<FigurTeil>(
     `SELECT ip.part_num AS part_number, COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
             p.name AS part_name, ip.color_id, c.name AS color_name, c.rgb AS color_hex,
@@ -25,6 +25,6 @@ export function inventarTeileDerFigur(db: DbSchnittstelle, invId: number) {
   );
 }
 
-export function setMitFigur(db: DbSchnittstelle, figNumber: string) {
+export function setWithMinifig(db: DbSchnittstelle, figNumber: string) {
   return db.get<{ set_number: string }>('SELECT set_number FROM set_minifigs WHERE fig_number=$1 LIMIT 1', [figNumber]);
 }
