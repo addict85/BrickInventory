@@ -1,4 +1,4 @@
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft, verbinde } from './escapen.js';
@@ -360,7 +360,7 @@ export async function bestaetigeUebernahme() {
     // er stünde sonst für etwas, das man längst hat.
     toast(tRaw(d.action === 'exists' ? 'wanted.taken_existing' : 'wanted.taken'), 'success');
     await ladeMerkliste();
-    melde('sammlungLaden');
+    emit('sammlungLaden');
   } finally {
     frei();
   }

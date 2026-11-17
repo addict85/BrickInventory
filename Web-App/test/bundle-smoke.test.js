@@ -158,11 +158,11 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
   const core = require('./helpers/sources').coreQuelle();
   assert.match(
     core,
-    /if \(res\.status === 401\) melde\('sitzungBeendet', path\);/,
+    /if \(res\.status === 401\) emit\('sitzungBeendet', path\);/,
     'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen',
   );
   const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sitzung.js'), 'utf8');
-  const von = sitzung.indexOf("abonniere('sitzungBeendet'");
+  const von = sitzung.indexOf("subscribe('sitzungBeendet'");
   assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
   const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
   assert.match(fn, /if \(!angemeldetesKonto\) return;/, 'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');

@@ -32,7 +32,7 @@ const BAUSTEINE = stripModuleSyntax(
 const CODE =
   BAUSTEINE +
   '\n' +
-  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'lader.js'), 'utf8')) +
+  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'load-guard.js'), 'utf8')) +
   '\n' +
   stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'katalog.js'), 'utf8'));
 const dom = new JSDOM(

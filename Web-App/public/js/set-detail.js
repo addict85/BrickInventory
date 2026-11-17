@@ -1,7 +1,7 @@
 // Der Detail-Dialog eines Sets: Anzeige, Menge, Anleitungen, Bildzoom. Er steht über Galerie und
-// Kaufpreis-Dialog; wer ihn von unten öffnen muss, nimmt springe('setDetail', …) aus ziele.js.
-import { melde } from './ereignisse.js';
-import { stelleZielBereit } from './ziele.js';
+// Kaufpreis-Dialog; wer ihn von unten öffnen muss, nimmt jumpTo('setDetail', …) aus targets.js.
+import { emit } from './events.js';
+import { registerTarget } from './targets.js';
 import { registerActions, echt } from './registry.js';
 import { kontoWaehrung, angemeldetesKonto, galerieSets, offenesSet, setzeOffenesSet } from './zustand.js';
 import { escJs, esc, html, sichereUrl, ungeprueft } from './escapen.js';
@@ -456,8 +456,8 @@ async function aendereMenge(body, schritt, feld, set = offenesSet) {
   if (d.entfallen?.length) meldeEntfallen(sn, d, body.owner_user_id);
   const ad = await frischeDetailAuf(sn, feld);
   if (schritt > 0 && ad) meldeNeueExemplare(sn, ad.acquisitions, schritt);
-  melde('sammlungLaden');
-  if (aktiverReiter() === 'finance') melde('finanzenLaden');
+  emit('sammlungLaden');
+  if (aktiverReiter() === 'finance') emit('finanzenLaden');
 }
 
 /** „Kauf vom 13.09.2026 (250,00 €) entfernt“ mit Rückgängig; der Kauf liegt im Papierkorb.
@@ -555,11 +555,11 @@ async function redownloadInstr(sn) {
     if (offenesSet) {
       openModal(sn);
     }
-    melde('kennzahlenLaden');
+    emit('kennzahlenLaden');
   } else toast(d.error, 'error');
 }
 
-stelleZielBereit({ setDetail: openModal });
+registerTarget({ setDetail: openModal });
 
 registerActions({
   teileNeuImportieren,

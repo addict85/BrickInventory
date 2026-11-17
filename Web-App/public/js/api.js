@@ -1,5 +1,5 @@
 import { LANG, tRaw } from '../i18n.js';
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { merkeSitzungsende } from './meldungen.js';
 import { antwortErhalten, zeigeVerbindung } from './verbindung.js';
 
@@ -38,7 +38,7 @@ export async function apiRoh(method, path, o = {}) {
     throw e;
   }
   antwortErhalten();
-  if (res.status === 401) melde('sitzungBeendet', path);
+  if (res.status === 401) emit('sitzungBeendet', path);
   return res;
 }
 
@@ -108,8 +108,8 @@ export async function api(method, path, body, o = {}) {
   if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
   if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path))
     merkeSitzungsende(String(daten.error));
-  if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') melde('passwortWechselNoetig');
-  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') melde('zweiterFaktorPflicht');
+  if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') emit('passwortWechselNoetig');
+  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
   return /** @type {import('../../frontend-typen/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
 }
 

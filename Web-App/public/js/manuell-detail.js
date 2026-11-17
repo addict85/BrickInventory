@@ -1,4 +1,4 @@
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { detailZeile } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
@@ -304,7 +304,7 @@ async function speichereTeilFarbe() {
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
-  if (aktiverReiter() === 'finance') melde('finanzenLaden');
+  if (aktiverReiter() === 'finance') emit('finanzenLaden');
   await openManDetail('part', nummer, neu);
 }
 

@@ -1,6 +1,6 @@
 import { LANG, applyLang, tRaw } from '../i18n.js';
 import { einstellungsStand, angemeldetesKonto } from './zustand.js';
-import { abonniere } from './ereignisse.js';
+import { subscribe } from './events.js';
 import { registerActions } from './registry.js';
 import { G, eins } from './dom.js';
 import { api } from './api.js';
@@ -129,7 +129,7 @@ registerActions({
 
 // Die gewählte Sprache am Konto speichern (i18n.js meldet den Wechsel). Was der Code zur Laufzeit schreibt
 // (Kontoschild „Name (Verwalter)“), zieht nach.
-abonniere('spracheGewechselt', ({ sprache, speichern }) => {
+subscribe('spracheGewechselt', ({ sprache, speichern }) => {
   if (angemeldetesKonto) zeigeBenutzernamen();
   if (speichern) api('POST', '/v1/settings', { language: sprache });
 });

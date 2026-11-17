@@ -6,7 +6,7 @@ import { apiRoh, api, apiDaten, strom } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtPct } from './format.js';
 import { toast } from './meldungen.js';
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { LANG, tRaw } from '../i18n.js';
 import { angemeldetesKonto } from './zustand.js';
 
@@ -115,7 +115,7 @@ function gibApplyStatus(s) {
       // Don't clear log or close overlay — user may still be reading results
     }, 5000);
     zeigeImportAbschluss();
-    melde('setsGeaendert');
+    emit('setsGeaendert');
     gibStop();
   }
 }
@@ -509,7 +509,7 @@ function cancelImport() {
   G('btn-cancel-import').style.display = 'none';
   hideProgress();
   toast(tRaw('csv.cancelled'), 'info');
-  melde('setsGeaendert');
+  emit('setsGeaendert');
 }
 
 /** Abbrechbarer Ereignisstrom (POST mit JSON-Körper); ein Abbruch endet ohne Fehler.

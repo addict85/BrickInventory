@@ -7,7 +7,7 @@ import { toast } from './meldungen.js';
 import { loadUsers } from './user-management.js';
 import { html, ungeprueft } from './escapen.js';
 import { fmtDatum } from './format.js';
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { angemeldetesKonto } from './zustand.js';
 import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
@@ -220,7 +220,7 @@ export async function zfAbschalten() {
   if (!verwalter) return ladeZweitenFaktor();
   const neu = await api('POST', '/v1/auth/zweiter-faktor/einrichten', { password: passwort });
   begonnen = neu?.success ? neu : null;
-  melde('zweiterFaktorPflicht');
+  emit('zweiterFaktorPflicht');
 }
 
 export async function zfCodesKopieren() {

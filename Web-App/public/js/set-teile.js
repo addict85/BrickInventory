@@ -8,7 +8,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
 import { scopeQuery } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
-import { springe } from './ziele.js';
+import { jumpTo } from './targets.js';
 import { registerActions } from './registry.js';
 // Detail-Dialog für Teile und Figuren aus Sets: mit Zoom und der Liste der Sets, in denen sie stecken, ohne
 // Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen wie
@@ -171,7 +171,7 @@ G('setitem-modal').addEventListener('click', e => e.target === e.currentTarget &
  */
 function openSetAusItem(setNumber) {
   closeSetItemDetail();
-  springe('setDetail', setNumber);
+  jumpTo('setDetail', setNumber);
 }
 
 registerActions({

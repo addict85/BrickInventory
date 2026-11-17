@@ -2,7 +2,7 @@ import { G } from './dom.js';
 import { toast, verwirfToasts } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './dialoge.js';
-import { springe } from './ziele.js';
+import { jumpTo } from './targets.js';
 import { angemeldetesKonto } from './zustand.js';
 
 // Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
@@ -237,9 +237,9 @@ function zeigeAnsicht(ansicht, unter) {
   const abgewiesen = NUR_VERWALTER.has(ansicht) && !angemeldetesKonto?.isAdmin;
   if (abgewiesen) ansicht = 'gallery';
   mitRouter(() => {
-    if (ansicht === 'settings' && ABSCHNITT_ID[unter]) springe('einstAbschnitt', ABSCHNITT_ID[unter]);
+    if (ansicht === 'settings' && ABSCHNITT_ID[unter]) jumpTo('einstAbschnitt', ABSCHNITT_ID[unter]);
     if (ansicht !== _ansicht || !document.getElementById('tab-' + ansicht)?.classList.contains('active')) {
-      if (SICHTEN.has(ansicht)) springe('sicht', ansicht);
+      if (SICHTEN.has(ansicht)) jumpTo('view', ansicht);
       else {
         const reiter = /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`));
         reiter?.click();
@@ -311,7 +311,7 @@ function wendeAn(ziel, dlg) {
   const abgewiesen = zeigeAnsicht(ziel.ansicht, ziel.unter ?? '');
   if (abgewiesen) return true;
   setzeFilter(ziel.ansicht, ziel.filter || {});
-  if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => springe('setDetail', ziel.set));
+  if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => jumpTo('setDetail', ziel.set));
   return false;
 }
 
@@ -363,7 +363,7 @@ export function routeBeimStart() {
     return;
   }
   // Ein Set-Link öffnet den Dialog über der Ansicht; „Zurück“ schliesst ihn.
-  if (ziel.set) springe('setDetail', ziel.set);
+  if (ziel.set) jumpTo('setDetail', ziel.set);
 }
 
 // Filtereingaben laufen über die Felder; die Adresse folgt nach.

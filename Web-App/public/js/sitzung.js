@@ -3,7 +3,7 @@
 // Sitzungsende nur als Ereignis; reagiert wird hier.
 import { registerActions } from './registry.js';
 import { html } from './escapen.js';
-import { abonniere, melde } from './ereignisse.js';
+import { subscribe, emit } from './events.js';
 import { resetScopeModes } from './kontofilter.js';
 import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';
 import { api, apiRoh, leereZwischenspeicher } from './api.js';
@@ -42,8 +42,8 @@ export function startApp() {
   checkAuth();
 }
 
-abonniere('passwortWechselNoetig', () => zeigePflichtwechsel());
-abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
+subscribe('passwortWechselNoetig', () => zeigePflichtwechsel());
+subscribe('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 
 /** Konto der abgelaufenen Sitzung: Meldet sich ein anderes an, lädt die Seite neu statt dessen Stand zu zeigen. */
 let _abgelaufenesKonto = /** @type {number | null} */ (null);
@@ -51,7 +51,7 @@ let _abgelaufenesKonto = /** @type {number | null} */ (null);
  * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
  * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
  */
-abonniere('sitzungBeendet', path => {
+subscribe('sitzungBeendet', path => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
   if (!angemeldetesKonto) return; // war nie angemeldet — nichts zu beenden
   _abgelaufenesKonto = angemeldetesKonto.id;
@@ -594,7 +594,7 @@ function showApp() {
     .catch(() => {})
     .finally(() => {
       if (angemeldetesKonto?.isAdmin) rbHinweisZeigen();
-      melde('sammlungLaden');
+      emit('sammlungLaden');
     });
   // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
   // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.

@@ -1,7 +1,7 @@
 // Wanted-Listen von BrickLink: erst eine Vorschau wie die Teileliste, in der man korrigieren und
 // Rebrickable-Nummern ergänzen kann, dann der Import — bei Sets, Teilen und Figuren, dort wo man die Posten
 // danach sieht.
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { registerActions } from './registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
 import { escHex, hexZiffern, esc, html, ungeprueft, verbinde } from './escapen.js';
@@ -265,7 +265,7 @@ async function liesWirklich(schreiben) {
     const arten = new Set((d.posten || []).map(x => x.art));
     if (arten.has('part')) loadManualParts().catch(() => {});
     if (arten.has('fig')) loadManualFigsTable().catch(() => {});
-    if (arten.has('set')) melde('sammlungLaden');
+    if (arten.has('set')) emit('sammlungLaden');
     _datei = null;
     _korrekturen = new Map();
   }

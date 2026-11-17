@@ -1,7 +1,7 @@
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { loadHousehold } from './haushalt.js';
 import { loadUsers } from './user-management.js';
-import { stelleZielBereit } from './ziele.js';
+import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
@@ -341,8 +341,8 @@ async function speichereWaehrung() {
   setzeKontoWaehrung(wert);
   if (einstellungsStand) einstellungsStand.currency = wert;
   await loadHousehold().catch(() => {});
-  melde('kennzahlenLaden');
-  if (document.getElementById('tab-gallery')?.classList.contains('active')) melde('sammlungLaden');
+  emit('kennzahlenLaden');
+  if (document.getElementById('tab-gallery')?.classList.contains('active')) emit('sammlungLaden');
   meldeAmFeld(G('s-cur'));
   toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
 }
@@ -546,7 +546,7 @@ G('btn-clr').onclick = async () => {
   await api('POST', '/v1/admin/cache-clear');
   toast(tRaw('settings.cache_cleared'), 'info');
   loadCacheStats();
-  melde('finanzenLaden');
+  emit('finanzenLaden');
 };
 /**
  * Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt.
@@ -590,10 +590,10 @@ G('btn-dall').onclick = async () => {
     return;
   }
   toast(tRaw('settings.delete_all.done', { n: d.sets + d.teile + d.figuren }), 'success');
-  melde('sammlungLaden');
+  emit('sammlungLaden');
   loadParts();
   loadMinifigs();
-  melde('kennzahlenLaden');
+  emit('kennzahlenLaden');
 };
 G('btn-konto-loeschen').onclick = async () => {
   // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
@@ -732,7 +732,7 @@ async function einstellungenQuellePruefen(quelle) {
   );
 }
 
-stelleZielBereit({ einstAbschnitt });
+registerTarget({ einstAbschnitt });
 
 registerActions({
   einstellungenQuellePruefen,

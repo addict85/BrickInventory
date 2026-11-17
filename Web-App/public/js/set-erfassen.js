@@ -1,6 +1,6 @@
 // Set erfassen: Dialog, Rückfrage bei unbekannter Nummer und der Strom zum Anlegen. Die Sammlung lädt danach
 // über das Ereignis 'sammlungLaden' neu.
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { schliesseErfassen } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
@@ -10,7 +10,7 @@ import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } f
 import { toast } from './meldungen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
 import { setzeLetztenImport } from './zustand.js';
-import { springe } from './ziele.js';
+import { jumpTo } from './targets.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 
 G('btn-add').onclick = doAddSet;
@@ -71,7 +71,7 @@ export function erfassenZumSet(nr) {
   G('add-num').value = '';
   unbekanntZuruecksetzen();
   schliesseErfassen();
-  springe('setDetail', nr);
+  jumpTo('setDetail', nr);
 }
 
 async function doAddSet() {
@@ -120,7 +120,7 @@ async function doAddSet() {
           hideProgress();
           G('add-num').value = '';
           schliesseErfassen();
-          springe('setDetail', ev.set_number ?? '');
+          jumpTo('setDetail', ev.set_number ?? '');
           return;
         }
         if (ev.step === 'done') {
@@ -128,7 +128,7 @@ async function doAddSet() {
           schliesseErfassen();
           setTimeout(() => {
             hideProgress();
-            melde('sammlungLaden');
+            emit('sammlungLaden');
             G('add-num').value = '';
             if (G('add-price')) G('add-price').value = '';
             if (G('add-date')) G('add-date').value = '';
@@ -147,7 +147,7 @@ async function doAddSet() {
             for (const delay of [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])])
               setTimeout(() => {
                 const reiter = aktiverReiter();
-                melde(reiter === 'parts' || reiter === 'minifigs' ? 'bestandGeaendert' : 'sammlungLaden');
+                emit(reiter === 'parts' || reiter === 'minifigs' ? 'bestandGeaendert' : 'sammlungLaden');
               }, delay);
           }, 800);
         } else if (ev.step === 'error') {

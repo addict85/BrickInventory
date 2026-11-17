@@ -5,10 +5,10 @@
 // Kern
 import './stile.js';
 import './escapen.js';
-import './ereignisse.js';
-import './ziele.js';
+import './events.js';
+import './targets.js';
 import './zustand.js';
-import './lader.js';
+import './load-guard.js';
 import '../i18n.js';
 
 // Bausteine

@@ -1,6 +1,6 @@
 // The collection: metrics, gallery (tiles and list), set CSV import and deletion. It also
 // reloads when a lower-level module emits 'setsGeaendert' or 'bestandGeaendert'.
-import { abonniere, melde } from './ereignisse.js';
+import { subscribe, emit } from './events.js';
 import {
   skelettKacheln,
   listeLadefehler,
@@ -15,7 +15,7 @@ import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
-import { generationen } from './lader.js';
+import { loadGuard } from './load-guard.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
 import {
   leerZustand,
@@ -81,7 +81,7 @@ export function applySetAggregate(agg) {
 // ── Endlos-Scroll der Galerie ───────────────────────────────────────────────
 // Filtern und Sortieren macht der Server: Über galerieSets durchsuchte ein Filter nur die geladenen Seiten.
 const GAL_PAGE_SIZE = 60;
-const galerieLaden = generationen();
+const galerieLaden = loadGuard();
 let _galPage = 1,
   _galDone = false,
   _galLoadingMore = false,
@@ -109,9 +109,9 @@ function galleryParams(page, pageSize = GAL_PAGE_SIZE) {
 async function loadGalleryMore() {
   if (_galLoadingMore || _galDone) return;
   _galLoadingMore = true;
-  const gen = galerieLaden.jetzt();
+  const gen = galerieLaden.current();
   try {
-    const d = await galerieLaden.aktuell(api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`));
+    const d = await galerieLaden.whenCurrent(api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`));
     if (d === undefined) return;
     const batch = d.sets || [];
     if (!batch.length) {
@@ -127,7 +127,7 @@ async function loadGalleryMore() {
   } catch (_) {
     /* stumm: der Sentinel versucht es beim nächsten Scrollen erneut */
   } finally {
-    if (galerieLaden.gilt(gen)) _galLoadingMore = false;
+    if (galerieLaden.isCurrent(gen)) _galLoadingMore = false;
   }
 }
 
@@ -219,13 +219,13 @@ export async function loadGallery(opts = {}) {
   if (!galerieSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
     setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
   }
-  galerieLaden.neu();
+  galerieLaden.start();
   _galPage = 1;
   // Bis die erste Seite da ist, lädt der Sentinel nichts nach: Er fragte sonst Seite 2 einer alten Liste ab.
   _galDone = true;
   _galLoadingMore = false;
   const hatteListe = galerieSets.length > 0;
-  const d = await galerieLaden.aktuell(api('GET', `/v1/sets?${galleryParams(1, holen)}`));
+  const d = await galerieLaden.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, holen)}`));
   if (d === undefined) return;
   if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) {
     if (hatteListe) renderGallery();
@@ -506,7 +506,7 @@ export async function delSet(sn) {
     `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
   );
   loadGallery();
-  melde('teileLaden');
+  emit('teileLaden');
   return true;
 }
 /** @param {string} sn */
@@ -515,7 +515,7 @@ export async function reimportParts(sn) {
   const d = await api('POST', `/v1/sets/${sn}/parts`);
   if (d.success) {
     toast(tRaw('detail.parts_imported', { count: d.count }), 'success');
-    melde('teileLaden');
+    emit('teileLaden');
   } else toast(d.error, 'error');
 }
 
@@ -556,18 +556,18 @@ G('btn-set-csv-template').onclick = e => {
 };
 
 // Andere Module melden, dass sich der Bestand geändert hat; neu geladen wird hier.
-abonniere('setsGeaendert', () => {
+subscribe('setsGeaendert', () => {
   loadGallery();
   loadStats();
 });
-abonniere('bestandGeaendert', () => {
+subscribe('bestandGeaendert', () => {
   loadGallery();
   loadStats();
 });
-abonniere('sammlungLaden', o => loadGallery(o));
-abonniere('kennzahlenLaden', () => loadStats());
-abonniere('sammlungZeichnen', () => renderGallery());
-abonniere('setAggregat', agg => applySetAggregate(/** @type {Partial<Kachel> | null | undefined} */ (agg)));
+subscribe('sammlungLaden', o => loadGallery(o));
+subscribe('kennzahlenLaden', () => loadStats());
+subscribe('sammlungZeichnen', () => renderGallery());
+subscribe('setAggregat', agg => applySetAggregate(/** @type {Partial<Kachel> | null | undefined} */ (agg)));
 
 // Kein Kommentar zwischen den Namen: test/bundle-smoke.test.js trennt die Schlüssel an Kommas, und ein
 // Kommentar wanderte in den ersten Namen.

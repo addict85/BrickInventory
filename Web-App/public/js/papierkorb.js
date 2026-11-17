@@ -6,7 +6,7 @@ import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
 import { html, verbinde } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 
 // ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
 // Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts); hier wird er angezeigt,
@@ -73,7 +73,7 @@ export async function ladePapierkorb(fokusNach) {
 
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
 function bestandNeuLaden() {
-  melde('bestandGeaendert');
+  emit('bestandGeaendert');
 }
 
 /** @param {(number | string)[]} ids */

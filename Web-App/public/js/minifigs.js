@@ -1,7 +1,7 @@
 // Der Reiter Minifiguren: Figuren aus Sets und manuell erfasste Figuren, dazu die gemeinsamen Hilfen für
 // manuelle Tabellen und CSV-Status.
-import { generationen } from './lader.js';
-import { abonniere, melde } from './ereignisse.js';
+import { loadGuard } from './load-guard.js';
+import { subscribe, emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import {
   listeLadefehler,
@@ -52,7 +52,7 @@ export function alleFiguren() {
 // Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an den Server: Clientseitig über
 // allFigsCache zu filtern würde mit seitenweisem Laden nur die geladene Seite durchsuchen.
 const FIG_PAGE_SIZE = 60;
-const figurenLaden = generationen();
+const figurenLaden = loadGuard();
 let _figPage = 1,
   _figDone = false,
   _figLoadingMore = false,
@@ -75,10 +75,10 @@ function figParams(page) {
 async function loadMinifigsMore() {
   if (_figLoadingMore || _figDone) return;
   _figLoadingMore = true;
-  const gen = figurenLaden.jetzt();
+  const gen = figurenLaden.current();
   try {
     const d = await api('GET', `/v1/minifigs?${figParams(_figPage + 1)}`);
-    if (!figurenLaden.gilt(gen)) return;
+    if (!figurenLaden.isCurrent(gen)) return;
     const batch = d.figs || [];
     if (!batch.length) {
       _figDone = true;
@@ -91,7 +91,7 @@ async function loadMinifigsMore() {
   } catch (_) {
     /* stumm — der Sentinel versucht es beim nächsten Scrollen */
   } finally {
-    if (figurenLaden.gilt(gen)) _figLoadingMore = false;
+    if (figurenLaden.isCurrent(gen)) _figLoadingMore = false;
   }
 }
 
@@ -123,14 +123,14 @@ function bindFigsSentinel() {
 }
 
 export async function loadMinifigs() {
-  figurenLaden.neu();
+  figurenLaden.start();
   _figPage = 1;
   _figDone = false;
   _figLoadingMore = false;
   // Ein alter Fehlerzustand weicht dem Gerüst, solange neu geladen wird (wie in der Merkliste).
   const liste = G('figs-list');
   if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skelettKacheln(8, tRaw('common.loading')));
-  const d = await figurenLaden.aktuell(api('GET', `/v1/minifigs?${figParams(1)}`));
+  const d = await figurenLaden.whenCurrent(api('GET', `/v1/minifigs?${figParams(1)}`));
   if (d === undefined) return;
   if (listeLadefehler(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
@@ -455,7 +455,7 @@ export async function updateManualFig(figNumber, body, owner) {
     toast(tRaw('settings.saved'), 'success');
     loadManualFigsTable();
     loadMinifigs();
-    if (aktiverReiter() === 'finance') melde('finanzenLaden');
+    if (aktiverReiter() === 'finance') emit('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -651,7 +651,7 @@ export function tabellenAnsicht(id) {
   return G(id)?.value === 'table' && !telefonBreite();
 }
 
-abonniere('bestandGeaendert', () => {
+subscribe('bestandGeaendert', () => {
   loadMinifigs();
   loadManualFigsTable();
 });

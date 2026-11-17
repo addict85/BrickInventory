@@ -46,10 +46,10 @@ const STANDALONE = new Set([
 const KERN = [
   'stile.js',
   'escapen.js',
-  'ereignisse.js',
-  'ziele.js',
+  'events.js',
+  'targets.js',
   'zustand.js',
-  'lader.js',
+  'load-guard.js',
   'registry.js',
   'theme-boot.js',
 ];

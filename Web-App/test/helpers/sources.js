@@ -590,7 +590,7 @@ function coreQuelle() {
   return [
     'escapen.js',
     'zustand.js',
-    'ereignisse.js',
+    'events.js',
     'dom.js',
     'format.js',
     'meldungen.js',

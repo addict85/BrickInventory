@@ -1,4 +1,4 @@
-import { melde } from './js/ereignisse.js';
+import { emit } from './js/events.js';
 import { SicheresHtml } from './js/escapen.js';
 
 // Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
@@ -380,7 +380,7 @@ export function applyLang(lang, persist) {
 
   // Speichern (konto.js) und das Neuladen des offenen Reiters (navigation.js) hören auf dieses
   // Ereignis: Die Übersetzung selbst kennt keine Ansicht.
-  melde('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
+  emit('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

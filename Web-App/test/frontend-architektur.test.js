@@ -120,8 +120,8 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
   assert.deepEqual(
     kreise(g),
     [],
-    'Importkreis im Frontend. Rückwege nach oben über ereignisse.js (melde/abonniere) ' +
-      'oder ziele.js (springe), geteilter Zustand in zustand.js.',
+    'Importkreis im Frontend. Rückwege nach oben über events.js (emit/subscribe) ' +
+      'oder targets.js (jumpTo), geteilter Zustand in zustand.js.',
   );
 });
 

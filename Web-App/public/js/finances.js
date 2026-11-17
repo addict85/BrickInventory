@@ -1,5 +1,5 @@
 // Finances: valuation, profit & loss, and the value development of the collection.
-import { abonniere } from './ereignisse.js';
+import { subscribe } from './events.js';
 import {
   ladeAnzeige,
   listeLadefehler,
@@ -686,4 +686,4 @@ registerActions({
   finFilter,
 });
 
-abonniere('finanzenLaden', () => loadFinance());
+subscribe('finanzenLaden', () => loadFinance());

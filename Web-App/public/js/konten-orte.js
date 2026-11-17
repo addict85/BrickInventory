@@ -6,7 +6,7 @@ import { SCOPE_VIEWS, scopeMode, setScopeMode } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock } from './detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { html, ungeprueft } from './escapen.js';
-import { abonniere } from './ereignisse.js';
+import { subscribe } from './events.js';
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
 
 /**
@@ -139,7 +139,7 @@ function zeichneKontoauswahl(members) {
 
 // Erzeugte Auswahlfelder tragen Texte der Sprache, in der sie gebaut wurden; beim Wechsel neu zeichnen, die
 // Wahl bleibt. Die Lagerorte zieht ladeLagerorte() samt Vorrat und Filtern nach.
-abonniere('spracheGewechselt', () => {
+subscribe('spracheGewechselt', () => {
   if (!_haushalt.length) return;
   initScopeSelects(_haushalt);
   zeichneKontoauswahl(_haushalt);

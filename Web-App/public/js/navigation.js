@@ -1,6 +1,6 @@
 // Reiter, Benutzermenü, Sichten und die Filter, die mehrere Listen neu laden. Steht über allen Ansichten und
-// darf jede laden; der Router erreicht die Sichten über ziele.js, nicht über einen Import.
-import { stelleZielBereit } from './ziele.js';
+// darf jede laden; der Router erreicht die Sichten über targets.js, nicht über einen Import.
+import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
 import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
 import { angemeldetesKonto, letzterImport } from './zustand.js';
@@ -32,7 +32,7 @@ import { setLagerModus, setScopeMode } from './kontofilter.js';
 import { sammlungUntertitel } from './konten-orte.js';
 import { setScrollLabel } from './rollbalken.js';
 import { tRaw } from '../i18n.js';
-import { abonniere, melde } from './ereignisse.js';
+import { subscribe, emit } from './events.js';
 import { esc } from './escapen.js';
 
 // Icon des Reiters in den Seitentitel spiegeln (links vom Text), damit oben derselbe Icon wie im Nav-Tab
@@ -162,7 +162,7 @@ export function bindTabs() {
       // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
       if (tab !== 'catalog') setScrollLabel(null);
       // loadGallery() lädt die Kennzahlen selbst; ein zweiter Aufruf kostete doppelt am Budget (apiDrossel.ts).
-      if (tab === 'gallery') melde('sammlungLaden');
+      if (tab === 'gallery') emit('sammlungLaden');
       if (tab === 'catalog') {
         initCatalog();
       }
@@ -185,7 +185,7 @@ export function bindTabs() {
         if (Date.now() - letzterImport < 30000) setTimeout(loadMinifigs, 5000);
       }
       if (tab === 'finance') {
-        melde('finanzenLaden');
+        emit('finanzenLaden');
       } // loadFinance already fetches parts+minifigs valuation in parallel
       if (tab === 'partslist') {
         /* session-only, no server load needed */
@@ -478,7 +478,7 @@ function filterZuruecksetzen(ansicht) {
     G('gtheme').value = '';
     setLagerModus('gallery', '');
     if (G('storage-gallery')) G('storage-gallery').value = '';
-    melde('sammlungLaden');
+    emit('sammlungLaden');
   } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
   else if (ansicht === 'catalog') katalogZuruecksetzen();
   else if (ansicht === 'parts') teileFilterZuruecksetzen();
@@ -498,7 +498,7 @@ export function onStorageChange(view) {
   const el = G('storage-' + view);
   if (!el) return;
   setLagerModus(view, el.value);
-  if (view === 'gallery') melde('sammlungLaden');
+  if (view === 'gallery') emit('sammlungLaden');
   if (view === 'parts') {
     loadParts();
     loadManualParts();
@@ -517,7 +517,7 @@ export function onScopeChange(view) {
   if (!el) return;
   setScopeMode(view, el.value);
   sammlungUntertitel(view);
-  if (view === 'gallery') melde('sammlungLaden');
+  if (view === 'gallery') emit('sammlungLaden');
   // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
   // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
   // Endpunkt.
@@ -533,7 +533,7 @@ export function onScopeChange(view) {
     loadMinifigs();
     loadManualFigsTable();
   }
-  if (view === 'finance') melde('finanzenLaden');
+  if (view === 'finance') emit('finanzenLaden');
   // Die Merkliste laedt EINE Liste und hat keine Kennzahlen darueber — anders als die Galerie, wo loadStats()
   // mitmuss.
   if (view === 'merkliste') ladeMerkliste();
@@ -541,7 +541,7 @@ export function onScopeChange(view) {
 
 // Ein echter Sprachwechsel baut den offenen Reiter neu auf. Die Galerie wird nur neu gezeichnet: Ein Neuladen
 // leerte das Raster zwischendurch.
-abonniere('spracheGewechselt', ({ echterWechsel }) => {
+subscribe('spracheGewechselt', ({ echterWechsel }) => {
   if (!echterWechsel) return;
   const aktiv = /** @type {HTMLElement|null} */ (document.querySelector('.ntab.active'))?.dataset?.tab;
   if (aktiv === 'parts') {
@@ -549,7 +549,7 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadManualParts();
   }
   if (aktiv === 'minifigs') loadMinifigs();
-  if (aktiv === 'finance') melde('finanzenLaden');
+  if (aktiv === 'finance') emit('finanzenLaden');
   if (aktiv === 'settings') {
     loadSettings();
     loadProfile();
@@ -558,7 +558,7 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
     loadMonitor();
     loadCacheStats();
   }
-  if (aktiv === 'gallery') melde('sammlungZeichnen');
+  if (aktiv === 'gallery') emit('sammlungZeichnen');
 });
 
 /**
@@ -572,7 +572,7 @@ function sichtAusDialog(name) {
   oeffneSicht(name);
 }
 
-stelleZielBereit({ sicht: oeffneSicht });
+registerTarget({ view: oeffneSicht });
 
 registerActions({
   filterUmschalten,

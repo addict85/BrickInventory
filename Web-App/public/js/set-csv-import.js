@@ -1,4 +1,4 @@
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { registerActions } from './registry.js';
 import { LANG, t, tRaw } from '../i18n.js';
 import { fehlerMeldung, api, apiDaten, strom } from './api.js';
@@ -181,7 +181,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       const zaehler = importZaehler(s, 'csv.warnings_n');
       G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${zaehler}`;
       zeigeImportAbschluss();
-      melde('sammlungLaden');
+      emit('sammlungLaden');
       toast(tRaw('csv.import_meldung', { ergebnis: zaehler }), s.err ? 'error' : s.warn ? 'info' : 'success');
       if (fi) fi.value = '';
     }

@@ -1,8 +1,8 @@
 // Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { detailZeile, kachelName, ladeAnzeige, listeLadefehler } from './bausteine.js';
 import { registerActions } from './registry.js';
-import { generationen } from './lader.js';
+import { loadGuard } from './load-guard.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fehlerMeldung, api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
@@ -20,7 +20,7 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte
 
 const _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'year_desc' };
 // _catItems hält die geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
-const katalogLaden = generationen();
+const katalogLaden = loadGuard();
 // Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte Liste
 // hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt, Platzhalter halten
 // die Höhe frei.
@@ -192,13 +192,13 @@ function _catQuery(page) {
  * filtern.
  */
 async function loadCatalogSets() {
-  katalogLaden.neu();
+  katalogLaden.start();
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
   setzeHtml(grid, ladeAnzeige(tRaw('catalog.loading')));
   _catState.page = 1;
-  const d = await katalogLaden.aktuell(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
+  const d = await katalogLaden.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
   if (d === undefined) return;
   if (listeLadefehler(grid, d, { erneut: 'loadCatalogSets' })) return;
 
@@ -374,7 +374,7 @@ export async function ladeSeite(seite) {
   if (_catLoadedPages.has(seite) || _catLoadingPages.has(seite)) return;
   _catLoadingPages.add(seite);
   try {
-    const d = await katalogLaden.aktuell(api('GET', `/v1/catalog/sets?${_catQuery(seite)}`));
+    const d = await katalogLaden.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(seite)}`));
     if (d === undefined) return;
     if (!d.success || !d.sets?.length) return;
     const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
@@ -527,7 +527,7 @@ async function addCatalogSetToGallery() {
             );
             setzeLetztenImport(Date.now());
             _patchCatalogOwned(num, qty); // owned-Badge in-place (kein Reload: Scroll-Position bleibt)
-            melde('sammlungLaden');
+            emit('sammlungLaden');
           }, 800);
         } else if (ev.step === 'error') {
           streamFertig();
@@ -616,7 +616,7 @@ async function _ladeJahrVerteilung() {
   if (p.toString() === _jahrVerteilungFuer && _catJahrVerteilung.length) return;
   _jahrVerteilungFuer = p.toString();
   _catJahrVerteilung = [];
-  const d = await katalogLaden.aktuell(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
+  const d = await katalogLaden.whenCurrent(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
   if (d === undefined) return;
   if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
   else _jahrVerteilungFuer = '';

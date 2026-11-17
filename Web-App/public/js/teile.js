@@ -1,6 +1,6 @@
 // Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
-import { abonniere, melde } from './ereignisse.js';
+import { subscribe, emit } from './events.js';
 import {
   ladeAnzeige,
   skelettKacheln,
@@ -15,7 +15,7 @@ import { registerActions, echt } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
-import { generationen } from './lader.js';
+import { loadGuard } from './load-guard.js';
 import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './bilder.js';
 import {
   G,
@@ -226,7 +226,7 @@ const PARTS_PAGE_SIZE = 100;
 let _partsPage = 0; // zuletzt geladene Seite
 let _partsTotal = 0; // Gesamtzahl der Gruppen laut Server
 let _partsShown = 0; // bereits gerenderte Gruppen
-const teileLaden = generationen();
+const teileLaden = loadGuard();
 let _partsLoading = false;
 let _partsDone = false;
 /** @type {string | null} */
@@ -260,7 +260,7 @@ function partsParams(page) {
 
 /** Vollständiger Neuaufbau — bei jedem Filter-, Such- oder Moduswechsel. */
 async function loadPartsData() {
-  teileLaden.neu();
+  teileLaden.start();
   _partsPage = 0;
   _partsShown = 0;
   _partsTotal = 0;
@@ -283,7 +283,7 @@ async function loadPartsPage(isFirst) {
   _partsLoading = true;
   const page = _partsPage + 1;
 
-  const d = await teileLaden.aktuell(api('GET', `/v1/parts?${partsParams(page)}`));
+  const d = await teileLaden.whenCurrent(api('GET', `/v1/parts?${partsParams(page)}`));
   if (d === undefined) {
     _partsLoading = false;
     return;
@@ -665,7 +665,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
   if (d.success) {
     toast(tRaw('settings.saved'), 'success');
     loadManualParts();
-    if (aktiverReiter() === 'finance') melde('finanzenLaden');
+    if (aktiverReiter() === 'finance') emit('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -700,11 +700,11 @@ export async function deleteManualPart(partNumber, colorId, owner) {
   }
 }
 
-abonniere('bestandGeaendert', () => {
+subscribe('bestandGeaendert', () => {
   loadParts();
   loadManualParts();
 });
-abonniere('teileLaden', () => loadParts());
+subscribe('teileLaden', () => loadParts());
 
 // ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
 registerActions({

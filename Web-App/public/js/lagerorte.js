@@ -1,4 +1,4 @@
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
@@ -127,7 +127,7 @@ async function benenneLagerortUm(id, wert) {
   await ladeLagerortVerwaltung();
   // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie zeigt sonst weiter den alten
   // Namen.
-  melde('sammlungLaden');
+  emit('sammlungLaden');
 }
 
 /**

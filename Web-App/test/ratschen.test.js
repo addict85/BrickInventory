@@ -556,7 +556,7 @@ function reineQuelltextTests() {
 }
 
 test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
-  // Ansichten melden einander über ereignisse.js; was mehrere teilen, ist Baustein (BAUSTEINE).
+  // Ansichten melden einander über events.js; was mehrere teilen, ist Baustein (BAUSTEINE).
   // Gegenprobe (15.11.2026): `import { loadGallery } from './sammlung.js';` zurück in lagerorte.js
   // → rot (51 statt 50).
   const { KERN, BAUSTEINE } = require('../scripts/build-frontend');

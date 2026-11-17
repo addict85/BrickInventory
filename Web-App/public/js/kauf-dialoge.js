@@ -1,4 +1,4 @@
-import { melde } from './ereignisse.js';
+import { emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { esc, html } from './escapen.js';
@@ -213,12 +213,12 @@ async function acqSave(sn, id, field, value) {
     // geladene Tiefe erhalten.
     closeAcqModal();
     closeModal();
-    melde('sammlungLaden', { restore: true });
+    emit('sammlungLaden', { restore: true });
     return;
   }
   // Der Server liefert das neu berechnete Zustands-Aggregat mit — direkt in die Galerie-Liste schreiben,
   // damit die Kachel ohne Neuladen stimmt.
-  melde('setAggregat', d.set);
+  emit('setAggregat', d.set);
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     if (field === 'date') loadAcqModal(sn); // abgelehnte Eingabe auf gespeicherten Wert zurücksetzen
@@ -241,8 +241,8 @@ async function acqSave(sn, id, field, value) {
 
   // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die sonst
   // bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
-  melde('sammlungLaden', { restore: true });
-  melde('finanzenLaden');
+  emit('sammlungLaden', { restore: true });
+  emit('finanzenLaden');
 
   // Datum geändert → Reihenfolge/Summary neu laden
   if (field === 'date') {
@@ -325,8 +325,8 @@ async function acqDelete(sn, id) {
   api('GET', `/v1/sets/${sn}/price-history`)
     .then(renderMarketRows)
     .catch(() => {});
-  melde('sammlungLaden', { restore: true });
-  melde('finanzenLaden');
+  emit('sammlungLaden', { restore: true });
+  emit('finanzenLaden');
 }
 
 export function closeAcqModal() {
