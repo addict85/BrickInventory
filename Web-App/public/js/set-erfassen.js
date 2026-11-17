@@ -9,7 +9,7 @@ import { G, aktiverReiter } from './dom.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
-import { setzeLetztenImport } from './zustand.js';
+import { setLastImportAt } from './state.js';
 import { jumpTo } from './targets.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 
@@ -142,7 +142,7 @@ async function doAddSet() {
                 'success',
               );
             // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
-            setzeLetztenImport(Date.now());
+            setLastImportAt(Date.now());
             // Konnte der Strom nicht ergänzen, holt ein Auftrag Name und Bild nach einer Minute.
             for (const delay of [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])])
               setTimeout(() => {

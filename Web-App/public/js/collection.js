@@ -35,18 +35,18 @@ import { toast } from './meldungen.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './kontofilter.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import {
-  kontoWaehrung,
-  angemeldetesKonto,
-  setzeGalerieSets,
-  galerieSets,
-  offenesSet,
-  guvJeSet,
-  setzeGuvJeSet,
-} from './zustand.js';
+  accountCurrency,
+  loggedInAccount,
+  setGallerySets,
+  gallerySets,
+  openSet,
+  pnlBySet,
+  setPnlBySet,
+} from './state.js';
 import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
 import { SPALTEN_SORT, setsTabelle, tableRow, wertZelle } from './sets-tabelle.js';
 import { loadStats } from './kennzahlen.js';
-/** @typedef {import('./zustand.js').Kachel} Kachel */
+/** @typedef {import('./state.js').Tile} Tile */
 
 /**
  * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn war das Design dort grau in
@@ -70,16 +70,16 @@ const alsKarten = () => curView === 'grid' || telefonBreite();
 /**
  * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste Position und
  * zeigte bei [U, N] „neu“ statt „gebraucht“.
- * @param {Partial<Kachel> | null | undefined} agg
+ * @param {Partial<Tile> | null | undefined} agg
  */
 export function applySetAggregate(agg) {
   if (!agg?.set_number) return;
-  const before = galerieSets;
-  setzeGalerieSets(galerieSets.map(s => (s.set_number === agg.set_number ? { ...s, ...agg } : s)));
-  if (galerieSets !== before) renderGallery();
+  const before = gallerySets;
+  setGallerySets(gallerySets.map(s => (s.set_number === agg.set_number ? { ...s, ...agg } : s)));
+  if (gallerySets !== before) renderGallery();
 }
 // ── Endlos-Scroll der Galerie ───────────────────────────────────────────────
-// Filtern und Sortieren macht der Server: Über galerieSets durchsuchte ein Filter nur die geladenen Seiten.
+// Filtern und Sortieren macht der Server: Über gallerySets durchsuchte ein Filter nur die geladenen Seiten.
 const GAL_PAGE_SIZE = 60;
 const galerieLaden = loadGuard();
 let _galPage = 1,
@@ -119,8 +119,8 @@ async function loadGalleryMore() {
       return;
     }
     _galPage++;
-    setzeGalerieSets(galerieSets.concat(batch));
-    if (galerieSets.length >= (_galTotal || 0)) _galDone = true;
+    setGallerySets(gallerySets.concat(batch));
+    if (gallerySets.length >= (_galTotal || 0)) _galDone = true;
     appendGallery(batch);
     updateGalleryPrices();
     kickGallerySentinel(); // s. Erklärung dort
@@ -133,7 +133,7 @@ async function loadGalleryMore() {
 
 /**
  * Hängt eine Folgeseite an, ohne die bereits gezeichneten Kacheln neu zu bauen.
- * @param {Kachel[]} batch
+ * @param {Tile[]} batch
  */
 function appendGallery(batch) {
   const c = G('gallery');
@@ -216,7 +216,7 @@ export async function loadGallery(opts = {}) {
 
   // Platzhalter nur ohne Kacheln: Stehende bleiben bis zur Antwort, sonst blitzte eine leere Wand auf.
   const gal = G('gallery');
-  if (!galerieSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
+  if (!gallerySets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
     setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
   }
   galerieLaden.start();
@@ -224,24 +224,24 @@ export async function loadGallery(opts = {}) {
   // Bis die erste Seite da ist, lädt der Sentinel nichts nach: Er fragte sonst Seite 2 einer alten Liste ab.
   _galDone = true;
   _galLoadingMore = false;
-  const hatteListe = galerieSets.length > 0;
+  const hatteListe = gallerySets.length > 0;
   const d = await galerieLaden.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, holen)}`));
   if (d === undefined) return;
   if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) {
     if (hatteListe) renderGallery();
     return;
   }
-  setzeGalerieSets(d.sets || []);
-  _galTotal = d.total ?? galerieSets.length;
+  setGallerySets(d.sets || []);
+  _galTotal = d.total ?? gallerySets.length;
   // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste Folgeseite am richtigen
   // Versatz ansetzt.
-  _galPage = Math.max(1, Math.ceil(galerieSets.length / GAL_PAGE_SIZE));
-  _galDone = galerieSets.length >= _galTotal;
+  _galPage = Math.max(1, Math.ceil(gallerySets.length / GAL_PAGE_SIZE));
+  _galDone = gallerySets.length >= _galTotal;
   bindGallerySentinel();
   // Füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis.
   requestAnimationFrame(maybeLoadMoreGallery);
 
-  // Die Themen nennt der Server: galerieSets hält nur die geladenen Seiten.
+  // Die Themen nennt der Server: gallerySets hält nur die geladenen Seiten.
   const themeEl = G('gtheme');
   if (themeEl && Array.isArray(d.themes)) {
     const current = themeEl.value;
@@ -266,7 +266,7 @@ export function renderGallery() {
   // Filtern und Sortieren macht der Server (setsLesen in src/sets/lesen.ts) — hier wird nur noch gezeichnet,
   // was geladen ist. Andernfalls würde ein Filter bloss die aktuell geladene Seite durchsuchen.
   const q = G('gs')?.value?.toLowerCase() || '';
-  const list = galerieSets;
+  const list = gallerySets;
   const c = G('gallery');
   // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde „Noch keine Sets“ über einer
   // Sammlung, die nur ausgeblendet ist.
@@ -312,7 +312,7 @@ export function renderGallery() {
  * erneut ein und liessen die Galerie flackern.
  */
 export function updateGalleryPrices() {
-  const bySet = new Map(galerieSets.map(x => [x.set_number, x]));
+  const bySet = new Map(gallerySets.map(x => [x.set_number, x]));
   alle('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor ?? '');
     if (!s) return;
@@ -327,18 +327,18 @@ export function updateGalleryPrices() {
 }
 
 /**
- * Preis und Prozent der Kachel mit Beschriftung: Ohne sie war nicht zu sehen, ob der Betrag Markt- oder
+ * Preis und Prozent der Tile mit Beschriftung: Ohne sie war nicht zu sehen, ob der Betrag Markt- oder
  * Kaufpreis ist und wogegen das Prozent rechnet. Ohne geladenen Marktpreis steht der mengengewichtete
  * Kaufpreis da.
- * @param {Kachel} s
+ * @param {Tile} s
  */
 function preisZeile(s) {
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
   const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
-  const kaufBetrag = kauf != null ? fmtGeld(kauf, kontoWaehrung) : s._price ? fmtGeld(s._price, kontoWaehrung) : '';
+  const kaufBetrag = kauf != null ? fmtGeld(kauf, accountCurrency) : s._price ? fmtGeld(s._price, accountCurrency) : '';
   const betrag = markt
-    ? fmtN(s._price, kontoWaehrung)
+    ? fmtN(s._price, accountCurrency)
     : s.kaufpreis_geschaetzt && kaufBetrag
       ? String(geschaetztKauf(kaufBetrag))
       : kaufBetrag;
@@ -354,21 +354,21 @@ function preisZeile(s) {
   return html`${art}<span class="preis">${ungeprueft(betrag)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
-/** @param {Kachel} s */
+/** @param {Tile} s */
 function gridCard(s) {
   const src = s.image_local || s.image_url || '';
   // thumbUrl() greift nur bei lokal abgelegten Bildern (_thumb-Variante). Sets ohne lokale Kopie laufen über
   // den Proxy — dort erzeugt imgUrl(…, true) die verkleinerte Fassung, sonst käme die volle Auflösung für
-  // eine Kachel.
+  // eine Tile.
   const thumb = src ? imgUrl(thumbUrl(src) || src, true) : null;
-  // Ohne Alternativtext: Die Kachel ist ein Knopf, ihr Text nennt das Set schon.
+  // Ohne Alternativtext: Die Tile ist ein Knopf, ihr Text nennt das Set schon.
   const img = src
     ? bildTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
     : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis, nicht der höchste.
   const preis = preisZeile(s);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import für alle Sets derselbe Tag und
-  // sagte nichts. Bei mehreren Käufen (oft im Haushalt) sagt die Kachel, dass es der letzte ist.
+  // sagte nichts. Bei mehreren Käufen (oft im Haushalt) sagt die Tile, dass es der letzte ist.
   const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
   const kaeufe = Number(s.acq_count) || 0;
   const kaufText =
@@ -454,26 +454,24 @@ G('gsort').addEventListener('change', () => loadGallery());
 /**
  * Die eine Rückfrage vor dem Löschen. Gehört das Set mehreren Konten, nennt sie Konten und Stückzahlen und lässt
  * wählen: Gelöscht wurde sonst still auch das Exemplar des anderen Kontos.
- * @param {string} sn @param {string} name @param {Kachel | null | undefined} set
+ * @param {string} sn @param {string} name @param {Tile | null | undefined} set
  * @returns {Promise<string | null>} '' für alle Konten, eine Kontonummer, oder null bei Abbruch
  */
 async function loeschWahl(sn, name, set) {
   const titel = tRaw('gallery.delete.title');
-  const fremd = (set?.owners || []).some(o => o.id !== angemeldetesKonto?.id);
+  const fremd = (set?.owners || []).some(o => o.id !== loggedInAccount?.id);
   if (!fremd) return (await confirmDelete(titel, tRaw('gallery.delete.name_parts', { name }))) ? '' : null;
   const ad = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/acquisitions`);
   const konten = (set?.owners || []).map(o => ({
     ...o,
     n: (ad?.acquisitions || [])
-      .filter(a => (a.owner_user_id ?? angemeldetesKonto?.id) === o.id)
+      .filter(a => (a.owner_user_id ?? loggedInAccount?.id) === o.id)
       .reduce((s, a) => s + (a.quantity || 0), 0),
   }));
   const liste = konten.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
   const gesamt = konten.reduce((s, k) => s + k.n, 0);
   // Vorgewählt ist das Wenigste, das eigene Exemplar zuerst: Enter löschte sonst auch das fremde.
-  const reihe = [...konten].sort(
-    (x, y) => Number(y.id === angemeldetesKonto?.id) - Number(x.id === angemeldetesKonto?.id),
-  );
+  const reihe = [...konten].sort((x, y) => Number(y.id === loggedInAccount?.id) - Number(x.id === loggedInAccount?.id));
   return loeschenMitWahl(titel, tRaw('gallery.delete.konten', { name, konten: liste }), [
     ...reihe.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
     { wert: '', text: tRaw('gallery.delete.alle', { n: gesamt }) },
@@ -487,8 +485,7 @@ async function loeschWahl(sn, name, set) {
  */
 export async function delSet(sn) {
   const bekannt =
-    (offenesSet && offenesSet.set_number === sn ? offenesSet : null) ||
-    (galerieSets || []).find(x => x.set_number === sn);
+    (openSet && openSet.set_number === sn ? openSet : null) || (gallerySets || []).find(x => x.set_number === sn);
   const name = bekannt?.name || sn;
   const konto = await loeschWahl(sn, name, bekannt);
   if (konto === null) return false;
@@ -523,20 +520,20 @@ export async function enrichGalleryWithPrices() {
   // Mit Kontofilter wie loadStats(): loadGallery() ruft dies bei jedem Wechsel des Filters.
   const pnl = await api('GET', `/v1/finance/pnl${scopeQuery('gallery')}`);
   if (!pnl.success) return;
-  setzeGuvJeSet({});
-  // Betrag und G&V der Kachel rechnet der Server (kachel_preis, kachel_pnl_pct in /finance/pnl,
+  setPnlBySet({});
+  // Betrag und G&V der Tile rechnet der Server (kachel_preis, kachel_pnl_pct in /finance/pnl,
   // src/finanzen/setValue.ts kachelWerte); im Haushalt tragen alle Zeilen eines Sets dieselben Werte.
   for (const s of pnl.sets) {
-    if (!guvJeSet[s.set_number])
-      guvJeSet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
+    if (!pnlBySet[s.set_number])
+      pnlBySet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
   }
   // Inject price data into cached sets
-  setzeGalerieSets(
-    galerieSets.map(s => ({
+  setGallerySets(
+    gallerySets.map(s => ({
       ...s,
-      _price: guvJeSet[s.set_number]?.price || 0,
-      _quelle: guvJeSet[s.set_number]?.quelle,
-      _pnl_pct: guvJeSet[s.set_number]?.pnl_pct ?? undefined,
+      _price: pnlBySet[s.set_number]?.price || 0,
+      _quelle: pnlBySet[s.set_number]?.quelle,
+      _pnl_pct: pnlBySet[s.set_number]?.pnl_pct ?? undefined,
     })),
   );
   // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen — ein voller renderGallery()
@@ -567,7 +564,7 @@ subscribe('bestandGeaendert', () => {
 subscribe('sammlungLaden', o => loadGallery(o));
 subscribe('kennzahlenLaden', () => loadStats());
 subscribe('sammlungZeichnen', () => renderGallery());
-subscribe('setAggregat', agg => applySetAggregate(/** @type {Partial<Kachel> | null | undefined} */ (agg)));
+subscribe('setAggregat', agg => applySetAggregate(/** @type {Partial<Tile> | null | undefined} */ (agg)));
 
 // Kein Kommentar zwischen den Namen: test/bundle-smoke.test.js trennt die Schlüssel an Kommas, und ein
 // Kommentar wanderte in den ersten Namen.

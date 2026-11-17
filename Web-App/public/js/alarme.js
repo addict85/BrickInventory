@@ -8,7 +8,7 @@ import { feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { csvHochladen } from './bausteine.js';
 import { confirmDelete } from './rueckfrage.js';
-import { galerieSets } from './zustand.js';
+import { gallerySets } from './state.js';
 import { esc, html, ungeprueft } from './escapen.js';
 // Einstellungen, Abschnitt Preisalarme: Übersicht, Schwelle ändern, löschen, CSV-Import.
 
@@ -55,7 +55,7 @@ export async function ladeAlarmUebersicht() {
   if (vorschlag)
     setzeHtml(
       vorschlag,
-      galerieSets.map(x => html`<option value="${x.set_number}">${x.name || ''}</option>`),
+      gallerySets.map(x => html`<option value="${x.set_number}">${x.name || ''}</option>`),
     );
   const d = await api('GET', '/v1/alerts');
   if (!d?.success) return;

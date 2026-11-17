@@ -7,7 +7,7 @@ import './stile.js';
 import './escapen.js';
 import './events.js';
 import './targets.js';
-import './zustand.js';
+import './state.js';
 import './load-guard.js';
 import '../i18n.js';
 

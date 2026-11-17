@@ -1,6 +1,6 @@
 // Preisverlauf, Wertentwicklung und Marktpreiszeilen als SVG/HTML. Reine Darstellung ohne Abrufe; Set-Detail,
 // Merkliste, Teile-Detail und Finanzen zeichnen damit dieselben Achsen und dasselbe Fadenkreuz.
-import { kontoWaehrung } from './zustand.js';
+import { accountCurrency } from './state.js';
 import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { detailZeile, pnlBadge } from './bausteine.js';
@@ -25,7 +25,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       const d = ph?.by_condition?.[c];
       return d ? [{ c, d }] : [];
     }).map(({ c, d }) => {
-      const wert = d.market_price != null ? fmtN(d.market_price, kontoWaehrung) : tRaw('detail.kein_marktpreis');
+      const wert = d.market_price != null ? fmtN(d.market_price, accountCurrency) : tRaw('detail.kein_marktpreis');
       const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
       const bezug =
         pnl && d.pnl_pct != null && !/pnl-geschenk/.test(String(pnl))
@@ -47,7 +47,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
   }).map(({ c, d }) => {
     const price =
       d.market_price != null
-        ? html`<span class="preis preis-stark">${fmtN(d.market_price, kontoWaehrung)}</span>`
+        ? html`<span class="preis preis-stark">${fmtN(d.market_price, accountCurrency)}</span>`
         : html`<span data-stil="color:var(--mut)">—</span>`;
     const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
     return detailZeile(html`${tRaw('detail.market_price')} (${LABEL[c]})`, html`${price}${pnl}`, {
@@ -235,7 +235,7 @@ export function achsenBetrag(v, schritt, cur, kurz = false) {
   // Bei grosser Schrift Tausender kurz: „2 600 €“ nahm am Telefon die halbe Breite.
   if (kurz && schritt >= 100 && Math.abs(v) >= 1000) {
     const zeichen =
-      new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || kontoWaehrung || 'EUR' })
+      new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || accountCurrency || 'EUR' })
         .formatToParts(0)
         .find(p => p.type === 'currency')?.value || cur;
     return tRaw('chart.tausend', {
@@ -246,7 +246,7 @@ export function achsenBetrag(v, schritt, cur, kurz = false) {
   const stellen = schritt > 0 && schritt < 1 ? 2 : 0;
   return new Intl.NumberFormat(locale(), {
     style: 'currency',
-    currency: cur || kontoWaehrung || 'EUR',
+    currency: cur || accountCurrency || 'EUR',
     minimumFractionDigits: stellen,
     maximumFractionDigits: stellen,
   }).format(v);
@@ -483,10 +483,10 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
   const f = schriftFaktor(),
     fs = 12 * f;
   const W = breite;
-  const lage = achsenLage(teilung, kontoWaehrung, fs, W, 14 * f);
+  const lage = achsenLage(teilung, accountCurrency, fs, W, 14 * f);
   const PAD = { l: lage.links, r: lage.innen ? 6 * f : 14 * f, t: lage.innen ? 22 * f : 12 * f, b: 46 * f };
   const kaufText = (/** @type {{ key: string, name: string, kauf: number }} */ sd) =>
-    `${tRaw(mittel.has(sd.key) ? 'detail.purchase_price_avg' : 'detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, kontoWaehrung)}`;
+    `${tRaw(mittel.has(sd.key) ? 'detail.purchase_price_avg' : 'detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, accountCurrency)}`;
   const legende = bezugsLegende(
     kaeufe
       .filter(sd => !imBild(kaufText(sd), PAD.l, W - PAD.r, f))
@@ -523,7 +523,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
     .flatMap(sd => (sd.kaufTag ? [{ ...sd, kaufTag: sd.kaufTag }] : []))
     .map(
       sd =>
-        html`<circle cx="${Math.max(PAD.l, xOf(sd.kaufTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${tRaw('detail.purchase_price')} ${fmtN(sd.kauf, kontoWaehrung)}</title></circle>`,
+        html`<circle cx="${Math.max(PAD.l, xOf(sd.kaufTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${tRaw('detail.purchase_price')} ${fmtN(sd.kauf, accountCurrency)}</title></circle>`,
     );
 
   const fmtDay = (/** @type {string} */ d) => fmtDatum(new Date(toTime(d)));
@@ -557,7 +557,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
         fmtDay(tag),
         ...series
           .map((sd, k) =>
-            werte[k] == null ? null : (series.length > 1 ? sd.name + ' ' : '') + fmtN(werte[k], kontoWaehrung),
+            werte[k] == null ? null : (series.length > 1 ? sd.name + ' ' : '') + fmtN(werte[k], accountCurrency),
           )
           .filter(z => z !== null),
       ],
@@ -578,17 +578,17 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
       bis: fmtDay(last),
       reihen: series
         .map(sd =>
-          tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, kontoWaehrung) }),
+          tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, accountCurrency) }),
         )
         .join('; '),
     }),
-    min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, kontoWaehrung) }) : '',
+    min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, accountCurrency) }) : '',
     tRaw('chart.keys'),
   ]
     .filter(Boolean)
     .join('. ');
   return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${zusammenfassung}" data-flaeche="${iw.toFixed(0)}"${ungeprueft(fk.attr)}>
-    ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, kontoWaehrung, f, lage.innen)}
+    ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, accountCurrency, f, lage.innen)}
     ${parts}
     ${kaufLinien}
     ${kaufPunkte}
@@ -599,7 +599,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
             min,
             yOf,
             PAD.l,
-            kontoWaehrung,
+            accountCurrency,
             f,
             kaeufe.map(sd => yOf(sd.kauf)),
           )
@@ -623,7 +623,7 @@ export function portfolioChartSVG(
   _period,
   breite = 700,
   einstand = 0,
-  cur = kontoWaehrung,
+  cur = accountCurrency,
   einstandText = tRaw('finance.stat.purchase'),
 ) {
   const vals = data.map(d => d.total || 0);

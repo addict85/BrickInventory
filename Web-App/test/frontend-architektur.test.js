@@ -121,7 +121,7 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
     kreise(g),
     [],
     'Importkreis im Frontend. Rückwege nach oben über events.js (emit/subscribe) ' +
-      'oder targets.js (jumpTo), geteilter Zustand in zustand.js.',
+      'oder targets.js (jumpTo), geteilter Zustand in state.js.',
   );
 });
 
@@ -135,19 +135,19 @@ test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', 
   assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
 });
 
-test('geteilter veränderlicher Zustand nur in zustand.js', () => {
+test('geteilter veränderlicher Zustand nur in state.js', () => {
   // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
   // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
   // stattdessen Lese- oder Stoppfunktionen (manuelleTeile(), stoppeMonitor()).
   const treffer = [];
-  for (const f of fs.readdirSync(JS).filter(x => istAppModul(x) && x !== 'zustand.js')) {
+  for (const f of fs.readdirSync(JS).filter(x => istAppModul(x) && x !== 'state.js')) {
     fs.readFileSync(path.join(JS, f), 'utf8')
       .split('\n')
       .forEach((z, i) => {
         if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
       });
   }
-  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'zustand.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
+  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'state.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
   assert.deepEqual(treffer, []);
 });
 

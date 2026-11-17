@@ -8,7 +8,7 @@ import { loadUsers } from './user-management.js';
 import { html, ungeprueft } from './escapen.js';
 import { fmtDatum } from './format.js';
 import { emit } from './events.js';
-import { angemeldetesKonto } from './zustand.js';
+import { loggedInAccount } from './state.js';
 import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/faktoren/zweiterFaktor.ts) ══════════════
@@ -83,7 +83,7 @@ export async function ladeZweitenFaktor() {
     ${alt}
     <div class="zf-knoepfe">
       ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
-      ${knopf('zfAbschalten', tRaw(angemeldetesKonto?.isAdmin ? 'zf.neu_einrichten' : 'zf.disable'), 'bd')}
+      ${knopf('zfAbschalten', tRaw(loggedInAccount?.isAdmin ? 'zf.neu_einrichten' : 'zf.disable'), 'bd')}
     </div>`);
 }
 
@@ -200,7 +200,7 @@ export async function zfNeueCodes() {
 // Ein Verwalter ohne zweiten Faktor darf nichts ausser ihn einrichten: Für ihn heisst Abschalten deshalb
 // „Neu einrichten“, und die Einrichtung beginnt mit demselben Passwort gleich im Pflichtfeld.
 export async function zfAbschalten() {
-  const verwalter = !!angemeldetesKonto?.isAdmin;
+  const verwalter = !!loggedInAccount?.isAdmin;
   let passwort = '';
   const d = await mitPasswortBestaetigen(
     tRaw(verwalter ? 'zf.neu_einrichten' : 'zf.disable'),

@@ -14,12 +14,12 @@ import { loadMinifigs } from './minifigs.js';
 import { meldeAbschnitt } from './router.js';
 import { verstaendlicherGrund } from './bausteine.js';
 import {
-  kontoWaehrung,
-  angemeldetesKonto,
-  einstellungsStand,
-  setzeKontoWaehrung,
-  setzeEinstellungsStand,
-} from './zustand.js';
+  accountCurrency,
+  loggedInAccount,
+  settingsSnapshot,
+  setAccountCurrency,
+  setSettingsSnapshot,
+} from './state.js';
 import { html } from './escapen.js';
 import {
   confirmDelete,
@@ -113,7 +113,7 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
     if (gespeichert) toast(gespeichert.error || t('settings.error'), 'error');
     return;
   }
-  const eigene = String(angemeldetesKonto?.email || '');
+  const eigene = String(loggedInAccount?.email || '');
   const to = G('smtp-test-email')?.value?.trim() || eigene;
   // Eine fremde Adresse bestätigt der Verwalter mit dem Passwort; die eigene nicht.
   const fremd = to.toLowerCase() !== eigene.toLowerCase();
@@ -311,7 +311,7 @@ async function setzeEigenesDesign() {
     return;
   }
   applyTheme(d.theme);
-  if (einstellungsStand) einstellungsStand.app_theme = d.theme;
+  if (settingsSnapshot) settingsSnapshot.app_theme = d.theme;
   zeigeDesignWahl(d);
   meldeAmFeld(G('design-wahl'));
 }
@@ -322,15 +322,15 @@ async function speichereWaehrung() {
   // Marktpreise gibt es je Währung; nach dem Wechsel fehlen sie, bis der Preisauftrag sie geholt hat. Ohne
   // Rückfrage sah das aus, als seien alle Werte verloren.
   if (
-    wert !== kontoWaehrung &&
+    wert !== accountCurrency &&
     !(await confirmDelete(
       tRaw('konto.waehrung_wechsel_titel'),
-      tRaw('konto.waehrung_wechsel_text', { alt: kontoWaehrung, neu: wert }),
+      tRaw('konto.waehrung_wechsel_text', { alt: accountCurrency, neu: wert }),
       'finanzen',
       { knopf: 'konto.waehrung_wechsel_knopf', art: 'bp' },
     ))
   ) {
-    G('s-cur').value = kontoWaehrung;
+    G('s-cur').value = accountCurrency;
     return;
   }
   const d = await api('POST', '/v1/settings', { currency: wert });
@@ -338,8 +338,8 @@ async function speichereWaehrung() {
     toast(d.error || t('settings.error'), 'error');
     return;
   }
-  setzeKontoWaehrung(wert);
-  if (einstellungsStand) einstellungsStand.currency = wert;
+  setAccountCurrency(wert);
+  if (settingsSnapshot) settingsSnapshot.currency = wert;
   await loadHousehold().catch(() => {});
   emit('kennzahlenLaden');
   if (document.getElementById('tab-gallery')?.classList.contains('active')) emit('sammlungLaden');
@@ -388,8 +388,8 @@ G('btn-sav-prof').onclick = async () => {
     }
     await loadProfile();
     // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
-    if (angemeldetesKonto) {
-      angemeldetesKonto.username = username;
+    if (loggedInAccount) {
+      loggedInAccount.username = username;
       zeigeBenutzernamen();
     }
     if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
@@ -449,7 +449,7 @@ G('btn-sav-pw').onclick = async () => {
 function applySettings(s) {
   // Nur anwenden, wenn die Felder des Einstellungsreiters im DOM stehen
   if (!G('s-cur') && !G('bl-ck')) return;
-  setzeKontoWaehrung(s.currency || 'EUR');
+  setAccountCurrency(s.currency || 'EUR');
   // Apply language preference from server only if explicitly set
   if (s.language && I18N[s.language] && s.language !== LANG) applyLang(s.language, false);
   _updateLangSelect();
@@ -457,7 +457,7 @@ function applySettings(s) {
     const el = G(id);
     if (el) el.value = v;
   };
-  _set('s-cur', kontoWaehrung);
+  _set('s-cur', accountCurrency);
   _set('s-default-condition', s.user_default_condition || s.default_price_condition || 'N');
   // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert ist kein Geheimnis und wird allen
   // ausgeliefert (sanitizeGlobal laesst ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
@@ -465,9 +465,9 @@ function applySettings(s) {
   // erste Eintrag, egal was gespeichert ist.
   _set(
     'gutschein-land',
-    s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[kontoWaehrung] || 'de-CH',
+    s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[accountCurrency] || 'de-CH',
   );
-  if (angemeldetesKonto?.isAdmin) {
+  if (loggedInAccount?.isAdmin) {
     _set('bl-ck', s.bricklink_consumer_key || '');
     _set('bl-cs', s.bricklink_consumer_secret || '');
     _set('bl-tok', s.bricklink_token || '');
@@ -482,15 +482,15 @@ function applySettings(s) {
     loadUsers();
     loadSmtpSettings(s);
   }
-  if (angemeldetesKonto?.isAdmin) loadRateLimitStats();
+  if (loggedInAccount?.isAdmin) loadRateLimitStats();
 }
 export async function loadSettings() {
   // Zwischengespeicherte Daten sofort zeigen, damit der Reiter nie leer erscheint
-  if (einstellungsStand) applySettings(einstellungsStand);
+  if (settingsSnapshot) applySettings(settingsSnapshot);
   loadHousehold();
   const d = await api('GET', '/v1/settings/raw');
   if (!d.success) return;
-  setzeEinstellungsStand(d.settings);
+  setSettingsSnapshot(d.settings);
   applySettings(d.settings);
 }
 
@@ -536,7 +536,7 @@ async function speichereAppDesign() {
     const w = await api('GET', '/v1/settings/theme');
     if (w.success) {
       applyTheme(w.theme);
-      if (einstellungsStand) einstellungsStand.app_theme = w.theme;
+      if (settingsSnapshot) settingsSnapshot.app_theme = w.theme;
     }
   }
   if (d.success) meldeAmFeld(G('mon-app-theme'));
@@ -646,8 +646,8 @@ async function importConfig() {
       if (d.smtp_uebergangen?.length)
         toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
       loadSettings();
-      setzeEinstellungsStand(null); // invalidate cache so next loadSettings fetches fresh
-      if (angemeldetesKonto?.isAdmin) {
+      setSettingsSnapshot(null); // invalidate cache so next loadSettings fetches fresh
+      if (loggedInAccount?.isAdmin) {
         loadCacheTtl();
         loadApiLimits();
       }

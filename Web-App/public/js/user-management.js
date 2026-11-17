@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { feldFehler, passwortRegelText } from './formular.js';
 import { toast } from './meldungen.js';
-import { angemeldetesKonto } from './zustand.js';
+import { loggedInAccount } from './state.js';
 import { html, ungeprueft } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
@@ -39,7 +39,7 @@ export async function loadUsers() {
  * @param {Konto} u
  */
 function role(u) {
-  const self = !!angemeldetesKonto && u.id === angemeldetesKonto.id;
+  const self = !!loggedInAccount && u.id === loggedInAccount.id;
   const target = html`data-click="toggleAdmin"${echt()} data-arg="${u.id}" data-arg2="${u.is_admin ? '1' : '0'}" data-arg3="${u.username}"`;
   if (!u.is_admin) {
     const name = tRaw('users.rolle.ernennen', { name: u.username });
@@ -124,7 +124,7 @@ async function loadLog() {
  * @param {Konto} u
  */
 function userActions(u) {
-  if (angemeldetesKonto && u.id === angemeldetesKonto.id)
+  if (loggedInAccount && u.id === loggedInAccount.id)
     return html`<span class="text-klein">${tRaw('users.selbst')}</span>`;
   const rare = [
     userButton(

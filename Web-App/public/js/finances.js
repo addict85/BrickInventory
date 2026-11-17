@@ -18,7 +18,7 @@ import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './format.js';
 import { scopeQuery } from './kontofilter.js';
-import { guvJeSet, setzeFinKopfWert } from './zustand.js';
+import { pnlBySet, setFinanceHeaderValue } from './state.js';
 import { kurveDa, loadPortfolioChart, setzeEinstand } from './wertkurve.js';
 import { basisAus, zeigeKennzahlen } from './finanz-kennzahlen.js';
 /** @typedef {import('./finanz-kennzahlen.js').Basis} Basis */
@@ -207,7 +207,7 @@ function setRow(s, acq, lage) {
   const total = acq ? acq.wert_gesamt : s.wert_gesamt;
   // G&V je Zeile vom Server (gegen den Kaufpreis DIESER Erfassung). Ohne Erfassungen bleibt der bisherige
   // Wert aus der G&V-Antwort.
-  const pnl = acq ? acq.pnl_prozent : (s.pnl_prozent ?? guvJeSet[s.set_number]?.pnl_pct);
+  const pnl = acq ? acq.pnl_prozent : (s.pnl_prozent ?? pnlBySet[s.set_number]?.pnl_pct);
   const dateSrc = acq ? acq.created_at : s.added_at;
   // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe: Dort brach sie die Spalte
   // fünfzeilig um.
@@ -346,7 +346,7 @@ export async function loadFinance() {
   };
   // Diagramm, Kopfzahl und Karten zeigen denselben Marktwert und Einstand.
   const kopfWert = basis.bewertet > 0 ? basis.wert : grandTotal;
-  setzeFinKopfWert(kopfWert);
+  setFinanceHeaderValue(kopfWert);
   if (G('portfolio-current')) G('portfolio-current').textContent = kopfWert > 0 ? fmtN(kopfWert, cur) : '—';
   // Die Linie vergleicht mit der Wertkurve; fehlt Positionen der Marktpreis, nennt sie ihren Bezug.
   setzeEinstand(

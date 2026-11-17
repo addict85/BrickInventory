@@ -33,7 +33,7 @@ import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './kontofilter.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { kontoWaehrung } from './zustand.js';
+import { accountCurrency } from './state.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 import { confirmDelete } from './rueckfrage.js';
 
@@ -151,7 +151,7 @@ export async function loadMinifigs() {
   // Manual valuation — mit dem Filter des Minifiguren-Reiters, damit die Wertangabe zur Liste darüber passt.
   const v = await api('GET', `/v1/finance/minifigs-valuation${scopeQuery('minifigs')}`);
   if (v.success && parseFloat(v.total_value) > 0) {
-    G('mf-val').textContent = fmtN(v.total_value, v.currency || kontoWaehrung);
+    G('mf-val').textContent = fmtN(v.total_value, v.currency || accountCurrency);
   } else if (G('mf-val')) {
     G('mf-val').textContent = '—';
   }
@@ -424,7 +424,7 @@ export function renderManualFigsTable() {
       // geschriebene Einzelwert der Stammzeile — bei zwei Erfassungen zu verschiedenen Preisen stimmte er
       // nicht.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
-      const priceStr = figPrice != null ? esc(tRaw('finance.je', { preis: fmtN(figPrice, kontoWaehrung) })) : '—';
+      const priceStr = figPrice != null ? esc(tRaw('finance.je', { preis: fmtN(figPrice, accountCurrency) })) : '—';
       const condBadge = condBadges(f);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
@@ -635,7 +635,7 @@ export function manuelleTabelle(posten, art) {
       ${istTeil ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
-      <td class="preis">${preis != null ? fmtN(preis, kontoWaehrung) : '—'}</td>
+      <td class="preis">${preis != null ? fmtN(preis, accountCurrency) : '—'}</td>
       <td data-stil="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
       <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${ungeprueft(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;

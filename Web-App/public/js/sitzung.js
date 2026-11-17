@@ -12,13 +12,7 @@ import { feldFehler, formularFehler, passwortRegelText } from './formular.js';
 import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './konto.js';
 import { toast } from './meldungen.js';
 import { mailLinkAnnehmen, mailLinkOffen } from './maillink.js';
-import {
-  setzeGalerieSets,
-  setzeKonto,
-  setzeEinstellungsStand,
-  setzeKontoWaehrung,
-  angemeldetesKonto,
-} from './zustand.js';
+import { setGallerySets, setAccount, setSettingsSnapshot, setAccountCurrency, loggedInAccount } from './state.js';
 import { routeBeimStart } from './router.js';
 import { plInit, resetPartsList, plRenderSets } from './init.js';
 import { bindGlobalErrorHandlers } from './fehlerfang.js';
@@ -53,9 +47,9 @@ let _abgelaufenesKonto = /** @type {number | null} */ (null);
  */
 subscribe('sitzungBeendet', path => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
-  if (!angemeldetesKonto) return; // war nie angemeldet — nichts zu beenden
-  _abgelaufenesKonto = angemeldetesKonto.id;
-  setzeKonto(null);
+  if (!loggedInAccount) return; // war nie angemeldet — nichts zu beenden
+  _abgelaufenesKonto = loggedInAccount.id;
+  setAccount(null);
   // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Das Secure-Cookie fehlt.
   // „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
   const ohneKeks = Date.now() - _angemeldetUm < 60_000 && !_keksGesetzt && ohneHttps();
@@ -131,8 +125,8 @@ function pflichtAbmelden() {
   G('btn-logout')?.click();
 }
 function oeffneApp() {
-  if (angemeldetesKonto?.mustChangePassword) zeigePflichtwechsel();
-  else if (angemeldetesKonto?.zweiterFaktorPflicht) zeigeZweitpflicht();
+  if (loggedInAccount?.mustChangePassword) zeigePflichtwechsel();
+  else if (loggedInAccount?.zweiterFaktorPflicht) zeigeZweitpflicht();
   else showApp();
 }
 G('btn-pflicht')?.addEventListener('click', async () => {
@@ -341,7 +335,7 @@ export async function checkAuth() {
   const { d, warteSek } = await frageSitzung();
   // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich inzwischen angemeldet hat,
   // bekäme sonst von der späten Antwort „nein“ die Maske zurück, obwohl die Sitzung gilt.
-  if (angemeldetesKonto) return;
+  if (loggedInAccount) return;
   // Nur ein ausdrückliches „nicht angemeldet“ führt zur Maske. Drosselung, Serverfehler oder kein Netz
   // sagen nichts über die Sitzung; die Maske legte sonst nahe, sie sei weg.
   if (typeof d.loggedIn !== 'boolean') {
@@ -349,14 +343,14 @@ export async function checkAuth() {
     return;
   }
   zeigeOffline(false);
-  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; angemeldetesKonto behält isAdmin, id und
+  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; loggedInAccount behält isAdmin, id und
   // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
   if (_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
   // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
   if (d.loggedIn && !_verifyToken && !mailLinkOffen()) {
-    setzeKonto(
-      /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
+    setAccount(
+      /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
     oeffneApp();
   } else {
@@ -466,7 +460,7 @@ function showLogin(o = {}) {
     const el = G(id);
     if (el) el.replaceChildren();
   });
-  setzeGalerieSets([]);
+  setGallerySets([]);
   resetPartsList();
   // Clear partslist DOM so it doesn't persist after re-login
   const plResult = G('pl-result');
@@ -523,7 +517,7 @@ function showApp() {
   // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
-  if (angemeldetesKonto?.isAdmin) pruefeEinrichtung();
+  if (loggedInAccount?.isAdmin) pruefeEinrichtung();
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
   // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
   // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
@@ -535,8 +529,8 @@ function showApp() {
   // Load settings — also picks up server-stored language preference
   const einstellungen = api('GET', '/v1/settings/raw').then(d => {
     if (d.success && d.settings) {
-      setzeEinstellungsStand(d.settings);
-      setzeKontoWaehrung(d.settings.currency || 'EUR');
+      setSettingsSnapshot(d.settings);
+      setAccountCurrency(d.settings.currency || 'EUR');
       applyTheme(d.settings.app_theme);
       // Die Sprache des Servers gewinnt (ausdrückliche Wahl); localStorage mitziehen
       const srvLang = d.settings.language;
@@ -551,11 +545,11 @@ function showApp() {
   // Der Reiter „Einstellungen" traegt seit dem 16.10. nur noch, was ein Verwalter setzt (Marcos Vorgabe) — er
   // wird deshalb wie das Monitoring erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
-  if (angemeldetesKonto?.isAdmin) {
+  if (loggedInAccount?.isAdmin) {
     const ns = G('ntab-settings');
     if (ns) ns.style.display = '';
   }
-  if (angemeldetesKonto?.isAdmin) {
+  if (loggedInAccount?.isAdmin) {
     alle('.admin-only').forEach(el => {
       el.style.display = '';
     });
@@ -593,7 +587,7 @@ function showApp() {
   const bandEntschieden = einstellungen
     .catch(() => {})
     .finally(() => {
-      if (angemeldetesKonto?.isAdmin) rbHinweisZeigen();
+      if (loggedInAccount?.isAdmin) rbHinweisZeigen();
       emit('sammlungLaden');
     });
   // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
@@ -667,8 +661,8 @@ async function doLogin() {
       location.reload();
       return;
     }
-    setzeKonto(
-      /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
+    setAccount(
+      /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(), damit die Auswahlfelder gleich mit dem
     // zurückgesetzten Wert entstehen.
@@ -694,7 +688,7 @@ G('btn-logout').onclick = async () => {
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
   // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“.
-  setzeKonto(null);
+  setAccount(null);
   await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { Authorization: 'Bearer ' + _wt } : {},
   }).catch(() => {});

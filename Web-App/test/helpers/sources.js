@@ -589,7 +589,7 @@ function coreQuelle() {
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
   return [
     'escapen.js',
-    'zustand.js',
+    'state.js',
     'events.js',
     'dom.js',
     'format.js',

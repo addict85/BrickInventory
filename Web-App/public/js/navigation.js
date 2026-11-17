@@ -3,7 +3,7 @@
 import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
 import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
-import { angemeldetesKonto, letzterImport } from './zustand.js';
+import { loggedInAccount, lastImportAt } from './state.js';
 import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
 import { initCatalog, katalogZuruecksetzen } from './katalog.js';
@@ -98,10 +98,10 @@ export function filterUmschalten() {
 function zeigeEinstellungsZugriff() {
   const f = G('einst-kein-zugriff');
   if (!f) return;
-  f.hidden = !!angemeldetesKonto?.isAdmin;
+  f.hidden = !!loggedInAccount?.isAdmin;
   setzeHtml(
     f,
-    angemeldetesKonto?.isAdmin
+    loggedInAccount?.isAdmin
       ? ''
       : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
   );
@@ -174,7 +174,7 @@ export function bindTabs() {
         loadManualParts();
         loadBrickColors();
         // War der Import eben erst, nach dem Hintergrundauftrag noch einmal laden
-        if (Date.now() - letzterImport < 30000)
+        if (Date.now() - lastImportAt < 30000)
           setTimeout(() => {
             loadParts();
             loadManualParts();
@@ -182,7 +182,7 @@ export function bindTabs() {
       }
       if (tab === 'minifigs') {
         loadMinifigs();
-        if (Date.now() - letzterImport < 30000) setTimeout(loadMinifigs, 5000);
+        if (Date.now() - lastImportAt < 30000) setTimeout(loadMinifigs, 5000);
       }
       if (tab === 'finance') {
         emit('finanzenLaden');
@@ -196,7 +196,7 @@ export function bindTabs() {
       if (tab === 'settings') {
         zeigeEinstellungsZugriff();
         loadSettings();
-        if (angemeldetesKonto?.isAdmin) {
+        if (loggedInAccount?.isAdmin) {
           loadApiLimits();
           loadCacheTtl();
           ladeZeitplaene();

@@ -7,7 +7,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { betragFuerFeld } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
-import { kontoWaehrung, angemeldetesKonto, offenesSet } from './zustand.js';
+import { accountCurrency, loggedInAccount, openSet } from './state.js';
 import { closeModal, setzeMengenfeld } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { acqSummary, summenText, umgerechnetText, kurzfassung } from './kaufpreis-anzeige.js';
@@ -36,7 +36,7 @@ export function openAcqModal(sn) {
   erfassung.sn = sn;
   // Header
   G('acq-modal-tit').textContent = tRaw('detail.purchase_price');
-  G('acq-modal-sub').textContent = sn + (offenesSet?.name ? ' – ' + offenesSet.name : '');
+  G('acq-modal-sub').textContent = sn + (openSet?.name ? ' – ' + openSet.name : '');
   setzeHtml(
     G('acq-modal-body'),
     html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('common.loading')}</div>`,
@@ -88,7 +88,7 @@ async function loadAcqModal(sn) {
     const hm = await api('GET', '/v1/sets/household-members');
     erfassung.mitglieder = hm?.members || [];
   }
-  erfassung.besitzer = ad?.owner_user_id ?? angemeldetesKonto?.id ?? null;
+  erfassung.besitzer = ad?.owner_user_id ?? loggedInAccount?.id ?? null;
   renderAcqModalBody(sn, acqs, ad?.totals);
 }
 
@@ -134,9 +134,9 @@ export function renderAcqModalBody(sn, acqs, totals) {
         </select>
       </td>
       <td class="zahl">
-        <span class="acq-preisfeld"><input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.purchase_price)}" aria-label="${tRaw('detail.purchase_price')} (${a.currency || totals?.currency || kontoWaehrung})"
+        <span class="acq-preisfeld"><input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.purchase_price)}" aria-label="${tRaw('detail.purchase_price')} (${a.currency || totals?.currency || accountCurrency})"
           data-blur="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="price" data-val="1"
-          data-keydown="blurOnEnter" /><span class="acq-waehrung" aria-hidden="true">${a.currency || totals?.currency || kontoWaehrung}</span></span>
+          data-keydown="blurOnEnter" /><span class="acq-waehrung" aria-hidden="true">${a.currency || totals?.currency || accountCurrency}</span></span>
         <span class="acq-umgerechnet" id="acq-um-${a.id}">${umgerechnetText(a, totals)}</span>
       </td>
       ${
@@ -249,7 +249,7 @@ async function acqSave(sn, id, field, value) {
     loadAcqModal(sn);
     api('GET', `/v1/sets/${sn}/acquisitions`)
       .then(ad => {
-        if (ad?.success && offenesSet?.set_number === sn) {
+        if (ad?.success && openSet?.set_number === sn) {
           const summaryEl = G('m-acq-summary');
           if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
         }
@@ -279,7 +279,7 @@ async function acqSave(sn, id, field, value) {
     // Auch die Zusammenfassung im Set-Detail auffrischen
     api('GET', `/v1/sets/${sn}/acquisitions`)
       .then(ad => {
-        if (ad.success && offenesSet?.set_number === sn) {
+        if (ad.success && openSet?.set_number === sn) {
           const summaryEl = G('m-acq-summary');
           if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
         }
@@ -300,10 +300,10 @@ async function acqDelete(sn, id) {
     toast(tRaw('settings.error'), 'error');
     return;
   }
-  // offenesSet und das Mengenfeld im Set-Detail nachführen
-  if (offenesSet?.set_number === sn) {
-    offenesSet.quantity = /** @type {number} */ (d.new_quantity);
-    setzeMengenfeld(offenesSet.quantity);
+  // openSet und das Mengenfeld im Set-Detail nachführen
+  if (openSet?.set_number === sn) {
+    openSet.quantity = /** @type {number} */ (d.new_quantity);
+    setzeMengenfeld(openSet.quantity);
   }
   // Erfassungsdialog neu laden
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
@@ -355,7 +355,7 @@ export function closeAcqModal() {
         const total = ad.totals?.quantity ?? 0;
         if (total > 0) {
           setzeMengenfeld(total);
-          if (offenesSet) offenesSet.quantity = total;
+          if (openSet) openSet.quantity = total;
         }
       })
       .catch(() => {});

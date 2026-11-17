@@ -154,7 +154,7 @@ test('kein Zustand auf global', () => {
       /\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g,
     ))
       treffer.push(`${d}: ${m[0].trim()}`);
-  // Die Oberfläche teilt Zustand über public/js/zustand.js, nicht über `window._…`.
+  // Die Oberfläche teilt Zustand über public/js/state.js, nicht über `window._…`.
   // Gegenprobe (15.11.2026): `window._finGrandTotal = kopfWert` zurück in finanzen.js → rot.
   const js = path.join(ROOT, 'public', 'js');
   for (const f of fs.readdirSync(js).filter(f => f.endsWith('.js') && !f.includes('bundle')))

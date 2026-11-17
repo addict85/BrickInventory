@@ -31,7 +31,7 @@ import {
 import { fmtBig, fmtN } from './format.js';
 import { toast } from './meldungen.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './kontofilter.js';
-import { galerieSets, kontoWaehrung } from './zustand.js';
+import { gallerySets, accountCurrency } from './state.js';
 import { confirmDelete } from './rueckfrage.js';
 import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
@@ -201,7 +201,7 @@ export function teileLeerAbgleichen(manuelleLeer) {
       : leerZustand({
           ico: 'teil',
           titel: tRaw('parts.empty'),
-          text: tRaw(galerieSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
+          text: tRaw(gallerySets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
           knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' },
         }),
   );
@@ -594,7 +594,7 @@ export async function loadManualParts() {
   if (v.success) {
     if (G('mp-count')) G('mp-count').textContent = String(d.parts.length);
     if (G('mp-qty')) G('mp-qty').textContent = String(d.parts.reduce((s, p) => s + (p.quantity || 0), 0));
-    if (G('mp-val')) G('mp-val').textContent = fmtN(v.total_value, v.currency || kontoWaehrung);
+    if (G('mp-val')) G('mp-val').textContent = fmtN(v.total_value, v.currency || accountCurrency);
   }
 }
 
@@ -629,7 +629,7 @@ export function renderManualParts() {
       // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       // Stückpreis wie in den Finanzen mit „je“; neben „×{n}“ läse sich der blanke Betrag als Summe.
-      const priceStr = partPrice != null ? esc(tRaw('finance.je', { preis: fmtN(partPrice, kontoWaehrung) })) : '—';
+      const priceStr = partPrice != null ? esc(tRaw('finance.je', { preis: fmtN(partPrice, accountCurrency) })) : '—';
       const condBadge = condBadges(p);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">

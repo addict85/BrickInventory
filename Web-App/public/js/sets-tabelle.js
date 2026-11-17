@@ -6,8 +6,8 @@ import { G, ico, TRASH_ICON_SVG } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN, istGeschenk } from './format.js';
 import { geschaetztKauf, pnlBadge, zeilenKnopf } from './bausteine.js';
 import { echt } from './registry.js';
-import { kontoWaehrung } from './zustand.js';
-/** @typedef {import('./zustand.js').Kachel} Kachel */
+import { accountCurrency } from './state.js';
+/** @typedef {import('./state.js').Tile} Tile */
 
 /** Sortierbare Spalten der Tabelle: erster Klick in der üblichen Richtung, der zweite kehrt sie um. */
 export const SPALTEN_SORT = /** @type {Record<string, [string, string]>} */ ({
@@ -24,20 +24,20 @@ function sortKopf(feld, text) {
   return html`<th aria-sort="${stand}"><button type="button" class="sort-knopf" data-click="setsSortieren" data-arg="${feld}">${text}</button></th>`;
 }
 
-/** @param {Kachel[]} list */
+/** @param {Tile[]} list */
 export function setsTabelle(list) {
   return html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th>${sortKopf('num', tRaw('col.nr'))}${sortKopf('name', tRaw('col.name'))}${sortKopf('year', tRaw('detail.year'))}<th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th>${sortKopf('qty', tRaw('detail.qty'))}${sortKopf('kauf', tRaw('gallery.card.bought'))}<th class="zahl">${tRaw('finance.col.purchase')}</th><th class="zahl">${tRaw('finance.stat.value')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('common.actions')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`;
 }
 
 /** Betrag für die ganze Menge, darunter der Stückpreis: wie in den Finanzen. @param {number} stueck @param {number} menge */
 function mitStueck(stueck, menge) {
-  const gesamt = fmtGeld(stueck * menge, kontoWaehrung);
+  const gesamt = fmtGeld(stueck * menge, accountCurrency);
   return menge > 1
-    ? html`${gesamt}<span class="fin-je">${tRaw('finance.je', { preis: fmtGeld(stueck, kontoWaehrung) })}</span>`
+    ? html`${gesamt}<span class="fin-je">${tRaw('finance.je', { preis: fmtGeld(stueck, accountCurrency) })}</span>`
     : gesamt;
 }
 
-/** @param {Kachel} s */
+/** @param {Tile} s */
 function kaufZelle(s) {
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   if (kauf == null) return html`<span class="text-mut">—</span>`;
@@ -47,16 +47,16 @@ function kaufZelle(s) {
 }
 
 /** Marktwert der Menge mit der Entwicklung gegen den Kaufpreis; der Preis kommt nach (updateGalleryPrices).
- * @param {Kachel} s */
+ * @param {Tile} s */
 export function wertZelle(s) {
   if (!s._price || s._quelle !== 'markt') return html`<span class="text-mut">—</span>`;
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   const menge = s.quantity || 1;
-  return html`${fmtN(s._price * menge, kontoWaehrung)}${menge > 1 ? html`<span class="fin-je">${tRaw('finance.je', { preis: fmtN(s._price, kontoWaehrung) })}</span>` : ''}${pnl ? html`<span class="tab-pnl" title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>` : ''}`;
+  return html`${fmtN(s._price * menge, accountCurrency)}${menge > 1 ? html`<span class="fin-je">${tRaw('finance.je', { preis: fmtN(s._price, accountCurrency) })}</span>` : ''}${pnl ? html`<span class="tab-pnl" title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>` : ''}`;
 }
 
-/** @param {Kachel} s */
+/** @param {Tile} s */
 export function tableRow(s) {
   const src = s.image_local || s.image_url || '';
   const name = s.name || s.set_number;

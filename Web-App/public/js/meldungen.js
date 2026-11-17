@@ -1,5 +1,5 @@
 import { tRaw } from '../i18n.js';
-import { angemeldetesKonto } from './zustand.js';
+import { loggedInAccount } from './state.js';
 import { G, ico, setzeHtml } from './dom.js';
 
 // Toasts: kurze Meldungen unten im Bild. Gleiche Meldungen zählen statt zu stapeln, damit eine wiederholte
@@ -34,7 +34,7 @@ export function toast(msg, type = 'info', aktion, details) {
   const c = G('toasts');
   if (
     type === 'error' &&
-    !angemeldetesKonto &&
+    !loggedInAccount &&
     [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))
   )
     return null;

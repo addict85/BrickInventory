@@ -389,7 +389,7 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
 
 | Schicht | Dateien | Regel |
 |---|---|---|
-| Kern | `KERN` (`zustand.js`, `events.js`, `escapen.js` …), `public/i18n.js` | kennt keine Ansicht |
+| Kern | `KERN` (`state.js`, `events.js`, `escapen.js` …), `public/i18n.js` | kennt keine Ansicht |
 | Bausteine | `BAUSTEINE` (`api.js`, `dom.js`, `format.js` …) | kennt keine Ansicht; `api.js` ist der einzige Weg zum Server |
 | Ansichten | alle übrigen Module unter `public/js/` | dürfen Kern und Bausteine importieren |
 
@@ -398,7 +398,7 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
   verbietet Inline-Handler).
 - **Rückwege ohne Importkreis:** Ansichten melden Ereignisse
   (`public/js/events.js`, `emit`/`subscribe`) statt einander zu importieren.
-- **Geteilter Zustand** steht nur in `public/js/zustand.js` (mit Settern).
+- **Geteilter Zustand** steht nur in `public/js/state.js` (mit Settern).
 - **Markup** entsteht mit dem Tag `html` (`public/js/escapen.js`, maskiert jeden
   Wert) und kommt nur über `setzeHtml()`/`fuegeHtmlEin()` (`public/js/dom.js`)
   in die Seite. Inline-Stile heissen `data-stil` und werden von

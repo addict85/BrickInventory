@@ -3,7 +3,7 @@ import { toast, verwirfToasts } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './dialoge.js';
 import { jumpTo } from './targets.js';
-import { angemeldetesKonto } from './zustand.js';
+import { loggedInAccount } from './state.js';
 
 // Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
 // Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit „Zurück“ sie
@@ -234,7 +234,7 @@ function schliesse(dialog) {
  * @param {string} unter
  */
 function zeigeAnsicht(ansicht, unter) {
-  const abgewiesen = NUR_VERWALTER.has(ansicht) && !angemeldetesKonto?.isAdmin;
+  const abgewiesen = NUR_VERWALTER.has(ansicht) && !loggedInAccount?.isAdmin;
   if (abgewiesen) ansicht = 'gallery';
   mitRouter(() => {
     if (ansicht === 'settings' && ABSCHNITT_ID[unter]) jumpTo('einstAbschnitt', ABSCHNITT_ID[unter]);

@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
-import { angemeldetesKonto } from './zustand.js';
+import { loggedInAccount } from './state.js';
 import { html } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './rueckfrage.js';
 
@@ -174,7 +174,7 @@ export async function ladePasskeys() {
         )}</tbody></table></div>`
     : html`<p class="hinweis-absatz">${tRaw('pk.none')}</p>`;
   const neu = !d.verfuegbar
-    ? html`<p class="text-klein hinweis-warnung">${tRaw(angemeldetesKonto?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
+    ? html`<p class="text-klein hinweis-warnung">${tRaw(loggedInAccount?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
     : !passkeysMoeglich()
       ? html`<p class="text-klein hinweis-warnung">${tRaw('pk.browser')}</p>`
       : html`<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">

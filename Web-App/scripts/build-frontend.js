@@ -48,7 +48,7 @@ const KERN = [
   'escapen.js',
   'events.js',
   'targets.js',
-  'zustand.js',
+  'state.js',
   'load-guard.js',
   'registry.js',
   'theme-boot.js',

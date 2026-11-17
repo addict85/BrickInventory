@@ -10,7 +10,7 @@ import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setz
 import { betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { setScrollLabel } from './rollbalken.js';
-import { setzeLetztenImport, angemeldetesKonto, einstellungsStand } from './zustand.js';
+import { setLastImportAt, loggedInAccount, settingsSnapshot } from './state.js';
 import { esc, html, verbinde } from './escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
@@ -215,17 +215,17 @@ async function loadCatalogSets() {
   if (!_catItems.length) {
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
-    const ohneSchluessel = !gefiltert && !String(einstellungsStand?.rebrickable_api_key || '').trim();
+    const ohneSchluessel = !gefiltert && !String(settingsSnapshot?.rebrickable_api_key || '').trim();
     const leerText = gefiltert
       ? 'catalog.no_results_hint'
-      : !angemeldetesKonto?.isAdmin
+      : !loggedInAccount?.isAdmin
         ? 'catalog.empty_hint_konto'
         : ohneSchluessel
           ? 'catalog.empty_ohne_schluessel'
           : 'catalog.empty_hint';
     const leerKnopf = gefiltert
       ? zuruecksetzenKnopf('catalog')
-      : !angemeldetesKonto?.isAdmin
+      : !loggedInAccount?.isAdmin
         ? undefined
         : ohneSchluessel
           ? { text: tRaw('rb_key.banner_link'), click: 'rbHinweisOeffnen', ico: 'schluessel' }
@@ -525,7 +525,7 @@ async function addCatalogSetToGallery() {
               }),
               'success',
             );
-            setzeLetztenImport(Date.now());
+            setLastImportAt(Date.now());
             _patchCatalogOwned(num, qty); // owned-Badge in-place (kein Reload: Scroll-Position bleibt)
             emit('sammlungLaden');
           }, 800);
