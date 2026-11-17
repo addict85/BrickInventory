@@ -1,4 +1,4 @@
-// Die Sammlung als Tabelle: Spaltenköpfe mit Sortierung und eine Zeile je Set. Die Kacheln stehen in sammlung.js.
+// Die Sammlung als Tabelle: Spaltenköpfe mit Sortierung und eine Zeile je Set. Die Kacheln stehen in collection.js.
 import { tRaw, locale } from '../i18n.js';
 import { html } from './escapen.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';

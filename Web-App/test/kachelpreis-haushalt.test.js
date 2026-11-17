@@ -85,7 +85,7 @@ test('ohne Kaufpreis und ohne Marktpreis steht kein Prozentwert und kein Betrag'
 test('das Web übernimmt die Werte des Servers', () => {
   // enrichGalleryWithPrices() mit einer Antwort ausführen und nachsehen, was
   // an der Kachel ankommt — ohne Browser, über die Modulfunktion selbst.
-  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'sammlung.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'collection.js'), 'utf8');
   const von = src.indexOf('  setzeGuvJeSet({});');
   const bis = src.indexOf('  // Inject price data into cached sets');
   assert.ok(von > 0 && bis > von, 'enrichGalleryWithPrices() nicht gefunden — umgebaut?');

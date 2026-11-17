@@ -1,5 +1,5 @@
-// Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set-CSV-Import und Löschen. Neu
-// geladen wird sie auch, wenn ein tieferes Modul 'setsGeaendert' oder 'bestandGeaendert' meldet.
+// The collection: metrics, gallery (tiles and list), set CSV import and deletion. It also
+// reloads when a lower-level module emits 'setsGeaendert' or 'bestandGeaendert'.
 import { abonniere, melde } from './ereignisse.js';
 import {
   skelettKacheln,

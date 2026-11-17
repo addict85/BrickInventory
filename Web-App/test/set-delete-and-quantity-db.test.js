@@ -24,7 +24,7 @@ const db = testDaten();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/sammlung.js'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/collection.js'), 'utf8'));
   const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
 
   // Der Knopf im Detail-Dialog darf NICHT selbst fragen.

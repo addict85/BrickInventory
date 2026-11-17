@@ -133,7 +133,7 @@ w.eval(`
   window.locale = () => 'de-CH';
   window.toast = () => {}; window.meldeTreffer = () => {};
   window.PLATZHALTER_SET = '/assets/set-placeholder.svg'; window.setzeDialogbild = (img, src) => { img.src = src; };
-  // Das Teile-Symbol kommt aus sammlung.js und wird hier nur als Marke
+  // Das Teile-Symbol kommt aus collection.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit einer früheren Runde steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';

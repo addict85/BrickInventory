@@ -25,7 +25,7 @@ import { bindGlobalErrorHandlers } from './fehlerfang.js';
 import { frageSitzung, sitzungUngeklaert, startgeruestWeg, waitForStartup, zeigeOffline } from './startkasten.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './fortschritt.js';
 import { pruefeEinrichtung } from './einrichtung.js';
-import { einrichtungKnopfPruefen } from './einrichtung-stand.js';
+import { setupCheckButtonRefresh } from './setup-status.js';
 import { initScrollbalken } from './rollbalken.js';
 import { bindTabs, seitennameAktualisieren } from './navigation.js';
 import { loadHouseholdMembers } from './konten-orte.js';
@@ -491,7 +491,7 @@ let _anmeldewegeLauf = 0;
 async function checkRegistrationEnabled() {
   // Derselbe Anlass wie die Anmeldewege: Wer die Anmeldeseite zeigt, soll wissen, ob die
   // Ersteinrichtung noch offen ist — beim Start wie nach dem Abmelden.
-  einrichtungKnopfPruefen();
+  setupCheckButtonRefresh();
   const lauf = ++_anmeldewegeLauf;
   // Steht erst wieder, wenn die jüngste Antwort eingetragen ist (Browser-Tests warten darauf).
   delete G('login-screen').dataset.anmeldewege;

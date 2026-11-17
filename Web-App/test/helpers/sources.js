@@ -944,7 +944,7 @@ function anmeldeQuelle() {
 
 /** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
 const ANSICHTEN = {
-  einstellungen: ['einstellungen.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
+  einstellungen: ['settings.js', 'zugaenge.js', 'haushalt.js', 'user-management.js', 'alarme.js', 'lagerorte.js'],
 };
 
 /** Alle Dateien einer Ansicht (Schlüssel aus ANSICHTEN) als EIN Text. */

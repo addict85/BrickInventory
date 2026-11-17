@@ -319,14 +319,14 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
   // Jede der fünf Ansichten hängt ihn an ihre Abfragen.
-  assert.match(read('public/js/sammlung.js'), /addScopeParam\(p, 'gallery'\)/);
+  assert.match(read('public/js/collection.js'), /addScopeParam\(p, 'gallery'\)/);
   assert.match(read('public/js/teile.js'), /addScopeParam\(p, 'parts'\)/);
   assert.match(read('public/js/minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
-  assert.match(read('public/js/merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
+  assert.match(read('public/js/wanted.js'), /addScopeParam\(p, 'merkliste'\)/);
 
   // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.
-  const fin = read('public/js/finanzen.js') + read('public/js/wertkurve.js');
+  const fin = read('public/js/finances.js') + read('public/js/wertkurve.js');
   // Adressen seit Etappe 5 unter /v1 — die Regel ist unverändert: ALLE vier
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of [

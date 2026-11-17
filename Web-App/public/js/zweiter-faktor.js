@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { formularFehler } from './formular.js';
 import { toast } from './meldungen.js';
-import { loadUsers } from './nutzerverwaltung.js';
+import { loadUsers } from './user-management.js';
 import { html, ungeprueft } from './escapen.js';
 import { fmtDatum } from './format.js';
 import { melde } from './ereignisse.js';

@@ -182,7 +182,7 @@ function stilleFaengeDerOberflaeche() {
   // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
   // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
   // (localStorage, abgebrochene Ströme); neue braucht es nicht.
-  // Gegenprobe (15.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
+  // Gegenprobe (15.11.2026): in public/js/wanted.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
   const SCHRANKE = 84;
@@ -576,10 +576,23 @@ test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
     console.log(`  ℹ Kanten zwischen Ansichten: ${kanten.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
+// Dateien unter public/js, die Phase 2b bewusst auf Englisch umbenannt hat (Datei, Bezeichner,
+// Kommentare): Ihre englischen Namen sind dort Absicht, nicht die Sorte Einzelfund, die
+// englischeDateinamen() zählt. Wer eine weitere Datei dieser Phase umstellt, trägt sie hier ein
+// und zieht die SCHRANKE unten NICHT hoch — die zusätzliche Datei fällt aus der Zählung heraus.
+const OBERFLAECHE_ENGLISCH_UMGESTELLT = [
+  'settings.js',
+  'wanted.js',
+  'user-management.js',
+  'collection.js',
+  'finances.js',
+  'setup-status.js',
+];
+
 test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“); übrig sind Begriffe der
   // Technik (api, dom, router …). Gezählt wird ein englisches Wort im Dateinamen.
-  // Gegenprobe (15.11.2026): public/js/sammlung.js zurück auf gallery.js → rot (22 statt 21).
+  // Gegenprobe (15.11.2026): public/js/collection.js zurück auf gallery.js → rot (22 statt 21).
   const ENGLISCH =
     /^(?:.*-)?(?:gallery|catalog|parts|finance|settings|actions|scope|scrollbar|acquisition|modals?|admin|init|main|mobile|monitor|registry|router|boot|viewer|logviewer|pdfviewer|detail|import|wanted|sets|api|dom|format|passkeys|minifigs|theme)(?:-.*)?\.js$/;
   const SCHRANKE = 21;
@@ -587,7 +600,8 @@ test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
   const englisch = fs
     .readdirSync(path.join(WEB, 'public', 'js'))
     .filter(n => istAppModul(n) || ['main.js', 'logviewer.js', 'pdfjs-boot.js'].includes(n))
-    .filter(n => ENGLISCH.test(n));
+    .filter(n => ENGLISCH.test(n))
+    .filter(n => !OBERFLAECHE_ENGLISCH_UMGESTELLT.includes(n));
   assert.ok(
     englisch.length <= SCHRANKE,
     `${englisch.length} englische Dateinamen in public/js: ${englisch.join(', ')}`,

@@ -7,7 +7,7 @@ import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './monitor.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { alleFiguren, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './minifigs.js';
-import { merkpostenLoeschen } from './merkliste.js';
+import { merkpostenLoeschen } from './wanted.js';
 import { autosaveSet, closeImageLightbox, openImageLightbox } from './set-detail.js';
 import { setzeMengenfeld } from './detailfelder.js';
 import { hideProgress } from './fortschritt.js';

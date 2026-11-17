@@ -17,11 +17,11 @@ import {
   loadProfile,
   loadRateLimitStats,
   loadSettings,
-} from './einstellungen.js';
+} from './settings.js';
 import { ladeTls, loadTokens } from './zugaenge.js';
 import { loadHousehold } from './haushalt.js';
 import { ladeGutscheine } from './gutscheine.js';
-import { ladeMerkliste, merklisteZuruecksetzen } from './merkliste.js';
+import { ladeMerkliste, merklisteZuruecksetzen } from './wanted.js';
 import { ladePapierkorb } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';

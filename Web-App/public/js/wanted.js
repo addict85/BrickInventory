@@ -24,8 +24,8 @@ import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './detailfelder.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } from './konten-orte.js';
 
-// Was man haben möchte, getrennt vom Besitz, deshalb eine eigene Tabelle: In `sets` zählte ein Merkposten in
-// Galerie, Teilen, Portfolio und Finanzen mit, und jede Ansicht bräuchte einen Filter.
+// What you want, kept apart from what you own — hence its own table: in `sets` a wanted item
+// would count in the gallery, parts, portfolio and finances, and every view would need a filter.
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
 /** @typedef {import('../../frontend-typen/vertrag').Merkposten} Merkposten */

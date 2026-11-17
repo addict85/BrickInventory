@@ -1,4 +1,4 @@
-// Finanzen: Bewertung, G&V und Wertentwicklung des Bestands.
+// Finances: valuation, profit & loss, and the value development of the collection.
 import { abonniere } from './ereignisse.js';
 import {
   ladeAnzeige,

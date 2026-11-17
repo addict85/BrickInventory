@@ -21,7 +21,7 @@ import {
   setzeMengenfeld,
 } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
-import { delSet, reimportParts } from './sammlung.js';
+import { delSet, reimportParts } from './collection.js';
 import { detailZeile, kontoAnzeige, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
 import { locale, t, tRaw } from '../i18n.js';

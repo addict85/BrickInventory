@@ -19,7 +19,7 @@ export let kontoWaehrung = 'EUR';
 export let einstellungsStand = null;
 /**
  * Ein Set der Galerie: die Zeile aus /v1/sets, dazu Kachelpreis, G&V und deren Quelle aus /v1/finance/pnl
- * (gesetzt in sammlung.js).
+ * (gesetzt in collection.js).
  * @typedef {import('../../frontend-typen/vertrag').SetItem & { _price?: number | null, _pnl_pct?: number | null, _quelle?: string | null }} Kachel
  */
 /** Die geladenen Sets der Galerie. @type {Kachel[]} */

@@ -108,7 +108,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
   let knoepfeGesamt = 0;
-  for (const file of ['sammlung.js', 'sets-tabelle.js', 'teile.js', 'minifigs.js', 'set-detail.js']) {
+  for (const file of ['collection.js', 'sets-tabelle.js', 'teile.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
@@ -143,7 +143,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   );
 
   // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
-  const gallery = fs.readFileSync(path.join(PUB, 'js', 'sammlung.js'), 'utf8');
+  const gallery = fs.readFileSync(path.join(PUB, 'js', 'collection.js'), 'utf8');
   assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
 
   // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
@@ -165,7 +165,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
   for (const [file, expected] of /** @type {[string, number][]} */ ([
-    ['sammlung.js', 1],
+    ['collection.js', 1],
     ['teile.js', 1],
     ['minifigs.js', 2],
   ])) {

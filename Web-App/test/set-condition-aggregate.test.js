@@ -500,7 +500,7 @@ test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Eine Plakette, keine Kopien mit fest eingetragenen Farben statt der CSS-Klassen:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/teile.js', 'public/js/minifigs.js', 'public/js/finanzen.js']) {
+  for (const f of ['public/js/teile.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
     assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
@@ -511,7 +511,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
   // MAX(purchase_price) zeigte bei 2x100 und 1x160 den Wert 160.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sammlung.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
   assert.match(
     gal,
     /s\.avg_purchase_price \?\? s\.max_purchase_price/,

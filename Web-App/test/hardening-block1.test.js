@@ -289,8 +289,8 @@ test('die Webapp hängt keinen Token an eine Adresse', () => {
     path.join(ROOT, 'public', 'js', 'bilder.js'),
     path.join(ROOT, 'public', 'js', 'fortschritt.js'),
     path.join(ROOT, 'public', 'js', 'monitor.js'),
-    path.join(ROOT, 'public', 'js', 'sammlung.js'),
-    path.join(ROOT, 'public', 'js', 'einstellungen.js'),
+    path.join(ROOT, 'public', 'js', 'collection.js'),
+    path.join(ROOT, 'public', 'js', 'settings.js'),
   ];
   const treffer = [];
   for (const voll of dateien) {

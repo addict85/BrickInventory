@@ -1,6 +1,6 @@
 import { melde } from './ereignisse.js';
 import { loadHousehold } from './haushalt.js';
-import { loadUsers } from './nutzerverwaltung.js';
+import { loadUsers } from './user-management.js';
 import { stelleZielBereit } from './ziele.js';
 import { registerActions } from './registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
