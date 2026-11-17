@@ -42,7 +42,7 @@ export function baueApiRouter(
     | 'minifigs'
     | 'wanted'
     | 'gutscheine'
-    | 'sammlung'
+    | 'collection'
     | 'verwaltung'
   >,
 ) {

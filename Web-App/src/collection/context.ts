@@ -1,7 +1,7 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
-import * as setErfassungen from './repository/setErfassungen';
+import * as setAcquisitions from './repository/setAcquisitions';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KatalogDienste } from '../katalog';
@@ -13,7 +13,7 @@ import type { MinifigsServices } from '../minifigs';
 import type { WantedServices } from '../wanted';
 import type { Uhr } from '../infra/uhr';
 
-export interface SammlungAbhaengigkeiten {
+export interface CollectionDependencies {
   uhr: Uhr;
   db: Db;
   haushalt: HaushaltDienste;
@@ -27,7 +27,7 @@ export interface SammlungAbhaengigkeiten {
   wanted: WantedServices;
 }
 
-export const zugang = (db: Db) => ({
-  setKaeufe: { imBlickfeld: mit(db)(setErfassungen.setErfassungenImBlickfeld) },
+export const access = (db: Db) => ({
+  setAcquisitions: { inScope: mit(db)(setAcquisitions.setAcquisitionsInScope) },
 });
-export type SammlungKontext = Kontext<SammlungAbhaengigkeiten, ReturnType<typeof zugang>>;
+export type CollectionContext = Kontext<CollectionDependencies, ReturnType<typeof access>>;

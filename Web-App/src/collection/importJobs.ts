@@ -1,17 +1,17 @@
-/** Die Importe ausser dem Set-CSV (das in setCsvImport.ts zeilenweise
- * fortsetzt). Die Route reicht ein und wartet (importiere). */
+/** The imports other than the set CSV (which continues row-by-row in setCsvImport.ts).
+ * The route submits and waits (runImport). */
 import { csvImportBericht } from '../infra/csvExport';
 import { Fachfehler } from '../infra/fehlerTexte';
 import { z } from 'zod';
 import type { AuftragsZeile, AuftragsKontext, Fortschritt } from '../auftraege';
 import { SetCsvNutzlast } from '../sets';
 import { importiereWantedXml } from './wantedXmlImport';
-import type { SammlungKontext } from './kontext';
+import type { CollectionContext } from './context';
 
 const KONTO = z.number().int().positive();
 const text = z.string();
 
-/** Eine Korrektur der Wanted-Vorschau; der Import gleicht `blId` mit dem Posten ab. */
+/** A correction to the wanted-list preview; the import matches `blId` against the entry. */
 export const WantedKorrektur = z.object({
   index: z.number().int().min(0),
   blId: z.string().max(64),
@@ -54,29 +54,29 @@ declare module '../auftraege/auftraege' {
 }
 
 export type ImportQuelle = z.input<typeof ImportNutzlastSchema>['quelle'];
-/** Was der Import der Quelle braucht. */
+/** What the import needs from the source. */
 export type ImportEingabe<Q extends ImportQuelle> = Extract<
   z.input<typeof ImportNutzlastSchema>,
   { quelle: Q }
 >['eingabe'];
 
-/** Die Route reicht ein und wartet; der Import läuft im Job-Prozess. */
-export function importiere<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(
-  k: SammlungKontext,
+/** The route submits and waits; the import runs in the job process. */
+export function runImport<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(
+  k: CollectionContext,
   uid: number,
   quelle: Q,
   eingabe: ImportEingabe<Q>,
   o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {},
 ): Promise<T> {
-  // tsc verbindet Q nicht mit dem Zweig der Union; geprüft wird beim Einstellen.
+  // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
   const nutzlast = { user_id: uid, quelle, eingabe } as z.input<typeof ImportNutzlastSchema>;
   return k.auftraege.warteAufAuftrag<T, 'csv_import'>('csv_import', nutzlast, { ...o, userId: uid });
 }
 
 export type ImportNutzlast = z.output<typeof ImportNutzlastSchema>;
 
-async function ergebnisVon(
-  kx: SammlungKontext,
+async function resultFrom(
+  kx: CollectionContext,
   n: ImportNutzlast,
   k: AuftragsKontext,
 ): Promise<Record<string, unknown>> {
@@ -95,15 +95,15 @@ async function ergebnisVon(
   }
 }
 
-/** Ein Fachfehler ist ein Ergebnis (die Anfrage meldet ihn mit Code), kein Fehlschlag des Auftrags. */
+/** A business error is a result (the request reports it with a code), not a job failure. */
 async function fuehreImportAus(
-  kx: SammlungKontext,
+  kx: CollectionContext,
   n: ImportNutzlast,
   k: AuftragsKontext,
   a: AuftragsZeile,
 ): Promise<void> {
   try {
-    await kx.auftraege.setzeErgebnis(a.id, await ergebnisVon(kx, n, k));
+    await kx.auftraege.setzeErgebnis(a.id, await resultFrom(kx, n, k));
   } catch (e) {
     if (!(e instanceof Fachfehler)) throw e;
     await kx.auftraege.setzeFachfehler(a.id, e);

@@ -653,7 +653,7 @@ function arbeitseinheitAmAufrufort() {
   // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
   // Kontext der Transaktion (t); Repositories nehmen den tx des Aufrufers. `.transaction(`
   // steht nur in src/infra/bereich.ts und db/.
-  // Gegenproben: (13.11.2026) in src/sammlung/loeschen.ts wieder `k.db.transaction(async tx =>`
+  // Gegenproben: (13.11.2026) in src/collection/deletion.ts wieder `k.db.transaction(async tx =>`
   // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
   // src/faktoren/repository/zweiterFaktor.ts → rot „…: .transaction(“.
   // Ebenso db/txLock.ts: Bestandssperren sind eine Option von k.transaktion, kein eigener
@@ -946,7 +946,7 @@ const STUFEN = [
   ['src/bestand'],
   ['src/sets'],
   ['src/teile', 'src/minifigs', 'src/wanted', 'src/gutscheine'],
-  ['src/sammlung', 'src/verwaltung'],
+  ['src/collection', 'src/verwaltung'],
   ['src/dienste.ts'],
   ['jobs', 'routes'],
   ['startup'],

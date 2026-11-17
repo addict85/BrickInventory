@@ -7,7 +7,7 @@
  * Preis des Sammelzustands.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in src/sammlung/erfassungen.ts den Zustand an resolvePrice durch null
+ *   A  in src/collection/acquisitions.ts den Zustand an resolvePrice durch null
  *      ersetzt → rot bei „set“ (100 statt 60)
  *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
  *      (100 statt 60); „set“ bleibt grün
@@ -24,7 +24,7 @@ const { datenOderSkip } = require('./helpers/db');
 test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async t => {
   const db = testDaten();
   if (!(await datenOderSkip(t, _req))) return;
-  const { erfassungAendern } = _req('src/sammlung/erfassungen.js');
+  const { changeAcquisition } = _req('src/collection/acquisitions.js');
   const P = process.pid;
   const NAME = `zustandpreis-${P}`,
     SN = `${P}9-1`,
@@ -103,7 +103,7 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
     ],
   ];
   for (const [art, tabelle, spalte, keys, id] of faelle) {
-    await erfassungAendern(art, uid, id, keys, { [spalte]: '', condition: 'U' });
+    await changeAcquisition(art, uid, id, keys, { [spalte]: '', condition: 'U' });
     const z = await db.get(
       `SELECT ${spalte}::float AS preis, price_estimated, condition FROM ${tabelle} WHERE id = $1`,
       [id],

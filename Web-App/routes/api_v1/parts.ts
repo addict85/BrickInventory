@@ -11,7 +11,7 @@ import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 export function bauePartsRouter(
   d: Pick<
     Dienste,
-    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'teile' | 'sammlung'
+    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'teile' | 'collection'
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
@@ -38,7 +38,7 @@ export function bauePartsRouter(
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
-        ...(await d.sammlung.importiere<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', {
+        ...(await d.collection.runImport<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
       };
@@ -85,7 +85,7 @@ export function bauePartsRouter(
   router.endpunkt('DELETE /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
     // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    const geloescht = await d.sammlung.loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
+    const geloescht = await d.collection.loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
     if (geloescht === null) nichtGefunden('teil_nicht_manuell');
     return { papierkorb: [geloescht] };
   });

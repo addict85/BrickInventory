@@ -13,7 +13,7 @@
  *   C  die Option aus verschiebeSet() entfernt → rot: „setVerschieben
  *      wiederholt bei Konflikt“; aus setzeGeschaetztenPreis() → rot:
  *      „setzeGeschaetztenPreis wiederholt bei Konflikt“
- *      (Der Verschiebeweg in erfassungAendern() braucht ein Haushaltskonto und
+ *      (Der Verschiebeweg in changeAcquisition() braucht ein Haushaltskonto und
  *      ist hier nicht abgedeckt; er teilt k.transaktion mit Sperren mit verschiebeSet.)
  *   D  mitInventarSperre() reicht die Option nicht an transaction() → rot:
  *      „mitInventarSperre reicht die Option weiter“, „setVerschieben …“

@@ -2,12 +2,12 @@
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
 import type { Nutzlast, AuftragsKontext } from '../auftraege';
 import { logAndContinue } from '../infra/fehler';
-import type { SammlungKontext } from './kontext';
+import type { CollectionContext } from './context';
 
 export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 
 async function importiereWantedXml(
-  kx: SammlungKontext,
+  kx: CollectionContext,
   uid: number,
   e: WantedXmlEingabe,
   k: AuftragsKontext,
@@ -24,8 +24,8 @@ async function importiereWantedXml(
   };
   // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".
   const schliesseBalken = async (
-    angaben: Parameters<SammlungKontext['auftraege']['beendeAuftrag']>[1],
-    zeilen?: Parameters<SammlungKontext['auftraege']['beendeAuftrag']>[2],
+    angaben: Parameters<CollectionContext['auftraege']['beendeAuftrag']>[1],
+    zeilen?: Parameters<CollectionContext['auftraege']['beendeAuftrag']>[2],
   ) => {
     await kette;
     if (auftragLaeuft)

@@ -12,7 +12,7 @@
  *   C  erfassungenNeuesteZuerst sortiert ASC → rot „die LIFO-Reduktion …“
  *   D  ERFASSUNGS_TABELLEN: Schlüssel des Teils ohne color_id → rot „die
  *      Tagesregel gilt für alle drei Arten …“ (dazu „Erhöhung …“ und „Bearbeiten-Pfad …“)
- *   E  in src/sammlung/erfassungen.ts `if (clash)` → `if (false)` → rot „der
+ *   E  in src/collection/acquisitions.ts `if (clash)` → `if (false)` → rot „der
  *      Bearbeiten-Pfad lehnt ab, was die Tagesregel verbietet“ (500 statt 409)
  *   F  loescheTeil() ohne loescheTeilErfassungen → rot „das Löschen eines
  *      manuellen Eintrags räumt die Kaufpreise mit ab“
@@ -20,7 +20,7 @@
  *      Bewertung liefert je Kaufpreis eine Zeile …“
  *   H  pmRows() zeichnet immer nur eine Zeile (`return pmRow(it, label, null,
  *      lage, text)`) → rot „die Finanzen zeigen je Kaufpreis eine Zeile …“
- *   I  in src/sammlung/loeschen.ts `.catch(() => {})` an loescheTeilErfassungen → rot in
+ *   I  in src/collection/deletion.ts `.catch(() => {})` an loescheTeilErfassungen → rot in
  *      ratschen.test.js „stille Faenge …“ (deckt den gestrichenen Fall „kein
  *      stiller Fehler mehr auf Bestandstabellen“)
  */
@@ -340,7 +340,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     'src/teile/manuelleTeile.ts',
     'src/minifigs/manualMinifigs.ts',
     'routes/api_v1/acquisitions.ts',
-    'src/sammlung/erfassungen.ts',
+    'src/collection/acquisitions.ts',
   ]) {
     assert.doesNotMatch(
       strip(read(f)),

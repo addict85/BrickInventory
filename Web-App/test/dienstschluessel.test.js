@@ -83,7 +83,7 @@ const JE_BEREICH = {
   minifigs: 8,
   wanted: 9,
   gutscheine: 16,
-  sammlung: 8,
+  collection: 8,
   verwaltung: 28,
 };
 
@@ -167,7 +167,7 @@ const ROH_ERLAUBT = {
   'auftraege.zaehleZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'drossel.stundenStand': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
   'drossel.zaehleStunde': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
-  'sets.setsDesKontos': 'Setnummern eines Kontos für das Löschen der Sammlung (src/sammlung), ohne Regel davor',
+  'sets.setsDesKontos': 'Setnummern eines Kontos für das Löschen der Sammlung (src/collection), ohne Regel davor',
   'finanzen.marktpreisAusCache': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
   'finanzen.marktpreisAusVerlauf': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
   'gutscheine.gutscheineNeuVerschluesseln':

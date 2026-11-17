@@ -255,7 +255,7 @@ export async function wantedListCsv(k: WantedContext, uid: number): Promise<stri
   return toCsv(['set_number', 'condition', 'created_at'], rows);
 }
 
-/** The counterpart to wantedListCsv(); runs as a job (src/sammlung/importAuftraege.ts). */
+/** The counterpart to wantedListCsv(); runs as a job (src/collection/importJobs.ts). */
 export async function importWantedListCsv(k: WantedContext, owner: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
 

@@ -134,6 +134,6 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
     'Der Knopf ruft DELETE /v1/bestand mit Passwort',
   );
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
-  const loeschen = fs.readFileSync(path.join(ROOT, 'src/sammlung/loeschen.ts'), 'utf8');
+  const loeschen = fs.readFileSync(path.join(ROOT, 'src/collection/deletion.ts'), 'utf8');
   assert.match(loeschen, /loescheSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });

@@ -1,8 +1,8 @@
-/** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
+/** Kaufpreis-Erfassungen; die Regeln stehen in src/collection/acquisitions.ts. */
 import { acquisitionTotals } from '../../src/bestand';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { sichtVon, waechterFuer } from './middleware';
-import type { ErfassungsArt } from '../../src/sammlung';
+import type { ErfassungsArt } from '../../src/collection';
 import { vertragsRouter, type Anfrage } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
@@ -14,7 +14,7 @@ function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
 
 /** Summe in der Kontowährung (src/bestand/acquisitions.ts), in der Form des Vertrags. */
 async function inKontowaehrung<T extends Parameters<Dienste['bestand']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>,
+  d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'collection'>,
   rows: T[],
   betrachter: number,
 ) {
@@ -32,26 +32,26 @@ type Aenderung = Erfassungsanfrage<Anfrage<'PUT /api/v1/sets/:setNumber/acquisit
 
 const aendern =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>,
+    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
   (req: Aenderung) =>
-    d.sammlung.erfassungAendern(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe);
+    d.collection.changeAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad), req.eingabe);
 
 const loeschen =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>,
+    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
   (req: Erfassungsanfrage) =>
-    d.sammlung.erfassungLoeschen(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad));
+    d.collection.deleteAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad));
 const setSchluessel: Schluessel = p => [String(p.setNumber)];
 const teilSchluessel: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
 const figurSchluessel: Schluessel = p => [String(p.figNumber)];
 
-export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'sammlung'>) {
+export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'minifigs' | 'collection'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -61,7 +61,7 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 't
     // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite;
     // `degradiert` sagt ihr, dass sie nicht wirklich leer ist.
     const ab = new Abstriche();
-    const rows = await ab.oder('erfassungen', d.sammlung.setErfassungen(sichtVon(req), req.pfad.setNumber), null);
+    const rows = await ab.oder('erfassungen', d.collection.setAcquisitionsForSet(sichtVon(req), req.pfad.setNumber), null);
     if (!rows) return { acquisitions: [], totals: ohneLeerenBetrag(acquisitionTotals([])), ...ab.angabe() };
     return { ...(await inKontowaehrung(d, rows, uid)), owner_user_id: uid };
   });

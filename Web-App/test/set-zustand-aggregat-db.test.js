@@ -5,7 +5,7 @@
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
  *   A  zustandsAggregat ohne max_purchase_price → rot „setLesen liefert
  *      dieselben Aggregatfelder …“
- *   B  erfassungAendern gibt die nackte Antwort ohne mitSetAggregat zurück →
+ *   B  changeAcquisition gibt die nackte Antwort ohne mitSetAggregat zurück →
  *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
  *      dessen Teil aufbaut)
  *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot

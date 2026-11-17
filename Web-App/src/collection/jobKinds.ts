@@ -1,9 +1,9 @@
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { CsvImportNutzlast, fuehreImportAus } from './importAuftraege';
-import type { SammlungKontext } from './kontext';
+import { CsvImportNutzlast, fuehreImportAus } from './importJobs';
+import type { CollectionContext } from './context';
 
-/** Mit `quelle` ein Import, auf den eine Anfrage wartet; ohne das Set-CSV. */
-export function sammlungAuftragsarten(k: SammlungKontext): Anmeldung[] {
+/** With `quelle` an import a request waits on; without it, the set CSV. */
+export function collectionJobKinds(k: CollectionContext): Anmeldung[] {
   return [
     auftragsart({
       art: 'csv_import',

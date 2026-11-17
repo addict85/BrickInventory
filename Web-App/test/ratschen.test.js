@@ -285,7 +285,7 @@ function wegeAnDenKontextenVorbei() {
   // gibt es nicht mehr.
   // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsDienste>('sets');` in
   // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { setsLesen } from '../sets'` in
-  // src/sammlung/loeschen.ts (mit `export const setsLesen = …` in src/sets/index.ts) → rot (1 Fassade).
+  // src/collection/deletion.ts (mit `export const setsLesen = …` in src/sets/index.ts) → rot (1 Fassade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
   const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
@@ -1304,7 +1304,7 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
 // Bereiche, die Phase 2a schon vollständig auf Englisch gezogen hat (Verzeichnis, Dateien,
 // Bezeichner): Ihre englischen Exportnamen sind dort Absicht, nicht die Sorte Einzelfund, die
 // dieser Zähler fängt. Diese Liste wächst mit jedem fertig umgestellten Bereich, nie zurück.
-const ENGLISCH_UMGESTELLT = ['src/idempotency', 'src/profile', 'src/minifigs', 'src/wanted'];
+const ENGLISCH_UMGESTELLT = ['src/idempotency', 'src/profile', 'src/minifigs', 'src/wanted', 'src/collection'];
 const nichtUmgestellt = (/** @type {string} */ f) => {
   const rel = path.relative(WEB, f).replace(/\\/g, '/');
   return !ENGLISCH_UMGESTELLT.some(d => rel === d || rel.startsWith(`${d}/`));

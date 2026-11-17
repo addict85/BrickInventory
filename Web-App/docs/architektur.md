@@ -239,7 +239,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 15 | `src/bestand` |
 | 16 | `src/sets` |
 | 17 | `src/teile`, `src/minifigs`, `src/wanted`, `src/gutscheine` |
-| 18 | `src/sammlung`, `src/verwaltung` |
+| 18 | `src/collection`, `src/verwaltung` |
 | 19 | `src/dienste.ts` |
 | 20 | `jobs`, `routes` |
 | 21 | `startup` |

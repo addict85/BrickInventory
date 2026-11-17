@@ -400,7 +400,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
-  const f = 'src/sammlung/erfassungen.ts';
+  const f = 'src/collection/acquisitions.ts';
   const src = kompakt(read(f));
   assert.ok(src.includes('t.bestand.manuelleErfassungUmhaengen(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
@@ -416,7 +416,7 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update
   // durch und antwortete success:true: Der Wechsel in der App war ein
   // stiller No-op, ohne Fehlermeldung und ohne Bewegung.
-  const v1 = read('src/sammlung/erfassungen.ts');
+  const v1 = read('src/collection/acquisitions.ts');
   assert.match(v1, /body\.owner_user_id/, 'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(
     v1,

@@ -31,7 +31,7 @@ const { haeltSet, erfasse, haltZeile } = require('./helpers/bestand');
 const db = testDaten();
 const { meldeUndLiefere, logAndContinue } = _req('src/infra/fehler.js');
 const { versuche } = _req('src/infra/ergebnis.js');
-const { erfassungLoeschen } = _req('src/sammlung/erfassungen.js');
+const { deleteAcquisition } = _req('src/collection/acquisitions.js');
 
 const NAME = `ersatz_tx_${process.pid}`,
   SET = '71999-1';
@@ -97,7 +97,7 @@ test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
     await erfasse(db, uid, SET, 2_000_000_000, { am: '2026-01-03T12:00:00Z' });
     const klein = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND quantity = 1', [uid])).id;
 
-    await assert.rejects(erfassungLoeschen('set', uid, klein, [SET]), (/** @type {any} */ e) => {
+    await assert.rejects(deleteAcquisition('set', uid, klein, [SET]), (/** @type {any} */ e) => {
       assert.equal(e.code, '22003', `statt der Ursache kam ${e.code}: ${e.message}`);
       return true;
     });

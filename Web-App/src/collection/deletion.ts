@@ -1,9 +1,9 @@
-/** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
- * Zeilen in den Papierkorb nehmen. */
-import type { SammlungKontext } from './kontext';
+/** One place for part, minifig and "delete everything", so every path puts the
+ * same rows in the trash. */
+import type { CollectionContext } from './context';
 
 export async function loescheTeil(
-  k: SammlungKontext,
+  k: CollectionContext,
   besitzer: number,
   pn: string,
   cid: number,
@@ -15,7 +15,7 @@ export async function loescheTeil(
   });
 }
 
-export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: string): Promise<number | null> {
+export async function loescheFigur(k: CollectionContext, besitzer: number, fn: string): Promise<number | null> {
   return k.transaktion(async t => {
     const id = await t.bestand.legeInPapierkorb('figur', besitzer, fn);
     const r = await t.bestand.loescheManuell('fig', besitzer, [fn]);
@@ -23,13 +23,15 @@ export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: str
   });
 }
 
-/** Nur das EIGENE Konto, nie das Blickfeld. Jedes Element einzeln, damit jedes
- * einzeln wiederherstellbar ist. */
-export async function loescheAllesEigene(k: SammlungKontext, uid: number) {
+/** Only the account's OWN, never the viewing scope. Each item one at a time, so
+ * each can be restored on its own. */
+export async function loescheAllesEigene(k: CollectionContext, uid: number) {
   const sets = await k.sets.setsDesKontos(uid);
   const teile = await k.bestand.manuell.teileDesKontos(uid);
-  const figuren = await k.bestand.manuell.figurenDesKontos(uid);
+  const minifigs = await k.bestand.manuell.figurenDesKontos(uid);
   const papierkorb: number[] = [];
+  // Field names below (sets, teile, figuren) are the API contract (src/vertrag/bestand.ts)
+  // and stay as-is.
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {
     const ids = await k.sets.loescheSet([uid], s.set_number);
@@ -45,7 +47,7 @@ export async function loescheAllesEigene(k: SammlungKontext, uid: number) {
       n.teile++;
     }
   }
-  for (const f of figuren) {
+  for (const f of minifigs) {
     const id = await loescheFigur(k, uid, f.fig_number);
     if (id !== null) {
       papierkorb.push(id);

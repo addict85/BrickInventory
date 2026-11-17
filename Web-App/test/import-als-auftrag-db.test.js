@@ -50,7 +50,7 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   // Wie die Route: im Konto der Anfrage; den eigenen Auftrag liest sie unter Zeilenschutz.
-  const { importiere: alsAuftrag } = _req('src/sammlung/importAuftraege.js');
+  const { runImport: alsAuftrag } = _req('src/collection/importJobs.js');
   const importAlsAuftrag = (...a) => alsKonto(uid, () => alsAuftrag(...a));
   const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;
 

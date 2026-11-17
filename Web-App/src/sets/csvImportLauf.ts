@@ -20,7 +20,7 @@ const CsvZeileSchema = z.object({
     .object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() })
     .optional(),
 });
-/** Teil der Art 'csv_import', die die Sammlung anmeldet (src/sammlung/auftragsarten.ts). */
+/** Teil der Art 'csv_import', die die Sammlung anmeldet (src/collection/jobKinds.ts). */
 export const SetCsvNutzlast = z.object({
   user_id: z.number().int().positive(),
   lauf: z.string().min(1),

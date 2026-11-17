@@ -13,7 +13,7 @@ import { erzeugeTeile } from '../src/teile';
 import { createMinifigs } from '../src/minifigs';
 import { createWanted } from '../src/wanted';
 import { erzeugeGutscheine } from '../src/gutscheine';
-import { erzeugeSammlung } from '../src/sammlung';
+import { createCollection } from '../src/collection';
 import { erzeugeVerwaltung } from '../src/verwaltung';
 import { erzeugeKatalog } from '../src/katalog';
 import { type Bildwerk, erzeugeBilder } from '../src/bilder';
@@ -90,7 +90,7 @@ function meldeAuftragsartenAn(d: Dienste): void {
     ...d.katalog.auftragsarten(IMPORT_PROZESS),
     ...d.finanzen.auftragsarten(),
     ...d.sets.auftragsarten(),
-    ...d.sammlung.auftragsarten(),
+    ...d.collection.jobKinds(),
     ...d.teile.auftragsarten(),
     ...d.verwaltung.auftragsarten(),
   ];
@@ -200,9 +200,9 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     zeige('wanted'),
   );
   const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, drossel }, zeige('gutscheine'));
-  const sammlung = erzeugeSammlung(
+  const collection = createCollection(
     { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, minifigs, wanted },
-    zeige('sammlung'),
+    zeige('collection'),
   );
   const verwaltung = erzeugeVerwaltung(
     {
@@ -225,7 +225,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     },
     zeige('verwaltung'),
   );
-  return { ...grund, finanzen, bestand, sets, teile, minifigs, wanted, gutscheine, sammlung, verwaltung };
+  return { ...grund, finanzen, bestand, sets, teile, minifigs, wanted, gutscheine, collection, verwaltung };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

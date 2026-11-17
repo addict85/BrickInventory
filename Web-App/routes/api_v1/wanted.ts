@@ -7,7 +7,7 @@ import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache, fachfehler } from '../../src/infra/fehlerTexte';
 import type { Korrektur } from '../../src/wanted';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
-import { WantedKorrekturen, type ImportEingabe } from '../../src/sammlung';
+import { WantedKorrekturen, type ImportEingabe } from '../../src/collection';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
@@ -33,7 +33,7 @@ function korrekturenAus(roh: string | undefined): Korrektur[] | undefined | null
  * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
  * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
 async function importImStrom(
-  d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'sammlung'>,
+  d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'collection'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -53,7 +53,7 @@ async function importImStrom(
     zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
     res.end();
   });
-  await d.sammlung.importiere(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
+  await d.collection.runImport(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
     r => zeile({ success: true, ...r }),
     (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }),
   );
@@ -61,7 +61,7 @@ async function importImStrom(
   if (!res.writableEnded) res.end();
 }
 
-export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'sammlung'>) {
+export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'collection'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -137,7 +137,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
       const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
       return {
-        ...(await d.sammlung.importiere<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv', {
+        ...(await d.collection.runImport<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv', {
           owner,
           text: req.file.buffer.toString('utf-8'),
         })),
@@ -147,7 +147,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
 
   /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
    * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist. Gerechnet
-   * wird im Auftrag (src/sammlung/wantedXmlImport.ts); mit `strom=1` gehen dessen
+   * wird im Auftrag (src/collection/wantedXmlImport.ts); mit `strom=1` gehen dessen
    * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App). */
   router.endpunkt(
     'POST /api/v1/wanted-list/import/xml',
@@ -169,7 +169,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
         ...(korrekturen ? { korrekturen } : {}),
       };
       const uid = req.apiUser.user_id;
-      if (!req.abfrage.strom) return { ...(await d.sammlung.importiere<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
+      if (!req.abfrage.strom) return { ...(await d.collection.runImport<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
 
       await importImStrom(d, req, res, uid, eingabe);
     },
