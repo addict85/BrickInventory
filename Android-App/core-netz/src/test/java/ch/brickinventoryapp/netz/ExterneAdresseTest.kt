@@ -10,16 +10,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Welche Adressen aus Serverdaten die App an den Browser gibt (nur https) und wie
- * ein `local_path` zur Adresse des eigenen Servers wird (aufgelöst, nie fremd).
+ * Which addresses from server data the app hands to the browser (https only) and
+ * how a `local_path` becomes our own server's address (resolved, never foreign).
  *
  * Gegenproben:
- *   A  in externeAdresse() `.takeIf { it.isHttps }` entfernt → rot „nur https
- *      geht an den Browser“ (http durchgelassen)
- *   B  in eigeneAdresse() die Prüfung auf denselben Host entfernt → rot „ein
- *      local_path bleibt auf dem eigenen Server“
- *   D  pdfImBetrachter() ohne die Prüfung der
- *      Herkunft (`ziel.isHttps || serverUrl.isNotBlank()`) → rot „der PDF-Betrachter laedt nur vom eigenen Server“
+ *   A  in externeAdresse(), removed `.takeIf { it.isHttps }` → red "nur https
+ *      geht an den Browser" (http let through)
+ *   B  in eigeneAdresse(), removed the same-host check → red "ein
+ *      local_path bleibt auf dem eigenen Server"
+ *   D  pdfImBetrachter() without the origin
+ *      check (`ziel.isHttps || serverUrl.isNotBlank()`) → red "der PDF-Betrachter laedt nur vom eigenen Server"
  */
 class ExterneAdresseTest {
 

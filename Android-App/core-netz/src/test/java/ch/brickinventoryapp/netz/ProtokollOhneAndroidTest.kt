@@ -9,14 +9,14 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 
 /**
- * Ohne Android schreibt die Hülle nach stderr: In JVM-Tests ist android.util.Log eine Attrappe,
- * die wirft, seit die Unit-Tests ohne isReturnDefaultValues laufen.
+ * Without Android, the wrapper writes to stderr: in JVM tests android.util.Log is a stub
+ * that throws, since the unit tests run without isReturnDefaultValues.
  *
  * Gegenproben:
- *   protokoll-immer-logcat: vorgabe() wählt immer den Logcat-Zweig → rot „ohne Android landet …“
- *     (lokal mit kotlinc gegen android-all: UnsatisfiedLinkError aus Log.w; in der CI „not mocked“)
- *   unittests-mit-vorgabewerten: isReturnDefaultValues = true in der Konvention → rot „eine
- *     Android-Methode wirft …“ (nur in der CI messbar: lokal gibt es kein android.jar von AGP)
+ *   protokoll-immer-logcat: vorgabe() always picks the Logcat branch → red "ohne Android landet …"
+ *     (locally with kotlinc against android-all: UnsatisfiedLinkError from Log.w; in CI "not mocked")
+ *   unittests-mit-vorgabewerten: isReturnDefaultValues = true in the convention → red "eine
+ *     Android-Methode wirft …" (only measurable in CI: locally there is no android.jar from AGP)
  */
 class ProtokollOhneAndroidTest {
 
