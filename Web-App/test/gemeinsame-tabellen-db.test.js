@@ -10,7 +10,7 @@
  *      (bl_mapping trägt die Marke)
  *   B  merkeFigur() in src/katalog/katalogPflege.ts ohne den Zweig für `von` →
  *      rot: dieselbe Prüfung (minifigs_catalog)
- *   C  ein `INSERT INTO part_catalog` in src/teile/repository/manuelleTeile.ts
+ *   C  ein `INSERT INTO part_catalog` in src/parts/repository/manualParts.ts
  *      → rot: „jede schreibende Stelle auf eine Katalogtabelle ist eingetragen“
  *   D  eine Tabelle `probe_gemeinsam (x int)` per Migration → rot: „jede
  *      Tabelle ohne user_id steht in der Liste“
@@ -449,9 +449,9 @@ const FREMDSCHREIBER = [
  * Ziel“ und warum das nicht über den Dienst des Ziels geht. Eine Ratsche wie FREMDSCHREIBER. */
 const TRIGGER_FREMDZIELE = {
   'src/bestand → parts_version_user':
-    'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/teile',
+    'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/parts',
   'src/katalog → parts_catalog_pending':
-    'Katalogänderungen merken nur die Nummer vor; src/teile zieht die Zusammenfassung nach und leert die Liste',
+    'Katalogänderungen merken nur die Nummer vor; src/parts zieht die Zusammenfassung nach und leert die Liste',
 };
 
 /** Lesen fremde Bereiche eine Tabelle direkt (FROM, JOIN, USING), statt über einen Lesebaustein
@@ -828,11 +828,11 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
     await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
 
-    const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+    const { addManualPart } = _req('src/parts/manualParts.js');
     const { addManualMinifig, updateManualMinifig, importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
     const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
     await alsKonto(A, async () => {
-      await manuellesTeilAnlegen(A, {
+      await addManualPart(A, {
         part_number: '3005',
         color_id: 4,
         part_name: `${MARKE} Teil`,

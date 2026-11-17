@@ -131,7 +131,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       assert.equal(st.total_minifigs, 3, `Minifiguren ${st.total_minifigs} statt 3`);
 
       // Auch die LISTEN, nicht nur die Kennzahlen — sie fragen anders ab.
-      const p = await H.teileAbfrage([uid], {});
+      const p = await H.partsQuery([uid], {});
       const teil = (p.parts || []).find(x => x.part_number === '3001');
       assert.equal(Number(teil?.quantity ?? teil?.total_quantity), 30, 'die Teileliste multipliziert nicht mit');
       const m = await H.readMinifigs([uid], {});

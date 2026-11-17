@@ -109,13 +109,13 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
                   ('fig-000123','Chewbacca','https://cdn.example/chewie.jpg'),
                   ('fig-000456','Luke',NULL)`);
 
-  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
   const legeTeil = async (nr, farbe) => {
     abrufe = [];
-    await manuellesTeilAnlegen(UID, { part_number: nr, color_id: farbe, quantity: 1 });
+    await addManualPart(UID, { part_number: nr, color_id: farbe, quantity: 1 });
     return abrufe.filter(a => a.startsWith('lookupPart'));
   };
 
@@ -156,7 +156,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // farbrichtige Erwartung, und lookupPart holt dort selbst nur das
     // allgemeine Bild. Dann ist der Abruf wirklich ueberfluessig.
     abrufe = [];
-    await manuellesTeilAnlegen(UID, { part_number: '3003', quantity: 1 });
+    await addManualPart(UID, { part_number: '3003', quantity: 1 });
     assert.deepEqual(abrufe, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
   });
 
@@ -174,7 +174,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // „VON REBRICKABLE" — er darf hier nirgends stehen.
     await db.run("DELETE FROM parts WHERE user_id=$1 AND part_number='3001'", [UID]);
     abrufe = [];
-    const r = await manuellesTeilAnlegen(UID, { part_number: '3001', color_id: 4, quantity: 1 });
+    const r = await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(
       r.part_name,
       'Brick 2 x 4',

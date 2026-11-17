@@ -13,8 +13,8 @@
  *      Dienstschlüssel“ (katalog.setAngaben)
  *   B  in src/gutscheine/bereich.ts `stapelAnlegen` wieder in den Satz → rot „Zahl
  *      der Dienstschlüssel“
- *   C  in src/teile/bereich.ts `teileLesen` wieder `teileListe` (wie das Repository im
- *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (teile.teileListe)
+ *   C  in src/parts/area.ts `readParts` wieder `partsList` (wie das Repository im
+ *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
  *   D  `setzeAktiv: mit(k)(kontenDienst.setzeAktiv)` zurück in src/konto/bereich.ts → rot
  *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
  *   E  in routes/auth/zweiterFaktor.ts `d.faktoren.erneuereCodes` durch einen
@@ -77,9 +77,9 @@ const JE_BEREICH = {
   bilder: 29,
   katalog: 64,
   finanzen: 36,
-  bestand: 43, // mit den Schreibwegen, die sets, teile und figuren abgaben (Tabellenbesitz)
+  bestand: 43, // mit den Schreibwegen, die sets, parts und figuren abgaben (Tabellenbesitz)
   sets: 41,
-  teile: 13,
+  parts: 13,
   minifigs: 8,
   wanted: 9,
   gutscheine: 16,
@@ -115,7 +115,15 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
   // Bereiche, die Phase 2a schon vollständig auf Englisch gezogen hat: Ihre englischen
   // Dienstschlüssel sind dort Absicht, nicht die Sorte Einzelfund, den diese Schranke fängt.
   // Wächst mit jedem fertig umgestellten Bereich, nie zurück (siehe auch ratschen.test.js).
-  const ENGLISCH_UMGESTELLT = new Set(['idempotency', 'profile', 'minifigs', 'wanted', 'collection', 'throttle']);
+  const ENGLISCH_UMGESTELLT = new Set([
+    'idempotency',
+    'profile',
+    'minifigs',
+    'wanted',
+    'collection',
+    'throttle',
+    'parts',
+  ]);
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(
     s => !ENGLISCH_UMGESTELLT.has(s.split('.')[0] ?? '') && englischerName(s.split('.').at(-1) ?? ''),

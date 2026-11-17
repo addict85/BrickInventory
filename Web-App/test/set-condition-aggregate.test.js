@@ -73,11 +73,8 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   const src =
     fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
     '\n' +
-    fs.readFileSync(path.join(ROOT, 'src/teile/manuelleTeile.ts'), 'utf8');
-  const fn = src.slice(
-    src.indexOf('async function manuellesTeilAnlegen'),
-    src.indexOf('async function manuellesTeilAendern'),
-  );
+    fs.readFileSync(path.join(ROOT, 'src/parts/manualParts.ts'), 'utf8');
+  const fn = src.slice(src.indexOf('async function addManualPart'), src.indexOf('async function changeManualPart'));
 
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".

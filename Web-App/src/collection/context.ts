@@ -8,7 +8,7 @@ import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { SetsDienste } from '../sets';
-import type { TeileDienste } from '../teile';
+import type { PartsServices } from '../parts';
 import type { MinifigsServices } from '../minifigs';
 import type { WantedServices } from '../wanted';
 import type { Uhr } from '../infra/uhr';
@@ -22,7 +22,7 @@ export interface CollectionDependencies {
   finanzen: FinanzenDienste;
   bestand: BestandDienste;
   sets: SetsDienste;
-  teile: TeileDienste;
+  parts: PartsServices;
   minifigs: MinifigsServices;
   wanted: WantedServices;
 }

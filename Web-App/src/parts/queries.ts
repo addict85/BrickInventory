@@ -1,31 +1,31 @@
-import * as repo from './repository/teileListe';
+import * as repo from './repository/partsList';
 import { blFarbnummerAus } from '../katalog';
 import { resolveImageLocal } from '../bilder';
 import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
 import { asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
-import { zusammenfassungFrisch } from './partsSummary';
+import { summaryFresh } from './summary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import type { TeileKontext } from './kontext';
+import type { PartsContext } from './context';
 
-/** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch
- * ohne eigene Zeilen eine Teileliste zeigt. */
+/** With fallback levels (CSV cache, Rebrickable), so a set shows a parts list even
+ * without its own rows. */
 
-/** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
- * rb_colors für Teile ohne eigenen Wert. */
-export async function teileFarbenAbfrage(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+/** Without manual entries — those have their own view. Hex fallback from
+ * rb_colors for parts without a value of their own. */
+export async function partColorsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
-  // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
+  // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
-  // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
-  // multipliziert); strict, damit Webapp und App dieselben Zahlen zeigen.
-  return k.teileListe.farbenDesBestands(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
+  // From the summary (quantities there are already multiplied by the set count);
+  // strict, so the webapp and the app show the same numbers.
+  return k.partsList.stockColors(uids, await summaryFresh(k, uids, { strict: true }));
 }
 
-function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
+function partsFilter(query: Record<string, unknown>): repo.PartsFilter {
   const text = (v: unknown) => (v == null || v === '' ? null : String(v));
   return {
     color: text(query.color),
@@ -34,22 +34,22 @@ function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
     spare: query.spare === '0' || query.spare === '1' ? query.spare : null,
     set_number: query.set_number ? mitVersion(String(query.set_number)) : null,
     storage: text(query.storage),
-    // Manuelle Teile haben ihren eigenen Bereich, nicht in der Set-Teileliste.
+    // Manual parts have their own area, not in the set's parts list.
     ohneManuelle: query.exclude_manual === '1' || query.exclude_manual === true,
   };
 }
 
-// Erst der lokale CSV-Katalog (kostenlos), dann die Rebrickable-API (Kontingent).
-async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstriche) {
-  // Rebrickable kennt manche Sets nur ohne Versionsanhang.
+// The local CSV catalog first (free), then the Rebrickable API (quota).
+async function partsFallbackSource(k: PartsContext, set_number: string, ab: Abstriche) {
+  // Rebrickable knows some sets only without the version suffix.
   const n = mitVersion(set_number),
     alt = ohneVersion(n);
   const invId = await ab.oder('katalog_inventar', k.katalog.neuestesInventar(set_number), null);
   if (invId) {
-    const csvParts = await k.teileListe.inventarAlsTeile(invId, set_number);
+    const csvParts = await k.partsList.inventoryAsParts(invId, set_number);
     if (csvParts.length > 0)
-      // page_size gehört in jeden Rückgabeweg: Der Client entscheidet daran, ob er
-      // weiterblättert. Hier kommt alles, also ist es die Zeilenzahl.
+      // page_size belongs on every return path: the client decides from it whether to
+      // keep paging. Here everything comes at once, so it's the row count.
       return {
         parts: csvParts,
         total: csvParts.length,
@@ -59,7 +59,7 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
       };
   }
 
-  // Rückfall über alleTeileDesSets(), nur mit Rebrickable-Schlüssel.
+  // Fallback via runCatalogFollowUp-style lookups, only with a Rebrickable key.
   const rbKey = await k.einstellungen.globalerWert('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
@@ -96,15 +96,15 @@ async function teileErsatzquelle(k: TeileKontext, set_number: string, ab: Abstri
   return null;
 }
 
-/** Auf beiden Wegen gleich, sonst blätterten Webapp und App verschieden. */
-function seitengroesse(pageSize: unknown, mitSet: boolean): number {
+/** Same on both paths, otherwise the webapp and the app would paginate differently. */
+function resolvedPageSize(pageSize: unknown, mitSet: boolean): number {
   if (!pageSize) return UNPAGED_LIMIT;
   const obergrenze = mitSet ? SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE;
   return Math.min(obergrenze, Math.max(1, parseInt(String(pageSize), 10) || 100));
 }
 
-function teilAlsAntwort(r: repo.TeilZeile) {
-  // Das Kotlin-Modell führt is_spare als Boolean; ein '0' liesse die ganze Seite scheitern.
+function partAsResponse(r: repo.PartRow) {
+  // The Kotlin model carries is_spare as a boolean; a '0' would fail the whole page.
   return {
     ...r,
     total_quantity: parseInt(String(r.total_quantity), 10) || 0,
@@ -113,101 +113,96 @@ function teilAlsAntwort(r: repo.TeilZeile) {
   };
 }
 
-export async function tryPartsSummary(k: TeileKontext, userId: Blickfeld, o: Record<string, unknown>) {
+export async function tryPartsSummary(k: PartsContext, userId: Blickfeld, o: Record<string, unknown>) {
   const uids = asIds(userId);
-  // null heisst: Die Live-Abfrage übernimmt. Frisch nur, wenn alle Konten es sind.
-  if (!(await zusammenfassungFrisch(k, uids))) return null;
-  const size = seitengroesse(o.page_size, !!o.set_number);
+  // null means: the live query takes over. Fresh only if every account is.
+  if (!(await summaryFresh(k, uids))) return null;
+  const size = resolvedPageSize(o.page_size, !!o.set_number);
   const pg = Math.max(1, parseInt(String(o.page), 10) || 1);
   try {
-    const { total, zeilen } = await k.teileListe.seiteAusZusammenfassung(uids, teileFilter(o), {
+    const { total, zeilen } = await k.partsList.pageFromSummary(uids, partsFilter(o), {
       groesse: size,
       versatz: (pg - 1) * size,
       mitSets: !!o.withSets,
-      ordnung: repo.teileOrdnung(o.ordnung),
+      ordnung: repo.partsOrder(o.ordnung),
     });
-    return { parts: zeilen.map(teilAlsAntwort), total, source: 'summary', page_size: size };
+    return { parts: zeilen.map(partAsResponse), total, source: 'summary', page_size: size };
   } catch (e) {
-    // Ein Rückfall, kein Fehler: Wie bei fehlender Frische übernimmt die Live-Abfrage.
-    meldeFehler('teile:zusammenfassung', e);
+    // A fallback, not an error: as with staleness, the live query takes over.
+    meldeFehler('parts:summary', e);
     return null;
   }
 }
 
-export async function teileAbfrage(
-  k: TeileKontext,
-  userIdWahl: Sicht | Blickfeld,
-  query: Record<string, unknown> = {},
-) {
+export async function partsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  const filter = teileFilter(query);
+  const filter = partsFilter(query);
   const page = query.page ?? 1;
-  // Die Sets je Teil braucht nur die Detailansicht; sie kosten Zeit und Nutzlast.
+  // The sets per part are only needed by the detail view; they cost time and payload.
   const withSets = query.with_sets === '1' || query.with_sets === true;
-  // Mit Set- oder Lagerortfilter live: Die Zusammenfassung kennt den Lagerort
-  // nur verdichtet, und der Filter macht die Menge ohnehin klein.
+  // Live with a set or storage filter: the summary only knows storage in
+  // aggregate, and the filter makes the quantity small anyway.
   if (filter.ohneManuelle && !filter.set_number && !filter.storage) {
     const summary = await tryPartsSummary(k, uids, { ...query, page, withSets });
     if (summary) return summary;
   }
-  const groesse = seitengroesse(query.page_size, !!filter.set_number);
+  const groesse = resolvedPageSize(query.page_size, !!filter.set_number);
   const versatz = (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse;
   const [{ total, zeilen }, gebraucht] = await Promise.all([
-    k.teileListe.seiteLive(uids, filter, {
+    k.partsList.pageLive(uids, filter, {
       groesse,
       versatz,
       mitSets: withSets,
-      ordnung: repo.teileOrdnung(query.ordnung),
+      ordnung: repo.partsOrder(query.ordnung),
     }),
-    filter.ohneManuelle ? Promise.resolve([]) : k.teileListe.gebrauchteManuelle(uids),
+    filter.ohneManuelle ? Promise.resolve([]) : k.partsList.usedManualParts(uids),
   ]);
-  // Eine „Gebraucht"-Erfassung macht das Teil gebraucht; ohne Erfassung 'N'.
+  // One "used" acquisition makes the part used; without one, 'N'.
   const gebrauchtJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
   const parts = zeilen.map(p => ({
-    ...teilAlsAntwort(p),
+    ...partAsResponse(p),
     total_quantity: p.total_quantity,
     condition: gebrauchtJe.has(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
     image_url: p.image_url || null,
   }));
 
-  // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen".
+  // Fetch missing BrickLink numbers in the background; an empty bl_id means "already checked".
   setImmediate(async () => {
     try {
-      if (await k.teileListe.hatUngeseheneBlNummer(uids)) await k.katalog.blNummernNachladen();
+      if (await k.partsList.hasUnseenBlNumber(uids)) await k.katalog.blNummernNachladen();
     } catch (e) {
-      meldeFehler('teile:bl-nummern-nachladen', e);
+      meldeFehler('parts:bl-numbers-refresh', e);
     }
   });
 
-  // Eine leere Liste nach einem Fehler der Ersatzquelle ist nicht „das Set hat keine Teile“.
+  // An empty list after the fallback source fails is not "the set has no parts".
   const ab = new Abstriche();
   if (!parts.length && query.set_number) {
-    const ersatz = await teileErsatzquelle(k, String(query.set_number), ab);
-    if (ersatz) return ersatz;
+    const fallback = await partsFallbackSource(k, String(query.set_number), ab);
+    if (fallback) return fallback;
   }
   return { parts, total, source: 'db', page_size: groesse, ...ab.angabe() };
 }
 
-/** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
- * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
-export async function teileKategorienAbfrage(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+/** The category from the own catalog, else from rb_parts: Rebrickable's set-parts
+ * response usually has none, the list would otherwise consist of "Unknown". */
+export async function partCategoriesQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  return k.teileListe.kategorien(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
+  return k.partsList.categories(uids, await summaryFresh(k, uids, { strict: true }));
 }
 
-export async function teileKennzahlenLesen(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
+export async function partStatsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
-  // dieselben Zahlen.
-  if (await zusammenfassungFrisch(k, uids, { strict: true })) {
-    const r = await k.teileListe.kennzahlen(uids, true);
+  // From the summary only when it's fresh: the webapp and the app show the same numbers.
+  if (await summaryFresh(k, uids, { strict: true })) {
+    const r = await k.partsList.stats(uids, true);
     if (r) return r;
   }
   return (
-    (await k.teileListe.kennzahlen(uids, false)) ?? {
+    (await k.partsList.stats(uids, false)) ?? {
       unique_parts: 0,
       unique_colors: 0,
       total_parts: 0,
@@ -216,8 +211,8 @@ export async function teileKennzahlenLesen(k: TeileKontext, userIdWahl: Sicht | 
   );
 }
 
-export async function blFarbkarteAbfrage(k: TeileKontext) {
-  // farbkarte() merkt die Karte zehn Minuten.
+export async function blColorMapQuery(k: PartsContext) {
+  // farbkarte() caches the map for ten minutes.
   const karte = await k.finanzen.farbkarte();
   if (karte.size > 0) {
     const map: Record<string, unknown> = {};
@@ -226,9 +221,9 @@ export async function blFarbkarteAbfrage(k: TeileKontext) {
   }
   const key = await k.fremdquellen.quellen.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
-  // Bricht der Abruf ab, ist die Tabelle unvollständig; das sagt `degradiert`.
+  // If the fetch breaks off, the table is incomplete; `degradiert` says so.
   const ab = new Abstriche();
-  // Ohne Typ wäre `{}` für TypeScript leer und `map[c.id] = …` ein Fehler.
+  // Typed, otherwise TypeScript would see `{}` as empty and `map[c.id] = …` as an error.
   let page = 1,
     map: Record<string, unknown> = {},
     hasNext = true;
@@ -248,7 +243,7 @@ export async function blFarbkarteAbfrage(k: TeileKontext) {
       const blId = blFarbnummerAus(c);
       if (blId != null) {
         map[c.id] = blId;
-        k.katalog.merkeBlFarbnummer(c.id, blId).catch(logAndContinue('teile:merkeBlFarbnummer'));
+        k.katalog.merkeBlFarbnummer(c.id, blId).catch(logAndContinue('parts:merkeBlFarbnummer'));
       }
     }
     hasNext = !!data.next;
@@ -257,10 +252,10 @@ export async function blFarbkarteAbfrage(k: TeileKontext) {
   return { map, source: 'api', ...ab.angabe() };
 }
 
-/** @param viewerId wessen Einstellungen (Währung) gelten; `userId` sagt, wessen Daten gelesen werden.
- * @param search Suchtext der Filterleiste, für beide Listen. */
-export async function manuelleTeileListe(
-  k: TeileKontext,
+/** @param viewerId whose settings (currency) apply; `userId` says whose data is read.
+ * @param search filter bar's search text, for both lists. */
+export async function manualPartsList(
+  k: PartsContext,
   userIdWahl: Sicht | Blickfeld,
   viewerId: number,
   {
@@ -275,10 +270,10 @@ export async function manuelleTeileListe(
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
-  const rows = await k.teileListe.manuelleTeile(uids, { search, storage }, seite);
+  const rows = await k.partsList.manualParts(uids, { search, storage }, seite);
   const mitZustand = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
-  // Eine Abfrage für die ganze Liste; die App liest `avg_price` im Detail. Ohne
-  // Preise bleibt die Liste brauchbar; `ab` sammelt für `degradiert`, warum sie fehlen.
+  // One query for the whole list; the app reads `avg_price` in the detail view. Without
+  // prices the list stays usable; `ab` collects why for `degradiert`.
   const preise = await ab.oder(
     'marktpreise',
     k.finanzen.marktpreiseAusCacheFuerTeile(mitZustand, viewerId),
@@ -288,17 +283,17 @@ export async function manuelleTeileListe(
   return k.haushalt.besitzerAnhaengen(uids, mitPreis);
 }
 
-// Füllt die Spalte „Habe“ aus dem Bestand.
-export const BESTAND_MAX_TEILE = 5000;
+// Fills the "Have" column from the stock.
+export const MAX_OWNED_PARTS = 5000;
 
-export async function besesseneMengenAbfrage(
-  k: TeileKontext,
+export async function ownedQuantitiesQuery(
+  k: PartsContext,
   blickfeldWahl: Sicht | BlickfeldEingabe,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
   const uids = await k.haushalt.blickfeldAus(blickfeldWahl);
-  // Doppelte Schlüssel fallen weg: Eine Liste über mehrere Sets fragt dasselbe
-  // Teil sonst mehrfach.
+  // Duplicate keys drop out: a list spanning several sets would otherwise ask
+  // for the same part multiple times.
   const gesehen = new Set<string>();
   const nums: string[] = [];
   const farben: number[] = [];
@@ -311,17 +306,17 @@ export async function besesseneMengenAbfrage(
     gesehen.add(key);
     nums.push(num);
     farben.push(farbe);
-    if (nums.length >= BESTAND_MAX_TEILE) break;
+    if (nums.length >= MAX_OWNED_PARTS) break;
   }
   if (!nums.length) return {};
 
-  // Ersatzteile zählen MIT: Sie liegen in der Schachtel und lassen sich verbauen
-  // — „hat man", nicht „braucht man" wie auf der Bedarfsseite.
+  // Spare parts count TOO: they sit in the box and can be used
+  // — "owned", not "needed" like on the shortage page.
   const out: Record<string, { gesamt: number; lose: number }> = {};
-  for (const r of await k.teileListe.besitzteTeile(uids, nums, farben))
+  for (const r of await k.partsList.ownedParts(uids, nums, farben))
     out[`${r.part_number}|${r.color_id}`] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };
-  // Minifiguren zählen mit: Eine Teileliste nennt auch die Figuren eines Sets.
-  for (const r of await k.teileListe.besitzteFiguren(uids, nums)) {
+  // Minifigs count too: a parts list also names a set's figures.
+  for (const r of await k.partsList.ownedMinifigs(uids, nums)) {
     const key = `${r.part_number}|0`;
     if (out[key]) continue;
     out[key] = { gesamt: Number(r.gesamt) || 0, lose: Number(r.lose) || 0 };

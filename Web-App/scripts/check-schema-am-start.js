@@ -12,7 +12,7 @@ const ANFRAGEPFAD = [
   'routes' + path.sep,
   path.join('src', 'sets', 'lesen.ts'),
   path.join('src', 'sets', 'loeschen.ts'),
-  path.join('src', 'teile', 'abfragen.ts'),
+  path.join('src', 'parts', 'queries.ts'),
   path.join('src', 'minifigs', 'queries.ts'),
   path.join('src', 'bestand', 'gemeinsam.ts'),
   path.join('src', 'bestand', 'kennzahlen.ts'),

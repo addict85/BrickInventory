@@ -72,7 +72,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   const A = await neu('anna'),
     B = await neu('bruno');
 
-  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { katalogTeil } = _req('src/katalog/katalogPflege.js');
   const gemeinsam = nr =>
@@ -94,7 +94,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   await t.test('die Eingabe steht in den eigenen Angaben, nicht im gemeinsamen Katalog', async () => {
     abrufe = [];
-    await manuellesTeilAnlegen(A, {
+    await addManualPart(A, {
       part_number: '3001',
       color_id: 4,
       quantity: 1,
@@ -111,7 +111,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   await t.test('ein anderes Konto fragt trotzdem Rebrickable', async () => {
     abrufe = [];
-    await manuellesTeilAnlegen(B, { part_number: '3001', color_id: 4, quantity: 1 });
+    await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.deepEqual(abrufe, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
     assert.deepEqual(
       { ...(await gemeinsam('3001')) },
@@ -121,14 +121,14 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   });
 
   await t.test('der geprüfte Wert hat Vorrang, die eigene Angabe bleibt erhalten', async () => {
-    await manuellesTeilAnlegen(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
+    await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
     assert.equal((await katalogTeil('3001', 4, A)).name, 'Brick 2 x 4');
     assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
     assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
   });
 
   await t.test('ein fremder Bild-Host kommt nicht in die eigenen Angaben', async () => {
-    await manuellesTeilAnlegen(A, {
+    await addManualPart(A, {
       part_number: '3002',
       color_id: 4,
       quantity: 1,

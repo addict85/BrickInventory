@@ -71,15 +71,15 @@ async function aufbau(t) {
 
 test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen und sagen es', async t => {
   if (!(await aufbau(t))) return;
-  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const teil = await manuellesTeilAnlegen(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
+  const teil = await addManualPart(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
   const fig = await addManualMinifig(U, { fig_number: FIG, condition: 'N' });
   assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
-  const { manuellerTeilekauf } = _req('src/teile/manuelleTeile.js');
-  const r = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
+  const { manualPartPurchase } = _req('src/parts/manualParts.js');
+  const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
   assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand], [0.9, 'U'], 'der übernommene Preis fehlt');
-  const gleich = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
+  const gleich = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
   assert.deepEqual(
     [gleich.effectivePurchasePrice, gleich.preisAusZustand],
     [0.9, null],
@@ -89,8 +89,8 @@ test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen un
 
 test('eine eingetippte Zahl hat keine Herkunft', async t => {
   if (!(await aufbau(t))) return;
-  const { manuellerTeilekauf } = _req('src/teile/manuelleTeile.js');
-  const r = await manuellerTeilekauf(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
+  const { manualPartPurchase } = _req('src/parts/manualParts.js');
+  const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
   assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand, r.geschaetzt], [2.5, null, false]);
 });
 

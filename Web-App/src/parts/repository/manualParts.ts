@@ -2,10 +2,10 @@ import type { DbSchnittstelle } from '../../../db/database';
 import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 import type { Spalten } from '../../../db/zeilen';
 
-/** Preis und Zustand stehen in der NEUESTEN Erfassung, die Stückzahl ist die
- * Summe der Erfassungen — die Bestandszeile trägt nur den Schlüssel. */
+/** Price and condition live in the LATEST acquisition, the stock row only holds the key —
+ * the quantity is the sum of the acquisitions. */
 
-export function teilZeileManuell(
+export function manualPartRow(
   db: DbSchnittstelle,
   uid: number,
   partNumber: string,
@@ -17,7 +17,7 @@ export function teilZeileManuell(
   );
 }
 
-export function teilZeileMitZustand(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number) {
+export function manualPartWithCondition(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number) {
   return db.get<{ id: number; condition: string | null }>(
     `SELECT p.id,
             (SELECT a.condition FROM part_acquisitions a
@@ -30,11 +30,11 @@ export function teilZeileMitZustand(db: DbSchnittstelle, uid: number, partNumber
   );
 }
 
-export async function rbFarbcode(db: DbSchnittstelle, colorId: number): Promise<string | null> {
+export async function rbColorHex(db: DbSchnittstelle, colorId: number): Promise<string | null> {
   return (await db.get<{ rgb: string | null }>('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]))?.rgb || null;
 }
 
-export function teilErfassungen(db: DbSchnittstelle, uids: number[], partNumber: string, colorId: number) {
+export function partAcquisitions(db: DbSchnittstelle, uids: number[], partNumber: string, colorId: number) {
   return db.all<ErfassungsZeile>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,

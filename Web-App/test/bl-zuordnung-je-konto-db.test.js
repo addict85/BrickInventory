@@ -93,10 +93,10 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   const vorher = await gemeinsam();
 
   // Bruno hält dieselben Dinge, damit seine Bewertung Zeilen hat.
-  const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+  const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig, updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   await alsKonto(BRUNO, async () => {
-    await manuellesTeilAnlegen(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
+    await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
     await addManualMinifig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
   });
 

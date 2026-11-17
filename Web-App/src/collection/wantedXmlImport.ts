@@ -70,7 +70,7 @@ async function importiereWantedXml(
       },
       ...(e.schreiben ? { abbruch: async () => auftragLaeuft && (await kx.auftraege.istAbgebrochen(uid)) } : {}),
       anleger: {
-        teil: (u, body) => kx.teile.legeManuellesTeilAn(u, body),
+        teil: (u, body) => kx.parts.addManualPart(u, body),
         figur: (u, body) => kx.minifigs.addManualMinifig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
         set: (u, sn, menge, zustand, kaufpreis) =>

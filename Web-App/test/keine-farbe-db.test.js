@@ -147,15 +147,15 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
-      const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
-      await manuellesTeilAnlegen(uid, {
+      const { addManualPart } = _req('src/parts/manualParts.js');
+      await addManualPart(uid, {
         part_number: 'KF9',
         part_name: 'Probe',
         color_id: null,
         quantity: 2,
         unit_price: 1,
       });
-      await manuellesTeilAnlegen(uid, {
+      await addManualPart(uid, {
         part_number: 'KF9',
         part_name: 'Probe',
         color_id: 0,

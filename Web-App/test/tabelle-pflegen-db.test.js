@@ -122,7 +122,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
   });
 
   await t.test('rebuild() frischt parts_summary auf', async () => {
-    const { rebuild } = _req('src/teile/partsSummary.js');
+    const { rebuild } = _req('src/parts/summary.js');
     const nutzer = 90002;
     await db.run(
       `INSERT INTO users (id, username, password_hash) VALUES ($1, $2, 'x')

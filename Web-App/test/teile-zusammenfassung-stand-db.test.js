@@ -5,7 +5,7 @@
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in 0052 den Trigger auf storage_locations weggelassen → rot: „ein
  *      umbenannter Lagerort entwertet die Zusammenfassung“
- *   B  in zusammenfassungFrisch den Vergleich des Katalogstands entfernt → rot: „ein
+ *   B  in summaryFresh den Vergleich des Katalogstands entfernt → rot: „ein
  *      geänderter Teilename entwertet sie ebenso“ (seit Migration 0079: „ein
  *      geänderter Teilename ist sofort nachgezogen“, siehe
  *      teile-katalog-inkrementell-db.test.js)
@@ -26,7 +26,7 @@ const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const PS = _req('src/teile/partsSummary.js');
+  const PS = _req('src/parts/summary.js');
   const NAME = `stand-${process.pid}`,
     SN = `31170-${process.pid % 1000}`,
     TEIL = `stand${process.pid}`;
@@ -45,9 +45,9 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
   try {
     await t.test('ein umbenannter Lagerort entwertet die Zusammenfassung', async () => {
       await PS.rebuildNow(uid);
-      assert.equal(await PS.zusammenfassungFrisch(uid, { strict: true }), true, 'Vorbedingung: frisch');
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE storage_locations SET name = 'Regal B' WHERE id = $1`, [ort]);
-      assert.equal(await PS.zusammenfassungFrisch(uid, { strict: true }), false);
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), false);
       await PS.rebuildNow(uid);
       const z = await db.get('SELECT storage FROM parts_summary WHERE user_id=$1', [uid]);
       assert.equal(z.storage, 'Regal B');
@@ -55,13 +55,9 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
 
     await t.test('ein geänderter Teilename ist sofort nachgezogen', async () => {
       await PS.rebuildNow(uid);
-      assert.equal(await PS.zusammenfassungFrisch(uid, { strict: true }), true, 'Vorbedingung: frisch');
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE part_catalog SET part_name = 'Neuer Name' WHERE part_number = $1`, [TEIL]);
-      assert.equal(
-        await PS.zusammenfassungFrisch(uid, { strict: true }),
-        true,
-        'der Nachzug läuft in zusammenfassungFrisch',
-      );
+      assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'der Nachzug läuft in summaryFresh');
       assert.equal(
         (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1', [uid])).part_name,
         'Neuer Name',

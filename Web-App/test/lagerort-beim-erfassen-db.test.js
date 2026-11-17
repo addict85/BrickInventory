@@ -3,7 +3,7 @@
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) Der Lagerort-Aufruf in setErfassen() entfernt       → Schritt 1 rot.
- *   b) desgleichen in manuellesTeilAnlegen()                      → Schritt 3 rot.
+ *   b) desgleichen in addManualPart()                      → Schritt 3 rot.
  *   c) desgleichen in addManualMinifig()                       → Schritt 4 rot.
  *   d) `storage` in uebernimm() nicht durchgereicht        → Schritt 5 rot.
  *   e) minifigs in lagerorte() nicht mitgezählt            → Schritt 6 rot.
@@ -82,7 +82,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   }
   await seed();
   const setService = require('./helpers/sources').bereichsSeite('sets');
-  const teile = _req('src/teile/manuelleTeile.js');
+  const teile = _req('src/parts/manualParts.js');
   const figuren = _req('src/minifigs/manualMinifigs.js');
   const merkliste = _req('src/wanted/wanted.js');
   const L = {
@@ -112,7 +112,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   });
 
   await t.test('3. Ein manuell erfasstes Teil bekommt seinen Lagerort', async () => {
-    await teile.manuellesTeilAnlegen(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
+    await teile.addManualPart(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id

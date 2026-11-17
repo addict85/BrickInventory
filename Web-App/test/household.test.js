@@ -254,11 +254,8 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
   // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
   // sind aktuell" ergäbe eine Summe aus frischen und alten Beständen.
-  const ps = read('src/teile/partsSummary.ts');
-  assert.match(
-    ps,
-    /const results = await Promise\.all\(ids\.map\(id => zusammenfassungFrisch\((?:k, )?id, opts\)\)\);/,
-  );
+  const ps = read('src/parts/summary.ts');
+  assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => summaryFresh\((?:k, )?id, opts\)\)\);/);
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
 

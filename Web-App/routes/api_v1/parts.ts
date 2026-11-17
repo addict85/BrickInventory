@@ -11,14 +11,14 @@ import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 export function bauePartsRouter(
   d: Pick<
     Dienste,
-    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'teile' | 'collection'
+    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'parts' | 'collection'
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/parts', requireToken, async req => {
-    const result = await d.teile.teileLesen(sichtVon(req), req.abfrage);
+    const result = await d.parts.readParts(sichtVon(req), req.abfrage);
     // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
     return { page: req.abfrage.page ?? 1, ...result };
   });
@@ -27,7 +27,7 @@ export function bauePartsRouter(
     // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
     // Ansicht über verschiedene Konten.
     const uids = sichtVon(req);
-    return { categories: await d.teile.teileKategorien(uids) };
+    return { categories: await d.parts.partCategories(uids) };
   });
 
   router.endpunkt(
@@ -54,7 +54,7 @@ export function bauePartsRouter(
     // schreibzielOderNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
     // nicht bloss die Mitgliedschaft im Blickfeld.
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const result = await d.teile.legeManuellesTeilAn(owner, req.eingabe);
+    const result = await d.parts.addManualPart(owner, req.eingabe);
     return { ...result };
   });
 
@@ -64,7 +64,7 @@ export function bauePartsRouter(
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
     // weiss der Client sie sonst nicht).
-    const r = await d.teile.aendereManuellesTeil(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
+    const r = await d.parts.changeManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
     return { ...r };
   });
 
@@ -75,7 +75,7 @@ export function bauePartsRouter(
     // ein stilles Leeren mit Erfolgsmeldung.
     const neueFarbe = req.eingabe.color_id;
     if (neueFarbe == null || neueFarbe < 0) fachfehler('ungueltig', 'farbe_erforderlich');
-    const ergebnis = await d.teile.aendereTeilFarbe(besitzer, req.pfad.partNumber, req.pfad.colorId, neueFarbe, {
+    const ergebnis = await d.parts.changePartColor(besitzer, req.pfad.partNumber, req.pfad.colorId, neueFarbe, {
       color_name: req.eingabe.color_name ?? null,
       color_hex: req.eingabe.color_hex ?? null,
     });
@@ -91,7 +91,7 @@ export function bauePartsRouter(
   });
 
   router.endpunkt('GET /api/v1/parts/bl-color-map', requireToken, async _req => {
-    const result = await d.teile.blFarbkarte();
+    const result = await d.parts.blColorMap();
     return { ...result };
   });
 
@@ -99,7 +99,7 @@ export function bauePartsRouter(
    * welche Zahl gilt, entscheidet der Mensch. */
   router.endpunkt('POST /api/v1/parts/owned', requireToken, async req => {
     const teile = req.eingabe.teile ?? [];
-    return { bestand: await d.teile.besesseneMengen(sichtVon(req), teile) };
+    return { bestand: await d.parts.ownedQuantities(sichtVon(req), teile) };
   });
 
   /** Trifft ALLE Zeilen des Teil-Farb-Paares: Wer „Kiste 3" einträgt, meint das
@@ -117,7 +117,7 @@ export function bauePartsRouter(
 
   router.endpunkt('GET /api/v1/parts/manual', requireToken, async req => {
     const ab = new Abstriche();
-    const alle = await d.teile.manuelleTeileLesen(
+    const alle = await d.parts.readManualParts(
       sichtVon(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' },
@@ -128,11 +128,11 @@ export function bauePartsRouter(
   });
 
   router.endpunkt('GET /api/v1/parts/colors', requireToken, async req => {
-    return { colors: await d.teile.teileFarben(sichtVon(req)) };
+    return { colors: await d.parts.partColors(sichtVon(req)) };
   });
 
   router.endpunkt('GET /api/v1/parts/stats', requireToken, async req => {
-    const stats = await d.teile.teileKennzahlen(sichtVon(req));
+    const stats = await d.parts.partStats(sichtVon(req));
     return { stats };
   });
 

@@ -10,7 +10,7 @@
  *      „jede schreibende Route ist geprüft oder begründet ausgelassen"
  *   C  in AUSGELASSEN einen Pfad ergänzt, den die App nicht kennt → rot:
  *      „keine tote Ausnahme"
- *   D  in src/teile/repository/manuelleTeile.ts wieder `NULLIF($1, 0)` ohne ::numeric → rot: „jeder
+ *   D  in src/parts/repository/manualParts.ts wieder `NULLIF($1, 0)` ohne ::numeric → rot: „jeder
  *      Schritt antwortet mit 200" (PUT /parts: 500, invalid input syntax for
  *      type integer) und „Stückpreis mit Nachkommastellen"
  *   E  (09.11.2026) in andereZugaengeLoeschen() ohne `$2::text IS NULL OR`

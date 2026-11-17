@@ -48,7 +48,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
+  const { changeManualPart } = _req('src/parts/manualParts.js');
   const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const teil = async () =>
     Number(
@@ -71,8 +71,8 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
     await Promise.all([
-      manuellesTeilAendern(uid, TEIL, 5, { quantity_delta: 1 }),
-      manuellesTeilAendern(uid, TEIL, 5, { quantity_delta: 1 }),
+      changeManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
+      changeManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
     ]);
     assert.equal(await teil(), 4);
     await Promise.all([
@@ -103,7 +103,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
   });
 
   await t.test('ein Schritt unter 1 bleibt bei 1 — gelöscht wird nur über Löschen', async () => {
-    assert.deepEqual(await manuellesTeilAendern(uid, TEIL, 5, { quantity_delta: -10 }), { quantity: 1 });
+    assert.deepEqual(await changeManualPart(uid, TEIL, 5, { quantity_delta: -10 }), { quantity: 1 });
     assert.equal(await teil(), 1);
   });
 });

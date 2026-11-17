@@ -1,5 +1,5 @@
 /**
- * Vorberechnete Teile-Zusammenfassung (src/teile/partsSummary.ts).
+ * Vorberechnete Teile-Zusammenfassung (src/parts/summary.ts).
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
@@ -56,8 +56,8 @@ test('die Live-Abfrage bleibt als Rückfallebene erhalten', () => {
     /if \(summary\) return summary;/,
     'Ohne Rückfall wäre ein Fehler beim Aufbau ein Totalausfall der Ansicht',
   );
-  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
-  assert.match(src, /return false;/, 'zusammenfassungFrisch muss Misserfolg melden können');
+  const src = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
+  assert.match(src, /return false;/, 'summaryFresh muss Misserfolg melden können');
 });
 
 test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () => {
@@ -89,7 +89,7 @@ try {
   umgebung({ SESSION_SECRET: 'test' });
   db = testDaten();
   H = require('./helpers/sources').handlerModul(_req);
-  PS = _req('src/teile/partsSummary.js');
+  PS = _req('src/parts/summary.js');
   S = _req('src/bestand/kennzahlen.js');
 } catch (e) {
   skip = e.message;
@@ -136,15 +136,15 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
                 ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = 9`);
 
-  // Seit dem Fix baut zusammenfassungFrisch() NICHT mehr im Request auf. Der erste
+  // Seit dem Fix baut summaryFresh() NICHT mehr im Request auf. Der erste
   // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
   // Live-Abfrage bedient, während der Aufbau im Hintergrund anläuft. Für die
   // Inhaltsprüfung hier wird einmal explizit aufgebaut.
-  const first = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const first = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(first.source, 'db', 'ohne vorhandene Zusammenfassung muss die Live-Abfrage einspringen statt zu warten');
   await PS.rebuildNow(U);
 
-  const r1 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const r1 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(r1.source, 'summary', 'die Zusammenfassung wurde nicht benutzt');
   assert.equal(r1.total, 2, 'zwei Teil/Farb-Gruppen erwartet');
   const rot = r1.parts.find(p => p.color_name === 'Rot');
@@ -157,19 +157,19 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   );
   // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
   // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
-  const stale = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const stale = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(stale.total, 2, 'der Lesezugriff soll den alten Stand liefern, nicht warten');
   await PS.rebuildNow(U);
-  const r2 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const r2 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(r2.total, 3, 'nach dem Aufbau muss die neue Gruppe enthalten sein');
 
   // Änderung an der SETMENGE → ebenfalls. Sie steht seit Migration 0036 in
   // der Erfassung, nicht mehr in sets.quantity — und deshalb hängt der
-  // Entwertungs-Trigger jetzt auch an set_acquisitions (src/teile/partsSummary.ts).
+  // Entwertungs-Trigger jetzt auch an set_acquisitions (src/parts/summary.ts).
   // Ohne ihn bliebe die Zahl hier stehen und sähe dabei plausibel aus.
   await db.run("UPDATE set_acquisitions SET quantity=3 WHERE user_id=$1 AND set_number='B-1'", [U]);
   await PS.rebuildNow(U);
-  const r3 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 50 });
+  const r3 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   const rot3 = r3.parts.find(p => p.color_name === 'Rot');
   assert.equal(rot3.total_quantity, 3 * 1 + 4 * 3, 'eine geänderte Set-Menge muss durchschlagen');
 
@@ -180,14 +180,10 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
     [FREMD],
   );
   await PS.rebuildNow(U);
-  assert.equal(
-    await PS.zusammenfassungFrisch(U, { strict: true }),
-    true,
-    'Vorbedingung: die eigene Zusammenfassung ist frisch',
-  );
+  assert.equal(await PS.summaryFresh(U, { strict: true }), true, 'Vorbedingung: die eigene Zusammenfassung ist frisch');
   await haeltTeil(db, FREMD, '9999', { menge: 1, colorId: 7 });
   assert.equal(
-    await PS.zusammenfassungFrisch(U, { strict: true }),
+    await PS.summaryFresh(U, { strict: true }),
     true,
     'Ein fremdes Konto darf die eigene Zusammenfassung nicht entwerten',
   );
@@ -195,7 +191,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   // nichts Neues — der Trigger hängt am UPDATE, nicht am Wert.
   await db.run("UPDATE sets SET updated_at=updated_at WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(
-    await PS.zusammenfassungFrisch(U, { strict: true }),
+    await PS.summaryFresh(U, { strict: true }),
     false,
     'Eine eigene Änderung an sets muss die Zusammenfassung entwerten',
   );
@@ -207,20 +203,20 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   // Fehler auffiele — und sie ist genau deshalb hier.
   await PS.rebuildNow(U);
   assert.equal(
-    await PS.zusammenfassungFrisch(U, { strict: true }),
+    await PS.summaryFresh(U, { strict: true }),
     true,
     'Vorbedingung: nach dem Neuaufbau ist die Zusammenfassung frisch',
   );
   // Ein geänderter Kaufpreis entwertet nicht (seit 0052), eine Menge schon.
   await db.run("UPDATE set_acquisitions SET purchase_price = 1 WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(
-    await PS.zusammenfassungFrisch(U, { strict: true }),
+    await PS.summaryFresh(U, { strict: true }),
     true,
     'Ein Kaufpreis ändert keine Teilemenge — die Zusammenfassung bleibt gültig',
   );
   await db.run("UPDATE set_acquisitions SET quantity=quantity+1 WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(
-    await PS.zusammenfassungFrisch(U, { strict: true }),
+    await PS.summaryFresh(U, { strict: true }),
     false,
     'Eine Änderung an den Erfassungen muss die Zusammenfassung entwerten — die ' +
       'Setmenge steht dort (Migration 0036), und total_quantity rechnet mit ihr',
@@ -229,14 +225,14 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   await PS.rebuildNow(U);
 
   // Statistik und Farbfilter kommen aus derselben Quelle
-  const stats = await H.teileKennzahlenLesen(U);
+  const stats = await H.partStatsQuery(U);
   assert.equal(stats.unique_parts, 3);
-  const colors = await H.teileFarbenAbfrage(U);
+  const colors = await H.partColorsQuery(U);
   assert.equal(colors.length, 3);
 
   // Seitengrenzen
-  const p1 = await H.teileAbfrage(U, { exclude_manual: '1', page: 1, page_size: 2 });
-  const p2 = await H.teileAbfrage(U, { exclude_manual: '1', page: 2, page_size: 2 });
+  const p1 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 2 });
+  const p2 = await H.partsQuery(U, { exclude_manual: '1', page: 2, page_size: 2 });
   assert.equal(p1.parts.length, 2);
   assert.equal(p2.parts.length, 1);
   assert.equal(p1.total, 3, 'total muss die Gesamtzahl sein, nicht die der Seite');
@@ -246,20 +242,20 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
 });
 
 test('der Neuaufbau blockiert den Request nicht', () => {
-  // Kern des zuletzt gemeldeten Fehlers: zusammenfassungFrisch() hat bei veralteter
+  // Kern des zuletzt gemeldeten Fehlers: summaryFresh() hat bei veralteter
   // Version SYNCHRON neu aufgebaut. Weil der Trigger die Version bei jeder
   // Änderung an parts hochsetzt (CSV-Import, Set hinzufügen,
   // Katalog-Anreicherung), zahlte der nächste Aufruf des Teile-Reiters den …
-  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
   const fn = src.slice(
-    src.indexOf('export async function zusammenfassungFrisch'),
+    src.indexOf('export async function summaryFresh'),
     src.indexOf('export async function rebuildNow'),
   );
-  assert.ok(fn.length > 0, 'zusammenfassungFrisch nicht gefunden');
+  assert.ok(fn.length > 0, 'summaryFresh nicht gefunden');
   assert.doesNotMatch(
     fn,
     /await rebuild\(/,
-    'zusammenfassungFrisch darf nicht im Request aufbauen — genau das waren die drei Sekunden',
+    'summaryFresh darf nicht im Request aufbauen — genau das waren die drei Sekunden',
   );
   assert.match(
     fn,
@@ -285,7 +281,7 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   // Während eines Hintergrund-Neuaufbaus las der eine aus der Zusammenfassung
   // und der andere live — die Paritätsprüfung schlug dadurch reproduzierbar
   // fehl. Mit strict weichen beide gemeinsam auf die Live-Abfrage aus.
-  const ps = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
+  const ps = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
   assert.match(ps, /opts\?: \{ strict\?: boolean \}/, 'strict-Variante fehlt');
   assert.match(ps, /if \(opts\?\.strict\) return false;/, 'Ein veralteter Stand muss unter strict abgelehnt werden');
 
@@ -294,8 +290,8 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   // und prüft jedes einzeln; strict gilt unverändert.
   assert.match(
     h,
-    /await zusammenfassungFrisch\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uids, \{ strict: true \}\)/,
-    'teileKennzahlenLesen muss strict aufrufen',
+    /await summaryFresh\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uids, \{ strict: true \}\)/,
+    'partStatsQuery muss strict aufrufen',
   );
   // Die Liste darf weiterhin den veralteten Stand nehmen — dort ist es egal
   assert.match(
@@ -330,13 +326,13 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
 
   // Weg 1: aus der Zusammenfassung.
   await PS.rebuildNow(U);
-  const ausSummary = await H.teileKennzahlenLesen([U]);
+  const ausSummary = await H.partStatsQuery([U]);
 
   // Weg 2: der Rückfall. Die Zusammenfassung wird dafür entfernt — dann
-  // liefert zusammenfassungFrisch(strict) false, und teileKennzahlenLesen geht live.
+  // liefert summaryFresh(strict) false, und partStatsQuery geht live.
   await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
-  const ausLive = await H.teileKennzahlenLesen([U]);
+  const ausLive = await H.partStatsQuery([U]);
 
   assert.deepEqual(
     ausLive,

@@ -527,7 +527,7 @@ function setKernQuelle() {
 const HANDLER_MODULE = [
   'src/bestand/gemeinsam',
   'src/haushalt/haushalt',
-  'src/teile/abfragen',
+  'src/parts/queries',
   'src/sets/lesen',
   'src/sets/loeschen',
   'src/minifigs/queries',

@@ -20,7 +20,7 @@ import type { ProfileServices } from './profile';
 import type { WantedServices } from './wanted';
 import type { CollectionServices } from './collection';
 import type { SetsDienste } from './sets';
-import type { TeileDienste } from './teile';
+import type { PartsServices } from './parts';
 import type { VerwaltungDienste } from './verwaltung';
 import * as bestandSicht from '../db/bestandSicht';
 import * as bestandsmenge from '../db/bestandsmenge';
@@ -49,7 +49,7 @@ export interface Dienste {
   finanzen: FinanzenDienste;
   bestand: BestandDienste;
   sets: SetsDienste;
-  teile: TeileDienste;
+  parts: PartsServices;
   minifigs: MinifigsServices;
   wanted: WantedServices;
   gutscheine: GutscheineDienste;

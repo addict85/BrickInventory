@@ -55,7 +55,7 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async t => {
     // Zusicherung 1 sie nie erreichen — und gerade sie schützt davor, dass
     // die Liste bei fehlendem Preis scheitert statt leer zu bleiben.
     const figsOhne = await MF.readManualMinifigs([U], U);
-    const teileOhne = await H.manuelleTeileListe([U], U);
+    const teileOhne = await H.manualPartsList([U], U);
     assert.equal(figsOhne.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
     assert.equal(teileOhne.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
     assert.equal(figsOhne[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
@@ -74,7 +74,7 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async t => {
     );
 
     const figs = await MF.readManualMinifigs([U], U);
-    const teile = await H.manuelleTeileListe([U], U);
+    const teile = await H.manualPartsList([U], U);
     assert.equal(
       Number(figs[0].avg_price),
       12.5,

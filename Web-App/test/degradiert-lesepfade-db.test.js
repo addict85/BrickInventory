@@ -4,7 +4,7 @@
  * der Test eine Tabelle seiner eigenen Datenbank kurz umbenennt.
  *
  * Gegenproben (10.11.2026 gemessen):
- * - src/teile/abfragen.ts: Marktpreise wieder mit
+ * - src/parts/queries.ts: Marktpreise wieder mit
  *   `.catch(meldeUndLiefere('teile:marktpreise', new Map()))` statt `ab.oder` → rot:
  *   „ohne Preise sagt die Liste warum“ (kein `degradiert`).
  * - src/einstellungen/settings.ts: getGlobalSetting wieder mit
