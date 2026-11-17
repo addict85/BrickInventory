@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.teile.ui.screens
 
-import ch.brickinventoryapp.model.fach.Geld
 import androidx.compose.runtime.remember
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
@@ -13,9 +12,6 @@ import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
 import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
-import ch.brickinventoryapp.ui.theme.Formen
-import androidx.compose.foundation.clickable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -28,8 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,20 +39,17 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.MengenKnopf
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.gemeinsam.ui.AcquisitionSummarySection
-import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
 import ch.brickinventoryapp.gemeinsam.ui.MarketPriceByCondition
 import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
 import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 import ch.brickinventoryapp.gemeinsam.ui.SectionCard
-import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
 import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 
 /**
@@ -79,6 +70,8 @@ fun ManualItemDetailRoute(
     onBack: () -> Unit,
     onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit,
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
+    /** Bietet die Liste dahinter „Rückgängig“ an? Dann merkt Löschen nur vor. */
+    rueckgaengig: Boolean = false,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     // Nur die Liste des Eintrags beobachten: Sie lädt beim Beobachten, die andere bliebe ungenutzt.
@@ -87,7 +80,7 @@ fun ManualItemDetailRoute(
     val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     ManualItemDetailScreen(
-        zustand = EinzelstueckZustand(state, teileZustand, figurenZustand, manDetailState, lagerZustand),
+        zustand = EinzelstueckZustand(state, teileZustand, figurenZustand, manDetailState, lagerZustand, rueckgaengig),
         kaeufe = vm, teile = teile, figuren = figuren, type = type, id = id, colorId = colorId,
         fallbackTitle = fallbackTitle, imageLoader = imageLoader, onBack = onBack,
         onNavigateToAcqMgmt = onNavigateToAcqMgmt, onFarbeGeaendert = onFarbeGeaendert,
@@ -101,6 +94,8 @@ internal data class EinzelstueckZustand(
     val figuren: FigurenUiState,
     val manDetailState: ManualItemDetailUiState,
     val lagerZustand: LagerUiState,
+    /** Bietet die Liste dahinter „Rückgängig“ an? Dann merkt Löschen nur vor. */
+    val rueckgaengig: Boolean = false,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -128,6 +123,7 @@ internal fun ManualItemDetailScreen(
      */
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
+    val rueckgaengig = zustand.rueckgaengig
     val state = zustand.state
     val teileZustand = zustand.teile
     val figurenZustand = zustand.figuren
@@ -184,12 +180,7 @@ internal fun ManualItemDetailScreen(
             contentPadding = PaddingValues(bottom = Abstaende.sehrGross),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // ── Bildkarte ──────────────────────────────────────────────────────
-            item {
-                BildKarte(imageUrl, imageLoader, title, onZoom = { showImageZoom = true })
-            }
-
-            // ── Kennzahlen-Chips ───────────────────────────────────────────────
+            // ── Kopf: Bild und Kennzahlen, derselbe wie beim Teil aus einem Set ──
             item {
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
@@ -200,18 +191,18 @@ internal fun ManualItemDetailScreen(
                     part?.colorName?.let { add(labelColor to farbe(it)) }
                     fig?.blFigNumber?.let { add("BrickLink" to it) }
                 }
-                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
-                    chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
-                }
+                TeilDetailKopf(imageUrl, imageLoader, title, chips, onZoom = { showImageZoom = true },
+                    Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel))
             }
 
             // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
             item {
-                fun fmt(v: Geld?) = if (v == null) "—"
-                    else fmtMoney(v, currency)
+                // Dieselben Wörter wie im Set-Detail: ein Gerüst, ein Text für „kein Preis“.
                 WertKacheln(
-                    markt = fmt(fig?.avgPrice ?: part?.avgPrice),
-                    kauf = fmt(fig?.purchasePrice ?: part?.purchasePrice),
+                    markt = (fig?.avgPrice ?: part?.avgPrice)?.let { fmtMoney(it, currency) }
+                        ?: stringResource(R.string.detail_price_none_yet),
+                    kauf = (fig?.purchasePrice ?: part?.purchasePrice)?.let { fmtMoney(it, currency) }
+                        ?: stringResource(R.string.detail_purchase_none),
                     pnl = fig?.pnlProzent ?: part?.pnlProzent,
                     modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
                 )
@@ -349,8 +340,12 @@ internal fun ManualItemDetailScreen(
                     showDeleteConfirm = false
                     // Auch hier der Besitzer der Karte — sonst loescht der
                     // Server die Zeile des Aufrufers statt der angezeigten.
-                    if (isFig) figuren.deleteMinifig(id, fig?.userId)
-                    else teile.deletePart(id, colorId, part?.userId)
+                    when {
+                        isFig && rueckgaengig -> figuren.figurLoeschenVormerken(id, fig?.userId, title)
+                        isFig -> figuren.deleteMinifig(id, fig?.userId)
+                        rueckgaengig -> teile.teilLoeschenVormerken(id, colorId, part?.userId, title)
+                        else -> teile.deletePart(id, colorId, part?.userId)
+                    }
                     // Der Eintrag ist weg — dieser Screen zeigte sonst eine
                     // Karteileiche mit Mengenwahl und Kaufpreisen.
                     onBack()
@@ -366,31 +361,6 @@ internal fun ManualItemDetailScreen(
                 onDismiss = { showImageZoom = false }
             )
         }
-    }
-}
-
-/** Das Bild des Teils oder der Figur; ein Tipp öffnet es gross. */
-@Composable
-private fun BildKarte(imageUrl: String?, imageLoader: ImageLoader, title: String, onZoom: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
-        shape = Formen.chip,
-        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        ProduktBild(
-            model = imageUrl,
-            imageLoader = imageLoader,
-            contentDescription = title,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(Formen.chip)
-                .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button, onClick = onZoom)
-                .padding(Abstaende.mittel),
-            contentScale = ContentScale.Fit,
-            ersatzGroesse = 64.dp,
-        )
     }
 }
 

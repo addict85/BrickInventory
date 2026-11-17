@@ -21,15 +21,64 @@ export async function loadUsers() {
     G('users-tbl'),
     html`<div class="tw"><table class="dt user-tbl" aria-label="${tRaw('settings.users_title')}"><thead><tr><th>${tRaw('users.col.username')}</th><th class="nutzer-id">ID</th><th>${tRaw('users.col.role')}</th><th>${tRaw('users.col.created')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.users.map(
       u => html`<tr><td class="nutzer-name" data-label=""><strong>${u.username}</strong></td><td class="nutzer-id">${u.id}</td>
-      <td><span class="rb ${u.is_admin ? 'rv' : 'ru'}">${u.is_admin ? tRaw('users.role.admin') : tRaw('users.role.user')}</span>
+      <td><div class="rollen-zelle">${rolle(u)}
         ${u.is_active === false ? html`<span class="rb ru">${tRaw('users.status.inaktiv')}</span>` : ''}
-        ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.wartet')}</span>` : ''}</td>
+        ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.wartet')}</span>` : ''}
+        ${angekuendigt(u)}</div></td>
       <td>${fmtDatum(u.created_at)}</td>
       <td>${nutzerAktionen(u)}</td></tr>`,
     )}</tbody></table></div>`,
   );
   ladeProtokoll();
 }
+/**
+ * Die Rolle als Chip: Entzogen wird am X, ernannt mit dem Knopf daneben, also dort, wo man die Rolle liest.
+ * Gegen das eigene Konto gibt es keinen Knopf. Das deckt auch den letzten aktiven Administrator: Die Liste
+ * sehen nur Administratoren, der letzte ist also immer der Betrachter selbst. Der Server prüft beides.
+ * @param {Konto} u
+ */
+function rolle(u) {
+  const selbst = !!angemeldetesKonto && u.id === angemeldetesKonto.id;
+  const ziel = html`data-click="toggleAdmin"${echt()} data-arg="${u.id}" data-arg2="${u.is_admin ? '1' : '0'}" data-arg3="${u.username}"`;
+  if (!u.is_admin) {
+    const name = tRaw('users.rolle.ernennen', { name: u.username });
+    return html`<span class="rb ru">${tRaw('users.role.user')}</span>${
+      selbst
+        ? ''
+        : html`<button type="button" class="btn bs btn-sm" ${ziel} title="${name}" aria-label="${name}">${ico('plus')}<span>${tRaw('users.role.admin')}</span></button>`
+    }`;
+  }
+  const name = tRaw('users.rolle.entziehen', { name: u.username });
+  return html`<span class="rb rv rolle-chip"><span class="rolle-wort">${tRaw('users.role.admin')}</span>${
+    selbst
+      ? ''
+      : html`<button type="button" class="chip-weg" ${ziel} title="${name}" aria-label="${name}">${ico('schliessen')}</button>`
+  }</span>`;
+}
+/** @type {Record<string, () => string>} */
+const ANGEKUENDIGT = {
+  passwort: () => tRaw('users.angekuendigt.passwort'),
+  zweiter_faktor: () => tRaw('users.angekuendigt.zweiter_faktor'),
+  deaktivieren: () => tRaw('users.angekuendigt.deaktivieren'),
+  rolle_entziehen: () => tRaw('users.angekuendigt.rolle_entziehen'),
+  loeschen: () => tRaw('users.angekuendigt.loeschen'),
+};
+/**
+ * Was an einem Verwalterkonto angekündigt ist (24 h): Die übrigen Verwalter sollen es sehen, nicht nur per Mail.
+ * @param {Konto} u
+ */
+function angekuendigt(u) {
+  return (u.angekuendigt ?? []).map(
+    a =>
+      html`<span class="rb ru">${tRaw('users.angekuendigt', { was: (ANGEKUENDIGT[a.art] || (() => a.art))(), zeit: fmtDatum(a.wirksam_ab, 'tagzeit') })}</span>`,
+  );
+}
+/** Die Antwort einer Verwalteraktion: angekündigt (Verwalterkonto) oder sofort. @param {{ wirksam_ab?: string }} d @param {string} sofort */
+const meldeErgebnis = (d, sofort) =>
+  toast(
+    d.wirksam_ab ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') }) : sofort,
+    'success',
+  );
 // Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im Quelltext steht und die
 // Wörterbuchprüfung ihn findet.
 /** @type {Record<string, () => string>} */
@@ -93,16 +142,6 @@ function nutzerAktionen(u) {
   return html`<div class="nutzer-aktionen">
     ${u.wartet_auf_bestaetigung ? nutzerKnopf(u, 'bp', 'kontoFreischalten', 'ok', 'users.action.freischalten', 'users.action.freischalten_title', u.username) : ''}
     ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title', u.username)}
-    ${nutzerKnopf(
-      u,
-      'bs',
-      'toggleAdmin',
-      u.is_admin ? 'runter' : 'hoch',
-      u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
-      u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title',
-      u.is_admin ? 1 : 0,
-      u.username,
-    )}
     <details class="mehr-menue v-mehr"><summary class="btn bs btn-sm" aria-label="${tRaw('users.weitere', { name: u.username })}">${ico('menue')}<span>${tRaw('users.weitere_kurz')}</span></summary>
       <div class="mehr-liste">${ungeprueft(selten)}</div></details>
   </div>`;
@@ -226,7 +265,7 @@ async function toggleAdmin(uid, isAdmin, name) {
   );
   if (d === null) return;
   if (d.success) {
-    toast(tRaw('users.role_changed'), 'success');
+    meldeErgebnis(d, tRaw('users.role_changed'));
     loadUsers();
   } else toast(d.error || t('settings.error'), 'error');
 }
@@ -250,7 +289,7 @@ async function toggleAktiv(uid, aktiv, name) {
   );
   if (d === null) return;
   if (d.success) {
-    toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success');
+    meldeErgebnis(d, tRaw(istAktiv ? 'users.deactivated' : 'users.activated'));
     loadUsers();
   } else toast(d.error || t('settings.error'), 'error');
 }
@@ -288,7 +327,7 @@ async function delUser(uid, name) {
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/users/${uid}`, { admin_password, ...z }));
   if (d === null) return;
   if (d.success) {
-    toast(tRaw('users.deleted', { name }), 'success');
+    meldeErgebnis(d, tRaw('users.deleted', { name }));
     loadUsers();
   } else toast(d.error || t('settings.error'), 'error');
 }

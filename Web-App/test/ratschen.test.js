@@ -962,7 +962,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
-  const SCHRANKE = 33;
+  const SCHRANKE = 32;
   const html = require('./helpers/sources').ohneHtmlKommentare(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
   );

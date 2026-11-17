@@ -357,19 +357,11 @@ fun PartsListScreen(
             return@Column
         }
 
-        // Gruppierung nach Farbe + Sortierung (Farbgruppen und Teile je Gruppe)
-        // memoisieren — vorher lief beides bei jeder Recomposition erneut, obwohl
-        // sich `parts` dabei meist nicht ändert.
-        val colorGroups = remember(parts) {
-            parts.groupBy { it.colorName }.entries
-                .sortedWith(compareBy(plColorCollator) { it.key })
-                .map { (colorName, colorParts) ->
-                    colorName to colorParts.sortedWith { a, b ->
-                        comparePartNumbers(a.blPartNumber ?: a.partNumber, b.blPartNumber ?: b.partNumber)
-                    }
-                }
-        }
+        // Gruppieren und Sortieren memoisiert: `parts` ändert sich bei einer Recomposition selten.
+        val colorGroups = remember(parts) { baulistenGruppen(parts) }
+        val mitBestand = parts.any { it.vorhanden != null }
         LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
+            if (mitBestand) item(key = "legende") { BaulistenLegende() }
             colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
                 item(key = "header_${groupIdx}_$colorName") {
                     FarbGruppenKopf(colorName, colorParts)

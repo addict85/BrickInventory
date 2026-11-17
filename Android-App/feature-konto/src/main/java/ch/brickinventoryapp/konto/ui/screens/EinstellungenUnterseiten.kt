@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.ui.components.RueckgaengigMeldung
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
@@ -79,6 +80,9 @@ fun LagerorteRoute(
     onZurueck: () -> Unit,
 ) {
     val lager by vm.lagerState.collectAsStateWithLifecycle()
+    val weg = vm.lagerortWeg.wert.collectAsStateWithLifecycle().value
+    RueckgaengigMeldung(weg, stringResource(R.string.vm_set_deleted, weg?.name.orEmpty()), snackbarHostState,
+        vm.lagerortWeg::rueckgaengig, vm.lagerortWeg::ausfuehren)
     Unterseite(stringResource(R.string.storage_manage), snackbarHostState, onZurueck) {
         LagerorteCard(lager, vm)
     }

@@ -39,7 +39,10 @@ die folgenden. Eine Prüfung von `app.konto` vor dem COMMIT hälfe nicht: Gelese
 ist dann gelesen, und die Anweisung kann das Konto vorher zurücksetzen. Gegen
 eingeschleustes SQL schützen gebundene Parameter (kein SQL aus Zeichenketten der
 Eingabe) und die Rollenrechte: Die Laufzeitrolle liest weder Passwort-Hashes noch
-Sitzungen (0115) und schreibt weder Passwort noch Verwalterrecht (0117).
+Sitzungen (0115), keine Adressen und Links in `users` (0121) und schreibt weder
+Passwort noch Verwalterrecht (0117). In `users` sieht sie nur das eigene Konto und
+den Haushalt, in `account_links` nur Verknüpfungen mit dem eigenen Konto (0121) —
+`konten-zeilenschutz-db`.
 
 **Zwei Systemrollen.** Den Zeilenschutz heben zwei Rollen auf (`BYPASSRLS`):
 `brickinventory_system` hält nur der Dienst `jobs` (Aufträge, Umschlüsselung,
@@ -142,18 +145,27 @@ handelte der Prozess für jede gerade aktive Sitzung.
   (5 je Stunde), den nur ein richtiger Code löscht; ein richtiges Passwort
   setzt ihn nicht zurück: `src/konto/passwortBestaetigung.ts`,
   `src/konto/loginLimiter.ts` — `bestaetigung-bremsen-db`.
-- Kein Passwort-Orakel: Ein gesperrtes oder unbestätigtes Konto bekommt bei
+- Kein Passwort-Orakel für gesperrte und unbestätigte Konten: Sie bekommen bei
   richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
   (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
   `POST /auth/bestaetigung-erneut` mit gleicher Antwort und Dauer für jede
-  Adresse — `konto-deaktivieren-db`.
+  Adresse — `konto-deaktivieren-db`. **Ausnahme, bewusst:** Bei aktivem zweitem
+  Faktor antwortet ein richtiges Passwort ohne Code mit 401
+  `zweiter_faktor_noetig` (ohne Fehlversuch), ein falsches mit
+  `anmeldedaten_ungueltig` — die Absage verrät also, dass das Passwort stimmte.
+  Weiter kommt man damit nicht: Nach 20 falschen Codes in 24 Stunden gelten nur
+  noch Wiederherstellungscode und Passkey, und der Inhaber erfährt es per Mail (`src/konto/anmeldepruefung.ts`) —
+  `zweiter-faktor-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
   mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
   Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
   sperrt den Inhaber so nicht an seinen Geräten aus. „Passwort vergessen“ leert
-  alle Zähler: `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
+  alle Zähler. Ohne zweiten Faktor bekommt der Inhaber für einen gesperrten neuen
+  Ort einen signierten, einmal gültigen Link, der diese Adresse einen Tag lang wie
+  eine bekannte zählen lässt (je Adresse eine Mail pro Stunde, zehn am Tag):
+  `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
 - Sitzung: `httpOnly`, `sameSite=strict`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
   `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
@@ -162,9 +174,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
   `users.sitzungs_version` von der Anmeldung; wer Zugänge beendet (Passwort,
   Sperre, Rolle, Löschen, „andere beenden“, 2FA eingeschaltet), erhöht sie,
-  jede Anfrage vergleicht (5 s Zwischenspeicher je Konto). Eine von einer
+  jede Anfrage vergleicht (5 s Zwischenspeicher je Konto, den eine Erhöhung in jedem
+  Web-Prozess über NOTIFY sofort leert; ohne Horch-Verbindung keiner). Eine von einer
   laufenden Anfrage zurückgeschriebene Zeile gilt damit nicht mehr:
-  `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`.
+  `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`, `sitzungsversion-prozesse-db`.
 - Drosseln je Adresse zählen ein IPv6-/64 als eine Adresse, IPv4 in IPv6 als
   IPv4: `drosselAdresse` in `src/konto/loginLimiter.ts` — `drossel-ipv6-db`.
 - App-Anmeldung: Token mit fester Höchstdauer 180 Tage ab Anmeldung, die der
@@ -208,17 +221,33 @@ handelte der Prozess für jede gerade aktive Sitzung.
   und vom Verwalter entferntem zweitem Faktor (alle Verwalter, das Konto
   selbst): `src/konto/kontoHinweis.ts` — `zugang-hinweis-db`.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
-  Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
-- Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys; der
-  Wechsel Passkeys auf Wunsch der API (`passkeys_widerrufen`); die
-  Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
+  Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`. Codes von vor
+  dem 01.11.2026 (50 Bit, SHA-256) gelten nur noch 90 Tage ab dem Update (0122);
+  wer einen benutzt, bekommt eine Mail — `alte-wiederherstellungscodes-db`.
+- Verwalter gegen Verwalter: Passwort setzen, zweiten Faktor entfernen,
+  deaktivieren, Rolle entziehen und löschen gelten erst nach 24 Stunden, mit Mail an
+  das Ziel und alle Verwalter. Das Ziel bricht ab durch Anmeldung (Passwort,
+  Passkey, QR-Abholung) oder über den einmal gültigen Link in seiner Mail; eine
+  fällige Übernahme entfällt, wenn das Ziel inzwischen deaktiviert wurde:
+  `src/konto/verwalterAktionen.ts` — `verwalter-uebernahme-db`.
+- AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/geheimnis.ts` — `geheimnis-tag-laenge`.
+- Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys und löst
+  ausserdem, was ein Eindringling angelegt haben könnte: die Verknüpfung mit
+  Hauptkonten über diesem Konto (der Haushalt nach oben), offene
+  Haushaltseinladungen und eine ausstehende Adressänderung; die Hinweis-Mail
+  nennt, was wegfiel (`setzePasswortZurueck` in `src/konto/konten.ts`) —
+  `passwort-vergessen-fremdzugriff-db`. Der Wechsel widerruft Passkeys auf
+  Wunsch der API (`passkeys_widerrufen`); die Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
   Passwortwechsel/-rücksetzung, mit den Konten, die die Sammlung sehen —
   `passkeys-db`.
 - „Passwort vergessen": ein Link je Konto und 15 Minuten, gleiche Antwort
   und Mindestdauer für bekannte und unbekannte Adressen; Links nur aus
   `APP_BASE_URL`, nie aus Kopfzeilen — `forgot-password-db`.
 - Startpasswort (`must_change_password`): bis zum Wechsel nur
-  `change-password`/`logout`, sonst 403 — `passwort-pflichtwechsel-db`.
+  `change-password`, `logout` und `POST /geraet/schluessel` (der
+  Geräteschlüssel der App, den der Server nur gleich nach der Anmeldung
+  annimmt), sonst 403 `passwort_wechsel_noetig`: `VOR_DEM_WECHSEL` in
+  `routes/api_v1/middleware.ts` — `passwort-pflichtwechsel-db`, `schrittschutz-db`.
 - Benutzernamen ohne Rücksicht auf Gross-/Kleinschreibung eindeutig
   (Index, Migration 0090) — `konto-anlegen-db`.
 - „Alle meine Daten löschen" nur mit Passwort — `alles-loeschen-haushalt-db`.
@@ -583,7 +612,9 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   Hintergrundarbeit (Ausgang, Preisalarm, Widget-Abruf) nicht auf. Die Daten
   schützen der Keystore (Token und Ablagen nur bei entsperrtem Gerät) und der
   Schrittschutz am Server; das Widget verdeckt Beträge, solange die Sperre
-  greifen kann.
+  greifen kann. Ist sie eingeschaltet, zeigt die App-Übersicht kein Vorschaubild
+  (ab Android 13 `setRecentsScreenshotEnabled(false)`, darunter FLAG_SECURE),
+  unabhängig von „Vorschau verbergen“.
 - **Release-Signatur** (N5): Der Signierschlüssel liegt als Base64-Secret in der
   GitHub-Environment `release` (`.github/workflows/android-signieren.yml`); dass
   der Inhaber seine eigene Freigabe erteilen darf (`prevent_self_review` aus),
@@ -592,9 +623,10 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   Menschen stärken lässt, steht im nächsten Abschnitt; umgesetzt ist davon nichts,
   der Inhaber entscheidet. Das Restrisiko steht unten („Update der Android-App per
   Sideload“).
-- **Neuer Serverschlüssel unter öffentlicher CA** (Prüfung 476e4a4, M1): Auf
-  Android 11–15 nur mit abgetipptem Fingerabdruck aus dem Browser am Rechner,
-  ab Android 16 (CT im System) mit einem bewussten Tipp. Caddy behält seinen
+- **Erstkontakt und neuer Serverschlüssel unter öffentlicher CA** (Prüfung
+  476e4a4, M1; Tiefprüfung A-S-5): Auf Android 11–15 nur mit abgetipptem
+  Fingerabdruck aus dem Browser am Rechner, ab Android 16 (CT im System) mit
+  einem bewussten Tipp. Caddy behält seinen
   Schlüssel beim Erneuern (`reuse_private_keys`, UPGRADE.md Abschnitt 62), damit
   die Frage selten und auffällig bleibt.
 - **Daten auf dem Gerät** (N1, N3): Adresse, Benutzername, Herkunft des Tokens,

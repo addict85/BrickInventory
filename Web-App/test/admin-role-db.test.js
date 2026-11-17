@@ -3,6 +3,8 @@
  *
  * Gegenprobe (durchgeführt): strictBool() in einem der beiden Endpunkte wieder
  * durch `is_admin ? 1 : 0` ersetzt → der zugehörige Teilschritt wird rot.
+ * Das Ziel ist Verwalter: Der Entzug wird seit Runde 29 angekündigt (24 h), geprüft
+ * wird deshalb die Ankündigung statt der Spalte.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
@@ -50,8 +52,19 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen', { concurrenc
     t,
   });
 
-  const setzeZielAdmin = () => db.run(`UPDATE users SET is_admin=true WHERE id=$1`, [zielId]);
-  const istAdmin = async () => Number((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [zielId])).is_admin);
+  const setzeZielAdmin = async () => {
+    await db.run(`UPDATE users SET is_admin=true WHERE id=$1`, [zielId]);
+    await db.run(`DELETE FROM verwalter_uebernahmen WHERE ziel_id=$1`, [zielId]);
+  };
+  /** 0, sobald der Entzug angekündigt (oder vollzogen) ist. */
+  const istAdmin = async () => {
+    const angekuendigt = await db.get(
+      `SELECT 1 FROM verwalter_uebernahmen WHERE ziel_id=$1 AND art='rolle_entziehen'`,
+      [zielId],
+    );
+    const admin = (await db.get(`SELECT is_admin FROM users WHERE id=$1`, [zielId])).is_admin;
+    return admin && !angekuendigt ? 1 : 0;
+  };
 
   const entziehe = async (url, methode, wert) => {
     await setzeZielAdmin();

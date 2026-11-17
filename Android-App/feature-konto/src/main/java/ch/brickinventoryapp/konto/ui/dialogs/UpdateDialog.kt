@@ -18,8 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
-import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.versionsName
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.update.util.erlaubnisAbsicht
 
@@ -30,8 +29,8 @@ import ch.brickinventoryapp.update.util.erlaubnisAbsicht
  * — fragen ist nicht automatisch handeln.
  */
 @Composable
-fun UpdateRoute(selbstUpdate: UpdateViewModel) {
-    val zustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
+fun UpdateRoute(selbstUpdate: UpdateAktionen.MitZustand) {
+    val zustand by selbstUpdate.zustand.collectAsStateWithLifecycle()
     UpdateDialog(zustand, selbstUpdate)
 }
 
@@ -88,7 +87,7 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
 @Composable
 private fun UpdateInhalt(zustand: UpdateUiState, versionName: String) {
     Column {
-        Text(stringResource(R.string.update_dialog_text, versionName, LocalAppFassung.current.name))
+        Text(stringResource(R.string.update_dialog_text, versionName, versionsName()))
         zustand.fortschritt?.let { p ->
             Spacer(Modifier.height(Abstaende.mittel))
             Text(stringResource(R.string.update_downloading, p),

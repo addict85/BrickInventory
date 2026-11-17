@@ -183,7 +183,8 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
-        zeige { LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        val meldung = SnackbarHostState()
+        zeige { LagerorteRoute(vm, meldung, onZurueck = {}) }
         warte("Lagerorte") { vm.lagerState.value.eigene.size == 3 }
         // Kein Ort als Dauer-Textfeld, der Titel nur in der App-Leiste.
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
@@ -196,7 +197,22 @@ class UnterseitenTest {
         compose.waitForIdle()
         assertTrue("Gelöscht vor der Rückfrage: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("DELETE") })
         compose.onNodeWithText(ctx.getString(R.string.storage_delete_title)).fetchSemanticsNode()
+        // Bestätigt ist nur vorgemerkt: Der Ort fehlt, der Server erfährt es erst, wenn die
+        // Snackbar ohne „Rückgängig“ endet. Die Uhr steht still, damit sie nicht von selbst abläuft.
+        compose.mainClock.autoAdvance = false
         imDialog(ctx.getString(R.string.common_delete)).performClick()
+        repeat(5) {
+            compose.mainClock.advanceTimeBy(100)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
+        assertTrue("Keine Snackbar mit Rückgängig", meldung.currentSnackbarData != null)
+        compose.onAllNodesWithText("Keller").assertCountEquals(0)
+        assertTrue("Gelöscht vor Ablauf der Snackbar", welt.pfade.anfragen.none { it.startsWith("DELETE") })
+        meldung.currentSnackbarData?.dismiss()
+        compose.mainClock.autoAdvance = true
+        // Das Ende der Snackbar setzt den LaunchedEffect fort; der läuft auf dem Takt der
+        // Compose-Uhr, den treibeBis (nur der Hauptlooper) nicht weiterschiebt.
+        compose.waitForIdle()
         warte("Löschen") { welt.pfade.anfragen.any { it.startsWith("DELETE") && it.endsWith("/storage/locations/3") } }
     }
 

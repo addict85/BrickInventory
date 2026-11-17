@@ -1,0 +1,18 @@
+Gegenprobe: „Leeren“ einer Auftragsart leert wieder sofort
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.HintergrundKnoepfeTest
+Rot: Leeren fragt erst nach
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
+index fea7864..b735cd3 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
+@@ -118,7 +118,7 @@ private fun AuftragsGruppe(
+         TextButton(onClick = { onStarten(art, name) }, modifier = Modifier.semantics { contentDescription = jetztName }) {
+             Text(stringResource(R.string.hintergrund_jetzt))
+         }
+-        TextButton(onClick = { leerenFragen = true }, modifier = Modifier.semantics { contentDescription = leerenName }) {
++        TextButton(onClick = { onLeeren(art) }, modifier = Modifier.semantics { contentDescription = leerenName }) {
+             Text(stringResource(R.string.hintergrund_leeren))
+         }
+     }

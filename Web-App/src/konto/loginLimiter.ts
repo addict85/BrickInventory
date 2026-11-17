@@ -1,8 +1,9 @@
 /** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
+import crypto from 'node:crypto';
 import { einzelwert } from '../infra/validate';
 import { meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
-import type { FehlerCode } from '../infra/fehlerTexte';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import type { KontoKontext } from './kontext';
 import { drosselAdresse } from '../infra/drosselAdresse';
 
@@ -118,8 +119,32 @@ export async function anmeldungGescheitert(
  * sperrte ein Fremder mit 50 Versuchen den Inhaber auch an seinen eigenen Geräten aus. */
 export const MAX_JE_KONTO_TAG = 50;
 async function _tagKey(k: KontoKontext, ip: string, kennung: string): Promise<string> {
-  const bekannt = !!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN));
-  return bekannt ? `login-tag|${kennung}|${adressAbdruck(ip)}` : `login-tag|${kennung}`;
+  const eigen =
+    !!(await k.drossel.zaehlerStand(_bekanntKey(ip, kennung), BEKANNT_MIN)) ||
+    !!(await k.drossel.zaehlerStand(_freigabeKey(kennung, adressAbdruck(ip)), KONTO_FENSTER_MIN));
+  return eigen ? `login-tag|${kennung}|${adressAbdruck(ip)}` : `login-tag|${kennung}`;
+}
+
+/** Über der Tagesgrenze sperrte ein Fremder den Inhaber an jedem neuen Ort aus: Ein signierter, einmal
+ * gültiger Link lässt die Adresse der gesperrten Anmeldung einen Tag lang wie eine bekannte zählen. */
+const _freigabeKey = (kennung: string, abdruck: string) => `login-freigabe|${kennung}|${abdruck}`;
+const freigabeSignatur = (uid: number, abdruck: string, bis: number) =>
+  suchwert('anmeldefreigabe', `${uid}|${abdruck}|${bis}`);
+export function freigabeToken(k: KontoKontext, ip: string, uid: number): string {
+  const abdruck = adressAbdruck(ip);
+  const bis = Math.floor(k.uhr.jetzt() / 1000) + KONTO_FENSTER_MIN * 60;
+  return `${uid}.${abdruck}.${bis}.${freigabeSignatur(uid, abdruck, bis)}`;
+}
+export async function anmeldungFreigeben(k: KontoKontext, token: string): Promise<void> {
+  const [u, abdruck = '', b, sig = ''] = String(token).split('.');
+  const uid = Number(u),
+    bis = Number(b);
+  const soll = Number.isInteger(uid) && Number.isInteger(bis) ? freigabeSignatur(uid, abdruck, bis) : '';
+  const echt = soll.length === sig.length && crypto.timingSafeEqual(Buffer.from(soll), Buffer.from(sig));
+  if (!echt || bis * 1000 <= k.uhr.jetzt()) fachfehler('konflikt', 'freigabe_link_ungueltig');
+  if ((await k.drossel.zaehleVersuch(`login-freigabe-benutzt|${sig}`, KONTO_FENSTER_MIN)) > 1)
+    fachfehler('konflikt', 'freigabe_link_ungueltig');
+  await k.drossel.zaehleVersuch(_freigabeKey(`konto:${uid}`, abdruck), KONTO_FENSTER_MIN);
 }
 export async function tagesgrenzeErreicht(k: KontoKontext, ip: string, username: string): Promise<boolean> {
   const key = await _tagKey(k, ip, await kontoKennung(k, username));

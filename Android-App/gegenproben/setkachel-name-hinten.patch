@@ -6,7 +6,7 @@ Rot: Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
-@@ -132,11 +132,11 @@
+@@ -133,11 +133,11 @@
                  Box {
                      Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
                          verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
@@ -14,7 +14,7 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
 -                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
                          Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
                              style = MaterialTheme.typography.bodySmall,
-                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
 +                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
 +                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
                          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -163,6 +163,12 @@ import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.app.nav.AppZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
+import ch.brickinventoryapp.app.ui.components.ZertifikatDialog
+import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.test.performSemanticsAction
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
@@ -1243,7 +1249,10 @@ class BildschirmFotoVariantenTest {
     fun scannerErlaubnis() {
         zeige("scanner-erlaubnis", warten = false) {
             Box(Modifier.fillMaxSize()
-                .background(Color.Black)) { KameraErlaubnisHinweis(onErlauben = {}) }
+                .background(Color.Black)) {
+                KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_barcode),
+                    stringResource(R.string.scanner_nummer_eintippen), onEintippen = {}, onErlauben = {})
+            }
         }
         anhalten()
         foto("scanner-erlaubnis", dunkel = true)
@@ -1378,6 +1387,275 @@ class BildschirmFotoVariantenTest {
 
     @Test fun csvImportLaeuftTelefon() = csvLaeuftFoto(false, "telefon")
     @Test fun csvImportLaeuftTabletDunkel() = csvLaeuftFoto(true, "tablet")
+
+    // ── Was noch kein Referenzbild hatte, je hell, dunkel und 200 % ──
+    // Name mit „-schrift200“ bei grosser Schrift, sonst wie oben. Alles mit festen Daten:
+    // Die Bilder entstehen in der CI und müssen bei jedem Lauf gleich sein.
+
+    private fun stufe(name: String, schrift: Float) = if (schrift == 2f) "$name-schrift200" else name
+
+    /** Anmelden mit Passkey-Knopf; mit [code] die zweite Stufe samt „Passkey statt Code“. */
+    private fun anmeldenPasskeyFoto(code: Boolean, dunkel: Boolean, schrift: Float) {
+        val name = stufe(if (code) "anmelden-code" else "anmelden-passkey", schrift)
+        zeige(name, dunkel = dunkel, schrift = schrift) {
+            LoginScreen(
+                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = code,
+                formular = AnmeldeFormular.ANMELDEN, registrierungOffen = true, kontoLaeuft = false,
+                kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> }, onFormular = {},
+                onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+                onPasskey = {}, onPasskeyStattCode = { _, _ -> },
+            )
+        }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun anmeldenPasskeyHell() = anmeldenPasskeyFoto(false, false, 1f)
+    @Test fun anmeldenPasskeyDunkel() = anmeldenPasskeyFoto(false, true, 1f)
+    @Test fun anmeldenPasskeySchrift200() = anmeldenPasskeyFoto(false, false, 2f)
+    @Test fun anmeldenCodeHell() = anmeldenPasskeyFoto(true, false, 1f)
+    @Test fun anmeldenCodeDunkel() = anmeldenPasskeyFoto(true, true, 1f)
+    @Test fun anmeldenCodeSchrift200() = anmeldenPasskeyFoto(true, false, 2f)
+
+    /** Der QR-Scanner beim Einrichten ohne Kamera: Robolectric erteilt keine Erlaubnis, es steht der Hinweis da. */
+    private fun einrichtenQrFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("einrichten-qr", schrift)
+        zeige(name, dunkel = dunkel, schrift = schrift) {
+            SetupScreen(currentUrl = "", onSave = {}, entwicklung = false)
+        }
+        compose.onNodeWithText(ApplicationProvider.getApplicationContext<Context>().getString(R.string.setup_scan_qr))
+            .performScrollTo().performClick()
+        compose.waitForIdle()
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun einrichtenQrHell() = einrichtenQrFoto(false, 1f)
+    @Test fun einrichtenQrDunkel() = einrichtenQrFoto(true, 1f)
+    @Test fun einrichtenQrSchrift200() = einrichtenQrFoto(false, 2f)
+
+    /** Der Hinweis auf eine neue Fassung, wie ihn die App nach der Prüfung zeigt. */
+    private fun updateDialogFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("dialog-update", schrift)
+        val zustand = MutableStateFlow(UpdateUiState(geprueft = true,
+            neuereFassung = UpdateBeschreibung(versionCode = 240, versionName = "2.4.0", apkUrl = "https://brick.example.org/app.apk")))
+        val quelle = object : UpdateAktionen.MitZustand, UpdateAktionen by keinUpdate {
+            override val zustand = zustand
+        }
+        zeigeDialog(name, dunkel = dunkel, schrift = schrift) { UpdateRoute(quelle) }
+        dialogFoto(name, "classic", dunkel, "telefon", schrift)
+    }
+
+    @Test fun dialogUpdateHell() = updateDialogFoto(false, 1f)
+    @Test fun dialogUpdateDunkel() = updateDialogFoto(true, 1f)
+    @Test fun dialogUpdateSchrift200() = updateDialogFoto(false, 2f)
+
+    /** Die Frage nach einem neuen Serverzertifikat mit Fingerabdruck zum Vergleichen. */
+    private fun zertifikatFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("dialog-zertifikat", schrift)
+        val frage = ZertifikatUngeklaert("brick.example.org:443",
+            "3F:A1:09:7C:22:5D:E8:41:9B:0C:66:D2:7A:13:F4:88:51:2E:C9:07:B6:4D:30:9A:E1:75:2C:68:0F:D3:4B:91",
+            ZertifikatUngeklaert.Art.ERSTKONTAKT)
+        zeigeDialog(name, dunkel = dunkel, schrift = schrift) {
+            ZertifikatDialog(frage, nutzerCaAn = false, onVertrauen = { true }, onNutzerCa = {}, onAbbrechen = {})
+        }
+        dialogFoto(name, "classic", dunkel, "telefon", schrift)
+    }
+
+    @Test fun dialogZertifikatHell() = zertifikatFoto(false, 1f)
+    @Test fun dialogZertifikatDunkel() = zertifikatFoto(true, 1f)
+    @Test fun dialogZertifikatSchrift200() = zertifikatFoto(false, 2f)
+
+    /** Konto, gerollt bis zu [abschnitt]: die Liste der Geräte oder der zweite Faktor. */
+    private fun kontoAbschnittFoto(name: String, abschnitt: Int, dunkel: Boolean, schrift: Float) {
+        welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
+        welt.pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
+        welt.pfade.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic"}"""
+        welt.pfade.antworten["/api/v1/settings/tokens"] = """{"success":true,"tokens":[
+            {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
+            {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
+        val konto = welt.t.merke(KontoViewModel(testKontoRepository(welt.t.api, welt.t.io),
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
+        val voll = stufe(name, schrift)
+        zeige(voll, dunkel = dunkel, schrift = schrift) {
+            KontoRoute(snackbarHostState = remember { SnackbarHostState() }, konto = konto, onZurueck = {})
+        }
+        compose.onNodeWithText(ApplicationProvider.getApplicationContext<Context>().getString(abschnitt)).performScrollTo()
+        anhalten()
+        foto(voll, dunkel = dunkel)
+    }
+
+    @Test fun kontoGeraeteHell() = kontoAbschnittFoto("konto-geraete", R.string.tokens_title, false, 1f)
+    @Test fun kontoGeraeteDunkel() = kontoAbschnittFoto("konto-geraete", R.string.tokens_title, true, 1f)
+    @Test fun kontoGeraeteSchrift200() = kontoAbschnittFoto("konto-geraete", R.string.tokens_title, false, 2f)
+    @Test fun kontoZweiterFaktorHell() = kontoAbschnittFoto("konto-zweiter-faktor", R.string.zf_title, false, 1f)
+    @Test fun kontoZweiterFaktorDunkel() = kontoAbschnittFoto("konto-zweiter-faktor", R.string.zf_title, true, 1f)
+    @Test fun kontoZweiterFaktorSchrift200() = kontoAbschnittFoto("konto-zweiter-faktor", R.string.zf_title, false, 2f)
+
+    // ── Leer ──
+
+    private fun finanzenLeerFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("finanzen-leer", schrift)
+        welt.pfade.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF","sets":[],
+            "totals":{"min":"0.00","avg":"0.00","max":"0.00","qty_avg":"0.00"}}"""
+        welt.pfade.antworten["/api/v1/finance/pnl"] = """{"success":true,"currency":"CHF","totals":{"purchase":"0.00","current":"0.00",
+            "grand_total":"0.00","sets_purchase":"0.00","positionen":0,"positionen_bewertet":0},"sets":[]}"""
+        welt.pfade.antworten["/api/v1/finance/portfolio-history"] = """{"success":true,"currency":"CHF","period":"week","points":[]}"""
+        val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
+        zeige(name, dunkel = dunkel, schrift = schrift, bereit = { vm.financeState.value.let { !it.bewertung.laedt && !it.verlauf.laedt } },
+            zustand = { vm.financeState.value }) { FinanceRoute(vm = vm, imageLoader = bilder) }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun finanzenLeerHell() = finanzenLeerFoto(false, 1f)
+    @Test fun finanzenLeerDunkel() = finanzenLeerFoto(true, 1f)
+    @Test fun finanzenLeerSchrift200() = finanzenLeerFoto(false, 2f)
+
+    private fun figurenFoto(name: String, dunkel: Boolean, schrift: Float, fehler: Boolean) {
+        val voll = stufe(name, schrift)
+        if (fehler) {
+            deutschVorDemLaden()
+            welt.pfade.codes["/api/v1/minifigs"] = 500
+        } else {
+            welt.pfade.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
+        }
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        zeige(voll, dunkel = dunkel, schrift = schrift, bereit = { !vm.figurenZustand.value.figurenAbruf.laedt },
+            zustand = { vm.figurenZustand.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        anhalten()
+        foto(voll, dunkel = dunkel)
+    }
+
+    @Test fun figurenLeerHell() = figurenFoto("figuren-leer", false, 1f, fehler = false)
+    @Test fun figurenLeerDunkel() = figurenFoto("figuren-leer", true, 1f, fehler = false)
+    @Test fun figurenLeerSchrift200() = figurenFoto("figuren-leer", false, 2f, fehler = false)
+    @Test fun figurenFehlerHell() = figurenFoto("figuren-fehler", false, 1f, fehler = true)
+    @Test fun figurenFehlerDunkel() = figurenFoto("figuren-fehler", true, 1f, fehler = true)
+    @Test fun figurenFehlerSchrift200() = figurenFoto("figuren-fehler", false, 2f, fehler = true)
+
+    private fun lagerorteLeerFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("lagerorte-leer", schrift)
+        welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[]}"""
+        val vm = einstellungen().also { it.ladeEigeneLagerorte() }
+        zeige(name, dunkel = dunkel, schrift = schrift) { LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun lagerorteLeerHell() = lagerorteLeerFoto(false, 1f)
+    @Test fun lagerorteLeerDunkel() = lagerorteLeerFoto(true, 1f)
+    @Test fun lagerorteLeerSchrift200() = lagerorteLeerFoto(false, 2f)
+
+    private fun preisalarmeLeerFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("preisalarme-leer", schrift)
+        welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[]}"""
+        val vm = einstellungen()
+        zeige(name, dunkel = dunkel, schrift = schrift) {
+            PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
+                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
+        }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun preisalarmeLeerHell() = preisalarmeLeerFoto(false, 1f)
+    @Test fun preisalarmeLeerDunkel() = preisalarmeLeerFoto(true, 1f)
+    @Test fun preisalarmeLeerSchrift200() = preisalarmeLeerFoto(false, 2f)
+
+    /** Ein Hauptkonto ohne verknüpfte Konten und ohne offene Einladung. */
+    private fun haushaltLeerFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("haushalt-leer", schrift)
+        welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+            "sub_accounts":[],"open_invites":0}"""
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.abgleich,
+            testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
+        zeige(name, dunkel = dunkel, schrift = schrift, bereit = { vm.householdState.value.status != null },
+            zustand = { vm.householdState.value }) {
+            HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
+        }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun haushaltLeerHell() = haushaltLeerFoto(false, 1f)
+    @Test fun haushaltLeerDunkel() = haushaltLeerFoto(true, 1f)
+    @Test fun haushaltLeerSchrift200() = haushaltLeerFoto(false, 2f)
+
+    // ── Fehler ──
+
+    private fun kontoFehlerFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("konto-fehler", schrift)
+        deutschVorDemLaden()
+        welt.pfade.codes["/api/v1/auth/profile"] = 500
+        val konto = welt.t.merke(KontoViewModel(testKontoRepository(welt.t.api, welt.t.io),
+            welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
+        zeige(name, dunkel = dunkel, schrift = schrift) {
+            KontoRoute(snackbarHostState = remember { SnackbarHostState() }, konto = konto, onZurueck = {})
+        }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun kontoFehlerHell() = kontoFehlerFoto(false, 1f)
+    @Test fun kontoFehlerDunkel() = kontoFehlerFoto(true, 1f)
+    @Test fun kontoFehlerSchrift200() = kontoFehlerFoto(false, 2f)
+
+    private fun gutscheineFehlerFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("gutscheine-fehler", schrift)
+        deutschVorDemLaden()
+        welt.pfade.codes["/api/v1/vouchers"] = 500
+        val vm = welt.t.merke(GutscheinViewModel(testGutscheineRepository(welt.t.api), KontextTexte(),
+            object : DateiLeser {
+                override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
+            }, welt.t.meldungen))
+        zeige(name, dunkel = dunkel, schrift = schrift) { GutscheineRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun gutscheineFehlerHell() = gutscheineFehlerFoto(false, 1f)
+    @Test fun gutscheineFehlerDunkel() = gutscheineFehlerFoto(true, 1f)
+    @Test fun gutscheineFehlerSchrift200() = gutscheineFehlerFoto(false, 2f)
+
+    /** Erfasst ohne Netz: Hinweis mit Stand, eine wartende Änderung und die Meldung dazu. */
+    private fun erfassenOfflineFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("erfassen-offline", schrift)
+        val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
+        val meldung = SnackbarHostState()
+        val text = ApplicationProvider.getApplicationContext<Context>().resources
+            .getQuantityString(R.plurals.offline_ausgang, 1, 1)
+        zeige(name, dunkel = dunkel, schrift = schrift, bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) {
+            Geruest(galerie, snackbar = meldung, offeneAenderungen = 1, offlineStand = 1_793_000_000_000L)
+            LaunchedEffect(Unit) { meldung.showSnackbar(text, duration = SnackbarDuration.Indefinite) }
+        }
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun erfassenOfflineHell() = erfassenOfflineFoto(false, 1f)
+    @Test fun erfassenOfflineDunkel() = erfassenOfflineFoto(true, 1f)
+    @Test fun erfassenOfflineSchrift200() = erfassenOfflineFoto(false, 2f)
+
+    /** Der Rahmen um das Ziel mit Tastaturfokus, hier der Preisvergleich auf der Seite „Mehr“. */
+    private fun fokusFoto(dunkel: Boolean, schrift: Float) {
+        val name = stufe("fokusrahmen", schrift)
+        zeige(name, dunkel = dunkel, schrift = schrift) {
+            val modus = LocalInputModeManager.current
+            LaunchedEffect(Unit) { modus.requestInputMode(InputMode.Keyboard) }
+            MehrBildschirm({}, isAdmin = false, updateVerfuegbar = false, onAbmelden = {})
+        }
+        val ziel = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_comparison)
+        compose.onNode(hasText(ziel) and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitForIdle()
+        anhalten()
+        foto(name, dunkel = dunkel)
+    }
+
+    @Test fun fokusrahmenHell() = fokusFoto(false, 1f)
+    @Test fun fokusrahmenDunkel() = fokusFoto(true, 1f)
+    @Test fun fokusrahmenSchrift200() = fokusFoto(false, 2f)
 }
 
 /** Ein fester Zeitpunkt für Bilder, die ein Datum zeigen (5.11.2026, 23:33 UTC). */

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.teile.ui.FigurenUiState
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
@@ -53,6 +55,9 @@ import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
 import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
+import ch.brickinventoryapp.gemeinsam.ui.kontoFilter
+import ch.brickinventoryapp.model.fach.Figurenordnung
+import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.model.ui.Listenansicht
 
 /** Was der Figuren-Reiter zeigt; die Route sammelt es aus den Flüssen. */
@@ -143,7 +148,15 @@ internal fun MinifigsScreen(
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
             aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
             onFilter = { zeigeFilter = true },
+            sortierung = {
+                SortierMenue(
+                    optionen = Figurenordnung.entries.map { it to stringResource(it.beschriftung()) },
+                    gewaehlt = partsState.ordnung, onWahl = aktionen::setMinifigsOrdnung,
+                    vorgabe = Figurenordnung.VORGABE,
+                )
+            },
             erfassen = erfassenText to { showAddDialog = true },
+            aktive = listOfNotNull(kontoFilter(householdMembers, scopeMode) { onScopeChange(ScopeFilter.ALL) }),
         )
 
         OfflineHinweis(partsState.figurenOfflineStand, onErneut = onRefresh)
@@ -162,7 +175,7 @@ internal fun MinifigsScreen(
                 OutlinedButton(onClick = {
                     search = ""; aktionen.setMinifigsQuery("")
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
-                }) { Text(stringResource(R.string.search_clear_all)) }
+                }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.search_clear_all)) }
             }
             Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
@@ -270,4 +283,10 @@ private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
         GalleryStatChip(minifigStats.totalQuantity, R.plurals.minifigs_stat_total)
         GalleryStatChip(minifigStats.manual, R.plurals.minifigs_stat_manual)
     }
+}
+
+private fun Figurenordnung.beschriftung(): Int = when (this) {
+    Figurenordnung.NAME -> R.string.parts_ordnung_name
+    Figurenordnung.NUMMER -> R.string.minifigs_ordnung_nummer
+    Figurenordnung.MENGE -> R.string.parts_ordnung_menge
 }

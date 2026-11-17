@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vorschau in der Widget-Auswahl (xml-v31/sammlungs_widget.xml): dieselben Zeilen wie
+     SammlungsWidget, mit Beispielzahlen. Sie liegt auf dem Startbildschirm, nicht in einem
+     Fenster der App; deren Hintergrund malt darunter nichts. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_vorschau_grund"
+    android:orientation="vertical"
+    android:padding="12dp"
+    tools:ignore="Overdraw">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:text="@string/widget_titel"
+        android:textColor="@color/widget_vorschau_schrift"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_wert"
+        android:textColor="@color/widget_vorschau_neben"
+        android:textSize="12sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_vorschau_wert"
+        android:textColor="@color/widget_vorschau_schrift"
+        android:textSize="15sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_heute"
+        android:textColor="@color/widget_vorschau_neben"
+        android:textSize="12sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_vorschau_heute"
+        android:textColor="@color/widget_vorschau_schrift"
+        android:textSize="15sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_gesamt"
+        android:textColor="@color/widget_vorschau_neben"
+        android:textSize="12sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_vorschau_gesamt"
+        android:textColor="@color/widget_vorschau_schrift"
+        android:textSize="15sp" />
+</LinearLayout>

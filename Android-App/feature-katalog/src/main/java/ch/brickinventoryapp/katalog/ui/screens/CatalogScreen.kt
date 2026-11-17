@@ -126,7 +126,7 @@ fun CatalogScreen(
     // Rechts Platz nur, wenn die Jahres-Leiste dort steht; sonst gleiche Ränder links und rechts.
     val mitJahresleiste = state.sort.nachJahr && state.jahrVerteilung.isNotEmpty()
     val rasterRand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
-        end = if (mitJahresleiste) 30.dp else Abstaende.mittel)
+        end = if (mitJahresleiste) SPUR_BREITE else Abstaende.mittel)
     val gefiltert = state.query.isNotBlank() || state.themeId != null || state.year != null
     val fehler = state.abruf as? Laden.Fehler
     val laedt = state.abruf.laedt

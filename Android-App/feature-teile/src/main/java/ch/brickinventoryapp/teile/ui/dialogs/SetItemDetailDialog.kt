@@ -6,11 +6,8 @@ import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.teile.ui.viewmodel.SetItemAktionen
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,12 +31,12 @@ import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.ZurueckKnopf
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.kategorieUebersetzer
 import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
+import ch.brickinventoryapp.teile.ui.screens.TeilDetailKopf
 
 /**
  * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:
@@ -126,33 +122,17 @@ private fun SetItemDetail(
                         color = MaterialTheme.colorScheme.error,
                     )
                     else -> {
-                        // Tippen vergrössert — dasselbe Bauteil wie im Set-Detail
-                        // und im Dialog für manuell erfasste Teile.
-                        ProduktBild(
-                            model = bild,
-                            imageLoader = imageLoader,
-                            contentDescription = kopf?.name,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .clip(MaterialTheme.shapes.medium)
-                                .clickable(enabled = bild != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { zeigeZoom = true },
-                        )
-                        Spacer(Modifier.height(Abstaende.mittel))
-                        SetItemZeile(
-                            stringResource(R.string.setitem_total_qty),
-                            mengeAusSet(kopf?.totalQuantity ?: 0))
-                        kopf?.colorName?.let {
-                            SetItemZeile(stringResource(R.string.setitem_color), farbe(it))
+                        // Derselbe Kopf wie beim selbst erfassten Teil; nur die Abschnitte darunter
+                        // hängen an der Herkunft.
+                        val kategorie = kategorieUebersetzer()
+                        val chips = buildList {
+                            add(stringResource(R.string.setitem_total_qty) to mengeAusSet(kopf?.totalQuantity ?: 0))
+                            kopf?.colorName?.let { add(stringResource(R.string.setitem_color) to farbe(it)) }
+                            kopf?.categoryName?.let { add(stringResource(R.string.setitem_category) to kategorie(it)) }
+                            if (kopf?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
                         }
-                        kopf?.categoryName?.let {
-                            SetItemZeile(stringResource(R.string.setitem_category),
-                                kategorieUebersetzer()(it))
-                        }
-                        if (kopf?.isSpare == true) {
-                            SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
-                        }
+                        TeilDetailKopf(bild, imageLoader, kopf?.name, chips, onZoom = { zeigeZoom = true })
+                        Spacer(Modifier.height(Abstaende.klein))
                         // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur
                         // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
                         // Ort könnte auseinanderlaufen. Bearbeitbar wie in der Webapp; das
@@ -268,16 +248,5 @@ private fun SetItemDetail(
             imageLoader = imageLoader,
             onDismiss = { zeigeZoom = false },
         )
-    }
-}
-
-/** Beschriftung links, Wert rechts — wie CatalogDetailRow im Katalog-Detail. */
-@Composable
-private fun SetItemZeile(label: String, wert: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
-        horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        Text(wert, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(start = Abstaende.gross))
     }
 }

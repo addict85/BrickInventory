@@ -598,6 +598,7 @@ export interface Tabellen {
     passwort_hash: string | null;
     angelegt_am: Date;
     wirksam_ab: Date;
+    abbruch_hash: string | null;
   };
   verwaltungsprotokoll: {
     id: number;
@@ -651,6 +652,7 @@ export interface Tabellen {
     user_id: number;
     code_hash: string;
     verbraucht_am: Date | null;
+    alt_gilt_bis: Date | null;
   };
 }
 

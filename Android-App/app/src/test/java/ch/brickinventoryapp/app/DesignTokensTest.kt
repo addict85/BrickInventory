@@ -124,15 +124,20 @@ class DesignTokensTest {
     }
 
     /**
-     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe. Im Ablauf
-     * Einrichten → Anmelden wechselte sie sonst von Bildschirm zu Bildschirm (12 dp,
-     * 14 dp, Pille). Gegenprobe: `shape = Formen.feld` am Knopf in LoginScreen.LadeKnopf
-     * → rot mit „LoginScreen.kt“ (Gegenprobe knopf-mit-eigener-form).
+     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe; sonst wechselte sie
+     * im Ablauf Einrichten → Anmelden von Bildschirm zu Bildschirm. Jeder umrandete Knopf
+     * trägt nebenKnopfFarben/-Rand oder ist als Gefahr rot; sonst sah er gesperrt aus.
+     *
+     * Gegenproben: knopf-mit-eigener-form (`shape = Formen.feld` in LoginScreen.LadeKnopf)
+     * → rot mit „LoginScreen.kt“; nebenknopf-ohne-farben („Als Datei speichern“ der
+     * Notfallcodes ohne beides) → rot mit „ZweiterFaktorPflichtMaske.kt“.
      */
     @Test
-    fun `Knoepfe tragen alle dieselbe Form`() {
+    fun `Knoepfe tragen alle dieselbe Form, Nebenknoepfe dieselben Farben`() {
         val aufruf = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
         val fehler = mutableListOf<String>()
+        val nebenknoepfe = mutableListOf<String>()
+        var gesehen = 0
         for (datei in Quellen.alle()) {
             // Zeichenketten leeren: Eine Klammer darin würfe die Klammerbilanz um.
             val s = Quellen.ohneKommentare(datei.readText())
@@ -146,14 +151,38 @@ class DesignTokensTest {
                     ende++
                 }
                 val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
-                if (Regex("""\bshape\s*=""").containsMatchIn(argumente)) {
-                    fehler += "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}  ${m.value}"
+                val wo = "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
+                if (Regex("""\bshape\s*=""").containsMatchIn(argumente)) fehler += "$wo  ${m.value}"
+                if (m.groupValues[1] == "OutlinedButton" && datei.name !in UEBER_DEM_KAMERABILD) {
+                    gesehen++
+                    nebenKnopfFehler(argumente)?.let { nebenknoepfe += "$wo  $it" }
                 }
             }
         }
+        assert(gesehen >= 20) { "Nur $gesehen umrandete Knöpfe gefunden — greift die Suche noch?" }
         assert(fehler.isEmpty()) {
             "Knöpfe mit eigener Form (${fehler.size}):\n  " + fehler.joinToString("\n  ") +
                 "\nKnöpfe tragen die Vorgabe des Themas; Formen.feld gilt nur für Eingabefelder."
+        }
+        assert(nebenknoepfe.isEmpty()) {
+            "Umrandete Knöpfe ohne nebenKnopfFarben()/nebenKnopfRand() (${nebenknoepfe.size}):\n  " +
+                nebenknoepfe.joinToString("\n  ")
+        }
+    }
+
+    /** Die Lampe im Scanner liegt auf dem Kamerabild und trägt Weiss auf Schwarz. */
+    private val UEBER_DEM_KAMERABILD = setOf("BarcodeScannerScreen.kt")
+
+    /** Was einem umrandeten Knopf fehlt, oder null. Rot (Gefahr) ersetzt die Farben des Nebenknopfs. */
+    private fun nebenKnopfFehler(argumente: String): String? {
+        val gefahr = "colorScheme.error" in argumente
+        val rand = Regex("""\bborder\s*=\s*nebenKnopfRand\(([^)]*)\)""").find(argumente)
+        return when {
+            !gefahr && !Regex("""\bcolors\s*=\s*nebenKnopfFarben\(\)""").containsMatchIn(argumente) -> "ohne nebenKnopfFarben()"
+            rand == null && !gefahr -> "ohne nebenKnopfRand()"
+            rand != null && Regex("""\benabled\s*=""").containsMatchIn(argumente) && rand.groupValues[1].isBlank() ->
+                "sperrbar, aber nebenKnopfRand() ohne den Zustand"
+            else -> null
         }
     }
 }

@@ -178,8 +178,11 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
 - **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
-  (Credential Manager). Die eingebaute Texterkennung kann Nutzungsstatistiken an
-  Google senden.
+  (Credential Manager). Barcode-Scan und Texterkennung laufen auf dem Gerät. Den Weg,
+  über den ML Kit Nutzungsstatistiken an Google meldet (datatransport, Backend `cct`
+  zu `firebaselogging.googleapis.com`), nimmt das App-Manifest heraus; die Prüfung
+  des fertigen APK (`tools/manifest-pruefen.py`) ist rot, sobald er wieder drin ist.
+  Was die Play-Dienste in ihrem eigenen Prozess senden, regelt Google.
 - **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
 
 Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
@@ -200,7 +203,7 @@ https-Adresse eintragen).
 | Weg | Was passiert |
 | --- | --- |
 | QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Ein Code kann von jedem stammen: Ohne Abtippen gilt er nur, wenn er auf eine System-Wurzel zeigt (deren Kette ohnehin öffentlich gültig sein muss) oder dem schon bestätigten Pin entspricht. Sonst verlangt der Dialog die letzten 24 Zeichen aus der Webapp (Einstellungen → Server-Zertifikat), beim ersten Einrichten wie bei einem abweichenden Pin. |
-| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich); wer will, tippt ihn stattdessen ab („Fingerabdruck stattdessen abtippen“), dann gilt nur eine passende Abschrift. |
+| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich); wer will, tippt ihn stattdessen ab („Fingerabdruck stattdessen abtippen“), dann gilt nur eine passende Abschrift. Auf Android 11–15 prüft das System kein Certificate Transparency: Dort gilt der erste Kontakt nur mit abgeschriebenem Fingerabdruck (Zertifikatdetails des Browsers am Rechner, oberstes Zertifikat), ein Tipp genügt erst ab Android 16. |
 | Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
 | Neuer Serverschlüssel unter öffentlicher CA | Ist eine System-Wurzel gepinnt, merkt sich die App zusätzlich den Schlüssel des Blatts (zweiter Pin, `host:port#blatt`). Zeigt der Server später einen anderen, geht nichts hinaus; der Dialog „Der Server hat einen neuen Schlüssel“ nennt beide, übernommen wird nach bewusster Bestätigung (ohne Abtippen: die Kette hat das System samt CT geprüft) oder still über einen Code mit `fp` vom angemeldeten Bildschirm. Ältere Fassungen ohne zweiten Pin merken ihn beim nächsten Verbindungsaufbau. |
 

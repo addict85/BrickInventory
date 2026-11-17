@@ -158,8 +158,8 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     assert.equal(z.eigene, 0, 'keine Aktionen gegen das eigene Konto');
     assert.deepEqual(
       [z.andereDirekt, z.andereMehr],
-      [2, 2],
-      'Passwort und Rolle direkt, Deaktivieren und Löschen hinter „Weitere“',
+      [1, 2],
+      'Passwort direkt, Deaktivieren und Löschen hinter „Weitere“; die Rolle steht am Chip',
     );
   });
 

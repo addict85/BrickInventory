@@ -1,0 +1,18 @@
+Gegenprobe: Farbfeld wieder in bodySmall
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.FarbWahlFeldTest
+Rot: ohne Namen steht Unbekannte Farbe
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FarbWahlFeld.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FarbWahlFeld.kt
+index 470e638..24d1cce 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FarbWahlFeld.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/FarbWahlFeld.kt
+@@ -73,7 +73,7 @@ internal fun FarbWahlFeld(
+                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
+             singleLine = true,
+             // Wie die übrigen Werte der Detailseite, nicht kleiner.
+-            textStyle = MaterialTheme.typography.bodyMedium,
++            textStyle = MaterialTheme.typography.bodySmall,
+             shape = Formen.feld,
+         )
+         ExposedDropdownMenu(expanded = offen && farben.isNotEmpty(), onDismissRequest = { offen = false }) {

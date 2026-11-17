@@ -863,6 +863,17 @@
     .user-tbl td,.user-tbl th{vertical-align:middle}
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:var(--fs-0);font-weight:600}
     .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
+    /* Rolle als Chip: Das X erbt die Schriftfarbe des Chips, damit es in jedem Design so lesbar ist wie das
+       Wort; die negativen Ränder halten den Chip trotz 24-px-Tippfläche so flach wie seine Nachbarn. */
+    .rollen-zelle{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+    .rolle-chip{align-items:center;gap:4px;max-width:100%}
+    /* Bei 320 px und 200 % ist „Administrator“ breiter als die Karte: Dann bricht das Wort, statt zu ragen. */
+    .rolle-wort{min-width:0;overflow-wrap:anywhere;hyphens:auto}
+    .rolle-chip:has(> .chip-weg){padding-right:2px}
+    .chip-weg{background:none;border:none;cursor:pointer;color:inherit;padding:0;margin:-4px 0;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;border-radius:999px}
+    @media (hover:hover){.chip-weg:hover{background:color-mix(in srgb,currentColor 15%,transparent)}}
+    .chip-weg:focus-visible{outline-offset:0}
+    .chip-weg .ico{width:1rem;height:1rem}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
     /* clip statt hidden: Mit hidden zählt der untere Rand als Grundlinie, das Abzeichen sass neben „Neuware“ tiefer. */
@@ -1222,6 +1233,10 @@ input.suchfeld{width:220px}
 .trenner-oben-13{border-top:1px solid var(--bdr);padding-top:13px}
 .login-unterzeile{font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center}
 h1.login-unterzeile{font-size:inherit;margin-top:0}
+/* Vor- und Nachname nebeneinander, unter 360 px untereinander: Zwei Felder mit Mindestbreite passten bei 320 px nicht. */
+.reg-namen{display:flex;gap:10px}
+.reg-namen > .fg{flex:1 1 0;min-width:0}
+@media (max-width:359.98px){.reg-namen{flex-direction:column;gap:0}}
 .reg-mail-hinweis{margin:.25rem 0 0 24px;color:var(--a-schrift)}
 .login-fuss{text-align:center;margin-top:.85rem;font-size:var(--fs-2)}
 .login-fuss-hinweis{margin:0 0 .5rem}
@@ -1535,7 +1550,9 @@ p.mon-leise{margin:0 0 .35rem}
 :is(#gallery,#catalog-grid) .sc > .scb{flex:1 1 auto;display:flex;flex-direction:column}
 :is(#gallery,#catalog-grid) .sname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.6em}
 :is(#gallery,#catalog-grid) .smeta{flex-direction:column;align-items:flex-start;gap:4px}
-:is(#gallery,#catalog-grid) .smeta-text{display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Lange Themen („Star Wars / Ultimate Collector Series“) brechen um statt abgeschnitten zu werden: Den
+   title-Hinweis sieht weder Tastatur noch Telefon. Erst nach zwei Zeilen kürzt die Kachel. */
+:is(#gallery,#catalog-grid) .smeta-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;width:100%;overflow:hidden}
 .splaketten{display:flex;gap:4px 6px;align-items:center;flex-wrap:wrap;min-height:1.5rem;max-width:100%;min-width:0}
 .besitz-badge{display:inline-flex;align-items:center;gap:3px}
 .besitz-badge .ico{width:12px;height:12px}

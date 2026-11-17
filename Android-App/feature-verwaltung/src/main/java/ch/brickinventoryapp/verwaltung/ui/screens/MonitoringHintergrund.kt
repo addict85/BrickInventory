@@ -15,6 +15,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import ch.brickinventoryapp.ui.components.Rueckfrage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -78,7 +85,11 @@ internal fun HintergrundSection(
     }
 }
 
-/** Die Aufträge einer Art unter ihrem Kopf mit „Jetzt“ und „Leeren“. */
+/**
+ * Die Aufträge einer Art unter ihrem Kopf mit „Jetzt“ und „Leeren“. Leeren fragt nach:
+ * Entfernte Aufträge kommen nicht wieder. TalkBack hört bei jedem Knopf die Auftragsart,
+ * sonst stünden fünfmal „Leeren“ untereinander.
+ */
 @Composable
 private fun AuftragsGruppe(
     art: String,
@@ -90,22 +101,35 @@ private fun AuftragsGruppe(
 ) {
     HorizontalDivider()
     val name = auftragsArtText(art)?.let { stringResource(it) } ?: art
+    var leerenFragen by rememberSaveable(art) { mutableStateOf(false) }
+    if (leerenFragen) {
+        Rueckfrage(
+            titel = stringResource(R.string.hintergrund_leeren_titel),
+            text = stringResource(R.string.hintergrund_leeren_text, name),
+            bestaetigen = stringResource(R.string.hintergrund_leeren),
+            onBestaetigen = { leerenFragen = false; onLeeren(art) },
+            onAbbrechen = { leerenFragen = false },
+        )
+    }
+    val jetztName = stringResource(R.string.hintergrund_jetzt_cd, name)
+    val leerenName = stringResource(R.string.hintergrund_leeren_cd, name)
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Text(name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        TextButton(onClick = { onStarten(art, name) }) {
+        TextButton(onClick = { onStarten(art, name) }, modifier = Modifier.semantics { contentDescription = jetztName }) {
             Text(stringResource(R.string.hintergrund_jetzt))
         }
-        TextButton(onClick = { onLeeren(art) }) {
+        TextButton(onClick = { leerenFragen = true }, modifier = Modifier.semantics { contentDescription = leerenName }) {
             Text(stringResource(R.string.hintergrund_leeren))
         }
     }
-    for (a in gruppe) AuftragZeile(a,
+    for (a in gruppe) AuftragZeile(a, name,
         onAbbrechen = { onAbbrechen(a.id) },
         onWiederholen = { onWiederholen(a.id) })
 }
 
+/** Ein Auftrag; seine Knöpfe heissen „Auftrag abbrechen“, nicht „Abbrechen“ wie in jedem Dialog. */
 @Composable
-private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederholen: () -> Unit) {
+private fun AuftragZeile(a: AuftragAnsicht, artName: String, onAbbrechen: () -> Unit, onWiederholen: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             val kopf = listOfNotNull(
@@ -122,7 +146,15 @@ private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederhol
             }
             a.fehler?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
-        if (a.abbrechbar) TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
-        if (a.wiederholbar) TextButton(onClick = onWiederholen) { Text(stringResource(R.string.hintergrund_wiederholen)) }
+        val wer = listOfNotNull(artName, a.setNumber).joinToString(" ")
+        if (a.abbrechbar) AuftragKnopf(stringResource(R.string.hintergrund_abbrechen), wer, onAbbrechen)
+        if (a.wiederholbar) AuftragKnopf(stringResource(R.string.hintergrund_auftrag_wiederholen), wer, onWiederholen)
     }
+}
+
+/** Ein Knopf an einem Auftrag; vorgelesen mit Art und Set („Auftrag abbrechen: Bilder eines Sets 75192-1“). */
+@Composable
+private fun AuftragKnopf(aktion: String, wer: String, onClick: () -> Unit) {
+    val name = stringResource(R.string.aktion_fuer, aktion, wer)
+    TextButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = name }) { Text(aktion) }
 }

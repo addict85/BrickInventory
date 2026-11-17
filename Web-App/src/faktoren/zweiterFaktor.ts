@@ -95,8 +95,8 @@ function normiereCode(code: string): string {
 /** HMAC mit eigenem Teilschlüssel und an das Konto gebunden: Ein Abzug der
  * Tabelle allein lässt sich nicht durchprobieren. */
 const hashCode = (uid: number, code: string) => suchwert('zweiter-faktor-code', `${uid}:${normiereCode(code)}`);
-/** Codes vor dem 01.11.2026: 10 Zeichen (50 Bit), ungesalzenes SHA-256. Sie gelten
- * weiter, bis sie verbraucht oder ersetzt sind: Ein Zwang zum Neuerzeugen sperrte aus, wer sie nur auf Papier hat. */
+/** Codes vor dem 01.11.2026: 10 Zeichen (50 Bit), ungesalzenes SHA-256. Sie gelten noch 90 Tage
+ * ab dem Update (0122), nicht sofort nicht mehr: Wer sie nur auf Papier hat, soll Zeit zum Ersetzen haben. */
 const ALT_LAENGE = 10;
 const alterHash = (code: string) => crypto.createHash('sha256').update(normiereCode(code)).digest('hex');
 
@@ -121,9 +121,13 @@ export function istAktiv(k: FaktorenKontext, uid: number): Promise<boolean> {
   return k.zweiterFaktor.aktiv(uid);
 }
 
-export async function stand(k: FaktorenKontext, uid: number): Promise<{ aktiv: boolean; codes_uebrig: number }> {
+/** `alte_codes_bis`: Offene Codes könnten alter Art sein und gelten dann nur bis dahin. */
+export async function stand(
+  k: FaktorenKontext,
+  uid: number,
+): Promise<{ aktiv: boolean; codes_uebrig: number; alte_codes_bis: string | null }> {
   const r = await k.zweiterFaktor.faktorStand(uid);
-  return { aktiv: r.aktiv, codes_uebrig: r.uebrig };
+  return { aktiv: r.aktiv, codes_uebrig: r.uebrig, alte_codes_bis: r.altBis ? r.altBis.toISOString() : null };
 }
 
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
@@ -154,7 +158,7 @@ export async function pruefeCode(
   uid: number,
   code: string | number | null | undefined,
   mitEinmalcode = true,
-): Promise<'totp' | 'wiederherstellung' | null> {
+): Promise<'totp' | 'wiederherstellung' | 'wiederherstellung_alt' | null> {
   const eingabe = String(code ?? '').trim();
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
@@ -166,12 +170,17 @@ export async function pruefeCode(
     if (schritt === null) return null;
     return (await k.zweiterFaktor.verbraucheSchritt(uid, schritt)) ? 'totp' : null;
   }
-  if (await k.zweiterFaktor.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
   // Codes aus der Zeit vor einem Schlüsselwechsel: Ihr Klartext ist nicht gespeichert, neu hashen geht nicht.
   const vorWechsel = suchwertAlt('zweiter-faktor-code', `${uid}:${normiereCode(eingabe)}`);
-  if (vorWechsel && (await k.zweiterFaktor.verbraucheCode(uid, vorWechsel))) return 'wiederherstellung';
+  if (
+    (await k.zweiterFaktor.verbraucheCode(uid, hashCode(uid, eingabe))) ||
+    (vorWechsel && (await k.zweiterFaktor.verbraucheCode(uid, vorWechsel)))
+  ) {
+    await k.zweiterFaktor.codesSindNeu(uid);
+    return 'wiederherstellung';
+  }
   if (normiereCode(eingabe).length !== ALT_LAENGE) return null;
-  return (await k.zweiterFaktor.verbraucheCode(uid, alterHash(eingabe))) ? 'wiederherstellung' : null;
+  return (await k.zweiterFaktor.verbraucheCode(uid, alterHash(eingabe), true)) ? 'wiederherstellung_alt' : null;
 }
 
 export function schalteAb(k: FaktorenKontext, uid: number): Promise<void> {

@@ -6,8 +6,8 @@
  *   - Kennzahlen: „1.565 verschiedene“ mit Trennzeichen; en zeigt 10828 als
  *     ganze Zahl, nicht „10.8K“ (N3, N4).
  *   - Der Seitentitel hat keine weichen Trennstriche (N5).
- *   - Ein Verwalter namens „admin“ heisst in der Kopfleiste nicht „admin
- *     (Admin)“ (N6).
+ *   - Ein Administrator namens „admin“ heisst in der Kopfleiste nicht „admin
+ *     (Administrator)“ (N6).
  *   - Protokollzeiten stehen als 05.11.2026 (N9).
  *   - Leere Zugangsdaten speichern meldet „Zugang entfernt“ (N10).
  *   - Die Wiederherstellungscodes: „Ich habe die Codes gesichert“ und „Als
@@ -24,7 +24,7 @@
  *   B  in zeigeSeitenname das replace(/­/) entfernt → rot: „Titel ohne
  *      weiche Trennstriche“
  *   C  in zeigeBenutzernamen die Namensprüfung entfernt → rot: „admin ohne
- *      (Admin)“
+ *      (Administrator)“; nur `name === 'admin' ||` entfernt (16.11.2026) → rot: ebenda (en)
  *   D  im Protokoll wieder toLocaleString → rot: „Protokoll mit fmtDatum“
  *   E  speichereZugang meldet immer okText → rot: „leere Zugangsdaten“
  *   F  in setUnbekannt der zweite Knopf wieder da → rot: „ein Knopf Set
@@ -97,16 +97,22 @@ test('Titel ohne weiche Trennstriche', async () => {
   }
 });
 
-test('admin ohne (Admin)', async () => {
-  const o = await oeffneOberflaeche(
-    { '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'admin', is_admin: true } } },
-    { sprache: 'en', browserSprache: 'en-US' },
-  );
-  try {
-    assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
-    assert.equal(o.d.getElementById('ubadge').textContent, 'admin');
-  } finally {
-    o.w.close();
+test('admin ohne (Administrator)', async () => {
+  for (const [username, sprache] of [
+    ['admin', 'en'],
+    ['admin', 'de'],
+    ['Administrator', 'de'],
+  ]) {
+    const o = await oeffneOberflaeche(
+      { '/v1/auth/me': { loggedIn: true, user: { id: 1, username, is_admin: true } } },
+      sprache === 'en' ? { sprache: 'en', browserSprache: 'en-US' } : {},
+    );
+    try {
+      assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
+      assert.equal(o.d.getElementById('ubadge').textContent, username, sprache);
+    } finally {
+      o.w.close();
+    }
   }
 });
 

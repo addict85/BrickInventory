@@ -124,7 +124,7 @@ private fun PreisKarteInhalt(
             PreisLaedtZeile()
         } else if (detailState.verlaufAbruf is Laden.Fehler) {
             Spacer(Modifier.height(Abstaende.klein))
-            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut)
+            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut, detailState.verlaufAbruf.art)
         }
     }
 }
@@ -242,8 +242,9 @@ internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisA
         val kaufpreis = set.anzeigeKaufpreis
         val differenz = if (marktpreis != null && kaufpreis != null) marktpreis - kaufpreis else null
         WertKacheln(
-            markt = fmtPrice(marktpreis),
-            kauf = fmtPrice(kaufpreis),
+            // Dieselben Wörter wie Finanzen und Merkliste statt eines Strichs, der wie ein Wert aussah.
+            markt = marktpreis?.let(fmtPrice) ?: stringResource(R.string.detail_price_none_yet),
+            kauf = kaufpreis?.let(fmtPrice) ?: stringResource(R.string.detail_purchase_none),
             pnl = pnlPct,
             pnlBetrag = differenz?.let { (if (it.positiv) "+" else "") + fmtPrice(it) },
             modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),

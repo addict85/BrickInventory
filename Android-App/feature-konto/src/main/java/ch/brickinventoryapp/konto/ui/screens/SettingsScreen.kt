@@ -47,7 +47,7 @@ import ch.brickinventoryapp.ui.components.AuswahlFeld
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.update.util.quelleVeraltet
-import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.versionsName
 import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.Lesebreite
@@ -257,7 +257,7 @@ fun SettingsScreen(
                 gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
             )
 
-            // ── Standard-Zustand beim Erfassen ──
+            // ── Mein Zustand beim Hinzufügen ──
             //
             // Drei Möglichkeiten, damit es einen Weg zurück zur Vorgabe des Servers gibt; der
             // Hinweis nennt, worauf sie steht.
@@ -379,7 +379,7 @@ private fun UpdateCard(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     SettingsCard(title = stringResource(R.string.update_title), icon = Icons.Default.SystemUpdate) {
         Text(
-            stringResource(R.string.update_installed, LocalAppFassung.current.name),
+            stringResource(R.string.update_installed, versionsName()),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -397,7 +397,7 @@ private fun UpdateCard(
             // ueber etwas, das niemand nachgesehen hat. Eine veraltete Quelle
             // ist nie „aktuell“ (Hinweis darunter).
             updateZustand.geprueft && !quelleVeraltet(updateZustand.frische) -> Text(
-                stringResource(R.string.update_current, LocalAppFassung.current.name),
+                stringResource(R.string.update_current, versionsName()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

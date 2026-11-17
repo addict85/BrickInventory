@@ -1,0 +1,19 @@
+Gegenprobe: „Als Datei speichern“ der Notfallcodes wieder in der Material-Vorgabe
+Modul: app
+Test: ch.brickinventoryapp.app.DesignTokensTest
+Rot: Knoepfe tragen alle dieselbe Form, Nebenknoepfe dieselben Farben
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+index 2b5a715..8a7ab71 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+@@ -121,8 +121,7 @@ fun ZweiterFaktorPflichtMaske(
+                         Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
+                             modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
+                         val sichern = rememberCodesSichern(zustand.codes) { gesichert = true }
+-                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth(),
+-                            colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
++                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth()) {
+                             Text(stringResource(R.string.zf_codes_speichern))
+                         }
+                         OutlinedButton(

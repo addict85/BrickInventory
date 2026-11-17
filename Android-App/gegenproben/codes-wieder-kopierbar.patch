@@ -4,15 +4,17 @@ Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
 Rot: kein Knopf der Codes legt sie in die Zwischenablage
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+index 2b5a715..2275732 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -119,6 +119,9 @@
+@@ -121,6 +121,10 @@ fun ZweiterFaktorPflichtMaske(
                          Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                              modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
                          val sichern = rememberCodesSichern(zustand.codes) { gesichert = true }
-+                        OutlinedButton(onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, zustand.codes.joinToString("\n")) }) {
++                        OutlinedButton(onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, zustand.codes.joinToString("\n")) },
++                            colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
 +                            Text(stringResource(R.string.zf_copy_key))
 +                        }
-                         OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth()) {
+                         OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth(),
+                             colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                              Text(stringResource(R.string.zf_codes_speichern))
-                         }

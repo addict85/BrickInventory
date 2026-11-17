@@ -136,18 +136,22 @@ class ZertifikatUngeklaert(
     val ablageSchluessel: String get() = if (art == Art.SCHLUESSEL_NEU) blattPinSchluessel(schluessel) else schluessel
 
     /**
-     * Gilt ein Ja nur mit einer Abschrift aus zweiter Quelle? Ein neuer Serverschlüssel
-     * ohne CT-Pflicht ja: Dann genügte eine fehlausgestellte Kette derselben CA und ein Tipp.
-     * Beim Erstkontakt ist sie freiwillig, eine Abweichung vom Code ist gar nicht zu bestätigen.
+     * Gilt ein Ja nur mit einer Abschrift aus zweiter Quelle? Ohne CT-Pflicht (Android 11–15)
+     * beim Erstkontakt und beim neuen Serverschlüssel ja: Sonst genügte eine fehlausgestellte
+     * Kette irgendeiner öffentlichen CA und ein Tipp. Eine Abweichung vom Code ist gar nicht
+     * zu bestätigen.
      */
     val abschriftNoetig: Boolean get() = when (art) {
-        Art.ERSTKONTAKT, Art.CODE_ABWEICHUNG -> false
-        Art.SCHLUESSEL_NEU -> !ctErzwungen
+        Art.CODE_ABWEICHUNG -> false
+        Art.ERSTKONTAKT, Art.SCHLUESSEL_NEU -> !ctErzwungen
         Art.UNBEKANNTE_CA, Art.NUTZER_CA, Art.GEAENDERT -> true
     }
 
     enum class Art {
-        /** Erster Kontakt, die Kette ist gültig: Fingerabdruck zeigen und bestätigen lassen. */
+        /**
+         * Erster Kontakt, die Kette ist öffentlich gültig: Fingerabdruck zeigen und bestätigen
+         * lassen, ohne CT-Pflicht erst abgetippt ([abschriftNoetig]).
+         */
         ERSTKONTAKT,
         /** Keine bekannte Stelle hat das Zertifikat ausgestellt (selbst ausgestellt, interne CA). */
         UNBEKANNTE_CA,
@@ -202,8 +206,8 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
      * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Wo
      * [ZertifikatUngeklaert.abschriftNoetig] gilt, nur mit [eingabe] aus einer zweiten
      * Quelle ([Abschrift.bestaetigt]): Ein Tipp allein wäre genau das, was ein Angreifer
-     * dazwischen braucht. Beim Erstkontakt ist das Abtippen freiwillig; wer es tut, muss
-     * richtig tippen.
+     * dazwischen braucht. Beim Erstkontakt mit CT-Pflicht ist das Abtippen freiwillig; wer
+     * es tut, muss richtig tippen.
      */
     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
@@ -256,7 +260,8 @@ class PinVertrauen(
         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         // Ohne Pin wird nie still vertraut; was die Rückfrage ist, sagt die Lage der Kette.
         val pin = pins.pin(schluessel) ?: throw lage(chain, mit).let {
-            gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin, blatt = spkiFingerabdruck(chain[0])))
+            gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin, blatt = spkiFingerabdruck(chain[0]),
+                ctErzwungen = ctErzwungen))
         }
         val ausCode = pins.ausCode(schluessel)
         // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate

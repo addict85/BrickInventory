@@ -127,6 +127,14 @@ const ALLES_LOESCHEN =
 
 const NUR_WEB = new Map([
   [
+    '/api/v1/auth/uebernahme-abbrechen',
+    'Der Link steht in einer Mail und öffnet die Webseite; die App hat dafür keinen eigenen Weg nötig.',
+  ],
+  [
+    '/api/v1/auth/anmeldung-freigeben',
+    'Der Link steht in einer Mail und öffnet die Webseite; die freigegebene Adresse gilt danach auch für die App.',
+  ],
+  [
     '/api/v1/einrichtung/stand',
     'Die Prüfung erklärt die Installation des Wurzelzertifikats im Browser. Die App ' +
       'richtet sich über den QR-Code ein und bekommt den Fingerabdruck dort (`fp`).',

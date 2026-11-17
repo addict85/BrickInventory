@@ -50,7 +50,7 @@ fun Ladezustand(
     modifier: Modifier = Modifier,
     keineTreffer: @Composable ColumnScope.() -> Unit = { KeinTrefferHinweis() },
     laedt: @Composable () -> Unit = { LadeKreis() },
-    fehlerKlasse: Fehlerklasse? = null,
+    fehlerKlasse: Fehlerklasse?,
     inhalt: @Composable () -> Unit,
 ) {
     when (anzeige) {
@@ -100,9 +100,10 @@ fun HinweisText(symbol: ImageVector, titel: String, text: String? = null) {
  * damit ihn jede Fläche einbetten kann, auch eine Karte in den Einstellungen.
  * Mit [klasse] stehen Symbol, Überschrift und Rat dieser Klasse da; der Satz der
  * Datenschicht nur dort, wo er mehr sagt als die Überschrift (Code, Servertext).
+ * [klasse] ohne Vorgabe: Wer sie wegliess, zeigte einen Serverfehler ohne Rat.
  */
 @Composable
-fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? = null) {
+fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse?) {
     val (symbol, titel, rat) = when (klasse) {
         Fehlerklasse.OFFLINE -> Triple(Icons.Default.CloudOff, R.string.fehler_offline_titel, R.string.fehler_offline_text)
         Fehlerklasse.SERVER -> Triple(Icons.Default.Dns, R.string.fehler_server_titel, R.string.fehler_server_text)

@@ -85,6 +85,8 @@ fun SetCard(
     waehrung: Waehrung = Waehrung.EUR,
     /** Steht das Detail dieses Sets daneben? Dann trägt die Kachel einen Rahmen. */
     ausgewaehlt: Boolean = false,
+    /** Als Listenzeile statt als Kachel; das Raster entscheidet es nach Schrift und Spalten. */
+    zeile: Boolean = grosseSchrift(),
 ) {
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
     // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
@@ -106,10 +108,7 @@ fun SetCard(
     val ton = if (LocalIsFarbfaecherTheme.current)
         faecherTon(set.theme?.hashCode()) else null
 
-    // Ab grosser Schrift eine Listenzeile, Bild links und Text rechts, wie die Merkliste:
-    // Über die volle Breite nahm das Bild zwei Drittel der Höhe, und es stand ein Set je
-    // Bildschirm. Die Plaketten rücken dann vom Bild in den Text, das Bild ist zu klein.
-    val zeile = grosseSchrift()
+    // In der Listenzeile rücken die Plaketten vom Bild in den Text: Das Bild ist dort zu klein.
     val pct = preis?.pnlPct
     val betrag = kachelBetrag(set, preis)
     // Was die Plaketten auf dem Bild sagen, liest TalkBack am Ende der Kachel: zuerst der Name.
@@ -327,7 +326,7 @@ private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPre
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
             modifier = Modifier.align(Alignment.CenterVertically))
         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.CenterVertically))
         // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
@@ -411,12 +410,15 @@ internal const val BILD_SEITENVERHAELTNIS = 4f / 3f
 /** Plaketten auf dem Bild: Innenabstand des Bilds plus ein Rand, damit sie nicht auf seiner Ecke sitzen. */
 private val PLAKETTE_RAND = Abstaende.klein + Abstaende.winzig
 
-/** „Star Wars · 7’541 Teile“ — das Thema in der Hauptfarbe, die Teilezahl leiser. */
+/**
+ * „Star Wars · 7’541 Teile“ — das Thema halbfett statt blau: Blau heisst in der App
+ * „antippbar“, und das Thema auf der Kachel ist es nicht (Filter im Blatt).
+ */
 @Composable
 private fun themaUndTeile(thema: String?, teile: String?): androidx.compose.ui.text.AnnotatedString =
     androidx.compose.ui.text.buildAnnotatedString {
         if (!thema.isNullOrBlank()) {
-            pushStyle(androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.primary))
+            pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold))
             append(thema)
             pop()
         }

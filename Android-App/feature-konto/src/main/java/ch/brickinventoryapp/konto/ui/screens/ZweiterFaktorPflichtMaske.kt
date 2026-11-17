@@ -62,6 +62,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.geheimKopierbar
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.ErklaerText
@@ -121,7 +123,8 @@ fun ZweiterFaktorPflichtMaske(
                         Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                             modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
                         val sichern = rememberCodesSichern(zustand.codes) { gesichert = true }
-                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth(),
+                            colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                             Text(stringResource(R.string.zf_codes_speichern))
                         }
                         OutlinedButton(
@@ -154,7 +157,7 @@ fun ZweiterFaktorPflichtMaske(
                         }
                         Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodyLarge)
-                        if (schluesselKopierbar()) {
+                        if (geheimKopierbar(LocalSdkStufe.current)) {
                             OutlinedButton(
                                 onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },
                                 modifier = Modifier.fillMaxWidth(),

@@ -117,6 +117,46 @@ jobs:
           done
           echo "main: $ARTEN"
 
+      # „Nur ein Admin setzt ein Etikett, keines wird umgehängt“ gilt nur mit dem
+      # Tag-Ruleset (docs/ANDROID-RELEASE.md, Schritt 3). Gelesen werden die aktiven
+      # Tag-Rulesets, die dieses Etikett treffen.
+      - name: Etiketten sind geschützt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIKETT: ${{ steps.etikett.outputs.etikett }}
+        run: |
+          set -euo pipefail
+          if ! LISTE=$(gh api "repos/$GITHUB_REPOSITORY/rulesets?targets=tag&includes_parents=true&per_page=100"); then
+            echo "::error::Die Tag-Rulesets liessen sich nicht lesen. Nichts wird signiert."
+            exit 1
+          fi
+          ARTEN=","
+          for ID in $(printf '%s' "$LISTE" | jq -r '.[] | select(.target == "tag" and .enforcement == "active") | .id'); do
+            if ! REGELN=$(gh api "repos/$GITHUB_REPOSITORY/rulesets/$ID?includes_parents=true"); then
+              echo "::error::Das Tag-Ruleset $ID liess sich nicht lesen. Nichts wird signiert."
+              exit 1
+            fi
+            TRIFFT=nein
+            while IFS= read -r MUSTER; do
+              [ -n "$MUSTER" ] || continue
+              # shellcheck disable=SC2053 # das Muster ist ein Glob
+              if [ "$MUSTER" = "~ALL" ] || [[ "refs/tags/$ETIKETT" == $MUSTER ]]; then TRIFFT=ja; fi
+            done < <(printf '%s' "$REGELN" | jq -r '.conditions.ref_name.include[]?')
+            while IFS= read -r MUSTER; do
+              [ -n "$MUSTER" ] || continue
+              # shellcheck disable=SC2053
+              if [[ "refs/tags/$ETIKETT" == $MUSTER ]]; then TRIFFT=nein; fi
+            done < <(printf '%s' "$REGELN" | jq -r '.conditions.ref_name.exclude[]?')
+            if [ "$TRIFFT" = ja ]; then ARTEN="$ARTEN$(printf '%s' "$REGELN" | jq -r '[.rules[].type] | join(",")'),"; fi
+          done
+          for regel in creation update deletion; do
+            case "$ARTEN" in
+              *",$regel,"*) ;;
+              *) echo "::error::Kein aktives Tag-Ruleset mit der Regel $regel trifft $ETIKETT (Settings → Rules → Rulesets, docs/ANDROID-RELEASE.md). Nichts wird signiert."; exit 1 ;;
+            esac
+          done
+          echo "$ETIKETT: ${ARTEN//,/ }"
+
       # Die Lückenprüfung der Laufzeit-Abhängigkeiten (sicherheit.yml, Job
       # android-abhaengigkeiten) muss für genau diesen Commit grün sein.
       - name: Abhängigkeiten ohne bekannte Lücke

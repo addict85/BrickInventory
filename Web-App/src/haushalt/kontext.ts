@@ -25,6 +25,8 @@ export const zugang = (db: Db, l: HaushaltLesevertrag) => ({
     istVerknuepft: mit(db)(repository.istVerknuepft),
     kontoNamen: mitVertrag(db, l)(repository.kontoNamen),
     kontoName: mitVertrag(db, l)(repository.kontoName),
+    // Vor dem Beitritt sieht der Eingeladene das einladende Konto nicht (0121).
+    einladenderName: mit(l)(imSystem(db, FREMDE_EINLADUNG, repository.kontoName)),
     raeumeEinladungenAuf: imSystem(db, 'Abgelaufene Einladungen aller Konten', repository.raeumeEinladungenAuf),
     legeEinladungAn: mit(db)(repository.legeEinladungAn),
     belegeEinladung: imSystem(db, FREMDE_EINLADUNG, repository.belegeEinladung),

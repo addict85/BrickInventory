@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.util
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
@@ -23,6 +24,13 @@ internal fun geheimerClip(etikett: String, text: String, kennung: String? = null
             if (kennung != null) putString(GEHEIM_KENNUNG, kennung)
         }
     }
+
+/**
+ * Erst ab Android 13 hält das System einen als geheim markierten Clip aus Kopier-Vorschau
+ * und Tastaturverlauf heraus. Darunter steht er dort im Klartext: Kopieren gibt es dann
+ * nur, wo es keinen anderen Weg gibt, und mit Warnung ([GeheimKopierWarnung]).
+ */
+fun geheimKopierbar(sdk: Int): Boolean = sdk >= Build.VERSION_CODES.TIRAMISU
 
 /** Derselbe Wert wie ClipDescription.EXTRA_IS_SENSITIVE. */
 internal const val IST_GEHEIM = "android.content.extra.IS_SENSITIVE"

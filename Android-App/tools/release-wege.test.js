@@ -400,3 +400,69 @@ test('der Signierweg vergleicht den versionCode mit der Latest-Release, übergan
   assert.notEqual(ort(null, 7), 0, 'Übergang: ohne Beschreibung in Latest gilt apk-neuste');
   assert.equal(ort(null, 5), 0, 'Übergang: eine neuere Fassung als apk-neuste geht durch');
 });
+
+// Ein Etikett setzt nur ein Admin, und keines wird umgehängt oder gelöscht: Das sichert das
+// Tag-Ruleset, und der Release-Lauf liest es wie die Regeln von main über die API.
+// Gegenproben (16.11.2026 gemessen, je einzeln): `deletion` aus der Schleife der Pflichtregeln
+// gestrichen → rot „ohne Löschschutz …“; der Filter `.enforcement == "active"` gestrichen → rot
+// „ein nur beobachtendes Ruleset …“; `TRIFFT=ja` ohne Mustervergleich → rot „ein Ruleset für
+// andere Etiketten …“; die Schleife über `exclude` gestrichen → rot „ein ausgenommenes Etikett …“.
+test('signiert wird nur, wenn ein aktives Tag-Ruleset das Etikett schützt', t => {
+  const skript = runVon(lies('android-release.yml'), 'Etiketten sind geschützt');
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'regeln-'));
+  t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(ort, 'gh'),
+    `#!/bin/bash
+D="$GH_ERSATZ"
+case "$2" in
+  "repos/o/r/rulesets?targets=tag&includes_parents=true&per_page=100") cat "$D/liste.json" ;;
+  "repos/o/r/rulesets/"*"?includes_parents=true") I=\${2#repos/o/r/rulesets/}; cat "$D/r\${I%%\\?*}.json" ;;
+  *) echo "unbekannt: $*" >&2; exit 9 ;;
+esac
+`,
+    { mode: 0o755 },
+  );
+  const ruleset = (id, include, regeln, { aktiv = true, exclude = [] } = {}) => ({
+    id,
+    target: 'tag',
+    enforcement: aktiv ? 'active' : 'evaluate',
+    conditions: { ref_name: { include, exclude } },
+    rules: regeln.map(type => ({ type })),
+  });
+  const alle = ['creation', 'update', 'deletion'];
+  const lauf = (sets, etikett = 'android-v2026.11.16') => {
+    for (const f of fs.readdirSync(ort)) if (f.endsWith('.json')) fs.rmSync(path.join(ort, f));
+    if (sets) {
+      const kurz = sets.map(({ id, target, enforcement }) => ({ id, target, enforcement }));
+      const liste = [{ id: 99, target: 'branch', enforcement: 'active' }, ...kurz];
+      fs.writeFileSync(path.join(ort, 'liste.json'), JSON.stringify(liste));
+      for (const s of sets) fs.writeFileSync(path.join(ort, `r${s.id}.json`), JSON.stringify(s));
+    }
+    return spawnSync('bash', ['-c', skript], {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${ort}:${process.env.PATH}`, GH_ERSATZ: ort, GITHUB_REPOSITORY: 'o/r', ETIKETT: etikett },
+    });
+  };
+  const gut = lauf([ruleset(1, ['refs/tags/android-v*', 'refs/tags/apk-neuste'], alle)]);
+  assert.equal(gut.status, 0, gut.stdout + gut.stderr);
+  const geteilt = lauf([ruleset(1, ['refs/tags/android-v*'], ['creation', 'update']), ruleset(2, ['~ALL'], ['deletion'])]);
+  assert.equal(geteilt.status, 0, 'zwei Rulesets zusammen ' + geteilt.stdout + geteilt.stderr);
+
+  assert.notEqual(lauf(null).status, 0, 'unlesbare Rulesets gelten als fehlend');
+  assert.notEqual(lauf([]).status, 0, 'ohne Tag-Ruleset wird signiert');
+  const ohneLoeschen = lauf([ruleset(1, ['refs/tags/android-v*'], ['creation', 'update'])]);
+  assert.notEqual(ohneLoeschen.status, 0, 'ohne Löschschutz wird signiert');
+  assert.match(ohneLoeschen.stdout, /Regel deletion/);
+  assert.notEqual(
+    lauf([ruleset(1, ['refs/tags/android-v*'], alle, { aktiv: false })]).status,
+    0,
+    'ein nur beobachtendes Ruleset schützt nicht',
+  );
+  assert.notEqual(lauf([ruleset(1, ['refs/tags/apk-neuste'], alle)]).status, 0, 'ein Ruleset für andere Etiketten zählt');
+  assert.notEqual(
+    lauf([ruleset(1, ['~ALL'], alle, { exclude: ['refs/tags/android-v*'] })]).status,
+    0,
+    'ein ausgenommenes Etikett gilt als geschützt',
+  );
+});

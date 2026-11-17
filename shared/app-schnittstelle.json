@@ -1856,9 +1856,11 @@
     "alert",
     "alerts",
     "alt_gueltig_bis",
+    "alte_codes_bis",
     "alter_sekunden",
     "amount",
     "anfrage",
+    "angekuendigt",
     "angelegt",
     "angewandt",
     "angezeigt",
@@ -3766,7 +3768,8 @@
     "KontoAktiv": {
       "felder": [
         "success",
-        "is_active"
+        "is_active",
+        "wirksam_ab"
       ],
       "pflicht": []
     },
@@ -3778,7 +3781,15 @@
         "is_active",
         "created_at",
         "zweiter_faktor",
-        "wartet_auf_bestaetigung"
+        "wartet_auf_bestaetigung",
+        "angekuendigt"
+      ],
+      "pflicht": []
+    },
+    "KontoInListeAngekuendigtEintrag": {
+      "felder": [
+        "art",
+        "wirksam_ab"
       ],
       "pflicht": []
     },
@@ -5663,6 +5674,7 @@
         "success",
         "aktiv",
         "codes_uebrig",
+        "alte_codes_bis",
         "error"
       ],
       "pflicht": [

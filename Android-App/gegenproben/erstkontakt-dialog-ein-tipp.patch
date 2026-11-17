@@ -1,0 +1,17 @@
+Gegenprobe: Der Zertifikatsdialog lässt den Erstkontakt ohne CT-Pflicht mit einem Tipp zu
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: ohne CT-Pflicht wird beim Erstkontakt abgetippt
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -66,7 +66,7 @@
+     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+     val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
+     val oeffentlich = erstkontakt || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+-    val abschreiben = frage.abschriftNoetig || erstkontakt && abtippenGewaehlt
++    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig
+     val fenster = stringResource(titel)
+     AlertDialog(
+         containerColor = fensterFlaeche(),

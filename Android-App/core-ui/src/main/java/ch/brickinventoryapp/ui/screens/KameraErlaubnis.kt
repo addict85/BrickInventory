@@ -31,6 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.text.style.TextAlign
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -104,21 +106,30 @@ private fun oeffneAppEinstellungen(kontext: Context) {
 
 /**
  * „Die Kamera wird gebraucht“ — der Rückfall, wenn die Erlaubnis fehlt; gemeinsam
- * für Barcodescanner und SetupScreen. Getrennt von KameraAufbau.kt, weil dort
- * bewusst kein Compose-Import steht: Die Bindung an CameraX soll ohne Oberfläche
- * prüfbar bleiben. Weisse Schrift, weil beide Ansichten den Hinweis vor einem
- * schwarzen Kamerabild zeigen.
+ * für Barcodescanner und SetupScreen. Weisse Schrift vor dem schwarzen Kamerabild.
+ * Er sagt, wozu die Kamera dient, und bietet den Weg ohne sie: Wer nicht erlauben
+ * will, soll nicht in einer Sackgasse stehen.
  *
+ * @param zweck wozu die Kamera dient (Barcode, QR-Code)
+ * @param eintippen Beschriftung des Wegs ohne Kamera, [onEintippen] geht ihn
  * @param verweigert [KameraErlaubnis.dauerhaftVerweigert]: Dann sagt der Hinweis, wo man
  *        erlaubt, sonst wirkte „Erlauben“ wie ein toter Knopf.
  * @param onErlauben [KameraErlaubnis.erlauben]
  */
 @Composable
-fun KameraErlaubnisHinweis(verweigert: Boolean = false, onErlauben: () -> Unit) {
+fun KameraErlaubnisHinweis(
+    zweck: String,
+    eintippen: String,
+    onEintippen: () -> Unit,
+    verweigert: Boolean = false,
+    onErlauben: () -> Unit,
+) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(Modifier.padding(Abstaende.gross), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(stringResource(R.string.scanner_camera_needed),
                 color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(Abstaende.klein))
+            Text(zweck, color = Color.White, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             if (verweigert) {
                 Spacer(Modifier.height(Abstaende.klein))
                 Text(stringResource(R.string.scanner_camera_gesperrt), Modifier.ansagen(),
@@ -127,6 +138,9 @@ fun KameraErlaubnisHinweis(verweigert: Boolean = false, onErlauben: () -> Unit) 
             Spacer(Modifier.height(Abstaende.mittel))
             Button(onClick = onErlauben) {
                 Text(stringResource(if (verweigert) R.string.scanner_camera_einstellungen else R.string.scanner_allow))
+            }
+            TextButton(onClick = onEintippen, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+                Text(eintippen)
             }
         }
     }

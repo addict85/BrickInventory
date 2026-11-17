@@ -22,6 +22,22 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.katalog.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.util.fmtInt
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Die Jahres-Leiste am rechten Rand, wie in der Webapp. Position ist die Stelle in
@@ -45,11 +61,10 @@ internal fun YearScrubber(
     var dragging by remember { mutableStateOf(false) }
     var ziehAnteil by remember { mutableStateOf(0f) }
     var heightPx by rememberSaveable { mutableStateOf(1) }
-    val thumbHeightPx = with(LocalDensity.current) { 36.dp.roundToPx() }
+    var sprungmenue by rememberSaveable { mutableStateOf(false) }
+    val thumbHeightPx = with(LocalDensity.current) { GRIFF_HOEHE.roundToPx() }
 
     // Beim Ziehen zeigt der Griff, WOHIN es geht; sonst, WO die Liste steht.
-    // Der zweite Fall fehlte in der vorigen Fassung ganz — der Griff stand
-    // dauerhaft dort, wo zuletzt gezogen worden war.
     val anteil = if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)
     val thumbOffsetY = CatalogYearMath.daumenOffset(anteil, heightPx, thumbHeightPx)
     val etikett = CatalogYearMath.jahrFuer(anteil, total, verteilung, jahrGeladen)
@@ -60,6 +75,7 @@ internal fun YearScrubber(
         onScrollTo(CatalogYearMath.nummerAus(ziehAnteil, total))
     }
 
+    val sprungName = stringResource(R.string.catalog_jahr_springen)
     Row(modifier) {
         // Etikett-Spur — nur sichtbar beim Ziehen, faengt keine Beruehrungen.
         Box(Modifier.fillMaxHeight()) {
@@ -82,12 +98,21 @@ internal fun YearScrubber(
             }
         }
 
-        // Gesten-Leiste (28dp) mit Schiene + Griff
+        // 48 dp Spur wie jede Tippfläche; Ziehen ist nur einer der Wege. TalkBack und
+        // Tastatur öffnen ein Sprungmenü mit den Jahrgängen, weil eine Geste allein für sie
+        // unerreichbar war.
         Box(
             Modifier
-                .width(28.dp)
+                .width(SPUR_BREITE)
                 .fillMaxHeight()
                 .onSizeChanged { heightPx = it.height }
+                .semantics {
+                    contentDescription = sprungName
+                    role = Role.Button
+                    onClick { sprungmenue = true; true }
+                }
+                .focusable()
+                .onKeyEvent { e -> e.oeffnetMenue().also { if (it) sprungmenue = true } }
                 .pointerInput(total) {
                     detectVerticalDragGestures(
                         onDragStart = { offset -> dragging = true; rollen(offset.y) },
@@ -113,17 +138,16 @@ internal fun YearScrubber(
                     .fillMaxHeight()
             ) {}
 
-            // Griff — immer sichtbar, folgt der Liste
+            // Griff — deckend, damit er sich auf jeder Kachel abhebt; folgt der Liste.
             Surface(
-                color = if (dragging) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
-                shape = RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp),
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
                 shadowElevation = if (dragging) 3.dp else 1.dp,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset { IntOffset(0, thumbOffsetY) }
             ) {
-                Box(Modifier.width(18.dp).height(36.dp), Alignment.Center) {
+                Box(Modifier.width(GRIFF_BREITE).height(GRIFF_HOEHE), Alignment.Center) {
                     if (LocalIsBrickTheme.current) {
                         // Stein-Design: Griff als Noppe (heller Stud-Punkt)
                         Surface(
@@ -135,11 +159,50 @@ internal fun YearScrubber(
                         Icon(
                             Icons.Default.UnfoldMore, null,
                             tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
+            JahrSprungMenue(sprungmenue, verteilung, onSchliessen = { sprungmenue = false }) { nummer ->
+                sprungmenue = false
+                onScrollTo(nummer.coerceIn(0, (total - 1).coerceAtLeast(0)))
+            }
         }
     }
 }
+
+/** Die Jahrgänge der Verteilung zum Antippen; wählbar auch mit TalkBack und Tastatur. */
+@Composable
+private fun JahrSprungMenue(
+    offen: Boolean,
+    verteilung: List<JahrAnzahlAnsicht>,
+    onSchliessen: () -> Unit,
+    onSprung: (Int) -> Unit,
+) {
+    DropdownMenu(expanded = offen, onDismissRequest = onSchliessen) {
+        for (eintrag in verteilung) {
+            val jahr = eintrag.year ?: continue
+            val nummer = CatalogYearMath.nummerVonJahr(jahr, verteilung) ?: continue
+            DropdownMenuItem(
+                text = { Text("$jahr") },
+                trailingIcon = {
+                    Text(pluralStringResource(R.plurals.gallery_stat_sets, eintrag.n, fmtInt(eintrag.n)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                },
+                onClick = { onSprung(nummer) },
+            )
+        }
+    }
+}
+
+/** Eingabe, Leertaste oder die Mitte des Steuerkreuzes öffnen das Sprungmenü. */
+private fun KeyEvent.oeffnetMenue(): Boolean =
+    type == KeyEventType.KeyUp && (key == Key.Enter || key == Key.Spacebar || key == Key.DirectionCenter)
+
+/** Breite der Tippspur: die Mindestgrösse einer Tippfläche. */
+internal val SPUR_BREITE = 48.dp
+
+private val GRIFF_BREITE = 24.dp
+private val GRIFF_HOEHE = 48.dp

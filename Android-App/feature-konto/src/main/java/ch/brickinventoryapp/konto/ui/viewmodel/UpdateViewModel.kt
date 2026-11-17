@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -49,10 +50,11 @@ class UpdateViewModel @Inject constructor(
     private val updateStand: UpdateStandAblage,
     private val geraet: UpdateGeraet,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-) : ViewModel(), UpdateAktionen {
+) : ViewModel(), UpdateAktionen.MitZustand {
 
     private val _state = MutableStateFlow(UpdateUiState(startpruefung = updateStand.startpruefungAn()))
     val updateState = _state.asStateFlow()
+    override val zustand: StateFlow<UpdateUiState> get() = updateState
 
     /** Der laufende Download; [ladeAbbrechen] beendet ihn samt Teildatei. */
     private var ladeJob: Job? = null

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
+import ch.brickinventoryapp.konto.ui.UpdateUiState
+import kotlinx.coroutines.flow.StateFlow
+
 /** Was Update-Hinweis und Update-Karte auslösen. */
 interface UpdateAktionen {
     fun pruefeAufUpdate(still: Boolean = false)
@@ -10,4 +13,9 @@ interface UpdateAktionen {
     fun ladeUpdate()
     fun ladeAbbrechen()
     fun starteInstallation()
+
+    /** Aktionen samt Zustand, wie der Hinweis sie liest; so zeigt ihn ein Test ohne Download. */
+    interface MitZustand : UpdateAktionen {
+        val zustand: StateFlow<UpdateUiState>
+    }
 }

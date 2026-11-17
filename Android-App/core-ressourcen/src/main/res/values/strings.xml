@@ -17,16 +17,17 @@
         <string name="common_back">Back</string>
     <string name="acq_delete_title">Delete entry</string>
     <string name="acq_delete_text">Delete this purchase price entry? The total quantity will be adjusted accordingly.</string>
+    <string name="acq_geloescht">Purchase deleted</string>
     <string name="common_delete">Delete</string>
     <string name="common_edit">Edit</string>
     <string name="common_cancel">Cancel</string>
-    <string name="settings_default_condition">Default condition</string>
+    <string name="settings_default_condition">My condition when adding</string>
     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
-    <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background jobs.</string>
-    <string name="settings_default_condition_global">Global default</string>
+    <string name="settings_default_condition_hint">A newly added set starts with this. “General” uses the default for all accounts.</string>
+    <string name="settings_default_condition_global">General</string>
     <string name="condition_new">New</string>
     <string name="condition_used">Used</string>
-    <string name="monitoring_default_condition">Default condition</string>
+    <string name="monitoring_default_condition">Condition when adding, for all accounts</string>
     <string name="settings_price_basis">Price basis for BrickLink valuations</string>
     <string name="settings_condition_new">New</string>
     <string name="settings_condition_used">Used</string>
@@ -112,6 +113,10 @@
     <string name="scanner_allow">Allow</string>
     <string name="scanner_camera_gesperrt">The camera is blocked for this app, so Android no longer asks. Allow it in the app settings under Permissions.</string>
     <string name="scanner_camera_einstellungen">Allow in settings</string>
+    <string name="scanner_camera_zweck_barcode">The camera reads the barcode on the box to find the set.</string>
+    <string name="scanner_camera_zweck_qr">The camera reads the QR code with the address of your server.</string>
+    <string name="scanner_nummer_eintippen">Type the number</string>
+    <string name="scanner_adresse_eintippen">Type the address</string>
     <string name="scanner_close">Close</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
@@ -256,6 +261,7 @@
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Reset</string>
+    <string name="filter_entfernen">Remove filter: %1$s</string>
     <string name="sort_menu_cd">Sort: %1$s</string>
     <string name="filter_section_sort">Sort</string>
     <string name="filter_section_spare">Spare parts</string>
@@ -285,6 +291,10 @@
         <item quantity="other">×%1$d  ·  %2$d types</item>
     </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
+    <string name="partslist_legende">Green: enough in your collection. Red: parts are still missing.</string>
+    <string name="partslist_benoetigt">Needed: %1$s</string>
+    <string name="partslist_vorhanden">Owned: %1$s</string>
+    <string name="partslist_vorhanden_von">Owned: %1$s of %2$s</string>
     <!-- ══════════════ Finance screen ══════════════ -->
     <string name="finance_loading">Prices are loading…</string>
     <string name="finance_no_data">No price data</string>
@@ -347,14 +357,14 @@
     <string name="parts_part_number_placeholder">e.g. 3001</string>
     <string name="parts_no_color">No color</string>
     <string name="parts_color_label">Color (optional)</string>
-    <string name="parts_color_unknown">Color %1$d</string>
+    <string name="parts_color_unknown">Unknown color</string>
     <string name="parts_add_button">Add</string>
     <string name="parts_ordnung_farbe">By colour</string>
     <string name="parts_ordnung_name">By name</string>
     <string name="parts_ordnung_menge">By quantity</string>
+    <string name="minifigs_ordnung_nummer">By number</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Background jobs</string>
     <string name="monitoring_refresh">Refresh</string>
     <string name="monitoring_retry_error">Error on retry</string>
     <string name="monitoring_delete_error">Error deleting</string>
@@ -381,6 +391,8 @@
     <string name="monitoring_limits_save">Save limits</string>
     <string name="monitoring_retry_queued">%1$s will be retried</string>
     <string name="monitoring_entry_removed">%1$s removed</string>
+    <string name="monitoring_queue_loeschen_titel">Delete entry?</string>
+    <string name="monitoring_queue_loeschen_text">Brickset will no longer be asked about %1$s.</string>
     <string name="monitoring_start_error">Error starting</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
@@ -416,7 +428,7 @@
     <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
     <string name="nav_partslist">Build list</string>
     <string name="nav_finance">Finance</string>
-    <string name="nav_comparison">Comparison</string>
+    <string name="nav_comparison">Price comparison</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_more">More</string>
     <string name="nav_group_prices">Prices and vouchers</string>
@@ -558,6 +570,7 @@
         <item quantity="one">%1$d set in catalog</item>
         <item quantity="other">%1$d sets in catalog</item>
     </plurals>
+    <string name="catalog_jahr_springen">Jump to year</string>
     <string name="catalog_no_results">No sets found</string>
     <string name="catalog_owned">Owned</string>
     <string name="catalog_add_to_gallery">Add to collection</string>
@@ -842,6 +855,7 @@
     <string name="update_dialog_later">Later</string>
     <string name="update_available">Version %1$s is available</string>
     <string name="update_installed">Installed: %1$s</string>
+    <string name="update_version_unbekannt">unknown</string>
     <string name="update_download">Download</string>
     <string name="update_downloading">Downloading… %1$d%%</string>
     <string name="update_install">Install</string>
@@ -896,7 +910,9 @@
 
     <!-- Vouchers (LEGO gift cards in your own profile) -->
     <string name="vouchers_title">Vouchers</string>
+    <string name="geheim_kopieren_warnung">On this Android version, the keyboard and the copy preview see what you copy, including number and PIN. The app clears the clipboard again after one minute.</string>
     <string name="vouchers_empty">No vouchers stored yet.</string>
+    <string name="vouchers_empty_hint">Store LEGO gift cards with number and PIN. The app asks LEGO for the balance, and the total then appears here.</string>
     <string name="vouchers_total">Total</string>
     <string name="vouchers_add">Add voucher</string>
     <string name="vouchers_edit">Edit voucher</string>
@@ -1011,6 +1027,8 @@
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. The easiest way to set it up is the QR code from the web app (Settings). If no QR code is possible: the fingerprint is an ID that belongs to this server. Compare it character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
+    <string name="zert_text_erstkontakt_abtippen">This is the first encrypted connection to %1$s. This Android version does not check whether the certificate is publicly logged (Certificate Transparency, only from Android 16). A wrongly issued certificate would therefore look exactly the same. That is why the connection only counts once you copy the fingerprint:\n1. Open the web app in the browser on your computer.\n2. Open the certificate details (padlock next to the address) and select the topmost certificate of the chain.\n3. Type the last 12 pairs of “Public key, SHA-256” into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nOnly the beginning of the fingerprint is shown here.</string>
+    <string name="zert_erstkontakt_eingabe">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from your browser\'s certificate details on the computer (topmost certificate, fingerprints → public key, SHA-256)</string>
     <string name="zert_text_unbekannt">The app cannot check who %1$s is: the server issued its certificate itself, or your own authority did. That is normal for a server at home, but it could also be someone in between.\n\nThe easiest way is to scan the QR code from the web app (Settings). If no QR code is possible, do this:\n1. Open the web app on a computer.\n2. Go to Settings → Server certificate.\n3. Copy the last 12 pairs of the fingerprint into the field below, e.g. 3F:A2:…; the app adds the colons itself.\n\nThe fingerprint is an ID that belongs to this server. If it matches, it is your server. This screen only shows its beginning.</string>
     <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the web app shows the new fingerprint (Settings → Server certificate); for a public certificate authority, so does your browser (certificate details, public key SHA-256 of the top authority). Copy its last 12 pairs, e.g. 3F:A2:…</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
@@ -1077,6 +1095,10 @@
     <string name="widget_heute">Today</string>
     <string name="widget_gesamt">Overall</string>
     <string name="widget_leer">Open the app once to load the figures.</string>
+    <string name="widget_beschreibung">Collection value, profit/loss today and overall.</string>
+    <string name="widget_vorschau_wert">CHF 112,480.00</string>
+    <string name="widget_vorschau_heute">+CHF 1,035.20</string>
+    <string name="widget_vorschau_gesamt">+CHF 21,940.50</string>
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
     <string name="art_nacharbeit">Follow-up after adding a set</string>
     <string name="art_bilder">Images of a set</string>
@@ -1105,7 +1127,12 @@
     <string name="hintergrund_versuch">attempt %1$d of %2$d</string>
     <string name="hintergrund_jetzt">Now</string>
     <string name="hintergrund_leeren">Clear</string>
-    <string name="hintergrund_wiederholen">Retry</string>
+    <string name="hintergrund_abbrechen">Cancel job</string>
+    <string name="hintergrund_auftrag_wiederholen">Retry job</string>
+    <string name="hintergrund_jetzt_cd">Start %1$s now</string>
+    <string name="hintergrund_leeren_cd">Clear %1$s</string>
+    <string name="hintergrund_leeren_titel">Clear jobs?</string>
+    <string name="hintergrund_leeren_text">Open jobs of “%1$s” are removed. Running and scheduled ones stay.</string>
     <plurals name="hintergrund_geleert">
         <item quantity="one">%1$d job removed</item>
         <item quantity="other">%1$d jobs removed</item>
@@ -1224,7 +1251,7 @@
     <string name="update_beim_start">Check for updates on start</string>
     <string name="update_beim_start_hint">Asks GitHub once per start whether a newer version exists; GitHub sees the IP address of the device. Applies to this device.</string>
     <string name="datenschutz_titel">Privacy</string>
-    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; on-device text recognition (ML Kit) may send usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
+    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; text recognition (ML Kit) runs on the device, and the app has switched off its channel for usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
     <plurals name="csv_fortschritt">
         <item quantity="one">%1$d of %2$d set</item>
         <item quantity="other">%1$d of %2$d sets</item>

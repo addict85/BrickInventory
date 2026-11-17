@@ -87,7 +87,7 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
             titel = stringResource(R.string.storage_delete_title),
             text = stringResource(R.string.storage_delete_text, ort.name),
             bestaetigen = stringResource(R.string.common_delete),
-            onBestaetigen = { loeschen = null; aktionen.loescheLagerort(ort.id) },
+            onBestaetigen = { loeschen = null; aktionen.lagerortLoeschenVormerken(ort) },
             onAbbrechen = { loeschen = null },
             symbol = Icons.Default.Delete,
         )

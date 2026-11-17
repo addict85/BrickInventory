@@ -129,6 +129,7 @@ import org.robolectric.RuntimeEnvironment
  *                                   → rot „Barcode nennt die Nummer …“
  *   preisspeicher-eingerueckt       Preisspeicher wieder mit eigenem Seitenrand → rot „Hintergrundarbeiten mit einem Titel, …“ (Einzug)
  *   hintergrund-titel-doppelt       Karte wieder mit dem Seitennamen → rot „Hintergrundarbeiten mit einem Titel, …“ (zweimal)
+ *   hintergrund-titel-im-inhalt     Seitenname wieder über dem Inhalt → rot „Hintergrundarbeiten mit einem Titel, …“
  *   netze-ohne-schalter             Netze ohne Schalterrolle → rot „Hintergrundarbeiten mit einem Titel, …“
  *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ wieder über der Liste → rot „Gutscheine anlegen schwebt, Guthaben …“ (schwebt nicht)
  *   bauliste-zahl-im-text           „(2 Sets)“ wieder als zweiter Text im Knopf → rot „Bauliste erstellen bleibt bei …“
@@ -304,8 +305,9 @@ class FormulareUndRaenderTest {
             MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
                 netze, Design.CLASSIC, 0L), vm, CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> }))
         }
-        assertEquals("„Hintergrundarbeiten“ zweimal", 1,
-            compose.onAllNodesWithText(text(R.string.monitoring_title)).fetchSemanticsNodes().size)
+        // Der eine Titel steht in der Leiste (VerwaltungGraph); der Inhalt wiederholt ihn nicht.
+        assertEquals("„Hintergrundarbeiten“ unter der Leiste noch einmal", 0,
+            compose.onAllNodesWithText(text(R.string.nav_monitoring)).fetchSemanticsNodes().size)
         fun links(id: Int) = compose.onNode(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
         val auftraege = links(R.string.hintergrund_auftraege)
         for (id in listOf(R.string.monitoring_price_cache, R.string.monitoring_darstellung_vorgabe))

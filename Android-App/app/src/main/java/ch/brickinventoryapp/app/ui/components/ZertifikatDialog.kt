@@ -59,14 +59,14 @@ private fun ZertifikatFrageDialog(
 ) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var befund by remember(frage.fingerabdruck) { mutableStateOf<Abschrift?>(null) }
-    // Beim Erstkontakt freiwillig: Wer abtippt, sieht wie sonst nur den Anfang.
+    // Beim Erstkontakt mit CT-Pflicht freiwillig: Wer abtippt, sieht wie sonst nur den Anfang.
     var abtippenGewaehlt by rememberSaveable(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
-    val (titel, text) = titelUndText(frage.art)
+    val (titel, text) = titelUndText(frage)
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
     val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
-    val schluesselNeu = frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
-    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig
+    val oeffentlich = erstkontakt || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+    val abschreiben = frage.abschriftNoetig || erstkontakt && abtippenGewaehlt
     val fenster = stringResource(titel)
     AlertDialog(
         containerColor = fensterFlaeche(),
@@ -79,7 +79,7 @@ private fun ZertifikatFrageDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
                 FingerabdruckAnzeige(frage, abschreiben, geaendert)
-                if (erstkontakt && !abtippenGewaehlt) {
+                if (erstkontakt && !abschreiben) {
                     TextButton(onClick = { abtippenGewaehlt = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
                 }
                 if (abschreiben) {
@@ -91,7 +91,7 @@ private fun ZertifikatFrageDialog(
                         fehler = { gezaehlt -> abschriftFehler(befund, gezaehlt) },
                     )
                     // Unter einer öffentlichen CA trägt der Code keinen Fingerabdruck; dort hilft er nicht.
-                    if (!schluesselNeu) Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
+                    if (!oeffentlich) Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
                 }
                 // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
                 // mit Erklärung. Danach fragt der Dialog erneut (NUTZER_CA), wieder zum Abtippen.
@@ -101,20 +101,29 @@ private fun ZertifikatFrageDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    val angenommen = onVertrauen(eingabe.takeIf { abschreiben })
-                    befund = if (angenommen) null
-                        else Abschrift.von(eingabe, frage.fingerabdruck).takeIf { it != Abschrift.PASST } ?: Abschrift.PASST_NICHT
-                },
-                enabled = !abschreiben || eingabe.isNotBlank(),
-                colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                         else ButtonDefaults.textButtonColors(),
-            ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }
+            VertrauenKnopf(geaendert, aktiv = !abschreiben || eingabe.isNotBlank()) {
+                befund = befundNach(onVertrauen(eingabe.takeIf { abschreiben }), eingabe, frage.fingerabdruck)
+            }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
+
+/** Ein geänderter Schlüssel färbt den Knopf als Warnung; sonst der gewohnte Knopf. */
+@Composable
+private fun VertrauenKnopf(geaendert: Boolean, aktiv: Boolean, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        enabled = aktiv,
+        colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                 else ButtonDefaults.textButtonColors(),
+    ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }
+}
+
+/** Lehnt die App ab, obwohl die Abschrift passt, steht trotzdem „passt nicht“ da — sonst bliebe der Dialog stumm. */
+private fun befundNach(angenommen: Boolean, eingabe: String, fingerabdruck: String): Abschrift? =
+    if (angenommen) null
+    else Abschrift.von(eingabe, fingerabdruck).takeIf { it != Abschrift.PASST } ?: Abschrift.PASST_NICHT
 
 /** Bisheriger und neuer Fingerabdruck; beim Abtippen nur der Anfang. */
 @Composable
@@ -179,16 +188,18 @@ private fun abschriftFehler(befund: Abschrift?, gezaehlt: Int): String? = when (
     Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
 }
 
-/** Woher die Abschrift kommt: Den neuen Serverschlüssel einer öffentlichen CA kennt die Webapp nicht. */
+/** Woher die Abschrift kommt: Schlüssel einer öffentlichen CA kennt die Webapp nicht, nur der Browser. */
 private fun eingabeHilfe(art: ZertifikatUngeklaert.Art): Int = when (art) {
     ZertifikatUngeklaert.Art.SCHLUESSEL_NEU -> R.string.zert_schluessel_neu_eingabe
+    ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_erstkontakt_eingabe
     ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_geaendert_eingabe
     else -> R.string.zert_unbekannt_eingabe
 }
 
-/** Überschrift und Erklärung je Art der Frage. */
-private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (art) {
-    ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
+/** Überschrift und Erklärung je Art der Frage; ohne CT-Pflicht erklärt der Erstkontakt das Abtippen. */
+private fun titelUndText(frage: ZertifikatUngeklaert): Pair<Int, Int> = when (frage.art) {
+    ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to
+        if (frage.abschriftNoetig) R.string.zert_text_erstkontakt_abtippen else R.string.zert_text_erstkontakt
     ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
     ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
     ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert

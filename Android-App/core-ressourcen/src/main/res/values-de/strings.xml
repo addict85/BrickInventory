@@ -6,11 +6,11 @@
     <!-- ══════════════ Settings screen ══════════════ -->
     <string name="settings_currency">Währung</string>
     <string name="settings_price_condition">Preiszustand</string>
-    <string name="settings_default_condition">Standard-Zustand</string>
+    <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>
     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
-    <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
-    <string name="settings_default_condition_global">Globale Vorgabe</string>
-    <string name="monitoring_default_condition">Standard-Zustand</string>
+    <string name="settings_default_condition_hint">Damit beginnt ein neu hinzugefügtes Set. „Allgemein“ übernimmt die Vorgabe für alle Konten.</string>
+    <string name="settings_default_condition_global">Allgemein</string>
+    <string name="monitoring_default_condition">Zustand beim Hinzufügen für alle Konten</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
     <string name="settings_condition_new">Neuware</string>
     <string name="settings_condition_used">Gebraucht</string>
@@ -96,6 +96,10 @@
     <string name="scanner_allow">Erlauben</string>
     <string name="scanner_camera_gesperrt">Die Kamera ist für diese App gesperrt, Android fragt nicht mehr nach. Erlaube sie in den App-Einstellungen unter Berechtigungen.</string>
     <string name="scanner_camera_einstellungen">In den Einstellungen erlauben</string>
+    <string name="scanner_camera_zweck_barcode">Die Kamera liest den Barcode auf der Schachtel und findet so das Set.</string>
+    <string name="scanner_camera_zweck_qr">Die Kamera liest den QR-Code mit der Adresse deines Servers.</string>
+    <string name="scanner_nummer_eintippen">Nummer eintippen</string>
+    <string name="scanner_adresse_eintippen">Adresse eintippen</string>
     <string name="scanner_close">Schliessen</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
@@ -116,8 +120,8 @@
     <!-- ══════════════ Gallery screen ══════════════ -->
     <string name="gallery_search_placeholder">Suchen…</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
-    <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel. Kommen keine Angaben dazu, fehlt dem Server vielleicht noch der kostenlose Rebrickable-Schlüssel: Trage ihn in der Web-App ein.</string>
-    <string name="gallery_add_first">Erstes Set erfassen</string>
+    <string name="gallery_empty_hint">Füge dein erstes Set über die Setnummer hinzu oder scanne den Barcode auf der Schachtel. Kommen keine Angaben dazu, fehlt dem Server vielleicht noch der kostenlose Rebrickable-Schlüssel: Trage ihn in der Web-App ein.</string>
+    <string name="gallery_add_first">Erstes Set hinzufügen</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">je Stück</string>
@@ -152,7 +156,7 @@
     <string name="minifigs_none">Keine Minifiguren</string>
     <string name="minifigs_no_results">Keine Treffer</string>
     <string name="minifigs_add">Minifigur hinzufügen</string>
-    <string name="minifigs_add_title">Minifigur erfassen</string>
+    <string name="minifigs_add_title">Minifigur hinzufügen</string>
     <string name="minifigs_fig_number">Minifigur-Nummer</string>
     <string name="minifigs_fig_number_placeholder">z. B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
@@ -240,6 +244,7 @@
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Zurücksetzen</string>
+    <string name="filter_entfernen">Filter entfernen: %1$s</string>
     <string name="sort_menu_cd">Sortieren: %1$s</string>
     <string name="filter_section_sort">Sortierung</string>
     <string name="filter_section_spare">Ersatzteile</string>
@@ -269,6 +274,10 @@
         <item quantity="other">×%1$d  ·  %2$d Typen</item>
     </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
+    <string name="partslist_legende">Grün: genug im eigenen Bestand. Rot: Es fehlen noch Teile.</string>
+    <string name="partslist_benoetigt">Benötigt: %1$s</string>
+    <string name="partslist_vorhanden">Vorhanden: %1$s</string>
+    <string name="partslist_vorhanden_von">Vorhanden: %1$s von %2$s</string>
 
     <!-- ══════════════ Finance screen ══════════════ -->
     <string name="finance_loading">Preise werden geladen…</string>
@@ -327,19 +336,19 @@
     <string name="parts_add">Teil hinzufügen</string>
     <string name="parts_delete_title">Teil löschen?</string>
     <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
-    <string name="parts_add_title">Teil erfassen</string>
+    <string name="parts_add_title">Teil hinzufügen</string>
     <string name="parts_part_number">Teilenummer</string>
     <string name="parts_part_number_placeholder">z. B. 3001</string>
     <string name="parts_no_color">Keine Farbe</string>
     <string name="parts_color_label">Farbe (optional)</string>
-    <string name="parts_color_unknown">Farbe %1$d</string>
+    <string name="parts_color_unknown">Unbekannte Farbe</string>
     <string name="parts_add_button">Hinzufügen</string>
     <string name="parts_ordnung_farbe">Nach Farbe</string>
     <string name="parts_ordnung_name">Nach Name</string>
     <string name="parts_ordnung_menge">Nach Menge</string>
+    <string name="minifigs_ordnung_nummer">Nach Nummer</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
-    <string name="monitoring_title">Hintergrundarbeiten</string>
     <string name="monitoring_refresh">Neu laden</string>
     <string name="monitoring_retry_error">Fehler beim erneuten Versuch</string>
     <string name="monitoring_delete_error">Fehler beim Löschen</string>
@@ -366,6 +375,8 @@
     <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
     <string name="monitoring_entry_removed">%1$s entfernt</string>
+    <string name="monitoring_queue_loeschen_titel">Eintrag löschen?</string>
+    <string name="monitoring_queue_loeschen_text">%1$s wird nicht mehr bei Brickset nachgefragt.</string>
     <string name="monitoring_start_error">Fehler beim Starten</string>
 
     <!-- ══════════════ Set detail screen ══════════════ -->
@@ -403,7 +414,7 @@
     <string name="parts_breakdown">%1$s aus Sets · %2$s einzeln</string>
     <string name="nav_partslist">Bauliste</string>
     <string name="nav_finance">Finanzen</string>
-    <string name="nav_comparison">Vergleich</string>
+    <string name="nav_comparison">Preisvergleich</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_more">Mehr</string>
     <string name="nav_group_prices">Preise und Gutscheine</string>
@@ -471,7 +482,7 @@
     <string name="abmeldung_kanal">Abmeldung</string>
     <string name="abmeldung_gescheitert_titel">Abmeldung nicht bestätigt</string>
     <string name="abmeldung_gescheitert_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Web-App unter „Angemeldete Geräte“ widerrufen.</string>
-    <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
+    <string name="vm_rechte_entzogen">Deine Administratorrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
     <string name="notif_csv_title">BrickInventory – CSV-Import</string>
@@ -500,6 +511,7 @@
     <string name="condition_used">Gebraucht</string>
     <string name="acq_delete_title">Erfassung löschen</string>
     <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
+    <string name="acq_geloescht">Kauf gelöscht</string>
     <string name="common_back">Zurück</string>
     <string name="common_delete">Löschen</string>
     <string name="common_edit">Bearbeiten</string>
@@ -549,6 +561,7 @@
         <item quantity="one">%1$d Set im Katalog</item>
         <item quantity="other">%1$d Sets im Katalog</item>
     </plurals>
+    <string name="catalog_jahr_springen">Zu Jahr springen</string>
     <string name="catalog_no_results">Keine Sets gefunden</string>
     <string name="catalog_owned">Im Besitz</string>
     <string name="catalog_add_to_gallery">Zur Sammlung hinzufügen</string>
@@ -680,7 +693,7 @@
     <string name="tokens_none">Keine Zugänge.</string>
     <string name="tokens_reload">Aktualisieren</string>
     <string name="tokens_current">dieses Gerät</string>
-    <string name="login_full_access">Mit Verwalterrechten anmelden</string>
+    <string name="login_full_access">Mit Administratorrechten anmelden</string>
     <string name="login_full_access_hint">Nur nötig, um auf diesem Gerät Konten, Designs oder den Server zu verwalten. Zum Sammeln braucht es das nicht.</string>
     <string name="tokens_full_access">Vollzugriff</string>
     <string name="tokens_already_gone">Dieses Gerät war schon abgemeldet.</string>
@@ -735,7 +748,7 @@
     <string name="konto_saved">Profil gespeichert</string>
     <string name="konto_email_ausstehend">Ausstehend: %1$s. Gilt nach Bestätigung über den Link in der Mail an diese Adresse; bis dahin bleibt die bisherige.</string>
     <string name="konto_email_link_gesendet">Bestätigungslink an %1$s gesendet. Bis du ihn öffnest, gilt die bisherige Adresse.</string>
-    <string name="konto_email_nicht_gesendet">Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Verwalter fragen.</string>
+    <string name="konto_email_nicht_gesendet">Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Administrator fragen.</string>
     <string name="konto_password_title">Passwort ändern</string>
     <string name="konto_password_current">Aktuelles Passwort</string>
     <string name="konto_password_new">Neues Passwort</string>
@@ -829,6 +842,7 @@
     <string name="update_dialog_later">Später</string>
     <string name="update_available">Version %1$s ist verfügbar</string>
     <string name="update_installed">Installiert: %1$s</string>
+    <string name="update_version_unbekannt">unbekannt</string>
     <string name="update_download">Herunterladen</string>
     <string name="update_downloading">Wird geladen… %1$d%%</string>
     <string name="update_install">Installieren</string>
@@ -883,7 +897,9 @@
 
     <!-- Gutscheine (LEGO-Geschenkkarten im eigenen Profil) -->
     <string name="vouchers_title">Gutscheine</string>
+    <string name="geheim_kopieren_warnung">Auf dieser Android-Version sehen Tastatur und Kopier-Vorschau, was du kopierst, auch Nummer und PIN. Die App leert die Zwischenablage nach einer Minute wieder.</string>
     <string name="vouchers_empty">Noch keine Gutscheine hinterlegt.</string>
+    <string name="vouchers_empty_hint">Lege LEGO-Geschenkkarten mit Nummer und PIN ab. Das Guthaben fragt die App bei LEGO ab, das Total steht dann hier.</string>
     <string name="vouchers_total">Total</string>
     <string name="vouchers_add">Gutschein hinzufügen</string>
     <string name="vouchers_edit">Gutschein ändern</string>
@@ -916,7 +932,7 @@
     <string name="schritt_gutschein">Gutschein-PIN anzeigen</string>
     <string name="schritt_codes">Wiederherstellungscodes</string>
     <string name="schritt_verwaltung">Verwaltung öffnen</string>
-    <string name="schritt_voller_zugriff">Mit Verwalterrechten anmelden</string>
+    <string name="schritt_voller_zugriff">Mit Administratorrechten anmelden</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
@@ -993,6 +1009,8 @@
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
     <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Am einfachsten richtest du sie mit dem QR-Code aus der Web-App ein (Einstellungen). Wenn kein QR-Code möglich ist: Der Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Vergleiche ihn Zeichen für Zeichen mit dem, den die Web-App unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
+    <string name="zert_text_erstkontakt_abtippen">Das ist die erste verschlüsselte Verbindung zu %1$s. Diese Android-Version prüft nicht, ob das Zertifikat öffentlich eingetragen ist (Certificate Transparency, erst ab Android 16). Ein falsch ausgestelltes Zertifikat sähe darum genau gleich aus. Deshalb gilt die Verbindung erst, wenn du den Fingerabdruck abschreibst:\n1. Öffne die Web-App im Browser am Computer.\n2. Öffne die Zertifikatdetails (Schloss neben der Adresse) und wähle das oberste Zertifikat der Kette.\n3. Schreibe die letzten 12 Paare von „Öffentlicher Schlüssel, SHA-256“ unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nHier steht nur der Anfang des Fingerabdrucks.</string>
+    <string name="zert_erstkontakt_eingabe">Die letzten 12 Paare des Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus den Zertifikatdetails des Browsers am Rechner (oberstes Zertifikat, Fingerabdrücke → Öffentlicher Schlüssel, SHA-256)</string>
     <string name="zert_text_unbekannt">Die App kann nicht prüfen, wer hinter %1$s steht: Der Server hat sein Zertifikat selbst ausgestellt, oder deine eigene Stelle hat es getan. Bei einem Server zu Hause ist das üblich, es könnte aber auch jemand dazwischen sein.\n\nAm einfachsten scannst du den QR-Code aus der Web-App (Einstellungen). Wenn kein QR-Code möglich ist, gehst du so vor:\n1. Öffne die Web-App am Computer.\n2. Gehe zu Einstellungen → Server-Zertifikat.\n3. Schreibe die letzten 12 Paare des Fingerabdrucks unten ins Feld, z. B. 3F:A2:…; die Doppelpunkte setzt die App selbst.\n\nDer Fingerabdruck ist eine Kennung, die zu diesem Server gehört. Stimmt sie überein, ist es dein Server. Hier steht nur sein Anfang.</string>
     <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt die Web-App (Einstellungen → Server-Zertifikat), bei einer öffentlichen Zertifizierungsstelle auch der Browser (Zertifikatdetails, SHA-256 des öffentlichen Schlüssels der obersten Stelle). Schreibe seine letzten 12 Paare ab, z. B. 3F:A2:…</string>
     <string name="zert_fingerabdruck">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
@@ -1059,6 +1077,10 @@
     <string name="widget_heute">Heute</string>
     <string name="widget_gesamt">Gesamt</string>
     <string name="widget_leer">Öffne die App einmal, um die Zahlen zu laden.</string>
+    <string name="widget_beschreibung">Wert der Sammlung, Gewinn/Verlust heute und gesamt.</string>
+    <string name="widget_vorschau_wert">CHF 112’480.00</string>
+    <string name="widget_vorschau_heute">+CHF 1’035.20</string>
+    <string name="widget_vorschau_gesamt">+CHF 21’940.50</string>
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Web-App -->
     <string name="art_nacharbeit">Nacharbeit nach dem Erfassen</string>
     <string name="art_bilder">Bilder eines Sets</string>
@@ -1087,7 +1109,12 @@
     <string name="hintergrund_versuch">Versuch %1$d von %2$d</string>
     <string name="hintergrund_jetzt">Jetzt</string>
     <string name="hintergrund_leeren">Leeren</string>
-    <string name="hintergrund_wiederholen">Wiederholen</string>
+    <string name="hintergrund_abbrechen">Auftrag abbrechen</string>
+    <string name="hintergrund_auftrag_wiederholen">Auftrag wiederholen</string>
+    <string name="hintergrund_jetzt_cd">%1$s jetzt starten</string>
+    <string name="hintergrund_leeren_cd">%1$s leeren</string>
+    <string name="hintergrund_leeren_titel">Aufträge leeren?</string>
+    <string name="hintergrund_leeren_text">Die offenen Aufträge „%1$s“ werden entfernt. Laufende und geplante bleiben.</string>
     <plurals name="hintergrund_geleert">
         <item quantity="one">%1$d Auftrag entfernt</item>
         <item quantity="other">%1$d Aufträge entfernt</item>
@@ -1130,7 +1157,7 @@
         <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
     </plurals>
     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
-    <string name="zf_pflicht_kurz">Verwalterrechte brauchen einen zweiten Faktor.</string>
+    <string name="zf_pflicht_kurz">Administratorrechte brauchen einen zweiten Faktor.</string>
     <string name="zf_share">Teilen</string>
     <string name="zf_codes_speichern">Als Datei speichern</string>
     <string name="zf_share_title">Wiederherstellungscodes</string>
@@ -1206,7 +1233,7 @@
     <string name="update_beim_start">Beim Start nach Updates suchen</string>
     <string name="update_beim_start_hint">Fragt bei jedem Start einmal bei GitHub nach einer neueren Version; GitHub sieht dabei die IP-Adresse des Geräts. Gilt für dieses Gerät.</string>
     <string name="datenschutz_titel">Datenschutz</string>
-    <string name="datenschutz_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• GitHub, nur für die Update-Prüfung (beim Start, wenn eingeschaltet, sonst auf „Prüfen“);\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung auf dem Gerät (ML Kit) kann Nutzungsstatistiken an Google senden;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
+    <string name="datenschutz_text">Die App spricht mit:\n• deinem eigenen Server, der alles speichert, was du erfasst;\n• GitHub, nur für die Update-Prüfung (beim Start, wenn eingeschaltet, sonst auf „Prüfen“);\n• den Google Play-Diensten für Barcode-Scan und Passkeys; die Texterkennung (ML Kit) läuft auf dem Gerät, ihren Kanal für Nutzungsstatistiken an Google hat die App abgeschaltet;\n• anderen Websites (BrickLink, Anleitungen) nur auf Tipp, im Browser.\nKein Tracking, keine Werbung, keine Auswertung.</string>
     <plurals name="csv_fortschritt">
         <item quantity="one">%1$d von %2$d Set</item>
         <item quantity="other">%1$d von %2$d Sets</item>

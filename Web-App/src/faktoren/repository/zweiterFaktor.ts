@@ -22,13 +22,17 @@ export async function mitAktivemFaktor(db: DbSchnittstelle, ids: number[]): Prom
   return new Set(z.map(r => r.user_id));
 }
 
-export async function faktorStand(db: DbSchnittstelle, uid: number): Promise<{ aktiv: boolean; uebrig: number }> {
-  const r = await db.get<{ aktiv: boolean; uebrig: number }>(
+export async function faktorStand(
+  db: DbSchnittstelle,
+  uid: number,
+): Promise<{ aktiv: boolean; uebrig: number; altBis: Date | null }> {
+  const r = await db.get<{ aktiv: boolean; uebrig: number; alt_bis: Date | null }>(
     `SELECT COALESCE((SELECT aktiv FROM zweiter_faktor WHERE user_id = $1), FALSE) AS aktiv,
-            (SELECT COUNT(*)::int FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NULL) AS uebrig`,
+            (SELECT COUNT(*)::int FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NULL) AS uebrig,
+            (SELECT MAX(alt_gilt_bis) FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NULL) AS alt_bis`,
     [uid],
   );
-  return { aktiv: r?.aktiv === true, uebrig: Number(r?.uebrig ?? 0) };
+  return { aktiv: r?.aktiv === true, uebrig: Number(r?.uebrig ?? 0), altBis: r?.alt_bis ?? null };
 }
 
 /** Ein aktiver Faktor wird nicht überschrieben. */
@@ -70,14 +74,22 @@ export async function verbraucheSchritt(db: DbSchnittstelle, uid: number, schrit
   return (r.changes ?? 0) > 0;
 }
 
-export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: string): Promise<boolean> {
+export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: string, alt = false): Promise<boolean> {
   const r = await db.run(
     `UPDATE zweiter_faktor_codes SET verbraucht_am = NOW()
       WHERE user_id = $1 AND code_hash = $2 AND verbraucht_am IS NULL
+        AND ($3::boolean IS FALSE OR alt_gilt_bis > NOW())
         AND EXISTS (SELECT 1 FROM zweiter_faktor WHERE user_id = $1 AND aktiv)`,
-    [uid, hash],
+    [uid, hash, alt],
   );
   return (r.changes ?? 0) > 0;
+}
+
+/** Ein Code neuer Art hat gegolten: Die übrigen dieses Satzes sind es auch, ihre Frist entfällt. */
+export async function codesSindNeu(db: DbSchnittstelle, uid: number): Promise<void> {
+  await db.run('UPDATE zweiter_faktor_codes SET alt_gilt_bis = NULL WHERE user_id = $1 AND alt_gilt_bis IS NOT NULL', [
+    uid,
+  ]);
 }
 
 /** Codes und Faktor zusammen: in der Transaktion des Aufrufers (src/faktoren/zweiterFaktor.ts, schalteAb). */

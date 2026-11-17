@@ -40,6 +40,8 @@ import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
 import ch.brickinventoryapp.ui.satz
 import androidx.lifecycle.repeatOnLifecycle
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
 
@@ -104,14 +106,16 @@ fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, c
     // Aufgeklappt gehört dem Menschen: rememberSaveable übersteht auch den Prozesstod.
     var queueOpen by rememberSaveable { mutableStateOf(false) }
 
+    // Mittig in Formularbreite wie die Einstellungen: Auf dem Tablet zogen sich die Karten
+    // sonst über die ganze Breite, Knopf und Zustand eines Auftrags standen weit auseinander.
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().mittigBis(Lesebreite.formular),
             contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Kein eigener Titel: Die Leiste darüber nennt die Seite schon (VerwaltungGraph).
             item {
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
                     if (monState.aktualisiert) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     else MitTooltip(stringResource(R.string.monitoring_refresh)) {
                         IconButton(onClick = aktionen::aktualisiere) {

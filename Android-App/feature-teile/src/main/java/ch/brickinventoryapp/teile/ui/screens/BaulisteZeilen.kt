@@ -32,14 +32,12 @@ import coil3.request.crossfade
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.bewegungReduziert
 import ch.brickinventoryapp.ui.components.farbUebersetzer
 import ch.brickinventoryapp.ui.components.katalogName
 import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
+import ch.brickinventoryapp.ui.util.fmtInt
 
 /** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
 @Composable
@@ -71,9 +69,9 @@ internal fun PdfKnopf(exportLaeuft: Boolean, pdfError: String?, onExport: () -> 
     }
 }
 
-/** Kopf einer Farbgruppe: Farbpunkt, Name und wie viele Teile und Typen sie hat. */
+/** Kopf einer Farbgruppe: Farbpunkt, Name und wie viele Teile und Typen sie hat; [colorName] null = Minifiguren. */
 @Composable
-internal fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
+internal fun FarbGruppenKopf(colorName: String?, colorParts: List<PlPart>) {
     val mengen = androidx.compose.ui.platform.LocalResources.current
     val farbe = farbUebersetzer()
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -83,7 +81,11 @@ internal fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
                 .background(farbeAusHex(hex) ?: Color.Gray))
             Spacer(Modifier.width(6.dp))
         }
-        val displayName = if (colorName.isEmpty()) stringResource(R.string.partslist_no_color) else farbe(colorName)
+        val displayName = when {
+            colorName == null -> stringResource(R.string.detail_minifigs)
+            colorName.isEmpty() -> stringResource(R.string.partslist_no_color)
+            else -> farbe(colorName)
+        }
         Text(displayName, fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary)
@@ -139,39 +141,65 @@ internal fun PartListRow(
             }
             Text(katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-        // Quantity badge
-        Surface(color = if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer
-                        else MaterialTheme.colorScheme.primaryContainer,
-                shape = MaterialTheme.shapes.small) {
-            Text(mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig)
-                .vorgelesenAls(stueckzahl(part.quantity)),
-                fontWeight = FontWeight.Bold,
-                color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
-                        else MaterialTheme.colorScheme.onPrimaryContainer)
-        }
-        // ── „habe ich“ neben „brauche ich“ ──
-        //
-        // Wie viele Stück im Blickfeld liegen, sagt der Server. Grün, wenn es reicht,
-        // sonst der Fehlbetrag in Rot — „kann ich das bauen?“ ist so schon beim
-        // Überfliegen beantwortet.
-        part.vorhanden?.let { habe ->
-            val reicht = habe >= part.quantity
-            Surface(
-                color = if (reicht) MaterialTheme.colorScheme.secondaryContainer
-                        else MaterialTheme.colorScheme.errorContainer,
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(
-                    if (reicht) "✓ $habe" else "$habe/${part.quantity}",
-                    Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
-                    fontWeight = FontWeight.Bold,
-                    color = if (reicht) MaterialTheme.colorScheme.onSecondaryContainer
-                            else MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
+            MengenPillen(part)
         }
     }
+}
+
+/**
+ * Was die Liste braucht und was im Bestand liegt, ausgeschrieben statt „×12“ und „✓ 8“:
+ * Ohne Legende las niemand, welche Zahl welche war. Unter dem Namen statt rechts daneben,
+ * damit bei grosser Schrift der Name nicht auf ein Wort je Zeile schrumpft.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MengenPillen(part: PlPart) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+        Pille(stringResource(R.string.partslist_benoetigt, fmtInt(part.quantity)),
+            if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
+            if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer)
+        // Grün, wenn es reicht, sonst rot mit dem Fehlbetrag: „kann ich das bauen?“ beim Überfliegen.
+        part.vorhanden?.let { habe ->
+            val reicht = habe >= part.quantity
+            Pille(
+                if (reicht) stringResource(R.string.partslist_vorhanden, fmtInt(habe))
+                else stringResource(R.string.partslist_vorhanden_von, fmtInt(habe), fmtInt(part.quantity)),
+                if (reicht) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
+                if (reicht) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun Pille(text: String, flaeche: Color, schrift: Color) {
+    Surface(color = flaeche, shape = MaterialTheme.shapes.small) {
+        Text(text, Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
+            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = schrift)
+    }
+}
+
+/** Die Legende über der Liste, sobald der Bestand eingetragen ist. */
+@Composable
+internal fun BaulistenLegende() {
+    Text(stringResource(R.string.partslist_legende), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/**
+ * Teile nach Farbe, die Minifiguren als eigene Gruppe am Ende (Schlüssel null): Sie haben
+ * keine Farbe und standen sonst zwischen den Teilen unter „(Keine Farbe)“.
+ */
+internal fun baulistenGruppen(parts: List<PlPart>): List<Pair<String?, List<PlPart>>> {
+    val nachNummer = Comparator<PlPart> { a, b ->
+        comparePartNumbers(a.blPartNumber ?: a.partNumber, b.blPartNumber ?: b.partNumber)
+    }
+    val (figuren, teile) = parts.partition { it.isFig }
+    val farben: List<Pair<String?, List<PlPart>>> = teile.groupBy { it.colorName }.entries
+        .sortedWith(compareBy(plColorCollator) { it.key })
+        .map { (farbe, liste) -> farbe to liste.sortedWith(nachNummer) }
+    return if (figuren.isEmpty()) farben else farben + (null to figuren.sortedWith(nachNummer))
 }
 
 // Den PDF-Export führt TeilelisteViewModel.exportPartsPdf über den Vordergrund-Dienst.

@@ -6,6 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,22 +79,48 @@ fun <T> SegmentWahl(
         SegmentSpalte(optionen, gewaehlt, onWahl, modifier, enabled)
         return
     }
-    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+    // Gleich hoch: Bricht eine Beschriftung in zwei Zeilen, wuchs sonst nur ihr Segment.
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         optionen.forEachIndexed { i, (wert, text) ->
             SegmentedButton(
                 selected = wert == gewaehlt,
                 onClick = { onWahl(wert) },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+                modifier = Modifier.fillMaxHeight(),
                 enabled = enabled,
                 colors = segmentFarben(),
-            ) {
-                // Zwei Zeilen statt Auslassung: Bei grosser Schrift wurde „Gebraucht“ zu „Gebr…“.
-                Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
+            ) { SegmentBeschriftung(text) }
         }
     }
 }
+
+/**
+ * Material misst die Beschriftung mit der vollen Innenbreite und setzt das Häkchen
+ * daneben; was übersteht, ragt beidseits in den Innenabstand, bei zwei Zeilen bis über
+ * den Rand. Die Beschriftung bekommt deshalb nur so viel Breite, dass das Häkchen
+ * [HAEKCHEN_LUFT] vor dem Rand bleibt. Zwei Zeilen statt „Gebr…“ bei grosser Schrift.
+ */
+@Composable
+private fun SegmentBeschriftung(text: String) {
+    val rand = SegmentedButtonDefaults.ContentPadding.calculateStartPadding(LocalLayoutDirection.current)
+    val abzug = with(LocalDensity.current) {
+        (SegmentedButtonDefaults.IconSize + HAEKCHEN_ABSTAND - (rand - HAEKCHEN_LUFT) * 2).roundToPx().coerceAtLeast(0)
+    }
+    Layout({
+        Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }) { teile, c ->
+        val breite = if (c.hasBoundedWidth) (c.maxWidth - abzug).coerceAtLeast(0) else c.maxWidth
+        val zeilen = teile.single().measure(c.copy(minWidth = 0, maxWidth = breite))
+        layout(zeilen.width, zeilen.height) { zeilen.place(0, 0) }
+    }
+}
+
+/** Abstand zwischen Häkchen und Beschriftung in Material (SegmentedButton.kt, IconSpacing). */
+private val HAEKCHEN_ABSTAND = 8.dp
+
+/** So weit bleibt das Häkchen mindestens vom Rand des Segments. */
+internal val HAEKCHEN_LUFT = 2.dp
 
 /**
  * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) sind immer Segmente, nie

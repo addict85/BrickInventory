@@ -566,6 +566,8 @@ export type Fehlercode =
   | 'token_id_fehlt'
   | 'token_rotation_noetig'
   | 'passkey_ungueltig'
+  | 'abbruch_link_ungueltig'
+  | 'freigabe_link_ungueltig'
   | 'passkey_ohne_domain'
   | 'unbegrenzt_nur_https'
   | 'token_nicht_ausgestellt'
@@ -1182,6 +1184,7 @@ export type KontenListe = {
 export type KontoAktiv = {
   success: true;
   is_active: boolean;
+  wirksam_ab?: string;
   [feld: string]: unknown;
 };
 export type KontoInListe = {
@@ -1192,6 +1195,11 @@ export type KontoInListe = {
   created_at: string | null;
   zweiter_faktor: boolean;
   wartet_auf_bestaetigung: boolean;
+  angekuendigt: Array<{
+    art: 'passwort' | 'zweiter_faktor' | 'deaktivieren' | 'rolle_entziehen' | 'loeschen';
+    wirksam_ab: string;
+    [feld: string]: unknown;
+  }>;
   [feld: string]: unknown;
 };
 export type Lagerort = {
@@ -1890,11 +1898,6 @@ export type ProtokollZeile = {
   logged_at?: string | null;
   [feld: string]: unknown;
 };
-export type PUT_api_v1_auth_users_id_password = {
-  success: true;
-  wirksam_ab?: string;
-  [feld: string]: unknown;
-};
 export type QrAbholung = {
   success: boolean;
   token?: string | null;
@@ -1952,9 +1955,9 @@ export type RateLimits = {
 };
 export type RegisterResponse = {
   success: boolean;
-  message: string | null;
+  message: string;
   email_sent: boolean;
-  console_mode?: boolean;
+  console_mode: boolean;
   error?: string | null;
   [feld: string]: unknown;
 };
@@ -2339,6 +2342,11 @@ export type ValuationSet = {
   error?: string | null;
   [feld: string]: unknown;
 };
+export type VerwalterWeg = {
+  success: true;
+  wirksam_ab?: string;
+  [feld: string]: unknown;
+};
 export type VerwaltungDesign = {
   success: boolean;
   theme: string;
@@ -2446,6 +2454,7 @@ export type ZweiterFaktorStand = {
   success: boolean;
   aktiv: boolean;
   codes_uebrig: number;
+  alte_codes_bis: string | null;
   error?: string | null;
   [feld: string]: unknown;
 };
@@ -2485,6 +2494,7 @@ export type Route =
   | { m: 'GET'; p: '/v1/alerts'; a: PreisalarmeResponse }
   | { m: 'POST'; p: '/v1/alerts/import/csv'; a: POST_api_v1_minifigs_import_csv }
   | { m: 'GET'; p: '/v1/alerts/pending'; a: PendingAlertsResponse }
+  | { m: 'POST'; p: '/v1/auth/anmeldung-freigeben'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'POST'; p: '/v1/auth/bestaetigung-erneut'; a: ForgotPasswordResponse }
   | { m: 'POST'; p: '/v1/auth/change-password'; a: GenericResponse }
   | { m: 'POST'; p: '/v1/auth/email-bestaetigen'; a: DELETE_api_v1_papierkorb_id }
@@ -2514,14 +2524,15 @@ export type Route =
   | { m: 'POST'; p: '/v1/auth/reset-password'; a: ForgotPasswordResponse }
   | { m: 'POST'; p: '/v1/auth/token-create'; a: TokenErstellt }
   | { m: 'POST'; p: '/v1/auth/token-rotieren'; a: TokenRotation }
+  | { m: 'POST'; p: '/v1/auth/uebernahme-abbrechen'; a: DELETE_api_v1_papierkorb_id }
   | { m: 'GET'; p: '/v1/auth/users'; a: KontenListe }
   | { m: 'POST'; p: '/v1/auth/users'; a: DELETE_api_v1_papierkorb_id }
-  | { m: 'DELETE'; p: `/v1/auth/users/${string}`; a: DELETE_api_v1_papierkorb_id }
-  | { m: 'PUT'; p: `/v1/auth/users/${string}/admin`; a: DELETE_api_v1_papierkorb_id }
+  | { m: 'DELETE'; p: `/v1/auth/users/${string}`; a: VerwalterWeg }
+  | { m: 'PUT'; p: `/v1/auth/users/${string}/admin`; a: VerwalterWeg }
   | { m: 'PUT'; p: `/v1/auth/users/${string}/aktiv`; a: KontoAktiv }
   | { m: 'PUT'; p: `/v1/auth/users/${string}/freischalten`; a: DELETE_api_v1_papierkorb_id }
-  | { m: 'PUT'; p: `/v1/auth/users/${string}/password`; a: PUT_api_v1_auth_users_id_password }
-  | { m: 'DELETE'; p: `/v1/auth/users/${string}/zweiter-faktor`; a: PUT_api_v1_auth_users_id_password }
+  | { m: 'PUT'; p: `/v1/auth/users/${string}/password`; a: VerwalterWeg }
+  | { m: 'DELETE'; p: `/v1/auth/users/${string}/zweiter-faktor`; a: VerwalterWeg }
   | { m: 'GET'; p: '/v1/auth/zweiter-faktor'; a: ZweiterFaktorStand }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/abschalten'; a: GenericResponse }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/bestaetigen'; a: ZweiterFaktorCodes }

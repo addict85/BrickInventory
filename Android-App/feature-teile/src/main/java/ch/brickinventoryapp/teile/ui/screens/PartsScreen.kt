@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.model.fach.Kategoriewahl
 import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.teile.ui.Teilefilter
@@ -57,9 +59,14 @@ import ch.brickinventoryapp.ui.components.kategorieUebersetzer
 import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
 import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
 import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
+import ch.brickinventoryapp.gemeinsam.ui.AktiverFilter
+import ch.brickinventoryapp.gemeinsam.ui.kontoFilter
+import ch.brickinventoryapp.gemeinsam.ui.lagerFilter
+import ch.brickinventoryapp.model.data.Ersatzteilwahl
+import ch.brickinventoryapp.model.fach.LagerortAnsicht
+import ch.brickinventoryapp.model.fach.MitgliedAnsicht
 import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
 import ch.brickinventoryapp.model.ui.Listenansicht
-import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
 
 /** Was der Teile-Reiter zeigt; die Route sammelt es aus den Flüssen. */
@@ -202,6 +209,8 @@ internal fun PartsScreen(
             onFilter = { zeigeFilter = true },
             sortierung = { TeileSortierung(partsState.filter.ordnung, aktionen::setPartsOrdnung) },
             erfassen = erfassenText to { showAddDialog = true },
+            aktive = teileFilterChips(partsState, householdMembers, scopeMode, onScopeChange, lagerorte, lagerModus,
+                onLagerChange, farbEintraege, kategorieEintraege, aktionen),
         )
 
         OfflineHinweis(partsState.teileOfflineStand, onErneut = onRefresh)
@@ -221,7 +230,7 @@ internal fun PartsScreen(
                     if (partsState.filter.ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
                     if (partsState.filter.farbe != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
                     if (partsState.filter.kategorie != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
-                }) { Text(stringResource(R.string.search_clear_all)) }
+                }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.search_clear_all)) }
             }
         } else if (anzeige == Ladeanzeige.LEER) {
             // Leer ohne Kennzahlen: „82 Stück“ neben „Keine Teile“ widersprach sich.
@@ -368,4 +377,35 @@ private fun Teilefilter.Ordnung.beschriftung(): Int = when (this) {
     Teilefilter.Ordnung.FARBE -> R.string.parts_ordnung_farbe
     Teilefilter.Ordnung.NAME -> R.string.parts_ordnung_name
     Teilefilter.Ordnung.MENGE -> R.string.parts_ordnung_menge
+}
+
+/** Die wirkenden Filter der Teile als Chips; jeder fällt einzeln weg, wie im Blatt. */
+@Composable
+private fun teileFilterChips(
+    partsState: TeileUiState,
+    members: List<MitgliedAnsicht>,
+    konto: String,
+    onKonto: (String) -> Unit,
+    orte: List<LagerortAnsicht>,
+    lager: String,
+    onLager: (String) -> Unit,
+    farben: List<TeileFilterEintrag>,
+    kategorien: List<TeileFilterEintrag>,
+    aktionen: TeileAktionen,
+): List<AktiverFilter> {
+    val f = partsState.filter
+    val ersatz = when (f.ersatz) {
+        Ersatzteilwahl.ALLE -> null
+        Ersatzteilwahl.OHNE -> R.string.parts_filter_no_spare
+        Ersatzteilwahl.NUR -> R.string.parts_filter_spare
+    }?.let { AktiverFilter(stringResource(it)) { aktionen.setPartsSpare(Ersatzteilwahl.ALLE) } }
+    return listOfNotNull(
+        kontoFilter(members, konto) { onKonto(ScopeFilter.ALL) },
+        lagerFilter(orte, lager) { onLager("") },
+        ersatz,
+        f.farbe.wert?.let { w -> AktiverFilter(farben.firstOrNull { it.wert == w }?.text ?: w) {
+            aktionen.setPartsColorFilter(Farbwahl.Alle) } },
+        f.kategorie.wert?.let { w -> AktiverFilter(kategorien.firstOrNull { it.wert == w }?.text ?: w) {
+            aktionen.setPartsCategoryFilter(Kategoriewahl.Alle) } },
+    )
 }

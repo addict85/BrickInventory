@@ -18,6 +18,7 @@ import coil3.ImageLoader
 private const val SCAN = "erfassung.scan"
 private const val ART_BARCODE = "B"
 private const val ART_SETNUMMER = "S"
+private const val ART_EINTIPPEN = "E"
 
 /**
  * Der Scanner gibt seinen Treffer dem Ziel darunter zurück und schliesst sich. Nur
@@ -25,6 +26,11 @@ private const val ART_SETNUMMER = "S"
  */
 internal fun SavedStateHandle.legeScanAb(wert: String, setnummer: Boolean, herkunft: Scannerherkunft) {
     this[SCAN] = arrayListOf(herkunft.name, if (setnummer) ART_SETNUMMER else ART_BARCODE, wert)
+}
+
+/** Ohne Kamera „Nummer eintippen“: Das Ziel darunter öffnet die Eingabe wie nach einem Scan ohne Treffer. */
+internal fun SavedStateHandle.legeEintippenAb(herkunft: Scannerherkunft) {
+    this[SCAN] = arrayListOf(herkunft.name, ART_EINTIPPEN, "")
 }
 
 /**
@@ -45,7 +51,11 @@ internal fun Erfassungsrahmen(
         val (herkunftName, art, wert) = scan ?: return@LaunchedEffect
         eintrag.savedStateHandle.remove<ArrayList<String>>(SCAN)
         val herkunft = Scannerherkunft.entries.firstOrNull { it.name == herkunftName } ?: Scannerherkunft.GALERIE
-        if (art == ART_SETNUMMER) erfassung.useScannedSetNumber(wert, herkunft) else erfassung.resolveBarcode(wert, herkunft)
+        when (art) {
+            ART_SETNUMMER -> erfassung.useScannedSetNumber(wert, herkunft)
+            ART_EINTIPPEN -> erfassung.manuellErfassen(herkunft)
+            else -> erfassung.resolveBarcode(wert, herkunft)
+        }
     }
     val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
     LaunchedEffect(barcode.gefundenesSet) {

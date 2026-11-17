@@ -40,7 +40,11 @@ import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.Suchfeld
 
-/** Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. */
+/**
+ * Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. Bewusste
+ * Ausnahme vom Filterblatt der Sammlung: Der Katalog hat nur diese zwei Filter, beide mit
+ * langer, durchsuchbarer Auswahl, und der Chip zeigt den gewählten Wert schon selbst.
+ */
 @Composable
 internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: MutableState<Boolean>, showYearSheet: MutableState<Boolean>) {
     LazyRow(

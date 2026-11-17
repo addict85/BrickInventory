@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { erzeugeDb, dbKonfigAusUmgebung } = _req('db/database.js');
@@ -51,10 +51,12 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
 
   await t.test('ein anderer Satz erfährt die Änderung über NOTIFY', async () => {
     await b.haushalt.horcheAufAenderungen();
-    assert.deepEqual(await b.haushalt.blickfeldIds(ids[0]), [ids[0]]);
+    // Unter dem Zeilenschutz des Kontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
+    const blickfeld = () => alsKonto(ids[0], () => b.haushalt.blickfeldIds(ids[0]));
+    assert.deepEqual(await blickfeld(), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
     a.haushalt.meldeHaushaltsaenderung();
-    const neu = async () => (await b.haushalt.blickfeldIds(ids[0])).length === 2;
+    const neu = async () => (await blickfeld()).length === 2;
     assert.ok(await bis(neu, 3000), 'altes Blickfeld: die Änderung kam nicht an');
   });
 });

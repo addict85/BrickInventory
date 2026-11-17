@@ -2,6 +2,9 @@ package ch.brickinventoryapp.konto.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.Loeschvormerkung
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.sitzung.abgeleitet
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.model.ui.Vorgang
@@ -73,8 +76,13 @@ class EinstellungenViewModel @Inject constructor(
     private val sitzungBeobachtet = Beobachtet(sitzung.state)
     val state: StateFlow<AppUiState> = sitzungBeobachtet
 
+    /** Ein Lagerort, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    val lagerortWeg = Loeschvormerkung<LagerortEintragAnsicht>(viewModelScope) { loescheLagerort(it.id) }
+
     /** Die Lagerorte-Seite liest ihn; wer sie öffnet, bekommt die eigenen Orte frisch. */
-    private val lagerBeobachtet = Beobachtet(filter.lagerState)
+    private val lagerBeobachtet = Beobachtet(filter.lagerState.abgeleitet(lagerortWeg.wert) { st, weg ->
+        if (weg == null) st else st.copy(eigene = st.eigene.filterNot { it.id == weg.id })
+    })
     override val lagerState: StateFlow<LagerUiState> = lagerBeobachtet
 
     init {
@@ -239,6 +247,8 @@ class EinstellungenViewModel @Inject constructor(
     /** Der Stern: Ist der Ort schon Vorgabe, nimmt der zweite Tipp sie wieder weg. */
     override fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean) =
         lagerortSchleuse { teile.setzeLagerortVorgabe(if (istVorgabe) null else id).auswerten() }
+
+    override fun lagerortLoeschenVormerken(ort: LagerortEintragAnsicht) = lagerortWeg.vormerken(ort)
 
     override fun loescheLagerort(id: Int) = lagerortSchleuse { teile.loescheLagerort(id).auswerten() }
 

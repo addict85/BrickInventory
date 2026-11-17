@@ -209,13 +209,13 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
       await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)}));
       const tabelle = document.getElementById('users-tbl').innerText;
       return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="kontoFreischalten"]'),
-        verwalter: /Verwalter/.test(tabelle), admin: /\\bAdmin/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
+        verwalter: /Administrator/.test(tabelle), admin: /\\bAdmin\\b/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
         hinweis: document.getElementById('reg-mail-hinweis').textContent }; })()`);
     assert.deepEqual(
       { ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) },
       { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true },
     );
-    assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Verwalter\\)`));
+    assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Administrator\\)`));
     await b.auswerten(
       `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="kontoFreischalten"]').click(); true`,
     );

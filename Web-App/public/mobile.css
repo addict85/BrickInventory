@@ -215,6 +215,8 @@
   details > summary, .import-menue > summary, #tab-profil .btn, .acq-loeschen { min-height: 44px; }
   .vb, .v-btn, .btn-sm, .ubadge-knopf, .acq-loeschen { min-width: 44px; }
   .lager-sinnbild { min-width: 44px; }
+  .chip-weg { min-width: 44px; min-height: 44px; margin: 0; }
+  .user-tbl .rollen-zelle { justify-content: flex-end; }
   .mon-plan, .mon-plan input { min-height: 44px; }
   #monitor-content a.zu-sicht { min-height: 44px; min-width: 44px; justify-content: center; }
   /* Häkchen: 22 px gezeichnet, aber 44 px Tippfläche am Kästchen selbst — auch
@@ -543,7 +545,8 @@
     background: var(--sur); border-top: 1px solid var(--bdr);
     box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
   }
-  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 0; font-size: var(--fs-0); }
+  /* Die eigene Polsterung überstimmt die Leistenregeln; ohne Mindesthöhe blieben bei 200 % Zoom 34 px. */
+  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 0; font-size: var(--fs-0); min-height: 44px; justify-content: center; }
 
   /* Noppenreihen schmaler skalieren, sonst wirken sie auf dem Telefon grob */
   [data-theme="brick"] .sc::after,

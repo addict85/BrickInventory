@@ -165,7 +165,7 @@ test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
   );
 });
 
-test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', async () => {
+test('mit Administratorrecht steht (Administrator) dahinter, ohne nur der Name', async () => {
   // Am Bündel in jsdom: anmelden als Verwalter und als Nutzer, auf Englisch, und nach dem Speichern des Profils.
   const ich = u => ({
     '/v1/auth/me': { ...ANMELDUNG['/v1/auth/me'], user: { ...ANMELDUNG['/v1/auth/me'].user, ...u } },
@@ -176,9 +176,9 @@ test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', async () =>
     return o;
   };
   for (const [u, opt, soll] of [
-    [{}, {}, 'anna (Verwalter)'],
+    [{}, {}, 'anna (Administrator)'],
     [{ is_admin: false }, {}, 'anna'],
-    [{}, { sprache: 'en' }, 'anna (Admin)'],
+    [{}, { sprache: 'en' }, 'anna (Administrator)'],
   ]) {
     const { w, d } = await name(ich(u), opt);
     try {
@@ -200,7 +200,7 @@ test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', async () =>
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
     assert.ok(
-      await warte(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Verwalter)'),
+      await warte(() => d.getElementById('ubadge').textContent.trim() === 'anna2 (Administrator)'),
       `nach dem Speichern: ${d.getElementById('ubadge').textContent}`,
     );
   } finally {

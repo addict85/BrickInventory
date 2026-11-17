@@ -55,6 +55,8 @@ import java.util.Base64
  *       stattdessen abtippen …“ (gegenproben/erstkontakt-ohne-abtippen.patch)
  *   (j) `abschreiben` für SCHLUESSEL_NEU wieder immer aus → rot „ohne CT-Pflicht wird ein
  *       neuer Serverschluessel abgetippt …“ (gegenproben/schluessel-neu-dialog-ohne-feld.patch)
+ *   (k) `abschreiben` beim Erstkontakt wieder nur auf Wunsch → rot „ohne CT-Pflicht wird beim
+ *       Erstkontakt abgetippt …“ (gegenproben/erstkontakt-dialog-ein-tipp.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ZertifikatDialogTest {
@@ -152,7 +154,7 @@ class ZertifikatDialogTest {
 
     @Test
     fun `beim Erstkontakt ueber eine oeffentliche CA steht der ganze Fingerabdruck da`() {
-        zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT)
+        zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT, ct = true)
         assertEquals(1, gezeigt(hex))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
     }
@@ -215,10 +217,25 @@ class ZertifikatDialogTest {
     @Test
     fun `beim Erstkontakt laesst sich stattdessen abtippen, dann steht nur der Anfang da`() {
         var angenommen: String? = null
-        zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT) { angenommen = it; true }
+        zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT, ct = true) { angenommen = it; true }
         compose.onNodeWithText(ctx.getString(R.string.zert_erstkontakt_abtippen)).performClick()
         compose.waitForIdle()
         assertEquals("Das Abzutippende steht nicht mehr da", 0, gezeigt(hex.takeLast(35)))
+        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
+        feld().performTextInput(hex.replace(":", "").takeLast(24))
+        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled().performClick()
+        assertEquals(hex.replace(":", "").takeLast(24), angenommen?.replace(":", ""))
+    }
+
+    /** Android 11–15: Ohne CT ginge eine fehlausgestellte Kette mit einem Tipp durch. */
+    @Test
+    fun `ohne CT-Pflicht wird beim Erstkontakt abgetippt, ein Tipp genuegt nicht`() {
+        var angenommen: String? = null
+        zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT) { angenommen = it; true }
+        compose.onNodeWithText(ctx.getString(R.string.zert_text_erstkontakt_abtippen, "nas")).assertExists()
+        assertEquals("Das Abzutippende steht nicht da", 0, gezeigt(hex.takeLast(35)))
+        assertEquals("Abtippen ist keine Wahl", 0, gezeigt(ctx.getString(R.string.zert_erstkontakt_abtippen)))
+        compose.onNodeWithText(ctx.getString(R.string.zert_erstkontakt_eingabe)).assertExists()
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
         feld().performTextInput(hex.replace(":", "").takeLast(24))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled().performClick()

@@ -1,0 +1,16 @@
+Gegenprobe: Knöpfe an einem Auftrag wieder ohne Namen mit Art und Set
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.verwaltung.HintergrundKnoepfeTest
+Rot: jeder Knopf nennt TalkBack
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
+index fea7864..d7146b4 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
+@@ -156,5 +156,5 @@ private fun AuftragZeile(a: AuftragAnsicht, artName: String, onAbbrechen: () ->
+ @Composable
+ private fun AuftragKnopf(aktion: String, wer: String, onClick: () -> Unit) {
+     val name = stringResource(R.string.aktion_fuer, aktion, wer)
+-    TextButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = name }) { Text(aktion) }
++    TextButton(onClick = onClick) { Text(aktion) }
+ }

@@ -54,3 +54,21 @@ enum class Katalogsortierung(val kennung: String, val nachJahr: Boolean = false)
         fun aus(kennung: String?): Katalogsortierung = entries.firstOrNull { it.kennung == kennung } ?: VORGABE
     }
 }
+
+/**
+ * Die Reihenfolgen der Minifiguren. Sortiert wird in der App: Der Server liefert die
+ * Figuren ganz und nach Name, eine Wahl kennt er nicht. NAME ist seine Reihenfolge.
+ */
+enum class Figurenordnung {
+    NAME, NUMMER, MENGE;
+
+    fun sortiere(figuren: List<FigurAnsicht>): List<FigurAnsicht> = when (this) {
+        NAME -> figuren
+        NUMMER -> figuren.sortedBy { it.figNumber.lowercase() }
+        MENGE -> figuren.sortedByDescending { it.totalQuantity ?: it.quantity }
+    }
+
+    companion object {
+        val VORGABE = NAME
+    }
+}

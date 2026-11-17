@@ -11,6 +11,7 @@ import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
 import { feldFehler, formularFehler, passwortRegelText } from './formular.js';
 import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './konto.js';
 import { toast } from './meldungen.js';
+import { mailLinkAnnehmen, mailLinkOffen } from './maillink.js';
 import {
   setzeGalerieSets,
   setzeKonto,
@@ -83,16 +84,22 @@ let _verifyAngemeldet = false;
 
 /**
  * @param {string} name
+ * @param {boolean} [fokus] Nach einem Klick auf einen Wechsel-Link: Der Link verschwindet mit seinem Feld, und
+ *   ohne neues Ziel stünde der Fokus auf BODY — Tastatur und Vorleser fingen oben wieder an.
  */
-function showPanel(name) {
-  ['login', 'register', 'forgot', 'reset', 'verify', 'pflichtwechsel', 'zweitpflicht'].forEach(p => {
+function showPanel(name, fokus = false) {
+  ['login', 'register', 'forgot', 'reset', 'verify', 'maillink', 'pflichtwechsel', 'zweitpflicht'].forEach(p => {
     const el = G('panel-' + p);
     if (el) el.style.display = p === name ? 'block' : 'none';
   });
-  const titel = G('panel-' + name)
-    ?.querySelector('h1')
-    ?.textContent?.trim();
+  const panel = G('panel-' + name);
+  const titel = panel?.querySelector('h1')?.textContent?.trim();
   if (titel) document.title = `${titel} – BrickInventory`;
+  if (!fokus || !panel) return;
+  const feld = [...panel.querySelectorAll('input:not([type="hidden"]):not([disabled])')].find(
+    e => !e.closest('[hidden],[style*="display: none"]'),
+  );
+  /** @type {HTMLElement | undefined} */ (feld)?.focus();
 }
 
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
@@ -167,7 +174,7 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   } else if (token && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
     _resetToken = token;
     showPanel('reset');
-  }
+  } else if (token && mailLinkAnnehmen(token, location.pathname)) showPanel('maillink');
   if (token) history.replaceState({}, '', location.pathname);
 })();
 // Ein weiterer Link im selben Tab ändert nur das Fragment: neu laden, sonst bliebe der alte Token.
@@ -175,21 +182,21 @@ addEventListener('hashchange', () => /[#&]token=/.test(location.hash) && locatio
 
 G('link-register')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('register');
+  showPanel('register', true);
   const rl = G('reg-lang');
   if (rl && (LANG === 'de' || LANG === 'en')) rl.value = LANG;
 });
 G('link-forgot')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('forgot');
+  showPanel('forgot', true);
 });
 G('link-to-login')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('login');
+  showPanel('login', true);
 });
 G('link-forgot-to-login')?.addEventListener('click', e => {
   e.preventDefault();
-  showPanel('login');
+  showPanel('login', true);
 });
 
 G('btn-register')?.addEventListener('click', async () => {
@@ -347,7 +354,7 @@ export async function checkAuth() {
   _verifyAngemeldet = !!d.loggedIn;
   if (_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
   // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
-  if (d.loggedIn && !_verifyToken) {
+  if (d.loggedIn && !_verifyToken && !mailLinkOffen()) {
     setzeKonto(
       /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
@@ -357,7 +364,7 @@ export async function checkAuth() {
     startgeruestWeg();
     G('app').style.display = 'none';
     // Don't override reset/verified panels that were already set from URL params
-    if (!_resetToken && !_verifyToken && !G('verified-msg')?.style.display.includes('block')) {
+    if (!_resetToken && !_verifyToken && !mailLinkOffen() && !G('verified-msg')?.style.display.includes('block')) {
       showPanel('login');
     }
     checkRegistrationEnabled();
