@@ -1301,11 +1301,23 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
   return raus;
 }
 
-/** Englische Namen exportierter Funktionen in src/ werden weniger, nie mehr. */
+// Bereiche, die Phase 2a schon vollständig auf Englisch gezogen hat (Verzeichnis, Dateien,
+// Bezeichner): Ihre englischen Exportnamen sind dort Absicht, nicht die Sorte Einzelfund, die
+// dieser Zähler fängt. Diese Liste wächst mit jedem fertig umgestellten Bereich, nie zurück.
+const ENGLISCH_UMGESTELLT = ['src/idempotency', 'src/profile'];
+const nichtUmgestellt = (/** @type {string} */ f) => {
+  const rel = path.relative(WEB, f).replace(/\\/g, '/');
+  return !ENGLISCH_UMGESTELLT.some(d => rel === d || rel.startsWith(`${d}/`));
+};
+
+/** Englische Namen exportierter Funktionen im noch nicht umgestellten src/ werden weniger, nie mehr. */
 function englischeExportnamen() {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
   // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
   // Gegenprobe (15.11.2026): in src/bestand/acquisitions.ts `kaufAmTagErfassen` wieder `recordAcquisitionForDay` → rot (50 von 49).
+  // (17.11.2026, Phase 2a) src/idempotenz→src/idempotency und src/profil→src/profile ganz auf
+  // Englisch gezogen: ihre Exportnamen zählen hier nicht mehr mit (ENGLISCH_UMGESTELLT), sonst
+  // stiege die Schranke mit jedem fertig umgestellten Bereich statt zu sinken.
   const { englischerName } = require('./helpers/namen');
   const SCHRANKE = 36;
   assert.deepEqual(
@@ -1316,10 +1328,14 @@ function englischeExportnamen() {
   );
   const namen = quellen()
     .filter(f => /^src[\\/]/.test(path.relative(WEB, f)))
+    .filter(nichtUmgestellt)
     .flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]));
   assert.ok(namen.length > 1000, `nur ${namen.length} exportierte Funktionen in src/ — greift die Suche noch?`);
   const ist = namen.filter(englischerName).length;
-  assert.ok(ist <= SCHRANKE, `${ist} englische Exportnamen in src/, erlaubt sind ${SCHRANKE}`);
+  assert.ok(
+    ist <= SCHRANKE,
+    `${ist} englische Exportnamen im noch nicht umgestellten src/, erlaubt sind ${SCHRANKE}`,
+  );
   if (ist < SCHRANKE) console.log(`  ℹ englische Exportnamen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 }
 

@@ -1,5 +1,4 @@
-/** data-theme already in the delivered HTML, so the page doesn't first flash
- * the default theme. */
+/** data-theme already in the delivered HTML, so the page doesn't first flash the default theme. */
 import fs from 'node:fs';
 import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'node:path';
@@ -41,8 +40,7 @@ export function startPageStyleHash(produktion: boolean): string {
   return Z.stil.hash;
 }
 
-// Process-local; the short lifetime covers an outside change —
-// simpler than LISTEN/NOTIFY for a setting that rarely changes.
+// Process-local; simpler than LISTEN/NOTIFY for a setting that rarely changes.
 const THEME_TTL_MS = 30_000;
 
 export function forgetTheme() {
@@ -65,8 +63,7 @@ async function readIndex(produktion: boolean): Promise<string> {
   return Z.html;
 }
 
-/** The login screen names the shipped build. A fixed string in index.html stayed while a
- * newer commit was long running; without a known version the line stays empty. */
+/** The login screen names the shipped build; without a known version the line stays empty. */
 export function insertVersion(html: string, version: string): string {
   const v = version && version !== 'unbekannt' ? `Version ${version.replace(/[^\w.+-]/g, '')}` : '';
   return html.replace(/(<div class="start-fuss" data-version>)[^<]*(<\/div>)/, `$1${v}$2`);
@@ -143,8 +140,7 @@ export async function startPageHtml(k: ProfileContext, userId?: number): Promise
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);
     out = releaseThemeStyles(out, theme);
 
-    // Without a session, login follows: the skeleton then shows only the frame, no app
-    // tiles, which would flash for a moment like a loaded collection.
+    // Without a session, the skeleton shows only the frame, no app tiles flashing first.
     if (userId == null) out = out.replace(/<html\b/i, '<html data-abgemeldet');
 
     // data-i18n-locale marks the tag so no script path needs guessing.
@@ -154,8 +150,7 @@ export async function startPageHtml(k: ProfileContext, userId?: number): Promise
       out = out.replace(/(<html[^>]*\slang=")[^"]*(")/i, `$1${lang}$2`);
     }
 
-    // Stamp LAST: otherwise the German locale file's stamp would end up on the
-    // English one.
+    // Stamp LAST, or the German locale file's stamp would end up on the English one.
     out = insertVersion(out, appVersion());
     return stempleAssetsGecacht(out, PUBLIC_DIR);
   } catch (_) {

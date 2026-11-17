@@ -15,8 +15,7 @@ import type { IdempotencyContext } from './context';
 
 /** The app retries within hours, not days. */
 export const EXPIRY_HOURS = 24;
-/** After this, the first request counts as abandoned (crash, restart): only after
- * the longest allowed request, or a slow one would run twice. */
+/** After this, the first request counts as abandoned (crash, restart): longer than the longest allowed request. */
 export const ORPHANED_AFTER_S = HTTP_FRISTEN.requestTimeout / 1000 + 60;
 
 /** User and key in the context: a stored response is only valid for its own entry. */
@@ -24,8 +23,7 @@ export const responseContext = (uid: number, key: string) => kontext('idempotenc
 
 export const KEY_PATTERN = /^[A-Za-z0-9._:-]{1,100}$/;
 
-/** Kept 24 h in the table: without passwords and codes, the rest as an HMAC that
- * cannot be brute-forced without the data key. `h1:` sets it apart from the old SHA-256. */
+/** Kept 24 h in the table, without passwords/codes; `h1:` marks it apart from the old SHA-256. */
 const SECRET_FIELD = /pass|secret|geheim|token|_key$|^key$|^current$|code$|^pin$|_pin$/i;
 const FINGERPRINT_PREFIX = 'h1:';
 function withoutSecrets(value: unknown): unknown {
@@ -34,8 +32,7 @@ function withoutSecrets(value: unknown): unknown {
   return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, SECRET_FIELD.test(k) ? '*' : withoutSecrets(v)]));
 }
 
-/** Runs before the route's guards: admin responses only for the admin role. Without
- * that, the fingerprint would stay the same and running keys would survive updates. */
+/** Runs before the route's guards: admin responses only for the admin role, or running keys would survive updates. */
 export function fingerprint(method: string, path: string, body: unknown, isAdmin = false): string {
   const content = `${method} ${path}\n${JSON.stringify(withoutSecrets(body ?? null))}`;
   return FINGERPRINT_PREFIX + suchwert('idempotency', isAdmin ? `${content}\nadmin` : content);
@@ -71,8 +68,7 @@ export async function begin(
   return { kind: 'replay', status: e.status, response };
 }
 
-/** A 5xx is not remembered but released: without a marked effect, a retry should
- * be allowed to try again; with one it would be a second attempt. */
+/** A 5xx is released, not remembered: without a marked effect a retry may try again. */
 export async function end(
   k: IdempotencyContext,
   uid: number,
