@@ -44,7 +44,7 @@ const STANDALONE = new Set([
  * prüft, dass Kern und Bausteine keine Ansicht importieren. Alles übrige ist Ansicht.
  */
 const KERN = [
-  'stile.js',
+  'styles.js',
   'escapen.js',
   'events.js',
   'targets.js',
@@ -118,7 +118,7 @@ function checkComplete() {
 
 /**
  * Alle Stilwerte, die so im Quelltext stehen: data-stil="…" im Markup und die
- * stil-Parameter der Bausteine (bausteine.js). js/stile.js wendet nur
+ * stil-Parameter der Bausteine (bausteine.js). js/styles.js wendet nur
  * diese an — ein eingeschleustes data-stil mit anderem Wert bleibt wirkungslos.
  * Werte mit `${…}` zählen nicht; die setzt der Aufrufer zur Laufzeit selbst.
  */

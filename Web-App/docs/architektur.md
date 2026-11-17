@@ -402,7 +402,7 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
 - **Markup** entsteht mit dem Tag `html` (`public/js/escapen.js`, maskiert jeden
   Wert) und kommt nur über `setzeHtml()`/`fuegeHtmlEin()` (`public/js/dom.js`)
   in die Seite. Inline-Stile heissen `data-stil` und werden von
-  `public/js/stile.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
+  `public/js/styles.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
 - **Texte:** `t()` maskiert eingesetzte Werte für Markup, `tRaw()` nicht (für
   `textContent`); beide aus `public/i18n.js`.
 - **Typen:** `tsconfig.frontend.json` prüft die Module streng (JSDoc, `strict`),

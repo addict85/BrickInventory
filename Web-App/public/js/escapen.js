@@ -60,7 +60,7 @@ export function sichereUrl(u) {
 }
 
 /**
- * Farbwert für data-farbe="…" (js/stile.js) — alles ausser 6 Hex-Ziffern fliegt raus.
+ * Farbwert für data-farbe="…" (js/styles.js) — alles ausser 6 Hex-Ziffern fliegt raus.
  * @param {unknown} hex
  * @param {string} fallback
  */

@@ -35,7 +35,7 @@ const STILE = [
 ];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-/** Die Kopfleiste wie im Betrieb: data-stil als Stil (stile.js), Klappe offen, Name gesetzt. */
+/** Die Kopfleiste wie im Betrieb: data-stil als Stil (styles.js), Klappe offen, Name gesetzt. */
 function kopfleiste() {
   const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(P('public', 'index.html'), 'utf8'));
   const kopf = html

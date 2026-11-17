@@ -3,7 +3,7 @@
 // Einstieg prüft. Der Importgraph ist kreisfrei (test/frontend-architektur.test.js).
 
 // Kern
-import './stile.js';
+import './styles.js';
 import './escapen.js';
 import './events.js';
 import './targets.js';

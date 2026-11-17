@@ -969,7 +969,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
 });
 
 /**
- * Inline-Stile in index.html. Ein data-stil="…" (js/stile.js setzt es als
+ * Inline-Stile in index.html. Ein data-stil="…" (styles.js setzt es als
  * Inline-Stil) setzt sich über jedes Design und jede Telefonregel hinweg;
  * gleiche Dinge sahen deshalb an zwei Stellen verschieden aus. Gezählt werden
  * Attribute ausserhalb von Kommentaren. display:none bleibt erlaubt: Die
