@@ -1332,10 +1332,7 @@ function englischeExportnamen() {
     .flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]));
   assert.ok(namen.length > 1000, `nur ${namen.length} exportierte Funktionen in src/ — greift die Suche noch?`);
   const ist = namen.filter(englischerName).length;
-  assert.ok(
-    ist <= SCHRANKE,
-    `${ist} englische Exportnamen im noch nicht umgestellten src/, erlaubt sind ${SCHRANKE}`,
-  );
+  assert.ok(ist <= SCHRANKE, `${ist} englische Exportnamen im noch nicht umgestellten src/, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ englische Exportnamen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 }
 

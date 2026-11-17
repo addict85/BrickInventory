@@ -276,9 +276,10 @@ function kontextNamen(ts, tiefe = 0) {
   return namen;
 }
 function mitKontext(rel, modul) {
-  const m = /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|area\.js$|context\.js$|repository\/|http\/)[\w/]+\.js$/.exec(
-    rel,
-  );
+  const m =
+    /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|area\.js$|context\.js$|repository\/|http\/)[\w/]+\.js$/.exec(
+      rel,
+    );
   if (
     !m ||
     !(

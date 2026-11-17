@@ -35,7 +35,8 @@ export function idempotency(d: IdempotencyServices) {
       key,
       service.fingerprint(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true),
     );
-    if (outcome.kind === 'different') return sendeFehler(req, res, 'nicht_verarbeitbar', 'idempotenz_schluessel_anders');
+    if (outcome.kind === 'different')
+      return sendeFehler(req, res, 'nicht_verarbeitbar', 'idempotenz_schluessel_anders');
     if (outcome.kind === 'running') {
       res.set('Retry-After', '1');
       return sendeFehler(req, res, 'konflikt', 'idempotenz_laeuft');

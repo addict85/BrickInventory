@@ -101,10 +101,6 @@ test('ohne Sitzung: keine App-Kacheln im Gerüst, mit Sitzung schon', async () =
       w.close();
     }
   };
-  assert.deepEqual(
-    sichtbar(await startPageHtml()),
-    [false, false, false],
-    'ohne Sitzung: keine App-Kacheln im Gerüst',
-  );
+  assert.deepEqual(sichtbar(await startPageHtml()), [false, false, false], 'ohne Sitzung: keine App-Kacheln im Gerüst');
   assert.deepEqual(sichtbar(await startPageHtml(1)), [true, true, true], 'mit Sitzung: Kopf, Leiste und Kacheln');
 });

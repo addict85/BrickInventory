@@ -854,10 +854,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     await alsKonto(B, async () => {
       await addManualMinifig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
       await updateManualMinifig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
-      await importMinifigsCsv(
-        B,
-        `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`,
-      );
+      await importMinifigsCsv(B, `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`);
     });
 
     const srv = testServer(_req, { sitzung: { userId: A }, t });

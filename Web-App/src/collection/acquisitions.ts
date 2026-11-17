@@ -184,7 +184,8 @@ export async function changeAcquisition(
         ...(hasCondition ? { zustand: targetCondition } : {}),
         ...(newDate ? { datum: newDate } : {}),
       });
-      if (hasQuantity && isEmpty(await holdingQuantity(t, art, ownerId, keys))) await a.cleanupWhenEmpty(t, ownerId, keys);
+      if (hasQuantity && isEmpty(await holdingQuantity(t, art, ownerId, keys)))
+        await a.cleanupWhenEmpty(t, ownerId, keys);
     },
     { sperren: [{ konto: besitzer, schluessel: bestandsSchluessel(art, keys) }] },
   );
@@ -192,13 +193,7 @@ export async function changeAcquisition(
 }
 
 /** If nothing is left afterwards, the holding row goes with it. */
-export async function deleteAcquisition(
-  k: CollectionContext,
-  art: ErfassungsArt,
-  uid: number,
-  id: number,
-  keys: Keys,
-) {
+export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt, uid: number, id: number, keys: Keys) {
   const a = kinds(k)[art];
   const besitzer = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
   const menge = await k.transaktion(

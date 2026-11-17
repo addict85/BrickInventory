@@ -50,12 +50,7 @@ export type Outcome =
   | { kind: 'different' };
 
 /** Without a readable body, a clear refusal beats risking a second effect. */
-export async function begin(
-  k: IdempotencyContext,
-  uid: number,
-  key: string,
-  fp: string,
-): Promise<Outcome> {
+export async function begin(k: IdempotencyContext, uid: number, key: string, fp: string): Promise<Outcome> {
   if (await k.repository.belege(uid, key, fp, ORPHANED_AFTER_S)) return { kind: 'new' };
   const e = await k.repository.eintrag(uid, key, ORPHANED_AFTER_S);
   // Released between claiming and reading (the first one failed): try again.

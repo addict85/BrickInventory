@@ -169,7 +169,8 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
         ...(korrekturen ? { korrekturen } : {}),
       };
       const uid = req.apiUser.user_id;
-      if (!req.abfrage.strom) return { ...(await d.collection.runImport<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
+      if (!req.abfrage.strom)
+        return { ...(await d.collection.runImport<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
 
       await importImStrom(d, req, res, uid, eingabe);
     },

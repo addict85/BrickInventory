@@ -427,9 +427,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   const manZeile = man.find(x => x.part_number === '3070b');
   assert.ok(manZeile, 'Die manuelle Position fehlt in der Liste');
   assert.equal(Number(manZeile.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manZeile.quantity}`);
-  const manFig = (await M.readManualMinifigs([haupt], haupt, { page_size: 60 })).find(
-    x => x.fig_number === 'fig-m',
-  );
+  const manFig = (await M.readManualMinifigs([haupt], haupt, { page_size: 60 })).find(x => x.fig_number === 'fig-m');
   assert.ok(manFig, 'Die manuelle Figur fehlt in der Liste');
   assert.equal(Number(manFig.quantity), 2, `Manuelle Figurenliste: 2, bekam ${manFig.quantity}`);
 

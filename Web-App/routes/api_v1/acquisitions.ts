@@ -61,7 +61,11 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 't
     // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite;
     // `degradiert` sagt ihr, dass sie nicht wirklich leer ist.
     const ab = new Abstriche();
-    const rows = await ab.oder('erfassungen', d.collection.setAcquisitionsForSet(sichtVon(req), req.pfad.setNumber), null);
+    const rows = await ab.oder(
+      'erfassungen',
+      d.collection.setAcquisitionsForSet(sichtVon(req), req.pfad.setNumber),
+      null,
+    );
     if (!rows) return { acquisitions: [], totals: ohneLeerenBetrag(acquisitionTotals([])), ...ab.angabe() };
     return { ...(await inKontowaehrung(d, rows, uid)), owner_user_id: uid };
   });

@@ -220,7 +220,8 @@ export async function fulfillWantedItem(
   // Two conditions: `condition` is the wanted item's key, which disappears;
   // `eingabe.condition` is the one the set is recorded in.
   const wantedCondition = await conditionOrDefault(k, condition, besitzerId);
-  const zustand = eingabe.condition == null ? wantedCondition : await conditionOrDefault(k, eingabe.condition, besitzerId);
+  const zustand =
+    eingabe.condition == null ? wantedCondition : await conditionOrDefault(k, eingabe.condition, besitzerId);
   const menge = V.acquisitionQuantity(eingabe.quantity ?? 1);
   const kaufpreis = geldEingabe(eingabe.purchase_price, 'Kaufpreis');
 

@@ -116,7 +116,9 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('übernehmen: kein Set im Bestand, der Merkposten steht noch', async () => {
-    await mitBremse(() => assert.rejects(W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/));
+    await mitBremse(() =>
+      assert.rejects(W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/),
+    );
     assert.equal(
       (await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length,
       0,
