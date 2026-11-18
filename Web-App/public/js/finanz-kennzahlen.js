@@ -1,4 +1,4 @@
-// Finanzen: die Karten über der Tabelle (Kaufpreis, Marktwert, Gewinn/Verlust) und die Zeile, worüber sie rechnen.
+// Finances: the cards above the table (purchase price, market value, profit/loss) and the row they're based on.
 import { pnlBadge } from './bausteine.js';
 import { tRaw } from '../i18n.js';
 import { html } from './escaping.js';
@@ -6,16 +6,16 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtN } from './format.js';
 
 /**
- * Die gemeinsame Basis der Karten vom Server; ohne sie (pnl gescheitert) keine G/V.
+ * The cards' shared basis from the server; without it (pnl failed) there's no P&L.
  * @typedef {{ bewertet: number, ohneMarkt: number, ohneKauf: number, einstand: number, wert: number, betrag: number,
  *   gesamt?: number, ohneMarktEinstand?: number, ohneKaufWert?: number }} Basis
- * @param {Partial<import('../../frontend-typen/vertrag').PnlTotals>} pt @param {number} ohnePreis
+ * @param {Partial<import('../../frontend-typen/vertrag').PnlTotals>} pt @param {number} missingPrice
  * @returns {Basis}
  */
-export function basisAus(pt, ohnePreis) {
+export function basisAus(pt, missingPrice) {
   const z = (/** @type {unknown} */ v) => parseFloat(String(v)) || 0;
   if (pt.basis_einstand == null)
-    return { bewertet: 0, ohneMarkt: ohnePreis, ohneKauf: 0, einstand: 0, wert: 0, betrag: 0 };
+    return { bewertet: 0, ohneMarkt: missingPrice, ohneKauf: 0, einstand: 0, wert: 0, betrag: 0 };
   return {
     gesamt: pt.positionen || 0,
     bewertet: pt.positionen_bewertet || 0,
@@ -29,17 +29,17 @@ export function basisAus(pt, ohnePreis) {
   };
 }
 
-/** Kurzer Titel; was „bewertet“ heisst, sagt der Tooltip, ausführlich die Zeile unter den Karten.
- * @param {HTMLElement} el @param {string} titel @param {boolean} mitHilfe */
-function hilfe(el, titel, mitHilfe) {
-  el.textContent = titel;
-  if (mitHilfe) el.title = tRaw('finance.stat.bewertet_hilfe');
+/** A short title; what "valued" means is in the tooltip, in full in the row below the cards.
+ * @param {HTMLElement} el @param {string} title @param {boolean} withHelp */
+function titleWithHelp(el, title, withHelp) {
+  el.textContent = title;
+  if (withHelp) el.title = tRaw('finance.stat.bewertet_hilfe');
   else el.removeAttribute('title');
 }
 
 /**
- * Die Kacheln über der Tabelle. Der Einstand ist immer bekannt; Gesamtwert und G&V nur, wenn es Marktpreise
- * gibt — sonst sagt die Kachel, für wie viele Positionen der Preis fehlt, statt „—“ zu zeigen.
+ * The tiles above the table. The purchase total is always known; the grand total and P&L only when there
+ * are market prices — otherwise the tile says for how many items the price is missing, instead of showing "—".
  */
 /** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number, geschaetzt?: number, zeilen?: number }} p */
 export function zeigeKennzahlen({
@@ -54,39 +54,48 @@ export function zeigeKennzahlen({
 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
-  const mitBasis = basis.bewertet > 0;
-  const einstand = mitBasis ? basis.einstand : einstandAlle;
-  const wert = mitBasis ? basis.wert : wertAlle;
-  const teilweise = mitBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
-  hilfe(G('fin-einstand-titel'), tRaw(teilweise ? 'finance.stat.purchase_basis' : 'finance.stat.purchase'), teilweise);
-  G('fin-einstand').textContent = einstand > 0 || mitBasis ? fmtN(einstand, cur) : '—';
-  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse); ihre Zahl steht darunter.
+  const hasBasis = basis.bewertet > 0;
+  const purchase = hasBasis ? basis.einstand : einstandAlle;
+  const value = hasBasis ? basis.wert : wertAlle;
+  const partial = hasBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
+  titleWithHelp(
+    G('fin-einstand-titel'),
+    tRaw(partial ? 'finance.stat.purchase_basis' : 'finance.stat.purchase'),
+    partial,
+  );
+  G('fin-einstand').textContent = purchase > 0 || hasBasis ? fmtN(purchase, cur) : '—';
+  // Purchase prices in another currency are not counted by the server (no exchange rates); their number
+  // sits underneath.
   G('fin-einstand-sub').textContent =
     fremdeWaehrung > 0
       ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })
-      : teilweise
+      : partial
         ? tRaw('finance.stat.purchase_von', { betrag: fmtN(einstandAlle, cur) })
         : tRaw('finance.stat.purchase_hint');
-  const fehlt = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
-  // Rechnet die Kachel nur über bewertete Posten, sagt sie es; sonst stünden zwei „Marktwerte“ verschieden da.
-  const wertTeilweise = mitBasis && Math.abs(wertAlle - basis.wert) >= 0.005;
-  hilfe(G('fin-wert-titel'), tRaw(wertTeilweise ? 'finance.stat.value_basis' : 'finance.stat.value'), wertTeilweise);
-  if (wert > 0) {
-    G('fin-wert').textContent = fmtN(wert, cur);
-    G('fin-wert-sub').textContent = wertTeilweise
+  const missing = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
+  // If the tile only sums up valued items, it says so; otherwise two "market values" would show different numbers.
+  const valuePartial = hasBasis && Math.abs(wertAlle - basis.wert) >= 0.005;
+  titleWithHelp(
+    G('fin-wert-titel'),
+    tRaw(valuePartial ? 'finance.stat.value_basis' : 'finance.stat.value'),
+    valuePartial,
+  );
+  if (value > 0) {
+    G('fin-wert').textContent = fmtN(value, cur);
+    G('fin-wert-sub').textContent = valuePartial
       ? tRaw('finance.stat.value_von', { betrag: fmtN(wertAlle, cur) })
       : tRaw('finance.stat.value_hint');
   } else {
-    // Ohne Positionen fehlt kein Preis — dann einfach „—“.
-    if (fehlt) setzeHtml(G('fin-wert'), html`<span class="fval-hinweis">${fehlt}</span>`);
+    // Without items, no price is missing — then it's simply "—".
+    if (missing) setzeHtml(G('fin-wert'), html`<span class="fval-hinweis">${missing}</span>`);
     else G('fin-wert').textContent = '—';
     G('fin-wert-sub').textContent = '';
   }
-  // Die Kachel bleibt stehen, damit die Reihe nicht springt; ohne Preise mit Hinweis.
-  if (mitBasis && guv != null) {
+  // The tile stays in place, so the row doesn't jump; without prices, with a hint.
+  if (hasBasis && guv != null) {
     setzeHtml(G('fin-total-pnl'), pnlBadge(guv));
-    // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis). „gegenüber dem Einstand“: Das
-    // Prozent im Diagramm rechnet gegen den Anfang des Zeitraums.
+    // Amount and percentage from the same items (with BOTH a purchase and a market price). "against the
+    // purchase total": the chart's percentage is computed against the start of the period.
     const b = basis.betrag;
     G('fin-pnl-sub').textContent = tRaw('finance.pnl_vs_purchase', {
       betrag: `${b >= 0 ? '+' : '−'}${fmtN(Math.abs(b), cur)}`,
@@ -95,34 +104,34 @@ export function zeigeKennzahlen({
     G('fin-total-pnl').textContent = '—';
     G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');
   }
-  const zeile = G('fin-basis');
-  if (!zeile) return;
-  const teile = [];
+  const row = G('fin-basis');
+  if (!row) return;
+  const parts = [];
   if (basis.ohneMarkt > 0)
-    teile.push(
+    parts.push(
       tRaw('finance.basis.ohne_markt', { n: basis.ohneMarkt, betrag: fmtN(basis.ohneMarktEinstand || 0, cur) }),
     );
   if (basis.ohneKauf > 0)
-    teile.push(tRaw('finance.basis.ohne_kauf', { n: basis.ohneKauf, betrag: fmtN(basis.ohneKaufWert || 0, cur) }));
-  // Geschätzte Kaufpreise rechnen mit, sind aber nicht bezahlt: Die Zahl gehört neben das Ergebnis.
-  if (geschaetzt > 0) teile.push(tRaw('finance.basis.geschaetzt', { n: geschaetzt }));
-  if (!mitBasis || !teile.length) {
-    zeile.hidden = true;
-    zeile.textContent = '';
+    parts.push(tRaw('finance.basis.ohne_kauf', { n: basis.ohneKauf, betrag: fmtN(basis.ohneKaufWert || 0, cur) }));
+  // Estimated purchase prices count towards the total but aren't paid: that number belongs next to the result.
+  if (geschaetzt > 0) parts.push(tRaw('finance.basis.geschaetzt', { n: geschaetzt }));
+  if (!hasBasis || !parts.length) {
+    row.hidden = true;
+    row.textContent = '';
     return;
   }
-  zeile.hidden = false;
+  row.hidden = false;
   setzeHtml(
-    zeile,
-    // Der Server zählt je Position, die Tabelle zeigt je Kauf und Konto eine Zeile; weichen die Zahlen ab,
-    // sagt der Tooltip, warum.
-    html`${ico('info')}<span>${basisSatz(tRaw('finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt }), zeilen > (basis.gesamt ?? 0))} ${teile.join(' · ')}</span>`,
+    row,
+    // The server counts per item, the table shows one row per purchase and account; if the numbers
+    // differ, the tooltip says why.
+    html`${ico('info')}<span>${basisSentence(tRaw('finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt }), zeilen > (basis.gesamt ?? 0))} ${parts.join(' · ')}</span>`,
   );
 }
 
-/** @param {string} satz @param {boolean} zeilenHilfe */
-function basisSatz(satz, zeilenHilfe) {
-  if (!zeilenHilfe) return html`<strong>${satz}</strong>`;
+/** @param {string} sentence @param {boolean} rowHint */
+function basisSentence(sentence, rowHint) {
+  if (!rowHint) return html`<strong>${sentence}</strong>`;
   const h = tRaw('finance.basis.zeilen_hilfe');
-  return html`<strong title="${h}">${satz}<span class="vh"> ${h}</span></strong>`;
+  return html`<strong title="${h}">${sentence}<span class="vh"> ${h}</span></strong>`;
 }
