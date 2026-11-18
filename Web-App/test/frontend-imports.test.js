@@ -49,6 +49,15 @@ function importierte(src) {
   return namen;
 }
 
+/**
+ * `datei:Name` -> Grund, warum der Treffer dort kein echter Aufruf ist
+ * (ohneKommentare() schneidet nur Kommentare ab Spaltenanfang weg, kein
+ * `code(); // … bar (…)`).
+ */
+const BEKANNTE_FALSCHTREFFER = new Map([
+  ['set-csv-import.js:bar', 'Kommentar „show the global bar (…)“ nennt das Wort, kein Aufruf von monitor.js'],
+]);
+
 test('jedes Frontend-Modul importiert, was es aufruft', () => {
   const dateien = fs
     .readdirSync(JS_DIR)
@@ -74,7 +83,7 @@ test('jedes Frontend-Modul importiert, was es aufruft', () => {
     const lokal = deklarierte(src);
     const imp = importierte(src);
     for (const [name, herkunft] of bekannt) {
-      if (herkunft === f || lokal.has(name) || imp.has(name)) continue;
+      if (herkunft === f || lokal.has(name) || imp.has(name) || BEKANNTE_FALSCHTREFFER.has(`${f}:${name}`)) continue;
       // Aufruf des Namens, nicht als Eigenschaft (obj.name) und nicht als
       // Zeichenkette in einer Aktionsliste.
       const aufruf = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);
