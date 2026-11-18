@@ -325,9 +325,11 @@ async function musterSammlung(db, uid) {
   );
   await haeltFigur(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
   // Über den Dienst: Nur er verschlüsselt die Nummer, wie es die Datenbank verlangt.
-  await require(
-    path.join(__dirname, '..', '..', 'dist', 'src', 'gutscheine', 'repository', 'gutscheine.js'),
-  ).gutscheinAnlegen(db, uid, { number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR' });
+  await require(path.join(__dirname, '..', '..', 'dist', 'src', 'vouchers', 'repository', 'vouchers.js')).createVoucher(
+    db,
+    uid,
+    { number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR' },
+  );
   await db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
                 VALUES ($1, '10276-1', 'N', 'unter', 299, 'EUR') ON CONFLICT DO NOTHING`,

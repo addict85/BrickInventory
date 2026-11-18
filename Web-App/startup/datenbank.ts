@@ -30,11 +30,11 @@ export const ALTBESTAND_MARKE = 'altbestand_v2';
 export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluesselt: number; abdruecke: number } | null> {
   if (await d.auftraege.liesZustand(ALTBESTAND_MARKE)) return null;
   const n =
-    (await d.gutscheine.nummernNachverschluesseln()) +
-    (await d.gutscheine.kopienVerschluesseln()) +
+    (await d.vouchers.reencryptNumbers()) +
+    (await d.vouchers.reencryptCopies()) +
     (await d.faktoren.verschluesseleAltbestand()) +
     (await d.idempotency.reencryptResponses()) +
-    (await d.gutscheine.verschluesseleAltbestand());
+    (await d.vouchers.encryptLegacyFiles());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await d.idempotency.deleteOldFingerprints();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
@@ -49,9 +49,9 @@ export async function schluesselWechsel(d: Dienste): Promise<number | null> {
   if (!altSchluessel()) return null;
   const n =
     (await d.faktoren.verschluesseleAltbestand({ alle: true })) +
-    (await d.gutscheine.gutscheineNeuVerschluesseln()) +
-    (await d.gutscheine.kopienVerschluesseln(true)) +
-    (await d.gutscheine.verschluesseleAltbestand({ alle: true }));
+    (await d.vouchers.reencryptAllVouchers()) +
+    (await d.vouchers.reencryptCopies(true)) +
+    (await d.vouchers.encryptLegacyFiles({ alle: true }));
   // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
   await d.idempotency.forgetAll();
   console.log(

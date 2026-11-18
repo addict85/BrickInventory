@@ -6,7 +6,7 @@
  * werden zum Fehler, statt Kartennummer und PIN weiterzureichen.
  *
  * Gegenproben (am 02.11.2026 gemessen):
- *   A  holeGuthaben wieder mit globalThis.fetch → rot: alle drei (der
+ *   A  fetchBalance wieder mit globalThis.fetch → rot: alle drei (der
  *      Testserver sieht keine Anfrage, fetch nimmt den Agenten nicht)
  *   B  in legoAbruf die Hostliste um example.org erweitert → rot: „eine
  *      Umleitung auf einen fremden Host …“ (example.org wird angefragt)
@@ -23,7 +23,7 @@ const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portVon } = require('./helpers/server');
-const G = _req('src/gutscheine/gutscheinGuthaben.js');
+const G = _req('src/vouchers/balanceLookup.js');
 /** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
 const vorrat = new Map();
 const { AbrufFehler } = _req('src/infra/abruf.js');
@@ -122,8 +122,8 @@ test.beforeEach(() => {
 
 test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   modus = 'gut';
-  const g = await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf });
-  assert.deepEqual(g, { betrag: 12.5, waehrung: 'CHF', angezeigt: 'CHF 12.50' });
+  const g = await G.fetchBalance(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf });
+  assert.deepEqual(g, { amount: 12.5, currency: 'CHF', formatted: 'CHF 12.50' });
   assert.deepEqual(
     gesehen.map(a => `${a.methode} ${a.pfad}`),
     ['GET /de-ch/gift-cards/balance', 'POST /api/graphql/Login', 'POST /api/graphql/giftCardBalanceQuery'],
@@ -142,7 +142,7 @@ test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
 test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   modus = 'umleitung';
   await assert.rejects(
-    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
+    G.fetchBalance(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
     (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
@@ -155,7 +155,7 @@ test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
 test('eine übergrosse Antwort wird abgebrochen', async () => {
   modus = 'gross';
   await assert.rejects(
-    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
+    G.fetchBalance(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
     (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'zu-gross',
   );
 });

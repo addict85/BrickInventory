@@ -2,7 +2,7 @@
  * und Prozess nicht für alle belegen. Im Speicher, denn es gibt genau einen Web-Prozess. */
 import { prozessweit } from '../infra/prozessweit';
 
-export const GLEICHZEITIG = { upload: 2, gutscheinPdf: 1, strom: 6 } as const;
+export const GLEICHZEITIG = { upload: 2, voucherPdf: 1, strom: 6 } as const;
 export type Schranke = keyof typeof GLEICHZEITIG;
 
 /** Je Prozess, nicht je Zugang: Der Platz ist Speicher dieses Prozesses (src/infra/prozessweit.ts). */

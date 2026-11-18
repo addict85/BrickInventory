@@ -11,11 +11,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
-const { landFuerWaehrung } = _req('src/gutscheine/gutscheinGuthaben.js');
+const { countryForCurrency } = _req('src/vouchers/balanceLookup.js');
 const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
 
 test('Server: Land zur Kontowährung', () => {
-  assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(landFuerWaehrung), [
+  assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(countryForCurrency), [
     'de-CH',
     'de-DE',
     'en-GB',

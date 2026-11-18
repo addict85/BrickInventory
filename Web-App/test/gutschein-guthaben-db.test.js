@@ -12,7 +12,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { testServer } = require('./helpers/server');
-const S = _req('src/gutscheine/gutscheinGuthabenSchranke.js');
+const S = _req('src/vouchers/balanceThrottle.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -96,19 +96,18 @@ async function aufbau() {
   HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
 
-  const { gutscheinAnlegen } = require('./helpers/sources').testBereich('gutscheine').gutscheine;
-  MIT_PIN = (await gutscheinAnlegen(HAUPT, { number: NUMMER, pin: PIN, amount: 100, currency: 'CHF' })).id;
-  OHNE_PIN = (await gutscheinAnlegen(HAUPT, { number: '5045076374450022277', pin: null, amount: 50, currency: 'CHF' }))
-    .id;
-  FREMDER = (await gutscheinAnlegen(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' }))
+  const { createVoucher } = require('./helpers/sources').testBereich('vouchers').vouchers;
+  MIT_PIN = (await createVoucher(HAUPT, { number: NUMMER, pin: PIN, amount: 100, currency: 'CHF' })).id;
+  OHNE_PIN = (await createVoucher(HAUPT, { number: '5045076374450022277', pin: null, amount: 50, currency: 'CHF' })).id;
+  FREMDER = (await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' }))
     .id;
 }
 
 /** Die Schranke zurücksetzen — sonst steht jeder Fall im Schatten des vorigen. */
 async function schrankeFrei() {
-  await S.vergesseSchranke();
-  testKontext('gutscheine')
-    .faecher.fach('guthabenSitzungen', () => new Map())
+  await S.forgetThrottle();
+  testKontext('vouchers')
+    .faecher.fach('voucherBalanceSessions', () => new Map())
     .clear();
 }
 
@@ -365,7 +364,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(
       _req('src/infra/geheimnis.js').entschluessele(
         gespeichert.pin,
-        _req('src/gutscheine/repository/gutscheine.js').pinKontext(gespeichert.user_id, MIT_PIN),
+        _req('src/vouchers/repository/vouchers.js').pinContext(gespeichert.user_id, MIT_PIN),
       ),
       '9999',
     );
@@ -394,7 +393,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     const pinZeile = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [MIT_PIN]);
     const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(
       pinZeile.pin,
-      _req('src/gutscheine/repository/gutscheine.js').pinKontext(pinZeile.user_id, MIT_PIN),
+      _req('src/vouchers/repository/vouchers.js').pinContext(pinZeile.user_id, MIT_PIN),
     );
     naechsteAntwort = antwort({ status: 500, text: `kaputt für ${NUMMER} mit ${pinJetzt}` });
     const r = await abfrage(srv.base, MIT_PIN);
@@ -417,7 +416,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(abfragen(), vorher);
   });
 
-  // Gegenproben (02.11.2026 gemessen): die Prüfung kontoStand() aus belegePlatz()
+  // Gegenproben (02.11.2026 gemessen): die Prüfung kontoStand() aus claimSlot()
   // entfernt → rot (200 statt 429); zaehleKonto() entfernt → rot („eine Abfrage
   // zählt für ihr Konto“); die Kontoprüfung NACH die Sperre gelegt → rot (grund
   // „botschutz“ statt „konto“).
@@ -432,7 +431,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
 
     await db.run('UPDATE rate_limit_attempts SET count = $2 WHERE key = $1', [
       `guthaben-konto|${HAUPT}`,
-      S.KONTO_JE_STUNDE,
+      S.ACCOUNT_PER_HOUR,
     ]);
     await schrankeFrei();
     await db.run(`UPDATE voucher_balance_throttle SET locked_until = NOW() + INTERVAL '10 minutes' WHERE id = 1`);

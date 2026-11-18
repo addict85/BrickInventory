@@ -8,7 +8,7 @@
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  in umschluesseln() den Zweig für v2 mit dem vorigen Schlüssel
  *      entfernt → rot: „B allein liest alles“ (API-Schlüssel, Faktor, PIN)
- *   B  in gutscheineNeuVerschluesseln() den Suchwert nicht neu → rot: „der
+ *   B  in reencryptAllVouchers() den Suchwert nicht neu → rot: „der
  *      Suchwert der Nummer …“
  *   C  pufferUmschluesseln() liefert immer undefined → rot: „B allein liest
  *      alles“ (Gutschein-PDF)
@@ -39,10 +39,10 @@ const { datenOderSkip } = require('./helpers/db');
 const G = _req('src/infra/geheimnis.js');
 const zf = _req('src/faktoren/zweiterFaktor.js');
 const gut = {
-  ..._req('src/gutscheine/repository/gutscheine.js'),
-  ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
+  ..._req('src/vouchers/repository/vouchers.js'),
+  ...require('./helpers/sources').testBereich('vouchers').vouchers,
 };
-const dateien = _req('src/gutscheine/gutscheinDateien.js');
+const dateien = _req('src/vouchers/voucherFiles.js');
 const { schluesselWechsel } = _req('startup/datenbank.js');
 
 /** Schlüssel umstellen, wie ein Neustart mit anderer Umgebung. */
@@ -83,9 +83,9 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   );
   const secret = await zf.beginneEinrichtung(uid);
   const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(secret), zf.zeitschritt()));
-  const g = await gut.gutscheinAnlegen(uid, { number: '6299-1234-5678', pin: '4711', amount: 25, currency: 'CHF' });
+  const g = await gut.createVoucher(uid, { number: '6299-1234-5678', pin: '4711', amount: 25, currency: 'CHF' });
   const pdf = path.join(dateien.VOUCHER_DIR, String(uid), `${g.id}.pdf`);
-  await dateien.schreibeGutscheinPdf(pdf, Buffer.from('%PDF-1.4 Gutschein'));
+  await dateien.writeVoucherPdf(pdf, Buffer.from('%PDF-1.4 Gutschein'));
 
   /** Was der aktuelle Schlüssel lesen kann. */
   const liesAlles = async () => {
@@ -96,10 +96,10 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     return {
       api: G.entschluessele(api, apiKontext),
       faktor: G.entschluessele(faktor, zf.faktorKontext(uid)),
-      number: G.entschluessele(v.number, gut.nummerKontext(uid, g.id)),
-      pin: G.entschluessele(v.pin, gut.pinKontext(uid, g.id)),
+      number: G.entschluessele(v.number, gut.numberContext(uid, g.id)),
+      pin: G.entschluessele(v.pin, gut.pinContext(uid, g.id)),
       pdf: datei?.toString() ?? null,
-      suchePasst: v.number_search === gut.nummerSuche(uid, '6299-1234-5678'),
+      suchePasst: v.number_search === gut.numberSearch(uid, '6299-1234-5678'),
     };
   };
   const KLAR = {

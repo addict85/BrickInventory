@@ -317,9 +317,9 @@ handelte der Prozess für jede gerade aktive Sitzung.
 ### Uploads (4)
 - Typ aus dem Inhalt, Endung aus dem MIME-Typ, Name zufällig, Kontingent je
   Konto: `routes/api_v1/sets.ts`, `src/http/dateiEmpfang.ts` — `upload-grenzen-db`.
-- Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/gutscheine/gutscheinPdf.ts` — `gutschein-pdf-bombe-db`.
+- Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/vouchers/pdfParsing.ts` — `gutschein-pdf-bombe-db`.
 - Gutschein-PDFs verschlüsselt, Konto löschen entfernt Uploads und
-  Gutscheine: `src/gutscheine/gutscheinDateien.ts` — `konto-dateien-db`.
+  Gutscheine: `src/vouchers/voucherFiles.ts` — `konto-dateien-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
 - Die Guthaben-Abfrage bei lego.com geht über `src/infra/abruf.ts`: nur
@@ -381,7 +381,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde
   (429 `zu_viele_anfragen`, `grund: konto`), dann eine je 30 s über alle
   Konten; die Pause nach dem Bot-Schutz löst nur eine Abfrage aus, die beide
-  Grenzen passiert hat: `src/gutscheine/gutscheinGuthabenSchranke.ts` —
+  Grenzen passiert hat: `src/vouchers/balanceThrottle.ts` —
   `gutschein-guthaben-db`.
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
   Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.

@@ -55,7 +55,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.wanted.db,
     // @ts-expect-error
-    d.gutscheine.gutscheine,
+    d.vouchers.vouchers,
     // @ts-expect-error
     d.collection.db,
     // @ts-expect-error

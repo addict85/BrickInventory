@@ -193,12 +193,7 @@ export interface VoucherChange {
 /** Read, merge, write under the row lock: two simultaneous changes to different
  * fields would otherwise lose one. What does not come along, or comes back
  * masked, stays as it was: the form only knows the mask. */
-export function changeVoucher(
-  k: VoucherContext,
-  uid: number,
-  id: number,
-  e: VoucherChange,
-): Promise<VoucherRow> {
+export function changeVoucher(k: VoucherContext, uid: number, id: number, e: VoucherChange): Promise<VoucherRow> {
   return k
     .transaktion(async t => {
       const old = (await repo(t).lockedVoucher(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');

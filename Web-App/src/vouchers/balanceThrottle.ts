@@ -30,13 +30,10 @@ export interface Locked {
 export type Lookup = { art: 'guthaben'; guthaben: Balance } | ({ art: 'gesperrt' } & Locked);
 
 /** In the database, so the limit holds across every process. */
-export async function claimSlot(
-  k: VoucherContext,
-  uid: number,
-): Promise<{ frei: true } | ({ frei: false } & Locked)> {
+export async function claimSlot(k: VoucherContext, uid: number): Promise<{ frei: true } | ({ frei: false } & Locked)> {
   return k.transaktion(async t => {
     // In case an older backup lacks the row. NULL means "never" — a date would be a claim.
-    await repo.createThrottle(t.db);
+    await repo.ensureThrottleRow(t.db);
 
     // In SQL: ONE row, ONE lock, ONE clock.
     const z = (await repo.throttleState(t.db, ABSTAND_SEK)) as

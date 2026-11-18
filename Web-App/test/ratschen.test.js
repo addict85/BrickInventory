@@ -253,7 +253,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
   // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
-  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
+  // src/vouchers/balanceLookup.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
   // reist mit der Transaktion im Aufrufrahmen; übrig sind die Sicherungspunkte in db/.
   const ZUSTAND_SCHRANKE = 1;
   const ZUSTAND =
@@ -363,7 +363,7 @@ function bindungOhneNamenUndProxy() {
   );
   const NAMEN = /\bbinde\w*\(|\[\s*'\w+'(?:\s*,\s*'\w+')+\s*,?\s*\]/;
   assert.ok(NAMEN.test("bindeZugang(k, m, ['a', 'b'])") && NAMEN.test("x(k, ['a', 'b'])"), 'Selbstbeweis Namensliste');
-  const fabriken = quellen().filter(f => /[\\/]src[\\/]\w+[\\/](bereich|kontext)\.ts$/.test(f));
+  const fabriken = quellen().filter(f => /[\\/]src[\\/]\w+[\\/](bereich|kontext|area|context)\.ts$/.test(f));
   assert.ok(fabriken.length >= 30, `nur ${fabriken.length} Fabriken und Kontexte gefunden — greift die Suche noch?`);
   assert.deepEqual(fabriken.filter(f => NAMEN.test(text(f))).map(rel), [], 'Bindung über Namen statt mit()');
   assert.deepEqual(
@@ -1325,6 +1325,7 @@ const ENGLISCH_UMGESTELLT = [
   'src/collection',
   'src/throttle',
   'src/parts',
+  'src/vouchers',
 ];
 const nichtUmgestellt = (/** @type {string} */ f) => {
   const rel = path.relative(WEB, f).replace(/\\/g, '/');

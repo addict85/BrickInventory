@@ -10,7 +10,7 @@ import type { GeraeteDienste } from './geraete';
 import type { FaktorenDienste } from './faktoren';
 import type { FinanzenDienste } from './finanzen';
 import type { FremdquellenDienste } from './fremdquellen';
-import type { GutscheineDienste } from './gutscheine';
+import type { VoucherServices } from './vouchers';
 import type { HaushaltDienste } from './haushalt';
 import type { IdempotencyServices } from './idempotency';
 import type { KatalogDienste } from './katalog';
@@ -52,7 +52,7 @@ export interface Dienste {
   parts: PartsServices;
   minifigs: MinifigsServices;
   wanted: WantedServices;
-  gutscheine: GutscheineDienste;
+  vouchers: VoucherServices;
   collection: CollectionServices;
   verwaltung: VerwaltungDienste;
 }

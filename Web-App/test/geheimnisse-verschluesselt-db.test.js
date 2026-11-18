@@ -9,7 +9,7 @@
  *      „globale Schlüssel …“
  *   B  in POST /vouchers verschluessele() weggelassen → rot: „Gutschein-PIN …“
  *   C  verschluesseleAltbestand() überspringt die Gutscheine → rot:
- *      „Altbestand …“ (seit 01.11.2026 schlüsselt nummernNachverschluesseln()
+ *      „Altbestand …“ (seit 01.11.2026 schlüsselt reencryptNumbers()
  *      auch die PIN um)
  * Gegenprobe (am 29.10.2026 gemessen):
  *   D  geheimnisMaske() hängt wieder die letzten vier Zeichen an → rot:
@@ -69,7 +69,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
     assert.equal(
-      (await require('./helpers/sources').testBereich('gutscheine').gutscheine.gutschein(uid, b.voucher.id)).pin,
+      (await require('./helpers/sources').testBereich('vouchers').vouchers.voucher(uid, b.voucher.id)).pin,
       '8642',
       'entschlüsselt lesbar',
     );
@@ -85,20 +85,20 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {
     const gs = {
-      ..._req('src/gutscheine/repository/gutscheine.js'),
-      ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
+      ..._req('src/vouchers/repository/vouchers.js'),
+      ...require('./helpers/sources').testBereich('vouchers').vouchers,
     };
-    const { id } = await gs.gutscheinAnlegen(uid, {
+    const { id } = await gs.createVoucher(uid, {
       number: '5045076374450013131',
       pin: null,
       amount: 10,
       currency: 'CHF',
     });
     await db.run("UPDATE vouchers SET pin = '9753' WHERE id = $1", [id]);
-    await gs.nummernNachverschluesseln();
+    await gs.reencryptNumbers();
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
     assert.ok(roh.startsWith('v2:'), roh);
-    assert.equal(g.entschluessele(roh, gs.pinKontext(uid, id)), '9753');
+    assert.equal(g.entschluessele(roh, gs.pinContext(uid, id)), '9753');
   });
 
   await t.test('falscher Schlüssel ergibt null, nicht Unsinn', async () => {

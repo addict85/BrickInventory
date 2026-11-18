@@ -1,18 +1,18 @@
-// Für beide Apps: Cookie und Token. Die Arbeit liegt in src/gutscheine/dienst.ts.
+// For both apps: cookie and token. The work lives in src/vouchers/service.ts.
 import type express from 'express';
 import multer from 'multer';
 import { FORMULAR_GRENZEN, gesamtReichtFuer, uploadGesamtMb } from '../../src/http/dateiEmpfang';
 import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
 import { Fachfehler, dateiFehler, type FehlerCode, fachfehler } from '../../src/infra/fehlerTexte';
-import { ABSTAND_SEK, TICKET_SEK, alsGelesen, maskiert, type GutscheinZeile } from '../../src/gutscheine';
+import { ABSTAND_SEK, TICKET_SEK, alsGelesen, maskiert, type VoucherRow } from '../../src/vouchers';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-// Betrag einmal als Zahl; `hat_pdf` statt des Pfads, der niemanden etwas angeht.
-function fuerAussen(z: GutscheinZeile) {
+// Amount once as a number; `hat_pdf` instead of the path, which is nobody's business.
+function fuerAussen(z: VoucherRow) {
   return {
     id: z.id,
     ...maskiert(z),
@@ -21,12 +21,12 @@ function fuerAussen(z: GutscheinZeile) {
     hat_pdf: !!z.pdf_path,
     created_at: z.created_at,
     updated_at: z.updated_at,
-    // Auch NULL geht mit: Ein nie abgefragtes Guthaben soll sich von einem abgefragten unterscheiden.
+    // NULL goes along too: a balance never checked should differ from one that was.
     guthaben_geprueft_am: z.guthaben_geprueft_am,
   };
 }
 
-/** `wartenSek` geht mit, danach taktet sich die Oberfläche. */
+/** `wartenSek` goes along, after that the frontend paces itself. */
 function gesperrt(grund: string, wartenSek: number): never {
   const min = Math.ceil(wartenSek / 60);
   const [code, vars]: [FehlerCode, Record<string, number>] =
@@ -38,35 +38,35 @@ function gesperrt(grund: string, wartenSek: number): never {
   throw new Fachfehler('zu_viele', code, vars, { grund, wartenSek });
 }
 
-export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
+export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
-  /** Nur PDF: Ausgelesen wird nur Text, ein Foto könnte der Server nicht lesen. */
+  /** PDF only: only text is read out, a photo the server could not read anyway. */
   const upload = multer({
     storage: multer.memoryStorage(),
-    // 2 MB lassen Platz für ein Sammel-PDF; mehr hielte nur pdf-lib länger im Speicher.
+    // 2 MB leaves room for a bundle PDF; more would only keep pdf-lib longer in memory.
     limits: { ...FORMULAR_GRENZEN, fileSize: 2 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      // Wörtlicher Vergleich: kein geerbter Tabellenwert, an dem man vorbeiliefe.
+      // Literal comparison: no inherited table value to be fooled by.
       if (file.mimetype === 'application/pdf') cb(null, true);
       else cb(dateiFehler('falscher_typ', 'nur_pdf'));
     },
   });
 
   router.endpunkt('GET /api/v1/vouchers', requireToken, async req => {
-    const { eintraege, ...seite } = seiteAus(await d.gutscheine.gutscheinListe(req.apiUser.user_id), req.abfrage);
+    const { eintraege, ...seite } = seiteAus(await d.vouchers.voucherList(req.apiUser.user_id), req.abfrage);
     return { vouchers: eintraege.map(fuerAussen), ...seite };
   });
 
   router.endpunkt('POST /api/v1/vouchers', requireToken, async req => {
-    return { voucher: fuerAussen(await d.gutscheine.gutscheinErfassen(req.apiUser.user_id, req.eingabe)) };
+    return { voucher: fuerAussen(await d.vouchers.createVoucher(req.apiUser.user_id, req.eingabe)) };
   });
 
   router.endpunkt(
     'POST /api/v1/vouchers/pdf',
     requireToken,
-    kontoSchranke('gutscheinPdf'),
+    kontoSchranke('voucherPdf'),
     async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
       if (!(await gesamtReichtFuer(Number(req.headers['content-length']) || 0)))
         fachfehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadGesamtMb() });
@@ -75,83 +75,83 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     upload.single('file'),
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
-      const r = await d.gutscheine.gutscheinAusPdf(req.apiUser.user_id, req.file.buffer, req.eingabe);
-      // Eigener Block, damit die Oberfläche an einem Feld erkennt, welcher Fall eintrat.
+      const r = await d.vouchers.voucherFromPdf(req.apiUser.user_id, req.file.buffer, req.eingabe);
+      // Its own block so the frontend can tell from one field which case happened.
       if (r.art === 'stapel') return { mehrere: r.bericht };
       return { voucher: fuerAussen(r.zeile), gelesen: alsGelesen(r.gelesen) };
     },
   );
 
-  // Die Sammelwege VOR den :id-Wegen: Sonst fängt `:id` das Wort „export".
+  // The batch paths BEFORE the :id paths: otherwise `:id` would catch the word "export".
 
   router.endpunkt('POST /api/v1/vouchers/export/pdf-freigabe', requireToken, async (req, res) => {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.gutscheine.gibExportFrei(req.apiUser.user_id), gueltig_sek: TICKET_SEK };
+    return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), gueltig_sek: TICKET_SEK };
   });
 
   router.endpunkt('GET /api/v1/vouchers/export/pdf', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, uid, 'export')) fachfehler('verboten', 'pdf_freigabe_noetig');
-    const { daten, befunde } = await d.gutscheine.gutscheineExportieren(uid);
+    if (!d.vouchers.redeemTicket(req.abfrage.ticket, uid, 'export')) fachfehler('verboten', 'pdf_freigabe_noetig');
+    const { pdf, results } = await d.vouchers.exportVouchers(uid);
     const tag = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="brickinventory-gutscheine-${tag}.pdf"`);
-    // base64: Ein Umlaut im Grund zerlegte sonst die Kopfzeile.
-    res.setHeader('X-Gutschein-Befunde', Buffer.from(JSON.stringify(befunde), 'utf-8').toString('base64'));
+    // base64: an umlaut in the reason would otherwise break the header line.
+    res.setHeader('X-Gutschein-Befunde', Buffer.from(JSON.stringify(results), 'utf-8').toString('base64'));
     res.setHeader('Access-Control-Expose-Headers', 'X-Gutschein-Befunde');
-    res.end(daten);
+    res.end(pdf);
   });
 
   router.endpunkt('PUT /api/v1/vouchers/:id', requireToken, async req => {
     const id = req.pfad.id;
-    return { voucher: fuerAussen(await d.gutscheine.gutscheinBearbeiten(req.apiUser.user_id, id, req.eingabe)) };
+    return { voucher: fuerAussen(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.eingabe)) };
   });
 
-  // Endgültig und Bargeld: mit Bestätigung wie das Leeren des Papierkorbs.
+  // Final and cash: with confirmation, like emptying the trash.
   router.endpunkt('DELETE /api/v1/vouchers/:id', requireToken, async (req, res) => {
     const id = req.pfad.id;
     if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    await d.gutscheine.gutscheinEntfernen(req.apiUser.user_id, id);
+    await d.vouchers.deleteVoucher(req.apiUser.user_id, id);
     return {};
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/klartext', requireToken, async (req, res) => {
     const id = req.pfad.id;
     if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    const z = await d.gutscheine.gutscheinKlartext(req.apiUser.user_id, id);
+    const z = await d.vouchers.voucherPlaintext(req.apiUser.user_id, id);
     return { id: z.id, number: z.number, pin: z.pin };
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/pdf-freigabe', requireToken, async (req, res) => {
     const id = req.pfad.id;
     if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.gutscheine.pdfFreigeben(req.apiUser.user_id, id), gueltig_sek: TICKET_SEK };
+    return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), gueltig_sek: TICKET_SEK };
   });
 
   router.endpunkt('GET /api/v1/vouchers/:id/pdf', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, req.apiUser.user_id, String(id)))
+    if (!d.vouchers.redeemTicket(req.abfrage.ticket, req.apiUser.user_id, String(id)))
       fachfehler('verboten', 'pdf_freigabe_noetig');
-    const pdf = await d.gutscheine.gutscheinPdf(req.apiUser.user_id, id);
+    const pdf = await d.vouchers.voucherPdf(req.apiUser.user_id, id);
     res.type('application/pdf');
-    // Ohne Kartennummer: Dateinamen landen in Download-Listen und Protokollen.
+    // Without the card number: file names end up in download lists and logs.
     const art = (req.abfrage.download ?? false) ? 'attachment' : 'inline';
     res.setHeader('Content-Disposition', `${art}; filename="gutschein-${id}.pdf"`);
-    // Ein Gutschein gehört in keinen geteilten Zwischenspeicher.
+    // A voucher belongs in no shared cache.
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('Content-Security-Policy', FREMDE_DATEI_CSP);
     res.end(pdf);
   });
 
-  // Keine Sammelroute: höchstens ein Abruf je 30 s über ALLE Benutzer, das verbärge sie.
+  // No batch route: at most one fetch every 30s across ALL users, that would hide them.
   router.endpunkt('POST /api/v1/vouchers/:id/guthaben', requireToken, async req => {
     const id = req.pfad.id;
-    const r = await d.gutscheine.guthabenAbfragen(req.apiUser.user_id, id);
+    const r = await d.vouchers.checkBalance(req.apiUser.user_id, id);
     if (r.art === 'gesperrt') gesperrt(r.grund, r.wartenSek);
     return {
       voucher: fuerAussen(r.zeile),
       angezeigt: r.angezeigt,
-      // Eine still geänderte Währung wäre eine geänderte Summe ohne Hinweis.
+      // A silently changed currency would be a changed total without a hint.
       waehrung_geaendert: r.waehrungGeaendert,
     };
   });

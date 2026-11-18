@@ -286,7 +286,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     });
 
     // Gegenproben (03.11.2026 gemessen, je einzeln): in GET /vouchers/:id/pdf die
-    // Ticketprüfung entfernt → rot „ohne Ticket kein PDF“; in loeseTicketEin() das
+    // Ticketprüfung entfernt → rot „ohne Ticket kein PDF“; in redeemTicket() das
     // Löschen weggelassen → rot „ein Ticket gilt einmal“; den Vergleich des Ziels
     // gestrichen → rot „… nur für sein PDF“; bestaetigeMitFaktor() in der Freigabe
     // entfernt → rot „Freigabe nur mit Passwort“; protokolliere() entfernt → rot
@@ -420,7 +420,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
       assert.equal(r.status, 422);
       assert.equal((await r.json()).code, 'pdf_unlesbar');
-      const nummer_suche = _req('src/gutscheine/repository/gutscheine.js').nummerSuche(U.opa, '5045076374450018888');
+      const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(U.opa, '5045076374450018888');
       assert.equal(
         (await db.get('SELECT count(*)::int AS n FROM vouchers WHERE number_search = $1', [nummer_suche])).n,
         0,
@@ -563,8 +563,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
       // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
       await require('./helpers/sources')
-        .testBereich('gutscheine')
-        .gutscheine.gutscheinAnlegen(U.enkel, { number: '5045076374450013333', pin: null, amount: 60, currency: null });
+        .testBereich('vouchers')
+        .vouchers.createVoucher(U.enkel, { number: '5045076374450013333', pin: null, amount: 60, currency: null });
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE user_id=$1', [U.enkel])).n, 1);
       await db.run('DELETE FROM users WHERE id = $1', [U.enkel]);
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE user_id=$1', [U.enkel])).n, 0);

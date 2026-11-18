@@ -4,7 +4,7 @@ import type { VerwaltungKontext } from './kontext';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
-  const n = (await k.faktoren.verschluesseleAltbestand()) + (await k.gutscheine.verschluesseleAltbestand());
+  const n = (await k.faktoren.verschluesseleAltbestand()) + (await k.gutscheine.encryptLegacyFiles());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 

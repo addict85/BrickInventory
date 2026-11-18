@@ -257,9 +257,7 @@ async function buildPage(g: ExportVoucher): Promise<Buffer> {
 
 /** A voucher that was not replaced is still included, with a reason in the result:
  * an explanation, not an abort. */
-export async function combineVouchers(
-  vouchers: ExportVoucher[],
-): Promise<{ pdf: Buffer; results: ExportResult[] }> {
+export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf: Buffer; results: ExportResult[] }> {
   const target = await PdfLibDocument.create();
   const mark = await target.embedFont(StandardFonts.Helvetica);
   const befunde: ExportResult[] = [];

@@ -273,7 +273,7 @@ const DYNAMISCH = {
     ],
     schreibt: ['price_history'],
   },
-  'src/gutscheine/repository/gutscheine.ts': { liest: ['vouchers'], schreibt: ['vouchers'] },
+  'src/vouchers/repository/vouchers.ts': { liest: ['vouchers'], schreibt: ['vouchers'] },
   'src/katalog/repository/csvTausch.ts': {
     liest: [
       'rb_colors',

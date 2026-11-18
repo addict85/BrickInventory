@@ -1,6 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 
-export function createThrottle(tx: DbSchnittstelle) {
+export function ensureThrottleRow(tx: DbSchnittstelle) {
   return tx.run(`INSERT INTO voucher_balance_throttle (id) VALUES (1)
        ON CONFLICT (id) DO NOTHING`);
 }

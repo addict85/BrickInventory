@@ -34,10 +34,8 @@ const PDFKit = require('pdfkit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { werteAusPdf } = _req('src/gutscheine/gutscheinPdf.js');
-const { ersetzeBetrag, verbindeGutscheine, seitenweiseLesen, markeText, markeLesen } = _req(
-  'src/gutscheine/gutscheinPdfSchreiben.js',
-);
+const { valuesFromPdf } = _req('src/vouchers/pdfParsing.js');
+const { replaceAmount, combineVouchers, readPageByPage, markText, readMark } = _req('src/vouchers/pdfExport.js');
 const PL = require('@cantoo/pdf-lib');
 
 /** Eine eingebettete Schrift — damit entsteht eine Identity-H-Teilmenge. */
@@ -114,12 +112,12 @@ test('1. der Betrag wird im Original ersetzt — drei Schreibweisen', async () =
     ['49.90', 12.5],
   ]) {
     const original = await baueGutschein(geschrieben, NR, '5225', null);
-    const vorher = werteAusPdf(original);
-    const r = await ersetzeBetrag(original, neu);
-    assert.ok(r.daten, `„${geschrieben}" → ${neu} wurde abgelehnt: ${r.grund}`);
-    const nachher = werteAusPdf(r.daten);
-    assert.equal(nachher.betrag, neu, `Aus „${geschrieben}" wurde ${nachher.betrag} statt ${neu}`);
-    assert.equal(nachher.nummer, vorher.nummer, 'Die Kartennummer hat sich verändert');
+    const vorher = valuesFromPdf(original);
+    const r = await replaceAmount(original, neu);
+    assert.ok(r.data, `„${geschrieben}" → ${neu} wurde abgelehnt: ${r.grund}`);
+    const nachher = valuesFromPdf(r.data);
+    assert.equal(nachher.amount, neu, `Aus „${geschrieben}" wurde ${nachher.amount} statt ${neu}`);
+    assert.equal(nachher.number, vorher.number, 'Die Kartennummer hat sich verändert');
     assert.equal(nachher.pin, vorher.pin, 'Die PIN hat sich verändert');
   }
 });
@@ -129,38 +127,38 @@ test('2. ein schon richtiger Betrag bleibt unangetastet', async () => {
   // bereits. Ohne diesen Fall wäre ein Ersetzen „richtig", das jedes PDF
   // umschreibt, auch wenn es nichts zu ändern gibt.
   const original = await baueGutschein('400', NR, '5225', null);
-  const r = await ersetzeBetrag(original, 400);
-  assert.ok(r.daten, `Abgelehnt, obwohl nichts zu tun war: ${r.grund}`);
-  assert.equal(r.treffer, 0, `${r.treffer} Operatoren geändert, erwartet 0`);
-  assert.equal(r.daten, original, 'Es kam ein neues PDF zurück statt des Originals');
+  const r = await replaceAmount(original, 400);
+  assert.ok(r.data, `Abgelehnt, obwohl nichts zu tun war: ${r.grund}`);
+  assert.equal(r.hits, 0, `${r.hits} Operatoren geändert, erwartet 0`);
+  assert.equal(r.data, original, 'Es kam ein neues PDF zurück statt des Originals');
 });
 
 test('3. ein PDF ohne lesbaren Betrag wird abgelehnt, nicht geraten', async () => {
   const original = await baueGutschein('400', NR, '5225', TTF); // Identity-H
   assert.equal(
-    werteAusPdf(original).betrag,
+    valuesFromPdf(original).amount,
     null,
     'Vorbedingung: der Leser findet in einer eingebetteten Schrift keinen Betrag',
   );
-  const r = await ersetzeBetrag(original, 250);
-  assert.equal(r.daten, null, 'Es wurde etwas ersetzt, obwohl kein Betrag zu finden war');
+  const r = await replaceAmount(original, 250);
+  assert.equal(r.data, null, 'Es wurde etwas ersetzt, obwohl kein Betrag zu finden war');
   assert.match(
     String(r.grund),
-    /kein Betrag/,
+    /No amount/,
     `Der Grund lautet „${r.grund}" — er soll sagen, dass nichts zu finden war`,
   );
 });
 
 test('4. Marke schreiben und lesen ist umkehrbar', () => {
   const w = { nummer: NR, pin: '5225', betrag: 249.5, waehrung: 'CHF' };
-  const gelesen = markeLesen(markeText(w));
-  assert.deepEqual(gelesen, { nummer: NR, pin: '5225', betrag: 249.5, waehrung: 'CHF' });
+  const gelesen = readMark(markText(w));
+  assert.deepEqual(gelesen, { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' });
   // Eine Zeile, die keine Marke ist, darf keine ergeben — sonst fände der
   // Import in jedem Text einen Gutschein.
-  assert.equal(markeLesen('Ihre LEGO-Geschenkkarte im Wert von 400 CHF:'), null);
+  assert.equal(readMark('Ihre LEGO-Geschenkkarte im Wert von 400 CHF:'), null);
   // Ohne PIN: null und nicht die leere Zeichenkette (die Spalte ist NULL-fähig,
   // und „" wäre eine andere Aussage als „keine").
-  assert.equal(markeLesen(markeText({ ...w, pin: null })).pin, null);
+  assert.equal(readMark(markText({ ...w, pin: null })).pin, null);
 });
 
 test('5. drei Gutscheine werden EIN PDF und kommen alle zurück', async () => {
@@ -180,29 +178,29 @@ test('5. drei Gutscheine werden EIN PDF und kommen alle zurück', async () => {
     },
     { id: 3, number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF', pdf: null },
   ];
-  const { daten, befunde } = await verbindeGutscheine(g);
+  const { pdf, results } = await combineVouchers(g);
 
-  assert.equal((await PL.PDFDocument.load(daten)).getPageCount(), 3, 'Es sind nicht drei Seiten geworden');
+  assert.equal((await PL.PDFDocument.load(pdf)).getPageCount(), 3, 'Es sind nicht drei Seiten geworden');
   assert.deepEqual(
-    befunde.map(b => b.art),
+    results.map(b => b.art),
     ['ersetzt', 'unveraendert', 'erzeugt'],
-    `Die Befunde lauten ${JSON.stringify(befunde.map(b => b.art))}`,
+    `Die Befunde lauten ${JSON.stringify(results.map(b => b.art))}`,
   );
-  assert.ok(befunde[1].grund, 'Zum unveränderten Gutschein steht kein Grund dabei');
+  assert.ok(results[1].grund, 'Zum unveränderten Gutschein steht kein Grund dabei');
 
   // ── Der Rundlauf ───────────────────────────────────────────────────────
-  const zurueck = await seitenweiseLesen(daten);
+  const zurueck = await readPageByPage(pdf);
   assert.equal(zurueck.length, 3, `${zurueck.length} Gutscheine gelesen statt 3`);
   for (const x of g) {
-    const w = zurueck.find(z => z.nummer === x.number);
+    const w = zurueck.find(z => z.number === x.number);
     assert.ok(w, `${x.number} kam nicht zurück`);
     // Der APP-Betrag, nicht der aufgedruckte. Bei Gutschein 2 ist das
     // Ersetzen GESCHEITERT — und trotzdem kommt 150 zurück, weil die Marke
     // ihn trägt. Genau dafür ist sie da.
     assert.equal(
-      w.betrag,
+      w.amount,
       x.amount,
-      `${x.number}: ${w.betrag} statt ${x.amount} — der Import muss den Stand der App lesen`,
+      `${x.number}: ${w.amount} statt ${x.amount} — der Import muss den Stand der App lesen`,
     );
     assert.equal(w.pin, x.pin, `${x.number}: PIN ${w.pin} statt ${x.pin}`);
   }
@@ -213,28 +211,28 @@ test('6. eine Schrift mit eigener Kodierung wird NICHT angefasst', async () => {
   // der Betragsschrift, und in BEIDEN liest der Leser 400.
   const sicher = await baueMitKodierung(false);
   const unsicher = await baueMitKodierung(true);
-  assert.equal(werteAusPdf(sicher).betrag, 400, 'Vorbedingung: WinAnsi ist lesbar');
+  assert.equal(valuesFromPdf(sicher).amount, 400, 'Vorbedingung: WinAnsi ist lesbar');
   assert.equal(
-    werteAusPdf(unsicher).betrag,
+    valuesFromPdf(unsicher).amount,
     400,
     'Vorbedingung: auch mit eigener Kodierung liest der Leser den Betrag — ' +
       'genau deshalb reicht eine Nachprüfung über den Text NICHT',
   );
 
-  const a = await ersetzeBetrag(sicher, 250);
-  assert.ok(a.daten, `WinAnsi wurde abgelehnt: ${a.grund}`);
-  assert.equal(werteAusPdf(a.daten).betrag, 250);
+  const a = await replaceAmount(sicher, 250);
+  assert.ok(a.data, `WinAnsi wurde abgelehnt: ${a.grund}`);
+  assert.equal(valuesFromPdf(a.data).amount, 250);
 
-  const b = await ersetzeBetrag(unsicher, 250);
+  const b = await replaceAmount(unsicher, 250);
   assert.equal(
-    b.daten,
+    b.data,
     null,
     'Eine Schrift mit eigener Kodierung wurde ersetzt. Die Zeichenkette LIEST sich ' +
       'dann als 250 und DRUCKT sich als Zeichensalat — und keine Nachprüfung über den ' +
       'Text würde das melden.',
   );
-  assert.ok(b.abgelehnt >= 1, `abgelehnt=${b.abgelehnt}, erwartet mindestens 1`);
-  assert.match(String(b.grund), /eigene[rn]? Kodierung/, `Der Grund lautet „${b.grund}"`);
+  assert.ok(b.rejected >= 1, `abgelehnt=${b.rejected}, erwartet mindestens 1`);
+  assert.match(String(b.grund), /own encoding/, `Der Grund lautet „${b.grund}"`);
 });
 
 test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
@@ -253,11 +251,11 @@ test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
   const stapel = Buffer.from(await ziel.save());
   assert.equal((await PL.PDFDocument.load(stapel)).getPageCount(), 2);
 
-  const zurueck = await seitenweiseLesen(stapel);
+  const zurueck = await readPageByPage(stapel);
   assert.equal(zurueck.length, 2, `${zurueck.length} Gutscheine aus zwei Seiten — ohne Zerlegen wäre es einer`);
-  assert.deepEqual(zurueck.map(w => w.nummer).sort(), [NR, '5045076374450022277'].sort());
+  assert.deepEqual(zurueck.map(w => w.number).sort(), [NR, '5045076374450022277'].sort());
   assert.deepEqual(
-    zurueck.map(w => w.betrag).sort((a, b) => a - b),
+    zurueck.map(w => w.amount).sort((a, b) => a - b),
     [150, 400],
   );
 });
@@ -268,7 +266,7 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
     const doc = await PL.PDFDocument.load(await baueGutschein('400', NR, '5225', null));
     for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
-  const zurueck = await seitenweiseLesen(Buffer.from(await ziel.save()));
+  const zurueck = await readPageByPage(Buffer.from(await ziel.save()));
   assert.equal(
     zurueck.length,
     1,
@@ -281,26 +279,26 @@ test('9. die Nachprüfung fängt ein Ersetzen, das die Kartennummer trifft', asy
   // Woher dieser Fall kommt (Gegenprobe)
   const nummerMit400 = '5045076374400011166';
   const original = await baueGutschein('400', nummerMit400, '5225', null);
-  const vorher = werteAusPdf(original);
-  assert.equal(vorher.nummer, nummerMit400, 'Vorbedingung: die Nummer wird gelesen');
+  const vorher = valuesFromPdf(original);
+  assert.equal(vorher.number, nummerMit400, 'Vorbedingung: die Nummer wird gelesen');
   assert.ok(nummerMit400.includes('400'), 'Vorbedingung: der Betrag steht als Teilfolge in der Nummer');
 
-  const r = await ersetzeBetrag(original, 250);
-  if (r.daten) {
+  const r = await replaceAmount(original, 250);
+  if (r.data) {
     // Ersetzt werden DARF — aber dann muss die Nummer heil sein. Beides
     // zusammen ist die Aussage, nicht „es wurde abgelehnt".
-    const nachher = werteAusPdf(r.daten);
+    const nachher = valuesFromPdf(r.data);
     assert.equal(
-      nachher.nummer,
-      vorher.nummer,
-      `Die Kartennummer wurde zu ${nachher.nummer} verändert, und das PDF kam ` +
+      nachher.number,
+      vorher.number,
+      `Die Kartennummer wurde zu ${nachher.number} verändert, und das PDF kam ` +
         'trotzdem zurück. Die Nachprüfung hat nicht gegriffen.',
     );
-    assert.equal(nachher.betrag, 250);
+    assert.equal(nachher.amount, 250);
   } else {
     assert.match(
       String(r.grund),
-      /Nummer|PIN|Betrag/,
+      /Number|PIN|amount/i,
       `Abgelehnt mit „${r.grund}" — der Grund soll sagen, was nicht stimmte`,
     );
   }

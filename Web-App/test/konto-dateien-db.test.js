@@ -4,9 +4,9 @@
  * Anleitungen mit. Geprüft über die echten Routen und den Startlauf.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in schreibeGutscheinPdf() wieder den Klartext schreiben → rot: „PIN
+ *   A  in writeVoucherPdf() wieder den Klartext schreiben → rot: „PIN
  *      und Kartennummer stehen im Klartext auf der Platte“
- *   B  verschluesseleGutscheinAltbestand() überspringt alles → rot: „der
+ *   B  encryptLegacyVoucherFiles() überspringt alles → rot: „der
  *      Altbestand bleibt Klartext“
  *   C  in kontoEntfernen() (src/konto) den Aufruf von loescheKontoDateien() entfernt → rot:
  *      „data/uploads/<id> bleibt nach dem Löschen liegen“
@@ -88,11 +88,11 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
   const admin = testServer(_req, { sitzung: { userId: adminId, username: ADMIN, isAdmin: true }, t });
 
   const original = await gutscheinPdf();
-  const { werteAusPdf } = _req('src/gutscheine/gutscheinPdf.js');
+  const { valuesFromPdf } = _req('src/vouchers/pdfParsing.js');
   /** Was jemand mit der Datei allein aus ihr liest. */
   const lesbar = daten => {
     try {
-      return werteAusPdf(daten);
+      return valuesFromPdf(daten);
     } catch {
       return {};
     }
@@ -108,7 +108,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     const roh = fs.readFileSync(path.join(vouchers, `${b.voucher.id}.pdf`));
     const vonPlatte = lesbar(roh);
     assert.ok(
-      vonPlatte.pin !== PIN && vonPlatte.nummer !== NR,
+      vonPlatte.pin !== PIN && vonPlatte.number !== NR,
       'PIN und Kartennummer stehen im Klartext auf der Platte',
     );
     assert.notEqual(roh.subarray(0, 5).toString('latin1'), '%PDF-');
@@ -128,11 +128,11 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
   await t.test('der Klartext-Altbestand wird beim Start verschlüsselt', async () => {
     const alt = path.join(vouchers, '999999.pdf');
     fs.writeFileSync(alt, original);
-    const { verschluesseleGutscheinAltbestand, liesGutscheinPdf } = _req('src/gutscheine/gutscheinDateien.js');
-    assert.ok((await verschluesseleGutscheinAltbestand()) >= 1);
+    const { encryptLegacyVoucherFiles, readVoucherPdf } = _req('src/vouchers/voucherFiles.js');
+    assert.ok((await encryptLegacyVoucherFiles()) >= 1);
     assert.notEqual(lesbar(fs.readFileSync(alt)).pin, PIN, 'der Altbestand bleibt Klartext');
-    assert.ok((await liesGutscheinPdf(alt)).equals(original));
-    assert.equal(await verschluesseleGutscheinAltbestand(), 0, 'ein zweiter Lauf verschlüsselt doppelt');
+    assert.ok((await readVoucherPdf(alt)).equals(original));
+    assert.equal(await encryptLegacyVoucherFiles(), 0, 'ein zweiter Lauf verschlüsselt doppelt');
   });
 
   await t.test('Konto löschen entfernt Anleitungen und Gutscheine', async () => {

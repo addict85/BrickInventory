@@ -6,15 +6,15 @@
  * samt der Sicherungskopie, die die Migration anlegt.
  *
  * Gegenproben (am 01.11.2026 gemessen):
- *   A  in gutscheinAnlegen die Nummer unverschlüsselt geschrieben → rot:
+ *   A  in createVoucher die Nummer unverschlüsselt geschrieben → rot:
  *      „nach dem Anlegen …“ (500: der CHECK der Migration lehnt ab)
  *   B  wie A und zusätzlich den CHECK aus 0087 entfernt → rot: „nach dem
  *      Anlegen …“ (die Nummer steht in der Zeile)
- *   C  nummerSpalten() ohne das Konto im HMAC → rot: „Doppelte …“ (zwei
+ *   C  numberColumns() ohne das Konto im HMAC → rot: „Doppelte …“ (zwei
  *      Konten, derselbe Suchwert)
- *   D  in bereiteDatenbankVor() nummernNachverschluesseln() weggelassen →
+ *   D  in bereiteDatenbankVor() reencryptNumbers() weggelassen →
  *      rot: „ein Altbestand …“
- *   E  kopienVerschluesseln() weggelassen → rot: „ein Altbestand …“ (die
+ *   E  reencryptCopies() weggelassen → rot: „ein Altbestand …“ (die
  *      Kopie vor_migration_* trägt die Nummer im Klartext)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -43,8 +43,8 @@ const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testDaten();
 const gr = {
-  ..._req('src/gutscheine/repository/gutscheine.js'),
-  ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
+  ..._req('src/vouchers/repository/vouchers.js'),
+  ...require('./helpers/sources').testBereich('vouchers').vouchers,
 };
 /** Das Format vor dem Kontext: v1, AES-GCM mit dem Rohschlüssel, ohne AAD. */
 function alsV1(klar) {
@@ -187,8 +187,8 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     );
     assert.equal(ex.status, 200);
     const pdf = Buffer.from(await ex.arrayBuffer());
-    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
-    assert.deepEqual((await seitenweiseLesen(pdf)).map(w => w.nummer).sort(), [NR1, NR2, NR3].sort());
+    const { readPageByPage } = _req('src/vouchers/pdfExport.js');
+    assert.deepEqual((await readPageByPage(pdf)).map(w => w.number).sort(), [NR1, NR2, NR3].sort());
 
     await db.run('DELETE FROM vouchers WHERE user_id = $1', [HAUPT]);
     const im = new FormData();
@@ -250,7 +250,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       [ids],
     );
     assert.deepEqual(
-      zeilen.map(z => g.entschluessele(z.number, gr.nummerKontext(z.user_id, z.id))),
+      zeilen.map(z => g.entschluessele(z.number, gr.numberContext(z.user_id, z.id))),
       [NR1, NR1, NR3],
     );
     for (const z of zeilen) {
@@ -295,16 +295,12 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     for (const z of gesichert)
       assert.ok(z.number.startsWith('v2:') && (z.pin === null || z.pin.startsWith('v2:')), JSON.stringify(z));
     assert.deepEqual(
-      gesichert.map(z => g.entschluessele(z.number, gr.nummerKontext(z.user_id, z.id))),
+      gesichert.map(z => g.entschluessele(z.number, gr.numberContext(z.user_id, z.id))),
       [NR1, NR1, NR3],
       'mit dem Schlüssel bleibt die Kopie lesbar',
     );
 
-    const gs = require('./helpers/sources').testBereich('gutscheine').gutscheine;
-    assert.equal(
-      (await gs.nummernNachverschluesseln()) + (await gs.kopienVerschluesseln()),
-      0,
-      'ein zweiter Start ändert nichts',
-    );
+    const gs = require('./helpers/sources').testBereich('vouchers').vouchers;
+    assert.equal((await gs.reencryptNumbers()) + (await gs.reencryptCopies()), 0, 'ein zweiter Start ändert nichts');
   });
 });

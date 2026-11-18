@@ -11,7 +11,7 @@
  * Gegenproben (15.11.2026):
  *   A  in src/katalog/bereich.ts `setInfo` wieder `setAngaben` → rot „englische
  *      Dienstschlüssel“ (katalog.setAngaben)
- *   B  in src/gutscheine/bereich.ts `stapelAnlegen` wieder in den Satz → rot „Zahl
+ *   B  in src/vouchers/area.ts `batchCreate` wieder in den Satz → rot „Zahl
  *      der Dienstschlüssel“
  *   C  in src/parts/area.ts `readParts` wieder `partsList` (wie das Repository im
  *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
@@ -82,7 +82,7 @@ const JE_BEREICH = {
   parts: 13,
   minifigs: 8,
   wanted: 9,
-  gutscheine: 16,
+  vouchers: 16,
   collection: 8,
   verwaltung: 28,
 };
@@ -123,6 +123,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     'collection',
     'throttle',
     'parts',
+    'vouchers',
   ]);
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(
@@ -180,16 +181,16 @@ const ROH_ERLAUBT = {
   'auftraege.loescheZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'auftraege.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'auftraege.zaehleZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
-  'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/gutscheine',
+  'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
+  'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'sets.setsDesKontos': 'Setnummern eines Kontos für das Löschen der Sammlung (src/collection), ohne Regel davor',
   'finanzen.marktpreisAusCache': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
   'finanzen.marktpreisAusVerlauf': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
-  'gutscheine.gutscheineNeuVerschluesseln':
+  'vouchers.reencryptAllVouchers':
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'gutscheine.kopienVerschluesseln':
+  'vouchers.reencryptCopies':
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'gutscheine.nummernNachverschluesseln':
+  'vouchers.reencryptNumbers':
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
   'katalog.katalogStand':
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',

@@ -5,11 +5,11 @@
  * zugleich — ein zweites Konto ist davon nicht betroffen.
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  HOECHSTENS_SEITEN-Abfrage in liesHochgeladenesPdf() gestrichen → rot:
+ *   A  MAX_PAGES-Abfrage in readUploadedPdf() gestrichen → rot:
  *      „250 Seiten: 422 mit verständlicher Meldung“ (der Stapel wird gelesen)
- *   B  liesImHintergrund() ruft liesHochgeladenesPdf() direkt → rot: „gelesen wird
+ *   B  readInBackground() ruft readUploadedPdf() direkt → rot: „gelesen wird
  *      in einem Worker-Thread“
- *   C  kontoSchranke('gutscheinPdf') an POST /vouchers/pdf gestrichen → rot:
+ *   C  kontoSchranke('voucherPdf') an POST /vouchers/pdf gestrichen → rot:
  *      „ein zweites Gutschein-PDF desselben Kontos wartet nicht“
  *   D  in kontoSchranke() die Freigabe bei 'close' gestrichen → rot: „… nach
  *      dem Ende geht es wieder“
@@ -116,7 +116,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
   });
 
   await t.test('gelesen wird in einem Worker-Thread', async () => {
-    const { liesImHintergrund } = _req('src/gutscheine/pdfLesen.js');
+    const { readInBackground } = _req('src/vouchers/pdfReader.js');
     const Echt = wt.Worker;
     let gestartet = 0;
     wt.Worker = class extends Echt {
@@ -126,7 +126,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       }
     };
     try {
-      const r = await liesImHintergrund(await pdfMit(3));
+      const r = await readInBackground(await pdfMit(3));
       assert.equal(r.art, 'gelesen');
       assert.equal(r.seiten, 3);
     } finally {
@@ -183,7 +183,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
 test('der Platz ist frei, sobald die Antwort übergeben ist', () => {
   const { EventEmitter } = require('node:events');
   const { kontoSchranke } = _req('routes/api_v1/middleware.js');
-  const schranke = kontoSchranke('gutscheinPdf');
+  const schranke = kontoSchranke('voucherPdf');
   const anfrage = () => {
     const res = Object.assign(new EventEmitter(), {
       statusCode: 200,

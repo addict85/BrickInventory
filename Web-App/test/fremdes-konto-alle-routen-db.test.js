@@ -5,7 +5,7 @@
  * sich. Ausgelassen: Routen vor der Anmeldung und das Löschen des eigenen Kontos.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in gutscheinLoeschen() (src/gutscheine/repository) `user_id = $2`
+ *   A  in deleteVoucher() (src/vouchers/repository) `user_id = $2`
  *      durch `$2::int > 0` ersetzt → rot: „keine Zeile des Opfers ändert sich“
  *   B  in blickfeldIds() (src/haushalt) eine angefragte Konto-ID ohne Prüfung der
  *      Mitgliedschaft übernommen → rot: „keine Antwort enthält Daten des

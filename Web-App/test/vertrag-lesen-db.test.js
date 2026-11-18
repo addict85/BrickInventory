@@ -245,8 +245,8 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     .id;
   await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = $3', [uid, ort, SET]);
   await require('./helpers/sources')
-    .testBereich('gutscheine')
-    .gutscheine.gutscheinAnlegen(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
+    .testBereich('vouchers')
+    .vouchers.createVoucher(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
   await db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code, triggered, last_triggered_at, last_price)
                 VALUES ($1, $2, 'N', 'unter', 55, 'EUR', true, NOW(), 50)`,

@@ -1,6 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { MailDienste } from '../mail';
-import type { GutscheineDienste } from '../gutscheine';
+import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as verwaltung from './repository/verwaltung';
@@ -33,7 +33,7 @@ export interface VerwaltungAbhaengigkeiten {
   bestand: BestandDienste;
   sets: SetsDienste;
   wanted: WantedServices;
-  gutscheine: GutscheineDienste;
+  gutscheine: VoucherServices;
   mail: MailDienste;
 }
 

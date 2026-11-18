@@ -12,7 +12,7 @@ import { erzeugeBestand } from '../src/bestand';
 import { createParts } from '../src/parts';
 import { createMinifigs } from '../src/minifigs';
 import { createWanted } from '../src/wanted';
-import { erzeugeGutscheine } from '../src/gutscheine';
+import { createVouchers } from '../src/vouchers';
 import { createCollection } from '../src/collection';
 import { erzeugeVerwaltung } from '../src/verwaltung';
 import { erzeugeKatalog } from '../src/katalog';
@@ -199,7 +199,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     { db, uhr, einstellungen, haushalt, katalog, fremdquellen, bilder, finanzen, sets },
     zeige('wanted'),
   );
-  const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, throttle }, zeige('gutscheine'));
+  const vouchers = createVouchers({ db, uhr, einstellungen, konto, fremdquellen, throttle }, zeige('vouchers'));
   const collection = createCollection(
     { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, parts, minifigs, wanted },
     zeige('collection'),
@@ -220,12 +220,12 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
       bestand,
       sets,
       wanted,
-      gutscheine,
+      gutscheine: vouchers,
       mail,
     },
     zeige('verwaltung'),
   );
-  return { ...grund, finanzen, bestand, sets, parts, minifigs, wanted, gutscheine, collection, verwaltung };
+  return { ...grund, finanzen, bestand, sets, parts, minifigs, wanted, vouchers, collection, verwaltung };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

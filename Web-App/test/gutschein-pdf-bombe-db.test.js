@@ -9,14 +9,14 @@
  *
  *   a) ohne maxOutputLength → 1 rot (15 MB entpackt, nichts geworfen) und
  *      7 rot (die Bombe wurde mit getippten Werten abgelegt, Status 200)
- *   b) Summengrenze ENTPACKT_MAX_BYTES ausgeschaltet → 2 rot
+ *   b) Summengrenze UNPACKED_MAX_BYTES ausgeschaltet → 2 rot
  *   c) Stromzahl nicht gezählt → 3 rot
  *   d) Ströme wieder per faulem Muster gesucht → 4 rot („stream ohne Ende: 7485 ms")
  *   e) Textoperatoren wieder per TEXT_OP_RE → 4 rot („Literal ohne Ende:
  *      5850 ms") und 5 rot (die geschachtelte Klammer fehlte)
  *   f) Betragsmuster wieder mit `\s+`/`+?`/`\s*` → 4 rot („Leerraum im Text: 2693 ms")
  *   g) Schriftwahl nimmt die erste statt der letzten Tf → 6 rot
- *   h) Route ohne den Zweig für PdfZuGross → 7 rot (Status 200)
+ *   h) Route ohne den Zweig für PdfTooLarge → 7 rot (Status 200)
  *   i) Upload-Grenze wieder 20 MB → 8 rot (2,5 MB wurden abgelegt)
  *
  * Voraussetzung für 7 und 8: Test-DB via TEST_DATABASE_URL. Ohne DB: skip,
@@ -40,9 +40,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
-const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } = _req(
-  'src/gutscheine/gutscheinPdf.js',
-);
+const { pdfText, valuesFromPdf, PdfTooLarge, STREAM_MAX_BYTES, UNPACKED_MAX_BYTES, STREAMS_MAX } =
+  _req('src/vouchers/pdfParsing.js');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -81,20 +80,20 @@ const BOMBE = pdfAus([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
 test('1. ein Strom, der über die Grenze entpackt, wird abgewiesen', () => {
   assert.ok(BOMBE.length < 100 * 1024, `Vorbedingung: Bombe wiegt ${BOMBE.length} Bytes`);
   const { fehler } = dauer(() => pdfText(BOMBE));
-  assert.ok(fehler instanceof PdfZuGross, `Erwartet PdfZuGross, bekam ${fehler}`);
+  assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
 });
 
 test('2. viele Ströme knapp unter der Grenze zählen zusammen', () => {
-  const fast = zlib.deflateSync(Buffer.alloc(STROM_MAX_BYTES - 1024));
-  const n = Math.ceil(ENTPACKT_MAX_BYTES / STROM_MAX_BYTES) + 1;
+  const fast = zlib.deflateSync(Buffer.alloc(STREAM_MAX_BYTES - 1024));
+  const n = Math.ceil(UNPACKED_MAX_BYTES / STREAM_MAX_BYTES) + 1;
   const { fehler } = dauer(() => pdfText(pdfAus(Array(n).fill(fast))));
-  assert.ok(fehler instanceof PdfZuGross, `${n} Ströme: erwartet PdfZuGross, bekam ${fehler}`);
+  assert.ok(fehler instanceof PdfTooLarge, `${n} Ströme: erwartet PdfTooLarge, bekam ${fehler}`);
 });
 
 test('3. mehr Ströme als erlaubt werden abgewiesen', () => {
   const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
-  const { fehler } = dauer(() => pdfText(pdfAus(Array(STROEME_MAX + 1).fill(klein))));
-  assert.ok(fehler instanceof PdfZuGross, `Erwartet PdfZuGross, bekam ${fehler}`);
+  const { fehler } = dauer(() => pdfText(pdfAus(Array(STREAMS_MAX + 1).fill(klein))));
+  assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
   assert.equal(
     pdfText(pdfAus(Array(10).fill(klein))).split('\n').length,
     10,
@@ -111,7 +110,7 @@ test('4. offene Anfänge kosten keine quadratische Rechenzeit', () => {
     'Leerraum im Text': pdfAus([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
   };
   for (const [name, pdf] of Object.entries(faelle)) {
-    const { fehler, ms } = dauer(() => werteAusPdf(pdf));
+    const { fehler, ms } = dauer(() => valuesFromPdf(pdf));
     assert.equal(fehler, null, `${name}: ${fehler}`);
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Lesen ist nicht linear`);
   }
@@ -131,8 +130,8 @@ test('5. gültige Textoperatoren werden weiter gelesen', () => {
     'Geschenk (Ostern)',
   ]);
   assert.deepEqual(
-    werteAusPdf(pdfAus([Buffer.from(inhalt, 'latin1')])),
-    { nummer: '5045076374450011166', pin: '5225', betrag: 400, waehrung: 'CHF' },
+    valuesFromPdf(pdfAus([Buffer.from(inhalt, 'latin1')])),
+    { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF' },
     'Auch unkomprimiert',
   );
 });
@@ -164,21 +163,21 @@ async function zweiSchriften(inhalt) {
 }
 
 test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => {
-  const { ersetzeBetrag } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
+  const { replaceAmount } = _req('src/vouchers/pdfExport.js');
   const rest = 'BT /F1 12 Tf (5045076374450011166) Tj (PIN: 5225) Tj ET\n';
-  const unsicher = await ersetzeBetrag(
+  const unsicher = await replaceAmount(
     await zweiSchriften('BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
-  assert.equal(unsicher.daten, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
-  assert.equal(unsicher.abgelehnt, 1);
+  assert.equal(unsicher.data, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
+  assert.equal(unsicher.rejected, 1);
 
-  const sicher = await ersetzeBetrag(
+  const sicher = await replaceAmount(
     await zweiSchriften('BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
-  assert.ok(sicher.daten, `WinAnsi abgelehnt: ${sicher.grund}`);
-  assert.equal(werteAusPdf(sicher.daten).betrag, 250);
+  assert.ok(sicher.data, `WinAnsi abgelehnt: ${sicher.grund}`);
+  assert.equal(valuesFromPdf(sicher.data).amount, 250);
 });
 
 test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { concurrency: 1 }, async t => {
@@ -210,7 +209,7 @@ test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { co
     fd.append('amount', '50');
     fd.append('currency', 'CHF');
     const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
-    const nummer_suche = _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nummer);
+    const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(uid, nummer);
     const zeile = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND number_search=$2', [uid, nummer_suche]);
     return { status: r.status, body: await r.json().catch(() => ({})), zeile };
   }

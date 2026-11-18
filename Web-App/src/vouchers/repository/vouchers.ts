@@ -59,9 +59,9 @@ export async function vouchersOfAccount(
   order: 'neueste' | 'aelteste' = 'neueste',
 ): Promise<VoucherRow[]> {
   const row = order === 'neueste' ? 'created_at DESC, id DESC' : 'created_at, id';
-  return (
-    await db.all<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE user_id = $1 ORDER BY ${row}`, [uid])
-  ).map(z => readable(uid, z));
+  return (await db.all<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE user_id = $1 ORDER BY ${row}`, [uid])).map(
+    z => readable(uid, z),
+  );
 }
 
 export async function voucher(db: DbSchnittstelle, uid: number, id: number): Promise<VoucherRow | undefined> {
@@ -71,11 +71,7 @@ export async function voucher(db: DbSchnittstelle, uid: number, id: number): Pro
 
 /** Locks the row until the end of the transaction: whoever reads, merges and writes
  * should not overwrite a concurrent change. */
-export async function lockedVoucher(
-  db: DbSchnittstelle,
-  uid: number,
-  id: number,
-): Promise<VoucherRow | undefined> {
+export async function lockedVoucher(db: DbSchnittstelle, uid: number, id: number): Promise<VoucherRow | undefined> {
   const z = await db.get<VoucherRow>(`SELECT ${COLUMNS} FROM vouchers WHERE id = $1 AND user_id = $2 FOR UPDATE`, [
     id,
     uid,
@@ -84,7 +80,7 @@ export async function lockedVoucher(
 }
 
 /** undefined if the number already exists — no silent overwrite. */
-export async function createVoucher(
+export async function insertVoucher(
   db: DbSchnittstelle,
   uid: number,
   w: VoucherFields,
@@ -108,7 +104,7 @@ export async function replaceVoucher(db: DbSchnittstelle, uid: number, w: Vouche
       numberSearch(uid, w.number),
     ]);
     if (!da) {
-      if (await createVoucher(db, uid, w)) return true;
+      if (await insertVoucher(db, uid, w)) return true;
       continue;
     }
     const r = await db.run(
@@ -121,7 +117,7 @@ export async function replaceVoucher(db: DbSchnittstelle, uid: number, w: Vouche
   throw new Error('Voucher is changing concurrently elsewhere');
 }
 
-export async function changeVoucher(
+export async function updateVoucher(
   db: DbSchnittstelle,
   uid: number,
   id: number,
@@ -145,11 +141,7 @@ export async function rememberVoucherPdf(db: DbSchnittstelle, uid: number, id: n
 }
 
 /** undefined if the row did not exist. */
-export async function deleteVoucher(
-  db: DbSchnittstelle,
-  uid: number,
-  id: number,
-): Promise<string | null | undefined> {
+export async function removeVoucher(db: DbSchnittstelle, uid: number, id: number): Promise<string | null | undefined> {
   const z = await db.get<{ pdf_path: string | null }>(
     'DELETE FROM vouchers WHERE id = $1 AND user_id = $2 RETURNING pdf_path',
     [id, uid],

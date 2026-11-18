@@ -31,7 +31,7 @@ const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
-const suche = (uid, nr) => _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nr);
+const suche = (uid, nr) => _req('src/vouchers/repository/vouchers.js').numberSearch(uid, nr);
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -76,19 +76,19 @@ async function aufbau() {
 
   const dir = path.join(DATEN_DIR, 'vouchers', String(HAUPT));
   await fs.promises.mkdir(dir, { recursive: true });
-  const { gutscheinAnlegen } = require('./helpers/sources').testBereich('gutscheine').gutscheine;
+  const { createVoucher } = require('./helpers/sources').testBereich('vouchers').vouchers;
   for (const k of KARTEN) {
-    const z = await gutscheinAnlegen(HAUPT, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
-    await _req('src/gutscheine/gutscheinDateien.js').schreibeGutscheinPdf(
+    const z = await createVoucher(HAUPT, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
+    await _req('src/vouchers/voucherFiles.js').writeVoucherPdf(
       path.join(dir, `${z.id}.pdf`),
       await baueGutschein(k.gedruckt, k.nr, k.pin),
     );
     await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${HAUPT}/${z.id}.pdf`, z.id]);
   }
   // Ein Gutschein OHNE Original — von Hand erfasst.
-  await gutscheinAnlegen(HAUPT, { number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF' });
+  await createVoucher(HAUPT, { number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF' });
   // Und einer in einem FREMDEN Konto, der im eigenen Export nichts zu suchen hat.
-  await gutscheinAnlegen(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' });
+  await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' });
 }
 
 test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1 }, async t => {
@@ -156,8 +156,8 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   await t.test('2. der FREMDE Gutschein ist nicht dabei', async () => {
     // Ein Gutschein traegt Nummer und PIN. Im Export eines anderen Kontos
     // waere das die Weitergabe eines Zahlungsmittels.
-    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
-    const drin = (await seitenweiseLesen(pdf)).map(w => w.nummer);
+    const { readPageByPage } = _req('src/vouchers/pdfExport.js');
+    const drin = (await readPageByPage(pdf)).map(w => w.number);
     assert.ok(
       !drin.includes('9999999999999999999'),
       `Im eigenen Export steht die Karte eines fremden Kontos: ${drin.join(', ')}`,
@@ -166,15 +166,15 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   });
 
   await t.test('3. das exportierte PDF trägt den APP-Betrag, nicht den gedruckten', async () => {
-    const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
-    const gelesen = await seitenweiseLesen(pdf);
+    const { readPageByPage } = _req('src/vouchers/pdfExport.js');
+    const gelesen = await readPageByPage(pdf);
     for (const k of KARTEN) {
-      const w = gelesen.find(x => x.nummer === k.nr);
+      const w = gelesen.find(x => x.number === k.nr);
       assert.ok(w, `${k.nr} fehlt im Export`);
       assert.equal(
-        w.betrag,
+        w.amount,
         k.app,
-        `${k.nr}: ${w.betrag} statt ${k.app}. Auf der Karte steht ${k.gedruckt} — ` +
+        `${k.nr}: ${w.amount} statt ${k.app}. Auf der Karte steht ${k.gedruckt} — ` +
           'der Export soll den Stand der App zeigen, das war Marcos Vorgabe.',
       );
     }
@@ -210,7 +210,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
       assert.equal(
         _req('src/infra/geheimnis.js').entschluessele(
           z.pin,
-          _req('src/gutscheine/repository/gutscheine.js').pinKontext(HAUPT, z.id),
+          _req('src/vouchers/repository/vouchers.js').pinContext(HAUPT, z.id),
         ),
         k.pin,
         `${k.nr}: PIN ${z.pin} statt ${k.pin}`,

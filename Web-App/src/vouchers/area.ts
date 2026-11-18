@@ -8,10 +8,7 @@ import { zugang, type VoucherDependencies, type VoucherContext } from './context
 
 export type { VoucherDependencies, VoucherContext } from './context';
 
-export function createVouchers(
-  a: Omit<VoucherDependencies, 'faecher'>,
-  einblick?: Einblick<VoucherContext>,
-) {
+export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, einblick?: Einblick<VoucherContext>) {
   return baueBereich(
     { ...a, faecher: new Faecher() },
     zugang,

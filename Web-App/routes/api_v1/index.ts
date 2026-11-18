@@ -41,7 +41,7 @@ export function baueApiRouter(
     | 'parts'
     | 'minifigs'
     | 'wanted'
-    | 'gutscheine'
+    | 'vouchers'
     | 'collection'
     | 'verwaltung'
   >,

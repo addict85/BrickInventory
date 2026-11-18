@@ -40,7 +40,7 @@ test('1. jeder Posten wird einzeln gelesen, nicht die Datei als Ganzes', () => {
   // Der Fehler, den dieser Fall ausschliesst: ein Muster über die GANZE Datei
   // legen. Dann gewinnt der erste Treffer je Feld, und aus 224 Posten wird
   // einer. Genau diese Form hat in diesem Baum schon zweimal etwas falsch
-  // gemacht (siehe seitenweiseLesen in src/gutscheine/gutscheinPdfSchreiben.ts).
+  // gemacht (siehe readPageByPage in src/vouchers/pdfExport.ts).
   const xml = liste(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
   const r = leseWantedListe(xml);
   assert.equal(r.posten.length, 3, `${r.posten.length} Posten statt 3`);

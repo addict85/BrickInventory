@@ -7,10 +7,10 @@
  *      rot: „scheitert der Protokolleintrag, gibt es kein Konto“
  *   B  aktivSetzen (src/konto/verwalterAktionen.ts) ohne mitZugangsende → rot:
  *      „… bleibt das Konto aktiv“
- *   C  gutscheinMitPdfAnlegen (src/gutscheine/dienst.ts) ohne das Löschen im
+ *   C  createVoucherWithPdf (src/vouchers/service.ts) ohne das Löschen im
  *      catch → rot: „… keine verwaiste Datei“
- *   D  gutscheinMitPdfAnlegen ohne db.transaction → rot: „… keine Gutscheinzeile“
- *   E  gutscheinBearbeiten liest mit gutschein() statt gutscheinGesperrt() → rot:
+ *   D  createVoucherWithPdf ohne db.transaction → rot: „… keine Gutscheinzeile“
+ *   E  changeVoucher liest mit voucher() statt lockedVoucher() → rot:
  *      „zwei gleichzeitige Änderungen“ (der Betrag des ersten ging verloren)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -41,15 +41,15 @@ const echtProtokoll = _req('src/konto/repository/protokoll.js');
 ersetze('src/konto/repository/protokoll.js', {
   protokolliere: (...a) => (stoerung.protokoll ? kaputt('protokoll') : echtProtokoll.protokolliere(...a)),
 });
-const echtDateien = _req('src/gutscheine/gutscheinDateien.js');
-ersetze('src/gutscheine/gutscheinDateien.js', {
-  schreibeGutscheinPdf: (...a) => (stoerung.pdfSchreiben ? kaputt('pdf') : echtDateien.schreibeGutscheinPdf(...a)),
+const echtDateien = _req('src/vouchers/voucherFiles.js');
+ersetze('src/vouchers/voucherFiles.js', {
+  writeVoucherPdf: (...a) => (stoerung.pdfSchreiben ? kaputt('pdf') : echtDateien.writeVoucherPdf(...a)),
 });
 
 /** Zwei Leser: Der erste wartet nach dem Lesen, bis der zweite zu lesen begonnen
  * hat. Ohne Zeilensperre lesen dann beide denselben alten Stand. */
 let schranke = null;
-const echtRepo = _req('src/gutscheine/repository/gutscheine.js');
+const echtRepo = _req('src/vouchers/repository/vouchers.js');
 const mitSchranke =
   name =>
   async (...a) => {
@@ -60,10 +60,10 @@ const mitSchranke =
     if (ich === 1) await s.zweiter;
     return z;
   };
-ersetze('src/gutscheine/repository/gutscheine.js', {
-  gutschein: mitSchranke('gutschein'),
-  gutscheinGesperrt: mitSchranke('gutscheinGesperrt'),
-  gutscheinPdfMerken: (...a) => (stoerung.pdfMerken ? kaputt('pdf merken') : echtRepo.gutscheinPdfMerken(...a)),
+ersetze('src/vouchers/repository/vouchers.js', {
+  voucher: mitSchranke('voucher'),
+  lockedVoucher: mitSchranke('lockedVoucher'),
+  rememberVoucherPdf: (...a) => (stoerung.pdfMerken ? kaputt('pdf merken') : echtRepo.rememberVoucherPdf(...a)),
 });
 
 test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 }, async t => {
@@ -81,8 +81,8 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
   const chef = await neu(`${NAME}-chef`, true);
   const nutzer = await neu(`${NAME}-nutzer`);
   const K = require('./helpers/sources').testDienste().konto;
-  const G = _req('src/gutscheine/dienst.js');
-  const ordner = path.join(_req('src/gutscheine/index.js').VOUCHER_DIR, String(nutzer));
+  const G = _req('src/vouchers/service.js');
+  const ordner = path.join(_req('src/vouchers/index.js').VOUCHER_DIR, String(nutzer));
   t.after(async () => {
     fs.rmSync(ordner, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
@@ -117,32 +117,32 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
 
   await t.test('scheitert das Merken des Pfads, bleibt keine Gutscheinzeile und keine verwaiste Datei', async () => {
     const w = { number: '6000111122223333', pin: '123', amount: 25, currency: 'EUR' };
-    await stoere('pdfMerken', () => G.gutscheinMitPdfAnlegen(nutzer, w, pdf));
+    await stoere('pdfMerken', () => G.createVoucherWithPdf(nutzer, w, pdf));
     assert.equal(await zeilen(), 0);
     assert.deepEqual(dateien(), []);
-    await stoere('pdfSchreiben', () => G.gutscheinMitPdfAnlegen(nutzer, w, pdf));
+    await stoere('pdfSchreiben', () => G.createVoucherWithPdf(nutzer, w, pdf));
     assert.equal(await zeilen(), 0);
     // Ohne Störung: Zeile und Datei, und die Zeile kennt die Datei.
-    const z = await G.gutscheinMitPdfAnlegen(nutzer, w, pdf);
+    const z = await G.createVoucherWithPdf(nutzer, w, pdf);
     assert.equal(z.pdf_path, `${nutzer}/${z.id}.pdf`);
     assert.deepEqual(dateien(), [`${z.id}.pdf`]);
-    assert.deepEqual(await G.gutscheinPdf(nutzer, z.id), pdf);
+    assert.deepEqual(await G.voucherPdf(nutzer, z.id), pdf);
   });
 
   await t.test('zwei gleichzeitige Änderungen verlieren keine', async () => {
-    const z = await G.gutscheinErfassen(nutzer, { number: '6000444455556666', pin: '111', amount: 10 });
+    const z = await G.createVoucher(nutzer, { number: '6000444455556666', pin: '111', amount: 10 });
     let zweiterDa;
     schranke = { n: 0, zweiter: new Promise(r => (zweiterDa = r)) };
     schranke.zweiterDa = zweiterDa;
     try {
       await Promise.all([
-        G.gutscheinBearbeiten(nutzer, z.id, { amount: 42 }),
-        G.gutscheinBearbeiten(nutzer, z.id, { pin: '999', number: G.maskiert(z).number }),
+        G.changeVoucher(nutzer, z.id, { amount: 42 }),
+        G.changeVoucher(nutzer, z.id, { pin: '999', number: G.maskiert(z).number }),
       ]);
     } finally {
       schranke = null;
     }
-    const jetzt = await G.gutscheinKlartext(nutzer, z.id);
+    const jetzt = await G.voucherPlaintext(nutzer, z.id);
     assert.equal(Number(jetzt.amount), 42, 'der Betrag der ersten Änderung ging verloren');
     assert.equal(jetzt.pin, '999');
     assert.equal(jetzt.number, '6000444455556666');
