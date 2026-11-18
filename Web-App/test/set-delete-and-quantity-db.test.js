@@ -38,20 +38,19 @@ test('das Löschen fragt genau einmal', () => {
   );
   assert.match(handler, /await delSet\(/, 'Er muss über delSet() gehen');
 
-  // …und delSet fragt genau einmal: über loeschWahl(), je nach Haushalt mit oder ohne Kontenwahl
+  // …und delSet fragt genau einmal: über deletionChoice(), je nach Haushalt mit oder ohne Kontenwahl
   // (UX-Prüfung 23, M1; das Verhalten prüft abmelden-loeschen-kontrast-browser).
-  const fn = src.slice(src.indexOf('async function loeschWahl'), src.indexOf('export async function reimportParts'));
+  const fn = src.slice(
+    src.indexOf('async function deletionChoice'),
+    src.indexOf('export async function reimportParts'),
+  );
   assert.equal((fn.match(/confirmDelete\(/g) || []).length, 1, 'delSet() muss GENAU EINE Rückfrage stellen');
   assert.equal((fn.match(/loeschenMitWahl\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
-  assert.match(fn, /if \(!fremd\)\s*return \(await confirmDelete\(/, 'die beiden Rückfragen schliessen sich aus');
+  assert.match(fn, /if \(!foreign\)\s*return \(await confirmDelete\(/, 'die beiden Rückfragen schliessen sich aus');
   // Und die Rückfrage muss abbrechen können, ohne dass gelöscht wird.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
   // loadGallery() lädt die Kennzahlen mit; die Teile und Minifiguren des Sets sind mit weg.
-  assert.match(
-    fn,
-    /loadGallery\(\);\s*melde\('teileLaden'\);/,
-    'Nach dem Löschen müssen Sammlung und Teile nachziehen',
-  );
+  assert.match(fn, /loadGallery\(\);\s*emit\('teileLaden'\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
 });
 
 test('die Mengen-Multiplikation steht an allen Stellen', () => {

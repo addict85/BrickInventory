@@ -29,8 +29,8 @@ import {
   speichereEinstellungen,
 } from './rueckfrage.js';
 import { LAND_ZUR_WAEHRUNG } from './gutscheine.js';
-// Einstellungen: Profil, Design, Zugangsdaten der Quellen, Mail, Zwischenspeicher, QR-Anmeldung und
-// Konfigurations-Import/-Export. Haushalt, Verwaltung, Alarme und Lagerorte haben eigene Dateien.
+// Settings: profile, theme, source credentials, mail, cache, QR login and config
+// import/export. Household, user management, alerts and storage locations have their own files.
 
 // ── SETTINGS ──────────────────────────────────────────
 // SMTP + Registration settings load/save
@@ -48,26 +48,26 @@ async function loadSmtpSettings(settings) {
   if (G('smtp-tls-ca')) G('smtp-tls-ca').value = s.smtp_tls_ca || '';
   if (G('smtp-tls-altlast')) G('smtp-tls-altlast').style.display = s.smtp_insecure_tls === '1' ? '' : 'none';
   if (G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled === '1';
-  geladeneSmtp = JSON.stringify(smtpFormular());
-  regMailHinweis();
+  loadedSmtp = JSON.stringify(smtpFormValues());
+  registrationMailHint();
 }
 
-/** Ohne Mailversand bliebe jede Registrierung unbestätigt; der Schalter sagt das, statt still zu ruhen. */
-async function regMailHinweis() {
+/** Without mail delivery every registration would stay unconfirmed; the toggle says so instead of staying silent. */
+async function registrationMailHint() {
   const box = G('reg-enabled'),
-    hinweis = G('reg-mail-hinweis');
-  if (!box || !hinweis) return;
+    hint = G('reg-mail-hinweis');
+  if (!box || !hint) return;
   const d = await api('GET', '/v1/auth/registration-status');
-  const ohne = d?.mail_versand === false;
-  box.disabled = ohne && !box.checked;
-  hinweis.hidden = !ohne;
-  hinweis.textContent = ohne ? tRaw(box.checked ? 'settings.reg_ruht' : 'settings.reg_braucht_mail') : '';
+  const none = d?.mail_versand === false;
+  box.disabled = none && !box.checked;
+  hint.hidden = !none;
+  hint.textContent = none ? tRaw(box.checked ? 'settings.reg_ruht' : 'settings.reg_braucht_mail') : '';
 }
 
-// Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert; gefragt wird deshalb nur dann,
-// nicht bei jedem Speichern oder Testen.
-let geladeneSmtp = '';
-function smtpFormular() {
+// The server requires the admin password whenever an SMTP value changes; it is only asked for
+// then, not on every save or test.
+let loadedSmtp = '';
+function smtpFormValues() {
   return {
     smtp_host: G('smtp-host')?.value.trim() || '',
     smtp_port: G('smtp-port')?.value || '587',
@@ -79,25 +79,24 @@ function smtpFormular() {
     smtp_tls_ca: G('smtp-tls-ca')?.value.trim() || '',
   };
 }
-/** SMTP speichern; null, wenn die Passwortabfrage abgebrochen wurde. */
+/** Save SMTP; null if the password prompt was cancelled. */
 /** @returns {Promise<{ success: boolean, error?: string | null } | null>} */
-async function speichereSmtp() {
-  const werte = smtpFormular();
-  // Mit dem Hinweis auf die alte Ausnahme auch unverändert speichern: Erst das räumt sie ab.
-  const altlast = G('smtp-tls-altlast');
-  if (JSON.stringify(werte) === geladeneSmtp && (!altlast || altlast.style.display === 'none'))
-    return { success: true };
+async function saveSmtp() {
+  const values = smtpFormValues();
+  // Save unchanged too when the old-exception hint is still showing: only a save clears it.
+  const legacy = G('smtp-tls-altlast');
+  if (JSON.stringify(values) === loadedSmtp && (!legacy || legacy.style.display === 'none')) return { success: true };
   const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss', {
     knopf: 'confirm.btn.speichern',
     art: 'bp',
   });
   if (admin_password === null) return null;
-  const d = await mitZweitemFaktor(z => api('POST', '/v1/settings', { ...werte, admin_password, ...z }));
+  const d = await mitZweitemFaktor(z => api('POST', '/v1/settings', { ...values, admin_password, ...z }));
   if (d === null) return null;
   if (d.success) {
-    geladeneSmtp = JSON.stringify(werte);
-    if (altlast) altlast.style.display = 'none';
-    regMailHinweis();
+    loadedSmtp = JSON.stringify(values);
+    if (legacy) legacy.style.display = 'none';
+    registrationMailHint();
   }
   return d;
 }
@@ -105,33 +104,33 @@ async function speichereSmtp() {
 G('btn-test-smtp')?.addEventListener('click', async () => {
   const btn = G('btn-test-smtp');
   const res = G('smtp-test-result');
-  const frei = knopfBesetzt(btn);
-  // Erst speichern, damit der Test mit genau diesen Werten läuft.
-  const gespeichert = await speichereSmtp();
-  if (!gespeichert?.success) {
-    frei();
-    if (gespeichert) toast(gespeichert.error || t('settings.error'), 'error');
+  const release = knopfBesetzt(btn);
+  // Save first, so the test runs with exactly these values.
+  const saved = await saveSmtp();
+  if (!saved?.success) {
+    release();
+    if (saved) toast(saved.error || t('settings.error'), 'error');
     return;
   }
-  const eigene = String(loggedInAccount?.email || '');
-  const to = G('smtp-test-email')?.value?.trim() || eigene;
-  // Eine fremde Adresse bestätigt der Verwalter mit dem Passwort; die eigene nicht.
-  const fremd = to.toLowerCase() !== eigene.toLowerCase();
-  const d = fremd
+  const own = String(loggedInAccount?.email || '');
+  const to = G('smtp-test-email')?.value?.trim() || own;
+  // A foreign address needs the admin's password confirmation; their own does not.
+  const foreign = to.toLowerCase() !== own.toLowerCase();
+  const d = foreign
     ? await mitPasswortBestaetigen(
         tRaw('smtp.test_confirm_title'),
         (password, z) => api('POST', '/v1/settings/smtp-test', { to, password, ...z }),
         tRaw('smtp.test_confirm_text'),
       )
     : await mitZweitemFaktor(z => api('POST', '/v1/settings/smtp-test', { to, ...z }));
-  frei();
+  release();
   if (!d) return;
   res.style.display = 'block';
   if (d.success) {
     res.style.background = 'var(--g50)';
     res.style.color = 'var(--g700)';
     res.style.border = '1px solid var(--g300)';
-    // Die Kennung des Mailservers hilft, die Nachricht in dessen Protokoll zu finden.
+    // The mail server's message id helps find the message in its own log.
     res.textContent =
       d.mode === 'console'
         ? tRaw('smtp.console')
@@ -145,22 +144,22 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
 });
 
 G('btn-sav-smtp')?.addEventListener('click', async () => {
-  const d = await speichereSmtp();
+  const d = await saveSmtp();
   if (!d) return;
   if (d.success) meldeAmFeld(G('btn-sav-smtp'));
   else toast(d.error || t('settings.error'), 'error');
 });
 
 async function saveRegEnabled() {
-  // Der Haken folgt dem Server: Während der Passwortfrage gilt noch der alte Stand.
+  // The checkbox follows the server: during the password prompt it still shows the old state.
   const box = G('reg-enabled'),
-    soll = box.checked;
-  box.checked = !soll;
-  const d = await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: soll ? '1' : '0' });
+    want = box.checked;
+  box.checked = !want;
+  const d = await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: want ? '1' : '0' });
   if (!d) return;
-  if (d.success) box.checked = soll;
+  if (d.success) box.checked = want;
   toast(d.success ? t('settings.reg_saved') : d.error || t('settings.error'), d.success ? 'success' : 'error');
-  regMailHinweis();
+  registrationMailHint();
 }
 
 export async function loadCacheTtl() {
@@ -186,7 +185,7 @@ export async function loadCacheTtl() {
   } catch (_) {}
 }
 
-/** Ein Wert, ein Speichern: wie alle Einzelwerte sofort, bestätigt am Feld (meldeAmFeld). */
+/** One value, one save: like every single value, saved right away, confirmed at the field (meldeAmFeld). */
 async function speichereCacheTtl() {
   const sel = G('mon-cache-ttl');
   const d = await api('POST', '/v1/admin/cache-ttl', { ttl: sel?.value || '24' });
@@ -206,11 +205,11 @@ export async function loadRateLimitStats() {
   if (!d.success || !d.rate_limits) return;
   const fmt = (/** @type {import('../../frontend-typen/vertrag').RateLimit | null | undefined} */ rl) =>
     rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
-  for (const dienst of /** @type {const} */ (['bricklink', 'rebrickable', 'brickset'])) {
-    const rl = d.rate_limits[dienst];
-    if (G('rl-' + dienst)) G('rl-' + dienst).textContent = fmt(rl);
-    const balken = G('rl-' + dienst + '-balken');
-    if (balken) balken.style.width = rl?.limit ? Math.min(100, (100 * rl.count) / rl.limit) + '%' : '0';
+  for (const service of /** @type {const} */ (['bricklink', 'rebrickable', 'brickset'])) {
+    const rl = d.rate_limits[service];
+    if (G('rl-' + service)) G('rl-' + service).textContent = fmt(rl);
+    const bar = G('rl-' + service + '-balken');
+    if (bar) bar.style.width = rl?.limit ? Math.min(100, (100 * rl.count) / rl.limit) + '%' : '0';
   }
 }
 export async function loadCacheStats() {
@@ -219,7 +218,7 @@ export async function loadCacheStats() {
   if (G('cs-prices')) G('cs-prices').textContent = String(d.prices || 0);
   if (G('cs-subsets')) G('cs-subsets').textContent = String(d.subsets || 0);
   if (G('cs-catalog')) G('cs-catalog').textContent = String(d.catalog || 0);
-  // Nach einem Lesefehler steht 0 da; der Hinweis sagt, dass es keine echte 0 ist.
+  // After a read error this shows 0; the hint says that it is not a real 0.
   if (d.degradiert?.length) toast(tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') }), 'info');
 }
 export async function loadApiLimits() {
@@ -233,7 +232,7 @@ export async function loadApiLimits() {
 export async function loadProfile() {
   const dw = G('dunkel-wahl');
   if (dw && window.__bimDunkelWert) dw.value = window.__bimDunkelWert();
-  ladeEigenesDesign();
+  loadOwnTheme();
   const d = await api('GET', '/v1/auth/profile');
   const u = d.success ? d.user : null;
   if (!u) return;
@@ -242,7 +241,7 @@ export async function loadProfile() {
   G('prof-user').value = u.username || '';
   G('prof-email').value = u.email || '';
   G('prof-email').dataset.bisher = u.email || '';
-  // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem leeren Feld widerspräche sich.
+  // Without an address there is nothing to confirm — "verified" next to an empty field would contradict itself.
   const vEl = G('prof-email-verified');
   if (vEl)
     setzeHtml(
@@ -253,24 +252,24 @@ export async function loadProfile() {
           ? html`<span class="email-ok">${tRaw('profile.verified')}</span>`
           : html`<span class="email-offen">${tRaw('profile.not_verified')}</span>`,
     );
-  // Die neue Adresse gilt erst nach dem Link; bis dahin steht sie nur hier.
+  // The new address only takes effect after the confirmation link; until then it only shows here.
   const hint = G('prof-email-hint');
   if (hint) hint.textContent = u.new_email ? tRaw('profile.email_pending', { email: u.new_email }) : '';
 }
 
-/** Design-Wahl des Kontos: eigenes Design oder die Vorgabe des Verwalters. */
-async function ladeEigenesDesign() {
+/** Account theme choice: own theme or the admin's default. */
+async function loadOwnTheme() {
   const sel = G('design-wahl');
   if (!sel) return;
   const d = await api('GET', '/v1/settings/theme');
   if (!d.success) return;
-  zeigeDesignWahl(d);
+  showThemeChoice(d);
 }
 
 /** @param {import('../../frontend-typen/vertrag').AppThemeResponse} d */
-function zeigeDesignWahl(d) {
+function showThemeChoice(d) {
   const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-wahl')));
-  const NAMEN = {
+  const NAMES = {
     classic: 'settings.theme_classic',
     brick: 'settings.theme_brick',
     werkbank: 'settings.theme_werkbank',
@@ -278,14 +277,14 @@ function zeigeDesignWahl(d) {
     noppe: 'settings.theme_noppe',
     hochglanz: 'settings.theme_hochglanz',
   };
-  const vorgabeName = tRaw(/** @type {Record<string, string>} */ (NAMEN)[d.vorgabe ?? ''] || NAMEN.classic);
-  sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
+  const defaultName = tRaw(/** @type {Record<string, string>} */ (NAMES)[d.vorgabe ?? ''] || NAMES.classic);
+  sel.options[0].textContent = tRaw('settings.own_theme_default', { name: defaultName });
   sel.value = d.eigenes || '';
-  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein nicht, wie es aussieht.
-  // Werkbank hat keine helle Fassung; das steht dabei.
-  const hinweis = G('design-hinweis');
-  const aktiv = d.eigenes || d.vorgabe || 'classic';
-  const BESCHREIBUNG = {
+  // A sentence about the chosen theme: names like "Noppe" and "Hochglanz" alone don't say what it looks like.
+  // Werkbank has no light variant; that is noted here too.
+  const hint = G('design-hinweis');
+  const active = d.eigenes || d.vorgabe || 'classic';
+  const DESCRIPTIONS = {
     classic: 'settings.theme_desc.classic',
     brick: 'settings.theme_desc.brick',
     werkbank: 'settings.theme_desc.werkbank',
@@ -293,14 +292,14 @@ function zeigeDesignWahl(d) {
     noppe: 'settings.theme_desc.noppe',
     hochglanz: 'settings.theme_desc.hochglanz',
   };
-  const beschreibung = /** @type {Record<string, string>} */ (BESCHREIBUNG)[aktiv];
-  if (hinweis) hinweis.textContent = beschreibung ? tRaw(beschreibung) : '';
-  // Bei einem Design ohne helle Fassung wirkt die Wahl darunter nicht; das steht dort, wo man sie trifft.
-  const nurDunkel = !!window.__bimNurDunkel?.(aktiv),
+  const description = /** @type {Record<string, string>} */ (DESCRIPTIONS)[active];
+  if (hint) hint.textContent = description ? tRaw(description) : '';
+  // For a theme with no light variant, the choice below has no effect; the note shows right where it is made.
+  const darkOnly = !!window.__bimNurDunkel?.(active),
     dw = G('dunkel-wahl'),
     dh = G('dunkel-hinweis');
-  if (dw) dw.disabled = nurDunkel;
-  if (dh) dh.hidden = !nurDunkel;
+  if (dw) dw.disabled = darkOnly;
+  if (dh) dh.hidden = !darkOnly;
 }
 
 async function setzeEigenesDesign() {
@@ -312,20 +311,20 @@ async function setzeEigenesDesign() {
   }
   applyTheme(d.theme);
   if (settingsSnapshot) settingsSnapshot.app_theme = d.theme;
-  zeigeDesignWahl(d);
+  showThemeChoice(d);
   meldeAmFeld(G('design-wahl'));
 }
 
-// Darstellung wirkt sofort: Währung und Standard-Zustand speichern beim Wählen.
+// Display settings take effect right away: currency and default condition save on selection.
 async function speichereWaehrung() {
-  const wert = G('s-cur').value;
-  // Marktpreise gibt es je Währung; nach dem Wechsel fehlen sie, bis der Preisauftrag sie geholt hat. Ohne
-  // Rückfrage sah das aus, als seien alle Werte verloren.
+  const value = G('s-cur').value;
+  // Market prices exist per currency; after a switch they're missing until the price job fetches them. Without
+  // this confirmation it looked as if all values had been lost.
   if (
-    wert !== accountCurrency &&
+    value !== accountCurrency &&
     !(await confirmDelete(
       tRaw('konto.waehrung_wechsel_titel'),
-      tRaw('konto.waehrung_wechsel_text', { alt: accountCurrency, neu: wert }),
+      tRaw('konto.waehrung_wechsel_text', { alt: accountCurrency, neu: value }),
       'finanzen',
       { knopf: 'konto.waehrung_wechsel_knopf', art: 'bp' },
     ))
@@ -333,18 +332,18 @@ async function speichereWaehrung() {
     G('s-cur').value = accountCurrency;
     return;
   }
-  const d = await api('POST', '/v1/settings', { currency: wert });
+  const d = await api('POST', '/v1/settings', { currency: value });
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
     return;
   }
-  setAccountCurrency(wert);
-  if (settingsSnapshot) settingsSnapshot.currency = wert;
+  setAccountCurrency(value);
+  if (settingsSnapshot) settingsSnapshot.currency = value;
   await loadHousehold().catch(() => {});
   emit('kennzahlenLaden');
   if (document.getElementById('tab-gallery')?.classList.contains('active')) emit('sammlungLaden');
   meldeAmFeld(G('s-cur'));
-  toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
+  toast(tRaw('konto.waehrung_gespeichert_markt', { w: value }), 'success');
 }
 
 async function speichereZustand() {
@@ -358,8 +357,6 @@ async function speichereZustand() {
   meldeAmFeld(G('s-default-condition'));
 }
 
-/** Eine neue E-Mail-Adresse verlangt das aktuelle Passwort; das Feld steht erst dann da. */
-
 G('btn-sav-prof').onclick = async () => {
   const first_name = G('prof-first').value.trim();
   const last_name = G('prof-last').value.trim();
@@ -372,14 +369,14 @@ G('btn-sav-prof').onclick = async () => {
   const btn = G('btn-sav-prof');
   btn.disabled = true;
   try {
-    // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben
-    // ist. Eine neue Adresse nennt der Dialog, damit man sieht, was man bestätigt.
-    const neueAdresse = email && email !== (G('prof-email').dataset.bisher || '');
+    // The server confirms every profile change with the password; otherwise it would reveal whether a
+    // name is taken. A new address is named in the dialog so one sees what one is confirming.
+    const newAddress = email && email !== (G('prof-email').dataset.bisher || '');
     const d = await mitPasswortBestaetigen(
-      tRaw(neueAdresse ? 'profile.email_aendern_titel' : 'profile.speichern_titel'),
+      tRaw(newAddress ? 'profile.email_aendern_titel' : 'profile.speichern_titel'),
       (pwC, z) =>
         api('PUT', '/v1/auth/profile', { username, email, first_name, last_name, password_current: pwC, ...z }),
-      neueAdresse ? tRaw('profile.email_aendern_text', { email }) : undefined,
+      newAddress ? tRaw('profile.email_aendern_text', { email }) : undefined,
     );
     if (!d) return;
     if (!d.success) {
@@ -387,7 +384,7 @@ G('btn-sav-prof').onclick = async () => {
       return;
     }
     await loadProfile();
-    // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
+    // The name shown in the header is otherwise only set at startup.
     if (loggedInAccount) {
       loggedInAccount.username = username;
       zeigeBenutzernamen();
@@ -403,13 +400,13 @@ G('btn-sav-prof').onclick = async () => {
 G('btn-sav-pw').onclick = async () => {
   const pwN = G('pw-n').value,
     pwR = G('pw-r').value;
-  // Alle Feldfehler auf einmal: Einzeln erfuhr man nach der behobenen Länge erst von der Wiederholung.
-  const fehlerN = pwN ? (passwortRegelText(pwN) ?? '') : tRaw('settings.password.fill_all');
-  const fehlerR = pwN && pwN !== pwR ? tRaw('settings.password.mismatch') : '';
-  feldFehler('pw-n', fehlerN);
-  feldFehler('pw-r', fehlerR);
-  if (fehlerN || fehlerR) {
-    G(fehlerN ? 'pw-n' : 'pw-r').focus();
+  // All field errors at once: shown one at a time, fixing the length only then revealed the mismatch.
+  const errorN = pwN ? (passwortRegelText(pwN) ?? '') : tRaw('settings.password.fill_all');
+  const errorR = pwN && pwN !== pwR ? tRaw('settings.password.mismatch') : '';
+  feldFehler('pw-n', errorN);
+  feldFehler('pw-r', errorR);
+  if (errorN || errorR) {
+    G(errorN ? 'pw-n' : 'pw-r').focus();
     return;
   }
   const btn = G('btn-sav-pw');
@@ -447,7 +444,7 @@ G('btn-sav-pw').onclick = async () => {
 
 /** @param {Record<string, string>} s */
 function applySettings(s) {
-  // Nur anwenden, wenn die Felder des Einstellungsreiters im DOM stehen
+  // Only apply when the settings tab's fields are actually in the DOM
   if (!G('s-cur') && !G('bl-ck')) return;
   setAccountCurrency(s.currency || 'EUR');
   // Apply language preference from server only if explicitly set
@@ -459,10 +456,10 @@ function applySettings(s) {
   };
   _set('s-cur', accountCurrency);
   _set('s-default-condition', s.user_default_condition || s.default_price_condition || 'N');
-  // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert ist kein Geheimnis und wird allen
-  // ausgeliefert (sanitizeGlobal laesst ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
-  // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile stuende im Auswahlfeld immer der
-  // erste Eintrag, egal was gespeichert ist.
+  // The vouchers' issuing country. OUTSIDE the isAdmin block: the value is not secret and is shipped
+  // to everyone (sanitizeGlobal lets it through) — only an admin may set it, and that is why the field
+  // itself is `admin-only` (index.html). Without this line the select would always show its first
+  // entry, regardless of what is saved.
   _set(
     'gutschein-land',
     s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[accountCurrency] || 'de-CH',
@@ -475,7 +472,7 @@ function applySettings(s) {
     _set('rb-key', s.rebrickable_api_key || '');
     _set('bs-key', s.brickset_api_key || '');
     _set('mon-app-theme', s.app_theme || 'classic');
-    // s.app_theme ist das wirksame Design DIESES Kontos; der Verwalter stellt hier die Vorgabe.
+    // s.app_theme is the theme in effect for THIS account; here the admin sets the default.
     api('GET', '/v1/settings/theme').then(d => {
       if (d.success) _set('mon-app-theme', d.vorgabe ?? 'classic');
     });
@@ -485,7 +482,7 @@ function applySettings(s) {
   if (loggedInAccount?.isAdmin) loadRateLimitStats();
 }
 export async function loadSettings() {
-  // Zwischengespeicherte Daten sofort zeigen, damit der Reiter nie leer erscheint
+  // Show cached data right away, so the tab never appears empty
   if (settingsSnapshot) applySettings(settingsSnapshot);
   loadHousehold();
   const d = await api('GET', '/v1/settings/raw');
@@ -495,24 +492,24 @@ export async function loadSettings() {
 }
 
 /**
- * Einen Zugang speichern. Alle Felder leer heisst „Zugang entfernt“, nicht „gespeichert“: Das klang, als sei
- * ein Schlüssel hinterlegt.
- * @param {Record<string, string>} werte @param {'bricklink'|'rebrickable'|'brickset'} dienst @param {string} grenze @param {string} knopf
+ * Save a credential. All fields empty means "credential removed", not "saved": that phrasing sounded
+ * as if a key was still stored.
+ * @param {Record<string, string>} values @param {'bricklink'|'rebrickable'|'brickset'} service @param {string} limitId @param {string} button
  */
-async function speichereZugang(werte, dienst, grenze, knopf) {
-  const d = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
+async function saveApiCredential(values, service, limitId, button) {
+  const d = await speichereEinstellungen(tRaw('settings.api_key_title'), values);
   if (!d) return;
   if (!d.success) {
     toast(tRaw('settings.error'), 'error');
     return;
   }
-  await api('PUT', '/v1/admin/api-limits', { [dienst]: parseInt(G(grenze).value, 10) });
-  const leer = Object.values(werte).every(w => !String(w).trim());
-  meldeAmFeld(G(knopf), leer ? tRaw('settings.zugang_entfernt') : undefined);
+  await api('PUT', '/v1/admin/api-limits', { [service]: parseInt(G(limitId).value, 10) });
+  const empty = Object.values(values).every(w => !String(w).trim());
+  meldeAmFeld(G(button), empty ? tRaw('settings.zugang_entfernt') : undefined);
   loadRateLimitStats();
 }
 G('btn-sav-bl').onclick = () =>
-  speichereZugang(
+  saveApiCredential(
     {
       bricklink_consumer_key: G('bl-ck').value,
       bricklink_consumer_secret: G('bl-cs').value,
@@ -524,14 +521,14 @@ G('btn-sav-bl').onclick = () =>
     'btn-sav-bl',
   );
 G('btn-sav-rb').onclick = () =>
-  speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', 'btn-sav-rb');
+  saveApiCredential({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', 'btn-sav-rb');
 G('btn-sav-bs').onclick = () =>
-  speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', 'btn-sav-bs');
-/** Wie die übrigen Einzelwerte sofort gespeichert, bestätigt am Feld. */
+  saveApiCredential({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', 'btn-sav-bs');
+/** Saved right away like the other single values, confirmed at the field. */
 async function speichereAppDesign() {
   const theme = G('mon-app-theme')?.value || 'classic';
   const d = await api('POST', '/v1/settings/admin/theme', { theme });
-  // Angewendet wird, was für DIESES Konto gilt — ein eigenes Design bleibt.
+  // What is applied is what holds for THIS account — an own theme stays.
   if (d.success) {
     const w = await api('GET', '/v1/settings/theme');
     if (w.success) {
@@ -549,33 +546,33 @@ G('btn-clr').onclick = async () => {
   emit('finanzenLaden');
 };
 /**
- * Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt.
- * @param {boolean} alle
+ * Before clearing, this shows what is lost and what a fresh fetch costs — with today's numbers.
+ * @param {boolean} all
  */
-async function zwischenspeicherLeeren(alle) {
+async function clearCache(all) {
   const z = await api('GET', '/v1/admin/cache-stats');
-  // Ohne Zahlen (Abruf gescheitert, `degradiert` mit Ersatz-Nullen) ein Text ohne Zahl: „Löscht 0 Preise“
-  // verspräche, es gehe nichts verloren.
-  const bekannt = !!z?.success && typeof z.prices === 'number' && !z.degradiert?.includes('cache');
+  // Without numbers (fetch failed, `degradiert` with placeholder zeros) a text with no number: "Clearing
+  // 0 prices" would wrongly promise that nothing is lost.
+  const known = !!z?.success && typeof z.prices === 'number' && !z.degradiert?.includes('cache');
   const n = { p: z?.prices || 0, s: z?.subsets || 0, c: z?.catalog || 0 };
-  const titel = tRaw(alle ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
-  const text = bekannt
-    ? tRaw(alle ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n)
-    : tRaw(alle ? 'settings.all_cache.confirm_text_ohne_zahl' : 'settings.cache_prices.confirm_text_ohne_zahl');
-  if (!(await confirmDelete(titel, text, 'loeschen', { knopf: 'confirm.btn.leeren', art: 'bd' }))) return;
-  const d = await api('POST', '/v1/admin/cache-clear', alle ? { all: true } : {});
+  const title = tRaw(all ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
+  const text = known
+    ? tRaw(all ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n)
+    : tRaw(all ? 'settings.all_cache.confirm_text_ohne_zahl' : 'settings.cache_prices.confirm_text_ohne_zahl');
+  if (!(await confirmDelete(title, text, 'loeschen', { knopf: 'confirm.btn.leeren', art: 'bd' }))) return;
+  const d = await api('POST', '/v1/admin/cache-clear', all ? { all: true } : {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  toast(tRaw(alle ? 'settings.all_cache.cleared' : 'settings.cache_cleared'), 'success');
+  toast(tRaw(all ? 'settings.all_cache.cleared' : 'settings.cache_cleared'), 'success');
   loadCacheStats();
 }
-G('btn-clr-prices').onclick = () => zwischenspeicherLeeren(false);
-G('btn-clr-all-cache').onclick = () => zwischenspeicherLeeren(true);
+G('btn-clr-prices').onclick = () => clearCache(false);
+G('btn-clr-all-cache').onclick = () => clearCache(true);
 G('btn-dall').onclick = async () => {
-  // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage statt des früheren Eintippens
-  // von „LÖSCHEN". Nur das EIGENE Konto (Server).
+  // Everything into the trash: restorable for 30 days, hence a confirmation dialog rather than the
+  // previous typed "DELETE". Only the OWN account (server-side).
   const password = await bestaetigeMitPasswort(
     tRaw('settings.delete_all.title'),
     tRaw('settings.delete_all.text'),
@@ -596,7 +593,7 @@ G('btn-dall').onclick = async () => {
   emit('kennzahlenLaden');
 };
 G('btn-konto-loeschen').onclick = async () => {
-  // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
+  // Final and without a trash: password and, if set up, the second factor.
   const password = await bestaetigeMitPasswort(
     tRaw('settings.delete_account.title'),
     tRaw('settings.delete_account.text'),
@@ -625,16 +622,16 @@ G('btn-cfg-export').onclick = async () => {
 
 async function importConfig() {
   const fi = G('cfg-import-file');
-  const datei = fi.files?.[0];
-  if (!datei) return;
+  const file = fi.files?.[0];
+  if (!file) return;
   const st = G('cfg-import-status');
   st.textContent = tRaw('settings.importing');
   const fd = new FormData();
-  fd.append('file', datei);
+  fd.append('file', file);
   try {
     const d = await api('POST', '/v1/settings/import', fd);
     if (d.success) {
-      // Welche SMTP-Werte die Datei mitbrachte, steht dabei: Sie werden nur im Formular gesetzt.
+      // Which SMTP values the file carried is shown here: they are only ever set in the form.
       const smtp = (d.smtp_uebergangen || []).join(', ');
       st.textContent = tRaw('settings.imported_note', {
         n: d.imported,
@@ -642,7 +639,7 @@ async function importConfig() {
       });
       st.style.color = 'var(--g500)';
       toast(tRaw('admin.config_imported'), 'success');
-      // SMTP-Werte übernimmt der Import nie (Passwortbestätigung); welche, steht hier.
+      // The import never takes over SMTP values (password confirmation); which ones, is shown here.
       if (d.smtp_uebergangen?.length)
         toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
       loadSettings();
@@ -661,46 +658,46 @@ async function importConfig() {
   fi.value = '';
 }
 
-// Der Import von Wanted-Listen steht bei Sets, Teilen und Figuren (js/wanted-xml.js), nicht mehr hier: Man
-// importiert dort, wo man die Posten danach sieht.
+// Importing wanted lists lives with sets, parts and minifigs (js/wanted-xml.js), not here any more:
+// you import where you see the entries afterwards.
 
 /**
- * Ein verdecktes Feld zeigen oder wieder verdecken (Knopf mit dem Auge).
+ * Show or re-hide a masked field (the eye button).
  * @param {string} id
  */
 function geheimUmschalten(id) {
-  const feld = G(id);
-  const knopf = document.querySelector(`[data-click="geheimUmschalten"][data-arg="${id}"]`);
-  if (!feld || !knopf) return;
-  const zeigen = feld.type === 'password';
-  feld.type = zeigen ? 'text' : 'password';
-  knopf.setAttribute('aria-pressed', String(zeigen));
-  knopf.querySelector('use')?.setAttribute('href', zeigen ? '#i-auge-zu' : '#i-auge');
+  const field = G(id);
+  const btn = document.querySelector(`[data-click="geheimUmschalten"][data-arg="${id}"]`);
+  if (!field || !btn) return;
+  const reveal = field.type === 'password';
+  field.type = reveal ? 'text' : 'password';
+  btn.setAttribute('aria-pressed', String(reveal));
+  btn.querySelector('use')?.setAttribute('href', reveal ? '#i-auge-zu' : '#i-auge');
 }
 
 const EINST_KEY = 'bim_einst_abschnitt';
 /**
- * Die globalen Einstellungen als Unterseiten: Es steht immer genau ein Abschnitt da, und die Leiste zeigt
- * welcher. Gemerkt je Browser, damit ein Neuladen nicht auf den ersten Abschnitt zurückspringt.
- * @param {string|null} id  Abschnitt; unbekannt oder leer heisst der erste
- * @param {Event} [ev]      der Klick auf den Link — er springt dann nicht
+ * Global settings as sub-pages: exactly one section shows at a time, and the nav shows which.
+ * Remembered per browser so a reload doesn't jump back to the first section.
+ * @param {string|null} id  section; unknown or empty means the first
+ * @param {Event} [ev]      the link click — it then doesn't jump
  */
 export function einstAbschnitt(id, ev) {
   ev?.preventDefault();
-  const raster = G('global-settings-grid');
-  if (!raster) return;
-  const abschnitte = [...raster.querySelectorAll(':scope > .ssec')];
-  const ziel = abschnitte.find(a => a.id === id) || abschnitte[0];
-  if (!ziel) return;
-  for (const a of abschnitte) a.classList.toggle('einst-aktiv', a === ziel);
-  for (const l of raster.querySelectorAll('.einst-nav a')) {
-    if (l.getAttribute('data-arg') === ziel.id) l.setAttribute('aria-current', 'page');
+  const grid = G('global-settings-grid');
+  if (!grid) return;
+  const sections = [...grid.querySelectorAll(':scope > .ssec')];
+  const target = sections.find(a => a.id === id) || sections[0];
+  if (!target) return;
+  for (const a of sections) a.classList.toggle('einst-aktiv', a === target);
+  for (const l of grid.querySelectorAll('.einst-nav a')) {
+    if (l.getAttribute('data-arg') === target.id) l.setAttribute('aria-current', 'page');
     else l.removeAttribute('aria-current');
   }
   try {
-    localStorage.setItem(EINST_KEY, ziel.id);
+    localStorage.setItem(EINST_KEY, target.id);
   } catch (_) {
-    /* nur Komfort */
+    /* convenience only */
   }
   if (ev) meldeAbschnitt();
 }
@@ -714,20 +711,20 @@ einstAbschnitt(
   })(),
 );
 
-/** Prüft den gespeicherten Zugang, wie der Einrichtungsassistent — auch später, ohne ihn erneut zu öffnen.
+/** Checks the stored credential, like the setup wizard — also later, without reopening it.
  * @this {HTMLButtonElement} @param {string} quelle */
 async function einstellungenQuellePruefen(quelle) {
-  const stand = G('pruef-' + quelle);
-  if (!stand) return;
-  const frei = knopfBesetzt(this);
-  stand.className = 'quelle-stand';
-  stand.textContent = tRaw('settings.zugang_laeuft');
+  const status = G('pruef-' + quelle);
+  if (!status) return;
+  const release = knopfBesetzt(this);
+  status.className = 'quelle-stand';
+  status.textContent = tRaw('settings.zugang_laeuft');
   const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
-  frei();
+  release();
   const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : verstaendlicherGrund(d);
-  stand.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
+  status.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
   setzeHtml(
-    stand,
+    status,
     html`${ico(d?.success ? 'ok' : 'fehler')}<span>${d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed')}</span>`,
   );
 }

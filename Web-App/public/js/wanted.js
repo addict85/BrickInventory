@@ -27,17 +27,17 @@ import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } fr
 // What you want, kept apart from what you own — hence its own table: in `sets` a wanted item
 // would count in the gallery, parts, portfolio and finances, and every view would need a filter.
 
-/** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
+/** The most recently loaded list — for the buttons that point to a row. */
 /** @typedef {import('../../frontend-typen/vertrag').Merkposten} Merkposten */
 /** @type {Merkposten[]} */
-let _merkposten = [];
+let _wantedItems = [];
 
-/** Der Eintrag, ueber den der Uebernahme-Dialog gerade steht. */
+/** The item the take-into-collection dialog currently shows. */
 /** @type {string | null} */
-let _uebernahme = null;
+let _takeover = null;
 
 /**
- * Der Eintrag, dessen Detail offen ist.
+ * The item whose detail is open.
  * @type {string | null}
  */
 let _detail = null;
@@ -45,33 +45,33 @@ let _detail = null;
 /**
  * @param {string} c
  */
-function zustandText(c) {
+function conditionText(c) {
   return t(c === 'U' ? 'common.condition_used' : 'common.condition_new');
 }
 
 /**
- * Eine Zeile.
+ * One row.
  *
- * Bewusst eine LISTE und keine Kachelwand wie die Galerie: Eine Merkliste wird gelesen und abgearbeitet,
- * nicht bewundert. Die Notiz („Geschenk Enkel") ist dabei so wichtig wie das Bild und hätte auf einer Kachel
- * keinen Platz.
+ * Deliberately a LIST, not a wall of tiles like the gallery: a wanted list is read and worked through,
+ * not admired. The note ("gift for grandson") matters here as much as the image, and a tile would have
+ * no room for it.
  */
 /** @param {Merkposten} w */
-function zeile(w) {
-  // Bild über imgUrl(), nicht thumbUrl() allein: thumbUrl() reicht fremde Adressen unverändert durch, der
-  // Browser rief das CDN direkt, und die Sicherheitsrichtlinie blockte es.
-  const roh = w.image_local || w.image_url;
-  const bild = roh
-    ? bildTag({ src: imgUrl(thumbUrl(roh) || roh, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
+function row(w) {
+  // Image via imgUrl(), not thumbUrl() alone: thumbUrl() passes a foreign address through unchanged, the
+  // browser would call the CDN directly, and the security policy blocked that.
+  const raw = w.image_local || w.image_url;
+  const img = raw
+    ? bildTag({ src: imgUrl(thumbUrl(raw) || raw, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
     : html`<span class="bild-ph bild-56" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
 
-  // Kein Name heisst: rb_sets kennt das Set nicht – der Preis dafür, dass hier keine zweite Kopie der Stammdaten liegt.
-  const titel = w.name ? esc(w.name) : esc(w.set_number);
-  // Ohne Namen steht die Nummer schon als Titel — nicht noch einmal darunter.
-  const unter = [
+  // No name means: rb_sets doesn't know the set – the price paid for not keeping a second copy of the catalog data here.
+  const title = w.name ? esc(w.name) : esc(w.set_number);
+  // Without a name, the number is already the title — not again underneath.
+  const sub = [
     w.name ? esc(w.set_number) : esc(tRaw('wanted.unbekannt_kurz')),
     w.year ? String(w.year) : null,
-    zustandText(w.condition),
+    conditionText(w.condition),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -84,13 +84,13 @@ function zeile(w) {
        </span>`
     : '';
 
-  // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort aufkommt — und sie meint das BLICKFELD:
-  // Beim Grossvater heisst „ich habe es" auch „der Enkel hat es".
-  const schon = w.owned ? html`<span class="mk-etikett mk-etikett-ok">${tRaw('wanted.owned')}</span>` : '';
+  // "Do I already have this?" is the question that comes up right away in the list — and it means the
+  // whole HOUSEHOLD: for the grandfather, "I have it" also means "the grandson has it".
+  const already = w.owned ? html`<span class="mk-etikett mk-etikett-ok">${tRaw('wanted.owned')}</span>` : '';
 
-  // In der Zeile steht der Marktpreis, nicht „In die Galerie“: Übernehmen gibt es weiter im Detail, wo
-  // Anzahl, Preis und Zustand ohnehin abgefragt werden.
-  const preis =
+  // The row shows the market price, not "Add to gallery": taking it into the collection still happens in
+  // the detail, where quantity, price and condition are asked for anyway.
+  const price =
     w.marktpreis != null
       ? html`<span title="${tRaw('detail.market_price')}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || accountCurrency)}</span>`
       : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
@@ -101,23 +101,23 @@ function zeile(w) {
     <div class="mk-zeile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            data-taste="${tRaw('kachel.entf')}" title="${tRaw('wanted.remove')}">${TRASH_ICON_SVG}</span></div>
-      ${bild}
+      ${img}
       <div class="mk-text">
-        <div class="mk-titel">${rawHtml(titel)}</div>
-        <div class="mk-unter"${k.teil(0)}>${rawHtml(unter)}</div>
+        <div class="mk-titel">${rawHtml(title)}</div>
+        <div class="mk-unter"${k.teil(0)}>${rawHtml(sub)}</div>
       </div>
       <div class="mk-rechts"${k.teil(1)}>
-        ${alarm}${schon}${preis}
+        ${alarm}${already}${price}
       </div>
     </div>`;
 }
 
 /**
- * Suche, Zustand, Sortierung und Inhaber als Anfrageparameter, in derselben Form wie galleryParams() — ohne
- * Seite (die Liste blättert nicht) und ohne Lagerort (ein Merkposten liegt nirgends). Gefiltert wird am
- * Server.
+ * Search, condition, sort and owner as request parameters, in the same shape as galleryParams() — without
+ * a page (the list doesn't paginate) and without a storage location (a wanted item has none). Filtering
+ * happens on the server.
  */
-function merklisteParams() {
+function wantedParams() {
   const p = new URLSearchParams();
   const q = G('mks')?.value?.trim();
   if (q) p.set('search', q);
@@ -129,53 +129,53 @@ function merklisteParams() {
   return p.toString();
 }
 
-/** Suche und Zustand leeren; die Sortierung ist kein Filter und bleibt. */
-export function merklisteZuruecksetzen() {
+/** Clear search and condition; the sort order is not a filter and stays. */
+export function resetWantedFilter() {
   if (G('mks')) G('mks').value = '';
   if (G('mkcond')) G('mkcond').value = '';
   ladeMerkliste();
 }
 
-/** Die Liste laden und zeichnen. */
+/** Load and draw the list. */
 export async function ladeMerkliste() {
-  const ziel = G('mk-list');
-  if (!ziel) return;
-  // Das Fragezeichen steht hier, nicht in merklisteParams(): frontend-api-paths liest den Pfad aus dieser Zeile.
-  // Ein Fehlerzustand trägt auch .leer; er weicht dem Gerüst, sonst sähe der neue Versuch wie der alte Fehler aus.
-  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer:not(.fehler-zustand)'))
-    setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
-  const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
-  const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
-  if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {
-    // Das offene Formular schob die Fehlermeldung unter die Falz.
-    if (kasten && !kasten.dataset.entschieden) kasten.open = false;
+  const target = G('mk-list');
+  if (!target) return;
+  // The question mark lives here, not in wantedParams(): frontend-api-paths reads the path from this line.
+  // An error state also carries .leer; it steps aside for the skeleton, otherwise a retry looked like the old error.
+  if (!_wantedItems.length && !target.querySelector('.mk-zeile, .leer:not(.fehler-zustand)'))
+    setzeHtml(target, skelettZeilen(4, tRaw('common.loading')));
+  const d = await api('GET', `/v1/wanted?${wantedParams()}`);
+  const box = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
+  if (listeLadefehler(target, d, { erneut: 'ladeMerkliste', behalten: _wantedItems.length > 0 })) {
+    // The open form pushed the error message below the fold.
+    if (box && !box.dataset.entschieden) box.open = false;
     return;
   }
-  _merkposten = d.merkposten || [];
-  // Einmal je Laden der Seite: Am Telefon mit Einträgen zugeklappt, damit die Liste im ersten Bild steht;
-  // danach bleibt, was der Nutzer gewählt hat.
-  if (kasten && !kasten.dataset.entschieden) {
-    kasten.dataset.entschieden = '1';
-    kasten.open = !(_merkposten.length && window.matchMedia?.('(max-width: 640px)').matches);
+  _wantedItems = d.merkposten || [];
+  // Once per page load: collapsed on a phone with entries, so the list fits the first screen; after that
+  // whatever the user chose stays.
+  if (box && !box.dataset.entschieden) {
+    box.dataset.entschieden = '1';
+    box.open = !(_wantedItems.length && window.matchMedia?.('(max-width: 640px)').matches);
   }
-  // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste, „Nichts gefunden“ über den Filter
-  // — sonst sähe eine erfolglose Suche wie eine geleerte Liste aus. Die Sortierung zählt nicht als Filter.
-  const filter = new URLSearchParams(merklisteParams());
+  // Two empty-state messages: "No wanted items yet" says something about the list, "Nothing found" about
+  // the filter — otherwise an unsuccessful search would look like a cleared list. Sorting doesn't count as a filter.
+  const filter = new URLSearchParams(wantedParams());
   filter.delete('sort');
-  const gefiltert = !!filter.toString();
-  if (gefiltert)
+  const filtered = !!filter.toString();
+  if (filtered)
     meldeTreffer(
-      _merkposten.length
-        ? tRaw('treffer.merkliste', { n: _merkposten.length })
+      _wantedItems.length
+        ? tRaw('treffer.merkliste', { n: _wantedItems.length })
         : G('mks')?.value.trim()
           ? tRaw('common.no_hits', { query: G('mks').value.trim() })
           : tRaw('wanted.no_results'),
     );
   setzeHtml(
-    ziel,
-    _merkposten.length
-      ? joinHtml(_merkposten.map(zeile))
-      : gefiltert
+    target,
+    _wantedItems.length
+      ? joinHtml(_wantedItems.map(row))
+      : filtered
         ? leerZustand({
             ico: 'suche',
             titel: G('mks')?.value.trim()
@@ -193,13 +193,12 @@ export async function ladeMerkliste() {
 }
 
 /**
- * Aus dem Formular des Reiters — „analog den Sets": dieselben Felder in derselben Reihenfolge wie im
- * Galerie-Kasten.
+ * From the tab's own form — "just like sets": the same fields in the same order as the gallery's box.
  */
 export async function merkpostenHinzufuegen() {
   const num = (G('mk-num')?.value || '').trim();
   if (!setnummerFeldGueltig('mk-num', num)) return;
-  const frei = knopfBesetzt(G('mk-add'));
+  const release = knopfBesetzt(G('mk-add'));
   try {
     const d = await api('POST', '/v1/wanted', {
       set_number: num,
@@ -210,78 +209,76 @@ export async function merkpostenHinzufuegen() {
       toast(d?.error || tRaw('settings.error'), 'error');
       return;
     }
-    // „war schon drauf" ist keine Fehlermeldung, aber auch kein Neuzugang — wer zweimal auf denselben Knopf
-    // drückt, soll den Unterschied sehen.
-    await merkMeldung(d.war_neu, num);
+    // "was already on it" is not an error message, but not a new addition either — anyone who clicks the
+    // same button twice should see the difference.
+    await wantedAddedToast(d.war_neu, num);
     G('mk-num').value = '';
     await ladeMerkliste();
   } finally {
-    frei();
+    release();
   }
 }
 
 /**
- * Aus dem Katalog-Detail auf die Merkliste, mit Zustand aus cat-m-cond (ein zweiter Wähler könnte
- * widersprechen). Der Alarm ist freiwillig; leer heisst kein Alarm, nicht Schwelle 0.
+ * From the catalog detail onto the wanted list, with the condition from cat-m-cond (a second selector
+ * could disagree). The alert is optional; empty means no alert, not threshold 0.
  */
 export async function katalogAufMerkliste() {
   const sn = G('cat-modal')?.dataset.setNumber;
   if (!sn) return;
-  const zustand = G('cat-m-cond')?.value === 'U' ? 'U' : 'N';
+  const condition = G('cat-m-cond')?.value === 'U' ? 'U' : 'N';
   const owner = selectedOwner('cat-m-owner');
-  const frei = knopfBesetzt(G('cat-m-wish'));
+  const release = knopfBesetzt(G('cat-m-wish'));
   try {
-    const d = await api('POST', '/v1/wanted', { set_number: sn, condition: zustand, owner_user_id: owner });
+    const d = await api('POST', '/v1/wanted', { set_number: sn, condition, owner_user_id: owner });
     if (!d.success) {
       toast(d.error || tRaw('settings.error'), 'error');
       return;
     }
 
-    // Der Alarm ist ein eigener Aufruf: Er lebt in price_alerts, derselbe wie im Set-Detail – keine zweite Wahrheit.
-    const schwelle = leseBetrag(G('cat-m-alert-val')?.value);
+    // The alert is its own request: it lives in price_alerts, the same table as in the set detail – no second source of truth.
+    const threshold = leseBetrag(G('cat-m-alert-val')?.value);
     const alarm =
-      schwelle != null && schwelle > 0
+      threshold != null && threshold > 0
         ? await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
             richtung: G('cat-m-alert-dir')?.value || 'unter',
-            schwelle,
-            condition: zustand,
+            schwelle: threshold,
+            condition,
           })
         : null;
-    await merkMeldung(d.war_neu, sn);
-    // Gemerkt ist das Set; fehlt der Alarm, soll man das sehen (nach der Meldung, die sonst darüber stünde).
+    await wantedAddedToast(d.war_neu, sn);
+    // The set is remembered; if the alert failed, that should show (after the toast, which would otherwise sit above it).
     if (alarm && !alarm.success) toast(alarm.error || tRaw('settings.error'), 'error');
   } finally {
-    frei();
+    release();
   }
 }
 
 /**
- * Rückmeldung nach dem Merken. Steht das Set schon in der Sammlung, sagt es der Toast: Das Abzeichen
- * „schon vorhanden“ sah man erst in der Liste.
- * @param {boolean | undefined} neu @param {string} num
+ * Feedback after adding to the wanted list. If the set is already in the collection, the toast says so:
+ * the "already have it" badge was otherwise only visible in the list.
+ * @param {boolean | undefined} isNew @param {string} num
  */
-async function merkMeldung(neu, num) {
+async function wantedAddedToast(isNew, num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
-  const eigen = neu ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`) : null;
-  const vorhanden = eigen?.success && eigen.set ? eigen.set : null;
+  const own = isNew ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`) : null;
+  const owned = own?.success && own.set ? own.set : null;
   toast(
-    vorhanden
-      ? tRaw('wanted.added_schon_da', { n: vorhanden.quantity || 1 })
-      : tRaw(neu ? 'wanted.added' : 'wanted.already'),
+    owned ? tRaw('wanted.added_schon_da', { n: owned.quantity || 1 }) : tRaw(isNew ? 'wanted.added' : 'wanted.already'),
     'success',
   );
 }
 
-/** setNumber|condition|user_id — der Schlüssel einer Zeile, wie ihn zeile() baut. */
+/** setNumber|condition|user_id — a row's key, as built by row(). */
 /** @param {string | null | undefined} arg */
-function zerlege(arg) {
+function parseKey(arg) {
   const [set_number, condition, owner] = String(arg || '').split('|');
   return { set_number, condition, owner_user_id: parseInt(owner, 10) };
 }
 
 /** @param {string} arg */
 export async function merkpostenLoeschen(arg) {
-  const { set_number, condition, owner_user_id } = zerlege(arg);
+  const { set_number, condition, owner_user_id } = parseKey(arg);
   if (!set_number) return;
   const p = new URLSearchParams({ owner_user_id: String(owner_user_id) });
   const d = await api('DELETE', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
@@ -289,7 +286,7 @@ export async function merkpostenLoeschen(arg) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // Rückgängig legt den Posten neu an; er hat ausser Nummer, Zustand und Inhaber nichts Eigenes.
+  // Undo recreates the item; besides number, condition and owner it has nothing of its own.
   toast(tRaw('wanted.deleted'), 'success', {
     text: tRaw('trash.undo'),
     bleibt: true,
@@ -307,15 +304,15 @@ export async function merkpostenLoeschen(arg) {
 }
 
 /**
- * In die Galerie übernehmen, Schritt 1: fragen. Anzahl, Kaufpreis und Zustand sind beim Kauf selten die des
- * Merkpostens; der Zustand ist vorbelegt, bleibt aber änderbar.
+ * Taking it into the gallery, step 1: ask. Quantity, purchase price and condition at purchase time are
+ * rarely those of the wanted item; the condition is pre-filled but stays editable.
  */
 /** @param {string} arg */
 export function merkpostenUebernehmen(arg) {
-  const { set_number, condition } = zerlege(arg);
+  const { set_number, condition } = parseKey(arg);
   if (!set_number) return;
-  _uebernahme = arg;
-  const w = _merkposten.find(x => x.set_number === set_number && x.condition === condition);
+  _takeover = arg;
+  const w = _wantedItems.find(x => x.set_number === set_number && x.condition === condition);
   G('mk-take-tit').textContent = w?.name || set_number;
   G('mk-take-qty').value = '1';
   G('mk-take-price').value = '';
@@ -326,109 +323,109 @@ export function merkpostenUebernehmen(arg) {
 
 export function schliesseUebernahme() {
   G('mk-take-modal').classList.remove('open');
-  _uebernahme = null;
+  _takeover = null;
 }
 
 /**
- * Schritt 2: tun. Die Regel liegt am Server (addSet, dann Merkposten und Alarm weg). Der Zustand geht zweimal
- * mit — im Pfad der des Merkpostens, im Rumpf der erfasste —, weil man anderes kaufen kann als gewünscht.
+ * Step 2: do it. The rule lives on the server (addSet, then the wanted item and alert go away). The
+ * condition is sent twice — in the path the wanted item's, in the body the recorded one — because you can
+ * end up buying something other than what you wished for.
  */
 export async function bestaetigeUebernahme() {
-  if (!_uebernahme) return;
-  const { set_number, condition, owner_user_id } = zerlege(_uebernahme);
-  const preis = betragAusFeld('mk-take-price');
-  const menge = mengeAusFeld('mk-take-qty');
-  if (!preis.ok || !menge.ok) return;
-  const frei = knopfBesetzt(G('mk-take-ok'));
+  if (!_takeover) return;
+  const { set_number, condition, owner_user_id } = parseKey(_takeover);
+  const price = betragAusFeld('mk-take-price');
+  const qty = mengeAusFeld('mk-take-qty');
+  if (!price.ok || !qty.ok) return;
+  const release = knopfBesetzt(G('mk-take-ok'));
   try {
     const d = await api(
       'POST',
       `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
       {
         owner_user_id,
-        quantity: menge.wert,
-        // Leer heisst „kein Kaufpreis" — der Server setzt dann den Marktpreis ein, genau wie auf dem normalen
-        // Erfassungsweg.
-        purchase_price: preis.wert ?? undefined,
+        quantity: qty.wert,
+        // Empty means "no purchase price" — the server then inserts the market price, exactly as on the
+        // normal recording path.
+        purchase_price: price.wert ?? undefined,
         condition: G('mk-take-cond').value,
         storage: selectedStorage('mk-take-storage'),
       },
     );
     if (!d?.success) return;
     schliesseUebernahme();
-    // 'exists' heisst: Das Set war schon im Blickfeld. Der Merkposten ist trotzdem erfüllt und verschwindet —
-    // er stünde sonst für etwas, das man längst hat.
+    // 'exists' means: the set was already in view. The wanted item is still fulfilled and disappears —
+    // otherwise it would stand for something you already have.
     toast(tRaw(d.action === 'exists' ? 'wanted.taken_existing' : 'wanted.taken'), 'success');
     await ladeMerkliste();
     emit('sammlungLaden');
   } finally {
-    frei();
+    release();
   }
 }
 
 /**
- * Das Detail eines Merkpostens aus drei bestehenden Quellen: der geladenen Zeile, dem Katalog-Detail und dem
- * Preisverlauf. Kein neuer Endpunkt, damit die Angaben dieselben sind wie an den anderen Stellen.
+ * The detail of a wanted item from three existing sources: the loaded row, the catalog detail and the
+ * price history. No new endpoint, so the figures match the ones shown elsewhere.
  * @param {string} arg
  */
 export async function oeffneMerkpostenDetail(arg) {
-  const { set_number, condition } = zerlege(arg);
-  const w = _merkposten.find(x => x.set_number === set_number && x.condition === condition);
+  const { set_number, condition } = parseKey(arg);
+  const w = _wantedItems.find(x => x.set_number === set_number && x.condition === condition);
   if (!w) return;
   _detail = arg;
 
   G('mk-m-tit').textContent = w.name || w.set_number;
-  // Ohne Namen steht die Nummer schon im Titel.
-  G('mk-m-sub').textContent = [w.name ? w.set_number : '', zustandText(w.condition)].filter(Boolean).join(' · ');
-  // Volle Aufloesung, aber ebenfalls ueber den eigenen Server: fullUrl() schickt eine absolute CDN-Adresse
-  // durch den Bild-Proxy (bilder.js). Das lokale Bild hat Vorrang — es liegt schon da.
-  const bild = w.image_local || w.image_url ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
-  setzeDialogbild(G('mk-m-img'), bild, bild);
+  // Without a name, the number is already in the title.
+  G('mk-m-sub').textContent = [w.name ? w.set_number : '', conditionText(w.condition)].filter(Boolean).join(' · ');
+  // Full resolution, but also through our own server: fullUrl() sends an absolute CDN address through the
+  // image proxy (bilder.js). The local image takes priority — it's already there.
+  const img = w.image_local || w.image_url ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
+  setzeDialogbild(G('mk-m-img'), img, img);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
   G('mk-m-market-rows').replaceChildren();
-  setzeHtml(G('mk-m-det'), rawHtml(zeilen(w)));
+  setzeHtml(G('mk-m-det'), rawHtml(detailRows(w)));
   G('mk-m-bricklink').style.display = 'none';
-  // Der Preisvergleich hängt am Merkposten, nicht am Katalog: Ein dort unbekanntes Set hat trotzdem seine Adresse.
-  zeigeAdresse('mk-m-vergleich', w.preisvergleich_url);
+  // The price comparison link hangs off the wanted item, not the catalog: a set unknown there still has its own address.
+  showLink('mk-m-vergleich', w.preisvergleich_url);
   document.querySelector('#mk-detail-modal .mehr-menue')?.removeAttribute('open');
   G('mk-detail-modal').classList.add('open');
-  // Ab hier meinen die Alarm-Handler DIESEN Dialog.
+  // From here on, the alert handlers mean THIS dialog.
   setzeAlarmFeld('mk-m');
   ladeAlarm(set_number).catch(() => {});
 
-  // ── Der Preis, SOFORT ─────────────────────────────────────────────────
+  // ── The price, RIGHT AWAY ─────────────────────────────────────────────────
   //
-  // Marcos Frage: „Wieso werden die Preise nicht sofort angezeigt?" Weil /price-history nur den Cache LIEST
-  // und in den bis zu dieser Änderung niemand für Merkposten schrieb. Diese Route holt ihn (mit TTL, also
-  // nicht bei jedem Öffnen neu) und füllt den Cache gleich mit.
+  // Marco's question: "Why aren't the prices shown right away?" Because /price-history only READS the
+  // cache, and until this change nothing wrote one for wanted items. This route fetches it (with a TTL, so
+  // not freshly on every open) and fills the cache at the same time.
   api('GET', `/v1/wanted/${encodeURIComponent(set_number)}/preise`)
     .then(pr => {
       if (_detail !== arg || !pr?.success) return;
-      // Dieselbe Form wie `current` in /price-history — deshalb genügt hier dieselbe Zeichenfunktion.
-      renderMarketRows({ by_condition: umAufAnzeige(pr.current) }, 'mk-m-market-rows');
+      // Same shape as `current` in /price-history — so the same render function works here too.
+      renderMarketRows({ by_condition: toDisplayFormat(pr.current) }, 'mk-m-market-rows');
     })
     .catch(() => {});
 
-  // Katalog: Thema, Teile, Minifiguren, BrickLink. Schlägt er fehl (ein Set, das rb_sets nicht kennt), bleibt
-  // der Block stehen, wie er ist — die Angaben aus der Zeile sind dann alles, was es gibt.
-  // Ohne Namen kennt der Katalog das Set nicht (siehe zeile()); die Anfrage endete nur mit einer 404 in der
-  // Konsole.
+  // Catalog: theme, parts, minifigs, BrickLink. If it fails (a set rb_sets doesn't know), the block stays
+  // as is — the row's own figures are then all there is.
+  // Without a name the catalog doesn't know the set (see row()); the request would only end in a 404 in
+  // the console.
   if (w.name)
     api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`)
       .then(d => {
         if (_detail !== arg || !d?.success) return;
-        katalogNachtragen(d.set, w);
-        zeigeAdresse('mk-m-bricklink', d.set?.bricklink?.url);
-        // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium Falcon" statt nur der Nummer) — aber
-        // nur, wenn wirklich einer kam.
-        zeigeAdresse('mk-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
+        fillCatalogInfo(d.set, w);
+        showLink('mk-m-bricklink', d.set?.bricklink?.url);
+        // With the catalog name the search gets better ("LEGO 75192 Millennium Falcon" instead of just the
+        // number) — but only when one really came back.
+        showLink('mk-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
       })
       .catch(() => {});
 
-  // Der VERLAUF — die Zeilen darüber stehen da schon. Er kommt aus price_history, das der stündliche
-  // Preislauf füllt; für einen Merkposten seit dieser Änderung ebenfalls (src/finanzen/preisLauf.ts). Ein frischer
-  // Merkposten hat deshalb erst einen Punkt, und eine Linie braucht zwei — das ist kein Fehler, sondern der
-  // Anfang.
+  // The HISTORY — the rows above it are already there. It comes from price_history, which the hourly
+  // price job fills; since this change, for a wanted item too (src/finanzen/preisLauf.ts). A fresh wanted
+  // item therefore starts with only one point, and a line needs two — that's not a bug, it's the start.
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`)
     .then(ph => {
       if (_detail !== arg) return;
@@ -447,11 +444,11 @@ export async function oeffneMerkpostenDetail(arg) {
 }
 
 /**
- * Ein Knopf, der ins Leere führt, ist schlechter als keiner.
+ * A link that leads nowhere is worse than none.
  * @param {string} id
  * @param {string | null | undefined} url
  */
-function zeigeAdresse(id, url) {
+function showLink(id, url) {
   const el = G(id);
   if (!el) return;
   if (url) {
@@ -463,96 +460,96 @@ function zeigeAdresse(id, url) {
   }
 }
 
-const STRICH = '—';
-const zahl = (/** @type {unknown} */ n) => (n == null ? STRICH : Number(n).toLocaleString(locale()));
+const DASH = '—';
+const formatNumber = (/** @type {unknown} */ n) => (n == null ? DASH : Number(n).toLocaleString(locale()));
 
 /**
- * Die Zeilen wie im Set-Dialog, ohne was Besitz voraussetzt. Genau einmal je Öffnen gebaut, Katalogangaben
- * werden an Ort und Stelle nachgetragen: Neu gezeichnet verlor der Alarm eine laufende Eingabe.
+ * The rows as in the set dialog, without anything that assumes ownership. Built exactly once per open,
+ * catalog data is filled in afterwards in place: redrawing would lose an alert's in-progress input.
  */
 /** @param {Merkposten} w */
-function zeilen(w) {
-  // Kennt der Katalog das Set nicht, sagt eine Zeile das, statt vier Striche bei Jahr, Thema, Teilen, Figuren.
+function detailRows(w) {
+  // When the catalog doesn't know the set, one row says so instead of four dashes for year, theme, parts, figs.
   /** @type {[string, string | import('./escaping.js').SafeHtml, string | null][]} */
-  const katalog = w.name
+  const catalog = w.name
     ? [
-        ['detail.year', w.year != null ? String(w.year) : STRICH, null],
-        ['detail.theme', STRICH, 'mk-m-theme'],
-        ['detail.pieces', zahl(w.num_parts), 'mk-m-pieces'],
-        ['detail.minifigs', STRICH, 'mk-m-minifigs'],
+        ['detail.year', w.year != null ? String(w.year) : DASH, null],
+        ['detail.theme', DASH, 'mk-m-theme'],
+        ['detail.pieces', formatNumber(w.num_parts), 'mk-m-pieces'],
+        ['detail.minifigs', DASH, 'mk-m-minifigs'],
       ]
     : [['nav.catalog', esc(tRaw('wanted.unbekannt')), null]];
   /** @type {[string, string | import('./escaping.js').SafeHtml, string | null][]} */
   const z = [
-    ...katalog,
-    ['common.condition', esc(zustandText(w.condition)), null],
-    ['household.for_account', inhaberWahl(w), null],
-    ['wanted.since', w.created_at ? `${ico('kalender')} ${esc(fmtDatum(w.created_at))}` : STRICH, null],
-    // Derselbe Block wie im Set-Dialog, nicht ein zweiter: Es ist derselbe Eintrag in price_alerts, am selben
-    // Schlüssel (Konto, Set, Zustand). Gefüllt wird er von ladeAlarm() beim Öffnen.
+    ...catalog,
+    ['common.condition', esc(conditionText(w.condition)), null],
+    ['household.for_account', ownerSelect(w), null],
+    ['wanted.since', w.created_at ? `${ico('kalender')} ${esc(fmtDatum(w.created_at))}` : DASH, null],
+    // The same block as in the set dialog, not a second one: it's the same entry in price_alerts, under the
+    // same key (account, set, condition). Filled in by ladeAlarm() on open.
     ['detail.alert', alarmBlock(w.set_number, 'mk-m'), null],
   ];
   return z.map(([k, v, id]) => detailZeile(t(k), v, id ? { wertId: id } : {})).join('');
 }
 
 /**
- * Der Inhaber als Auswahlfeld: Wer sich beim Erfassen vertan hatte, musste löschen und verlor Alarm und
- * Datum. Bei einem einzigen Konto bleibt die Zeile leer — wie bei den Erfassungsmasken.
+ * The owner as a select field: anyone who got it wrong when adding the item had to delete it and lost the
+ * alert and the date. With a single account the row stays empty — as in the recording forms.
  */
 /** @param {Merkposten} w */
-function inhaberWahl(w) {
-  const konten = haushaltsKonten();
-  if (konten.length < 2) return '';
+function ownerSelect(w) {
+  const accounts = haushaltsKonten();
+  if (accounts.length < 2) return '';
   return html`${html`<select id="mk-m-owner" class="alarm-feld" aria-label="${tRaw('household.for_account')}"
-                  data-change="merkpostenInhaberGewaehlt" data-arg="${`${w.set_number}|${w.condition}|${w.user_id}`}">`}${konten.map(k => html`${html`<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`}${html`${k.username}${k.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`}`)}${html`</select>`}`;
+                  data-change="merkpostenInhaberGewaehlt" data-arg="${`${w.set_number}|${w.condition}|${w.user_id}`}">`}${accounts.map(k => html`${html`<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`}${html`${k.username}${k.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`}`)}${html`</select>`}`;
 }
 
 /**
- * Den Merkposten einem anderen Konto geben.
+ * Give the wanted item to another account.
  *
- * Der Schlüssel im data-arg trägt den ALTEN Inhaber — der Server muss wissen, WOHER er umhängt, und die
- * Auswahl kennt nur das Ziel.
+ * The key in data-arg carries the OLD owner — the server needs to know WHERE it's moving from, and the
+ * select only knows the target.
  */
 /** @param {string} arg */
 export async function merkpostenInhaberGewaehlt(arg) {
-  const { set_number, condition, owner_user_id } = zerlege(arg);
+  const { set_number, condition, owner_user_id } = parseKey(arg);
   const sel = G('mk-m-owner');
-  const neu = parseInt(sel?.value || '', 10);
-  if (!Number.isFinite(neu) || neu === owner_user_id) return;
+  const next = parseInt(sel?.value || '', 10);
+  if (!Number.isFinite(next) || next === owner_user_id) return;
   const d = await api('PUT', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/inhaber`, {
     owner_user_id,
-    neuer_inhaber: neu,
+    neuer_inhaber: next,
   });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // „stand dort schon" ist kein Fehler, aber auch kein Umzug — wie beim Eintragen unterscheidet die Meldung
-  // die beiden Fälle. settings.saved statt eines neuen Textes: „Gespeichert" steht schon in der Sprachdatei,
-  // und zwei gleichlautende Eintraege laufen beim naechsten Feinschliff auseinander.
+  // "was already there" is not an error, but not a move either — as with adding, the message tells the two
+  // cases apart. settings.saved instead of a new text: "Saved" already exists in the language file, and
+  // two identically-worded entries drift apart at the next polish pass.
   toast(tRaw(d.zusammengefuehrt ? 'wanted.already' : 'settings.saved'), 'success');
   await ladeMerkliste();
-  // Das Detail hängt am alten Schlüssel (er trägt den Inhaber) — mit dem neuen wieder öffnen, sonst zeigt es
-  // einen Eintrag, den es so nicht mehr gibt.
+  // The detail is tied to the old key (it carries the owner) — reopen with the new one, otherwise it shows
+  // an entry that no longer exists in that form.
   if (d.zusammengefuehrt) schliesseMerkpostenDetail();
-  else await oeffneMerkpostenDetail(`${set_number}|${condition}|${neu}`);
+  else await oeffneMerkpostenDetail(`${set_number}|${condition}|${next}`);
 }
 
 /**
- * Thema, Teile und Minifiguren nachtragen — als TEXT, nicht als neues Markup.
+ * Fill in theme, parts and minifigs — as TEXT, not as new markup.
  *
- * textContent und nicht innerHTML: Der Themenname kommt aus dem Katalog und ist damit fremder Text. So kann
- * er gar nicht erst als Auszeichnung gelesen werden, und es braucht kein esc() an einer weiteren Stelle.
+ * textContent, not innerHTML: the theme name comes from the catalog and is therefore foreign text. This
+ * way it can never be read as markup, and no esc() is needed in yet another place.
  */
-/** @param {import('../../frontend-typen/vertrag').CatalogSetDetail | null | undefined} katalog @param {Merkposten} w */
-function katalogNachtragen(katalog, w) {
-  const setze = (/** @type {string} */ id, /** @type {string} */ wert) => {
+/** @param {import('../../frontend-typen/vertrag').CatalogSetDetail | null | undefined} catalog @param {Merkposten} w */
+function fillCatalogInfo(catalog, w) {
+  const set = (/** @type {string} */ id, /** @type {string} */ value) => {
     const el = G(id);
-    if (el) el.textContent = wert;
+    if (el) el.textContent = value;
   };
-  setze('mk-m-theme', katalog?.theme_name || STRICH);
-  setze('mk-m-pieces', zahl(katalog?.num_parts ?? w.num_parts));
-  setze('mk-m-minifigs', zahl(katalog?.minifigs));
+  set('mk-m-theme', catalog?.theme_name || DASH);
+  set('mk-m-pieces', formatNumber(catalog?.num_parts ?? w.num_parts));
+  set('mk-m-minifigs', formatNumber(catalog?.minifigs));
 }
 
 export function schliesseMerkpostenDetail() {
@@ -560,7 +557,7 @@ export function schliesseMerkpostenDetail() {
   _detail = null;
 }
 
-/** Löschen und Übernehmen aus dem Detail — dieselben Wege wie aus der Liste. */
+/** Deleting and taking over from the detail — the same paths as from the list. */
 export async function merkpostenDetailLoeschen() {
   const arg = _detail;
   if (!arg) return;
@@ -575,17 +572,16 @@ export function merkpostenDetailUebernehmen() {
   merkpostenUebernehmen(arg);
 }
 
-// Suche entprellt (250 ms wie Galerie und Teile), sonst ein Abruf je Taste. Der Wächter `?.`, weil die Datei
-// in den Tests auch ohne DOM geladen wird.
+// Search debounced (250 ms like the gallery and parts), otherwise one request per keystroke. The `?.`
+// guard because this file is also loaded in tests without a DOM.
 G('mks')?.addEventListener('input', () => {
   clearTimeout(G('mks')._t);
   G('mks')._t = setTimeout(ladeMerkliste, 250);
 });
 
 /**
- * Eine Merkliste aus einer CSV einlesen, wie importFigsCsv(): Beide werten dieselbe Serverantwort aus
- * (csvImportAntwort) und nutzen dieselben Texte — eine zweite Fassung derselben Aussage würde
- * auseinanderlaufen.
+ * Read a wanted list in from a CSV, like importFigsCsv(): both evaluate the same server response
+ * (csvImportAntwort) and use the same texts — a second version of the same message would drift apart.
  */
 async function importMerklisteCsv() {
   const owner = selectedOwner('mk-owner');
@@ -618,16 +614,16 @@ registerActions({
 });
 
 /**
- * `current` der Preisantwort in die Form von renderMarketRows() bringen: Dieselbe Zahl heisst dort
- * avg_price. pnl_pct bleibt leer, weil ein Merkposten keinen Kaufpreis hat.
+ * Bring the price response's `current` into the shape renderMarketRows() expects: the same number is
+ * called avg_price there. pnl_pct stays empty, because a wanted item has no purchase price.
  */
 /** @param {import('../../frontend-typen/vertrag').CurrentByCondition | null | undefined} current */
-function umAufAnzeige(current) {
+function toDisplayFormat(current) {
   /** @type {Record<string, { market_price: number | null | undefined, pnl_pct: null }>} */
-  const raus = {};
+  const out = {};
   for (const c of /** @type {const} */ (['N', 'U'])) {
     const d = current?.[c];
-    if (d) raus[c] = { market_price: d.avg_price, pnl_pct: null };
+    if (d) out[c] = { market_price: d.avg_price, pnl_pct: null };
   }
-  return raus;
+  return out;
 }

@@ -21,7 +21,7 @@ import {
 import { ladeTls, loadTokens } from './zugaenge.js';
 import { loadHousehold } from './haushalt.js';
 import { ladeGutscheine } from './gutscheine.js';
-import { ladeMerkliste, merklisteZuruecksetzen } from './wanted.js';
+import { ladeMerkliste, resetWantedFilter } from './wanted.js';
 import { ladePapierkorb } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';
@@ -479,7 +479,7 @@ function filterZuruecksetzen(ansicht) {
     setLagerModus('gallery', '');
     if (G('storage-gallery')) G('storage-gallery').value = '';
     emit('sammlungLaden');
-  } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
+  } else if (ansicht === 'merkliste') resetWantedFilter();
   else if (ansicht === 'catalog') katalogZuruecksetzen();
   else if (ansicht === 'parts') teileFilterZuruecksetzen();
   else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
