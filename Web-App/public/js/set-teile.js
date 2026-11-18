@@ -10,25 +10,24 @@ import { scopeQuery } from './kontofilter.js';
 import { ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
 import { jumpTo } from './targets.js';
 import { registerActions } from './registry.js';
-// Detail-Dialog für Teile und Figuren aus Sets: mit Zoom und der Liste der Sets, in denen sie stecken, ohne
-// Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen wie
-// openManDetail.
-/** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {{ set_number: string, name?: string | null, set_name?: string | null, image_local?: string | null, image_url?: string | null, quantity?: number | null }[]} sets */
-function verwendetInListe(sets) {
-  // Die Sets als Tabelle (Bild, Nummer, Name) wie im Reiter Finanzen: Als Fliesstext stand jeder Name
-  // woanders. Jede Zeile öffnet das Set-Detail und schliesst diesen Dialog, zwei offene Fenster wären nicht
-  // zu schliessen.
-  const setBild = (/** @type {{ image_local?: string | null, image_url?: string | null }} */ s) => {
-    const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
-    return klein
-      ? bildTag({ src: imgUrl(klein, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
+// Detail dialog for parts and minifigs from sets: with zoom and the list of sets they occur in, without
+// a market price and without an editable quantity — the quantity comes from the inventories. Same frame
+// as openManDetail.
+/** The sets a part or minifig occurs in, as a clickable list. @param {{ set_number: string, name?: string | null, set_name?: string | null, image_local?: string | null, image_url?: string | null, quantity?: number | null }[]} sets */
+function usedInList(sets) {
+  // The sets as a table (image, number, name) like in the Finances tab: as running text each name sat
+  // somewhere else. Every row opens the set detail and closes this dialog, two open windows couldn't be closed.
+  const setImage = (/** @type {{ image_local?: string | null, image_url?: string | null }} */ s) => {
+    const small = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
+    return small
+      ? bildTag({ src: imgUrl(small, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
       : html`<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   };
   return sets.length
     ? html`<table aria-label="${tRaw('setitem.used_in')}" data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(
         s => html`
         <tr>
-          <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
+          <td data-stil="width:34px;padding:4px 8px 4px 0">${setImage(s)}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${zeilenKnopf({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
           <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
@@ -43,7 +42,7 @@ function verwendetInListe(sets) {
  * @param {string | number} colorId
  */
 export async function openSetItemDetail(type, id, colorId) {
-  const farbe = parseInt(String(colorId), 10) || 0;
+  const color = parseInt(String(colorId), 10) || 0;
   vergissManItem();
   const modal = G('setitem-modal');
   const bodyEl = G('setitem-body');
@@ -55,14 +54,14 @@ export async function openSetItemDetail(type, id, colorId) {
   setzeHtml(bodyEl, ladeAnzeige('', { stil: 'padding:1rem' }));
   modal.classList.add('open');
 
-  // Blickfeld mitgeben wie überall: Im Haushalt gehört das Set des Geschwisterkontos dazu. scopeQuery()
-  // angehängt, nicht im Pfad, damit test/frontend-api-paths.test.js die Adresse lesen kann.
+  // Pass the account scope along as everywhere: in a household, the sibling account's set belongs too.
+  // scopeQuery() appended, not in the path, so test/frontend-api-paths.test.js can read the address.
   const url =
     (type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
-      : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`) + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
+      : `/v1/parts/${encodeURIComponent(id)}/${color}/sets`) + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
   const d = await api('GET', url);
-  // Zwischenzeitlich geschlossen? Dann nichts mehr hineinschreiben.
+  // Closed in the meantime? Then nothing more gets written in.
   if (!modal.classList.contains('open')) return;
 
   const item = d?.item || null;
@@ -71,22 +70,22 @@ export async function openSetItemDetail(type, id, colorId) {
   G('setitem-tit').textContent = item?.name || id;
   G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + colorName(item.color_name) : '');
 
-  // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung. data-orig speist den Zoom
-  // (openImageLightboxFromEl in aktionen.js) — ohne dieses Attribut gäbe es kein Vergrössern, und genau das
-  // war Teil des Wunsches.
-  const roh = item?.image_local || item?.image_url || '';
-  const voll = roh ? imgUrl(fullUrl(roh), false) : '';
-  if (voll) {
-    setzeDialogbild(imgEl, voll, voll);
+  // Image as in the manual dialog: through the server proxy at full resolution. data-orig feeds the zoom
+  // (openImageLightboxFromEl in aktionen.js) — without this attribute there would be no zooming, and that
+  // was exactly part of what was asked for.
+  const raw = item?.image_local || item?.image_url || '';
+  const full = raw ? imgUrl(fullUrl(raw), false) : '';
+  if (full) {
+    setzeDialogbild(imgEl, full, full);
     imgEl.style.display = '';
   } else {
     imgEl.style.display = 'none';
   }
 
-  const zeilen = [];
-  // Anzahl nur zur Anzeige: Sie entsteht aus den Inventaren der Sets. Mit toLocaleString wie auf der
-  // Teilekachel — fmtN() ist der Geldformatierer und machte aus 6 „EUR 6.00×“.
-  zeilen.push(
+  const rows = [];
+  // Quantity for display only: it comes from the sets' inventories. toLocaleString as on the parts tile —
+  // fmtN() is the money formatter and turned 6 into "EUR 6.00×".
+  rows.push(
     detailZeile(
       t('setitem.total_qty'),
       html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
@@ -94,27 +93,27 @@ export async function openSetItemDetail(type, id, colorId) {
   );
 
   if (type === 'part' && item?.color_name) {
-    const punkt = item.color_hex
+    const dot = item.color_hex
       ? html`<span data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`
       : '';
-    zeilen.push(detailZeile(t('parts.color_label'), `${punkt}${esc(colorName(item.color_name))}`));
+    rows.push(detailZeile(t('parts.color_label'), `${dot}${esc(colorName(item.color_name))}`));
   }
-  if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
-  if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), ico('ok')));
+  if (item?.category_name) rows.push(detailZeile(t('setitem.category'), esc(item.category_name)));
+  if (item?.is_spare) rows.push(detailZeile(t('parts.spare_tag'), ico('ok')));
 
-  // Lagerort nur für Teile: Eine Figur steckt in ihrem Set, dessen Ort im Set-Detail steht. Das Feld schreibt
-  // auf alle Zeilen des Teil-Farb-Paares, weil man das Teil meint, nicht eine seiner Zeilen.
+  // Storage location for parts only: a minifig sits in its set, whose location is in the set detail. The
+  // field writes to every row of the part/color pair, because it means the part, not one of its rows.
   if (type === 'part') {
-    // Die Ortsliste gehört dem Besitzer, wie beim Set. owner_ids statt owners, weil gruppierte Teilezeilen
-    // keine Besitzerplakette tragen.
+    // The location list belongs to the owner, as with a set. owner_ids instead of owners, because grouped
+    // part rows carry no owner badge.
     ladeOrtAuswahl(item?.owner_ids).catch(() => {});
-    zeilen.push(
+    rows.push(
       detailZeile(
         t('detail.storage'),
         lagerortBlock(
           'setitem-storage',
           item?.storage,
-          `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${farbe}" ` +
+          `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${color}" ` +
             `data-owners="${esc((item?.owner_ids || []).join(','))}"`,
         ),
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
@@ -122,41 +121,41 @@ export async function openSetItemDetail(type, id, colorId) {
     );
   }
 
-  const liste = verwendetInListe(sets);
-  // Die Tabelle steht unter der Beschriftung (flex-direction:column): In der .dr-Zeile rutschte sie bei einem
-  // einzigen Set neben „Verwendet in“, und das Bild berührte den Text.
-  zeilen.push(
-    detailZeile(t('setitem.used_in'), liste, {
+  const list = usedInList(sets);
+  // The table sits below the label (flex-direction:column): in the .dr row it slid next to "Used in" with
+  // a single set, and the image touched the text.
+  rows.push(
+    detailZeile(t('setitem.used_in'), list, {
       zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
       wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0',
     }),
   );
 
-  setzeHtml(bodyEl, joinHtml(zeilen));
+  setzeHtml(bodyEl, joinHtml(rows));
 }
 
 /**
- * Lagerort eines Teils oder einer Figur speichern, beim Verlassen des Feldes (sonst ein Zwischenstand je
- * Zeichen). `this` statt fester Kennung, weil zwei Dialoge denselben Handler nutzen.
+ * Save a part's or minifig's storage location, on leaving the field (otherwise an intermediate state per
+ * keystroke). `this` instead of a fixed id, because two dialogs share this handler.
  * @this {unknown}
  */
 async function speichereTeilLagerort() {
   const el = this instanceof HTMLInputElement ? this : G('setitem-storage');
   if (!el) return;
-  const nummer = el.dataset.part ?? '';
-  const farbe = parseInt(el.dataset.color ?? '', 10) || 0;
-  const adresse =
+  const number = el.dataset.part ?? '';
+  const color = parseInt(el.dataset.color ?? '', 10) || 0;
+  const url =
     el.dataset.typ === 'fig'
-      ? `/v1/minifigs/${encodeURIComponent(nummer)}/storage`
-      : `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`;
-  const d = await api('PUT', adresse, { storage: el.value });
+      ? `/v1/minifigs/${encodeURIComponent(number)}/storage`
+      : `/v1/parts/${encodeURIComponent(number)}/${color}/storage`;
+  const d = await api('PUT', url, { storage: el.value });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
   await ladeLagerorte();
-  // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil, fehlte aber in der Liste, aus
-  // der er beim nächsten Mal gewählt wird.
+  // A freshly typed location is now in the stock list — without this it would sit on the part but be
+  // missing from the list it's chosen from next time.
   await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',').map(Number) : []);
 }
 
@@ -166,7 +165,7 @@ function closeSetItemDetail() {
 G('setitem-modal').addEventListener('click', e => e.target === e.currentTarget && closeSetItemDetail());
 
 /**
- * Aus dem Teil-Dialog ins Set-Detail — der eine schliesst, der andere öffnet.
+ * From the part dialog to the set detail — one closes, the other opens.
  * @param {string} setNumber
  */
 function openSetAusItem(setNumber) {
