@@ -164,7 +164,7 @@ const sicherheitsKoepfe =
         "default-src 'self'",
         // Ohne 'unsafe-inline': Alle Handler laufen über js/aktionen.js.
         "script-src 'self'",
-        // Stile setzt js/stile.js per CSSOM; inline nur das Startgerüst, per Hash.
+        // Stile setzt js/styles.js per CSSOM; inline nur das Startgerüst, per Hash.
         `style-src 'self'${startPageStyleHash(produktion) ? ' ' + startPageStyleHash(produktion) : ''}`,
         "font-src 'self'",
         // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
