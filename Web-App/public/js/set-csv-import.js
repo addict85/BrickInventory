@@ -19,35 +19,35 @@ import {
 } from './fortschritt.js';
 import { confirmDelete } from './rueckfrage.js';
 
-// Set-CSV-Import aus der Galerie: Vorab-Prüfung, Strom des Auftrags und Abfrage, wenn der Strom abreisst.
-// CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
+// Set CSV import from the gallery: preflight check, the job's stream, and polling if the stream drops.
+// CSV import via SSE stream — choosing a file starts the import directly (like the parts import)
 async function startSetCsvImport() {
   const fi = G('csv-file');
-  const datei = fi.files?.[0];
-  if (!datei) {
+  const file = fi.files?.[0];
+  if (!file) {
     toast(tRaw('csv.select_file'), 'error');
     return;
   }
-  const formular = () => {
+  const formData = () => {
     const fd = new FormData();
-    fd.append('file', datei);
+    fd.append('file', file);
     return fd;
   };
-  // Erst lesen lassen, dann fragen: Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen
-  // lehnt dasselbe Set ab. Wer eine Datei zweimal wählt, soll das vorher erfahren.
-  const vorab = await api('POST', '/v1/sets/import/csv?pruefen=1', formular());
-  if (!vorab.success) {
-    toast(vorab.error || tRaw('settings.error'), 'error');
+  // Let it read first, then ask: the import increases the quantity for existing sets, while adding a
+  // single set rejects the same set. Anyone who picks a file twice should find out beforehand.
+  const preflight = await api('POST', '/v1/sets/import/csv?pruefen=1', formData());
+  if (!preflight.success) {
+    toast(preflight.error || tRaw('settings.error'), 'error');
     fi.value = '';
     return;
   }
   if (
-    (vorab.vorhanden ?? 0) > 0 &&
+    (preflight.vorhanden ?? 0) > 0 &&
     !(await confirmDelete(
       tRaw('csv.vorhanden_titel'),
       tRaw('csv.vorhanden_text', {
-        n: vorab.vorhanden ?? 0,
-        nummern: (vorab.vorhanden_nummern || []).slice(0, 5).join(', '),
+        n: preflight.vorhanden ?? 0,
+        nummern: (preflight.vorhanden_nummern || []).slice(0, 5).join(', '),
       }),
       'import',
       { knopf: 'csv.vorhanden_knopf', art: 'bp' },
@@ -59,27 +59,27 @@ async function startSetCsvImport() {
   showProgress(tRaw('csv.import_title'), true);
   try {
     // Start import job (returns immediately)
-    const startData = await api('POST', '/v1/sets/import/csv', formular());
+    const startData = await api('POST', '/v1/sets/import/csv', formData());
     if (!startData.success) {
       hideProgress();
       toast(startData.error || t('settings.error'), 'error');
       return;
     }
     const total = startData.total;
-    // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer 500 Zeilen schickt und 498
-    // importiert bekommt, soll es erfahren.
+    // Name any skipped rows — the import keeps running regardless, but anyone who sends 500 rows and
+    // gets 498 imported should find out.
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
     G('prog-footer').textContent = tRaw('csv.items_progress', { done: 0, total });
     G('prog-set-name').textContent = tRaw('csv.wartet');
 
     setzeCsvPollAktiv(true);
-    gibStart(); // globalen Balken zeigen (dieses + andere Fenster)
+    gibStart(); // show the global bar (this window and others)
     G('btn-cancel-import').style.display = 'inline-flex';
 
-    // Fortschritt bevorzugt über SSE; nur bei Ausfall Polling-Fallback.
+    // Progress preferably via SSE; a polling fallback only on failure.
     const ctx = { total: total ?? 0, prevDone: /** @type {number | null | undefined} */ (-1), prevResultCount: 0 };
-    // Ohne `?token=`: Das Cookie trägt den Kanal, der Token in der Adresse wäre nur der Sitzungstoken im
-    // Protokoll.
+    // Without `?token=`: the cookie carries the channel, a token in the address would just be the
+    // session token sitting in the log.
 
     await /** @type {Promise<void>} */ (
       new Promise(resolve => {
@@ -92,13 +92,13 @@ async function startSetCsvImport() {
         };
 
         const s = strom(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
-          ereignis: stand => {
-            if (csvApplyOverlayStatus(stand, ctx, fi)) {
+          ereignis: state => {
+            if (csvApplyOverlayStatus(state, ctx, fi)) {
               s?.schliesse();
               finish();
             }
           },
-          // Strom weg → auf Polling zurückfallen
+          // Stream gone → fall back to polling
           fehler: () => {
             if (!settled) csvPollLoop(ctx, fi).then(finish);
           },
@@ -112,8 +112,7 @@ async function startSetCsvImport() {
   }
 }
 
-// Verarbeitet ein CSV-Status-Objekt fürs Overlay des startenden Fensters. Gibt true zurück, wenn der Import
-// abgeschlossen ist.
+// Processes a CSV status object for the starting window's overlay. Returns true once the import is done.
 /**
  * @param {import('./fortschritt.js').ImportStand} s
  * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
@@ -133,7 +132,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       : done === 0 && s.status === 'running'
         ? tRaw('csv.wartet')
         : '';
-    // Fortschrittsbalken im Kopf direkt nachführen
+    // Update the progress bar in the header directly
     {
       const _p = total > 0 ? Math.round((done / total) * 100) : 0;
       const _b = G('global-import-bar');
@@ -147,7 +146,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
     if (s.results && s.results.length > ctx.prevResultCount) {
       const newResults = s.results.slice(ctx.prevResultCount);
       newResults.forEach(r => {
-        // Derselbe Bauer wie in fortschritt.js — die Begruendung steht dort.
+        // Same builder as in fortschritt.js — the reasoning lives there.
         const z = protokollZeile(r);
         if (z) addCsvLog(z.text, z.art);
       });
@@ -166,23 +165,23 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       if (s.results) {
         const remaining = s.results.slice(ctx.prevResultCount);
         remaining.forEach(r => {
-          // Derselbe Zeilenbauer wie in fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
-          // Hinweis auf Zeitüberschreitung gilt nur hier.
+          // Same row builder as in fortschritt.js. No esc(), because addCsvLog sets textContent; the
+          // timeout-retry hint only applies here.
           const z = protokollZeile(r, tRaw('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.art);
         });
         ctx.prevResultCount = s.results.length;
       }
       if ((s.err ?? 0) > 0) {
-        const errSets = (s.results || []).filter(r => !r.success);
-        const errList = errSets.map(r => r.set_number + ': ' + (r.error || '?')).join('; ');
-        console.warn('[CSV Import] Fehler: ' + errList);
+        const errorSets = (s.results || []).filter(r => !r.success);
+        const errorList = errorSets.map(r => r.set_number + ': ' + (r.error || '?')).join('; ');
+        console.warn('[CSV Import] Fehler: ' + errorList);
       }
-      const zaehler = importZaehler(s, 'csv.warnings_n');
-      G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${zaehler}`;
+      const counter = importZaehler(s, 'csv.warnings_n');
+      G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${counter}`;
       zeigeImportAbschluss();
       emit('sammlungLaden');
-      toast(tRaw('csv.import_meldung', { ergebnis: zaehler }), s.err ? 'error' : s.warn ? 'info' : 'success');
+      toast(tRaw('csv.import_meldung', { ergebnis: counter }), s.err ? 'error' : s.warn ? 'info' : 'success');
       if (fi) fi.value = '';
     }
     return true;
@@ -190,7 +189,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
   return false;
 }
 
-// Polling-Fallback für das startende Fenster (nur wenn SSE nicht verfügbar).
+// Polling fallback for the starting window (only when SSE is unavailable).
 /**
  * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
  * @param {HTMLInputElement | null} fi
@@ -200,7 +199,8 @@ async function csvPollLoop(ctx, fi) {
     await new Promise(r => setTimeout(r, 1500));
     if (!csvPollAktiv()) break;
     try {
-      // apiDaten statt api: api() überschriebe das Feld `status` mit dem HTTP-Status, die Schleife endete nie.
+      // apiDaten instead of api: api() would overwrite the `status` field with the HTTP status, and the
+      // loop would never end.
       const s = await apiDaten('GET', '/v1/sets/import/csv/status');
       if (s && csvApplyOverlayStatus(/** @type {import('./fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
     } catch (e) {
@@ -209,7 +209,7 @@ async function csvPollLoop(ctx, fi) {
   }
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ──────────────
 registerActions({
   startSetCsvImport,
 });

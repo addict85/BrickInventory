@@ -6,38 +6,38 @@ import { fmtN } from './format.js';
 import { toast } from './meldungen.js';
 import { gutscheine, ladeGutscheine } from './gutscheine.js';
 
-// Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer) setzt der
-// Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe Karte erneut. Eine
-// Sammelroute hielte dafür Minuten eine Verbindung offen.
+// Query the LEGO balance on demand. The limit (one request per 30s across all users) is set by the
+// server; the UI obeys it: on 429 it waits waitSek and asks the same card again. A batch route would
+// otherwise hold a connection open for minutes.
 
-/** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
-const ABSTAND_VERSUCHE = 4;
+/** How many times at most to retry the same card when the rate limit is braking. */
+const RETRY_LIMIT = 4;
 
-const _warte = (/** @type {number} */ ms) => new Promise(r => setTimeout(r, ms));
+const _wait = (/** @type {number} */ ms) => new Promise(r => setTimeout(r, ms));
 
 /**
- * Sekunden abwarten und dabei herunterzählen.
+ * Wait out a number of seconds, counting down.
  *
- * Der Text nennt die Karte: Bei „alle abfragen" ist sonst nicht zu sehen, wofür gewartet wird.
+ * The text names the card: with "query all", otherwise there's no telling what is being waited for.
  */
-/** @param {number} sekunden @param {string} nummer */
-async function warteSichtbar(sekunden, nummer) {
+/** @param {number} seconds @param {string} number */
+async function waitVisibly(seconds, number) {
   const status = G('vouchers-balance-status');
-  for (let rest = sekunden; rest > 0; rest--) {
-    if (status) status.textContent = tRaw('vouchers.balance_wait', { sek: rest, nummer });
-    await _warte(1000);
+  for (let rest = seconds; rest > 0; rest--) {
+    if (status) status.textContent = tRaw('vouchers.balance_wait', { sek: rest, nummer: number });
+    await _wait(1000);
   }
 }
 
 /**
- * Eine Karte abfragen — ohne Takten, ohne Neuladen.
+ * Query one card — without pacing, without reloading.
  *
- * Gibt zurück, was der Aufrufer wissen muss: ob es geklappt hat, und wenn nicht, ob es am Abstand lag (dann
- * lohnt Warten) oder am Bot-Schutz (dann wird AUFGEHÖRT — weiterzufragen ist genau das, was nicht sein soll).
+ * Returns what the caller needs to know: whether it worked, and if not, whether it was the rate limit
+ * (worth waiting for) or bot protection (then it STOPS — asking again is exactly what must not happen).
  * @param {number | string} id
  * @returns {Promise<{ art: 'ok', antwort: import('../../frontend-typen/vertrag').GuthabenAntwort } | { art: 'abstand', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
  */
-async function eineAbfrage(id) {
+async function oneQuery(id) {
   const d = await api('POST', `/v1/vouchers/${id}/guthaben`);
   if (d?.success) return { art: 'ok', antwort: d };
   if (d?.grund === 'abstand' && Number(d.wartenSek) > 0) {
@@ -49,104 +49,104 @@ async function eineAbfrage(id) {
   return { art: 'fehler', fehler: d?.error || tRaw('settings.error') };
 }
 
-/** Was eine erfolgreiche Abfrage dem Nutzer sagt. */
-/** @param {import('../../frontend-typen/vertrag').GuthabenAntwort} antwort */
-function meldeErfolg(antwort) {
-  const v = antwort.voucher;
+/** What a successful query tells the user. */
+/** @param {import('../../frontend-typen/vertrag').GuthabenAntwort} response */
+function reportSuccess(response) {
+  const v = response.voucher;
   if (!v) return;
   toast(
     tRaw('vouchers.balance_done', {
       nummer: v.number,
-      betrag: antwort.angezeigt || fmtN(v.amount, v.currency),
+      betrag: response.angezeigt || fmtN(v.amount, v.currency),
     }),
     'success',
   );
-  // Eine stillschweigend geänderte Währung wäre eine geänderte Summe ohne Hinweis — die Liste rechnet nur,
-  // wenn alle Gutscheine dieselbe tragen.
-  if (antwort.waehrung_geaendert) {
+  // A silently changed currency would be a changed total with no hint — the list only sums up when
+  // every voucher carries the same one.
+  if (response.waehrung_geaendert) {
     toast(tRaw('vouchers.balance_currency', { waehrung: v.currency }), 'info');
   }
 }
 
-/** Eine Karte, auf Knopfdruck in ihrer Zeile. */
+/** One card, on demand, in its row. */
 /** @param {string} id */
 export async function guthabenAbfragen(id) {
   const status = G('vouchers-balance-status');
   const g = gutscheine().find(x => String(x.id) === String(id));
   if (status) status.textContent = tRaw('vouchers.balance_running');
-  for (let versuch = 1; ; versuch++) {
-    const r = await eineAbfrage(id);
+  for (let attempt = 1; ; attempt++) {
+    const r = await oneQuery(id);
     if (r.art === 'ok') {
       if (status) status.textContent = '';
-      meldeErfolg(r.antwort);
+      reportSuccess(r.antwort);
       await ladeGutscheine();
       return;
     }
-    if (r.art === 'abstand' && versuch < ABSTAND_VERSUCHE) {
-      await warteSichtbar(r.wartenSek, g ? g.number : '');
+    if (r.art === 'abstand' && attempt < RETRY_LIMIT) {
+      await waitVisibly(r.wartenSek, g ? g.number : '');
       continue;
     }
     if (status) status.textContent = '';
-    // Auch der Abstand wird hier zur Fehlermeldung: Nach vier Versuchen ist die Auskunft „es ist belegt"
-    // ehrlicher als weiteres Warten.
+    // The rate limit also becomes an error message here: after four attempts, saying "it's busy" is
+    // more honest than waiting further.
     toast(('fehler' in r && r.fehler) || tRaw('settings.error'), 'error');
     return;
   }
 }
 
-/** Alle Karten mit PIN, eine nach der anderen. */
+/** Every card with a PIN, one after another. */
 export async function guthabenAlleAbfragen() {
   const status = G('vouchers-balance-status');
-  const dran = gutscheine().filter(g => g.pin);
-  if (!dran.length) {
+  const pending = gutscheine().filter(g => g.pin);
+  if (!pending.length) {
     toast(tRaw('vouchers.balance_keine'), 'info');
     return;
   }
-  let fertig = 0,
-    fehler = 0;
-  for (const g of dran) {
-    let erledigt = false;
-    for (let versuch = 1; !erledigt && versuch <= ABSTAND_VERSUCHE; versuch++) {
+  let done = 0,
+    failed = 0;
+  for (const g of pending) {
+    let settled = false;
+    for (let attempt = 1; !settled && attempt <= RETRY_LIMIT; attempt++) {
       if (status) {
         status.textContent = tRaw('vouchers.balance_progress', {
-          n: fertig + fehler + 1,
-          total: dran.length,
+          n: done + failed + 1,
+          total: pending.length,
           nummer: g.number,
         });
       }
-      const r = await eineAbfrage(g.id);
+      const r = await oneQuery(g.id);
       if (r.art === 'ok') {
-        fertig++;
-        meldeErfolg(r.antwort);
-        erledigt = true;
+        done++;
+        reportSuccess(r.antwort);
+        settled = true;
         break;
       }
       if (r.art === 'abstand') {
-        await warteSichtbar(r.wartenSek, g.number);
+        await waitVisibly(r.wartenSek, g.number);
         continue;
       }
-      fehler++;
+      failed++;
       toast(r.fehler, 'error');
-      erledigt = true;
-      // Bot-Schutz: HIER wird abgebrochen, nicht nur diese Karte übersprungen. Die übrigen Karten liefen in
-      // dieselbe Wand, und Marcos Vorgabe ist, dass dann „nicht mehr Aufrufe generiert werden".
+      settled = true;
+      // Bot protection: this is where it STOPS, not just skips this card. The remaining cards would hit
+      // the same wall, and Marco's rule is that "no more requests get generated" in that case.
       if (r.art === 'botschutz') {
         if (status) status.textContent = '';
         await ladeGutscheine();
         return;
       }
     }
-    if (!erledigt) {
-      fehler++;
+    if (!settled) {
+      failed++;
       toast(tRaw('vouchers.balance_belegt'), 'error');
     }
   }
   if (status) status.textContent = '';
-  toast(tRaw('vouchers.balance_alle_fertig', { fertig, fehler }), fehler ? 'info' : 'success');
+  toast(tRaw('vouchers.balance_alle_fertig', { fertig: done, fehler: failed }), failed ? 'info' : 'success');
   await ladeGutscheine();
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ──────────────
 registerActions({
   guthabenAbfragen,
   guthabenAlleAbfragen,

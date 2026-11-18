@@ -49,27 +49,27 @@ import { loadStats } from './kennzahlen.js';
 /** @typedef {import('./state.js').Tile} Tile */
 
 /**
- * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn war das Design dort grau in
- * grau. Ohne Thema-Nummer entscheidet der Themenname, damit ein Thema immer denselben Ton trägt.
+ * The theme hue for the "Farbfächer" theme — in the collection too: without it that theme was grey on
+ * grey here. With no theme id, the theme name decides, so a theme always carries the same hue.
  * @param {{ theme_id?: number | null, theme?: string | null }} s
  */
-function faecherTon(s) {
+function themeFanTone(s) {
   if (typeof s.theme_id === 'number' && Number.isInteger(s.theme_id))
     return html` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
   const name = String(s.theme || '').split(' / ')[0];
   if (!name) return '';
   let h = 0;
-  for (const z of name) h = (h * 31 + (z.codePointAt(0) ?? 0)) >>> 0;
+  for (const c of name) h = (h * 31 + (c.codePointAt(0) ?? 0)) >>> 0;
   return html` data-faecher="${h % 12}"`;
 }
 
 // ── GALLERY ───────────────────────────────────────────
 let curView = 'grid';
-const alsKarten = () => curView === 'grid' || telefonBreite();
+const asTiles = () => curView === 'grid' || telefonBreite();
 
 /**
- * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste Position und
- * zeigte bei [U, N] „neu“ statt „gebraucht“.
+ * Takes over the condition aggregate from the server: recomputing it locally used the most recently
+ * recorded entry and showed "new" for [U, N] instead of "used".
  * @param {Partial<Tile> | null | undefined} agg
  */
 export function applySetAggregate(agg) {
@@ -78,17 +78,17 @@ export function applySetAggregate(agg) {
   setGallerySets(gallerySets.map(s => (s.set_number === agg.set_number ? { ...s, ...agg } : s)));
   if (gallerySets !== before) renderGallery();
 }
-// ── Endlos-Scroll der Galerie ───────────────────────────────────────────────
-// Filtern und Sortieren macht der Server: Über gallerySets durchsuchte ein Filter nur die geladenen Seiten.
+// ── Infinite scroll of the gallery ───────────────────────────────────────────────
+// Filtering and sorting is done by the server: searching via gallerySets only searched the pages already loaded.
 const GAL_PAGE_SIZE = 60;
-const galerieLaden = loadGuard();
+const galleryGuard = loadGuard();
 let _galPage = 1,
   _galDone = false,
   _galLoadingMore = false,
   _galTotal = 0;
 
 /**
- * Aktuelle Filter- und Sortierwerte als Query-Parameter.
+ * Current filter and sort values as query parameters.
  * @param {number} page
  */
 function galleryParams(page, pageSize = GAL_PAGE_SIZE) {
@@ -109,9 +109,9 @@ function galleryParams(page, pageSize = GAL_PAGE_SIZE) {
 async function loadGalleryMore() {
   if (_galLoadingMore || _galDone) return;
   _galLoadingMore = true;
-  const gen = galerieLaden.current();
+  const gen = galleryGuard.current();
   try {
-    const d = await galerieLaden.whenCurrent(api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`));
+    const d = await galleryGuard.whenCurrent(api('GET', `/v1/sets?${galleryParams(_galPage + 1)}`));
     if (d === undefined) return;
     const batch = d.sets || [];
     if (!batch.length) {
@@ -123,29 +123,29 @@ async function loadGalleryMore() {
     if (gallerySets.length >= (_galTotal || 0)) _galDone = true;
     appendGallery(batch);
     updateGalleryPrices();
-    kickGallerySentinel(); // s. Erklärung dort
+    kickGallerySentinel(); // see explanation there
   } catch (_) {
-    /* stumm: der Sentinel versucht es beim nächsten Scrollen erneut */
+    /* silent: the sentinel tries again on the next scroll */
   } finally {
-    if (galerieLaden.isCurrent(gen)) _galLoadingMore = false;
+    if (galleryGuard.isCurrent(gen)) _galLoadingMore = false;
   }
 }
 
 /**
- * Hängt eine Folgeseite an, ohne die bereits gezeichneten Kacheln neu zu bauen.
+ * Appends a following page without rebuilding the tiles already drawn.
  * @param {Tile[]} batch
  */
 function appendGallery(batch) {
   const c = G('gallery');
   const grid = c.querySelector('.sgrid');
   const tbody = c.querySelector('.dt tbody');
-  if (alsKarten() && grid) {
+  if (asTiles() && grid) {
     fuegeHtmlEin(grid, 'beforeend', batch.map(gridCard));
     observeLazyImages(grid);
   } else if (tbody) {
     fuegeHtmlEin(tbody, 'beforeend', batch.map(tableRow));
   } else {
-    renderGallery(); // Struktur fehlt (leerer Zustand)
+    renderGallery(); // structure is missing (empty state)
   }
 }
 
@@ -155,8 +155,8 @@ function maybeLoadMoreGallery() {
 }
 
 /**
- * Selbst nachsehen, ob der Sentinel sichtbar ist: IntersectionObserver meldet nur Übergänge, und wird der
- * Inhalt darunter ersetzt, lädt sonst nichts mehr, bis man hoch- und wieder herunterscrollt.
+ * Check for ourselves whether the sentinel is visible: IntersectionObserver only reports transitions, and
+ * if the content beneath it is replaced, nothing loads any more until the page is scrolled up and down again.
  */
 function kickGallerySentinel() {
   const sent = G('gallery-sentinel');
@@ -189,59 +189,60 @@ function bindGallerySentinel() {
 }
 
 /**
- * @param {{restore?: boolean}} [opts] restore=true behält die bereits
- *   gescrollte TIEFE und die Scrollposition bei.
+ * @param {{restore?: boolean}} [opts] restore=true keeps the DEPTH already
+ *   scrolled to and the scroll position.
  *
- * ── Warum es restore gibt (Marcos Bericht) ─────────────────────
- * Nach einem Eigentümerwechsel im Kaufpreis-Dialog rief der Aufrufer schlicht
- * loadGallery(). Das setzt _galPage auf 1 zurück: Wer sich bis Zeile 50
- * durchgescrollt hatte, stand plötzlich vor 60 statt 300 Kacheln. Das Dokument
- * schrumpft, der Browser klemmt den Scrollbalken ans neue Ende — der gefühlte
- * „Sprung nach oben". Und weil der Sentinel dabei sichtbar BLEIBT, meldet der
- * IntersectionObserver keinen Übergang: Es lud erst wieder, nachdem man hoch-
- * und zurückgescrollt war. Beides genau wie gemeldet.
+ * ── Why restore exists (Marco's report) ─────────────────────
+ * After an owner change in the purchase-price dialog, the caller simply called
+ * loadGallery(). That resets _galPage to 1: whoever had scrolled down to row 50
+ * suddenly faced 60 tiles instead of 300. The document shrinks, the browser
+ * clamps the scrollbar to the new end — the felt "jump to the top". And
+ * because the sentinel STAYS visible through this, IntersectionObserver
+ * reports no transition: it only loaded again after scrolling up and back
+ * down. Both exactly as reported.
  *
- * restore holt die volle Tiefe in EINER Anfrage zurück (der Server deckelt
- * page_size bei MAX_PAGE_SIZE=500; darüber übernimmt der Sentinel wie sonst)
- * und stellt die Scrollposition nach dem Zeichnen wieder her.
+ * restore fetches the full depth back in ONE request (the server caps
+ * page_size at MAX_PAGE_SIZE=500; above that the sentinel takes over as
+ * usual) and restores the scroll position after drawing.
  */
 export async function loadGallery(opts = {}) {
   filterZahlZeigen();
-  // Tiefe und Position merken, BEVOR irgendetwas zurückgesetzt wird.
-  const tiefe = opts.restore ? Math.max(1, _galPage) : 1;
+  // Remember depth and position BEFORE anything is reset.
+  const depth = opts.restore ? Math.max(1, _galPage) : 1;
   const scrollY = opts.restore ? window.scrollY : null;
-  // Vielfaches von GAL_PAGE_SIZE unter der Serverdeckelung — sonst stimmt die Seitenrechnung für das nächste
-  // Nachladen nicht mehr.
-  const holen = Math.min(tiefe * GAL_PAGE_SIZE, 480);
+  // A multiple of GAL_PAGE_SIZE under the server cap — otherwise the page math for the next load-more
+  // no longer lines up.
+  const fetchSize = Math.min(depth * GAL_PAGE_SIZE, 480);
 
-  // Platzhalter nur ohne Kacheln: Stehende bleiben bis zur Antwort, sonst blitzte eine leere Wand auf.
+  // Placeholder only without tiles: an existing list stays until the response arrives, otherwise an
+  // empty wall flashed up.
   const gal = G('gallery');
   if (!gallerySets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
     setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
   }
-  galerieLaden.start();
+  galleryGuard.start();
   _galPage = 1;
-  // Bis die erste Seite da ist, lädt der Sentinel nichts nach: Er fragte sonst Seite 2 einer alten Liste ab.
+  // Until the first page is there, the sentinel loads nothing more: otherwise it would request page 2 of
+  // a stale list.
   _galDone = true;
   _galLoadingMore = false;
-  const hatteListe = gallerySets.length > 0;
-  const d = await galerieLaden.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, holen)}`));
+  const hadList = gallerySets.length > 0;
+  const d = await galleryGuard.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, fetchSize)}`));
   if (d === undefined) return;
-  if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) {
-    if (hatteListe) renderGallery();
+  if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hadList })) {
+    if (hadList) renderGallery();
     return;
   }
   setGallerySets(d.sets || []);
   _galTotal = d.total ?? gallerySets.length;
-  // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste Folgeseite am richtigen
-  // Versatz ansetzt.
+  // Align the page counter with the amount actually fetched, so the next page starts at the right offset.
   _galPage = Math.max(1, Math.ceil(gallerySets.length / GAL_PAGE_SIZE));
   _galDone = gallerySets.length >= _galTotal;
   bindGallerySentinel();
-  // Füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis.
+  // If the first page doesn't fill the screen, there would never be a scroll event.
   requestAnimationFrame(maybeLoadMoreGallery);
 
-  // Die Themen nennt der Server: gallerySets hält nur die geladenen Seiten.
+  // The server names the themes: gallerySets only holds the pages loaded so far.
   const themeEl = G('gtheme');
   if (themeEl && Array.isArray(d.themes)) {
     const current = themeEl.value;
@@ -257,23 +258,23 @@ export async function loadGallery(opts = {}) {
   }
   renderGallery();
   loadStats();
-  // Erst NACH dem Zeichnen zurückspringen — vorher ist das Dokument noch kurz und der Browser würde die
-  // Position wieder abschneiden.
+  // Only jump back AFTER drawing — before that the document is still short and the browser would clip
+  // the position again.
   if (scrollY != null) requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
   enrichGalleryWithPrices();
 }
 export function renderGallery() {
-  // Filtern und Sortieren macht der Server (setsLesen in src/sets/lesen.ts) — hier wird nur noch gezeichnet,
-  // was geladen ist. Andernfalls würde ein Filter bloss die aktuell geladene Seite durchsuchen.
+  // Filtering and sorting is done by the server (setsLesen in src/sets/lesen.ts) — this only draws what
+  // is already loaded. Otherwise a filter would merely search the currently loaded page.
   const q = G('gs')?.value?.toLowerCase() || '';
   const list = gallerySets;
   const c = G('gallery');
-  // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde „Noch keine Sets“ über einer
-  // Sammlung, die nur ausgeblendet ist.
-  const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
-  // Ohne ein einziges Set filtern und sortieren die Felder nichts (N5).
-  G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !gefiltert);
-  if (gefiltert)
+  // A filter with no search text (theme, storage location) is a filter too: otherwise "No sets yet"
+  // would show over a collection that is merely hidden.
+  const filtered = !!(q || G('gtheme')?.value || lagerModus('gallery'));
+  // Without a single set, the fields filter and sort nothing (N5).
+  G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !filtered);
+  if (filtered)
     meldeTreffer(
       list.length
         ? tRaw('treffer.sets', { n: _galTotal || list.length })
@@ -284,7 +285,7 @@ export function renderGallery() {
   if (!list.length) {
     setzeHtml(
       c,
-      gefiltert
+      filtered
         ? leerZustand({
             ico: 'suche',
             titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
@@ -299,26 +300,26 @@ export function renderGallery() {
     );
     return;
   }
-  if (alsKarten()) {
+  if (asTiles()) {
     setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
     setzeHtml(c, setsTabelle(list));
-    observeLazyImages(c); // fehlte für die Listenansicht komplett
+    observeLazyImages(c); // was completely missing for the list view
   }
 }
 /**
- * Preise in die bestehenden Kacheln nachtragen statt die Wand neu zu bauen: Neu gebaute <img> blendeten
- * erneut ein und liessen die Galerie flackern.
+ * Backfill prices into the existing tiles instead of rebuilding the whole wall: freshly built <img>
+ * elements faded in again and made the gallery flicker.
  */
 export function updateGalleryPrices() {
   const bySet = new Map(gallerySets.map(x => [x.set_number, x]));
   alle('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor ?? '');
     if (!s) return;
-    const inhalt = preisZeile(s);
-    setzeHtml(el, inhalt);
-    el.hidden = !inhalt;
+    const content = priceLine(s);
+    setzeHtml(el, content);
+    el.hidden = !content;
   });
   alle('[data-tabwert-for]').forEach(el => {
     const s = bySet.get(el.dataset.tabwertFor ?? '');
@@ -327,61 +328,62 @@ export function updateGalleryPrices() {
 }
 
 /**
- * Preis und Prozent der Tile mit Beschriftung: Ohne sie war nicht zu sehen, ob der Betrag Markt- oder
- * Kaufpreis ist und wogegen das Prozent rechnet. Ohne geladenen Marktpreis steht der mengengewichtete
- * Kaufpreis da.
+ * Price and percentage of the tile with a label: without it there was no telling whether the amount was
+ * the market or purchase price, or what the percentage was computed against. Without a loaded market
+ * price, the quantity-weighted purchase price shows instead.
  * @param {Tile} s
  */
-function preisZeile(s) {
-  const kauf = s.avg_purchase_price ?? s.max_purchase_price;
-  // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
-  const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
-  const kaufBetrag = kauf != null ? fmtGeld(kauf, accountCurrency) : s._price ? fmtGeld(s._price, accountCurrency) : '';
-  const betrag = markt
+function priceLine(s) {
+  const buy = s.avg_purchase_price ?? s.max_purchase_price;
+  // The server says where kachel_preis comes from: without a market price it is the purchase price.
+  const market = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
+  const buyAmount = buy != null ? fmtGeld(buy, accountCurrency) : s._price ? fmtGeld(s._price, accountCurrency) : '';
+  const amount = market
     ? fmtN(s._price, accountCurrency)
-    : s.kaufpreis_geschaetzt && kaufBetrag
-      ? String(geschaetztKauf(kaufBetrag))
-      : kaufBetrag;
-  // Ein Geschenk steht als Plakette beim Zustand: Im Preiskasten las es sich als Eigenschaft des Marktpreises.
-  const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
-  if (!betrag && !pnl) return '';
-  const art = betrag
-    ? html`<span class="preis-art">${tRaw(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>`
+    : s.kaufpreis_geschaetzt && buyAmount
+      ? String(geschaetztKauf(buyAmount))
+      : buyAmount;
+  // A gift shows as a badge next to the condition: in the price box it read as a property of the market price.
+  const pnl = istGeschenk(buy) ? '' : pnlBadge(s._pnl_pct, buy);
+  if (!amount && !pnl) return '';
+  const kind = amount
+    ? html`<span class="preis-art">${tRaw(market ? 'gallery.card.market' : 'gallery.card.paid')}</span>`
     : '';
   const pct = pnl
     ? html`<span title="${tRaw('gallery.card.pnl_hint')}"><span class="vh">${tRaw('gallery.card.pnl_hint')}: </span>${pnl}</span>`
     : '';
-  return html`${art}<span class="preis">${rawHtml(betrag)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
+  return html`${kind}<span class="preis">${rawHtml(amount)}</span>${pct ? html`<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
 /** @param {Tile} s */
 function gridCard(s) {
   const src = s.image_local || s.image_url || '';
-  // thumbUrl() greift nur bei lokal abgelegten Bildern (_thumb-Variante). Sets ohne lokale Kopie laufen über
-  // den Proxy — dort erzeugt imgUrl(…, true) die verkleinerte Fassung, sonst käme die volle Auflösung für
-  // eine Tile.
+  // thumbUrl() only applies to locally stored images (the _thumb variant). Sets with no local copy go
+  // through the proxy — there imgUrl(…, true) produces the scaled-down version, otherwise full
+  // resolution would load for a tile.
   const thumb = src ? imgUrl(thumbUrl(src) || src, true) : null;
-  // Ohne Alternativtext: Die Tile ist ein Knopf, ihr Text nennt das Set schon.
+  // No alt text: the tile is a button, its text already names the set.
   const img = src
     ? bildTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
     : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-  // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis, nicht der höchste.
-  const preis = preisZeile(s);
-  // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import für alle Sets derselbe Tag und
-  // sagte nichts. Bei mehreren Käufen (oft im Haushalt) sagt die Tile, dass es der letzte ist.
-  const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
-  const kaeufe = Number(s.acq_count) || 0;
-  const kaufText =
-    kaeufe > 1
-      ? html`<span>${tRaw('gallery.card.kaeufe', { n: kaeufe })}</span> ${kaufFmt}`
-      : html`<span>${tRaw('detail.added')}</span> ${kaufFmt}`;
-  // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat — eine Plakette je Zustand, siehe
+  // Without a loaded market price, the quantity-weighted purchase price, not the highest one.
+  const price = priceLine(s);
+  // The date of the last purchase: when importing, the date added to the account was the same day for
+  // every set and said nothing. With several purchases (often within a household), the tile shows it is
+  // the most recent one.
+  const buyFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
+  const buys = Number(s.acq_count) || 0;
+  const buyText =
+    buys > 1
+      ? html`<span>${tRaw('gallery.card.kaeufe', { n: buys })}</span> ${buyFmt}`
+      : html`<span>${tRaw('detail.added')}</span> ${buyFmt}`;
+  // Condition: the server delivers the conditions present as an aggregate — one badge per condition, see
   // condBadges().
   const condBadge = condBadges(s);
-  // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
-  const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
+  // Without a year, theme or real name, the catalog does not (yet) know this number.
+  const unknown = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   const k = kachelName(3);
-  return html`<div class="sc"${faecherTon(s)} tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
+  return html`<div class="sc"${themeFanTone(s)} tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" data-taste="${tRaw('kachel.entf')}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
@@ -394,34 +396,34 @@ function gridCard(s) {
           ${s.quantity > 1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
           ${condBadge}
           ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="geschenk-badge">${tRaw('finance.gift')}</span>` : ''}
-          ${unbekannt ? html`<span class="unbekannt-badge" title="${tRaw('gallery.card.unbekannt_hint')}">${tRaw('gallery.card.unbekannt')}</span>` : ''}
+          ${unknown ? html`<span class="unbekannt-badge" title="${tRaw('gallery.card.unbekannt_hint')}">${tRaw('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge"${k.teil(1)} data-price-for="${s.set_number}"${preis ? '' : ' hidden'}>${preis}</div>
-      ${kaufFmt ? html`<div class="kachel-datum"${k.teil(2)} title="${t('gallery.card.bought')}">${ico('kalender')} ${kaufText}</div>` : html`<div class="kachel-datum" ${k.teil(2)}></div>`}
+      <div class="price-badge"${k.teil(1)} data-price-for="${s.set_number}"${price ? '' : ' hidden'}>${price}</div>
+      ${buyFmt ? html`<div class="kachel-datum"${k.teil(2)} title="${t('gallery.card.bought')}">${ico('kalender')} ${buyText}</div>` : html`<div class="kachel-datum" ${k.teil(2)}></div>`}
     </div>
   </div>`;
 }
-/** @param {string} feld */
-async function setsSortieren(feld) {
-  const wahl = G('gsort');
-  const [erst, dann] = SPALTEN_SORT[feld];
-  wahl.value = wahl.value === erst ? dann : erst;
+/** @param {string} field */
+async function setsSortieren(field) {
+  const sel = G('gsort');
+  const [first, second] = SPALTEN_SORT[field];
+  sel.value = sel.value === first ? second : first;
   await loadGallery();
   /** @type {HTMLElement | null} */ (
-    document.querySelector(`#gallery [data-click="setsSortieren"][data-arg="${feld}"]`)
+    document.querySelector(`#gallery [data-click="setsSortieren"][data-arg="${field}"]`)
   )?.focus();
 }
 
 // Add set via SSE stream
-/** Am Telefon steckt der Filter hinter einem Sinnbild; die Zahl sagt, dass gerade gefiltert wird. */
+/** On a phone the filter sits behind an icon; the number says that a filter is currently active. */
 export function filterZahlZeigen() {
-  const zahl = G('gallery-filter-zahl');
-  if (!zahl) return;
+  const num = G('gallery-filter-zahl');
+  if (!num) return;
   const n = ['gtheme', 'storage-gallery'].filter(id => /** @type {HTMLInputElement | null} */ (G(id))?.value).length;
-  zahl.textContent = n ? String(n) : '';
-  zahl.hidden = !n;
+  num.textContent = n ? String(n) : '';
+  num.hidden = !n;
 }
 
 beiTelefonWechsel(() => {
@@ -443,8 +445,8 @@ G('vl').onclick = () => {
   G('vg').setAttribute('aria-pressed', 'false');
   renderGallery();
 };
-// Suche um 250 ms entprellt: Jeder Tastendruck lädt neu (Suche und Sortierung rechnet der Server) und baut
-// das ganze Grid samt Lazy-Image-Observer neu auf — bei grossen Sammlungen spürbar ruckelig.
+// Search debounced by 250 ms: every keystroke reloads (search and sort are computed by the server) and
+// rebuilds the whole grid plus the lazy-image observer — noticeably choppy for large collections.
 G('gs').addEventListener('input', () => {
   clearTimeout(G('gs')._t);
   G('gs')._t = setTimeout(loadGallery, 250);
@@ -452,52 +454,54 @@ G('gs').addEventListener('input', () => {
 G('gsort').addEventListener('change', () => loadGallery());
 
 /**
- * Die eine Rückfrage vor dem Löschen. Gehört das Set mehreren Konten, nennt sie Konten und Stückzahlen und lässt
- * wählen: Gelöscht wurde sonst still auch das Exemplar des anderen Kontos.
+ * The one confirmation before deleting. If the set belongs to several accounts, it names accounts and
+ * quantities and lets you choose: otherwise the other account's copy was silently deleted too.
  * @param {string} sn @param {string} name @param {Tile | null | undefined} set
- * @returns {Promise<string | null>} '' für alle Konten, eine Kontonummer, oder null bei Abbruch
+ * @returns {Promise<string | null>} '' for all accounts, an account id, or null if cancelled
  */
-async function loeschWahl(sn, name, set) {
-  const titel = tRaw('gallery.delete.title');
-  const fremd = (set?.owners || []).some(o => o.id !== loggedInAccount?.id);
-  if (!fremd) return (await confirmDelete(titel, tRaw('gallery.delete.name_parts', { name }))) ? '' : null;
+async function deletionChoice(sn, name, set) {
+  const title = tRaw('gallery.delete.title');
+  const foreign = (set?.owners || []).some(o => o.id !== loggedInAccount?.id);
+  if (!foreign) return (await confirmDelete(title, tRaw('gallery.delete.name_parts', { name }))) ? '' : null;
   const ad = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/acquisitions`);
-  const konten = (set?.owners || []).map(o => ({
+  const accounts = (set?.owners || []).map(o => ({
     ...o,
     n: (ad?.acquisitions || [])
       .filter(a => (a.owner_user_id ?? loggedInAccount?.id) === o.id)
       .reduce((s, a) => s + (a.quantity || 0), 0),
   }));
-  const liste = konten.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
-  const gesamt = konten.reduce((s, k) => s + k.n, 0);
-  // Vorgewählt ist das Wenigste, das eigene Exemplar zuerst: Enter löschte sonst auch das fremde.
-  const reihe = [...konten].sort((x, y) => Number(y.id === loggedInAccount?.id) - Number(x.id === loggedInAccount?.id));
-  return loeschenMitWahl(titel, tRaw('gallery.delete.konten', { name, konten: liste }), [
-    ...reihe.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
-    { wert: '', text: tRaw('gallery.delete.alle', { n: gesamt }) },
+  const list = accounts.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
+  const total = accounts.reduce((s, k) => s + k.n, 0);
+  // Pre-selected is the fewest, the own copy first: Enter would otherwise also have deleted the other one.
+  const order = [...accounts].sort(
+    (x, y) => Number(y.id === loggedInAccount?.id) - Number(x.id === loggedInAccount?.id),
+  );
+  return loeschenMitWahl(title, tRaw('gallery.delete.konten', { name, konten: list }), [
+    ...order.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
+    { wert: '', text: tRaw('gallery.delete.alle', { n: total }) },
   ]);
 }
 
 /**
- * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht.
- * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
+ * Delete a set, with exactly ONE confirmation here, at the one place that deletes.
+ * @returns {Promise<boolean>} true if it was really deleted
  * @param {string} sn
  */
 export async function delSet(sn) {
-  const bekannt =
+  const known =
     (openSet && openSet.set_number === sn ? openSet : null) || (gallerySets || []).find(x => x.set_number === sn);
-  const name = bekannt?.name || sn;
-  const konto = await loeschWahl(sn, name, bekannt);
-  if (konto === null) return false;
-  const d = await api('DELETE', `/v1/sets/${sn}${konto ? `?accounts=${konto}` : ''}`);
+  const name = known?.name || sn;
+  const account = await deletionChoice(sn, name, known);
+  if (account === null) return false;
+  const d = await api('DELETE', `/v1/sets/${sn}${account ? `?accounts=${account}` : ''}`);
   if (!d.success) {
     toast(d.error, 'error');
     return false;
   }
-  const wem = (bekannt?.owners || []).find(o => String(o.id) === konto);
+  const owner = (known?.owners || []).find(o => String(o.id) === account);
   const nr = CSS.escape(sn);
   geloeschtMitRueckgaengig(
-    `${tRaw('users.deleted', { name })}${wem ? ` · ${kontoAnzeige(wem)}` : ''}`,
+    `${tRaw('users.deleted', { name })}${owner ? ` · ${kontoAnzeige(owner)}` : ''}`,
     d,
     undefined,
     `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
@@ -517,12 +521,12 @@ export async function reimportParts(sn) {
 }
 
 export async function enrichGalleryWithPrices() {
-  // Mit Kontofilter wie loadStats(): loadGallery() ruft dies bei jedem Wechsel des Filters.
+  // With the account filter like loadStats(): loadGallery() calls this on every filter change.
   const pnl = await api('GET', `/v1/finance/pnl${scopeQuery('gallery')}`);
   if (!pnl.success) return;
   setPnlBySet({});
-  // Betrag und G&V der Tile rechnet der Server (kachel_preis, kachel_pnl_pct in /finance/pnl,
-  // src/finanzen/setValue.ts kachelWerte); im Haushalt tragen alle Zeilen eines Sets dieselben Werte.
+  // The server computes the tile's amount and P&L (kachel_preis, kachel_pnl_pct in /finance/pnl,
+  // src/finanzen/setValue.ts kachelWerte); in a household, every row of a set carries the same values.
   for (const s of pnl.sets) {
     if (!pnlBySet[s.set_number])
       pnlBySet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
@@ -536,8 +540,8 @@ export async function enrichGalleryWithPrices() {
       _pnl_pct: pnlBySet[s.set_number]?.pnl_pct ?? undefined,
     })),
   );
-  // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen — ein voller renderGallery()
-  // erzeugt alle <img> neu und lässt sie erneut einblenden (sichtbares Flackern nach dem Laden).
+  // Only backfill the price containers instead of rebuilding the whole gallery — a full renderGallery()
+  // recreates every <img> and makes them fade in again (visible flicker after loading).
   updateGalleryPrices();
 }
 
@@ -552,7 +556,7 @@ G('btn-set-csv-template').onclick = e => {
   a.click();
 };
 
-// Andere Module melden, dass sich der Bestand geändert hat; neu geladen wird hier.
+// Other modules report that the inventory has changed; reloading happens here.
 subscribe('setsGeaendert', () => {
   loadGallery();
   loadStats();
@@ -566,8 +570,8 @@ subscribe('kennzahlenLaden', () => loadStats());
 subscribe('sammlungZeichnen', () => renderGallery());
 subscribe('setAggregat', agg => applySetAggregate(/** @type {Partial<Tile> | null | undefined} */ (agg)));
 
-// Kein Kommentar zwischen den Namen: test/bundle-smoke.test.js trennt die Schlüssel an Kommas, und ein
-// Kommentar wanderte in den ersten Namen.
+// No comment between the names: test/bundle-smoke.test.js splits the keys at commas, and a comment
+// would wander into the first name.
 /**
  * @param {string} sn
  * @param {Event | undefined} ev
