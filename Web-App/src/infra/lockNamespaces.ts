@@ -18,8 +18,8 @@ export const LOCKS = {
   /** Zweiter Wert: Nummer der Zieltabelle. */
   CSV_IMPORT: 58,
   /** Zweiter Wert: user_id. */
-  TEILE_SUMMARY: 77,
-  TEILE_KATALOG: 79,
+  PARTS_SUMMARY: 77,
+  PARTS_CATALOG: 79,
   /** Alles, was Verwalter entzieht, deaktiviert oder löscht; zweiter Wert 0. */
   VERWALTER_BESTAND: 81,
   /** Zweiter Wert: hashtext('<user_id>|<schlüssel>'). */

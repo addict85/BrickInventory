@@ -83,7 +83,7 @@ async function resultFrom(
   const uid = n.user_id;
   switch (n.quelle) {
     case 'teile_csv':
-      return csvImportBericht(await kx.teile.importiereTeileCsv(uid, n.eingabe.text));
+      return csvImportBericht(await kx.parts.importPartsCsv(uid, n.eingabe.text));
     case 'figuren_csv':
       return csvImportBericht(await kx.minifigs.importMinifigsCsv(uid, n.eingabe.text));
     case 'merkliste_csv':

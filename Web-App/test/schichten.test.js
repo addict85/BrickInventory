@@ -613,8 +613,8 @@ function routenOhneFachablauf() {
 function gebundeneDienste() {
   const raus = new Map();
   for (const b of fs.readdirSync(path.join(ROOT, 'src'))) {
-    const f = path.join(ROOT, 'src', b, 'bereich.ts');
-    if (!fs.existsSync(f)) continue;
+    const f = ['bereich.ts', 'area.ts'].map(n => path.join(ROOT, 'src', b, n)).find(p => fs.existsSync(p));
+    if (!f) continue;
     const s = fs.readFileSync(f, 'utf8');
     const namen = new Set();
     for (const m of s.matchAll(/^ {4,8}(\w+): (?:mit\(|imSystem\(|\(\(|\(<)/gm)) namen.add(m[1]);
@@ -627,10 +627,10 @@ function gebundeneDienste() {
 function routenNurUeberFabrik() {
   // Ein Import aus der index.ts liefe über die Fassade des Prozesses; die Route sähe
   // nicht, welche Dienste sie braucht. Ausgenommen: die Wächter vor allen Routern.
-  // Gegenprobe (13.11.2026): `import { teileLesen } from '../../src/teile'` in
-  // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: teile.teileListe“.
+  // Gegenprobe (13.11.2026): `import { readParts } from '../../src/parts'` in
+  // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: parts.partsList“.
   const dienste = gebundeneDienste();
-  assert.ok(dienste.get('teile')?.has('teileLesen') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
+  assert.ok(dienste.get('parts')?.has('readParts') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
   const treffer = [];
   for (const d of tsUnter('routes')) {
     if (d === 'routes/api_v1/middleware.ts') continue;
@@ -697,7 +697,7 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und inde
   // sind die Helfer ohne Fachbereich (infra, vertrag, http) und die HTTP-Seiten
   // unter src/<bereich>/http/, die nur Routen und der Zusammenbau holen.
   // Gegenprobe (11.11.2026): `export { katalogTeil as _probe } from '../katalog/katalogPflege'`
-  // in src/teile/manuelleTeile.ts → rot.
+  // in src/parts/manualParts.ts → rot.
   const FREI = ['infra', 'vertrag', 'http'];
   const tief = (d, z) => {
     const b = bereichVon(`${z}/`);
@@ -945,7 +945,7 @@ const STUFEN = [
   ['src/finanzen'],
   ['src/bestand'],
   ['src/sets'],
-  ['src/teile', 'src/minifigs', 'src/wanted', 'src/gutscheine'],
+  ['src/parts', 'src/minifigs', 'src/wanted', 'src/gutscheine'],
   ['src/collection', 'src/verwaltung'],
   ['src/dienste.ts'],
   ['jobs', 'routes'],
@@ -1015,7 +1015,7 @@ test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
   // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
   // vorbei fände keinen Schlüssel. Auch `import type` zählt, Ausnahmen gibt es keine.
   // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
-  // src/teile/manuelleTeile.ts → rot (05.11.2026); `import { erzeugeBrickset } from
+  // src/parts/manualParts.ts → rot (05.11.2026); `import { erzeugeBrickset } from
   // '../clients/brickset'` in startup/verdrahtung.ts → rot (14.11.2026).
   const kanten = bereichsKanten();
   const treffer = kanten

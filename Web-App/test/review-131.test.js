@@ -61,7 +61,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('marco','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='marco'`)).id;
 
-  const { teileAbfrage } = require('./helpers/sources').handlerModul(_req);
+  const { partsQuery } = require('./helpers/sources').handlerModul(_req);
 
   await t.test('ohne eigene Teile kommt die Liste aus dem CSV-Bestand', async () => {
     await db.run(`INSERT INTO rb_inventories (id, set_num, version) VALUES (1,'10280-1',1)`);
@@ -72,7 +72,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
     await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
                   VALUES (1,'3001',4,6,false)`);
 
-    const r = await teileAbfrage([uid], { set_number: '10280-1' });
+    const r = await partsQuery([uid], { set_number: '10280-1' });
     assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
     assert.equal(r.total, 1);
     assert.equal(r.parts[0].part_number, '3001');
@@ -83,7 +83,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
     // Namen auf, den das Teilemodul nie exportiert hat — TypeError statt
     // Antwort. Ohne Schlüssel wird der Zweig übersprungen; DASS er keinen
     // TypeError mehr wirft, sichert test/require-exports.test.js ab.
-    const r = await teileAbfrage([uid], { set_number: '99999-1' });
+    const r = await partsQuery([uid], { set_number: '99999-1' });
     assert.equal(r.total, 0);
     assert.equal(r.source, 'db');
   });

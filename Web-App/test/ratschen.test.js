@@ -295,12 +295,13 @@ function wegeAnDenKontextenVorbei() {
     [],
     'Dienste kommen über den Kontext oder als Parameter, nicht vom Prozess',
   );
-  const bereiche = fs.readdirSync(src).filter(b => fs.existsSync(path.join(src, b, 'bereich.ts')));
+  const fabrikDatei = b => ['bereich.ts', 'area.ts'].map(f => path.join(src, b, f)).find(p => fs.existsSync(p));
+  const bereiche = fs.readdirSync(src).filter(b => fabrikDatei(b));
   assert.ok(bereiche.length >= 15, `nur ${bereiche.length} Bereiche gefunden — greift die Suche noch?`);
   // Was ein Bereich als Dienst bindet, darf keine index.ts zusätzlich als Wert exportieren.
   const dienste = new Map(
     bereiche.map(b => {
-      const s = fs.readFileSync(path.join(src, b, 'bereich.ts'), 'utf8');
+      const s = fs.readFileSync(fabrikDatei(b), 'utf8');
       const n = new Set();
       for (const m of s.matchAll(/^ {4,8}(\w+): /gm)) n.add(m[1]);
       return [b, n];
@@ -1323,6 +1324,7 @@ const ENGLISCH_UMGESTELLT = [
   'src/wanted',
   'src/collection',
   'src/throttle',
+  'src/parts',
 ];
 const nichtUmgestellt = (/** @type {string} */ f) => {
   const rel = path.relative(WEB, f).replace(/\\/g, '/');

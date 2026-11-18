@@ -477,7 +477,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   await t.test('9. ein beim Anlegen geholtes Bild steht im Bericht', async () => {
     // Der Gewinn daraus, dass beschreibePosten NACH der Schleife läuft: Ein
     // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
-    // Anlegen (manuellesTeilAnlegen → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
+    // Anlegen (addManualPart → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
     // der Schleife zeigte für genau diese Posten nichts.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
@@ -491,7 +491,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
       vorschau: false,
       anleger: {
-        // So, wie manuellesTeilAnlegen es täte: erst den Katalog füllen, dann melden.
+        // So, wie addManualPart es täte: erst den Katalog füllen, dann melden.
         teil: async () => {
           await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)
                         VALUES ('7777',4,'https://cdn.example/7777.png')

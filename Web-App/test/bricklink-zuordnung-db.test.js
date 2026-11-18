@@ -154,10 +154,10 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
-  const H = _req('src/teile/abfragen.js');
+  const H = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
 
-  const teile = await H.manuelleTeileListe([uid], uid);
+  const teile = await H.manualPartsList([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
   assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
   assert.equal(
@@ -179,7 +179,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   await db.run(`UPDATE bl_mapping SET bl_id='3070neu' WHERE type='part' AND rb_id='3070b'`);
   await db.run(`UPDATE bl_mapping SET bl_id='sw0000'  WHERE type='fig'  AND rb_id='fig-9'`);
 
-  const teile2 = await H.manuelleTeileListe([uid], uid);
+  const teile2 = await H.manualPartsList([uid], uid);
   const teil2 = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3070b');
   assert.equal(
     teil2.bl_part_number,
@@ -202,7 +202,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   // NULL-Wert in seine eigene Gruppe, und jedes Teil ohne Zuordnung stünde
   // einzeln in der Liste.
   await db.run(`DELETE FROM bl_mapping WHERE type='part' AND rb_id='3070b'`);
-  const teile3 = await H.manuelleTeileListe([uid], uid);
+  const teile3 = await H.manualPartsList([uid], uid);
   const teil3 = (Array.isArray(teile3) ? teile3 : teile3.parts || []).find(p => p.part_number === '3070b');
   assert.equal(
     teil3.bl_part_number,
@@ -242,7 +242,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
 
   // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
   // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
-  // Gruppenschlüssel als fertige Spalte (src/teile/partsSummary.ts).
+  // Gruppenschlüssel als fertige Spalte (src/parts/summary.ts).
   /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts.bl_part_number', /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],

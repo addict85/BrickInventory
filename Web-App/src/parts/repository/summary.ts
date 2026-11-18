@@ -5,8 +5,8 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 
-/** Stand der Rohdaten eines Kontos und ob Katalogänderungen offen sind (Migration 0079). */
-export async function rohstand(db: DbSchnittstelle, userId: number): Promise<{ v: number; katalogOffen: boolean }> {
+/** State of an account's raw data and whether catalog changes are pending (migration 0079). */
+export async function rawState(db: DbSchnittstelle, userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
             EXISTS (SELECT 1 FROM parts_catalog_pending) AS katalog_offen`,
@@ -15,7 +15,7 @@ export async function rohstand(db: DbSchnittstelle, userId: number): Promise<{ v
   return { v: Number(r?.v) || 0, katalogOffen: !!r?.katalog_offen };
 }
 
-export async function gebauterStand(db: DbSchnittstelle, userId: number): Promise<number | null> {
+export async function builtState(db: DbSchnittstelle, userId: number): Promise<number | null> {
   const r = await db.get<{ built_version: number }>(
     'SELECT built_version FROM parts_summary_state WHERE user_id = $1',
     [userId],
@@ -23,26 +23,25 @@ export async function gebauterStand(db: DbSchnittstelle, userId: number): Promis
   return r ? Number(r.built_version) : null;
 }
 
-/** Dieselbe Abfrage für den vollen Aufbau und das Nachziehen, damit beide
- * nicht auseinanderlaufen. */
-function zusammenfassungEinfuegen(nurGruppen: boolean): string {
+/** The same query for the full rebuild and for the follow-up, so the two can't drift apart. */
+function summaryInsert(groupsOnly: boolean): string {
   return `
       INSERT INTO parts_summary (user_id, part_key, color_id, part_number, bl_part_number,
         part_name, color_name, color_hex, category_name, image_url, image_local,
         is_spare, total_quantity, in_sets, storage)
       SELECT p.user_id,
-             -- Gruppiert wird nach der BrickLink-Nummer, soweit eine abweicht.
+             -- Grouped by the BrickLink number, wherever one differs.
              ${blNummerSql('p.part_number')},
              p.color_id,
              MIN(p.part_number), MIN(${blNummerSql('p.part_number')}),
              MIN(${TEIL.name}), MIN(${TEIL.farbname}), MIN(${TEIL.farbcode}), MIN(${TEIL.kategorie}),
              MIN(${TEIL.bild}), MIN(${TEIL.bildDatei}),
-             -- Ersatzteil ist eine Angabe der Setliste; dasselbe Teil kann in
-             -- einem Set Ersatz und im nächsten Pflicht sein.
+             -- Spare is a property of the set list; the same part can be spare in
+             -- one set and required in the next.
              bool_or(COALESCE(tm_k.is_spare, false)),
              SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}),
              STRING_AGG(DISTINCT p.set_number, ','),
-             -- Alle Lagerorte der Gruppe: Dasselbe Teil liegt aus mehreren Sets in verschiedenen Kisten.
+             -- All storage locations of the group: the same part sits in different bins from several sets.
              NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '')
         FROM parts p
         ${mengeJoin('p', 'sm', '= $1')}
@@ -51,7 +50,7 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
         LEFT JOIN ${lagerorte()} lo ON lo.id = p.storage_id
         ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${
-         nurGruppen
+         groupsOnly
            ? `
          AND ${blNummerSql('p.part_number')} = ANY($2)`
            : ''
@@ -59,20 +58,20 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`;
 }
 
-export async function sperreKonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
+export async function lockAccount(tx: DbSchnittstelle, userId: number): Promise<boolean> {
   return !!(
-    await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, $2) AS ok', [LOCKS.TEILE_SUMMARY, userId])
+    await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, $2) AS ok', [LOCKS.PARTS_SUMMARY, userId])
   )?.ok;
 }
 
-/** Dieselbe Sperre, aber wartend: Ein laufender Neuaufbau wird abgewartet. */
-export async function warteAufKonto(tx: DbSchnittstelle, userId: number): Promise<void> {
-  await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, userId]);
+/** Same lock, but waiting: an in-progress rebuild gets waited out. */
+export async function waitForAccount(tx: DbSchnittstelle, userId: number): Promise<void> {
+  await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, userId]);
 }
 
-export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {
+export async function rebuildAll(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1', [userId]);
-  await tx.run(zusammenfassungEinfuegen(false), [userId]);
+  await tx.run(summaryInsert(false), [userId]);
   await tx.run(
     `
       INSERT INTO parts_summary_state (user_id, built_version, built_at)
@@ -82,21 +81,21 @@ export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number
   );
 }
 
-export async function baueGruppenNeu(tx: DbSchnittstelle, userId: number, gruppen: string[]): Promise<void> {
+export async function rebuildGroups(tx: DbSchnittstelle, userId: number, gruppen: string[]): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1 AND part_key = ANY($2)', [userId, gruppen]);
-  await tx.run(zusammenfassungEinfuegen(true), [userId, gruppen]);
+  await tx.run(summaryInsert(true), [userId, gruppen]);
 }
 
-export function analysiere(db: DbSchnittstelle) {
+export function analyze(db: DbSchnittstelle) {
   return db.exec('ANALYZE parts_summary');
 }
 
-export async function sperreKatalogNachzug(tx: DbSchnittstelle): Promise<boolean> {
-  return !!(await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, 0) AS ok', [LOCKS.TEILE_KATALOG]))?.ok;
+export async function lockCatalogFollowUp(tx: DbSchnittstelle): Promise<boolean> {
+  return !!(await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, 0) AS ok', [LOCKS.PARTS_CATALOG]))?.ok;
 }
 
-/** Was danach eintrifft, bleibt für den nächsten Lauf. */
-export async function holeOffeneNummern(tx: DbSchnittstelle): Promise<string[]> {
+/** What arrives after stays for the next run. */
+export async function pendingNumbers(tx: DbSchnittstelle): Promise<string[]> {
   return [
     ...new Set(
       (await tx.all<{ number: string }>('DELETE FROM parts_catalog_pending RETURNING number')).map(r => r.number),
@@ -104,13 +103,13 @@ export async function holeOffeneNummern(tx: DbSchnittstelle): Promise<string[]> 
   ];
 }
 
-/** Alle Stände verwerfen: Jedes Konto baut beim nächsten Lesen neu. */
-export async function verwirfAlleStaende(tx: DbSchnittstelle): Promise<number> {
+/** Discard all states: every account rebuilds on its next read. */
+export async function discardAllStates(tx: DbSchnittstelle): Promise<number> {
   return (await tx.run('DELETE FROM parts_summary_state')).changes ?? 0;
 }
 
-/** Vorher wie nachher: Eine neue Zuordnung verschiebt ein Teil in eine andere Gruppe. */
-export function betroffeneGruppen(tx: DbSchnittstelle, nummern: string[]) {
+/** Before and after: a new mapping moves a part into another group. */
+export function affectedGroups(tx: DbSchnittstelle, nummern: string[]) {
   return tx.all<{ user_id: number; part_key: string }>(
     `
       SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key

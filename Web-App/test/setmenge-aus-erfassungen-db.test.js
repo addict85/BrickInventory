@@ -249,7 +249,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
   // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast in
   // db/bestandsmenge.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
-  // hat — genau dieser Fehler ist in src/teile/abfragen.ts schon aufgeflogen.
+  // hat — genau dieser Fehler ist in src/parts/queries.ts schon aufgeflogen.
   assert.equal(
     typeof kachel.quantity,
     'number',

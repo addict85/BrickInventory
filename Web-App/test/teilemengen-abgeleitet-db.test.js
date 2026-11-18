@@ -340,7 +340,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     [haupt],
   );
 
-  const P = _req('src/teile/abfragen.js');
+  const P = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
   const S = _req('src/bestand/kennzahlen.js');
   const SH = _req('src/bestand/gemeinsam.js');
@@ -373,7 +373,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   assert.equal(Number(st2.total_minifigs), 5, `Haushalt: 2 + 2 + 1 = 5, bekam ${st2.total_minifigs}`);
 
   // ── Die Listen ───────────────────────────────────────────────────────────
-  const liste = await P.teileAbfrage([haupt], { page_size: 60 });
+  const liste = await P.partsQuery([haupt], { page_size: 60 });
   const zeileVon = (l, nr) => (l.parts || []).find(x => x.part_number === nr);
   assert.equal(
     Number(zeileVon(liste, '3001').total_quantity),
@@ -387,7 +387,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
   // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast haengt
   // der JSON-Typ daran, welcher Zweig geantwortet hat — genau dieser Fehler
-  // ist in src/teile/abfragen.ts schon einmal aufgeflogen.
+  // ist in src/parts/queries.ts schon einmal aufgeflogen.
   assert.equal(
     typeof zeileVon(liste, '3001').total_quantity,
     'number',
@@ -412,18 +412,18 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     4,
     'Die Figuren-Kennzahl rechnet nicht mit',
   );
-  // teileKennzahlenLesen zaehlt ABSICHTLICH nur Set-Teile — manuell erfasste haben in
+  // partStatsQuery zaehlt ABSICHTLICH nur Set-Teile — manuell erfasste haben in
   // der Oberflaeche ihren eigenen Bereich (der Filter steht in
-  // src/teile/partsSummary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
+  // src/parts/summary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
   // Zahl ist hier kein Nebenbefund: Stuende 17, zaehlte die Kennzahl die …
   assert.equal(
-    Number((await P.teileKennzahlenLesen([haupt])).total_parts),
+    Number((await P.partStatsQuery([haupt])).total_parts),
     12,
     'Die Teile-Kennzahl zaehlt nur Set-Teile: 6 × 2 Exemplare = 12',
   );
 
   // ── Die Listen der MANUELLEN Positionen ─────────────────────────────────
-  const man = await P.manuelleTeileListe([haupt], haupt, { page_size: 60 });
+  const man = await P.manualPartsList([haupt], haupt, { page_size: 60 });
   const manZeile = man.find(x => x.part_number === '3070b');
   assert.ok(manZeile, 'Die manuelle Position fehlt in der Liste');
   assert.equal(Number(manZeile.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manZeile.quantity}`);
@@ -433,10 +433,10 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   // ── „Kann ich das bauen?" ───────────────────────────────────────────────
   //
-  // besesseneMengenAbfrage trennt GESAMT von LOSE: Ein Teil, das in einem Set
+  // ownedQuantitiesQuery trennt GESAMT von LOSE: Ein Teil, das in einem Set
   // steckt, ist vorhanden, aber nicht greifbar. Genau diese Trennung braucht
   // die Fallunterscheidung an zwei Stellen in EINER Abfrage.
-  const besitz = await P.besesseneMengenAbfrage(
+  const besitz = await P.ownedQuantitiesQuery(
     [haupt],
     [
       { part_number: '3001', color_id: 4 },
@@ -460,17 +460,17 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   }
 
   // ── Farben und Zusammenfassung ──────────────────────────────────────────
-  const farben = await P.teileFarbenAbfrage([haupt]);
+  const farben = await P.partColorsQuery([haupt]);
   assert.ok(
     Array.isArray(farben) && farben.length > 0,
     'Die Farbliste ist leer — sie zaehlt mit teilmengeAus() und muesste zwei Farben haben',
   );
 
   // rebuildNow() und nicht rebuild(): Die Listenaufrufe darueber haben ueber
-  // zusammenfassungFrisch() schon einen HINTERGRUNDaufbau angestossen, und der haelt
+  // summaryFresh() schon einen HINTERGRUNDaufbau angestossen, und der haelt
   // die Sperre pg_try_advisory_xact_lock. rebuild() direkt gerufen sieht die
   // Sperre, kehrt stillschweigend zurueck („ein anderer baut gerade") und baut …
-  const { rebuildNow } = _req('src/teile/partsSummary.js');
+  const { rebuildNow } = _req('src/parts/summary.js');
   await rebuildNow(haupt);
   const zus = await db.get(`SELECT total_quantity FROM parts_summary WHERE user_id=$1 AND part_number='3001'`, [haupt]);
   assert.ok(zus, 'Die Zusammenfassung hat das Set-Teil nicht aufgenommen');
@@ -520,7 +520,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'Das Kind muss der GEMEINSAMEN Katalogzahl ebenso folgen: 9 × 1 = 9',
   );
   assert.equal(
-    Number(zeileVon(await P.teileAbfrage([haupt], { page_size: 60 }), '3001').total_quantity),
+    Number(zeileVon(await P.partsQuery([haupt], { page_size: 60 }), '3001').total_quantity),
     18,
     'Die Liste folgt der Katalogzahl nicht: 9 × 2 = 18',
   );
@@ -537,7 +537,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
   await db.run(`UPDATE part_acquisitions SET quantity = 7 WHERE id=$1`, [eine.id]);
   assert.equal(
-    Number(zeileVon(await P.teileAbfrage([haupt], { page_size: 60 }), '3070b').total_quantity),
+    Number(zeileVon(await P.partsQuery([haupt], { page_size: 60 }), '3070b').total_quantity),
     10,
     'Nach 2 → 7 muss die manuelle Position 10 sein (7 + 3) — dann liest die Liste ' + 'sie nicht aus part_acquisitions',
   );
@@ -549,7 +549,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // nicht LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet
   // dann null Stueck, nicht eines.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`, [haupt]);
-  const leer = zeileVon(await P.teileAbfrage([haupt], { page_size: 60 }), '3070b');
+  const leer = zeileVon(await P.partsQuery([haupt], { page_size: 60 }), '3070b');
   assert.ok(
     leer,
     'Die Zeile ohne Erfassung ist aus der Liste verschwunden — ein ' +

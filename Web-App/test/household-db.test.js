@@ -627,8 +627,8 @@ test('Haushalt gegen echte Datenbank', async t => {
     await haeltFigur(db, U.kindB, 'mf-B', { menge: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
-    const nurA = nummern(await handlers.manuelleTeileListe(await household.blickfeldIds(U.eltern, U.kindA)));
-    const alle = nummern(await handlers.manuelleTeileListe(await household.blickfeldIds(U.eltern, 'all')));
+    const nurA = nummern(await handlers.manualPartsList(await household.blickfeldIds(U.eltern, U.kindA)));
+    const alle = nummern(await handlers.manualPartsList(await household.blickfeldIds(U.eltern, 'all')));
     // kindA hat aus einem früheren Test noch ein manuelles Teil ('9999') —
     // deshalb auf Enthaltensein prüfen statt auf die exakte Liste.
     assert.ok(nurA.includes('m-A'), 'eigenes Teil fehlt');

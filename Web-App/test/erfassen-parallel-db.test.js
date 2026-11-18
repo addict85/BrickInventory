@@ -164,7 +164,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
 
   // Manuelle Einträge prüfen im Dienst, Sets im Vertrag (eingabe.stueckzahl und
   // eingabe.preis rufen dieselben Prüfer) — eine Regel.
-  for (const rel of ['src/teile/manuelleTeile.ts', 'src/minifigs/manualMinifigs.ts']) {
+  for (const rel of ['src/parts/manualParts.ts', 'src/minifigs/manualMinifigs.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /geldEingabe\(/, `${rel}: Preis ungeprüft`);
@@ -223,7 +223,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [
     ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
-    ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
+    ['routes/api_v1/parts.ts', 'src/parts/manualParts.ts'],
     ['routes/api_v1/minifigs.ts', 'src/minifigs/manualMinifigs.ts'],
   ]) {
     const src = ohneKommentare(
@@ -298,7 +298,7 @@ test('die Teileliste liefert, was sie meldet', () => {
   assert.match(
     antwort,
     /\.\.\.result/,
-    'Die Antwort übernimmt das Ergebnis von teileAbfrage nicht mehr — dann fehlt page_size ganz',
+    'Die Antwort übernimmt das Ergebnis von partsQuery nicht mehr — dann fehlt page_size ganz',
   );
   assert.doesNotMatch(
     antwort,

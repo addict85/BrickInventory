@@ -9,7 +9,7 @@ import { erzeugeHaushalt } from '../src/haushalt';
 import { erzeugeMail } from '../src/mail';
 import { createIdempotency } from '../src/idempotency';
 import { erzeugeBestand } from '../src/bestand';
-import { erzeugeTeile } from '../src/teile';
+import { createParts } from '../src/parts';
 import { createMinifigs } from '../src/minifigs';
 import { createWanted } from '../src/wanted';
 import { erzeugeGutscheine } from '../src/gutscheine';
@@ -91,7 +91,7 @@ function meldeAuftragsartenAn(d: Dienste): void {
     ...d.finanzen.auftragsarten(),
     ...d.sets.auftragsarten(),
     ...d.collection.jobKinds(),
-    ...d.teile.auftragsarten(),
+    ...d.parts.jobKinds(),
     ...d.verwaltung.auftragsarten(),
   ];
   for (const a of arten) d.auftraege.meldeArtAn(a);
@@ -187,9 +187,9 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     { db, uhr, konfig, katalog, fremdquellen, bilder, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
-  const teile = erzeugeTeile(
+  const parts = createParts(
     { db, uhr, einstellungen, auftraege, haushalt, katalog, fremdquellen, finanzen, bestand },
-    zeige('teile'),
+    zeige('parts'),
   );
   const minifigs = createMinifigs(
     { db, uhr, einstellungen, haushalt, katalog, fremdquellen, auftraege, finanzen, bestand },
@@ -201,7 +201,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   );
   const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen, throttle }, zeige('gutscheine'));
   const collection = createCollection(
-    { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, minifigs, wanted },
+    { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
   const verwaltung = erzeugeVerwaltung(
@@ -225,7 +225,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     },
     zeige('verwaltung'),
   );
-  return { ...grund, finanzen, bestand, sets, teile, minifigs, wanted, gutscheine, collection, verwaltung };
+  return { ...grund, finanzen, bestand, sets, parts, minifigs, wanted, gutscheine, collection, verwaltung };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

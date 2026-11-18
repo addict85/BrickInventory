@@ -7,7 +7,7 @@
  *      (ohne Blick auf `quelle`) → rot: „mit Worker kommt das Ergebnis“
  *   B  importAlsAuftrag() vergisst das Ergebnis nicht (setzeErgebnis(id, null)
  *      gestrichen) → rot: derselbe Test (result bleibt in der Tabelle)
- *   C  importAlsAuftrag() ruft importiereTeileCsv direkt statt einzureichen
+ *   C  importAlsAuftrag() ruft importPartsCsv direkt statt einzureichen
  *      → rot: „ohne Worker bleibt der Auftrag offen“ (und der zweite Fall)
  *   D  fuehreImportAus() fängt den Fachfehler nicht ab → rot: „ein Fachfehler
  *      kommt mit Code an“ (500 import_fehlgeschlagen)

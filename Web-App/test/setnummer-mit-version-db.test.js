@@ -10,7 +10,7 @@
  *      Kaufpreise werden addiert“ (duplicate key idx_set_acq_erfassungstag)
  *   B  in 0074 mit_version('sets') vor die abhängigen Tabellen gestellt → rot:
  *      „Teile des alten Sets bleiben“ (ON DELETE CASCADE nahm sie mit)
- *   C  im Teilefilter (src/teile/abfragen.ts) mitVersion() entfernt → rot:
+ *   C  im Teilefilter (src/parts/queries.ts) mitVersion() entfernt → rot:
  *      „der Filter findet das Set auch ohne Versionsanhang“
  *   D  (10.11.) in setStamm() (src/sets/repository/setDetail.ts) den Platzhalter
  *      „Set …“ nicht ausgeblendet → rot: „ein Platzhalter ist kein Name“
@@ -175,9 +175,9 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
       await haeltTeil(db, uid, 'SNF1', { setNumber: `F${PID}`, menge: 2, colorId: 4 }); // blank geschrieben
-      const { teileAbfrage } = _req('src/teile/abfragen.js');
+      const { partsQuery } = _req('src/parts/queries.js');
       for (const filter of [`F${PID}`, `F${PID}-1`]) {
-        const r = await teileAbfrage([uid], { set_number: filter, page_size: 60 });
+        const r = await partsQuery([uid], { set_number: filter, page_size: 60 });
         assert.deepEqual(
           (r.parts || []).map(p => p.part_number),
           ['SNF1'],

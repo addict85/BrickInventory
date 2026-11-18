@@ -89,7 +89,7 @@ test('die Abfrage der manuellen Teile liefert den Lagerort', async t => {
   await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,$2,'x')", [U, `mz${U}`]);
   const ort = (await db.get("INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id", [U])).id;
   await haeltTeil(db, U, `mz-${U}`, { colorId: 4, menge: 2, storageId: ort });
-  const teile = await require('./helpers/sources').handlerModul(_req).manuelleTeileListe([U], U);
+  const teile = await require('./helpers/sources').handlerModul(_req).manualPartsList([U], U);
   assert.deepEqual(
     teile.map(p => [p.part_number, p.storage]),
     [[`mz-${U}`, 'Kiste 3']],

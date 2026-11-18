@@ -38,7 +38,7 @@ export function baueApiRouter(
     | 'finanzen'
     | 'bestand'
     | 'sets'
-    | 'teile'
+    | 'parts'
     | 'minifigs'
     | 'wanted'
     | 'gutscheine'

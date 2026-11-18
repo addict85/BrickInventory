@@ -16,7 +16,7 @@
  *   D  in startup/datenbank.ts bereiteDatenbankVor() ohne den Zweig `jobs === false` → rot:
  *      „der Web-Prozess startet …“ (permission denied for table vouchers, kein Start)
  *   E  warteAufAltbestand() kehrt sofort zurück → rot: „… waiting auf die Umschlüsselung“
- *   F  in src/teile/partsSummary.ts katalogEinmalNachziehen() ohne den Zweig für `web` →
+ *   F  in src/parts/summary.ts catalogFollowUpOnce() ohne den Zweig für `web` →
  *      rot: „eine Anfrage zieht den Katalog nicht selbst nach …“
  *   G  in 0120 die Schleife mit REVOKE gestrichen → rot: „jede Sicht liest …“ (die neue Sicht
  *      steht mit `web` in der Liste)
@@ -207,8 +207,8 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     ).id;
     await db.run(`DELETE FROM jobs WHERE type = 'katalog_nachzug'`);
     await db.run(`INSERT INTO parts_catalog_pending (number) VALUES ('3001')`);
-    const { zusammenfassungFrisch } = _req('src/teile/partsSummary.js');
-    await alsWebAnfrage({ session: { userId: uid } }, () => zusammenfassungFrisch(uid));
+    const { summaryFresh } = _req('src/parts/summary.js');
+    await alsWebAnfrage({ session: { userId: uid } }, () => summaryFresh(uid));
     const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n;
     assert.equal(await offen(), 1, 'die Anfrage hat die Warteschlange geleert');
     assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'katalog_nachzug' AND status = 'offen'`));

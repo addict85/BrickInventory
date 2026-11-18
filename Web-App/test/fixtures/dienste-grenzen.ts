@@ -49,7 +49,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.sets.katalog,
     // @ts-expect-error
-    d.teile.teileListe,
+    d.parts.partsList,
     // @ts-expect-error
     d.minifigs.db,
     // @ts-expect-error

@@ -9,17 +9,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests für util/NetworkPolicy: gleiche Herkunft statt Präfixvergleich, und
- * kein Klartext ausser im Debug-Build zum Gerät und zum Emulator-Host.
+ * Tests for util/NetworkPolicy: same origin instead of a prefix comparison, and
+ * no plain text except in a debug build, to the device and to the emulator host.
  *
  * Gegenproben:
- *   in herkunft() den Port weggelassen → rot „die Herkunft eines Tokens …“
- *   in verbindungErlaubt() `entwicklung &&` weggelassen → rot „https
- *     geht immer, http im Release-Build nie“
- *   ENTWICKLUNGS_HOSTS per `startsWith` statt `in` geprüft → rot „der
- *     Debug-Build darf http nur …“ (localhost.angreifer.tld ging durch)
- *   normalisiere() ohne https-Vorsatz → rot „die Einrichtung nimmt
- *     nur https an …“ (brick.fritz.box unlesbar)
+ *   in herkunft(), dropped the port → red "die Herkunft eines Tokens …"
+ *   in verbindungErlaubt(), dropped `entwicklung &&` → red "https
+ *     geht immer, http im Release-Build nie"
+ *   ENTWICKLUNGS_HOSTS checked with `startsWith` instead of `in` → red "der
+ *     Debug-Build darf http nur …" (localhost.angreifer.tld got through)
+ *   normalisiere() without the https prefix → red "die Einrichtung nimmt
+ *     nur https an …" (brick.fritz.box unreadable)
  */
 class NetworkPolicyTest {
 
@@ -29,7 +29,7 @@ class NetworkPolicyTest {
         val base = "https://brick.example.com"
         assertTrue(NetworkPolicy.isSameOrigin("https://brick.example.com/api/v1/sets".toHttpUrl(), base))
         assertTrue(NetworkPolicy.isSameOrigin("https://BRICK.example.com/api/v1/sets".toHttpUrl(), base))
-        // Trailing slash in der gespeicherten URL darf nichts ändern
+        // A trailing slash in the stored URL must not change anything
         assertTrue(NetworkPolicy.isSameOrigin("https://brick.example.com/x".toHttpUrl(), "$base/"))
     }
 
@@ -50,7 +50,7 @@ class NetworkPolicyTest {
         assertTrue(NetworkPolicy.isSameOrigin("https://192.168.1.50:8443/x".toHttpUrl(), "https://192.168.1.50:8443"))
     }
 
-    // ── Klartext ────────────────────────────────────────────────────────────
+    // ── Plain text ───────────────────────────────────────────────────────────
     @Test
     fun `https geht immer, http im Release-Build nie`() {
         for (url in listOf("https://brick.example.com/x", "https://192.168.1.50/x", "https://localhost:8443/x"))

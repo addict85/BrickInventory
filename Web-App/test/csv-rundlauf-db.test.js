@@ -5,7 +5,7 @@
  * Menge, Preis, Zustand, Farbe und Datum kommen unverändert an.
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  in importiereTeileCsv() die Farbe nicht mehr lesen (immer KEINE_FARBE)
+ *   A  in importPartsCsv() die Farbe nicht mehr lesen (immer KEINE_FARBE)
  *      → rot: „Teile kommen unverändert an“ (color_id 4 → 9999)
  *   B  in csvGemeinsameFelder() acquired_at nicht mehr lesen → rot: „Teile …“
  *      und „Figuren …“ (Datum des Imports statt des Kaufs)
@@ -66,7 +66,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
 
   const { teileCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
   const { setsAlsCsv } = require('./helpers/sources').bereichsSeite('sets');
-  const { importiereTeileCsv } = _req('src/teile/manuelleTeile.js');
+  const { importPartsCsv } = _req('src/parts/manualParts.js');
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
   const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
 
@@ -79,7 +79,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     );
 
   await t.test('Teile kommen unverändert an', async () => {
-    const r = await importiereTeileCsv(B, await teileCsv(A));
+    const r = await importPartsCsv(B, await teileCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
       await erfassungen('part_acquisitions', 'part_number', true, B),

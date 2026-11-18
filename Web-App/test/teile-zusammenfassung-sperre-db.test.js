@@ -5,9 +5,9 @@
  * Primärschlüssel (parts_summary_pkey).
  *
  * Gegenproben (31.10.2026, gemessen):
- *   a) in rebuild() die Prüfung `if (!(await repo.sperreKonto(…)))` entfernt
+ *   a) in rebuild() die Prüfung `if (!(await repo.lockAccount(…)))` entfernt
  *      → rot: Die fremde Zeile ist weg und der Stand steht auf 7.
- *   b) in sperreKonto() LOCKS.TEILE_KATALOG statt LOCKS.TEILE_SUMMARY → rot (wie a).
+ *   b) in lockAccount() LOCKS.PARTS_CATALOG statt LOCKS.PARTS_SUMMARY → rot (wie a).
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
@@ -26,7 +26,7 @@ test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
     keineDb(t, e);
     return;
   }
-  const PS = _req('src/teile/partsSummary.js');
+  const PS = _req('src/parts/summary.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   const u = (
     await db.get(`INSERT INTO users (username, password_hash) VALUES ('sperre_'||floor(random()*1e9),'x') RETURNING id`)
@@ -43,7 +43,7 @@ test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
       u,
     ]);
     await halter.query('BEGIN');
-    await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, u]);
+    await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, u]);
     await PS.rebuild(u, { v: 7 });
     assert.deepEqual(
       await stand(),

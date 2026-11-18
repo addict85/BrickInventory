@@ -9,20 +9,20 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 
 /**
- * Der eigene Server für den Bild-Client. localhost nur im Debug-Build ([entwicklung]):
- * Im Release-Build könnten Bild-Adressen aus einer Server-Antwort sonst Dienste
- * auf dem Gerät selbst ansprechen, an der Regel „nur der eigene Server“ vorbei.
+ * Our own server for the image client. localhost only in a debug build ([entwicklung]):
+ * in a release build, image addresses from a server response could otherwise reach
+ * services on the device itself, bypassing the "only our own server" rule.
  */
 fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
     (entwicklung && url.host == "localhost") || NetworkPolicy.isSameOrigin(url, serverUrl)
 
 /**
- * Der Bild-Client spricht nur den eigenen Server: Alle Bildadressen laufen über dessen
- * Proxy (ImageUrls). Ein direkter Weg zu einem CDN gäbe Dritten die IP des Geräts und
- * das Sammlungsinteresse. Umleitungen folgt dieser Wächter selbst (NetzModule).
+ * The image client only talks to our own server: every image address runs through its
+ * proxy (ImageUrls). A direct path to a CDN would give third parties the device's IP
+ * and the collecting interest. This guard follows redirects itself (NetzModule).
  */
 class BildHostWaechter(
-    /** Pfad des Servers hinter einem Proxy ("" ohne): Nur darunter darf der Token mit umziehen. */
+    /** The server's path behind a proxy ("" without): only under it may the token move along. */
     private val basisPfad: () -> String = { "" },
     private val eigenerServer: (HttpUrl) -> Boolean,
 ) : Interceptor {
@@ -34,9 +34,9 @@ class BildHostWaechter(
             val antwort = chain.proceed(raus)
             val ziel = antwort.header("Location")?.takeIf { antwort.isRedirect }?.let(antwort.request.url::resolve)
                 ?: return antwort
-            // Köpfe (samt Token) ziehen nur mit, wo auch der ServerWaechter sie hinschickte:
-            // gleiche Herkunft und unter dem Basispfad. Sonst teilt sich ein Proxy-Host mit
-            // einer fremden Anwendung, und eine Umleitung dorthin trüge den Token hinaus.
+            // Headers (the token included) move along only where the ServerWaechter would
+            // also have sent them: same origin and under the base path. Otherwise a proxy
+            // host is shared with a foreign application, and a redirect there would carry the token out.
             val mitgenommen = if (eigenerServer(raus.url)) naechsteUmleitung(raus, antwort, basisPfad()) else null
             antwort.close()
             anfrage = mitgenommen ?: Request.Builder().url(ziel).build()

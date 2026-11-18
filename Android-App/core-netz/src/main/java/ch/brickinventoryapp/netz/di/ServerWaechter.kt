@@ -16,52 +16,52 @@ import okhttp3.Response
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Was der Wächter je Anfrage wissen muss. Im Gerät liefern es TokenAblage
- * und Context (ServerClient.kt); als Schnittstelle läuft der Wächter auf der JVM
- * gegen einen Testserver.
+ * What the guard needs to know per request. On the device, TokenAblage and
+ * Context provide it (ServerClient.kt); as an interface, the guard runs on
+ * the JVM against a test server.
  */
 interface Zugangslage {
     fun serverUrl(): String
     fun token(): String
-    /** Die Herkunft, an die der Token gebunden ist; null heisst: an keinen Server senden. */
+    /** The origin the token is bound to; null means: send to no server. */
     fun tokenHerkunft(): String?
     /**
-     * Zählt Anmelden, Abmelden und Serverwechsel (data/TokenSchranke). Wird vor dem
-     * Token gelesen und danach verglichen: Was eine Antwort auslöst, gilt nur der
-     * Sitzung, in der die Anfrage hinausging.
+     * Counts sign-in, sign-out and server changes (data/TokenSchranke). Read
+     * before the token and compared afterwards: what a response triggers only
+     * applies to the session the request went out in.
      */
     fun generation(): Long
 }
 
-/** Platzhalter, auf den Retrofit gebaut ist; der Wächter schreibt ihn auf den Server um. */
+/** The placeholder Retrofit is built against; the guard rewrites it to the server. */
 const val PLATZHALTER_BASIS = "http://localhost:3000/"
 
 /**
- * Der Tausch des Tokens, von aussen gesehen (data/TokenTausch). [faellig]
- * wartet nicht — die Anfrage ist gelungen; [noetig] tauscht und liefert den
- * neuen Token, damit die abgewiesene Anfrage einmal wiederholt werden kann.
+ * The token's rotation, seen from outside (data/TokenTausch). [faellig] does
+ * not wait — the request succeeded; [noetig] rotates and returns the new
+ * token so the rejected request can be retried once.
  */
 interface Rotationsanlass {
     fun faellig(alterToken: String)
-    /** Nur ein Token mit [herkunft] und aus [generation]; ein jüngerer gehört einer anderen Sitzung. */
+    /** Only a token with [herkunft] and from [generation]; a newer one belongs to another session. */
     fun noetig(alterToken: String, herkunft: String?, generation: Long): String?
 }
 
-/** Pfad des Tauschs selbst: Seine Antwort löst keinen weiteren aus. */
+/** Path of the rotation itself: its own response triggers no further one. */
 private const val ROTATIONS_PFAD = "/api/v1/auth/token-rotieren"
 
 /**
- * 401 mit diesen Codes heisst „Bestätigung falsch oder fehlt“, nicht „Token
- * ungültig“: Der Dialog fragt erneut nach dem Passwort, statt abzumelden.
+ * A 401 with these codes means "confirmation wrong or missing", not "token
+ * invalid": the dialog asks for the password again instead of signing out.
  */
 private val BESTAETIGUNG_NOETIG = setOf(Fehlercode.AKTUELLES_PASSWORT_FALSCH, Fehlercode.AKTUELLES_PASSWORT_ERFORDERLICH,
     Fehlercode.ZWEITER_FAKTOR_FALSCH, Fehlercode.ZWEITER_FAKTOR_NOETIG, Fehlercode.PASSKEY_UNGUELTIG)
 
 /**
- * Token, Sprache und das Klartext-Verbot für alle Anfragen der Server-Clients.
- * Eine Anfrage ohne TLS bricht hier ab, bevor ein Kopf gebaut wird; die
- * Network-Security-Config des Release-Builds ist die zweite Linie dahinter.
- * [entwicklung]: Debug-Build, http nur zu NetworkPolicy.ENTWICKLUNGS_HOSTS.
+ * Token, language and the plain-text ban for every request of the server
+ * clients. A request without TLS stops here before a header is built; the
+ * release build's network-security-config is the second line behind it.
+ * [entwicklung]: debug build, http only to NetworkPolicy.ENTWICKLUNGS_HOSTS.
  */
 class ServerWaechter(
     private val lage: Zugangslage,
@@ -69,14 +69,14 @@ class ServerWaechter(
     private val entwicklung: Boolean,
     private val sitzungAbgelaufen: () -> Unit,
     private val versionsMeldung: ((VersionsHinweis) -> Unit)? = null,
-    /** Weitere Köpfe nur für den eigenen Server (die Anzeigesprache, ServerClient.kt). */
+    /** Extra headers only for our own server (the display language, ServerClient.kt). */
     private val eigeneKoepfe: (original: Request, ziel: Request.Builder) -> Unit = { _, _ -> },
     private val rotation: Rotationsanlass? = null,
-    /** Ein 403 `nur_admins` auf einen Token: Die App zieht ihr Verwalterrecht nach. */
+    /** A 403 `nur_admins` on a token: the app pulls in its loss of admin rights. */
     private val rechteEntzogen: () -> Unit = {},
-    /** Ein 403 `passwort_wechsel_noetig`: Die App zeigt die Maske für das Startpasswort. */
+    /** A 403 `passwort_wechsel_noetig`: the app shows the screen for the initial password. */
     private val passwortWechselNoetig: () -> Unit = {},
-    /** Ein 403 `zweiter_faktor_pflicht`: Die App zeigt die Einrichtung des zweiten Faktors. */
+    /** A 403 `zweiter_faktor_pflicht`: the app shows two-factor setup. */
     private val zweiterFaktorPflicht: () -> Unit = {},
 ) : Interceptor {
 
@@ -84,7 +84,7 @@ class ServerWaechter(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
-        // Zuerst: Ein Wechsel nach diesem Punkt zeigt sich als andere Generation.
+        // First: a change after this point shows up as a different generation.
         val generation = lage.generation()
         val serverUrl = lage.serverUrl().trim().trimEnd('/')
         val token = lage.token()
@@ -92,12 +92,12 @@ class ServerWaechter(
         val finalUrl = reqBuilder.build().url
         if (!NetworkPolicy.verbindungErlaubt(finalUrl, entwicklung)) throw KlartextAbgelehnt(finalUrl.host)
         val unserServer = istUnserServer(finalUrl, serverUrl)
-        // Umleitungen eigener Anfragen nur innerhalb des Pfads: Sie tragen den Token weiter.
+        // Redirects of our own requests only within the path: they carry the token along.
         val basis = if (unserServer) NetworkPolicy.basisPfad(serverUrl).orEmpty() else ""
         val mitToken = setzeKoepfe(original, reqBuilder, token, unserServer, finalUrl)
 
         val ausgehend = reqBuilder.build()
-        // Die Sitzung des Tokens, der zuletzt hinausging; nur sie darf die Antwort auswerten.
+        // The session of the token that last went out; only it may evaluate the response.
         val lauf = Lauf(ausgehend, senden(chain, ausgehend, basis), mitToken && ausgehend.header("Authorization") != null, generation)
         nachfassen(chain, lauf, basis, unserServer)
 
@@ -107,7 +107,7 @@ class ServerWaechter(
         if (tausch != null && auswertbar && !ausgehend.url.encodedPath.endsWith(ROTATIONS_PFAD)) {
             lauf.antwort = getauscht(chain, lauf, basis, tausch, dieselbeSitzung)
         }
-        // Ein 401 oder 403 des vorigen Servers betrifft die neue Sitzung nicht.
+        // A 401 or 403 from the previous server does not concern the new session.
         if (auswertbar && lauf.antwort.code in setOf(401, 403) && dieselbeSitzung()) meldeAbweisung(lauf.antwort)
         if (unserServer) meldeVersion(lauf.antwort)
         return lauf.antwort
@@ -117,9 +117,9 @@ class ServerWaechter(
         serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, serverUrl) && NetworkPolicy.imBasisPfad(ziel, serverUrl)
 
     /**
-     * Retrofit ist auf [PLATZHALTER_BASIS] gebaut; hier wird die Anfrage auf den eingetragenen
-     * Server umgeschrieben. Ein Pfad-Präfix (Reverse-Proxy unter /brick) bleibt erhalten.
-     * Unlesbar wirft eine IOException: Eine andere Ausnahme risse den OkHttp-Faden und die App mit.
+     * Retrofit is built against [PLATZHALTER_BASIS]; here the request is rewritten to the
+     * configured server. A path prefix (reverse proxy under /brick) is kept. Unreadable throws
+     * an IOException: any other exception would tear down the OkHttp thread along with the app.
      */
     private fun zumServer(original: Request, serverUrl: String): Request.Builder {
         val reqBuilder = original.newBuilder()
@@ -132,18 +132,18 @@ class ServerWaechter(
         return reqBuilder.url(neu.build())
     }
 
-    /** Token, API-Fassung und eigene Köpfe, nur für den eigenen Server. Liefert, ob der jetzige Token mitgeht. */
+    /** Token, API version and our own headers, only for our own server. Returns whether the current token goes along. */
     private fun setzeKoepfe(original: Request, reqBuilder: Request.Builder, token: String, unserServer: Boolean, finalUrl: HttpUrl): Boolean {
-        // Ein Token geht nur an die Herkunft, an die er gebunden ist; ohne Bindung an keine.
+        // A token only goes to the origin it is bound to; unbound, it goes to none.
         val herkunft = lage.tokenHerkunft()
         val tokenGehoertHierher = herkunft != null && herkunft == NetworkPolicy.herkunft(finalUrl.toString())
         val mitToken = token.isNotBlank() && unserServer && tokenGehoertHierher
         if (mitToken && original.header("Authorization") == null) {
             reqBuilder.header("Authorization", "Bearer $token")
         }
-        // Selbst gesetzte Köpfe (Tausch, SSE, PDF) können einen älteren Token tragen
-        // als den jetzigen — etwa den des vorigen Servers bei einem Tausch, der den
-        // Wechsel überdauert. Darum gilt hier dieselbe Regel wie für mitToken.
+        // Headers set by hand (rotation, SSE, PDF) can carry a token older than the
+        // current one — e.g. the previous server's, on a rotation that outlives the
+        // switch. So the same rule as for mitToken applies here.
         if (original.header("Authorization") != null && !mitToken) {
             reqBuilder.removeHeader("Authorization")
         }
@@ -154,13 +154,13 @@ class ServerWaechter(
         return mitToken
     }
 
-    /** Was zuletzt hinausging und zurückkam, ob mit dem Token, und aus welcher Sitzung er stammt. */
+    /** What last went out and came back, whether with the token, and which session it stems from. */
     private class Lauf(var gesendet: Request, var antwort: Response, var tokenMitgeschickt: Boolean, var sitzung: Long)
 
     /**
-     * Die Anmeldung setzt den Token und feuert sofort Abrufe; einer kann noch
-     * ohne Kopf hinausgegangen sein (util/Abgewiesen.kt). Der Token wird jetzt
-     * gelesen, also gilt seine Bindung von jetzt, nicht die vom Senden.
+     * Signing in sets the token and immediately fires requests; one can still
+     * have gone out without a header (util/Abgewiesen.kt). The token is read
+     * now, so its binding is the current one, not the one at send time.
      */
     private fun nachfassen(chain: Interceptor.Chain, lauf: Lauf, basis: String, unserServer: Boolean) {
         val ausgehend = lauf.gesendet
@@ -174,9 +174,9 @@ class ServerWaechter(
     }
 
     /**
-     * Der Tausch des Tokens: Ein 401 `token_rotation_noetig` tauscht und schickt die Anfrage einmal
-     * mit dem neuen Token; „faellig“ stösst den Tausch nur an. Beides nur für die Sitzung, in der
-     * die Anfrage hinausging. Liefert die Antwort, die der Aufrufer bekommt.
+     * The token's rotation: a 401 `token_rotation_noetig` rotates and sends the request once more
+     * with the new token; "faellig" only triggers the rotation. Both only for the session the
+     * request went out in. Returns the response the caller gets.
      */
     private fun getauscht(chain: Interceptor.Chain, lauf: Lauf, basis: String, tausch: Rotationsanlass,
                           dieselbeSitzung: () -> Boolean): Response {
@@ -185,7 +185,7 @@ class ServerWaechter(
             if (fehlercode(lauf.antwort) != Fehlercode.TOKEN_ROTATION_NOETIG) return lauf.antwort
             val neu = tausch.noetig(alt.orEmpty(), NetworkPolicy.herkunft(lauf.gesendet.url.toString()), lauf.sitzung)
                 ?.takeIf { dieselbeSitzung() } ?: return lauf.antwort
-            // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
+            // The new token is already stored; this request goes out once with it.
             lauf.antwort.close()
             return senden(chain, lauf.gesendet.newBuilder().header("Authorization", "Bearer $neu").build(), basis)
         }
@@ -193,7 +193,7 @@ class ServerWaechter(
         return lauf.antwort
     }
 
-    /** 401 heisst abgemeldet, ausser der Server will nur eine Bestätigung; 403 nennt, was fehlt. */
+    /** 401 means signed out, unless the server only wants a confirmation; 403 names what's missing. */
     private fun meldeAbweisung(antwort: Response) {
         val code = fehlercode(antwort)
         if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
@@ -202,7 +202,7 @@ class ServerWaechter(
         if (antwort.code == 403 && code == Fehlercode.ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
     }
 
-    /** Ein Hinweis auf zu alte App oder zu alten Server, einmal je Lauf. */
+    /** A notice about too old an app or too old a server, once per run. */
     private fun meldeVersion(antwort: Response) {
         val melden = versionsMeldung ?: return
         if (versionGemeldet.get()) return
@@ -216,9 +216,9 @@ class ServerWaechter(
         runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).fehlercode }.getOrNull()
 
     /**
-     * Der jetzige Token samt Generation, wenn er jetzt zu [ziel] gehört: eigener
-     * Server und gebundene Herkunft, beides von jetzt. Ändert sich die Generation
-     * während des Lesens, passen die Werte nicht sicher zusammen — dann keiner.
+     * The current token together with its generation, if it currently belongs to
+     * [ziel]: our own server and the bound origin, both as of now. If the
+     * generation changes while reading, the values do not reliably match — then neither.
      */
     private fun tokenFuer(ziel: HttpUrl): Pair<String, Long>? {
         val g = lage.generation()
@@ -231,10 +231,10 @@ class ServerWaechter(
     }
 
     /**
-     * Umleitungen folgt der Client nicht (ServerClient.kt): Er schickte Methode und
-     * Rumpf — Passwort, Gutschein-PIN — an jeden Host, auf den ein Proxy zeigt. Hier
-     * nur innerhalb derselben Herkunft; jede andere Umleitung erreicht den Aufrufer
-     * als 3xx und damit als Fehler.
+     * The client does not follow redirects (ServerClient.kt): it would send
+     * method and body — password, voucher PIN — to any host a proxy points to.
+     * Here only within the same origin; any other redirect reaches the caller
+     * as 3xx and so as an error.
      */
     private fun senden(chain: Interceptor.Chain, anfrage: Request, basisPfad: String): Response {
         var raus = anfrage
@@ -254,10 +254,10 @@ class ServerWaechter(
 }
 
 /**
- * Wohin eine Antwort umleitet, als nächste Anfrage — nur bei gleicher Herkunft
- * (Schema, Host, Port) und unter [basisPfad] (leer: der ganze Host). Wie ein
- * Browser: 307/308 behalten Methode und Rumpf, 301/302/303 werden zu GET ohne
- * Rumpf (HEAD bleibt HEAD).
+ * Where a response redirects to, as the next request — only for the same origin
+ * (scheme, host, port) and under [basisPfad] (empty: the whole host). Like a
+ * browser: 307/308 keep method and body, 301/302/303 become GET without a
+ * body (HEAD stays HEAD).
  */
 internal fun naechsteUmleitung(anfrage: Request, antwort: Response, basisPfad: String = ""): Request? {
     if (antwort.code !in setOf(301, 302, 303, 307, 308)) return null

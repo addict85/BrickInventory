@@ -19,19 +19,19 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * Der Token gehört dem Server unter seinem Pfad, nicht dem ganzen Host:
- * Hinter einem gemeinsamen Reverse-Proxy liegt unter `/andere-app` eine andere
- * Anwendung. Ein Testserver, die App unter `/brick`.
+ * The token belongs to the server under its path, not the whole host: behind a
+ * shared reverse proxy, a different application lives under `/andere-app`. One
+ * test server, the app under `/brick`.
  *
  * Gegenproben:
- *   A  im Wächter `unserServer` ohne imBasisPfad() → rot „eine Anfrage ausserhalb
- *      des Pfads geht ohne Token“ (Bearer an /andere-app)
- *   B  in naechsteUmleitung() die Pfadprüfung entfernt → rot „eine Umleitung aus
- *      dem Pfad hinaus wird nicht verfolgt“ (302 verfolgt, Token an /andere-app/x)
- *   C  in imBasisPfad() `startsWith(basis)` statt `"$basis/"` → rot „ausserhalb …“
- *      (/brickfremd bekam den Token)
- *   D  eigeneAdresse() ohne imBasisPfad() → rot „eigeneAdresse bleibt unter dem Pfad“
- *   E  gleicherServer() nur über die Herkunft → rot „ein anderer Pfad ist ein anderer Server“
+ *   A  in the guard, `unserServer` without imBasisPfad() → red "eine Anfrage ausserhalb
+ *      des Pfads geht ohne Token" (Bearer sent to /andere-app)
+ *   B  in naechsteUmleitung(), removed the path check → red "eine Umleitung aus
+ *      dem Pfad hinaus wird nicht verfolgt" (302 followed, token sent to /andere-app/x)
+ *   C  in imBasisPfad(), `startsWith(basis)` instead of `"$basis/"` → red "ausserhalb …"
+ *      (/brickfremd got the token)
+ *   D  eigeneAdresse() without imBasisPfad() → red "eigeneAdresse bleibt unter dem Pfad"
+ *   E  gleicherServer() going only by origin → red "ein anderer Pfad ist ein anderer Server"
  */
 class BasisPfadTest {
 

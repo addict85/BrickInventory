@@ -1,19 +1,19 @@
 /**
  * Eine Katalogänderung zieht in der Teile-Zusammenfassung nur die Gruppen
  * nach, die die geänderte Nummer enthalten, und nur in den Konten, die sie
- * führen (Migration 0079, zieheKatalogNach). Das Ergebnis gleicht einem
+ * führen (Migration 0079, runCatalogFollowUp). Das Ergebnis gleicht einem
  * vollen Neuaufbau.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in zieheKatalogNach() statt der Gruppen das ganze Konto gelöscht und
+ *   A  in runCatalogFollowUp() statt der Gruppen das ganze Konto gelöscht und
  *      neu gebaut (`nurGruppen` false, DELETE ohne part_key) → rot: „andere
  *      Gruppen desselben Kontos bleiben stehen“
  *   B  im Trigger merke_teilekatalog_beide() nur `neu` gelesen (die alte
  *      BrickLink-Nummer fehlt) → rot: „eine neue BrickLink-Zuordnung …“
  *      (die Gruppe von W zählt X weiter mit: 3 statt 1)
- *   C  in zusammenfassungFrisch() den Nachzug weggelassen → rot: „ein geänderter
+ *   C  in summaryFresh() den Nachzug weggelassen → rot: „ein geänderter
  *      Teilename …“ (alter Name)
- *   D  (13.11.2026) in zieheKatalogNach() den Systemrahmen weggelassen → rot:
+ *   D  (13.11.2026) in runCatalogFollowUp() den Systemrahmen weggelassen → rot:
  *      „die Anfrage eines Kontos zieht auch die anderen nach“ (Konto B behält
  *      „Y“, die Warteschlange ist trotzdem leer)
  *
@@ -42,7 +42,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     keineDb(t, e);
     return;
   }
-  const PS = _req('src/teile/partsSummary.js');
+  const PS = _req('src/parts/summary.js');
   const p = process.pid;
   const X = `kx${p}`,
     W = `kw${p}`,
@@ -75,7 +75,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
   );
   await als(a, () => PS.rebuildNow(a));
   await als(b, () => PS.rebuildNow(b));
-  await als(a, () => PS.zieheKatalogNach()); // was der Aufbau schon enthält, aus der Warteschlange räumen
+  await als(a, () => PS.runCatalogFollowUp()); // was der Aufbau schon enthält, aus der Warteschlange räumen
 
   const zeilen = uid =>
     db.all(
@@ -96,7 +96,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     await marke(a, Z);
     await marke(b, Y);
     await db.run(`UPDATE part_catalog SET part_name = 'X neu' WHERE part_number = $1`, [X]);
-    assert.equal(await als(a, () => PS.zusammenfassungFrisch(a, { strict: true })), true);
+    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.equal(
       (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [a, X])).part_name,
       'X neu',
@@ -120,7 +120,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
 
   await t.test('die Anfrage eines Kontos zieht auch die anderen nach', async () => {
     await db.run(`UPDATE part_catalog SET part_name = 'Y neu' WHERE part_number = $1`, [Y]);
-    assert.equal(await als(a, () => PS.zusammenfassungFrisch(a, { strict: true })), true);
+    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.equal((await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n, 0);
     assert.equal(
       (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [b, Y])).part_name,
@@ -137,7 +137,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
       W,
       `${X}bl`,
     ]);
-    assert.equal(await als(a, () => PS.zusammenfassungFrisch(a, { strict: true })), true);
+    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.deepEqual(
       (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
       [
@@ -147,7 +147,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     );
     // X wandert weiter; die Gruppe von W enthält X dann nicht mehr.
     await db.run(`UPDATE bl_mapping SET bl_id = $2 WHERE type = 'part' AND rb_id = $1`, [X, `${X}neu`]);
-    assert.equal(await als(a, () => PS.zusammenfassungFrisch(a, { strict: true })), true);
+    assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.deepEqual(
       (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
       [

@@ -102,7 +102,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { manuellesTeilAendern } = _req('src/teile/manuelleTeile.js');
+  const { changeManualPart } = _req('src/parts/manualParts.js');
   const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const { kaufAmTagErfassen } = _req('src/bestand/acquisitions.js');
   const { testServer } = require('./helpers/server');
@@ -119,7 +119,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
       uid,
     ]);
     await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, 'ma-fig-leer', 'manual')`, [uid]);
-    await manuellesTeilAendern(uid, 'ma-leer', 5, { quantity: 3 });
+    await changeManualPart(uid, 'ma-leer', 5, { quantity: 3 });
     await updateManualMinifig(uid, 'ma-fig-leer', { quantity: 2 });
     assert.deepEqual(
       (await teilZeilen('ma-leer')).map(r => r.quantity),
@@ -145,13 +145,13 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
       [uid],
     );
     const [alt] = await teilZeilen('ma-lifo');
-    await manuellesTeilAendern(uid, 'ma-lifo', 5, { quantity: 2 });
+    await changeManualPart(uid, 'ma-lifo', 5, { quantity: 2 });
     assert.deepEqual(
       await teilZeilen('ma-lifo'),
       [{ id: alt.id, quantity: 2 }],
       'Beim Verringern muss die heutige Erfassung zuerst weichen, nicht die älteste',
     );
-    await manuellesTeilAendern(uid, 'ma-lifo', 5, { quantity: 1 });
+    await changeManualPart(uid, 'ma-lifo', 5, { quantity: 1 });
     assert.deepEqual(await teilZeilen('ma-lifo'), [{ id: alt.id, quantity: 1 }]);
   });
 
@@ -320,7 +320,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   // Verbot: Erfassungen entstehen nur über kaufAmTagErfassen — sonst
   // gälte die Tagesregel (erfassung-je-zustand-db.test.js) nicht für jeden Weg.
   for (const f of [
-    'src/teile/manuelleTeile.ts',
+    'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
     'routes/api_v1/sets.ts',
     'routes/api_v1/setsImport.ts',
@@ -337,7 +337,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   for (const f of [
     'routes/api_v1/sets.ts',
     'routes/api_v1/setsImport.ts',
-    'src/teile/manuelleTeile.ts',
+    'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
     'routes/api_v1/acquisitions.ts',
     'src/collection/acquisitions.ts',

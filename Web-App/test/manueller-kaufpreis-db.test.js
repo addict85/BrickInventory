@@ -26,19 +26,19 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur', { 
   const uid = u.id;
 
   try {
-    const { manuellesTeilAnlegen } = _req('src/teile/manuelleTeile.js');
+    const { addManualPart } = _req('src/parts/manualParts.js');
     const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
     // Namen mitgeben, damit kein Rebrickable-Nachschlag nötig ist. KEIN Preis
     // — darum geht es.
-    await manuellesTeilAnlegen(uid, { part_number: TEIL, part_name: 'Testteil', color_id: 0, quantity: 2 });
+    await addManualPart(uid, { part_number: TEIL, part_name: 'Testteil', color_id: 0, quantity: 2 });
     await addManualMinifig(uid, { fig_number: FIG, fig_name: 'Testfigur', quantity: 2 });
 
     // Gelesen ueber die Listen, die auch die Oberflaechen benutzen — die
     // Spalten gibt es seit Migration 0035 nicht mehr (siehe den Kopf).
-    const { manuelleTeileListe } = _req('src/teile/abfragen.js');
+    const { manualPartsList } = _req('src/parts/queries.js');
     const { readManualMinifigs } = _req('src/minifigs/queries.js');
-    const teileListe = await manuelleTeileListe([uid], uid);
+    const teileListe = await manualPartsList([uid], uid);
     const figListe = await readManualMinifigs([uid], uid);
     const teil = (Array.isArray(teileListe) ? teileListe : []).find(p => p.part_number === TEIL);
     const figur = (Array.isArray(figListe) ? figListe : []).find(f => f.fig_number === FIG);

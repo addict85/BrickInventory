@@ -1,5 +1,5 @@
-/** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
- * zugreifen — eine Route soll keine andere importieren. */
+/** Here and not in a route, because the session route and the v1 factory both
+ * reach for it — a route shouldn't import another route. */
 import type { Sicht } from '../haushalt';
 import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
@@ -10,11 +10,11 @@ import type { Quellen } from '../fremdquellen';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
-import type { TeileKontext } from './kontext';
+import type { PartsContext } from './context';
 
-// Eine Rechnung für Anlegen, Bearbeiten und CSV-Import; ohne Angabe bleibt Preis/Stk leer.
-export async function manuellerTeilekauf(
-  k: TeileKontext,
+// One calculation for adding, editing and CSV import; without a value, price/unit stays empty.
+export async function manualPartPurchase(
+  k: PartsContext,
   uid: number,
   {
     partNumber,
@@ -23,8 +23,8 @@ export async function manuellerTeilekauf(
     condition = null,
   }: { partNumber: string; colorId: number; unitPrice?: unknown; condition?: string | null },
 ) {
-  // Die Regel steht in src/finanzen/preisRegel.ts; hier bleibt nur, was ein
-  // TEIL anders macht als eine Figur: der Schlüssel der Abfrage.
+  // The rule lives in src/finanzen/preisRegel.ts; what remains here is only what
+  // differs for a PART versus a minifig: the lookup key.
   const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
     k.finanzen.marktpreisMitHerkunft(partNumber, colorId, uid, zustand),
   );
@@ -33,30 +33,28 @@ export async function manuellerTeilekauf(
     effectivePurchasePrice: r.kaufpreis,
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
-    // null, wenn es nichts zu kennzeichnen gibt.
+    // null when there is nothing to flag.
     preisAusZustand: r.preisAusZustand,
     geschaetzt: r.geschaetzt,
   };
 }
 
-/** Eine Umsetzung für Webapp und App, damit Kaufpreis und Lagerort überall
- * gleich behandelt werden. */
-export async function manuellesTeilAnlegen(k: TeileKontext, uid: number, rawBody: Record<string, unknown>) {
-  // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (src/bestand/lagerort.ts).
+/** One path for the webapp and the app, so purchase price and storage are handled the same everywhere. */
+export async function addManualPart(k: PartsContext, uid: number, rawBody: Record<string, unknown>) {
+  // Without a given location, the account's default location applies (src/bestand/lagerort.ts).
   const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, rawBody?.storage);
-  // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann nicht
-  // auseinanderlaufen.
+  // The SAME conversion as in the body, on the same input — it cannot drift apart.
   const farbe = V0.colorId(rawBody?.color_id);
-  const ergebnis = await addManualPartIntern(k, uid, rawBody);
+  const ergebnis = await addManualPartInternal(k, uid, rawBody);
   if (ort && ergebnis?.part_number) {
     await k.bestand.lagerortDienst.setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
   }
   return ergebnis;
 }
 
-async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record<string, unknown>) {
-  // Alle Felder geprüft: Sie werden später gerendert, ungeprüft waren sie die
-  // Server-Hälfte einer Stored-XSS-Kette. image_url ist zwingend https.
+async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Record<string, unknown>) {
+  // Every field validated: they get rendered later, and unvalidated they were the
+  // server half of a stored-XSS chain. image_url must be https.
   const V = V0;
   const part_number = V.nummerPflicht(rawBody?.part_number, 'part_number');
   const color_id = V.colorId(rawBody?.color_id);
@@ -64,40 +62,40 @@ async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record
   const color_hex = V.optionalHex(rawBody?.color_hex);
   const quantity = V.acquisitionQuantity(rawBody?.quantity, 1);
   const condition = V.optionalCondition(rawBody?.condition);
-  // Negative Beträge wanderten sonst in die Summen des Finanzreiters.
+  // Negative amounts used to end up in the finance tab's totals.
   const unit_price = geldEingabe(rawBody?.unit_price, 'Stückpreis');
-  // Erlaubt mehrere Erfassungen desselben Teils zu verschiedenen Zeitpunkten.
+  // Allows several acquisitions of the same part at different times.
   const acquiredAt = String(rawBody?.acquired_at || '').trim() || null;
 
-  // In dieser Reihenfolge geprüft: Bei mehreren Fehlern meldet sich der erste.
+  // Validated in this order: with several errors, the first one reports.
   const name = V.optionalText(rawBody?.part_name, 200);
   const bild = V.optionalImageUrl(rawBody?.image_url);
   const eingabe = { name, kategorie: V.optionalText(rawBody?.category_name, 100), bild };
-  const { part_name, gefunden } = await teilBeschreibung(k, uid, part_number, color_id, eingabe);
+  const { part_name, gefunden } = await partDescription(k, uid, part_number, color_id, eingabe);
 
-  // Nur die Existenz zählt: Die Menge addiert sich über eine zweite Erfassung.
-  if (await manuellesTeil(k, uid, part_number, color_id)) {
-    await weitereErfassung(k, uid, part_number, color_id, { condition, unit_price, quantity, acquiredAt });
+  // Only existence counts: the quantity adds up via a second acquisition.
+  if (await manualPartExists(k, uid, part_number, color_id)) {
+    await additionalAcquisition(k, uid, part_number, color_id, { condition, unit_price, quantity, acquiredAt });
     return { action: 'updated', part_number };
   }
 
-  // Eine Rechnung an einer Stelle, dieselbe wie im CSV-Import.
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await manuellerTeilekauf(k, uid, {
+  // One calculation, the same one used in the CSV import.
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await manualPartPurchase(k, uid, {
     partNumber: part_number,
     colorId: color_id,
     unitPrice: unit_price,
     condition,
   });
-  // Ohne Farbcode bliebe der Farbpunkt in der Oberfläche grau.
-  const rbFarbcode = await k.manuelleTeile.rbFarbcode(color_id);
+  // Without a color code, the color dot in the UI would stay grey.
+  const rbFarbcode = await k.manualParts.rbColorHex(color_id);
 
-  // Beschreibung gilt für ALLE Konten (Katalog), der Bestand für eines.
+  // Description applies to ALL accounts (catalog), the stock to one.
   await k.katalog.merkeTeil(part_number, gefunden?.part_name, gefunden?.category_name);
   await k.katalog.merkeTeil(part_number, eingabe.name, eingabe.kategorie, k.db, uid);
   await k.katalog.merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
   await k.katalog.merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
 
-  // Preis, Zustand und Menge stehen in der Erfassung, nicht an der Zeile.
+  // Price, condition and quantity live in the acquisition, not on the row.
   await k.bestand.manuell.legeZeileAn('part', uid, [part_number, color_id]);
   await k.bestand.bucheTageserfassung('part', uid, [part_number, color_id], {
     quantity,
@@ -107,15 +105,15 @@ async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record
     createdAt: acquiredAt,
   });
 
-  // `price_from_condition`: Der übernommene Marktpreis stammt aus dem ANDEREN
-  // Zustand — übernehmen, aber kennzeichnen.
+  // `price_from_condition`: the carried-over market price comes from the OTHER
+  // condition — carried over, but flagged.
   return { action: 'added', part_number, part_name, price_from_condition: preisAusZustand };
 }
 
-/** Eingetipptes und Nachgeschlagenes getrennt: Nur was Rebrickable liefert, geht als
- * geprüft in den gemeinsamen Katalog. Ohne Namen erst der eigene Katalog, dann Rebrickable. */
-async function teilBeschreibung(
-  k: TeileKontext,
+/** Typed and looked-up kept apart: only what Rebrickable returns goes into the shared
+ * catalog as verified. Without a name, the own catalog first, then Rebrickable. */
+async function partDescription(
+  k: PartsContext,
   uid: number,
   part_number: string,
   color_id: number,
@@ -133,24 +131,24 @@ async function teilBeschreibung(
     image_url = image_url || lokal.bild;
   }
 
-  // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
-  // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
+  // `hatBild` instead of `image_url`: a local path would fail the URL check, but
+  // still proves the fetch has nothing more to get.
   if (!part_name || !(image_url || lokal?.hatBild)) {
-    // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
+    // Without Rebrickable, the part gets logged with whatever the catalog already knows.
     const abruf = await versuche(
-      'teile:lookupPart',
+      'parts:lookupPart',
       k.fremdquellen.quellen.lookupPart(part_number, hasColor ? color_id : null),
     );
     gefunden = abruf.ok ? abruf.wert : null;
-    // `||`: Was der Katalog schon wusste, bleibt stehen.
+    // `||`: what the catalog already knew stays as-is.
     if (gefunden) part_name = part_name || gefunden.part_name;
   }
   return { part_name, gefunden };
 }
 
-/** Ein schon erfasstes Teil: nur eine weitere Erfassung, ohne Zustand den des Bestands. */
-async function weitereErfassung(
-  k: TeileKontext,
+/** An already-logged part: just another acquisition; without a condition, the stock's. */
+async function additionalAcquisition(
+  k: PartsContext,
   uid: number,
   part_number: string,
   color_id: number,
@@ -164,7 +162,7 @@ async function weitereErfassung(
   const rePrice =
     reEntered !== null ? reEntered : await k.finanzen.aktuellerTeilMarktpreis(part_number, color_id, uid, reCond);
 
-  // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
+  // One acquisition per day and condition (src/bestand/acquisitions.ts).
   await k.bestand.bucheTageserfassung('part', uid, [part_number, color_id], {
     quantity: e.quantity,
     price: (rePrice ?? 0) > 0 ? rePrice : null,
@@ -174,20 +172,20 @@ async function weitereErfassung(
   });
 }
 
-/** Für Webapp und App derselbe Weg.
- * @returns die Menge danach, wenn sie Teil der Anfrage war */
-export async function manuellesTeilAendern(
-  k: TeileKontext,
+/** Same path for the webapp and the app.
+ * @returns the resulting quantity, if it was part of the request */
+export async function changeManualPart(
+  k: PartsContext,
   uid: number,
   partNumber: string,
   colorId: number,
   body: Record<string, unknown>,
 ): Promise<{ quantity?: number; degradiert?: string[] }> {
-  const existing = await k.manuelleTeile.teilZeileMitZustand(uid, partNumber, colorId);
+  const existing = await k.manualParts.manualPartWithCondition(uid, partNumber, colorId);
   if (!existing) fachfehler('nicht_gefunden', 'teil_nicht_manuell');
 
   const raus: { quantity?: number } = {};
-  // Kam der Marktpreis für die neue Erfassung nicht, sagt es `degradiert`.
+  // If the market price for the new acquisition didn't arrive, `degradiert` says so.
   const ab = new Abstriche();
   const wunsch = mengenwunsch(body);
   if (wunsch) {
@@ -203,7 +201,7 @@ export async function manuellesTeilAendern(
     );
   }
   if (body.unit_price !== undefined) {
-    // Die Regel steht in src/finanzen/preisRegel.ts; hier nur Abfrage und Tabelle.
+    // The rule lives in src/finanzen/preisRegel.ts; only the lookup and table are here.
     const { unitPrice } = await k.finanzen.kaufpreisAusEingabe(
       body.unit_price,
       body.condition,
@@ -211,8 +209,8 @@ export async function manuellesTeilAendern(
       uid,
       zustand => k.finanzen.aktuellerTeilMarktpreis(partNumber, colorId, uid, zustand),
     );
-    // In die NEUESTE Erfassung: Dort heisst NULL „kein Preis bekannt", die 0 der
-    // Anzeige bildet die Leseabfrage.
+    // Into the LATEST acquisition: there NULL means "no price known", the 0 shown
+    // on display is formed by the read query.
     await k.bestand.neuesteSetzen('part', 'preis', unitPrice, uid, [partNumber, colorId]);
   }
   if (body.condition !== undefined && body.condition !== null) {
@@ -222,30 +220,29 @@ export async function manuellesTeilAendern(
   return { ...raus, ...ab.angabe() };
 }
 
-export async function teilekaeufe(
-  k: TeileKontext,
+export async function listPartAcquisitions(
+  k: PartsContext,
   uidWahl: Sicht | number[],
   partNumber: string,
   colorId: string | number,
 ) {
   const uid = await k.haushalt.blickfeldAus(uidWahl);
-  // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
-  // im Dialog nicht, worauf sie steht.
-  return k.manuelleTeile.teilErfassungen(uid, partNumber, V0.colorId(colorId));
+  // The VIEWPOINT: each row comes with its owner, otherwise the picker in the
+  // dialog wouldn't know what it's choosing from.
+  return k.manualParts.partAcquisitions(uid, partNumber, V0.colorId(colorId));
 }
 
-export function manuellesTeil(
-  k: TeileKontext,
+export function manualPartExists(
+  k: PartsContext,
   uid: number,
   partNumber: string,
   colorId: number,
 ): Promise<{ id: number } | undefined> {
-  return k.manuelleTeile.teilZeileManuell(uid, partNumber, colorId);
+  return k.manualParts.manualPartRow(uid, partNumber, colorId);
 }
 
-/** Dieselbe Preisregel wie beim Anlegen von Hand; eine fehlerhafte Zeile
- * bricht den Rest nicht ab. */
-export async function importiereTeileCsv(k: TeileKontext, uid: number, text: string) {
+/** Same pricing rule as when adding by hand; one bad row doesn't abort the rest. */
+export async function importPartsCsv(k: PartsContext, uid: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0,
     updated = 0,
@@ -266,7 +263,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
         categoryName: string | null = null;
       if (!partName) {
         const abruf = await versuche(
-          'teile:import-lookupPart',
+          'parts:import-lookupPart',
           k.fremdquellen.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
         );
         const info = abruf.ok ? abruf.wert : null;
@@ -276,7 +273,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
           categoryName = info.category_name;
         }
       }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await manuellerTeilekauf(k, uid, {
+      const { erfassungsPreis, effectiveCondition, geschaetzt } = await manualPartPurchase(k, uid, {
         partNumber,
         colorId,
         unitPrice,
@@ -290,14 +287,14 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
         createdAt: acquiredAt || k.uhr.datum().toISOString().slice(0, 10),
       };
 
-      if (await manuellesTeil(k, uid, partNumber, colorId)) {
+      if (await manualPartExists(k, uid, partNumber, colorId)) {
         await k.bestand.bucheTageserfassung('part', uid, [partNumber, colorId], erfassung);
         updated++;
         results.push({ part_number: partNumber, action: 'updated' });
         continue;
       }
-      // Katalog vor Bestand: lieber eine Beschreibung ohne Bestand als umgekehrt.
-      const colorHex = await k.manuelleTeile.rbFarbcode(colorId);
+      // Catalog before stock: better a description without stock than the other way round.
+      const colorHex = await k.manualParts.rbColorHex(colorId);
       if (eingetippt) await k.katalog.merkeTeil(partNumber, partName, null, k.db, uid);
       else await k.katalog.merkeTeil(partNumber, partName, categoryName);
       await k.katalog.merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
@@ -311,7 +308,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
       results.push({
         part_number: partNumber,
         action: 'error',
-        error: oeffentlicherFehler(e, 'teile-csv:zeile').error,
+        error: oeffentlicherFehler(e, 'parts-csv:row').error,
       });
     }
   }

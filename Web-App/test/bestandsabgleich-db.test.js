@@ -73,7 +73,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     return;
   }
   await seed();
-  const { besesseneMengenAbfrage, BESTAND_MAX_TEILE } = _req('src/teile/abfragen.js');
+  const { ownedQuantitiesQuery, MAX_OWNED_PARTS } = _req('src/parts/queries.js');
   const household = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
@@ -81,7 +81,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   };
 
   await t.test('zählt je Teil UND Farbe, nicht je Teilenummer', async () => {
-    const b = await besesseneMengenAbfrage(
+    const b = await ownedQuantitiesQuery(
       [U.ich],
       [
         { part_number: '3001', color_id: 4 },
@@ -100,7 +100,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   await t.test('„lose" schliesst aus, was in einem Set steckt', async () => {
     // Der eigentliche Punkt der zweiten Zahl: Ein Teil in einem aufgebauten
     // Set besitzt man zwar, müsste dafür aber ein anderes Set zerlegen.
-    const b = await besesseneMengenAbfrage([U.ich], [{ part_number: '3002', color_id: 4 }]);
+    const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '3002', color_id: 4 }]);
     assert.equal(b['3002|4'].gesamt, 10);
     assert.equal(b['3002|4'].lose, 0, 'Ein Set-Teil darf nicht als lose gelten');
   });
@@ -110,14 +110,14 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     // fehlende Schlüssel auf 0 und unterscheidet damit nicht — der Server
     // spart sich dafür eine Zeile je nicht vorhandenem Teil, und das sind bei
     // einem grossen Set die meisten.
-    const b = await besesseneMengenAbfrage([U.ich], [{ part_number: '9999', color_id: 0 }]);
+    const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '9999', color_id: 0 }]);
     assert.equal(b['9999|0'], undefined);
   });
 
   await t.test('das Blickfeld entscheidet, nicht die Anfrage', async () => {
     // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
-    const nurIch = await besesseneMengenAbfrage([U.ich], [{ part_number: '3001', color_id: 4 }]);
-    const mitKind = await besesseneMengenAbfrage(await household.blickfeldIds(U.ich, 'all'), [
+    const nurIch = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
+    const mitKind = await ownedQuantitiesQuery(await household.blickfeldIds(U.ich, 'all'), [
       { part_number: '3001', color_id: 4 },
     ]);
     assert.equal(nurIch['3001|4'].gesamt, 8);
@@ -127,7 +127,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   });
 
   await t.test('doppelte Anfragen und leere Eingaben laufen nicht ins Leere', async () => {
-    const b = await besesseneMengenAbfrage(
+    const b = await ownedQuantitiesQuery(
       [U.ich],
       [
         { part_number: '3001', color_id: 4 },
@@ -137,16 +137,16 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
       ],
     );
     assert.equal(b['3001|4'].gesamt, 8, 'Eine doppelte Anfrage darf nicht doppelt zählen');
-    assert.deepEqual(await besesseneMengenAbfrage([U.ich], []), {});
+    assert.deepEqual(await ownedQuantitiesQuery([U.ich], []), {});
   });
 
   await t.test('die Anfrage ist gedeckelt', async () => {
     // Eine Teileliste über viele Sets darf keine unbegrenzte Abfrage bauen.
     // GEMESSEN: Der Deckel greift, die Antwort bleibt leer statt zu werfen.
-    assert.equal(typeof BESTAND_MAX_TEILE, 'number');
-    const viele = Array.from({ length: BESTAND_MAX_TEILE + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
+    assert.equal(typeof MAX_OWNED_PARTS, 'number');
+    const viele = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
     viele.push({ part_number: '3001', color_id: 4 }); // steht HINTER dem Deckel
-    const b = await besesseneMengenAbfrage([U.ich], viele);
+    const b = await ownedQuantitiesQuery([U.ich], viele);
     assert.deepEqual(b, {}, 'Alles hinter dem Deckel muss wegfallen — auch Vorhandenes');
   });
 

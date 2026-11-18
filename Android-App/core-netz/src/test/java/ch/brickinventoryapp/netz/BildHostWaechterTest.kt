@@ -19,22 +19,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Bild-Client lädt nur vom eigenen Server; ein fremder Host — auch ein Bild-CDN —
- * wird nicht angefragt, auch nicht über eine Umleitung: Die Bilder kommen über den
- * Proxy des Servers, ein direkter Weg gäbe Dritten die IP des Geräts.
+ * The image client only loads from our own server; a foreign host — a image
+ * CDN included — is never requested, not even via a redirect: images come
+ * through the server's proxy, a direct path would give third parties the device's IP.
  *
  * Gegenproben:
- *   A  in vorbereitet() jede Anfrage durchgelassen → rot „ein fremder Host wird
- *      nicht angefragt“ und „eine Umleitung zu einem fremden Host …“
- *   C die CDN-Freigabe wieder eingebaut
- *      (gegenproben/bild-cdn-wieder-frei.patch) → rot „auch ein Bild-CDN …“
- *   D  den Zweig `eigenerServer(r.url) -> r` entfernt → rot „der eigene Server
- *      bekommt die Anfrage unveraendert“ und beide Umleitungstests
- *   E  istEigenerBildServer() ohne `entwicklung &&` → rot „localhost gilt nur
- *      im Debug-Build als eigener Server“ (200 statt 403)
- *   F  in intercept() naechsteUmleitung ohne basisPfad() aufgerufen (Stand vor
- *      früher genügte der gleiche Host) → rot „eine Umleitung aus dem Basispfad
- *      heraus geht ohne Token“; gegenproben/bild-umleitung-verlaesst-basispfad.patch
+ *   A  in vorbereitet(), let every request through → red "ein fremder Host wird
+ *      nicht angefragt" and "eine Umleitung zu einem fremden Host …"
+ *   C  the CDN allowance built back in
+ *      (gegenproben/bild-cdn-wieder-frei.patch) → red "auch ein Bild-CDN …"
+ *   D  removed the `eigenerServer(r.url) -> r` branch → red "der eigene Server
+ *      bekommt die Anfrage unveraendert" and both redirect tests
+ *   E  istEigenerBildServer() without `entwicklung &&` → red "localhost gilt nur
+ *      im Debug-Build als eigener Server" (200 instead of 403)
+ *   F  in intercept(), naechsteUmleitung called without basisPfad() (the state before
+ *      the same host used to be enough) → red "eine Umleitung aus dem Basispfad
+ *      heraus geht ohne Token"; gegenproben/bild-umleitung-verlaesst-basispfad.patch
  */
 class BildHostWaechterTest {
 
@@ -44,7 +44,7 @@ class BildHostWaechterTest {
     @After
     fun zu() = server.shutdown()
 
-    /** Statt Netz: Was zum CDN ginge, wird hier festgehalten und mit 200 beantwortet. */
+    /** Instead of the network: what would go to the CDN is recorded here and answered with 200. */
     private val cdnAttrappe = Interceptor { chain ->
         val r = chain.request()
         if (r.url.host == server.hostName && r.url.port == server.port) chain.proceed(r)
@@ -130,7 +130,7 @@ class BildHostWaechterTest {
         val fremd = server.takeRequest()
         assertEquals("/fremd/bild.png", fremd.path)
         assertNull("Der Token verliess den Basispfad", fremd.getHeader("Authorization"))
-        // Segmentweise: /brick deckt /brickfremd nicht.
+        // Segment-wise: /brick does not cover /brickfremd.
         assertEquals(200, holeMitBasis("/brick", "/brick/a.png"))
         server.takeRequest()
         val nachbar = server.takeRequest()
@@ -149,7 +149,7 @@ class BildHostWaechterTest {
         assertEquals("Bearer GEHEIM", ziel.getHeader("Authorization"))
     }
 
-    /** Derselbe Wächter, wie NetzModule ihn baut, im Release- und im Debug-Build. */
+    /** The same guard as NetzModule builds it, in the release and in the debug build. */
     private fun mitRegel(entwicklung: Boolean) = OkHttpClient.Builder()
         .addInterceptor(BildHostWaechter { istEigenerBildServer(it, "https://brick.example.org", entwicklung) })
         .addInterceptor(cdnAttrappe)

@@ -273,7 +273,7 @@ async function fuelleFarbwahl(aktuell) {
 }
 
 /**
- * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/teile/teilFarbeAendern.ts). Danach öffnet
+ * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/parts/changeColor.ts). Danach öffnet
  * der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
  * @this {unknown}
  */
@@ -298,7 +298,7 @@ async function speichereTeilFarbe() {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // `bild` sagt, woher das Bild der neuen Farbe kommt (src/teile/teilFarbeAendern.ts).
+  // `bild` sagt, woher das Bild der neuen Farbe kommt (src/parts/changeColor.ts).
   // null heisst: keines gefunden — dann steht nach dem Neuöffnen der Platzhalter da, und genau das war Marcos
   // Befund. Die Meldung sagt es, statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');

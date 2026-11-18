@@ -7,9 +7,9 @@ diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/
 --- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
 +++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/BildHosts.kt
 @@ -37,7 +37,7 @@ class BildHostWaechter(
-             // Köpfe (samt Token) ziehen nur mit, wo auch der ServerWaechter sie hinschickte:
-             // gleiche Herkunft und unter dem Basispfad. Sonst teilt sich ein Proxy-Host mit
-             // einer fremden Anwendung, und eine Umleitung dorthin trüge den Token hinaus.
+             // Headers (the token included) move along only where the ServerWaechter would
+             // also have sent them: same origin and under the base path. Otherwise a proxy
+             // host is shared with a foreign application, and a redirect there would carry the token out.
 -            val mitgenommen = if (eigenerServer(raus.url)) naechsteUmleitung(raus, antwort, basisPfad()) else null
 +            val mitgenommen = if (eigenerServer(raus.url)) naechsteUmleitung(raus, antwort) else null
              antwort.close()

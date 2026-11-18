@@ -29,7 +29,7 @@ const db = testDaten();
 test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const H = require('./helpers/sources').handlerModul(_req);
-  const PS = _req('src/teile/partsSummary.js');
+  const PS = _req('src/parts/summary.js');
   const A = `kz-einzeln-${process.pid}`,
     B = `kz-gemischt-${process.pid}`;
   const SN = `KE${process.pid}-1`;
@@ -51,29 +51,29 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     await haeltTeil(db, UB, 'ke3', { colorId: 15, menge: 1 });
 
     await t.test('nur einzelne Teile: 4 Sorten in 4 Farben', async () => {
-      const s = await H.teileKennzahlenLesen(UA);
+      const s = await H.partStatsQuery(UA);
       assert.equal(s.unique_parts, 4);
       assert.equal(s.unique_colors, 4);
       assert.equal(s.total_parts, 0, 'keine Set-Teile');
       assert.equal(s.manual_parts, 100);
     });
     await t.test('die Gesamtzahl zählt einzelne Teile nicht doppelt', async () => {
-      const s = await H.teileKennzahlenLesen(UB);
+      const s = await H.partStatsQuery(UB);
       assert.equal(s.total_parts, 5, 'Set-Teile 3 + 2');
       assert.equal(s.manual_parts, 8, 'einzeln 7 + 1');
       assert.equal(s.unique_parts, 3);
       assert.equal(s.unique_colors, 3);
     });
     await t.test('gemischt: Zusammenfassung und Live gleich', async () => {
-      const live = await H.teileKennzahlenLesen(UB);
+      const live = await H.partStatsQuery(UB);
       await PS.rebuildNow(UB);
       const repo = {
-        ..._req('src/teile/repository/teileListe.js'),
-        ...require('./helpers/sources').testBereich('teile').teileListe,
+        ..._req('src/parts/repository/partsList.js'),
+        ...require('./helpers/sources').testBereich('parts').partsList,
       };
-      const zsf = await repo.kennzahlen([UB], true);
+      const zsf = await repo.stats([UB], true);
       assert.deepEqual(zsf, live);
-      assert.deepEqual(await H.teileKennzahlenLesen(UB), live);
+      assert.deepEqual(await H.partStatsQuery(UB), live);
     });
   } finally {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[UA, UB]]);
