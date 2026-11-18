@@ -1,121 +1,120 @@
-// Läuft blockierend im <head>, vor dem ersten Paint: Auch Anmelde- und Startseite tragen so sofort das
-// richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts und
-// nichts veraltet.
+// Runs blocking in the <head>, before the first paint: the login and landing page then also carry the
+// right theme right away. First the last known value, then reconciling with the server — so nothing
+// flashes and nothing goes stale.
 
 (() => {
   var KEY = 'bim_theme';
-  // Muss mit DESIGNS in src/vertrag/globaleRegeln.ts uebereinstimmen — eine Pruefung haelt beide zusammen
-  // (theme.test.js).
+  // Must match DESIGNS in src/vertrag/globaleRegeln.ts — a test keeps both in sync (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
   /**
-   * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf classic
-   * liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
+   * Applies a theme. An empty value means "no information" and changes nothing: falling back to classic
+   * made the page jump on login and wrote the wrong value into the cache.
    * @param {string | null | undefined} theme
-   * @param {boolean} [warten] erst umschalten, wenn die Stylesheets geladen sind
+   * @param {boolean} [wait] only switch once the stylesheets are loaded
    */
-  function apply(theme, warten) {
+  function apply(theme, wait) {
     if (!theme || ALLOWED.indexOf(theme) === -1) return null;
-    serverDesign = theme;
-    stileLaden(
+    serverTheme = theme;
+    loadStyles(
       theme,
       () => {
-        if (serverDesign === theme) document.documentElement.setAttribute('data-theme', wirksam(theme));
+        if (serverTheme === theme) document.documentElement.setAttribute('data-theme', effective(theme));
       },
-      warten,
+      wait,
     );
     return theme;
   }
 
   /**
-   * Holt die Stylesheets eines Designs aus <template id="design-stile">. Bei einem Wechsel schaltet `weiter` erst
-   * um, wenn sie da sind — sonst stünde die Seite einen Augenblick ohne Gestaltung da.
-   * @param {string} theme @param {() => void} weiter @param {boolean} [warten]
+   * Fetches a theme's stylesheets from <template id="design-stile">. On a switch, `next` only runs once
+   * they are there — otherwise the page would sit unstyled for a moment.
+   * @param {string} theme @param {() => void} next @param {boolean} [wait]
    */
-  function stileLaden(theme, weiter, warten) {
+  function loadStyles(theme, next, wait) {
     var el = document.getElementById('design-stile');
-    var vorlage = el instanceof HTMLTemplateElement ? el : null;
-    var offen = 0;
-    var erledigt = false;
-    var fertig = () => {
-      if (--offen > 0 || erledigt) return;
-      erledigt = true;
-      weiter();
+    var template = el instanceof HTMLTemplateElement ? el : null;
+    var open = 0;
+    var done = false;
+    var finish = () => {
+      if (--open > 0 || done) return;
+      done = true;
+      next();
     };
-    if (vorlage)
-      vorlage.content.querySelectorAll('link[data-design]').forEach(link => {
+    if (template)
+      template.content.querySelectorAll('link[data-design]').forEach(link => {
         if ((link.getAttribute('data-design') || '').split(' ').indexOf(theme) === -1) return;
-        if (warten) {
-          offen++;
-          link.addEventListener('load', fertig, { once: true });
-          link.addEventListener('error', fertig, { once: true });
+        if (wait) {
+          open++;
+          link.addEventListener('load', finish, { once: true });
+          link.addEventListener('error', finish, { once: true });
         }
-        vorlage?.before(document.adoptNode(link));
+        template?.before(document.adoptNode(link));
       });
-    if (!offen) weiter();
-    // Ohne load-Ereignis (Netz hängt, jsdom) schaltet das Design trotzdem um, nur eben ohne Gestaltung.
+    if (!open) next();
+    // Without a load event (network stalled, jsdom) the theme still switches, just without styling.
     else
       setTimeout(() => {
-        offen = 0;
-        fertig();
+        open = 0;
+        finish();
       }, 1500);
   }
 
-  // Stand das Rebrickable-Band beim letzten Start da, hält ihm das Startgerüst den Platz frei (js/konto.js).
+  // If the Rebrickable banner was showing at the last start, the boot shell keeps its space free (js/konto.js).
   try {
     if (localStorage.getItem('bim_rb_band')) document.documentElement.setAttribute('data-rb-band', '');
   } catch (_) {
-    /* ohne Speicher kein Platzhalter */
+    /* no storage, no placeholder */
   }
 
-  // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
-  // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei dunklem System die dunkle
-  // Variante DESSELBEN Designs (data-dunkel, Farben aus tokens.css). Wer „server“ wählt, behält das Design
-  // ohne Variante.
-  var DUNKEL_KEY = 'bim_dunkel';
-  var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  // ── Dark mode follows the system, per device (profile settings) ────────────────────
+  // Only the DEVICE knows whether it wants dark mode. The default is "system": on a dark system, the dark
+  // variant of the SAME theme (data-dunkel, colors from tokens.css). Whoever picks "server" keeps the
+  // theme without a variant.
+  var DARK_KEY = 'bim_dunkel';
+  var systemDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   /** @type {string | null} */
-  var serverDesign = null;
-  /** 'system', 'server' (nie dunkel) oder 'immer'. */
-  function wahl() {
+  var serverTheme = null;
+  /** 'system', 'server' (never dark) or 'immer' (always). */
+  function choice() {
     try {
-      const w = localStorage.getItem(DUNKEL_KEY);
+      const w = localStorage.getItem(DARK_KEY);
       return w === 'server' || w === 'immer' ? w : 'system';
     } catch (_) {
       return 'system';
     }
   }
   /** @param {string} theme */
-  function wirksam(theme) {
-    var w = wahl();
-    // „Immer dunkel“ auch bei hellem System: Sonst bekam den Dunkelmodus nur, wer Werkbank wählte.
-    var dunkel = theme !== 'werkbank' && (w === 'immer' || (w === 'system' && !!systemDunkel && systemDunkel.matches));
-    if (dunkel) document.documentElement.setAttribute('data-dunkel', '');
+  function effective(theme) {
+    var w = choice();
+    // "Always dark" even on a light system: otherwise only picking Werkbank got dark mode.
+    var dark = theme !== 'werkbank' && (w === 'immer' || (w === 'system' && !!systemDark && systemDark.matches));
+    if (dark) document.documentElement.setAttribute('data-dunkel', '');
     else document.documentElement.removeAttribute('data-dunkel');
-    // Die media-Attribute der Meta-Tags kennen „immer“ und „nie dunkel“ nicht; Werkbank ist ohne Variante dunkel.
-    var leiste = dunkel || theme === 'werkbank' ? '#14181d' : '#f8fafc';
+    // The meta tags' media attributes don't know "always" and "never dark"; Werkbank is dark with no variant.
+    var bar = dark || theme === 'werkbank' ? '#14181d' : '#f8fafc';
     document.querySelectorAll('meta[name=theme-color]').forEach(m => {
-      m.setAttribute('content', leiste);
+      m.setAttribute('content', bar);
     });
     return theme;
   }
-  function neuAnwenden() {
-    if (serverDesign) document.documentElement.setAttribute('data-theme', wirksam(serverDesign));
+  function reapply() {
+    if (serverTheme) document.documentElement.setAttribute('data-theme', effective(serverTheme));
   }
-  if (systemDunkel?.addEventListener) systemDunkel.addEventListener('change', neuAnwenden);
-  window.__bimDunkel = wert => {
+  if (systemDark?.addEventListener) systemDark.addEventListener('change', reapply);
+  window.__bimDunkel = value => {
     try {
-      localStorage.setItem(DUNKEL_KEY, wert === 'immer' || wert === 'server' ? wert : 'system');
+      localStorage.setItem(DARK_KEY, value === 'immer' || value === 'server' ? value : 'system');
     } catch (_) {}
-    neuAnwenden();
+    reapply();
   };
-  window.__bimDunkelWert = wahl;
-  // Hat ein Design keine helle Fassung? Die Einstellungen sagen es dann dazu.
+  window.__bimDunkelWert = choice;
+  // Does a theme have no light variant? Settings then says so.
   window.__bimNurDunkel = theme => theme === 'werkbank';
 
   /**
-   * Setter für konto.js und den Admin-Speichern-Handler. Nur gültige Werte werden angewendet UND gecacht —
-   * ein leerer oder fehlender Wert darf den Cache nicht überschreiben.
+   * Setter for konto.js and the admin save handler. Only valid values are applied AND cached — an empty
+   * or missing value must not overwrite the cache.
    * @param {string} theme
    */
   function applier(theme) {
@@ -127,23 +126,22 @@
     return val;
   }
 
-  // 0) Hat der Server data-theme gesetzt (src/profile/indexHtml.ts), gilt es: nur den Cache nachführen, kein
-  //    Abgleich — weder ein sichtbarer Sprung noch eine Anfrage mehr je Seitenaufruf.
+  // 0) If the server set data-theme (src/profile/indexHtml.ts), it governs: only the cache needs updating,
+  //    no reconciliation — no visible jump and no extra request per page load.
   var served = document.documentElement.getAttribute('data-theme');
   if (served && ALLOWED.indexOf(served) !== -1) {
     try {
       localStorage.setItem(KEY, served);
     } catch (_) {}
-    serverDesign = served;
-    stileLaden(served, () => {});
-    neuAnwenden();
+    serverTheme = served;
+    loadStyles(served, () => {});
+    reapply();
     window.__bimApplyTheme = applier;
     return;
   }
 
-  // 1) Fallback, wenn der Server nichts gesetzt hat (statisch ausgelieferte
-  //    Datei, vorgelagerter Cache, Renderfehler): zuletzt bekanntes Design
-  //    sofort anwenden, danach gegen den Server abgleichen.
+  // 1) Fallback when the server set nothing (statically served file, an upstream cache, a render error):
+  //    apply the last known theme right away, then reconcile against the server.
   /** @type {string | null} */
   var cached = null;
   try {
@@ -151,7 +149,7 @@
   } catch (_) {}
   apply(cached);
 
-  // 2) Serverwert nachziehen
+  // 2) Catch up with the server's value
   function sync() {
     fetch('/api/v1/settings/theme', { credentials: 'same-origin' })
       .then(r => (r.ok ? r.json() : null))
@@ -165,12 +163,12 @@
         }
       })
       .catch(() => {
-        /* offline oder Server startet noch — Cache bleibt gültig */
+        /* offline, or the server is still starting — the cache stays valid */
       });
   }
 
-  // Der Server nimmt Anfragen erst nach initSchemaOnce() an; ein Fehlschlag hier ist unkritisch, weil
-  // checkAuth() ohnehin auf den Startup wartet und applyTheme() nach dem Login den Serverwert erneut setzt.
+  // The server only accepts requests after initSchemaOnce(); a failure here is harmless, since
+  // checkAuth() waits for startup anyway and applyTheme() sets the server value again after login.
   sync();
 
   window.__bimApplyTheme = applier;
