@@ -13,22 +13,21 @@ import { setzeMengenfeld } from './detailfelder.js';
 import { hideProgress } from './fortschritt.js';
 import { deleteManualPart } from './teile.js';
 
-// Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne script-src
-// 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese Verteidigungslinie.
+// A delegated dispatcher for data-click & co. instead of onclick in markup: that way the CSP needs no
+// script-src 'unsafe-inline', and an overlooked XSS hole still runs into this line of defense.
 
 (() => {
-  /** Ereignisse, die per Delegation am document abgefangen werden. Kein
-   * mouseenter/mouseleave: Ein Überfahren mit der Maus ist keine Absicht, und
-   * eingeschleustes Markup löste damit Aktionen ohne Klick aus. */
+  /** Events caught via delegation on document. No mouseenter/mouseleave: hovering with the mouse is not
+   * intent, and injected markup would trigger actions without a click. */
   const DELEGATED = ['click', 'change', 'input', 'blur', 'keydown'];
 
-  /** blur steigt nicht auf — braucht Capture. */
+  /** blur doesn't bubble — needs capture. */
   const NEEDS_CAPTURE = new Set(['blur', 'error', 'load']);
 
-  // Ausser click nimmt jedes Ereignis nur die Handler, die das Markup dafür wirklich nutzt;
-  // test/aktionen-schutz.test.js gleicht die Liste ab.
+  // Except for click, every event only accepts the handlers the markup actually uses for it;
+  // test/aktionen-schutz.test.js checks this list against the markup.
   /** @type {Record<string, Set<string>>} */
-  const NUR = {
+  const ONLY = {
     change: new Set([
       'acqSave',
       'aendereAlarmSchwelle',
@@ -83,9 +82,9 @@ import { deleteManualPart } from './teile.js';
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };
 
-  // Löschen, Konto, Zugänge, Verwaltung: nur von Elementen, die unser Code erzeugt hat (istVertraut), nie aus
-  // eingeschleustem Markup.
-  const GEFAEHRLICH = new Set([
+  // Delete, account, access, admin: only from elements our own code created (istVertraut), never from
+  // injected markup.
+  const DANGEROUS = new Set([
     'delSet',
     'delSetStop',
     'delInstr',
@@ -136,8 +135,9 @@ import { deleteManualPart } from './teile.js';
   }
 
   /**
-   * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction() fällt
-   * intern noch auf window zurück, für den Log-Betrachter, der als klassisches Skript im eigenen Popup läuft.
+   * Resolve handler names through the registry: module functions don't live on window. resolveAction()
+   * still falls back to window internally, for the log viewer, which runs as a classic script in its own
+   * popup.
    * @param {string} name
    */
   function resolve(name) {
@@ -154,21 +154,21 @@ import { deleteManualPart } from './teile.js';
     );
     if (!el) return;
     const name = el.getAttribute(attrFor(type));
-    if (name === null || (NUR[type] && !NUR[type].has(name)) || (GEFAEHRLICH.has(name) && !istVertraut(el))) {
-      console.warn('[actions] abgewiesen:', type, name);
+    if (name === null || (ONLY[type] && !ONLY[type].has(name)) || (DANGEROUS.has(name) && !istVertraut(el))) {
+      console.warn('[actions] rejected:', type, name);
       return;
     }
     const fn = resolve(name);
     if (!fn) {
-      console.warn('[actions] unbekannter Handler:', name);
+      console.warn('[actions] unknown handler:', name);
       return;
     }
 
-    // Argumente: data-arg, data-arg2, data-arg3 … in dieser Reihenfolge. data-val="1" hängt den aktuellen
-    // Feldwert an — deckt die vielen Handler ab, die früher this.value gelesen haben.
+    // Arguments: data-arg, data-arg2, data-arg3 … in that order. data-val="1" appends the field's current
+    // value — covers the many handlers that used to read this.value.
     const args = [];
-    // data-self="1": Element als erstes Argument. Mehrere bestehende Handler erwarteten früher `this`
-    // explizit (z. B. triggerCsvSync(this)).
+    // data-self="1": element as the first argument. Several existing handlers used to expect `this`
+    // explicitly (e.g. triggerCsvSync(this)).
     if (el.dataset.self === '1') args.push(el);
     for (const key of ['data-arg', 'data-arg2', 'data-arg3', 'data-arg4', 'data-arg5', 'data-arg6']) {
       if (!el.hasAttribute(key)) break;
@@ -187,79 +187,79 @@ import { deleteManualPart } from './teile.js';
     document.addEventListener(type, ev => handle(type, ev), NEEDS_CAPTURE.has(type));
   }
 
-  // Karten und Zeilen mit data-click sind keine Knöpfe; mit tabindex und dieser Zeile bedient die Tastatur
-  // sie wie einen (Eingabe, bei role=button auch Leertaste).
-  const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
+  // Cards and rows with data-click are not buttons; with tabindex and this block the keyboard operates
+  // them like one (Enter, and Space for role=button).
+  const NATIVE = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
   document.addEventListener('keydown', ev => {
     const el = ev.target;
     if (
       !(el instanceof HTMLElement) ||
-      NATIV.has(el.tagName) ||
+      NATIVE.has(el.tagName) ||
       !el.hasAttribute?.('data-click') ||
       !el.hasAttribute('tabindex')
     )
       return;
-    // Das Lösch-Kreuz der Karte ist ein Mauskürzel (aria-hidden, in der Karte kein Knopf erlaubt); Entf ist sein Tastaturweg.
-    const kreuz =
+    // The card's delete cross is a mouse shortcut (aria-hidden, no button allowed inside the card); Delete
+    // is its keyboard path.
+    const cross =
       ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]')
         ? el.querySelector(':scope > .ca > .delbtn')
         : null;
-    // Gesperrt ist es nur, wenn der Knopf selbst fehlt (ohne Netz); ohne Überfahren ist bloss die Ecke leer.
-    if (kreuz && getComputedStyle(kreuz).display !== 'none') {
+    // Only disabled when the button itself is missing (offline); without hovering the corner is just empty.
+    if (cross && getComputedStyle(cross).display !== 'none') {
       ev.preventDefault();
       /** @type {HTMLElement} */
-      (kreuz).click();
+      (cross).click();
       return;
     }
-    const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
-    if (ev.key !== 'Enter' && !leer) return;
+    const space = ev.key === ' ' && el.getAttribute('role') === 'button';
+    if (ev.key !== 'Enter' && !space) return;
     ev.preventDefault();
     el.click();
   });
 
-  // Anmelde- und Passwortfelder stehen in einem <form>, damit Passwortmanager zuverlässig speichern und
-  // ausfüllen. Abgesendet wird nie: Ein echtes Absenden lüde die Seite neu; stattdessen läuft der Knopf aus
-  // data-submit.
+  // Login and password fields sit in a <form> so password managers save and fill reliably. It's never
+  // actually submitted: a real submit would reload the page; instead the button from data-submit runs.
   document.addEventListener('submit', ev => {
     const form = ev.target;
     if (!(form instanceof HTMLFormElement)) return;
     ev.preventDefault();
     const id = form.getAttribute('data-submit');
     if (!id) return;
-    const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
-    if (knopf && !knopf.disabled) knopf.click();
+    const button = /** @type {HTMLButtonElement | null} */ (document.getElementById(id));
+    if (button && !button.disabled) button.click();
   });
-  // Mit mehr als einem Textfeld und ohne Absendeknopf sendet der Browser bei Enter nicht ab (auch verborgene
-  // Felder zählen). Dann löst Enter hier den Knopf aus, den `data-submit` nennt.
+  // With more than one text field and no submit button, the browser doesn't submit on Enter (hidden
+  // fields count too). Then Enter here triggers the button named by `data-submit`.
   document.addEventListener('keydown', ev => {
     if (ev.key !== 'Enter' || ev.isComposing || ev.defaultPrevented) return;
-    const feld = ev.target;
-    if (!(feld instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(feld.type))
+    const field = ev.target;
+    if (!(field instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(field.type))
       return;
-    const id = feld.form?.getAttribute('data-submit');
-    if (!id || feld.form?.querySelector('[type="submit"]')) return;
+    const id = field.form?.getAttribute('data-submit');
+    if (!id || field.form?.querySelector('[type="submit"]')) return;
     ev.preventDefault();
-    const knopf = /** @type {HTMLButtonElement|null} */ (document.getElementById(id));
-    if (knopf && !knopf.disabled) knopf.click();
+    const button = /** @type {HTMLButtonElement|null} */ (document.getElementById(id));
+    if (button && !button.disabled) button.click();
   });
 
-  // ── Bilder: Fehler- und Ladezustand ───────────────────────────────────────
-  // error und load steigen nicht auf, lassen sich aber in der Capture-Phase am document abfangen. Ersetzt die
-  // zwölf onerror- und vier onload-Attribute in den Kachel-Templates.
+  // ── Images: error and load state ────────────────────────────────────────
+  // error and load don't bubble, but can be caught on document in the capture phase. Replaces the twelve
+  // onerror and four onload attributes in the tile templates.
   document.addEventListener(
     'error',
     ev => {
       const el = ev.target;
       if (!(el instanceof HTMLImageElement)) return;
 
-      // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
-      // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
+      // Retry once before giving up: a single connection error (ETIMEDOUT at the CDN) otherwise left the
+      // tile permanently empty even though the image was fine.
       if (!el.dataset.retried && el.src) {
         el.dataset.retried = '1';
         if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
         const src = el.src;
-        // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und der Browser wuerde sie als Bild
-        // zu laden versuchen.
+        // removeAttribute instead of src='': an empty src points at the PAGE, and the browser would try to
+        // load it as an image.
         setTimeout(() => {
           el.removeAttribute('src');
           el.src = src;
@@ -268,9 +268,9 @@ import { deleteManualPart } from './teile.js';
       }
 
       if (el.dataset.onerror === 'keep') {
-        // Der Zoom (#lightbox-img) behält die Adresse: Ein leeres Overlay sähe aus wie ein kaputter Zoom, so
-        // nennt die Konsole die Adresse.
-        console.warn('[img] konnte nicht geladen werden:', el.src);
+        // The zoom (#lightbox-img) keeps the address: an empty overlay would look like a broken zoom, so
+        // the console names the address.
+        console.warn('[img] failed to load:', el.src);
         return;
       }
       const orig = el.dataset.orig;
@@ -282,8 +282,8 @@ import { deleteManualPart } from './teile.js';
       }
       if (el.dataset.fallbackDone) return;
       el.dataset.fallbackDone = '1';
-      // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die festen Dialogbilder den des Sets,
-      // sonst stünde ein kaputtes Bildsymbol da.
+      // Images from templates (bildTag) get their kind's placeholder; the fixed dialog images get the
+      // set's, otherwise a broken-image icon would show up.
       if (el.dataset.ph) bildPlatzhalter(el);
       else if (el.classList.contains('zoombar')) {
         el.src = PLATZHALTER_SET;
@@ -296,21 +296,21 @@ import { deleteManualPart } from './teile.js';
     true,
   );
 
-  // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus, und
-  // ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
+  // .loaded on every img[loading=lazy], not just on data-fade: styles.css fades out all lazy images, and
+  // without the extra attribute they would otherwise stay invisible despite being loaded.
   /** @param {EventTarget | null} el */
   function markLoaded(el) {
     if (el instanceof HTMLImageElement && el.getAttribute('loading') === 'lazy') {
       el.classList.add('loaded');
     }
-    const bild = /** @type {HTMLImageElement} */ (el);
-    if (bild?.tagName === 'IMG' && bild.hidden && bild.dataset.ph) bildGeladen(bild);
+    const img = /** @type {HTMLImageElement} */ (el);
+    if (img?.tagName === 'IMG' && img.hidden && img.dataset.ph) bildGeladen(img);
   }
 
   document.addEventListener('load', ev => markLoaded(ev.target), true);
 
-  // Aus dem Browser-Cache gelieferte Bilder sind beim Einfügen schon fertig — ihr load-Ereignis ist dann
-  // bereits durch und würde nie ankommen.
+  // Images served from the browser cache are already complete when inserted — their load event has
+  // already fired and would never arrive.
   const imgObserver = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
@@ -333,8 +333,8 @@ import { deleteManualPart } from './teile.js';
     );
 })();
 
-// ── Kleine Helfer für Handler, die vorher als Ausdruck im Attribut standen ──
-// Der Dispatcher ruft mit `this` = auslösendes Element und dem Ereignis als letztem Argument auf.
+// ── Small helpers for handlers that used to be an expression in the attribute ──
+// The dispatcher calls with `this` = the triggering element and the event as the last argument.
 
 function closePwModal() {
   G('pw-modal')?.classList.remove('open');
@@ -356,16 +356,16 @@ function lightboxBackdrop(ev) {
 
 /**
  *
- * Nimmt bevorzugt data-orig, nicht this.src: Die Kacheln zeigen seit der Thumbnail-Umstellung eine
- * verkleinerte Fassung, und im Zoom wäre die unscharf. data-orig trägt die volle Auflösung.
+ * Prefers data-orig over this.src: since the switch to thumbnails the tiles show a shrunk version, which
+ * would look blurry in the zoom. data-orig carries the full resolution.
  * @this {HTMLElement}
  */
 function openImageLightboxFromEl() {
-  // Gerufen vom Bild selbst oder vom Knopf um ein Dialogbild.
-  const bild = this instanceof HTMLImageElement ? this : this.querySelector('img');
-  if (!bild) return;
-  const src = bild.dataset.orig && bild.dataset.orig !== '/assets/set-placeholder.svg' ? bild.dataset.orig : bild.src;
-  // Der Titel des Dialogs nennt, was das Bild zeigt (Set, Teil, Figur), samt Untertitel mit der Nummer.
+  // Called from the image itself or from the button around a dialog image.
+  const img = this instanceof HTMLImageElement ? this : this.querySelector('img');
+  if (!img) return;
+  const src = img.dataset.orig && img.dataset.orig !== '/assets/set-placeholder.svg' ? img.dataset.orig : img.src;
+  // The dialog's title names what the image shows (set, part, figure), with a subtitle carrying the number.
   const dialog = this.closest('.ovl');
   const name = [
     dialog?.querySelector('.mtit')?.textContent,
@@ -381,14 +381,14 @@ function openImageLightboxFromEl() {
 function setLangFromEl() {
   setLang(this.value);
 }
-/** Darstellung je Gerät — die Logik steht in theme-boot.js. @this {HTMLSelectElement} */
+/** Appearance per device — the logic lives in theme-boot.js. @this {HTMLSelectElement} */
 function setzeDunkel() {
   window.__bimDunkel?.(this.value);
 }
 
 /**
- * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also schaltet er
- * auch die manuell erfassten Figuren um.
+ * The figures tab's view switch applies to both lists: it sits above both, so it also switches the
+ * manually recorded figures.
  */
 function renderFigsAll() {
   renderFigs(alleFiguren());
@@ -398,8 +398,8 @@ beiTelefonWechsel(() => {
   if (G('figs-view')?.value === 'table') renderFigsAll();
 });
 
-// ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
-// Alle bekommen `this` = auslösendes Element und das Ereignis als letztes Argument (siehe Dispatcher oben).
+// ── Wrappers for handlers that used to be an expression in the attribute ────
+// All get `this` = the triggering element and the event as the last argument (see the dispatcher above).
 
 /**
  * @param {Event | undefined} ev
@@ -426,9 +426,9 @@ export function clickJobTrigger() {
  */
 export function saveJobTime(k) {
   const m = /^\s*(\d{1,2})\s*[:.]?\s*(\d{2})\s*$/.exec(this.value);
-  const gueltig = !!m && +m[1] < 24 && +m[2] < 60;
-  this.setAttribute('aria-invalid', String(!gueltig));
-  if (!gueltig) {
+  const valid = !!m && +m[1] < 24 && +m[2] < 60;
+  this.setAttribute('aria-invalid', String(!valid));
+  if (!valid) {
     toast(tRaw('monitor.sched.ungueltig'), 'error');
     return;
   }
@@ -444,8 +444,8 @@ export function saveJobMinutes(k) {
   saveJobSchedule(k, { minutes: Number(this.value) }, this);
 }
 
-// owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des Aufrufers statt in die angezeigte
-// — siehe openManDetail.
+// owner: the card's owner. Without it the server would write into the caller's row instead of the one
+// shown — see openManDetail.
 /**
  * @param {string} id
  * @param {string} owner
@@ -456,8 +456,8 @@ export function saveManualFigBl(id, owner) {
 }
 
 /**
- * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne Stopp
- * öffnete der Papierkorb zusätzlich den Dialog hinter der Löschabfrage.
+ * Deletion from a tile, with stopPropagation: the tile itself has a data-click, and without stopping it
+ * the trash would also open the dialog behind the delete confirmation.
  * @param {string} n
  * @param {string} owner
  * @param {Event | undefined} ev
@@ -469,7 +469,7 @@ export function deleteManualFigStop(n, owner, ev) {
 
 /**
  * @param {string} partNumber
- * @param {string} colorId Kommt als Zeichenkette aus data-arg2
+ * @param {string} colorId Arrives as a string from data-arg2
  * @param {Event} ev
  * @param {string} owner
  */
@@ -479,11 +479,11 @@ export function deleteManualPartStop(partNumber, colorId, owner, ev) {
 }
 
 /**
- * Merkposten von der Zeile aus loeschen.
+ * Delete a wanted item from its row.
  *
- * Die Zeile oeffnet seit dem 24.09. auf ihrer GANZEN Flaeche das Detail — damals, weil sie keinen Knopf mehr
- * trug. Jetzt traegt sie wieder einen, und genau deshalb braucht er dieselbe Stop-Fassung wie die Kacheln
- * daneben.
+ * Since 24.09 the row opens the detail view across its WHOLE area — back then because it no longer had a
+ * button. Now it has one again, and that's exactly why it needs the same stop-wrapped form as the tiles
+ * next to it.
  * @param {string} arg
  * @param {Event | undefined} ev
  */
@@ -514,7 +514,8 @@ export function mQtyInc() {
   autosaveSet();
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ──────────────
+// Names below are registry-exposed (data-click/data-change in index.html) — kept unchanged.
 registerActions({
   blurOnEnter,
   clickJobTrigger,

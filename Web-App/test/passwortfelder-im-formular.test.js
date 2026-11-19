@@ -27,7 +27,7 @@ function lauscherCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'aktionen.js'), 'utf8');
   const von = roh.indexOf("  document.addEventListener('submit'");
   assert.ok(von > 0, 'Der submit-Lauscher steht nicht mehr in js/aktionen.js');
-  const bis = roh.indexOf('});', roh.indexOf('knopf.click()', von)) + 3;
+  const bis = roh.indexOf('});', roh.indexOf('button.click()', von)) + 3;
   const stueck = roh.slice(von, bis);
   assert.match(stueck, /preventDefault/, 'Der herausgeschnittene Block ist nicht der richtige');
   return stueck;

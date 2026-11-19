@@ -101,7 +101,7 @@ test('ein Klick reicht Argumente, Feldwert und this durch', async () => {
     assert.equal(gesehen[0].args[3]?.type, 'click');
     assert.deepEqual(gesehen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" reicht den Feldwert');
     assert.ok(
-      warnungen.some(t => t.includes('unbekannter Handler') && t.includes('gibtEsNicht')),
+      warnungen.some(t => t.includes('unknown handler') && t.includes('gibtEsNicht')),
       'Ein Tippfehler im Handlernamen muss auffallen',
     );
   } finally {
