@@ -3,17 +3,17 @@
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import { fehlertext } from '../infra/fehler';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
-import type { VerwaltungKontext } from './kontext';
+import type { ManagementContext } from './context';
 
-type Schritt = [name: string, lauf: () => Promise<unknown>];
+type Step = [name: string, lauf: () => Promise<unknown>];
 
-async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<void> {
+async function runSteps(schritte: Step[], auftrag?: AuftragsLauf): Promise<void> {
   const fehler: string[] = [];
   for (const [name, lauf] of schritte) {
     pruefeAbbruch(auftrag);
     try {
       const n = await lauf();
-      if (typeof n === 'number' && n > 0) console.log(`[aufräumen] ${name}: ${n} entfernt`);
+      if (typeof n === 'number' && n > 0) console.log(`[cleanup] ${name}: ${n} entfernt`);
     } catch (e) {
       fehler.push(`${name}: ${fehlertext(e)}`);
     }
@@ -21,8 +21,8 @@ async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<v
   if (fehler.length) throw new Error(fehler.join('; '));
 }
 
-function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
-  return fuehreAus(
+function cleanup(k: ManagementContext, lauf?: AuftragsLauf): Promise<void> {
+  return runSteps(
     [
       ...k.konto.aufraeumSchritte('stuendlich'),
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
@@ -35,8 +35,8 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   );
 }
 
-function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
-  return fuehreAus(
+function cleanupDaily(k: ManagementContext, lauf?: AuftragsLauf): Promise<void> {
+  return runSteps(
     [
       ['Preisverlauf', k.finanzen.loescheAltePreise],
       ...k.konto.aufraeumSchritte('taeglich'),
@@ -47,4 +47,4 @@ function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<
   );
 }
 
-export { aufraeumen, aufraeumenTaeglich };
+export { cleanup, cleanupDaily };

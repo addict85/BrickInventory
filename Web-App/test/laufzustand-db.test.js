@@ -73,7 +73,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
     }
   });
 
-  const jm = _req('src/verwaltung/kacheln.js');
+  const jm = _req('src/management/tiles.js');
   const { auftraege } = require('./helpers/sources').testDienste();
   const imgDlAdd = n => auftraege.zaehleZustand('imgdl_pending_count', n);
 
@@ -84,7 +84,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
                           NOW() - INTERVAL '1 min')`);
     // Der nächste geplante Lauf ist jünger, aber nicht der, der gerade arbeitet.
     await db.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('preise', '{}', 'plan:preise')`);
-    const k = (await jm.kacheln()).priceJob;
+    const k = (await jm.tiles()).priceJob;
     assert.deepEqual(
       { status: k.status, progress: k.progress, total: k.total, sub: k.sub },
       { status: 'running', progress: 3, total: 9, sub: '10001-1' },

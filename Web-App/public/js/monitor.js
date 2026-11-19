@@ -143,7 +143,7 @@ const SUB_TEXTE = {
 };
 
 /**
- * Untertitel aus den Codes des Servers (src/verwaltung/dienst.ts); die Sätze stehen nur in den Sprachdateien.
+ * Untertitel aus den Codes des Servers (src/management/service.ts); die Sätze stehen nur in den Sprachdateien.
  * Ein unbekannter Code (neuerer Server) fällt auf den Text des Servers zurück.
  * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile @param {string} sub
  */

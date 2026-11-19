@@ -7,7 +7,7 @@
  *      `planeAlle()` allein zu entfernen bleibt grün: Heute zieht der Start
  *      jede geplante Art vor und legt sie dabei an; planeAlle() deckt eine
  *      künftige Art ab, die nicht vorgezogen wird.
- *   B  in starteJobs() die Schleife über NACHLAEUFE entfernt → rot: „jeder
+ *   B  in starteJobs() die Schleife über FOLLOWUP_RUNS entfernt → rot: „jeder
  *      Nachlauf ist einmal eingestellt“
  *   C  starteAuftragsWorker() aus starteJobs() entfernt → rot: „der Worker läuft an“
  *   D  (05.11.2026) das Lebenszeichen ohne Blick auf den Worker geschrieben →
@@ -85,8 +85,8 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   });
 
   await t.test('jeder Nachlauf ist einmal eingestellt', async () => {
-    const { NACHLAEUFE } = _req('src/verwaltung/startNachlaeufe.js');
-    for (const schritt of Object.keys(NACHLAEUFE))
+    const { FOLLOWUP_RUNS } = _req('src/management/startFollowUpRuns.js');
+    for (const schritt of Object.keys(FOLLOWUP_RUNS))
       assert.ok(
         zeilen.some(z => z.dedupe_key === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,

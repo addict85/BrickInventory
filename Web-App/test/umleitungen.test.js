@@ -203,7 +203,7 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   );
   // Die Bild-Diagnose steht seit 05.11.2026 im Verwaltungsdienst.
   assert.match(
-    ohneKommentare(read('src/verwaltung/diagnose.ts')),
+    ohneKommentare(read('src/management/diagnostics.ts')),
     /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
     'Die Bild-Diagnose prueft nicht mehr ueber die gemeinsame Regel',
   );

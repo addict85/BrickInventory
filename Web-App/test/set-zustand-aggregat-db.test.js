@@ -14,7 +14,7 @@
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
  *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
  *      „setLesen …“ und „manuelle Teile und Minifiguren …“
- *   F  probeErfassungen sortiert nach `added_at` → rot „die Preis-Probe …“;
+ *   F  sampleAcquisitions sortiert nach `added_at` → rot „die Preis-Probe …“;
  *      ohne `price_cache: cacheRows` in der Antwort ebenso
  *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „gewinnUndVerlust
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein

@@ -129,7 +129,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
     // „running" heisst jetzt: hat kürzlich etwas getan
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
-    await _req('src/verwaltung/kacheln.js')
+    await _req('src/management/tiles.js')
       .imgDlReset()
       .catch(() => {});
     _req('src/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
@@ -153,7 +153,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
     // Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     _req('src/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
-    await _req('src/verwaltung/kacheln.js')
+    await _req('src/management/tiles.js')
       .imgDlReset()
       .catch(() => {});
     assert.notEqual(

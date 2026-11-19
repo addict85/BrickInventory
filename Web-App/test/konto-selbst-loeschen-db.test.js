@@ -11,7 +11,7 @@
  *      Verwalter bleibt“
  *   C  loescheOffeneRegistrierungen() ohne `registration_pending` → rot:
  *      „unbestätigte Registrierungen …“ (das Konto mit neuer Adresse ist weg)
- *   D  der Schritt fehlt in aufraeumenTaeglich() → rot: dieselbe Prüfung
+ *   D  der Schritt fehlt in cleanupDaily() → rot: dieselbe Prüfung
  *      (die alte Registrierung bleibt)
  * Gemessen grün blieb (04.11.2026): uebernimmEmailNeu() ohne `registration_pending = false` —
  * das Löschen verlangt zusätzlich NOT email_verified.
@@ -136,7 +136,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
       [adresse],
     );
 
-    await _req('src/verwaltung/aufraeumen.js').aufraeumenTaeglich();
+    await _req('src/management/cleanup.js').cleanupDaily();
     const stand = {
       alt: await da(alt.id),
       neu: await da(neu.id),

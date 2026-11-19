@@ -59,7 +59,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.collection.db,
     // @ts-expect-error
-    d.verwaltung.db,
+    d.management.db,
     // @ts-expect-error
     d.idempotency.db,
     // Die ausdrücklichen Dienste dagegen stehen da.

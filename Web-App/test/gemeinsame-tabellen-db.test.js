@@ -17,7 +17,7 @@
  *
  * Jede Tabelle hat einen Besitzer-Bereich (BESITZER); nur er schreibt hinein,
  * andere rufen seinen Dienst. Gegenproben (10.11.2026 gemessen):
- *   E  `DELETE FROM price_cache` zurück nach src/verwaltung/repository/verwaltung.ts
+ *   E  `DELETE FROM price_cache` zurück nach src/management/repository/management.ts
  *      → rot: „jede Tabelle hat einen Besitzer, nur er schreibt hinein“ (und
  *      „jede schreibende Stelle auf eine Katalogtabelle …“)
  *   F  merkeKatalogCache zurück nach src/sets/repository/setDetail.ts → rot: dieselbe
@@ -773,7 +773,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     }
     // Selbstbeweis der Einteilung, an echten Stufen.
     assert.equal(leseRichtung(stufen, 'src/finanzen', besitzer.get('sets')), 'aufwärts');
-    assert.ok(je.abwärts.includes('src/verwaltung → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
+    assert.ok(je.abwärts.includes('src/management → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
     assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
     assert.deepEqual(
       je.aufwärts,

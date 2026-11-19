@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
 import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
-import { NACHLAEUFE, type Nachlauf } from '../src/verwaltung';
+import { FOLLOWUP_RUNS, type FollowUpStep } from '../src/management';
 import type { Dienste } from './verdrahtung';
 
 /** Der Healthcheck des Dienstes `jobs` (compose.yaml) sieht auf das Alter dieser Datei. */
@@ -45,7 +45,7 @@ export async function starteJobs(d: Dienste): Promise<JobsLauf> {
   await d.auftraege.ziehePlanVor('bild_nachlauf', 30);
   await d.auftraege.ziehePlanVor('aufraeumen_taeglich', 60);
   await d.auftraege.ziehePlanVor('widerrufsliste', 0);
-  for (const [schritt, { nachSekunden }] of Object.entries(NACHLAEUFE) as [Nachlauf, { nachSekunden: number }][])
+  for (const [schritt, { nachSekunden }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { nachSekunden: number }][])
     await d.auftraege.stelleAuftragEin(
       'nachlauf',
       { schritt },

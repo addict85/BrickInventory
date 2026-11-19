@@ -14,7 +14,7 @@
  *      ("tote Ausnahme").
  *   e) (11.11.2026) Seit Dienste ohne `success` antworten (die Route spreizt
  *      ihr Ergebnis), liest die Prüfung auch deren return: `feld_ohne_leser`
- *      im return von cacheStatistik() → rot.
+ *      im return von cacheStats() → rot.
  *   f) (14.11.2026) In shared/app-schnittstelle.json `"is_main"` aus den Antwortfeldern
  *      gestrichen → rot: OHNE VERBRAUCHER is_main.
  *   d) Den Pfad zu den Verbrauchern verbogen → rot mit eigener Meldung (ohne

@@ -14,7 +14,7 @@ import { createMinifigs } from '../src/minifigs';
 import { createWanted } from '../src/wanted';
 import { createVouchers } from '../src/vouchers';
 import { createCollection } from '../src/collection';
-import { erzeugeVerwaltung } from '../src/verwaltung';
+import { createManagement } from '../src/management';
 import { erzeugeKatalog } from '../src/katalog';
 import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
@@ -92,7 +92,7 @@ function meldeAuftragsartenAn(d: Dienste): void {
     ...d.sets.auftragsarten(),
     ...d.collection.jobKinds(),
     ...d.parts.jobKinds(),
-    ...d.verwaltung.auftragsarten(),
+    ...d.management.jobTypes(),
   ];
   for (const a of arten) d.auftraege.meldeArtAn(a);
   const angemeldet = new Set(d.auftraege.angemeldeteArten().map(a => a.art));
@@ -204,11 +204,11 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
-  const verwaltung = erzeugeVerwaltung(
+  const management = createManagement(
     {
       db,
       uhr,
-      einstellungen,
+      settings: einstellungen,
       auftraege,
       factors,
       konto,
@@ -220,12 +220,12 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
       bestand,
       sets,
       wanted,
-      gutscheine: vouchers,
+      vouchers,
       mail,
     },
-    zeige('verwaltung'),
+    zeige('management'),
   );
-  return { ...grund, finanzen, bestand, sets, parts, minifigs, wanted, vouchers, collection, verwaltung };
+  return { ...grund, finanzen, bestand, sets, parts, minifigs, wanted, vouchers, collection, management };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

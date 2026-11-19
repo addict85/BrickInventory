@@ -8,7 +8,7 @@
  *   A  protokolliere() in POST /settings gestrichen → rot: beide Fälle
  *   B  der Vergleich mit dem alten Wert gestrichen (jeder gesendete Schlüssel
  *      zählt) → rot: „unverändert …"
- *   C  in einstellungenSpeichern() die Schreibvorgänge ohne kx.transaktion()
+ *   C  in saveSettings() die Schreibvorgänge ohne kx.transaktion()
  *      (direkt nacheinander) → rot: „scheitert ein Kontowert …“ (smtp_host
  *      und Protokolleintrag blieben stehen; 13.11.2026 mit `language: 'xx'`)
  *   D  (13.11.2026) die Währung wieder in der Schleife innerhalb von kx.transaktion()

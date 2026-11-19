@@ -2,7 +2,7 @@
 import { proxyCacheSchluessel, proxyCachePathFor, imgProxyFailures } from '../bilder';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { urlOderNull } from '../infra/validate';
-import type { KontoBildzeile } from './repository/verwaltung';
+import type { AccountImageRow } from './repository/management';
 import fs from 'node:fs';
 import { AbrufFehler, type AbrufStrom } from '../infra/abruf';
 import path from 'node:path';
@@ -11,11 +11,11 @@ import { fehlertext, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { ohneBricklinkPreis } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
-import type { VerwaltungKontext } from './kontext';
+import type { ManagementContext } from './context';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const VARIANTEN = [
+const VARIANTS = [
   {
     name: 'mit Referer',
     headers: { 'User-Agent': UA, Referer: 'https://rebrickable.com/', Accept: 'image/*,*/*;q=0.8' },
@@ -25,7 +25,7 @@ const VARIANTEN = [
 ];
 
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
-export async function bildProbe(k: VerwaltungKontext, url: string) {
+export async function imageProbe(k: ManagementContext, url: string) {
   if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
   const adresse = urlOderNull(url);
   if (!adresse) fachfehler('ungueltig', 'url_ungueltig');
@@ -33,25 +33,25 @@ export async function bildProbe(k: VerwaltungKontext, url: string) {
   // jede Adresse zuzulassen wäre Server-Side Request Forgery.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
 
-  const results: Awaited<ReturnType<typeof probeVariante>>[] = [];
-  for (const v of VARIANTEN) results.push(await probeVariante(k, url, v));
+  const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
+  for (const v of VARIANTS) results.push(await probeVariant(k, url, v));
 
   const key = proxyCacheSchluessel(url);
   const dir = path.join(DATA_DIR, 'img_proxy_cache');
-  const cached = await dateiGroesse(path.join(dir, key));
-  const thumb = await dateiGroesse(path.join(dir, key + '_thumb.jpg'));
+  const cached = await fileSize(path.join(dir, key));
+  const thumb = await fileSize(path.join(dir, key + '_thumb.jpg'));
 
   // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
   const failures = imgProxyFailures;
-  const head = await ersteBytes(k, url);
+  const head = await firstBytes(k, url);
   return { url, cache: { original: cached, thumb }, probes: results, proxy_failures: failures, body_check: head };
 }
 
 /** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
-const offenOhneUmleitung = (k: VerwaltungKontext, url: string, kopfzeilen: Record<string, string>) =>
+const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
   k.fremdquellen.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
 
-function liesStrom(a: AbrufStrom, genug = Infinity) {
+function readStream(a: AbrufStrom, genug = Infinity) {
   return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
     const teile: Buffer[] = [];
     let bytes = 0;
@@ -69,11 +69,11 @@ function liesStrom(a: AbrufStrom, genug = Infinity) {
   });
 }
 
-async function probeVariante(kx: VerwaltungKontext, url: string, v: { name: string; headers: Record<string, string> }) {
+async function probeVariant(kx: ManagementContext, url: string, v: { name: string; headers: Record<string, string> }) {
   const t0 = performance.now();
   try {
-    const a = await offenOhneUmleitung(kx, url, v.headers);
-    const { bytes, truncated } = await liesStrom(a);
+    const a = await fetchWithoutRedirect(kx, url, v.headers);
+    const { bytes, truncated } = await readStream(a);
     const k = a.kopf;
     return {
       variant: v.name,
@@ -100,33 +100,33 @@ async function probeVariante(kx: VerwaltungKontext, url: string, v: { name: stri
   }
 }
 
-const dateiGroesse = (datei: string) =>
+const fileSize = (datei: string) =>
   fs.promises
     .stat(datei)
     .then(st => ({ bytes: st.size }))
-    .catch(ohneFehlendeDatei('verwaltung:stat', null));
+    .catch(ohneFehlendeDatei('management:stat', null));
 
 /** Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher. */
-function ersteBytes(k: VerwaltungKontext, url: string) {
-  return offenOhneUmleitung(k, url, {
+function firstBytes(k: ManagementContext, url: string) {
+  return fetchWithoutRedirect(k, url, {
     'User-Agent': UA,
     Accept: 'image/*,*/*;q=0.8',
     'Accept-Encoding': 'identity',
   }).then(
     async a => {
-      const b = Buffer.concat((await liesStrom(a, 32)).teile);
+      const b = Buffer.concat((await readStream(a, 32)).teile);
       return {
         status: a.status,
         content_encoding: a.kopf['content-encoding'] || null,
         first_bytes_hex: b.slice(0, 16).toString('hex').replace(/(..)/g, '$1 ').trim(),
-        looks_like: bildArt(b),
+        looks_like: imageKind(b),
       };
     },
     (e: unknown) => ({ error: fehlertext(e) }),
   );
 }
 
-function bildArt(b: Buffer): string {
+function imageKind(b: Buffer): string {
   if (b[0] === 0xff && b[1] === 0xd8) return 'JPEG';
   if (b[0] === 0x89 && b[1] === 0x50) return 'PNG';
   if (b[0] === 0x1f && b[1] === 0x8b) return 'gzip (komprimiert!)';
@@ -134,19 +134,19 @@ function bildArt(b: Buffer): string {
 }
 
 /** Mit `live` auch die Antwort von BrickLink. */
-export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: string, live: boolean) {
+export async function priceProbe(k: ManagementContext, uid: number, setNumber: string, live: boolean) {
   const ab = new Abstriche();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    k.verwaltung.probeSet(uid, setNumber),
-    k.verwaltung.probeErfassungen(uid, setNumber),
-    k.verwaltung.probePreisCache(setNumber),
-    k.verwaltung.probePreisVerlauf(setNumber),
+    k.management.sampleSet(uid, setNumber),
+    k.management.sampleAcquisitions(uid, setNumber),
+    k.management.samplePriceCache(setNumber),
+    k.management.samplePriceHistory(setNumber),
     ab.oder(
       'waehrung',
-      k.einstellungen.foreignUserValue(uid, 'currency').then(value => (value === null ? undefined : { value })),
+      k.settings.foreignUserValue(uid, 'currency').then(value => (value === null ? undefined : { value })),
       null,
     ),
-    k.einstellungen.globalValue('price_cache_ttl'),
+    k.settings.globalValue('price_cache_ttl'),
   ]);
 
   // Dieselbe Regel wie conditionFromAcquisitions(): Eine gebrauchte Erfassung genügt.
@@ -173,7 +173,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
   };
 
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
-  out.currency = await k.einstellungen.userValue(uid, 'currency', 'EUR');
+  out.currency = await k.settings.userValue(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert holePreis still 0.
   const katalog = await k.katalog.katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
@@ -207,18 +207,18 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
 }
 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
-export async function bildDiagnose(kx: VerwaltungKontext, sn: string) {
+export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const ab = new Abstriche();
-  const konten: KontoBildzeile = await ab.oder('konten', kx.verwaltung.bildZeilenDerKonten(sn), {
+  const konten: AccountImageRow = await ab.oder('konten', kx.management.accountImageRows(sn), {
     anzahl_konten: 0,
     image_local: null,
     image_url: null,
   });
-  const katalog = await ab.oder('katalog', kx.verwaltung.katalogBild(sn), null);
+  const katalog = await ab.oder('katalog', kx.management.catalogImage(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = async (p: string) => {
-    const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('verwaltung:bilddatei', null));
+    const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('management:bilddatei', null));
     return st
       ? { vorhanden: true, bytes: st.size, geaendert: st.mtime }
       : { vorhanden: false, bytes: 0, geaendert: null };
@@ -236,8 +236,8 @@ export async function bildDiagnose(kx: VerwaltungKontext, sn: string) {
     }
   }
 
-  const merker = await ab.oder('fehlanzeige', kx.verwaltung.fehlanzeigeDesSets(sn), null);
-  const vorschauMerker = await ab.oder('fehlanzeige', kx.verwaltung.fehlanzeigeDerVorschau(safe), null);
+  const merker = await ab.oder('fehlanzeige', kx.management.setImageMiss(sn), null);
+  const vorschauMerker = await ab.oder('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
 
   // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];

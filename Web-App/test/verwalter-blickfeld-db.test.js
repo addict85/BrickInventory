@@ -8,7 +8,7 @@
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  in auftragsListe() wieder `user_id` mitgelesen → rot: „die
  *      Auftragsliste …“ (die Antwort trägt user_id)
- *   B  bildZeilenDerKonten() liest zusätzlich `MAX(s.user_id) AS user_id` →
+ *   B  accountImageRows() liest zusätzlich `MAX(s.user_id) AS user_id` →
  *      rot: „die Bild-Diagnose …“
  *   C  im Vertrag `user_id` wieder in Auftrag → rot: „kein Antwortschema
  *      nennt user_id“ und „die Auftragsliste …“ (die Antwort weicht vom

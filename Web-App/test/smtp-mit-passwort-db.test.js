@@ -11,7 +11,7 @@
  *
  * Registrierung und API-Schlüssel ebenso (seit 04.11.2026), die Verwalter
  * erfahren es per Mail. Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  istHeikel() wieder nur smtp_* → rot: „ohne Passwort bleiben Registrierung
+ *   A  isSensitive() wieder nur smtp_* → rot: „ohne Passwort bleiben Registrierung
  *      und API-Schlüssel“ (200 statt 400)
  *   B  verwalterHinweisNebenher() in POST /settings entfernt → rot: „mit
  *      Passwort geändert, die Verwalter erfahren es“

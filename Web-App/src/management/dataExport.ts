@@ -2,38 +2,38 @@
  * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
 import type { Writable } from 'node:stream';
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
-import { DAILY_JOBS } from './tageszeiten';
-import { zeitplanNeuPlanen } from './dienst';
+import { DAILY_JOBS } from './timesOfDay';
+import { rescheduleJobs } from './service';
 import { jsonOderNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
-import type { VerwaltungKontext } from './kontext';
+import type { ManagementContext } from './context';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
-export const istHeikel = (k: string) =>
+export const isSensitive = (k: string) =>
   k.startsWith('smtp_') || k === 'registration_enabled' || /api_key$|^bricklink_(consumer|token)/.test(k);
 
 /** Globale Werte nur für Verwalter: Der Import nimmt sie nur von ihnen an, und
  * SMTP-Daten gehen ein Unterkonto nichts an. */
-export async function konfigExport(k: VerwaltungKontext, uid: number, verwalter: boolean, name: string | null) {
+export async function exportConfig(k: ManagementContext, uid: number, verwalter: boolean, name: string | null) {
   return {
     exported_at: k.uhr.datum().toISOString(),
     exported_by: name,
     version: '3.0',
-    global: verwalter ? await k.einstellungen.globalValuesWithoutSecrets() : {},
-    user_settings: await k.einstellungen.userSettings(uid),
+    global: verwalter ? await k.settings.globalValuesWithoutSecrets() : {},
+    user_settings: await k.settings.userSettings(uid),
   };
 }
 
 /** Alles im selben Archiv: Die Konfigurationsexporte können Bestandsdaten nicht tragen. */
-export async function datenZip(
-  k: VerwaltungKontext,
+export async function dataZip(
+  k: ManagementContext,
   uid: number,
   ziel: Writable,
   beiFehler: (e: Error) => void,
 ): Promise<void> {
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
-  const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiv };
+  const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiveHandle };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     k.sets.setsAlsCsv(uid),
     k.bestand.teileAlsCsv(uid),
@@ -54,7 +54,7 @@ export async function datenZip(
     archiv.append('﻿' + inhalt, { name });
   await archiv.finalize();
 }
-interface ZipArchiv {
+interface ZipArchiveHandle {
   on(e: 'error', f: (e: Error) => void): void;
   pipe(z: Writable): void;
   append(inhalt: string, o: { name: string }): void;
@@ -77,18 +77,18 @@ const GLOBAL_IMPORT = [
   'default_price_condition',
   'gutschein_land',
   ...DAILY_JOBS.map(j => `job_time_${j.name}`),
-].filter(k => !istHeikel(k));
-const KONTO_IMPORT = ['currency', 'user_default_condition'];
+].filter(k => !isSensitive(k));
+const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
 
 /** Eine Importdatei kommt von irgendwoher: Schema (KonfigExport), Regeln je Schlüssel
  * (GLOBALE_REGELN) und ohne die heiklen Schlüssel, die eine Bestätigung bräuchten. */
-export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter: boolean, datei: Buffer) {
+export async function importConfig(kx: ManagementContext, uid: number, verwalter: boolean, datei: Buffer) {
   const gelesen = jsonOderNull(datei.toString('utf-8'));
   const geprueft = gelesen ? KonfigExport.safeParse(gelesen.wert) : null;
   if (!geprueft?.success) fachfehler('ungueltig', 'json_ungueltig');
   const { global, user_settings: konto } = geprueft.data;
   let imported = 0;
-  const smtpUebergangen = global ? Object.keys(global).filter(istHeikel) : [];
+  const smtpUebergangen = global ? Object.keys(global).filter(isSensitive) : [];
   if (global && verwalter) {
     if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !isValidGlobalValue(k, global[k])))
       fachfehler('ungueltig', 'wert_ungueltig');
@@ -96,8 +96,8 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
       if (SECRET_KEYS.has(key) && isMasked(global[key])) continue;
-      if (String(global[key]) !== String((await kx.einstellungen.globalValue(key)) ?? '')) geaendert.push(key);
-      await kx.einstellungen.setGlobalValue(key, global[key]);
+      if (String(global[key]) !== String((await kx.settings.globalValue(key)) ?? '')) geaendert.push(key);
+      await kx.settings.setGlobalValue(key, global[key]);
       imported++;
     }
     if (geaendert.length)
@@ -109,12 +109,12 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
       );
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
-  for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {
-    await kx.einstellungen.setUserSetting(uid, key, konto![key]);
+  for (const key of ACCOUNT_IMPORT.filter(k => konto?.[k] !== undefined)) {
+    await kx.settings.setUserSetting(uid, key, konto![key]);
     imported++;
   }
   // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache leeren.
-  if (verwalter) await zeitplanNeuPlanen(kx);
+  if (verwalter) await rescheduleJobs(kx);
   const note =
     (verwalter ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert') +
     (verwalter && smtpUebergangen.length
