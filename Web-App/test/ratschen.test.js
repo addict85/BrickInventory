@@ -594,6 +594,8 @@ const OBERFLAECHE_ENGLISCH_UMGESTELLT = [
   'pdfjs-boot.js',
   'set-csv-import.js',
   'sets-tabelle.js',
+  'set-detail.js',
+  'manuell-detail.js',
 ];
 
 test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
@@ -602,7 +604,7 @@ test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
   // Gegenprobe (15.11.2026): public/js/collection.js zurück auf gallery.js → rot (22 statt 21).
   const ENGLISCH =
     /^(?:.*-)?(?:gallery|catalog|parts|finance|settings|actions|scope|scrollbar|acquisition|modals?|admin|init|main|mobile|monitor|registry|router|boot|viewer|logviewer|pdfviewer|detail|import|wanted|sets|api|dom|format|passkeys|minifigs|theme)(?:-.*)?\.js$/;
-  const SCHRANKE = 15;
+  const SCHRANKE = 13;
   assert.ok(ENGLISCH.test('set-detail.js') && ENGLISCH.test('gallery.js') && !ENGLISCH.test('sammlung.js'));
   const englisch = fs
     .readdirSync(path.join(WEB, 'public', 'js'))

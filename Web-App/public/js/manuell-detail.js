@@ -27,27 +27,27 @@ import {
   zeigeGespeichert,
 } from './erfassung-zustand.js';
 import { closeAcqModal } from './kauf-dialoge.js';
-/** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
-/** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
+/** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} AcquisitionTotals */
+/** @typedef {import('../../frontend-typen/vertrag').Acquisition} Acquisition */
 
-// Detailfenster und Erfassungen manuell erfasster Teile und Minifiguren; das Fenster #acq-modal teilt es mit
-// dem Kaufpreis-Dialog des Sets (kauf-dialoge.js).
-// ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
+// Detail dialog and acquisitions of manually recorded parts and minifigs; the #acq-modal window is
+// shared with the set's acquisition dialog (kauf-dialoge.js).
+// ── MANUAL ITEM DETAIL MODAL (parts + minifigs) ─────────────────────────
 /** @type {{ type: string, id: string, colorId: number, owner?: number } | null} */
 let _manItem = null; // { type:'part'|'fig', id, colorId:int, owner:int|undefined }
-/** Ein anderer Dialog übernimmt: Der Zustand des Teile-Dialogs gilt nicht mehr. */
-export function vergissManItem() {
+/** Another dialog is taking over: the state of the item dialog no longer applies. */
+export function forgetManualItem() {
   _manItem = null;
 }
 
-/** Die Zeilen des Detail-Dialogs eines manuell erfassten Teils oder einer Figur.
- * @param {string} type @param {string} id @param {number} colorId @param {{ quantity?: number, user_id?: number | null, bl_fig_number?: string | null, color_hex?: string | null, color_name?: string | null, storage?: string | null }} item @param {Erfassung[]} acqs @param {{ totals?: { priced_rows?: number, quantity?: number } } | null | undefined} ad
+/** The rows of the detail dialog for a manually recorded part or minifig.
+ * @param {string} type @param {string} id @param {number} colorId @param {{ quantity?: number, user_id?: number | null, bl_fig_number?: string | null, color_hex?: string | null, color_name?: string | null, storage?: string | null }} item @param {Acquisition[]} acqs @param {{ totals?: { priced_rows?: number, quantity?: number } } | null | undefined} ad
  * @returns {import('./escaping.js').Markup[]} */
-function manDetailZeilen(type, id, colorId, item, acqs, ad) {
+function manDetailRows(type, id, colorId, item, acqs, ad) {
   const rows = [];
 
-  // Qty stepper — die Stückzahl kommt aus derselben Serversumme wie die Summenzeile darunter (`totals`),
-  // nicht aus einer eigenen Schleife.
+  // Qty stepper — the count comes from the same server total as the summary row below (`totals`),
+  // not from a separate loop.
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length ? ad.totals.quantity : item.quantity;
   rows.push(
     detailZeile(
@@ -61,7 +61,7 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     ),
   );
 
-  // BrickLink-Nr (minifigs only, editable)
+  // BrickLink number (minifigs only, editable)
   if (type === 'fig') {
     rows.push(
       detailZeile(
@@ -74,9 +74,8 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     );
   }
 
-  // Die Farbe eines Teils ist änderbar, für den Fall, dass sie falsch geladen wurde — gerade ein Teil ohne
-  // Farbname braucht die Zeile. Dieselbe Liste wie beim Erfassen (loadBrickColors), nachgeladen nach dem
-  // Zeichnen.
+  // A part's color is editable, in case it was loaded wrong — exactly a part with no color name
+  // needs this row. The same list as when recording (loadBrickColors), loaded after drawing.
   if (type === 'part') {
     const swatch = html`<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
     rows.push(
@@ -93,8 +92,9 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     );
   }
 
-  // Lagerort auch im Detail der manuell erfassten Teile und Figuren: Dasselbe Bedienelement und derselbe
-  // Speicherweg wie bei Teilen aus Sets, nur die Adresse hängt am Typ. Die Ortsliste gehört dem Besitzer.
+  // Storage location also in the detail of manually recorded parts and minifigs: the same control and
+  // the same save path as for parts from sets, only the address depends on the type. The location list
+  // belongs to the owner.
   ladeOrtAuswahl(item?.user_id != null ? [item.user_id] : []).catch(() => {});
   rows.push(
     detailZeile(
@@ -126,8 +126,8 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     ),
   );
 
-  // Preisverlauf wie im Set-Detail, beide Zustände in einem Diagramm, der Marktpreis je Zustand darüber. Bis
-  // genug Punkte gesammelt sind, bleibt das Diagramm leer — das ist erwartet.
+  // Price history like in set detail, both conditions in one chart, the market price per condition above.
+  // Until enough points are collected the chart stays empty — that is expected.
   rows.push(html`<div id="man-market-rows"></div>`);
 
   rows.push(html`<div data-stil="margin-top:10px">
@@ -138,19 +138,19 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   return rows;
 }
 
-/** Preisverlauf und Marktpreise nachladen, ohne den Dialog aufzuhalten.
+/** Load the price history and market prices in the background, without holding up the dialog.
  * @param {string} type @param {string} id @param {number | string} colorId */
-function ladeManPreisverlauf(type, id, colorId) {
-  // Derselbe Renderer wie beim Set — die Endpunkte liefern dieselbe Diagrammstruktur
-  // (src/finanzen/chartData.ts), also braucht es hier keine zweite Zeichenlogik.
+function loadManPriceHistory(type, id, colorId) {
+  // Same renderer as for the set — the endpoints deliver the same chart structure
+  // (src/finanzen/chartData.ts), so no second drawing logic is needed here.
   const histUrl =
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/price-history`
       : `/v1/parts/${encodeURIComponent(id)}/${colorId || 0}/price-history`;
   api('GET', histUrl)
     .then(ph => {
-      // Dieselbe Funktion wie im Set-Detail — die Endpunkte liefern dieselbe by_condition-Struktur, also
-      // braucht es keine zweite Darstellungslogik.
+      // Same function as in set detail — the endpoints deliver the same by_condition structure, so no
+      // second rendering logic is needed.
       renderMarketRows(ph, 'man-market-rows');
       const el = G('man-chart-content');
       if (!el) return;
@@ -177,35 +177,39 @@ function ladeManPreisverlauf(type, id, colorId) {
  * @param {string | number} colorId
  */
 export async function openManDetail(type, id, colorId) {
-  const ziel = /** @type {NonNullable<typeof _manItem>} */ ({ type, id, colorId: parseInt(String(colorId), 10) || 0 });
-  _manItem = ziel;
+  const target = /** @type {NonNullable<typeof _manItem>} */ ({
+    type,
+    id,
+    colorId: parseInt(String(colorId), 10) || 0,
+  });
+  _manItem = target;
   const modal = G('man-detail-modal');
   const bodyEl = G('man-detail-body');
   const imgEl = G('man-detail-img');
 
-  /** @param {ManuelleFigur[] | undefined} figs @param {ManuellesTeil[] | undefined} teile */
-  const finde = (figs, teile) =>
+  /** @param {ManuelleFigur[] | undefined} figs @param {ManuellesTeil[] | undefined} parts */
+  const find = (figs, parts) =>
     type === 'fig'
       ? figs?.find(f => f.fig_number === id)
-      : teile?.find(p => p.part_number === id && (p.color_id || 0) === ziel.colorId);
+      : parts?.find(p => p.part_number === id && (p.color_id || 0) === target.colorId);
 
-  let item = finde(manuelleFiguren(), manuelleTeile());
-  // Die Caches der Reiter Teile und Minifiguren folgen deren Suche, Lagerort und Kontowahl; die Finanztabelle
-  // nicht. Fehlt der Eintrag, wird er deshalb ungefiltert gesucht — der Cache des Reiters bleibt, wie er ist.
-  if (!item && type === 'fig') item = finde((await api('GET', '/v1/minifigs/manual'))?.figs, undefined);
-  if (!item && type !== 'fig') item = finde(undefined, (await api('GET', '/v1/parts/manual'))?.parts);
-  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die Eintraege aller Konten; ohne diese
-  // Angabe schrieb der Server in die Zeile des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte
-  // des Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher 99|9), und die Antwort
-  // sagte „success".
-  ziel.owner = item?.user_id ?? undefined;
+  let item = find(manuelleFiguren(), manuelleTeile());
+  // The caches of the parts and minifigs tabs follow their own search, location and account filters;
+  // the finance table does not. If the entry is missing it is therefore looked up unfiltered — the
+  // tab's cache stays as it is.
+  if (!item && type === 'fig') item = find((await api('GET', '/v1/minifigs/manual'))?.figs, undefined);
+  if (!item && type !== 'fig') item = find(undefined, (await api('GET', '/v1/parts/manual'))?.parts);
+  // Remember the CARD's owner. In a household the manual section shows entries of all accounts; without
+  // this, the server wrote to the caller's row. MEASURED: the main account set the quantity of the
+  // child's card to 99 — the own one changed (before 5|9, after 99|9), and the response still said "success".
+  target.owner = item?.user_id ?? undefined;
   if (!item) return;
 
   G('man-detail-tit').textContent = String(item.fig_name || item.part_name || id);
   G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + colorName(String(item.color_name)) : '');
 
-  // Volle Auflösung über den Server-Proxy, nicht direkt vom CDN: Fremde Bildadressen lädt der Browser nie
-  // selbst (Hotlink-Schutz, Cache).
+  // Full resolution via the server proxy, not directly from the CDN: the browser never loads foreign
+  // image addresses itself (hotlink protection, cache).
   const rawImgSrc = item.image_local || item.image_url || '';
   const imgSrc = rawImgSrc ? imgUrl(fullUrl(rawImgSrc), false) : '';
   if (imgSrc) {
@@ -223,13 +227,13 @@ export async function openManDetail(type, id, colorId) {
   const ad = await api('GET', acqUrl);
   const acqs = ad?.acquisitions || [];
 
-  setzeHtml(bodyEl, joinHtml(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad)));
+  setzeHtml(bodyEl, joinHtml(manDetailRows(type, id, target.colorId, item, acqs, ad)));
   modal.classList.add('open');
 
-  // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.
-  if (type === 'part') fuelleFarbwahl(ziel.colorId).catch(() => {});
+  // Fill in the color choices — see the reasoning at the row above.
+  if (type === 'part') fillColorChoices(target.colorId).catch(() => {});
 
-  ladeManPreisverlauf(type, id, colorId);
+  loadManPriceHistory(type, id, colorId);
 
   // Wire delete button — deleteManualFig/deleteManualPart already have their own confirmDelete
   G('man-detail-del').onclick = async () => {
@@ -245,36 +249,37 @@ export async function openManDetail(type, id, colorId) {
 }
 
 /**
- * Die Farbliste getrennt vom Zeichnen füllen: Der erste Abruf geht zu Rebrickable, der Dialog steht derweil
- * offen. Scheitert er, bleibt die aktuelle Farbe als einzige Wahl — besser als eine Liste ohne sie.
- * @param {number} aktuell
+ * Fill the color list separately from drawing: the first fetch goes to Rebrickable, the dialog
+ * stays open meanwhile. If it fails, the current color remains the only choice — better than a
+ * list without it.
+ * @param {number} current
  */
-async function fuelleFarbwahl(aktuell) {
+async function fillColorChoices(current) {
   const sel = G('man-farb-wahl');
   if (!sel) return;
-  const farben = await loadBrickColors();
-  if (!farben?.length || !G('man-farb-wahl')) return;
-  // data-name bleibt der englische Rebrickable-Name — er reist als color_name mit und wird für
-  // BrickLink-Abgleiche gebraucht. Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie im
-  // Teile-Reiter (renderColorDropdown in minifigs.js).
+  const colors = await loadBrickColors();
+  if (!colors?.length || !G('man-farb-wahl')) return;
+  // data-name stays the English Rebrickable name — it travels along as color_name and is needed for
+  // BrickLink matching. Only the visible text is translated, with the same function as in the parts
+  // tab (renderColorDropdown in minifigs.js).
   setzeHtml(
     sel,
-    farben.map(
+    colors.map(
       c =>
-        html`${html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" `}${html`data-hex="${rawHex(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>`}${html`${colorName(c.name)}</option>`}`,
+        html`${html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" `}${html`data-hex="${rawHex(c.hex)}"${Number(c.id) === Number(current) ? ' selected' : ''}>`}${html`${colorName(c.name)}</option>`}`,
     ),
   );
-  // Kennt die Liste die heutige Farbe nicht (ältere Bestände, eine Farbe, die Rebrickable zurückgezogen hat),
-  // wäre sie nach dem Ersetzen verschwunden und die Auswahl stünde auf einer FREMDEN Farbe — ohne dass jemand
-  // etwas geändert hätte. Dann kommt sie vorne wieder dazu.
-  if (!farben.some(c => Number(c.id) === Number(aktuell))) {
-    fuegeHtmlEin(sel, 'afterbegin', html`<option value="${Number(aktuell) || 0}" selected>${String(aktuell)}</option>`);
+  // If the list does not know today's color (older inventories, a color Rebrickable has retired), it
+  // would have vanished after the replace and the selection would sit on a FOREIGN color — without
+  // anyone having changed anything. Then it is added back at the front.
+  if (!colors.some(c => Number(c.id) === Number(current))) {
+    fuegeHtmlEin(sel, 'afterbegin', html`<option value="${Number(current) || 0}" selected>${String(current)}</option>`);
   }
 }
 
 /**
- * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/parts/changeColor.ts). Danach öffnet
- * der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
+ * Change a manual part's color (the rules live in src/parts/changeColor.ts). The dialog then reopens
+ * with the new color: it is part of the address, the old dialog pointed into nothing.
  * @this {unknown}
  */
 async function speichereTeilFarbe() {
@@ -283,29 +288,29 @@ async function speichereTeilFarbe() {
       ? this
       : /** @type {HTMLSelectElement | null} */ (document.querySelector('#man-farb-wahl'));
   if (!el) return;
-  const nummer = el.dataset.part ?? '';
-  const alt = parseInt(el.dataset.color ?? '', 10) || 0;
+  const number = el.dataset.part ?? '';
+  const old = parseInt(el.dataset.color ?? '', 10) || 0;
   const neu = parseInt(el.value, 10);
-  if (!Number.isFinite(neu) || neu === alt) return;
-  const wahl = el.options[el.selectedIndex];
+  if (!Number.isFinite(neu) || neu === old) return;
+  const choice = el.options[el.selectedIndex];
   const owner = el.dataset.owner;
   const d = await api(
     'PUT',
-    `/v1/parts/${encodeURIComponent(nummer)}/${alt}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
-    { color_id: neu, color_name: wahl?.dataset.name || null, color_hex: wahl?.dataset.hex || null },
+    `/v1/parts/${encodeURIComponent(number)}/${old}/color${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+    { color_id: neu, color_name: choice?.dataset.name || null, color_hex: choice?.dataset.hex || null },
   );
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // `bild` sagt, woher das Bild der neuen Farbe kommt (src/parts/changeColor.ts).
-  // null heisst: keines gefunden — dann steht nach dem Neuöffnen der Platzhalter da, und genau das war Marcos
-  // Befund. Die Meldung sagt es, statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
+  // `bild` says where the new color's image comes from (src/parts/changeColor.ts).
+  // null means: none found — then the placeholder shows up after reopening, and that was exactly
+  // Marco's finding. The message says so instead of leaving him facing an empty spot a second time.
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
   if (aktiverReiter() === 'finance') emit('finanzenLaden');
-  await openManDetail('part', nummer, neu);
+  await openManDetail('part', number, neu);
 }
 
 function closeManDetail() {
@@ -320,8 +325,8 @@ G('man-detail-modal').addEventListener('click', e => e.target === e.currentTarge
 function manQtyChange(delta) {
   const inp = G('man-det-qty');
   if (!inp) return;
-  // parseInt auf delta: Seit der Umstellung auf data-arg kommt der Wert als Zeichenkette ("1"/"-1"). Ohne
-  // Umwandlung wäre 1 + "1" die Zeichenkette "11" — aus einer 1 wurde beim Klick auf + eine 11.
+  // parseInt on delta: since the switch to data-arg, the value arrives as a string ("1"/"-1").
+  // Without the conversion, 1 + "1" would be the string "11" — a click on + turned a 1 into an 11.
   inp.value = String(Math.max(1, parseInt(inp.value || '1', 10) + (parseInt(delta, 10) || 0)));
   manQtySave();
 }
@@ -337,8 +342,8 @@ async function manQtySave() {
     await updateManualPart(id, colorId, { quantity: qty }, owner);
   }
 
-  // Die Erfassungsliste nach jeder Mengenänderung neu laden, in beide Richtungen: Beim Verringern entfernt
-  // der Server Erfassungen (LIFO), und nur beim Erhöhen neu zu laden zeigte gelöschte Einträge weiter an.
+  // Reload the acquisitions list after every quantity change, in both directions: on a decrease the
+  // server removes acquisitions (LIFO), and reloading only on an increase kept showing deleted entries.
   const acqUrl2 =
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
@@ -352,12 +357,12 @@ async function manQtySave() {
     })
     .catch(() => {});
 
-  // Zwischenspeicher der Kacheln auffrischen
+  // Refresh the tile cache
   if (type === 'fig') loadManualFigsTable();
   else loadManualParts();
 }
 
-// Öffnet den gemeinsamen Erfassungsdialog für manuelle Teile und Figuren
+// Opens the shared acquisition-editing dialog for manual parts and minifigs
 function openManAcqModal() {
   if (!_manItem) return;
   const { type, id, colorId } = _manItem;
@@ -374,7 +379,7 @@ function openManAcqModal() {
   G('man-detail-modal').classList.remove('open');
   gespeichert.clear();
   G('acq-modal').classList.add('open');
-  // Das Schliessen führt zurück in diesen Dialog statt zum Set.
+  // Closing leads back to this dialog instead of to the set.
   erfassung.sn = null;
   const mi = _manItem;
   erfassung.zurueck = () => {
@@ -396,8 +401,8 @@ async function loadManAcqModal(type, id, colorId) {
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
       : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
   const ad = await api('GET', url);
-  // Wie im Set-Dialog: Ohne Mitgliederliste und ohne owner_user_id wüsste die Eigentümer-Auswahl nicht,
-  // worauf sie steht.
+  // Same as in the set dialog: without the member list and without owner_user_id, the owner picker
+  // would not know what it stands on.
   if (!erfassung.mitglieder.length) {
     const hm = await api('GET', '/v1/sets/household-members');
     erfassung.mitglieder = hm?.members || [];
@@ -410,11 +415,11 @@ async function loadManAcqModal(type, id, colorId) {
  * @param {string} type
  * @param {string} id
  * @param {number} colorId
- * @param {Erfassung[]} acqs
- * @param {Erfassungssumme | undefined} totals
+ * @param {Acquisition[]} acqs
+ * @param {AcquisitionTotals | undefined} totals
  */
 function renderManAcqBody(type, id, colorId, acqs, totals) {
-  // Derselbe Tabellenbauer, mit Speichern und Löschen je Art
+  // Same table builder, with save and delete per kind
   if (!acqs.length) {
     setzeHtml(
       G('acq-modal-body'),
@@ -506,10 +511,10 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       if (!kaufdatumGueltig(`acq-datum-feld-${acqId}`)) return;
       body.date = value;
     } else if (field === 'owner') {
-      // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein manuell erfasstes Teil hat keinen
-      // Inhalt — es wandern nur Menge und Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN
-      // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst (umzugsQuelle) — hier
-      // stand der Betrachter, siehe acqSave().
+      // Owner change = moving exactly this acquisition row. A manually recorded item has no content —
+      // only quantity and acquisition move (src/sets/setMove.ts, moveManualAcquisition). NO
+      // from_user_id: the server reads the sender from the row itself (umzugsQuelle) — here it was
+      // the viewer, see acqSave().
       body.owner_user_id = parseInt(value, 10);
     } else body.condition = value;
     const d = await api('PUT', url, body);
@@ -520,8 +525,8 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     }
     zeigeGespeichert(acqId);
     if (field === 'owner') {
-      // Danach stimmt fast nichts mehr auf dem Schirm: Mengen, Summen, Besitzer-Plaketten. Lieber neu laden
-      // als vier Stellen nachziehen.
+      // After this almost nothing on screen still matches: quantities, totals, owner badges. Easier to
+      // reload than to update four spots by hand.
       toast(tRaw('household.owner_moved', { parts: 0, figs: 0 }), 'success');
       closeAcqModal();
       closeManDetail();
@@ -529,19 +534,19 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       else loadManualParts();
       return;
     }
-    // Dialog neu laden bei Preis (geholter Marktpreis), Menge (neue Zeile möglich) oder Datum (Reihenfolge)
+    // Reload the dialog on price (fetched market price), quantity (a new row is possible) or date (ordering)
     if ((field === 'price' && (value === '' || value === null)) || field === 'qty' || field === 'date') {
       await loadManAcqModal(type, id, colorId);
     }
-    // Kachel immer auffrischen, damit Plakette und Preis stimmen
+    // Always refresh the tile so the badge and price match
     if (type === 'fig') loadManualFigsTable();
     else loadManualParts();
   } catch (e) {
     console.error('[manAcqSave]', e);
     toast(tRaw('settings.error'), 'error');
   }
-  // Marktpreis-Zeilen nachladen: Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine
-  // neue Zeile.
+  // Reload market-price rows: when a purchase price is recorded for the first time in a condition, a
+  // new row appears for it.
   const mi = _manItem;
   if (mi) {
     const u =
@@ -575,12 +580,12 @@ async function manAcqDelete(type, id, colorId, acqId) {
     toast(tRaw('settings.error'), 'error');
     return;
   }
-  // Mengenfeld im Detaildialog nachführen
+  // Update the quantity field in the detail dialog
   const qEl = G('man-det-qty');
   if (qEl && d.new_quantity !== undefined) qEl.value = d.new_quantity;
   const ad = await api('GET', listUrl);
   const acqs = ad?.acquisitions || [];
-  // Zusammenfassung im Detaildialog auffrischen
+  // Refresh the summary in the detail dialog
   const sumEl = G('man-acq-summary');
   if (sumEl) setzeHtml(sumEl, kurzfassungMan(acqs, type, id, colorId));
   if (!acqs.length) {
@@ -592,9 +597,8 @@ async function manAcqDelete(type, id, colorId, acqId) {
   else loadManualParts();
 }
 
-// Open modal: show price history sparkline
-
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ──────────────
+// Names below are registry-exposed (data-click/data-change in index.html, or verbindung.js) — kept unchanged.
 registerActions({
   closeManDetail,
   manAcqDelete,

@@ -1,4 +1,4 @@
-import { vergissManItem } from './manuell-detail.js';
+import { forgetManualItem } from './manuell-detail.js';
 import { detailZeile, ladeAnzeige, zeilenKnopf } from './bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, escJs, esc, html, joinHtml } from './escaping.js';
@@ -43,7 +43,7 @@ function usedInList(sets) {
  */
 export async function openSetItemDetail(type, id, colorId) {
   const color = parseInt(String(colorId), 10) || 0;
-  vergissManItem();
+  forgetManualItem();
   const modal = G('setitem-modal');
   const bodyEl = G('setitem-body');
   const imgEl = G('setitem-img');
