@@ -1,5 +1,4 @@
-// Hintergrundarbeiten für Verwalter: Status des Auftrags-Workers, Katalog- und Bild-Nachläufe,
-// Brickset-Warteschlange.
+// Background work for admins: job worker status, catalog and image follow-ups, Brickset queue.
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
@@ -12,13 +11,13 @@ import { html } from './escaping.js';
 /** @type {ReturnType<typeof setInterval> | null} */
 let jobPollTimer = null;
 
-/** Dauer in der Schreibweise der Oberfläche („1,5 s“, „2 min 5 s“), nicht als „1.5s“. @param {number | null | undefined} ms */
+/** Duration in the UI's own style ("1.5 s", "2 min 5 s"), not as "1.5s". @param {number | null | undefined} ms */
 function formatDur(ms) {
   if (!ms) return '';
-  const zahl = (/** @type {number} */ n, stellen = 0) =>
-    n.toLocaleString(locale(), { minimumFractionDigits: stellen, maximumFractionDigits: stellen });
-  if (ms < 60000) return `${zahl(ms / 1000, 1)} s`;
-  return `${zahl(Math.floor(ms / 60000))} min ${zahl(Math.floor((ms % 60000) / 1000))} s`;
+  const num = (/** @type {number} */ n, digits = 0) =>
+    n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (ms < 60000) return `${num(ms / 1000, 1)} s`;
+  return `${num(Math.floor(ms / 60000))} min ${num(Math.floor((ms % 60000) / 1000))} s`;
 }
 
 export async function pollJobStatus() {
@@ -37,7 +36,8 @@ export async function pollJobStatus() {
     dot.style.background = 'var(--b500)';
     dot.style.animation = 'sp .8s linear infinite';
     stxt.textContent = tRaw('monitor.job_running');
-    // Den Fortschritt nennt der Vertrag nicht (PreisJobStand.job ist offen); der Dienst schreibt ihn so.
+    // The contract doesn't name the progress shape (PreisJobStand.job is open); the service writes it
+    // this way.
     const progress = /** @type {{ total?: number, current?: number, set?: string } | undefined} */ (j.progress);
     if (progress) {
       const pct = progress.total ? ((progress.current ?? 0) / progress.total) * 100 : 0;
@@ -47,7 +47,7 @@ export async function pollJobStatus() {
       sdet.textContent = progress.set ? tRaw('monitor.current', { set: progress.set }) : '';
     }
     btn.disabled = true;
-    naechsteJobAbfrage(2000);
+    nextJobPoll(2000);
   } else {
     dot.style.animation = '';
     pwrap.style.display = 'none';
@@ -66,14 +66,14 @@ export async function pollJobStatus() {
       stxt.textContent = tRaw('monitor.waiting_first');
       sdet.textContent = j.nextRun ? `${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'wann')}` : '';
     }
-    naechsteJobAbfrage(30000);
+    nextJobPoll(30000);
   }
 }
-/** Schnell, solange der Preislauf läuft; im verborgenen Tab ruht die Abfrage (wennSichtbar). @param {number} ms */
-function naechsteJobAbfrage(ms) {
+/** Fast while the price run is active; polling rests in a hidden tab (wennSichtbar). @param {number} ms */
+function nextJobPoll(ms) {
   if (jobPollTimer) clearTimeout(jobPollTimer);
-  const uhr = setTimeout(() => wennSichtbar(() => jobPollTimer === uhr && pollJobStatus()), ms);
-  jobPollTimer = uhr;
+  const timer = setTimeout(() => wennSichtbar(() => jobPollTimer === timer && pollJobStatus()), ms);
+  jobPollTimer = timer;
 }
 
 /** @param {HTMLButtonElement} btn */
@@ -96,35 +96,35 @@ export async function triggerCsvSync(btn) {
 }
 
 /**
- * Alle fehlenden Katalogbilder einreihen. Der Server reiht nur ein und holt gedrosselt im Hintergrund; die
- * Rückmeldung nennt darum Aufträge, nicht Bilder — „fertig“ wäre bei Stunden Laufzeit irreführend.
+ * Queue all missing catalog images. The server only enqueues and fetches throttled in the background; the
+ * response therefore names jobs, not images — "done" would be misleading over hours of runtime.
  */
 /** @param {HTMLButtonElement} btn */
 export async function queueCatalogImages(btn) {
   btn.disabled = true;
   btn.textContent = tRaw('monitor.starting');
-  // Die Zahlen nennt der Vertrag nicht (GenericAdminResponse); so liefert sie der Dienst.
+  // The contract doesn't name these numbers (GenericAdminResponse); the service supplies them this way.
   const d =
     /** @type {{ success?: boolean, error?: string, pending?: number, skipped?: number, verworfen?: number, dauer_minuten?: number } | null} */ (
       await api('POST', '/v1/admin/catalog-images')
     );
   if (d?.success) {
-    // Beide Zahlen nennen: was ansteht UND was schon fertig war. Ohne die zweite sähe ein „0 Bilder in der
-    // Warteschlange" nach einem Fehlschlag aus, obwohl es die beste aller Meldungen ist — alles ist da.
+    // Name both numbers: what's pending AND what was already done. Without the second, a "0 images
+    // queued" would look like a failure, even though it's the best possible message — everything's there.
     const n = (d.pending ?? 0).toLocaleString(locale());
-    const fertig = d.skipped ?? 0;
-    const teile = [
-      fertig > 0
-        ? tRaw('monitor.catalog_images_queued_skipped', { n, fertig: fertig.toLocaleString(locale()) })
+    const done = d.skipped ?? 0;
+    const parts = [
+      done > 0
+        ? tRaw('monitor.catalog_images_queued_skipped', { n, fertig: done.toLocaleString(locale()) })
         : tRaw('monitor.catalog_images_queued', { n }),
     ];
-    // Zurückgenommene Fehlanzeigen und die geschätzte Dauer nur nennen, wenn es etwas zu nennen gibt — sonst
-    // wächst die Meldung um zwei Nullen.
+    // Only name retried failures and the estimated duration when there's something to name — otherwise
+    // the message grows by two zeros.
     if (d.verworfen && d.verworfen > 0)
-      teile.push(tRaw('monitor.catalog_images_retried', { n: d.verworfen.toLocaleString(locale()) }));
+      parts.push(tRaw('monitor.catalog_images_retried', { n: d.verworfen.toLocaleString(locale()) }));
     if (d.dauer_minuten && d.dauer_minuten > 0)
-      teile.push(tRaw('monitor.catalog_images_eta', { n: d.dauer_minuten.toLocaleString(locale()) }));
-    toast(teile.join(' · '), 'success');
+      parts.push(tRaw('monitor.catalog_images_eta', { n: d.dauer_minuten.toLocaleString(locale()) }));
+    toast(parts.join(' · '), 'success');
     setzeHtml(btn, ico('ok'));
     setTimeout(() => {
       btn.disabled = false;
@@ -191,11 +191,11 @@ export async function toggleBricksetQueue(btn) {
 }
 
 /**
- * Warteschlange holen und zeichnen — ohne Umschalten.
+ * Fetch and render the queue — without toggling.
  *
- * Aus toggleBricksetQueue() herausgelöst, damit Retry und Löschen die Liste nachladen können. Vorher ging
- * beides nur über das Umschalten, und ein Aufruf hätte die Anzeige zugeklappt statt aktualisiert — deshalb
- * blieben Eintrag, Versuchszähler und retry_after nach einem Klick sichtbar unverändert stehen.
+ * Pulled out of toggleBricksetQueue() so retry and delete can reload the list. Before, both only went
+ * through the toggle, and calling it would have collapsed the view instead of refreshing it — so the
+ * entry, attempt counter and retry_after stayed visibly unchanged after a click.
  */
 export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
@@ -246,8 +246,9 @@ export async function loadBricksetQueue() {
 }
 
 /**
- * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/aktionen.js) den Knopf zuerst
- * ab. Verdreht ging der Knopf als Setnummer in die Adresse, und der Server fand nie einen Eintrag.
+ * The element first, then data-arg: with data-self="1" the dispatcher (js/aktionen.js) puts the button
+ * there first. Reversed, the button ended up as the set number in the address, and the server never found
+ * an entry.
  */
 /** @param {HTMLButtonElement} btn @param {string} setNumber */
 async function retryBricksetQueueEntry(btn, setNumber) {
@@ -257,8 +258,8 @@ async function retryBricksetQueueEntry(btn, setNumber) {
   if (d?.success) {
     setzeHtml(btn, ico('ok'));
     toast(tRaw('monitor.retrying', { set: setNumber }), 'success');
-    // Warteschlange neu zeichnen — retry_after und Versuchszähler haben sich geändert. Vorher blieb der
-    // Eintrag mit den alten Werten stehen, was wie ein wirkungsloser Klick aussah.
+    // Redraw the queue — retry_after and the attempt counter have changed. Before, the entry stayed with
+    // its old values, which looked like a click with no effect.
     loadBricksetQueue();
     setTimeout(() => {
       btn.disabled = false;
@@ -271,7 +272,7 @@ async function retryBricksetQueueEntry(btn, setNumber) {
   }
 }
 
-// Gleiche Reihenfolge wie retryBricksetQueueEntry oben — Element zuerst.
+// Same order as retryBricksetQueueEntry above — element first.
 /** @param {HTMLButtonElement} btn @param {string} setNumber */
 async function deleteBricksetQueueEntry(btn, setNumber) {
   const row = G(`bsq-${setNumber}`);
@@ -300,7 +301,7 @@ G('btn-job-trigger').onclick = async () => {
   else toast(d.error || t('settings.error'), 'error');
 };
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ──────────────
 registerActions({
   deleteBricksetQueueEntry,
   redownloadMissingImages,
@@ -311,8 +312,8 @@ registerActions({
   triggerCsvSync,
 });
 
-/** Die laufende Abfrage des Auftrags-Status anhalten (Reiterwechsel). */
-export function stoppeJobAbfrage() {
+/** Stop the running job-status poll (tab switch). */
+export function stopJobPolling() {
   if (jobPollTimer) clearTimeout(jobPollTimer);
   jobPollTimer = null;
 }

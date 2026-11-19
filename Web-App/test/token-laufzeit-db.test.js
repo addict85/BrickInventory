@@ -228,7 +228,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   const einst = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
 
   assert.ok(
-    /api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password\b/.test(einst),
+    /api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit: validity, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken',
   );
   assert.ok(

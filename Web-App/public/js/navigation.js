@@ -7,7 +7,7 @@ import { loggedInAccount, lastImportAt } from './state.js';
 import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
 import { initCatalog, katalogZuruecksetzen } from './katalog.js';
-import { pollJobStatus, stoppeJobAbfrage } from './admin.js';
+import { pollJobStatus, stopJobPolling } from './admin.js';
 import { ladeAlarmUebersicht } from './alarme.js';
 import { ladeLagerortVerwaltung } from './lagerorte.js';
 import {
@@ -18,7 +18,7 @@ import {
   loadRateLimitStats,
   loadSettings,
 } from './settings.js';
-import { ladeTls, loadTokens } from './zugaenge.js';
+import { loadTls, loadTokens } from './zugaenge.js';
 import { loadHousehold } from './haushalt.js';
 import { ladeGutscheine } from './gutscheine.js';
 import { ladeMerkliste, resetWantedFilter } from './wanted.js';
@@ -206,10 +206,10 @@ export function bindTabs() {
         loadMonitor();
         loadCacheStats();
         loadRateLimitStats();
-        stoppeJobAbfrage();
+        stopJobPolling();
         pollJobStatus();
       }
-      if (tab !== 'monitor' && stoppeMonitor()) stoppeJobAbfrage();
+      if (tab !== 'monitor' && stoppeMonitor()) stopJobPolling();
     });
   });
   // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also auch nach dem Login (showApp ruft
@@ -241,7 +241,7 @@ const SICHTEN = {
   daten: () => ladePapierkorb(),
   app: () => {
     loadTokens();
-    ladeTls();
+    loadTls();
   },
 };
 

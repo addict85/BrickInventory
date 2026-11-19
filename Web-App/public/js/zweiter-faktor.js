@@ -11,89 +11,89 @@ import { emit } from './events.js';
 import { loggedInAccount } from './state.js';
 import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
-// ═══ Zweiter Faktor im Profil (Server: src/faktoren/zweiterFaktor.ts) ══════════════
-// Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn Wiederherstellungscodes einmal
-// zeigen. Danach: abschalten oder neue Codes.
+// ═══ Second factor in the profile (server: src/faktoren/zweiterFaktor.ts) ══════════════
+// Flow: password → QR code and key → confirm code → show the ten recovery codes once. After that: disable
+// or get new codes.
 
-// Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/api.js meldet es).
-let pflicht = false;
-/** Die Einrichtung, die „Neu einrichten“ eines Verwalters schon begonnen hat. @type {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung | null} */
-let begonnen = null;
-const flaeche = () => (pflicht ? G('zf-pflicht-flaeche') : G('zf-flaeche'));
+// On the login screen, while an admin still has to set it up (js/api.js reports it).
+let mandatory = false;
+/** The setup an admin's "set up again" has already started. @type {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung | null} */
+let started = null;
+const area = () => (mandatory ? G('zf-pflicht-flaeche') : G('zf-flaeche'));
 if (typeof document !== 'undefined')
   document.addEventListener('zweitpflicht', () => {
-    pflicht = true;
-    pflichtHinweis('zfpflicht.hint');
-    const d = begonnen;
-    begonnen = null;
-    void (d ? zeigeEinrichtung(d) : ladeZweitenFaktor());
+    mandatory = true;
+    mandatoryHint('zfpflicht.hint');
+    const d = started;
+    started = null;
+    void (d ? showSetup(d) : ladeZweitenFaktor());
   });
 
 /**
- * Die Einleitung über der Fläche: erst „bitte einrichten“, nach dem Code „fertig, Codes sichern“.
- * @param {string} schluessel
+ * The intro above the area: first "please set up", after the code "done, save the codes".
+ * @param {string} key
  */
-function pflichtHinweis(schluessel) {
+function mandatoryHint(key) {
   const h = G('zfpflicht-hinweis');
   if (!h) return;
-  h.dataset.i18n = schluessel;
-  h.textContent = tRaw(schluessel);
+  h.dataset.i18n = key;
+  h.textContent = tRaw(key);
 }
 
 /**
  * @param {import('./escaping.js').Markup} markup
  */
-function zeichne(markup) {
-  const f = flaeche();
+function render(markup) {
+  const f = area();
   if (f) setzeHtml(f, markup);
 }
-// Im Anmeldebildschirm stehen die Knöpfe breit untereinander wie „Abmelden“ darunter.
-const knopfArt = () => (pflicht ? 'knopf-breit' : 'btn-sm');
+// On the login screen the buttons stack wide, same as "log out" below them.
+const buttonKind = () => (mandatory ? 'knopf-breit' : 'btn-sm');
 
-const knopf = (/** @type {string} */ aktion, /** @type {string} */ text, art = 'bs') =>
-  html`<button type="button" class="btn ${art} ${rawHtml(knopfArt())}" data-click="${aktion}"${echt()}>${rawHtml(text)}</button>`;
-const reihe = (/** @type {string} */ inhalt) =>
-  html`<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${rawHtml(inhalt)}</div>`;
-// Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js findet nur wörtliche
-// id-Angaben. findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
-const CODEFELD = (/** @type {string} */ label, laenge = 24) =>
-  html`<div class="fg"><label for="zf-code">${rawHtml(label)}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
+const button = (/** @type {string} */ action, /** @type {string} */ text, kind = 'bs') =>
+  html`<button type="button" class="btn ${kind} ${rawHtml(buttonKind())}" data-click="${action}"${echt()}>${rawHtml(text)}</button>`;
+const row = (/** @type {string} */ content) =>
+  html`<div class="${mandatory ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${rawHtml(content)}</div>`;
+// The fields are spelled out here rather than behind a helper: test/dom-ids.test.js only finds literal id
+// attributes. The dialog asks for the password when triggered.
+const CODE_FIELD = (/** @type {string} */ label, length = 24) =>
+  html`<div class="fg"><label for="zf-code">${rawHtml(label)}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${length}" data-erstfokus /></div>`;
 
 export async function ladeZweitenFaktor() {
-  if (!flaeche()) return;
+  if (!area()) return;
   const d = await api('GET', '/v1/auth/zweiter-faktor');
   if (!d?.success) {
-    zeichne(html`<div class="voucher-leer">${tRaw('settings.error')}</div>`);
+    render(html`<div class="voucher-leer">${tRaw('settings.error')}</div>`);
     return;
   }
   if (!d.aktiv) {
-    zeichne(html`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
-      <div><button type="button" class="btn bp ${knopfArt()}" id="zf-start" data-click="zfEinrichten"${echt()}>${tRaw('zf.setup')}</button></div>
+    render(html`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
+      <div><button type="button" class="btn bp ${buttonKind()}" id="zf-start" data-click="zfEinrichten"${echt()}>${tRaw('zf.setup')}</button></div>
     </form>`);
-    // Im Anmeldebildschirm ist „Einrichten“ der einzige nächste Schritt.
-    if (pflicht) G('zf-start')?.focus();
+    // On the login screen "set up" is the only next step.
+    if (mandatory) G('zf-start')?.focus();
     return;
   }
-  // Den Code fragt jede Aktion in ihrem eigenen Dialog: Ein Feld für zwei Knöpfe liess offen, wofür es gilt.
-  // Codes alter Art laufen ab (Migration 0122); ob die offenen alt sind, weiss nur der Inhaber.
-  const alt = d.alte_codes_bis
+  // Every action asks for the code in its own dialog: one field for two buttons would leave open what it
+  // applies to. Old-style codes expire (migration 0122); only the owner knows whether the open ones are old.
+  const old = d.alte_codes_bis
     ? html`<p role="note" data-stil="margin:0 0 .75rem 0">${ico('warnung')} ${tRaw('zf.alte_codes', { bis: fmtDatum(d.alte_codes_bis) })}</p>`
     : '';
-  zeichne(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
-    ${alt}
+  render(html`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${tRaw('zf.active', { n: d.codes_uebrig })}</p>
+    ${old}
     <div class="zf-knoepfe">
-      ${knopf('zfNeueCodes', tRaw('zf.new_codes'))}
-      ${knopf('zfAbschalten', tRaw(loggedInAccount?.isAdmin ? 'zf.neu_einrichten' : 'zf.disable'), 'bd')}
+      ${button('zfNeueCodes', tRaw('zf.new_codes'))}
+      ${button('zfAbschalten', tRaw(loggedInAccount?.isAdmin ? 'zf.neu_einrichten' : 'zf.disable'), 'bd')}
     </div>`);
 }
 
 export async function zfEinrichten() {
-  // Kurz nach der Anmeldung lässt der Server das Passwort weg (Gnadenfrist); sonst antwortet er ohne Zählen
-  // mit aktuelles_passwort_erforderlich.
-  const erst = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
+  // Shortly after login the server skips the password (grace period); otherwise it answers without a
+  // counter with aktuelles_passwort_erforderlich.
+  const first = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
   const d =
-    erst?.code !== 'aktuelles_passwort_erforderlich'
-      ? erst
+    first?.code !== 'aktuelles_passwort_erforderlich'
+      ? first
       : await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) =>
           api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }),
         );
@@ -102,22 +102,22 @@ export async function zfEinrichten() {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  zeigeEinrichtung(d);
+  showSetup(d);
 }
 
 /** @param {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung} d */
-function zeigeEinrichtung(d) {
-  // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
-  const lesbar = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
-  zeichne(html`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
+function showSetup(d) {
+  // Grouped for readability, in case someone types the key in by hand.
+  const readable = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();
+  render(html`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0">${tRaw('zf.scan')}</p>
       <div id="zf-qr" class="zf-qr"></div>
-      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code id="zf-schluessel" data-stil="user-select:all;font-size:var(--fs-3)">${lesbar}</code></div>
-      <div class="zf-knoepfe">${knopf('zfSchluesselKopieren', tRaw('zf.schluessel_kopieren'))}<a class="btn bs ${knopfArt()}" id="zf-otpauth" hidden>${tRaw('zf.in_app_oeffnen')}</a></div>
+      <div data-stil="font-size:var(--fs-1);color:var(--mut)">${tRaw('zf.manual')}<br><code id="zf-schluessel" data-stil="user-select:all;font-size:var(--fs-3)">${readable}</code></div>
+      <div class="zf-knoepfe">${button('zfSchluesselKopieren', tRaw('zf.schluessel_kopieren'))}<a class="btn bs ${buttonKind()}" id="zf-otpauth" hidden>${tRaw('zf.in_app_oeffnen')}</a></div>
       <div class="lerr" id="zf-fehler" role="alert"></div>
-      ${CODEFELD(tRaw('zf.confirm_code'), 6)}
-      ${reihe(`<button type="button" class="btn bp ${knopfArt()}" id="zf-bestaetigen" data-click="zfBestaetigen">${t('zf.confirm')}</button>
-        ${pflicht ? '' : knopf('ladeZweitenFaktor', tRaw('common.cancel'))}`)}
+      ${CODE_FIELD(tRaw('zf.confirm_code'), 6)}
+      ${row(`<button type="button" class="btn bp ${buttonKind()}" id="zf-bestaetigen" data-click="zfBestaetigen">${t('zf.confirm')}</button>
+        ${mandatory ? '' : button('ladeZweitenFaktor', tRaw('common.cancel'))}`)}
     </form>`);
   const qr = G('zf-qr');
   if (qr && typeof QRCode !== 'undefined') {
@@ -129,11 +129,11 @@ function zeigeEinrichtung(d) {
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M,
     });
-    // Die Bibliothek legt Leinwand und Bild ohne Namen an; vorgelesen wird der Zweck.
+    // The library creates the canvas and image with no name; what's read aloud is their purpose.
     qr.querySelector('img')?.setAttribute('alt', tRaw('zf.qr_alt'));
     qr.querySelector('canvas')?.setAttribute('aria-hidden', 'true');
   } else if (qr) qr.textContent = d.otpauth ?? '';
-  // Am Telefon lässt sich der eigene Bildschirm nicht scannen: Der Link öffnet die Authenticator-App direkt.
+  // On the phone you can't scan your own screen: the link opens the authenticator app directly.
   const link = /** @type {HTMLAnchorElement | null} */ (document.getElementById('zf-otpauth'));
   if (link && /^otpauth:\/\/totp\//i.test(d.otpauth ?? '')) {
     link.href = d.otpauth ?? '';
@@ -153,37 +153,37 @@ export async function zfSchluesselKopieren() {
 }
 
 /** @param {string[]} codes */
-function zeigeCodes(codes) {
-  if (pflicht) pflichtHinweis('zfpflicht.fertig');
-  zeichne(html`<div class="sform" data-stil="max-width:420px">
+function showCodes(codes) {
+  if (mandatory) mandatoryHint('zfpflicht.fertig');
+  render(html`<div class="sform" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0"><strong>${tRaw('zf.codes_title')}</strong><br>${tRaw('zf.codes_hint')}</p>
       <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.join('\n')}</pre>
-      ${reihe(`${knopf('zfCodesKopieren', tRaw('zf.copy'))}${knopf('zfCodesSpeichern', tRaw('zf.codes_datei'))}
-        <button type="button" class="btn bp ${knopfArt()}" id="zf-gespeichert" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
+      ${row(`${button('zfCodesKopieren', tRaw('zf.copy'))}${button('zfCodesSpeichern', tRaw('zf.codes_datei'))}
+        <button type="button" class="btn bp ${buttonKind()}" id="zf-gespeichert" data-click="${mandatory ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
     </div>`);
   G('zf-gespeichert')?.focus();
 }
 
 export async function zfBestaetigen() {
-  const feld = G('zf-code'),
-    fehler = G('zf-fehler');
-  const code = (feld?.value || '').trim();
+  const field = G('zf-code'),
+    error = G('zf-fehler');
+  const code = (field?.value || '').trim();
   if (!code) {
-    if (fehler) formularFehler(fehler, tRaw('zf.code_leer'), ['zf-code']);
+    if (error) formularFehler(error, tRaw('zf.code_leer'), ['zf-code']);
     return;
   }
   const d = await api('POST', '/v1/auth/zweiter-faktor/bestaetigen', { code });
   if (!d?.success) {
-    // Am Feld statt als Toast: Der Fehler gehört zum Code, und ein Toast stünde nach dem richtigen Code noch
-    // neben „eingerichtet“.
-    if (fehler) {
-      formularFehler(fehler, d?.error || tRaw('settings.error'), ['zf-code']);
-      feld?.select?.();
+    // At the field instead of a toast: the error belongs to the code, and a toast would still sit next to
+    // "set up" after the correct code.
+    if (error) {
+      formularFehler(error, d?.error || tRaw('settings.error'), ['zf-code']);
+      field?.select?.();
     } else toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
   toast(tRaw('zf.enabled'), 'success');
-  zeigeCodes(d.codes ?? []);
+  showCodes(d.codes ?? []);
 }
 
 export async function zfNeueCodes() {
@@ -194,22 +194,22 @@ export async function zfNeueCodes() {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  zeigeCodes(d.codes ?? []);
+  showCodes(d.codes ?? []);
 }
 
-// Ein Verwalter ohne zweiten Faktor darf nichts ausser ihn einrichten: Für ihn heisst Abschalten deshalb
-// „Neu einrichten“, und die Einrichtung beginnt mit demselben Passwort gleich im Pflichtfeld.
+// An admin without a second factor may do nothing except set it up: for them, disabling is therefore
+// called "set up again", and the setup starts with that same password right in the mandatory field.
 export async function zfAbschalten() {
-  const verwalter = !!loggedInAccount?.isAdmin;
-  let passwort = '';
+  const isAdmin = !!loggedInAccount?.isAdmin;
+  let adminPassword = '';
   const d = await mitPasswortBestaetigen(
-    tRaw(verwalter ? 'zf.neu_einrichten' : 'zf.disable'),
+    tRaw(isAdmin ? 'zf.neu_einrichten' : 'zf.disable'),
     (password, z) => {
-      passwort = password;
+      adminPassword = password;
       return api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...z });
     },
-    tRaw(verwalter ? 'zf.neu_einrichten_text' : 'zf.disable_confirm'),
-    { knopf: verwalter ? 'zf.neu_einrichten' : 'confirm.btn.abschalten', art: 'bd', mitCode: true },
+    tRaw(isAdmin ? 'zf.neu_einrichten_text' : 'zf.disable_confirm'),
+    { knopf: isAdmin ? 'zf.neu_einrichten' : 'confirm.btn.abschalten', art: 'bd', mitCode: true },
   );
   if (!d) return;
   if (!d?.success) {
@@ -217,9 +217,9 @@ export async function zfAbschalten() {
     return;
   }
   toast(tRaw('zf.disabled'), 'success');
-  if (!verwalter) return ladeZweitenFaktor();
-  const neu = await api('POST', '/v1/auth/zweiter-faktor/einrichten', { password: passwort });
-  begonnen = neu?.success ? neu : null;
+  if (!isAdmin) return ladeZweitenFaktor();
+  const started_ = await api('POST', '/v1/auth/zweiter-faktor/einrichten', { password: adminPassword });
+  started = started_?.success ? started_ : null;
   emit('zweiterFaktorPflicht');
 }
 
@@ -233,7 +233,7 @@ export async function zfCodesKopieren() {
   }
 }
 
-/** Die Codes als Textdatei: Kopieren allein liess sie oft in der Zwischenablage verschwinden. */
+/** The codes as a text file: copying alone often made them vanish from the clipboard again. */
 export function zfCodesSpeichern() {
   const text = G('zf-codes')?.textContent || '';
   const a = document.createElement('a');
@@ -245,7 +245,7 @@ export function zfCodesSpeichern() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-/** Verwalter: den zweiten Faktor eines Kontos entfernen (Telefon und Codes verloren). */
+/** Admin: remove an account's second factor (phone and codes lost). */
 /** @param {string} uid @param {string} name */
 export async function zfZuruecksetzen(uid, name) {
   const admin_password = await bestaetigeMitPasswort(
@@ -272,11 +272,12 @@ export async function zfZuruecksetzen(uid, name) {
   loadUsers();
 }
 
-/** Eingerichtet: Mit dem Neuladen öffnet sich die Anwendung. */
+/** Set up: reloading opens the app. */
 function zfPflichtFertig() {
   location.reload();
 }
 
+// Names below are registry-exposed (index.html/verbindung.js) — kept unchanged.
 registerActions({
   ladeZweitenFaktor,
   zfPflichtFertig,

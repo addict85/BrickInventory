@@ -16,9 +16,9 @@ import { setGallerySets, setAccount, setSettingsSnapshot, setAccountCurrency, lo
 import { routeBeimStart } from './router.js';
 import { plInit, resetPartsList, plRenderSets } from './init.js';
 import { bindGlobalErrorHandlers } from './fehlerfang.js';
-import { frageSitzung, sitzungUngeklaert, startgeruestWeg, waitForStartup, zeigeOffline } from './startkasten.js';
+import { checkSession, sessionUnresolved, removeStartupScaffold, waitForStartup, showOffline } from './startkasten.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './fortschritt.js';
-import { pruefeEinrichtung } from './einrichtung.js';
+import { checkSetup } from './einrichtung.js';
 import { setupCheckButtonRefresh } from './setup-status.js';
 import { initScrollbalken } from './rollbalken.js';
 import { bindTabs, seitennameAktualisieren } from './navigation.js';
@@ -101,7 +101,7 @@ function showPanel(name, fokus = false) {
 
 function zeigePflichtwechsel() {
   G('login-screen').style.display = 'flex';
-  startgeruestWeg();
+  removeStartupScaffold();
   G('app').style.display = 'none';
   showPanel('pflichtwechsel');
   // Das Startpasswort wurde eben getippt und reist aus dem Anmeldefeld mit, statt ein zweites Mal gefragt zu
@@ -116,7 +116,7 @@ function zeigePflichtwechsel() {
 // js/zweiter-faktor.js zeichnet sie in das Feld.
 function zeigeZweitpflicht() {
   G('login-screen').style.display = 'flex';
-  startgeruestWeg();
+  removeStartupScaffold();
   G('app').style.display = 'none';
   showPanel('zweitpflicht');
   document.dispatchEvent(new CustomEvent('zweitpflicht'));
@@ -332,17 +332,17 @@ export async function checkAuth() {
   // und Startup-Screen VOR dem Login übersetzt sind (bisher lief applyLang erst nach dem Login in showApp).
   applyLang(LANG, false);
   await waitForStartup();
-  const { d, warteSek } = await frageSitzung();
+  const { d, waitSec } = await checkSession();
   // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich inzwischen angemeldet hat,
   // bekäme sonst von der späten Antwort „nein“ die Maske zurück, obwohl die Sitzung gilt.
   if (loggedInAccount) return;
   // Nur ein ausdrückliches „nicht angemeldet“ führt zur Maske. Drosselung, Serverfehler oder kein Netz
   // sagen nichts über die Sitzung; die Maske legte sonst nahe, sie sei weg.
   if (typeof d.loggedIn !== 'boolean') {
-    sitzungUngeklaert(d, warteSek, checkAuth);
+    sessionUnresolved(d, waitSec, checkAuth);
     return;
   }
-  zeigeOffline(false);
+  showOffline(false);
   // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; loggedInAccount behält isAdmin, id und
   // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
@@ -355,7 +355,7 @@ export async function checkAuth() {
     oeffneApp();
   } else {
     G('login-screen').style.display = 'flex';
-    startgeruestWeg();
+    removeStartupScaffold();
     G('app').style.display = 'none';
     // Don't override reset/verified panels that were already set from URL params
     if (!_resetToken && !_verifyToken && !mailLinkOffen() && !G('verified-msg')?.style.display.includes('block')) {
@@ -474,7 +474,7 @@ function showLogin(o = {}) {
     if (el) el.style.display = 'none';
   });
   G('login-screen').style.display = 'flex';
-  startgeruestWeg();
+  removeStartupScaffold();
   G('app').style.display = 'none';
   showPanel('login');
   checkRegistrationEnabled();
@@ -517,7 +517,7 @@ function showApp() {
   // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
-  if (loggedInAccount?.isAdmin) pruefeEinrichtung();
+  if (loggedInAccount?.isAdmin) checkSetup();
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
   // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
   // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
@@ -593,7 +593,7 @@ function showApp() {
   // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
   // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.
   Promise.race([Promise.allSettled([bandEntschieden, haushalt]), new Promise(r => setTimeout(r, 2500))]).then(
-    startgeruestWeg,
+    removeStartupScaffold,
   );
   routeBeimStart();
   seitennameAktualisieren();

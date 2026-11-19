@@ -6,7 +6,7 @@ import { fmtDatum, fmtN } from './format.js';
 import { detailZeile, pnlBadge } from './bausteine.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 import { html, rawHtml, joinHtml } from './escaping.js';
-import { fadenkreuzTeile } from './fadenkreuz.js';
+import { crosshairParts } from './fadenkreuz.js';
 
 /**
  * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem Speichern
@@ -563,7 +563,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
       ],
     };
   });
-  const fk = fadenkreuzTeile(
+  const fk = crosshairParts(
     punkte,
     series.map(sd => sd.color),
     PAD.t,
@@ -718,7 +718,7 @@ export function portfolioChartSVG(
         hKurve,
       )
     : '';
-  const fk = fadenkreuzTeile(
+  const fk = crosshairParts(
     vals.map((v, i) => ({ x: +px(i).toFixed(1), y: [+py(v).toFixed(1)], t: [wann(i), fmtN(v, cur)] })),
     [color],
     PAD.t,

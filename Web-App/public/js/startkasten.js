@@ -1,29 +1,29 @@
-// Der Startkasten vor der Anwendung: Startfortschritt des Servers und die Frage, ob die Sitzung gilt. Beide
-// zeigen ihren Grund im selben Kasten über dem Startgerüst.
+// The startup box in front of the app: server startup progress and whether the session is still valid. Both
+// show their reason in the same box above the startup scaffold.
 import { t, tRaw } from '../i18n.js';
 import { apiRoh } from './api.js';
 import { G } from './dom.js';
 
-/** Das statische Startgerüst aus index.html weicht, sobald Anmeldung, App oder Startfortschritt dastehen. */
-export function startgeruestWeg() {
+/** The static startup scaffold from index.html gives way once login, app or startup progress show up. */
+export function removeStartupScaffold() {
   G('startgeruest')?.remove();
 }
 
 export async function waitForStartup() {
   const ss = G('startup-screen');
-  // Kein hartes Gesamt-Timeout mehr: Download/Import der Rebrickable-CSVs kann bei einer Neuinstallation
-  // viele Minuten dauern. Stattdessen nur abbrechen, wenn sich der Fortschritt über längere Zeit gar nicht
-  // mehr ändert (Server hängt) — solange Fortschritt gemeldet wird, wird weiter gewartet.
-  const STALL_TIMEOUT = 180000; // 3 Min ohne jede Statusänderung → aufgeben
+  // No hard overall timeout: downloading/importing the Rebrickable CSVs on a fresh install can take many
+  // minutes. Instead only give up once progress has not changed at all for a while (server stuck) — as long
+  // as progress keeps being reported, waiting continues.
+  const STALL_TIMEOUT = 180000; // 3 min without any status change → give up
   let lastChangeAt = Date.now();
   let lastSig = '';
-  // Antwortet der Server gar nicht, stand vorher nur das graue Gerüst da, beliebig lange. Nach sechs Sekunden
-  // sagt es die Seite und bietet einen sofortigen Versuch an; der Abruf läuft ohnehin weiter.
-  let fehlerSeit = 0;
+  // If the server does not answer at all, only the grey scaffold used to sit there, indefinitely. After six
+  // seconds the page now says so and offers an immediate retry; the poll keeps running regardless.
+  let errorSince = 0;
   /** @type {() => void} */
-  let sofort = () => {};
-  const knopf = G('start-erneut');
-  if (knopf) knopf.onclick = () => sofort();
+  let retryNow = () => {};
+  const button = G('start-erneut');
+  if (button) button.onclick = () => retryNow();
   while (true) {
     try {
       const r = await apiRoh('GET', '/v1/startup-status?_=' + Date.now(), {
@@ -32,8 +32,8 @@ export async function waitForStartup() {
       });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const s = await r.json();
-      fehlerSeit = 0;
-      zeigeOffline(false);
+      errorSince = 0;
+      showOffline(false);
       if (!s) {
         await new Promise(r => setTimeout(r, 600));
         continue;
@@ -68,17 +68,17 @@ export async function waitForStartup() {
         subWrap.style.display = 'none';
         if (subLabel) subLabel.style.display = 'none';
       }
-      // Fortschritt erkennen: ändert sich Schritt, Prozent oder Sub-Status, gilt der Startvorgang als aktiv
-      // und der Stall-Timer wird zurückgesetzt.
+      // Detect progress: once step, percent or sub-status change, startup counts as active and the stall
+      // timer resets.
       const sig = `${s.step}|${s.progress}|${s.total}|${s.sub || ''}`;
       if (sig !== lastSig) {
         lastSig = sig;
         lastChangeAt = Date.now();
       }
       if (s.ready) break;
-      // Den Fortschritt erst zeigen, wenn der Server wirklich noch startet.
+      // Only show progress once the server is actually still starting up.
       if (ss && ss.style.display !== 'flex') {
-        startgeruestWeg();
+        removeStartupScaffold();
         ss.style.display = 'flex';
       }
       if (Date.now() - lastChangeAt > STALL_TIMEOUT) {
@@ -87,79 +87,79 @@ export async function waitForStartup() {
       }
     } catch (e) {
       console.warn('[startup] poll error:', e instanceof Error ? e.message : e);
-      fehlerSeit ||= Date.now();
-      if (Date.now() - fehlerSeit >= 6000) zeigeOffline(true);
+      errorSince ||= Date.now();
+      if (Date.now() - errorSince >= 6000) showOffline(true);
     }
     await new Promise(r => {
-      sofort = () => r(undefined);
-      setTimeout(r, fehlerSeit ? 2000 : 600);
+      retryNow = () => r(undefined);
+      setTimeout(r, errorSince ? 2000 : 600);
     });
   }
-  zeigeOffline(false);
+  showOffline(false);
   if (ss) ss.style.display = 'none';
 }
 /**
- * Kasten über dem Startgerüst. Ohne Texte die Vorgabe „Server nicht erreichbar“; der Startfortschritt und
- * die ungeklärte Sitzung teilen sich den Kasten, also setzt jeder Aufruf seine Texte selbst.
- * @param {boolean} an @param {{ titel?: string, text?: string }} [o]
+ * Box above the startup scaffold. Without texts the default "server unreachable"; startup progress and the
+ * unresolved session share the box, so each caller sets its own texts.
+ * @param {boolean} on @param {{ title?: string, text?: string }} [o]
  */
-export function zeigeOffline(an, o = {}) {
+export function showOffline(on, o = {}) {
   const el = G('start-offline');
   if (!el) return;
-  if (an) {
-    G('start-offline-titel').textContent = o.titel || tRaw('startup.offline_titel');
+  if (on) {
+    G('start-offline-titel').textContent = o.title || tRaw('startup.offline_titel');
     G('start-offline-text').textContent = o.text || tRaw('startup.offline_text');
   }
-  if (el.hidden === an) el.hidden = !an;
+  if (el.hidden === on) el.hidden = !on;
 }
 
-/** Die Frage nach der Sitzung, mit Retry-After: api() gibt die Kopfzeilen nicht weiter.
- * @returns {Promise<{ d: import('../../frontend-typen/api').ApiAntwort<'GET', '/v1/auth/me'>, warteSek: number }>} */
-export async function frageSitzung() {
+/** The session check, with Retry-After: api() does not pass the response headers through.
+ * @returns {Promise<{ d: import('../../frontend-typen/api').ApiAntwort<'GET', '/v1/auth/me'>, waitSec: number }>} */
+export async function checkSession() {
   try {
     const r = await apiRoh('GET', '/v1/auth/me', { cache: 'no-store' });
     let d = null;
     try {
       d = await r.json();
     } catch (_) {
-      console.warn('[auth/me] Antwort ist kein JSON (Status ' + r.status + ')');
+      console.warn('[auth/me] response is not JSON (status ' + r.status + ')');
     }
-    const fehler = r.ok ? '' : tRaw('api.server_error', { status: r.status });
-    return { d: { error: fehler, ...d, status: r.status }, warteSek: Number(r.headers.get('Retry-After')) || 0 };
+    const error = r.ok ? '' : tRaw('api.server_error', { status: r.status });
+    return { d: { error, ...d, status: r.status }, waitSec: Number(r.headers.get('Retry-After')) || 0 };
   } catch (_) {
-    return { d: { success: false, error: tRaw('api.unreachable'), networkError: true, status: 0 }, warteSek: 0 };
+    return { d: { success: false, error: tRaw('api.unreachable'), networkError: true, status: 0 }, waitSec: 0 };
   }
 }
 
 /** @type {ReturnType<typeof setInterval> | undefined} */
-let _sitzungUhr;
+let _sessionTimer;
 /**
- * Startgerüst mit Grund und „Erneut versuchen“, solange offen ist, ob die Sitzung gilt. Gedrosselt wartet
- * der nächste Versuch die Frist des Servers ab: Ein früherer zählte nur wieder gegen das Budget.
- * @param {{ error?: unknown, status?: number }} d @param {number} warteSek @param {() => unknown} neu
+ * Startup scaffold with reason and "retry", while it's still open whether the session is valid. Throttled,
+ * the next attempt waits out the server's deadline: an earlier version only counted again against the budget.
+ * @param {{ error?: unknown, status?: number }} d @param {number} waitSec @param {() => unknown} retry
  */
-export function sitzungUngeklaert(d, warteSek, neu) {
-  clearInterval(_sitzungUhr);
-  const grund = String(d.error || tRaw('api.unexpected'));
-  let rest = d.status === 429 ? Math.max(5, warteSek || 60) : 15;
-  // Gedrosselt nennt die Meldung des Servers Minuten, der Kasten zählt Sekunden: zwei Zeitangaben für
-  // dasselbe Warten. Dann steht nur der Zähler da, unter einem Titel, der den Grund nennt.
-  const gedrosselt = d.status === 429;
-  const zeige = () =>
-    zeigeOffline(true, {
-      titel: tRaw(gedrosselt ? 'startup.gedrosselt_titel' : 'startup.sitzung_offen'),
-      text: gedrosselt
-        ? tRaw('startup.gedrosselt_text', { sek: rest })
-        : `${grund}${/[.!?]$/.test(grund) ? '' : '.'} ${tRaw('startup.naechster_versuch', { sek: rest })}`,
+export function sessionUnresolved(d, waitSec, retry) {
+  clearInterval(_sessionTimer);
+  const reason = String(d.error || tRaw('api.unexpected'));
+  let remaining = d.status === 429 ? Math.max(5, waitSec || 60) : 15;
+  // Throttled, the server's message names minutes while the box counts seconds: two time statements for
+  // the same wait. Then only the counter shows, under a title that names the reason.
+  const throttled = d.status === 429;
+  const render = () =>
+    showOffline(true, {
+      title: tRaw(throttled ? 'startup.gedrosselt_titel' : 'startup.sitzung_offen'),
+      text: throttled
+        ? tRaw('startup.gedrosselt_text', { sek: remaining })
+        : `${reason}${/[.!?]$/.test(reason) ? '' : '.'} ${tRaw('startup.naechster_versuch', { sek: remaining })}`,
     });
-  const nochmal = () => {
-    clearInterval(_sitzungUhr);
-    neu();
+  const retryAgain = () => {
+    clearInterval(_sessionTimer);
+    retry();
   };
-  zeige();
-  G('start-erneut').onclick = nochmal;
-  _sitzungUhr = setInterval(() => {
-    if (--rest <= 0) nochmal();
-    else zeige();
+  render();
+  G('start-erneut').onclick = retryAgain;
+  _sessionTimer = setInterval(() => {
+    if (--remaining <= 0) retryAgain();
+    else render();
   }, 1000);
 }

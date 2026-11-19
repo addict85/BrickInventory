@@ -9,65 +9,65 @@ import { html } from './escaping.js';
 import { confirmDelete } from './rueckfrage.js';
 import { ladeLagerortVorgabe } from './konten-orte.js';
 import { ladeLagerorte } from './detailfelder.js';
-// Einstellungen, Abschnitt Lagerorte: der Vorrat an Orten, aus dem die Detailfelder wählen; anlegen,
-// umbenennen, als Vorgabe setzen, löschen.
+// Settings, storage locations section: the pool of locations the detail fields pick from; create, rename,
+// set as default, delete.
 
 /**
- * Die eigenen Orte samt Belegung.
+ * Our own locations, with their occupancy.
  */
 export async function ladeLagerortVerwaltung() {
   const el = G('storage-list');
   if (!el) return;
-  // Beide Listen zusammen: `locations` sagt, was zur WAHL steht, `storage`, was wirklich DRIN liegt. Ohne die
-  // zweite stünde neben jedem Ort nichts, und die Absage beim Löschen („da liegt noch was") käme aus dem
-  // Nichts.
+  // Both lists together: `locations` says what can be CHOSEN, `storage` what is actually IN there. Without
+  // the second, nothing would show next to each location, and the refusal to delete ("something's still in
+  // there") would come out of nowhere.
   const [v, b] = await Promise.all([api('GET', '/v1/storage/locations'), api('GET', '/v1/storage?accounts=own')]);
   if (!v?.success) return;
-  // Ein neuer oder umbenannter Ort steht gleich in den Auswahlfeldern der Erfassung.
+  // A new or renamed location shows up right away in the collection form's selects.
   ladeLagerorte().catch(() => {});
-  const belegung = new Map((b?.orte || []).map(o => [o.ort, o]));
-  const orte = v.orte || [];
-  if (!orte.length) {
+  const occupancy = new Map((b?.orte || []).map(o => [o.ort, o]));
+  const locations = v.orte || [];
+  if (!locations.length) {
     setzeHtml(el, html`<div data-stil="color:var(--mut)">${tRaw('storage.empty')}</div>`);
     return;
   }
-  // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als Default setzen können. […] Ich
-  // stelle mir das mit einem Sternicon vor."
-  const vorgabeId = v.vorgabe?.id ?? null;
-  // Das Raster liegt an der Liste, die Zeilen sind display:contents: So teilen alle Zeilen dieselben
-  // Spaltenbreiten, und das Namensfeld wird nicht vom Belegungstext daneben schmal gedrückt. minmax(0,1fr),
-  // damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder Zelle.
+  // Feature request: being able to set a storage location as the default in settings, with a star icon.
+  const defaultId = v.vorgabe?.id ?? null;
+  // The grid sits on the list, and the rows are display:contents: that way every row shares the same column
+  // widths, and the name field doesn't get squeezed narrow by the occupancy text next to it. minmax(0,1fr) so
+  // a long name doesn't blow out the column; the divider line therefore sits on each cell.
   setzeHtml(
     el,
-    html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:0">`}${orte.map(
+    html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:0">`}${locations.map(
       o => {
-        const n = belegung.get(o.name);
-        // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
-        // sonst mal 18 Teilesorten und mal 12 plus 6 Figuren, und niemand koennte der Zahl ansehen, was gemeint
-        // ist.
-        const wie = n
+        const occ = occupancy.get(o.name);
+        // Minifigs show up on their OWN, not lumped in with part counts (src/bestand/lagerort.ts): "18 part
+        // types" would otherwise sometimes mean 18 part types and sometimes 12 plus 6 minifigs, and no one
+        // could tell from the number what it means.
+        const how = occ
           ? [
-              tRaw('storage.belegt.sets', { n: Number(n.sets) || 0 }),
-              tRaw('storage.belegt.teile', { n: Number(n.teile) || 0 }),
-              tRaw('storage.belegt.figuren', { n: Number(n.figuren) || 0 }),
+              tRaw('storage.belegt.sets', { n: Number(occ.sets) || 0 }),
+              tRaw('storage.belegt.teile', { n: Number(occ.teile) || 0 }),
+              tRaw('storage.belegt.figuren', { n: Number(occ.figuren) || 0 }),
             ]
               .filter(x => !x.startsWith('0 '))
               .join(', ')
           : tRaw('storage.leer');
-        // Belegt: Der Server lehnte das Löschen erst nach der Rückfrage ab. Gesperrt sagt es vorher, mit dem Grund.
-        const belegt = !!n && (Number(n.sets) || 0) + (Number(n.teile) || 0) + (Number(n.figuren) || 0) > 0;
+        // Occupied: the server already refused the delete after the confirmation dialog. Disabled says so
+        // beforehand, with the reason.
+        const occupied = !!occ && (Number(occ.sets) || 0) + (Number(occ.teile) || 0) + (Number(occ.figuren) || 0) > 0;
         return html`<div data-stil="display:contents">
       <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('storage.umbenennen', { name: o.name })}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" data-zaehler class="lager-eingabe" /></span>
-      <span class="lager-belegt" data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
+      <span class="lager-belegt" data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${occ ? '' : ' lager-frei'}">${how}</span></span>
       <span data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
-              data-arg2="${o.id === vorgabeId ? 1 : 0}"
-              title="${tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set')}"
-              aria-label="${tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set')}"
-              aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
+              data-arg2="${o.id === defaultId ? 1 : 0}"
+              title="${tRaw(o.id === defaultId ? 'storage.default_is' : 'storage.default_set')}"
+              aria-label="${tRaw(o.id === defaultId ? 'storage.default_is' : 'storage.default_set')}"
+              aria-pressed="${o.id === defaultId ? 'true' : 'false'}">${ico(o.id === defaultId ? 'stern-voll' : 'merkliste')}</button></span>
       <span data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
-              aria-label="${tRaw('common.delete')}: ${o.name}${belegt ? ` (${tRaw('storage.erst_umraeumen', { wie })})` : ''}" title="${belegt ? tRaw('storage.erst_umraeumen', { wie }) : tRaw('common.delete')}"
-              data-arg2="${o.name}"${belegt ? ' disabled' : ''}>${ico('loeschen')}</button></span>
+              aria-label="${tRaw('common.delete')}: ${o.name}${occupied ? ` (${tRaw('storage.erst_umraeumen', { wie: how })})` : ''}" title="${occupied ? tRaw('storage.erst_umraeumen', { wie: how }) : tRaw('common.delete')}"
+              data-arg2="${o.name}"${occupied ? ' disabled' : ''}>${ico('loeschen')}</button></span>
     </div>`;
       },
     )}${html`</div>`}`,
@@ -75,8 +75,8 @@ export async function ladeLagerortVerwaltung() {
 }
 
 async function legeLagerortAn() {
-  const feld = G('storage-new');
-  const name = String(feld?.value || '').trim();
+  const field = G('storage-new');
+  const name = String(field?.value || '').trim();
   if (!name) {
     feldFehler('storage-new', tRaw('storage.name_fehlt'));
     return;
@@ -90,12 +90,12 @@ async function legeLagerortAn() {
     );
     return;
   }
-  feld.value = '';
+  field.value = '';
   await ladeLagerortVerwaltung();
 }
 
 /**
- * Enter im Eingabefeld legt an — dieselbe Geste wie überall sonst im Baum.
+ * Enter in the input field creates it — the same gesture as everywhere else in the tree.
  * @param {string} _id
  * @param {KeyboardEvent} ev
  */
@@ -108,13 +108,13 @@ function lagerortTaste(_id, ev) {
 
 /**
  * @param {string} id
- * @param {string} wert
+ * @param {string} value
  */
-async function benenneLagerortUm(id, wert) {
-  const name = String(wert || '').trim();
-  // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld fast immer ein Versehen, und
-  // das Löschen hat seinen eigenen Knopf daneben. (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren
-  // die natürliche Geste, um die Zuordnung loszuwerden.)
+async function benenneLagerortUm(id, value) {
+  const name = String(value || '').trim();
+  // Empty does NOT mean delete here: when renaming, a field cleared out is almost always a slip, and delete
+  // has its own button right next to it. (On the LOCATION AT THE SET it's the other way round — there,
+  // clearing is the natural gesture to drop the assignment.)
   if (!name) {
     toast(tRaw('storage.name_fehlt'), 'error');
     await ladeLagerortVerwaltung();
@@ -125,28 +125,27 @@ async function benenneLagerortUm(id, wert) {
     toast(d?.error || tRaw('settings.error'), 'error');
   } else toast(tRaw('storage.umbenannt', { name }), 'success');
   await ladeLagerortVerwaltung();
-  // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie zeigt sonst weiter den alten
-  // Namen.
+  // The assignments moved along with it (benenneOrtUm on the server) — the gallery would otherwise keep
+  // showing the old name.
   emit('sammlungLaden');
 }
 
 /**
- * Den Stern umschalten. ★/☆ unterscheiden sich in der Form, nicht in der Farbe, und tragen Titel und
- * aria-pressed. Ein zweiter Druck auf denselben Stern schaltet die Vorgabe ab — ein eigener Knopf dafür wäre
- * zu viel.
+ * Toggle the star. ★/☆ differ in shape, not in color, and carry title and aria-pressed. A second click on
+ * the same star turns the default off — a separate button for that would be too much.
  * @param {string} id
- * @param {string} war
+ * @param {string} was
  */
-async function schalteLagerortVorgabe(id, war) {
-  const d = await api('PUT', '/v1/storage/default', { id: String(war) === '1' ? null : parseInt(id, 10) });
+async function schalteLagerortVorgabe(id, was) {
+  const d = await api('PUT', '/v1/storage/default', { id: String(was) === '1' ? null : parseInt(id, 10) });
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
   await ladeLagerortVerwaltung();
-  // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie den alten Stand, bis jemand die
-  // Seite neu laedt. Dieselbe Geste wie beim Erfassungs-Zustand, der nach dem Speichern
-  // initDefaultCondition() ruft.
+  // The collection forms are already showing — without this follow-up they'd show the old state until
+  // someone reloads the page. Same gesture as the collection-condition default, which calls
+  // initDefaultCondition() after saving.
   ladeLagerortVorgabe();
 }
 
@@ -165,6 +164,7 @@ async function loescheLagerort(id, name) {
   await ladeLagerortVerwaltung();
 }
 
+// Names below are registry-exposed (index.html/verbindung.js/tests) — kept unchanged.
 registerActions({
   legeLagerortAn,
   lagerortTaste,

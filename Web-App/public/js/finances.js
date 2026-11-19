@@ -19,7 +19,7 @@ import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './format.js';
 import { scopeQuery } from './kontofilter.js';
 import { pnlBySet, setFinanceHeaderValue } from './state.js';
-import { kurveDa, loadPortfolioChart, setzeEinstand } from './wertkurve.js';
+import { hasCurve, loadPortfolioChart, setCostBasis } from './wertkurve.js';
 import { basisAus, zeigeKennzahlen } from './finanz-kennzahlen.js';
 /** @typedef {import('./finanz-kennzahlen.js').Basis} Basis */
 
@@ -267,7 +267,7 @@ function financeLoading() {
  * (five "—"s above the message looked like an empty collection). @param {Parameters<typeof listeLadefehler>[1]} d
  * @param {boolean} hadTable @returns {boolean} true if it was an error */
 function financeFailed(d, hadTable) {
-  const inBox = !hadTable && !kurveDa();
+  const inBox = !hadTable && !hasCurve();
   const target = G(inBox ? 'portfolio-chart' : 'fin-tbl');
   const title = tRaw('finance.fehler_titel');
   if (!listeLadefehler(target, d, { erneut: 'loadFinance', behalten: hadTable, titel: title })) return false;
@@ -350,7 +350,7 @@ export async function loadFinance() {
   setFinanceHeaderValue(headValue);
   if (G('portfolio-current')) G('portfolio-current').textContent = headValue > 0 ? fmtN(headValue, cur) : '—';
   // The line compares against the value curve; if positions lack a market price, it names what it refers to.
-  setzeEinstand(
+  setCostBasis(
     basis.bewertet > 0 ? basis.einstand : purchase.alle,
     cur,
     basis.bewertet > 0 && Math.abs(basis.einstand - purchase.alle) >= 0.005 ? tRaw('finance.chart.kaufpreis') : '',
