@@ -33,7 +33,7 @@ type Cached = Map<boolean, { until: number; response: Promise<SetupStatusRespons
 const cached = (k: ProfileContext) =>
   k.faecher.fach<Cached>('einrichtungStand', () => {
     const m: Cached = new Map();
-    k.einstellungen.beiGlobalerAenderung(() => m.clear());
+    k.einstellungen.onGlobalChange(() => m.clear());
     return m;
   });
 
@@ -75,12 +75,12 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
   // What couldn't be read reads "missing" and goes into `degradiert`; only the
   // database row is itself the probe.
   const ab = new Abstriche();
-  const done = !!(await ab.oder('erledigt', kx.einstellungen.globalerWert('einrichtung_erledigt'), null));
+  const done = !!(await ab.oder('erledigt', kx.einstellungen.globalValue('einrichtung_erledigt'), null));
   // Once setup is done, decrypting the keys is no longer needed.
   if (done) return { ...base, erledigt: true, konfiguriert: true, schritte: [] };
 
   // BrickLink only counts with all four values, as in /settings/einrichtung.
-  const has = async (key: string) => !!(await ab.oder('quelle', kx.einstellungen.globalerWert(key), null));
+  const has = async (key: string) => !!(await ab.oder('quelle', kx.einstellungen.globalValue(key), null));
   const rebrickable = await has('rebrickable_api_key');
   const bricklink = (
     await Promise.all(

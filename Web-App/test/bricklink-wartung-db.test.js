@@ -48,7 +48,7 @@ test('BrickLink in Wartung', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { erzeugeBricklink, BricklinkNichtErreichbar } = _req('clients/bricklink.js');
-  const { setGlobalSetting } = _req('src/einstellungen/settings.js');
+  const { setGlobalSetting } = _req('src/settings/settings.js');
   const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
 
   // Ein Klient mit allen vier Schlüsseln und freiem Kontingent, gestellt an der Verdrahtung.

@@ -45,8 +45,8 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
     );
     await db.pool.end().catch(() => {});
   });
-  const { getGlobalSetting } = _req('src/einstellungen/settings.js');
-  const einstellungen = require('./helpers/sources').testDienste().einstellungen;
+  const { getGlobalSetting } = _req('src/settings/settings.js');
+  const einstellungen = require('./helpers/sources').testDienste().settings;
   /** Die Einstellungen über dem Zugang einer Transaktion, wie sie in `t` stehen. */
   const in_ = tx => einstellungen.ueber(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
@@ -59,7 +59,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
         transaktion(async tx => {
           await schreibe(tx, 'a', 'eins');
           await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
-          gesehen = await in_(tx).globalerWert(`${S}a`);
+          gesehen = await in_(tx).globalValue(`${S}a`);
           throw new Error('zurück');
         }),
         /zurück/,
@@ -74,7 +74,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
         tx.db.transaction(async inner => {
-          assert.equal(await in_(inner).globalerWert(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
+          assert.equal(await in_(inner).globalValue(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
           await schreibe(inner, 'c', 'innen');
           throw new Error('innen kaputt');
         }),

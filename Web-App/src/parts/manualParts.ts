@@ -189,7 +189,7 @@ export async function changeManualPart(
   const ab = new Abstriche();
   const wunsch = mengenwunsch(body);
   if (wunsch) {
-    const cond = await k.einstellungen.zustandFuerPreis(undefined, existing.condition, uid);
+    const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
     raus.quantity = await k.bestand.passeManuelleMengeAn(
       'part',
       uid,

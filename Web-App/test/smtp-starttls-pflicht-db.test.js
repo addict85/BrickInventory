@@ -167,7 +167,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     };
     for (const [k, v] of Object.entries(alle))
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
-    await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
+    await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   };
   const LINK = 'https://brick.example/reset?token=abcdef0123';
 

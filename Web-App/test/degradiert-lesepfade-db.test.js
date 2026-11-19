@@ -7,7 +7,7 @@
  * - src/parts/queries.ts: Marktpreise wieder mit
  *   `.catch(meldeUndLiefere('teile:marktpreise', new Map()))` statt `ab.oder` → rot:
  *   „ohne Preise sagt die Liste warum“ (kein `degradiert`).
- * - src/einstellungen/settings.ts: getGlobalSetting wieder mit
+ * - src/settings/settings.ts: getGlobalSetting wieder mit
  *   `.catch(meldeUndLiefere(…, null))` → rot: „eine Einstellung, die sich nicht
  *   lesen lässt, ist keine Vorgabe“ (lieferte '24').
  * - Gegenrichtung „mit Preisen bleibt `degradiert` weg“ war in beiden grün.
@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testDaten();
-const { getGlobalSetting } = _req('src/einstellungen/settings.js');
+const { getGlobalSetting } = _req('src/settings/settings.js');
 
 const NAME = `degradiert_${process.pid}`,
   TEIL = '3001dg';

@@ -7,7 +7,7 @@ import * as partsList from './repository/partsList';
 import * as summary from './repository/summary';
 import * as partColor from './repository/partColor';
 import type { AuftraegeDienste } from '../auftraege';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { FremdquellenDienste } from '../fremdquellen';
@@ -20,7 +20,7 @@ export interface PartsDependencies {
   db: Db;
   /** State per access (rebuilding the parts summary); createParts sets it up. */
   faecher: Faecher;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;

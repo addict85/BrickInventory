@@ -227,7 +227,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 3 | `src/http` |
 | 4 | `db`, `clients` |
 | 5 | `src/throttle` |
-| 6 | `src/einstellungen` |
+| 6 | `src/settings` |
 | 7 | `src/mail` |
 | 8 | `src/auftraege` |
 | 9 | `src/fremdquellen` |
@@ -297,7 +297,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `db` | `schema_migrations` |
 | `src/infra` | `app_logs` |
 | `src/throttle` | `rate_limit_attempts` |
-| `src/einstellungen` | `global_settings`, `user_settings` |
+| `src/settings` | `global_settings`, `user_settings` |
 | `src/auftraege` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
 | `src/fremdquellen` | `api_calls`, `api_cadence` |
 | `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
@@ -360,8 +360,7 @@ Bestand der Abweichungen (Stand 11.11.2026):
 Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 `haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
 `preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen vor allem in
-Finanzen, Katalog, Teile und Mail (`holePreis`, `setZustand`, `aktuellerMarktpreis`)
-sowie `getSetting`/`getGlobalSetting`/`setGlobalSetting` der Einstellungen;
+Finanzen, Katalog und Mail (`holePreis`, `setZustand`, `aktuellerMarktpreis`);
 `test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
 Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`
 (`src/infra/setNummer`), Sets verschiebt `setVerschieben` (Einstieg) über

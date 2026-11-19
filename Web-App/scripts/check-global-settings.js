@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `global_settings` wird über src/einstellungen/settings.ts angefasst, nicht direkt.
+ * `global_settings` wird über src/settings/settings.ts angefasst, nicht direkt.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,8 +12,8 @@ const ERLAUBT = new Map([
   ['db/schemaStart.ts', 'legt die Tabelle an und migriert sie'],
   ['db/zeilen.ts', 'erzeugte Zeilentypen aller Tabellen, kein Zugriff'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool, ohne den Datenbankzugang des Servers'],
-  ['src/einstellungen/settings.ts', 'DIE zentrale Stelle'],
-  ['src/einstellungen/repository/werte.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
+  ['src/settings/settings.ts', 'DIE zentrale Stelle'],
+  ['src/settings/repository/values.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],
 ]);
 
 /**
@@ -55,7 +55,7 @@ for (const [datei, n] of gefunden) {
   const erlaubt = OFFEN.get(datei);
   if (erlaubt === undefined) {
     fehler.push(
-      `NEU: ${datei} (${n}x). global_settings gehört über src/einstellungen/settings.ts — ` +
+      `NEU: ${datei} (${n}x). global_settings gehört über src/settings/settings.ts — ` +
         `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
         `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`,
     );

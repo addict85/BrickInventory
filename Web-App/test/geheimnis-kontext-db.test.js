@@ -43,7 +43,7 @@ const gr = {
 };
 const dateien = _req('src/vouchers/voucherFiles.js');
 const zf = _req('src/factors/secondFactor.js');
-const settings = _req('src/einstellungen/settings.js');
+const settings = _req('src/settings/settings.js');
 const idem = _req('src/idempotency/service.js');
 
 /** Das Format vor dem Kontext: AES-GCM mit dem Rohschlüssel, ohne AAD. */

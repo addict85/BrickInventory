@@ -237,11 +237,11 @@ async function zeitplaene(
   for (const dj of DAILY_JOBS)
     aus[dj.monitorKey] = {
       type: 'daily',
-      time: (await k.einstellungen.globalerWert(`job_time_${dj.name}`)) || dj.default,
+      time: (await k.einstellungen.globalValue(`job_time_${dj.name}`)) || dj.default,
     };
   aus.priceJob = {
     type: 'interval',
-    minutes: parseInt((await k.einstellungen.globalerWert('price_job_interval_minutes')) || '60', 10),
+    minutes: parseInt((await k.einstellungen.globalValue('price_job_interval_minutes')) || '60', 10),
   };
   return aus;
 }

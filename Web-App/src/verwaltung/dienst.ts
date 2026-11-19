@@ -172,12 +172,12 @@ export async function jobZeitplanSetzen(
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
     if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
-    await k.einstellungen.setzeGlobalenWert(
+    await k.einstellungen.setGlobalValue(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
     );
   } else if (name === 'priceJob') {
-    await k.einstellungen.setzeGlobalenWert(
+    await k.einstellungen.setGlobalValue(
       'price_job_interval_minutes',
       String(Math.max(5, parseInt(String(minutes), 10) || 60)),
     );

@@ -155,10 +155,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
     const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(
-      await _req('src/einstellungen/settings.js').getGlobalSetting('rebrickable_api_key'),
-      'erster-schluessel',
-    );
+    assert.equal(await _req('src/settings/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
   });
 
   await t.test('nach der Einrichtung auch ein erster Schlüssel nur mit Passwort', async () => {

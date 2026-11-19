@@ -87,7 +87,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
 
   // Eine hinterlegte Quelle beendet die Ersteinrichtung: Der Prüfknopf verschwindet.
   // Über den echten Schreibweg, weil Schlüssel verschlüsselt liegen (SECRET_KEYS).
-  await _req('src/einstellungen/settings.js').setGlobalSetting('rebrickable_api_key', 'probe');
+  await _req('src/settings/settings.js').setGlobalSetting('rebrickable_api_key', 'probe');
   const d2 = await (await fetch(srv.base + '/api/v1/einrichtung/stand')).json();
   assert.equal(d2.konfiguriert, true, 'mit hinterlegter Quelle gilt die Einrichtung als begonnen');
 });

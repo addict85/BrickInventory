@@ -21,9 +21,9 @@ export async function aktuellerMarktpreis(
   userId: number,
   condition: string | null = null,
 ) {
-  const currency = String(await k.einstellungen.nutzerWert(userId, 'currency', 'EUR'));
+  const currency = String(await k.einstellungen.userValue(userId, 'currency', 'EUR'));
   // Parameter → Nutzer → global → 'N'.
-  const effectiveCond = condition || (await k.einstellungen.nutzerStandardZustand(userId));
+  const effectiveCond = condition || (await k.einstellungen.userDefaultCondition(userId));
   // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
   // der Preislauf den Zustand ablesen könnte.
   await preisFuerSetHolen(k, setNumber, userId, condition).catch(logAndContinue('marktpreis:preisFuerSetHolen'));
@@ -52,7 +52,7 @@ export async function teilZustand(k: FinanzenKontext, userId: number, partNumber
   } catch (e) {
     meldeFehler('teile:zustand-ermitteln', e);
   }
-  return k.einstellungen.nutzerStandardZustand(userId);
+  return k.einstellungen.userDefaultCondition(userId);
 }
 
 /** Nur aus dem Cache, ohne Abruf: Die Liste soll nicht auf BrickLink warten. */
@@ -65,8 +65,8 @@ export async function marktpreiseAusCacheFuerFiguren(
   if (!figuren.length) return treffer;
 
   const [currency, ttlRoh] = await Promise.all([
-    kx.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
-    kx.einstellungen.globalerWert('price_cache_ttl', '24'),
+    kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
+    kx.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh), 10));
 
@@ -119,8 +119,8 @@ export async function marktpreiseAusCacheFuerTeile(
   if (!teile.length) return treffer;
 
   const [currency, ttlRoh] = await Promise.all([
-    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalerWert('price_cache_ttl', '24'),
+    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh), 10));
 
@@ -176,8 +176,8 @@ export async function marktpreisMitHerkunft(
   userId: number,
   condition: string | null = null,
 ) {
-  const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
-  const ttlHours = (await k.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
+  const currency = await k.einstellungen.userValue(userId, 'currency', 'EUR');
+  const ttlHours = (await k.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   const effCond = condition || (await teilZustand(k, userId, partNumber, colorId));
   const priceData = await preisOderKeiner(
     fetchPartPrice(k, partNumber, colorId, effCond, currency, ttlHours, null, userId),
@@ -219,11 +219,11 @@ export async function schaetzeFigurenpreis(
   condition = DEFAULT_PRICE_CONDITION,
 ): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
-    const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
+    const currency = await k.einstellungen.userValue(userId, 'currency', 'EUR');
     const cond0 = zustand(condition, DEFAULT_PRICE_CONDITION);
 
     // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
-    const ttl = Math.max(1, parseInt(await k.einstellungen.globalerWert('price_cache_ttl', '24'), 10));
+    const ttl = Math.max(1, parseInt(await k.einstellungen.globalValue('price_cache_ttl', '24'), 10));
     const cached = await k.marktpreise.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl);
     const zwischengespeichert = Number(cached?.marktpreis) || 0;
     if (zwischengespeichert > 0)
@@ -295,7 +295,7 @@ export async function figMarktpreisMitHerkunft(
   blFigNumber?: string | null,
   condition: string | null = null,
 ) {
-  const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
+  const currency = await k.einstellungen.userValue(userId, 'currency', 'EUR');
   // Eine „Gebraucht"-Erfassung genügt für 'U'; ohne Erfassung der Standard.
   let effCond = condition;
   if (!effCond) {
@@ -305,7 +305,7 @@ export async function figMarktpreisMitHerkunft(
     } catch (e) {
       meldeFehler('minifiguren:zustand-ermitteln', e);
     }
-    if (!effCond) effCond = await k.einstellungen.nutzerStandardZustand(userId);
+    if (!effCond) effCond = await k.einstellungen.userDefaultCondition(userId);
   }
   // BrickLink zuerst, auch ohne eigene bl_fig_number: Meist stimmt die eigene
   // Nummer mit der BrickLink-Nummer überein.

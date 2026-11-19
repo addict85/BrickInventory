@@ -3,7 +3,7 @@
 import { mit, type Kontext } from '../infra/bereich';
 import type { Db } from '../../db/database';
 import type { AuftraegeDienste } from '../auftraege';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import * as apiKontingent from './repository/apiKontingent';
 import * as apiTakt from './repository/apiTakt';
 import type { Quellen } from './quellen';
@@ -12,7 +12,7 @@ import type { Uhr } from '../infra/uhr';
 export interface FremdquellenAbhaengigkeiten {
   uhr: Uhr;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   /** Was ein Test statt der echten Klienten gibt; gelesen beim Aufruf (bereich.ts). */
   ersatz?: Partial<Quellen> | undefined;

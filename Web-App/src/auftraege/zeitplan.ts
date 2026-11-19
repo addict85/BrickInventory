@@ -34,14 +34,14 @@ export async function taeglicheUhrzeit(
   einstellung: string,
   vorgabe: string,
 ): Promise<{ h: number; min: number }> {
-  return leseUhrzeit(await k.einstellungen.globalerWert(einstellung), vorgabe);
+  return leseUhrzeit(await k.einstellungen.globalValue(einstellung), vorgabe);
 }
 
 export async function naechsterLauf(k: AuftraegeKontext, art: AuftragsArt, jetzt = k.uhr.datum()): Promise<Date> {
   const plan = planVon(k, art);
   if ('taeglich' in plan)
     return naechsteUhrzeit(await taeglicheUhrzeit(k, plan.taeglich.einstellung, plan.taeglich.vorgabe), jetzt);
-  const roh = plan.minuten.einstellung ? await k.einstellungen.globalerWert(plan.minuten.einstellung) : null;
+  const roh = plan.minuten.einstellung ? await k.einstellungen.globalValue(plan.minuten.einstellung) : null;
   const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? ''), 10) || plan.minuten.vorgabe);
   return new Date(jetzt.getTime() + min * 60_000);
 }

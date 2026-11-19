@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { DESIGNS } from '../einstellungen';
+import { DESIGNS } from '../settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
 import { versuche } from '../infra/ergebnis';
@@ -83,12 +83,12 @@ export function stripComments(html: string): string {
 /** Only the default sits in the cache; logged in, the user's own theme counts. */
 async function currentTheme(k: ProfileContext, userId?: number): Promise<string> {
   if (userId) {
-    const { eigenes } = await k.einstellungen.designFuer(userId);
+    const { eigenes } = await k.einstellungen.themeFor(userId);
     if (eigenes) return eigenes;
   }
   if (Z.theme !== null && k.uhr.jetzt() - Z.themeAt < THEME_TTL_MS) return Z.theme;
   // The start page still loads with a disrupted database, then classic and uncached.
-  const read = await versuche('index-html:design', k.einstellungen.globalerWert('app_theme'));
+  const read = await versuche('index-html:design', k.einstellungen.globalValue('app_theme'));
   if (!read.ok) return 'classic';
   const stored = read.wert;
   const chosen: string = stored && DESIGNS.includes(stored) ? stored : 'classic';
@@ -119,7 +119,7 @@ async function currentLang(k: ProfileContext, userId?: number): Promise<string> 
   if (!userId) return 'de';
   // Only the user's own setting: without it German applies, not a global default.
   // A read error goes to startPageHtml(), which then serves the file unchanged.
-  const sprache = String((await k.einstellungen.nutzerEinstellungen(userId)).language ?? 'de');
+  const sprache = String((await k.einstellungen.userSettings(userId)).language ?? 'de');
   return LANGS.includes(sprache) ? sprache : 'de';
 }
 
@@ -127,7 +127,7 @@ async function currentLang(k: ProfileContext, userId?: number): Promise<string> 
 /** The theme sits in the server-rendered <html data-theme>; without invalidation it would
  * keep the old one until restart. */
 export async function setGlobalTheme(k: ProfileContext, theme: string): Promise<void> {
-  await k.einstellungen.setzeGlobalenWert('app_theme', theme);
+  await k.einstellungen.setGlobalValue('app_theme', theme);
   forgetTheme();
 }
 

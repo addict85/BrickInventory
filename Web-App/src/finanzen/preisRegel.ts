@@ -13,7 +13,7 @@ export async function kaufpreisAusEingabe(
 ): Promise<{ unitPrice: number | null; purchasePrice: number | null }> {
   const zahl = geldEingabe(roh, 'Preis');
   if (zahl !== null) return { unitPrice: zahl, purchasePrice: zahl };
-  const zustand = await k.einstellungen.zustandFuerPreis(zustandRoh, zustandJetzt, nutzerId);
+  const zustand = await k.einstellungen.conditionForPrice(zustandRoh, zustandJetzt, nutzerId);
   return { unitPrice: null, purchasePrice: await marktpreis(zustand) };
 }
 
@@ -37,7 +37,7 @@ export async function manuellerKaufpreis(
 }> {
   const unitPrice = geldEingabe(eingabe.unitPrice, 'Stückpreis');
 
-  const zustand = await k.einstellungen.zustandFuerPreis(eingabe.condition ?? null, null, nutzerId);
+  const zustand = await k.einstellungen.conditionForPrice(eingabe.condition ?? null, null, nutzerId);
 
   // Ein eingetippter Preis fragt nicht nach dem Markt — keine Herkunft zu kennzeichnen.
   const markt = unitPrice !== null ? null : await marktpreis(zustand);

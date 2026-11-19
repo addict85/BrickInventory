@@ -277,8 +277,8 @@ export async function checkBalance(k: VoucherContext, uid: number, id: number): 
   const old = await existing(k, uid, id);
   if (!old.pin) fachfehler('ungueltig', 'guthaben_pin_fehlt');
   const country = String(
-    (await k.einstellungen.globalerWert('gutschein_land', '')) ||
-      countryForCurrency(await k.einstellungen.nutzerWert(uid, 'currency', 'EUR')),
+    (await k.einstellungen.globalValue('gutschein_land', '')) ||
+      countryForCurrency(await k.einstellungen.userValue(uid, 'currency', 'EUR')),
   );
   if (!countryAllowed(country)) fachfehler('ungueltig', 'guthaben_land_ungueltig');
   const result = await checkBalanceThrottled(k, uid, old.number, old.pin, { locale: country });

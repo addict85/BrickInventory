@@ -64,7 +64,7 @@ function blaetter(x, vor) {
 /** Je Bereich höchstens so viele; ein neuer Dienst verdrängt einen alten. */
 const JE_BEREICH = {
   throttle: 10,
-  einstellungen: 22,
+  settings: 22,
   mail: 13,
   auftraege: 65,
   haushalt: 20,
@@ -118,6 +118,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
   const ENGLISCH_UMGESTELLT = new Set([
     'idempotency',
     'profile',
+    'settings',
     'minifigs',
     'wanted',
     'collection',

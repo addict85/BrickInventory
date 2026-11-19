@@ -13,7 +13,7 @@
  *   E  die Prüfung `!u.email` in loadProfile entfernt → rot: „ohne E-Mail“
  *   F  die Prüfung auf den offenen Assistenten in rbHinweisZeigen entfernt
  *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
- *   G  in setzeEigenesDesign applyTheme() entfernt → rot: „eigenes Design“
+ *   G  in setOwnTheme applyTheme() entfernt → rot: „eigenes Design“
  *      (data-theme blieb classic)
  *   H  (04.11.2026) in loadProfile den Hinweis auf new_email entfernt → rot:
  *      „ausstehende Adresse“ (der Hinweis blieb leer)

@@ -23,8 +23,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { zustandFuerPreis, setGlobalSetting } = _req('src/einstellungen/settings.js');
-const { nutzerEinstellungSetzen: setUserSetting } = _req('src/einstellungen/nutzerEinstellung.js');
+const { conditionForPrice, setGlobalSetting } = _req('src/settings/settings.js');
+const { setUserSetting } = _req('src/settings/userSetting.js');
 
 test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
@@ -49,29 +49,29 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
     await db.run(`DELETE FROM user_settings WHERE user_id=$1 AND key='user_default_condition'`, [uid]);
 
     assert.equal(
-      await zustandFuerPreis(undefined, null, uid),
+      await conditionForPrice(undefined, null, uid),
       'U',
       'ohne Eingabe und ohne Bestand muss der globale Standard gelten',
     );
 
     // ── Der Bestand schlägt den Standard ────────────────────────────────────
     assert.equal(
-      await zustandFuerPreis(undefined, 'N', uid),
+      await conditionForPrice(undefined, 'N', uid),
       'N',
       'ein als "Neu" geführter Bestand darf nicht auf den Standard zurückfallen — ' +
         'genau das war der Fehler aus einer früheren Runde, nur andersherum',
     );
 
     // ── Die Eingabe schlägt beides ──────────────────────────────────────────
-    assert.equal(await zustandFuerPreis('N', 'U', uid), 'N', 'die Eingabe gewinnt');
-    assert.equal(await zustandFuerPreis('U', 'N', uid), 'U', 'die Eingabe gewinnt');
+    assert.equal(await conditionForPrice('N', 'U', uid), 'N', 'die Eingabe gewinnt');
+    assert.equal(await conditionForPrice('U', 'N', uid), 'U', 'die Eingabe gewinnt');
 
     // ── Eine ungültige Eingabe zählt nicht ──────────────────────────────────
     // Der Rumpf kommt vom Client; dort kann alles stehen. Ein 'X' darf nicht
     // als Zustand durchgereicht werden, sonst landet es in der Erfassung.
     for (const müll of ['X', '', 'neu', 0, true, null, {}]) {
       assert.equal(
-        await zustandFuerPreis(müll, 'U', uid),
+        await conditionForPrice(müll, 'U', uid),
         'U',
         `Eingabe ${JSON.stringify(müll)} ist kein Zustand und muss übergangen werden`,
       );
@@ -81,7 +81,7 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
     // So leert das Formular den Wert. Mit `??` statt `||` käme hier '' heraus
     // und würde als Zustand weitergereicht.
     assert.equal(
-      await zustandFuerPreis(undefined, '', uid),
+      await conditionForPrice(undefined, '', uid),
       'U',
       'die leere Zeichenkette ist kein Zustand — sie muss auf den Standard durchfallen',
     );
@@ -89,7 +89,7 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
     // ── Der Nutzerwert schlägt den globalen Standard ────────────────────────
     await setUserSetting(uid, 'user_default_condition', 'N');
     assert.equal(
-      await zustandFuerPreis(undefined, null, uid),
+      await conditionForPrice(undefined, null, uid),
       'N',
       'der eigene Standard des Nutzers muss den globalen verdrängen',
     );

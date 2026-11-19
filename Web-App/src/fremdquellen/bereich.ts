@@ -31,7 +31,7 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
     kontingentGrenze: mit(k)(apiKontingentDienst.grenzeDerQuelle),
   };
   const klienten: KlientenZugang = {
-    schluessel: async name => (await k.einstellungen.globalerWert(name)) || '',
+    schluessel: async name => (await k.einstellungen.globalValue(name)) || '',
     zaehle: api => apiKontingentDienst.kontingentPruefenUndZaehlen(k, api),
     kontingentStand: api => kontingent.kontingentStand(api),
     drossel,

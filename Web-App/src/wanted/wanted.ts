@@ -16,11 +16,11 @@ import type { WantedContext } from './context';
 /** Each condition on its own: if BrickLink doesn't know one, the other still
  * comes through, and a missing price is a dash, not an error. */
 export async function pricesForBothConditions(k: WantedContext, uid: number, setNumber: string) {
-  const currency = String(await k.einstellungen.nutzerWert(uid, 'currency', 'EUR'));
+  const currency = String(await k.einstellungen.userValue(uid, 'currency', 'EUR'));
   if (!moeglicheSetNummer(mitVersion(setNumber)) || !(await k.katalog.setBekanntImKatalog(setNumber)))
     return { currency, current: {} };
-  const guideType = String(await k.einstellungen.nutzerWert(uid, 'price_guide_type', 'sold'));
-  const ttlHours = String(await k.einstellungen.nutzerWert(uid, 'price_cache_ttl', '24'));
+  const guideType = String(await k.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
+  const ttlHours = String(await k.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
   const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};
   // "none" after a fetch failure is not "BrickLink knows none".
   const ab = new Abstriche();
@@ -73,7 +73,7 @@ export async function conditionOrDefault(
       String(roh ?? '')
         .trim()
         .toUpperCase(),
-    ) ?? V.zustand(await k.einstellungen.nutzerStandardZustand(userId))
+    ) ?? V.zustand(await k.einstellungen.userDefaultCondition(userId))
   );
 }
 

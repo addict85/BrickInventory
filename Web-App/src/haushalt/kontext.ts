@@ -2,7 +2,7 @@
 import type { Db } from '../../db/database';
 import { imSystem, mit, mitVertrag, type Kontext } from '../infra/bereich';
 import type { HaushaltLesevertrag } from './lesevertrag';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
 import type { Uhr } from '../infra/uhr';
@@ -12,7 +12,7 @@ export interface HaushaltAbhaengigkeiten {
   db: Db;
   /** Das Gedächtnis der Haushalte je Zugang; erzeugeHaushalt legt es an. */
   faecher: Faecher;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   lesevertrag: HaushaltLesevertrag;
 }
 

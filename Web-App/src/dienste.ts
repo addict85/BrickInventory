@@ -4,7 +4,7 @@ import type { AuftraegeDienste } from './auftraege';
 import type { BestandDienste } from './bestand';
 import type { BilderDienste } from './bilder';
 import type { ThrottleServices } from './throttle';
-import type { EinstellungenDienste } from './einstellungen';
+import type { SettingsServices } from './settings';
 import type { MinifigsServices } from './minifigs';
 import type { GeraeteDienste } from './geraete';
 import type { FactorsServices } from './factors';
@@ -34,7 +34,7 @@ export const LESEVERTRAG = { ...bestandSicht, ...bestandsmenge, ...haushaltSicht
 
 export interface Dienste {
   throttle: ThrottleServices;
-  einstellungen: EinstellungenDienste;
+  settings: SettingsServices;
   mail: MailDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;

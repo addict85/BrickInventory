@@ -52,7 +52,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
       c.release();
     }
   }
-  const S = _req('src/einstellungen/settings.js');
+  const S = _req('src/settings/settings.js');
   const vorher = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel-pfade');
   const echt = https.get;
@@ -79,7 +79,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
   t.after(async () => {
     https.get = echt;
     if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
-    else await S.globaleWerteLoeschen('rebrickable_api_key');
+    else await S.deleteGlobalValues('rebrickable_api_key');
     await db.pool.end().catch(() => {});
   });
 

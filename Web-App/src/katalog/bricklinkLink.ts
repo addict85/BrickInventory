@@ -86,7 +86,7 @@ export async function ueberSchnittstelleAufloesen(k: KatalogKontext, setNumber: 
   const bare = bareNumber(setNumber);
 
   // Ohne Zugang bei der Annahme bleiben, nichts cachen.
-  if (!(await k.einstellungen.globalerWert('bricklink_consumer_key'))) return toLink(n, null);
+  if (!(await k.einstellungen.globalValue('bricklink_consumer_key'))) return toLink(n, null);
 
   const notFound = (e: unknown) =>
     [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);

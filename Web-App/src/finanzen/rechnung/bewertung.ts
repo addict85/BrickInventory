@@ -176,9 +176,9 @@ export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
   const uids = await kx.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours, guideType] = await Promise.all([
-    kx.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
-    kx.einstellungen.nutzerWert(viewerId, 'price_cache_ttl', '24'),
-    kx.einstellungen.nutzerWert(viewerId, 'price_guide_type', 'sold'),
+    kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
+    kx.einstellungen.userValue(viewerId, 'price_cache_ttl', '24'),
+    kx.einstellungen.userValue(viewerId, 'price_guide_type', 'sold'),
   ]);
   const kopf = {
     currency,
@@ -209,11 +209,11 @@ export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl
     kx.erfassungen.ladeSetErfassungen(uids, currency),
   ]);
   // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
-  const ohneZugang = (await kx.einstellungen.globalerWert('bricklink_consumer_key'))
+  const ohneZugang = (await kx.einstellungen.globalValue('bricklink_consumer_key'))
     ? null
     : fehlerText(
         'kein_bricklink_zugang',
-        (await kx.einstellungen.nutzerWert(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
+        (await kx.einstellungen.userValue(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
       );
   const lage: Bewertungslage = {
     ttl,
@@ -304,8 +304,8 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalerWert('price_cache_ttl', '24'),
+    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const manualFigs = await k.bewertung.manuelleFigurenZurBewertung(uids);
@@ -387,8 +387,8 @@ export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWa
 export async function bewerteTeile(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalerWert('price_cache_ttl', '24'),
+    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const manualParts = await k.bewertung.manuelleTeileZurBewertung(uids);

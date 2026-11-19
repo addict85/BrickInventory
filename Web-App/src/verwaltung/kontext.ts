@@ -4,7 +4,7 @@ import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as verwaltung from './repository/verwaltung';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KontoDienste } from '../konto';
 import type { FactorsServices } from '../factors';
@@ -21,7 +21,7 @@ import type { Uhr } from '../infra/uhr';
 export interface VerwaltungAbhaengigkeiten {
   uhr: Uhr;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   konto: KontoDienste;
   factors: FactorsServices;

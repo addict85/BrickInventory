@@ -3,7 +3,7 @@ import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { Uhr } from '../infra/uhr';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import * as legacySecrets from './repository/legacySecrets';
 import * as passkeys from './repository/passkeys';
 import * as secondFactor from './repository/secondFactor';
@@ -12,7 +12,7 @@ export interface FactorsDependencies {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
 }
 
 /** Row guard (0112): only a caller checking before login, or against a foreign account, gets the system frame. */

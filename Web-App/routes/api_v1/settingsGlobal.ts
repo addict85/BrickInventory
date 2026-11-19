@@ -10,9 +10,7 @@ import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueSettingsGlobalRouter(
-  d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profile' | 'verwaltung'>,
-) {
+export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'profile' | 'verwaltung'>) {
   const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -30,10 +28,10 @@ export function baueSettingsGlobalRouter(
     if (fertig) return {};
   });
 
-  // Über einstellungenLesen(), damit die Maskierung nicht an der Verpackung vorbeigeht.
+  // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
   router.endpunkt('GET /api/v1/settings/raw', requireToken, async req => {
     return {
-      settings: await d.einstellungen.einstellungenLesen(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
+      settings: await d.settings.readSettings(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
     };
   });
 
@@ -101,7 +99,7 @@ export function baueSettingsGlobalRouter(
   // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
   // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
   router.endpunkt('GET /api/v1/settings/einrichtung', requireAdmin, async req => {
-    const wert = async (k: string) => !!(await d.einstellungen.globalerWert(k));
+    const wert = async (k: string) => !!(await d.settings.globalValue(k));
     const passwort = await d.konto.passwortWechselFaellig(req.apiUser.user_id);
     const quellen = {
       rebrickable: await wert('rebrickable_api_key'),
@@ -119,7 +117,7 @@ export function baueSettingsGlobalRouter(
   });
 
   router.endpunkt('POST /api/v1/settings/einrichtung/fertig', requireAdmin, async _req => {
-    await d.einstellungen.setzeGlobalenWert('einrichtung_erledigt', '1');
+    await d.settings.setGlobalValue('einrichtung_erledigt', '1');
     return {};
   });
 

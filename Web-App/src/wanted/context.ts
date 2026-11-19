@@ -3,7 +3,7 @@ import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
 import * as wanted from './repository/wanted';
 import * as wantedListe from './repository/wantedListe';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
@@ -15,7 +15,7 @@ import type { Uhr } from '../infra/uhr';
 export interface WantedDependencies {
   uhr: Uhr;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;

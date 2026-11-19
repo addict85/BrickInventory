@@ -108,7 +108,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   const sn = normalisiereSetNummer(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const besitzer = await sk.haushalt.schreibziel(e.anfragender, e.besitzerWunsch);
-  const zustand = await sk.einstellungen.zustandFuerPreis(e.zustand ?? null, null, besitzer);
+  const zustand = await sk.einstellungen.conditionForPrice(e.zustand ?? null, null, besitzer);
   const ort = await sk.bestand.lagerortDienst.ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
   const erfassung = {

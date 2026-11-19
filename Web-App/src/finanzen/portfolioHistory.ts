@@ -37,7 +37,7 @@ export async function portfolioVerlauf(
   idsWahl: Sicht | number[],
   period: string,
   db: unknown = k.db,
-  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.nutzerWert,
+  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.userValue,
 ) {
   const ids = await k.haushalt.blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die

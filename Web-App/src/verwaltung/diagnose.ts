@@ -143,10 +143,10 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
     k.verwaltung.probePreisVerlauf(setNumber),
     ab.oder(
       'waehrung',
-      k.einstellungen.fremderNutzerWert(uid, 'currency').then(value => (value === null ? undefined : { value })),
+      k.einstellungen.foreignUserValue(uid, 'currency').then(value => (value === null ? undefined : { value })),
       null,
     ),
-    k.einstellungen.globalerWert('price_cache_ttl'),
+    k.einstellungen.globalValue('price_cache_ttl'),
   ]);
 
   // Dieselbe Regel wie conditionFromAcquisitions(): Eine gebrauchte Erfassung genügt.
@@ -173,7 +173,7 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
   };
 
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
-  out.currency = await k.einstellungen.nutzerWert(uid, 'currency', 'EUR');
+  out.currency = await k.einstellungen.userValue(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert holePreis still 0.
   const katalog = await k.katalog.katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;

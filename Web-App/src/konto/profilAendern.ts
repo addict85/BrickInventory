@@ -65,7 +65,7 @@ async function adressMails(k: KontoKontext, user: Konto, email: string, token: s
       wertOder(
         await versuche(
           'anmeldung:sprache',
-          imSystemkontext('adressmail', () => k.einstellungen.nutzerWert(uid, 'language', 'de')),
+          imSystemkontext('adressmail', () => k.einstellungen.userValue(uid, 'language', 'de')),
         ),
         'de',
       ),

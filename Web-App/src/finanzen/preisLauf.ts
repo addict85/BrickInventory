@@ -159,8 +159,8 @@ async function aktualisiereKonto(
   st: Laufstand,
   k?: AuftragsKontext,
 ) {
-  const currency = await kx.einstellungen.nutzerWert(userId, 'currency', 'EUR');
-  const ttlHours = (await kx.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
+  const currency = await kx.einstellungen.userValue(userId, 'currency', 'EUR');
+  const ttlHours = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
   // Drei Abfragen je Konto statt je Set.
   const zustaende = await zustaendeJeSet(kx, userId, valid);
@@ -213,7 +213,7 @@ async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?
 
 /** Hält ein anderer Prozess die Sperre, wird der Auftrag eine Minute später neu versucht. */
 async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
-  if (!(await kx.einstellungen.globalerWert('bricklink_consumer_key', ''))) {
+  if (!(await kx.einstellungen.globalValue('bricklink_consumer_key', ''))) {
     log('BrickLink credentials not configured, skipping');
     await merkeStand(kx, {});
     return;
@@ -305,10 +305,10 @@ async function preisFuerSetHolen(
     log(`Skipping invalid: ${setNumber}`);
     return;
   }
-  const ck = await k.einstellungen.globalerWert('bricklink_consumer_key', '');
+  const ck = await k.einstellungen.globalValue('bricklink_consumer_key', '');
   if (!ck) return;
   try {
-    const currency = await k.einstellungen.nutzerWert(userId, 'currency', 'EUR');
+    const currency = await k.einstellungen.userValue(userId, 'currency', 'EUR');
     const guideType = 'sold';
     // Alle Zustände, die das Set führt — sonst fehlt bei gemischten Sets eine Hälfte.
     const conditions = await conditionsNeededFor(k, setNumber, userId, hintCondition);

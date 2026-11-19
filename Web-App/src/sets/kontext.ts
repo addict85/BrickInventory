@@ -7,7 +7,7 @@ import type { BestandDienste } from '../bestand';
 import type { FinanzenDienste } from '../finanzen';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { KontoDienste } from '../konto';
 import type { Kontext } from '../infra/bereich';
 import type { Uhr } from '../infra/uhr';
@@ -25,7 +25,7 @@ export interface SetsAbhaengigkeiten {
   haushalt: HaushaltDienste;
   auftraege: AuftraegeDienste;
   bestand: BestandDienste;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   konto: KontoDienste;
 }
 export type SetsKontext = Kontext<SetsAbhaengigkeiten, object>;

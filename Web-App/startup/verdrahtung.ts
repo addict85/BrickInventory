@@ -22,7 +22,7 @@ import { erzeugeKonto } from '../src/konto';
 import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
-import { erzeugeEinstellungen } from '../src/einstellungen';
+import { createSettings } from '../src/settings';
 import { createThrottle } from '../src/throttle';
 import { erzeugeGeraete } from '../src/geraete';
 import { konfig, type Konfig } from '../src/infra/konfig';
@@ -115,7 +115,7 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
 function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
   const throttle = createThrottle({ db, uhr }, zeige('throttle'));
-  const einstellungen = erzeugeEinstellungen({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('einstellungen'));
+  const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
   const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
@@ -143,7 +143,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
   bilder.beiSetBildGeladen((sn, quelle) => katalog.setBildLokalEintragen(sn, quelle));
   return {
     throttle,
-    einstellungen,
+    settings: einstellungen,
     mail,
     auftraege,
     haushalt,
@@ -163,7 +163,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
   const grund = baueGrund(db, bauteile, zeige);
   const {
     throttle,
-    einstellungen,
+    settings: einstellungen,
     mail,
     auftraege,
     haushalt,

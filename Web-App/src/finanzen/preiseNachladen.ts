@@ -21,7 +21,7 @@ async function preiseNachladen(
   n: Nutzlast<'preise_nachladen'>,
   k: AuftragsKontext,
 ): Promise<void> {
-  const ttl = (await kx.einstellungen.globalerWert('price_cache_ttl', '24')) || '24';
+  const ttl = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   for (const [i, p] of n.posten.entries()) {
     pruefeAbbruch(k);
     if (!(await kx.fremdquellen.kontingentFrei('bricklink')).allowed)

@@ -41,7 +41,7 @@
  * nicht angenommen: `# tests 9 / # pass 9`, und der Lauf mit einem absichtlich
  * falschen 2b meldete `pass 7 / fail 2`, also dieselbe Form wie A bis G.
  *
- * Eigene Gegenprobe zu 2b: `standardZustand: await nutzerStandardZustand(uid)`
+ * Eigene Gegenprobe zu 2b: `standardZustand: await userDefaultCondition(uid)`
  * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
  * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
  *
@@ -230,7 +230,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   await t.test('2b. der Standardzustand des Kontos reist EINMAL je Bericht mit', async () => {
     // Marcos Bitte vom 20.10.
     const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
-    assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (nutzerStandardZustand)');
+    assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
     assert.equal(
       ohne.posten[0].zustand,
       null,

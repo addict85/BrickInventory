@@ -45,14 +45,14 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const settings = _req('src/einstellungen/settings.js');
+  const settings = _req('src/settings/settings.js');
 
   await t.test('globale Schlüssel', async () => {
     await settings.setGlobalSetting('brickset_api_key', 'klar-brickset-4242');
     const roh = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
     assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
-    const gelesen = await settings.einstellungenLesen(uid, true);
+    const gelesen = await settings.readSettings(uid, true);
     assert.equal(gelesen.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
   });
 

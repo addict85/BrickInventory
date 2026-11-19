@@ -24,16 +24,16 @@ const SRC =
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   assert.match(SRC, /async function mailDesign\(k: MailKontext\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
-  // global_settings über src/einstellungen/settings.ts laufen, prüft der Test den Weg
+  // global_settings über src/settings/settings.ts laufen, prüft der Test den Weg
   // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
   // Einstellung und darf nicht aus dem Prozess oder aus einer Konstanten
   // kommen.
   assert.match(
     SRC,
-    /await k\.einstellungen\.globalerWert\('app_theme'\)/,
+    /await k\.einstellungen\.globalValue\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen',
   );
-  // `'./settings'` ODER `'../src/einstellungen/settings'`: Der Mailer ist mit einer früheren Runde
+  // `'./settings'` ODER `'../src/settings/settings'`: Der Mailer ist mit einer früheren Runde
   // von routes/ nach utils/ gezogen (er hatte nie eine Route), und damit
   // aenderte sich der RELATIVE Pfad auf dieselbe Datei. Geprueft ist die
   // Aussage — zentrale Fassung statt eigener Abfrage —, nicht die Anzahl der

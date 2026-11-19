@@ -108,7 +108,7 @@ export async function importiereWantedListe(
     aufgestockt: 0,
     fehler: 0,
     vorschau: !!opt.vorschau,
-    standardZustand: await k.einstellungen.nutzerStandardZustand(uid),
+    standardZustand: await k.einstellungen.userDefaultCondition(uid),
     posten: [],
   };
 

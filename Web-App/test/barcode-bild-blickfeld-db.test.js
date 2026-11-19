@@ -27,7 +27,7 @@ test.after(async () => {
 test('Barcode-Treffer und lokales Bild', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const SN = `BCB${process.pid}-1`;
-  const S = _req('src/einstellungen/settings.js');
+  const S = _req('src/settings/settings.js');
   const vorher = await S.getGlobalSetting('rebrickable_api_key');
   await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
   await db.run("DELETE FROM users WHERE username LIKE 'bcb_%'");

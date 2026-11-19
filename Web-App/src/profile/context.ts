@@ -3,7 +3,7 @@ import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { KontoDienste } from '../konto';
 import type { MailDienste } from '../mail';
 import type { Uhr } from '../infra/uhr';
@@ -13,7 +13,7 @@ export interface ProfileDependencies {
   db: Db;
   uhr: Uhr;
   faecher: Faecher;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   konto: KontoDienste;
   mail: MailDienste;
 }

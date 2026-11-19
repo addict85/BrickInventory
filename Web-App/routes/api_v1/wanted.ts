@@ -33,7 +33,7 @@ function korrekturenAus(roh: string | undefined): Korrektur[] | undefined | null
  * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
  * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
 async function importImStrom(
-  d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'collection'>,
+  d: Pick<Dienste, 'settings' | 'haushalt' | 'konto' | 'wanted' | 'collection'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -61,7 +61,7 @@ async function importImStrom(
   if (!res.writableEnded) res.end();
 }
 
-export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' | 'konto' | 'wanted' | 'collection'>) {
+export function baueWantedRouter(d: Pick<Dienste, 'settings' | 'haushalt' | 'konto' | 'wanted' | 'collection'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -70,7 +70,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'haushalt' |
     const ids = sichtVon(req);
     // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
     // gehört sie in die Abfrage.
-    const waehrung = await d.einstellungen.nutzerWert(req.apiUser.user_id, 'currency', 'EUR');
+    const waehrung = await d.settings.userValue(req.apiUser.user_id, 'currency', 'EUR');
     const merkposten = await d.wanted.wantedItemsOf(ids, undefined, waehrung, {
       search: req.abfrage.search,
       condition: req.abfrage.condition,
