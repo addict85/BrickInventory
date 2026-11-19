@@ -1,35 +1,34 @@
 import { esc, html, rawHtml } from './escaping.js';
 
-// Das Fadenkreuz aller Diagramme: Zeigen, Tippen und Pfeiltasten über dieselben Punkte am SVG.
-/** Ein Punkt des Fadenkreuzes: x in viewBox-Einheiten, je Reihe ein y, Beschriftungszeilen. @typedef {{ x: number, y: (number | null)[], t: string[] }} Punkt */
+// The crosshair shared by all charts: hover, tap and arrow keys over the same points on the SVG.
+/** A crosshair point: x in viewBox units, one y per row, label lines. @typedef {{ x: number, y: (number | null)[], t: string[] }} Point */
 /**
- * Das Fadenkreuz: unsichtbar, bis jemand zeigt, tippt oder mit den Pfeiltasten wandert. Die Punkte stehen als
- * JSON am SVG (x in viewBox-Einheiten, je Reihe ein y, dazu die Beschriftung), damit eine Steuerung für alle
- * Diagramme reicht.
- * @param {Punkt[]} punkte
- * @param {string[]} farben
- * @param {number} oben
- * @param {number} unten
+ * The crosshair: invisible until someone hovers, taps or moves with the arrow keys. The points sit as JSON
+ * on the SVG (x in viewBox units, one y per row, plus the label), so one controller serves every chart.
+ * @param {Point[]} points
+ * @param {string[]} colors
+ * @param {number} top
+ * @param {number} bottom
  */
-export function fadenkreuzTeile(punkte, farben, oben, unten, f = 1) {
-  const json = esc(JSON.stringify(punkte));
-  const kreise = farben
+export function crosshairParts(points, colors, top, bottom, f = 1) {
+  const json = esc(JSON.stringify(points));
+  const circles = colors
     .map(fb => html`<circle class="fk-punkt" r="${4.5 * f}" fill="${fb}" stroke="var(--sur)" stroke-width="2"/>`)
     .join('');
   return {
     attr: ` data-punkte="${json}" data-mass="${f}" tabindex="0"`,
     svg: html`<g class="fadenkreuz" visibility="hidden" pointer-events="none">
-      <line class="fk-linie" y1="${oben}" y2="${unten}" stroke="var(--txt)" stroke-width="1"/>${rawHtml(kreise)}
+      <line class="fk-linie" y1="${top}" y2="${bottom}" stroke="var(--txt)" stroke-width="1"/>${rawHtml(circles)}
       <rect class="fk-schild" rx="6" height="0" width="0" fill="var(--txt)"/>
       <text class="fk-text" font-size="${12 * f}" font-weight="600" fill="var(--sur)" font-family="inherit"></text></g>`,
   };
 }
 
 /**
- * Die Punkte am SVG, einmal gelesen.
+ * The points on the SVG, read once.
  * @param {SVGSVGElement} svg
  */
-function punkteVon(svg) {
+function pointsOf(svg) {
   if (!svg._punkte) {
     try {
       svg._punkte = JSON.parse(svg.dataset.punkte || '[]');
@@ -41,28 +40,28 @@ function punkteVon(svg) {
 }
 
 /**
- * Fadenkreuz eines Diagramms auf Punkt i setzen (null blendet es aus).
+ * Set a chart's crosshair to point i (null hides it).
  * @param {SVGSVGElement | null | undefined} svg
  * @param {number | null} i
  */
-export function zeigeFadenkreuz(svg, i, ansagen = false) {
+export function showCrosshair(svg, i, announce = false) {
   const g = svg?.querySelector('.fadenkreuz');
   if (!svg || !g) return;
-  const punkte = punkteVon(svg);
-  if (i == null || !punkte.length) {
+  const points = pointsOf(svg);
+  if (i == null || !points.length) {
     g.setAttribute('visibility', 'hidden');
     return;
   }
-  i = Math.max(0, Math.min(punkte.length - 1, i));
+  i = Math.max(0, Math.min(points.length - 1, i));
   svg._fk = i;
   const f = Number(svg.dataset.mass) || 1;
-  const p = punkte[i];
-  const linie = g.querySelector('.fk-linie'),
+  const p = points[i];
+  const line = g.querySelector('.fk-linie'),
     text = g.querySelector('.fk-text'),
-    schild = g.querySelector('.fk-schild');
-  if (!linie || !text || !schild) return;
-  linie.setAttribute('x1', String(p.x));
-  linie.setAttribute('x2', String(p.x));
+    shield = g.querySelector('.fk-schild');
+  if (!line || !text || !shield) return;
+  line.setAttribute('x1', String(p.x));
+  line.setAttribute('x2', String(p.x));
   g.querySelectorAll('.fk-punkt').forEach((c, k) => {
     const y = p.y[k];
     c.setAttribute('visibility', y == null ? 'hidden' : 'visible');
@@ -72,45 +71,45 @@ export function zeigeFadenkreuz(svg, i, ansagen = false) {
     }
   });
   text.replaceChildren(
-    ...p.t.map((zeile, k) => {
+    ...p.t.map((line, k) => {
       const ts = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       ts.setAttribute('dy', k ? String(16 * f) : '0');
       if (k) ts.setAttribute('font-weight', '400');
-      ts.textContent = zeile;
+      ts.textContent = line;
       return ts;
     }),
   );
-  const breiteText = Math.max(
+  const textWidth = Math.max(
     .../** @type {SVGTextContentElement[]} */ ([...text.children]).map(
       ts =>
         (typeof ts.getComputedTextLength === 'function' && ts.getComputedTextLength()) || ts.textContent.length * 7 * f,
     ),
   );
-  const b = breiteText + 16 * f,
+  const b = textWidth + 16 * f,
     h = 16 * f * p.t.length + 8 * f;
   const vb = svg.viewBox?.baseVal;
   const W = vb?.width || 700;
   const x = p.x + 12 * f + b > W ? p.x - 12 * f - b : p.x + 12 * f;
-  const y0 = Number(linie.getAttribute('y1')) || 0;
-  schild.setAttribute('x', String(x));
-  schild.setAttribute('y', String(y0));
-  schild.setAttribute('width', String(b));
-  schild.setAttribute('height', String(h));
+  const y0 = Number(line.getAttribute('y1')) || 0;
+  shield.setAttribute('x', String(x));
+  shield.setAttribute('y', String(y0));
+  shield.setAttribute('width', String(b));
+  shield.setAttribute('height', String(h));
   text.setAttribute('x', String(x + 8 * f));
   text.setAttribute('y', String(y0 + 17 * f));
   text.querySelectorAll('tspan').forEach(ts => {
     ts.setAttribute('x', String(x + 8 * f));
   });
   g.setAttribute('visibility', 'visible');
-  if (ansagen) {
-    let ansage = svg.parentElement?.querySelector(':scope > .diagramm-ansage');
-    if (!ansage && svg.parentElement) {
-      ansage = document.createElement('span');
-      ansage.className = 'vh diagramm-ansage';
-      ansage.setAttribute('aria-live', 'polite');
-      svg.after(ansage);
+  if (announce) {
+    let announcement = svg.parentElement?.querySelector(':scope > .diagramm-ansage');
+    if (!announcement && svg.parentElement) {
+      announcement = document.createElement('span');
+      announcement.className = 'vh diagramm-ansage';
+      announcement.setAttribute('aria-live', 'polite');
+      svg.after(announcement);
     }
-    if (ansage) ansage.textContent = p.t.join(', ');
+    if (announcement) announcement.textContent = p.t.join(', ');
   }
 }
 
@@ -118,58 +117,58 @@ export function zeigeFadenkreuz(svg, i, ansagen = false) {
  * @param {SVGSVGElement} svg
  * @param {number} clientX
  */
-function naechsterPunkt(svg, clientX) {
-  const punkte = punkteVon(svg);
+function nearestPoint(svg, clientX) {
+  const points = pointsOf(svg);
   const r = svg.getBoundingClientRect();
   const W = svg.viewBox?.baseVal?.width || r.width || 1;
   const x = ((clientX - r.left) * W) / (r.width || 1);
   let best = 0;
-  punkte.forEach((p, k) => {
-    if (Math.abs(p.x - x) < Math.abs(punkte[best].x - x)) best = k;
+  points.forEach((p, k) => {
+    if (Math.abs(p.x - x) < Math.abs(points[best].x - x)) best = k;
   });
   return best;
 }
 
-const diagrammVon = (/** @type {Event} */ e) =>
+const chartOf = (/** @type {Event} */ e) =>
   /** @type {SVGSVGElement | null | undefined} */ (
     /** @type {Element | null} */ (e.target)?.closest?.('svg[data-punkte]')
   );
 
-for (const art of ['pointermove', 'pointerdown']) {
-  document.addEventListener(art, e => {
-    const svg = diagrammVon(e);
-    if (svg) zeigeFadenkreuz(svg, naechsterPunkt(svg, /** @type {PointerEvent} */ (e).clientX));
+for (const kind of ['pointermove', 'pointerdown']) {
+  document.addEventListener(kind, e => {
+    const svg = chartOf(e);
+    if (svg) showCrosshair(svg, nearestPoint(svg, /** @type {PointerEvent} */ (e).clientX));
   });
 }
 
 document.addEventListener('pointerout', e => {
-  const svg = diagrammVon(e);
+  const svg = chartOf(e);
   if (
     svg &&
     !svg.contains(/** @type {Node | null} */ (e.relatedTarget)) &&
     document.activeElement !== svg &&
     e.pointerType !== 'touch'
   )
-    zeigeFadenkreuz(svg, null);
+    showCrosshair(svg, null);
 });
 
 document.addEventListener('focusin', e => {
-  const svg = diagrammVon(e);
-  if (svg) zeigeFadenkreuz(svg, svg._fk ?? punkteVon(svg).length - 1, true);
+  const svg = chartOf(e);
+  if (svg) showCrosshair(svg, svg._fk ?? pointsOf(svg).length - 1, true);
 });
 
 document.addEventListener('focusout', e => {
-  const svg = diagrammVon(e);
-  if (svg) zeigeFadenkreuz(svg, null);
+  const svg = chartOf(e);
+  if (svg) showCrosshair(svg, null);
 });
 
 document.addEventListener('keydown', e => {
-  const svg = diagrammVon(e);
+  const svg = chartOf(e);
   if (!svg) return;
-  const n = punkteVon(svg).length,
+  const n = pointsOf(svg).length,
     i = svg._fk ?? n - 1;
-  const ziel = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: n - 1 }[e.key];
-  if (ziel === undefined) return;
+  const target = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: n - 1 }[e.key];
+  if (target === undefined) return;
   e.preventDefault();
-  zeigeFadenkreuz(svg, ziel, true);
+  showCrosshair(svg, target, true);
 });

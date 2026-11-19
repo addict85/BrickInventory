@@ -349,7 +349,7 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // niemand ansieht — und dabei Preisabrufe auslösen.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
-  assert.match(gal, /if \(view === 'finance'\) melde\('finanzenLaden'\);/);
+  assert.match(gal, /if \(view === 'finance'\) emit\('finanzenLaden'\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
   // manuell erfassten. Der manuelle Bereich lädt über einen eigenen Endpunkt
   // und blieb sonst ungefiltert stehen.

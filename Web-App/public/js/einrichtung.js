@@ -9,20 +9,20 @@ import { oeffneErfassen, verstaendlicherGrund } from './bausteine.js';
 import { mitZweitemFaktor, speichereEinstellungen } from './rueckfrage.js';
 import { html } from './escaping.js';
 
-// ═══ Einrichtung beim ersten Start (Server: routes/api_v1/settings.ts /settings/einrichtung) ═
-// Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim nächsten Anmelden kommt der
-// Assistent wieder, bis er abgeschlossen ist.
+// ═══ First-run setup wizard (server: routes/api_v1/settings.ts /settings/einrichtung) ═
+// Admins only, and only while something is still missing. "Later" just closes it — the wizard comes back
+// on the next login, until it is completed.
 
-/** Die Schritte dieses Durchgangs; „passwort" nur, wenn es noch das Startpasswort ist. */
+/** The steps of this pass; "passwort" only while the start password still applies. */
 /** @type {string[]} */
-let _schritte = [];
-let _jetzt = 0;
-/** Welche Quellen schon einen gespeicherten Zugang haben; dann prüft ein leeres Feld diesen. */
+let _steps = [];
+let _now = 0;
+/** Which sources already have a saved credential; then an empty field re-checks that one. */
 /** @type {Record<string, boolean>} */
-let _gespeichert = {};
+let _saved = {};
 
 /** @type {Record<string, Record<string, string>>} */
-const QUELLEN_FELDER = {
+const SOURCE_FIELDS = {
   rebrickable: { rebrickable_api_key: 'ew-rb' },
   brickset: { brickset_api_key: 'ew-bs' },
   bricklink: {
@@ -33,23 +33,23 @@ const QUELLEN_FELDER = {
   },
 };
 
-function zeige() {
+function render() {
   const modal = G('einrichtung-modal');
-  for (const el of alle('.ew-schritt', modal)) el.classList.toggle('aktiv', el.dataset.schritt === _schritte[_jetzt]);
-  G('ew-schritte').textContent = tRaw('setup.step', { n: _jetzt + 1, von: _schritte.length });
-  G('ew-spaeter').hidden = _jetzt === _schritte.length - 1;
-  G('ew-zurueck').style.display = _jetzt > 0 ? '' : 'none';
-  G('ew-weiter').textContent = _jetzt === _schritte.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
-  // Meldungen gehören zum Schritt, in dem sie entstanden; am Feld stehen sie ohnehin.
+  for (const el of alle('.ew-schritt', modal)) el.classList.toggle('aktiv', el.dataset.schritt === _steps[_now]);
+  G('ew-schritte').textContent = tRaw('setup.step', { n: _now + 1, von: _steps.length });
+  G('ew-spaeter').hidden = _now === _steps.length - 1;
+  G('ew-zurueck').style.display = _now > 0 ? '' : 'none';
+  G('ew-weiter').textContent = _now === _steps.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
+  // Toasts belong to the step they arose in; they're shown at the field anyway.
   verwirfToasts();
 }
 
 /**
- * @param {string} quelle
- * @param {boolean | null} ok  null: noch nicht geprüft
+ * @param {string} source
+ * @param {boolean | null} ok  null: not checked yet
  */
-function setzeStand(quelle, ok) {
-  const el = G(`ew-stand-${quelle}`);
+function setStatus(source, ok) {
+  const el = G(`ew-stand-${source}`);
   if (!el) return;
   el.className = ok === null ? '' : ok ? 'ew-stand ok' : 'ew-stand fehlt';
   setzeHtml(
@@ -60,12 +60,12 @@ function setzeStand(quelle, ok) {
   );
 }
 
-/** Meldung am Abschnitt; der rohe Grund steht aufklappbar darunter. */
-/** @param {string} quelle @param {string} text @param {string} [details] @param {string[]} [felder] */
-function quellenFehler(quelle, text, details = '', felder = []) {
-  const box = G(`ew-fehler-${quelle}`);
+/** Message on the section; the raw reason sits expandable below it. */
+/** @param {string} source @param {string} text @param {string} [details] @param {string[]} [fields] */
+function sourceError(source, text, details = '', fields = []) {
+  const box = G(`ew-fehler-${source}`);
   if (!box) return;
-  formularFehler(box, text, felder);
+  formularFehler(box, text, fields);
   if (text && details && details !== text)
     fuegeHtmlEin(
       box,
@@ -75,76 +75,76 @@ function quellenFehler(quelle, text, details = '', felder = []) {
 }
 
 /**
- * Von selbst geht der Assistent nur auf, wenn das Startpasswort noch gilt oder die Sammlung leer ist. Über
- * einer gefüllten Sammlung spränge er sonst nach dem Rendern hinein; dort genügt das Hinweisband zum
- * Rebrickable-Schlüssel.
+ * The wizard only opens on its own while the start password still applies or the collection is empty.
+ * Over a populated collection it would otherwise jump in right after rendering; there, the hint banner
+ * about the Rebrickable key is enough.
  */
-export async function pruefeEinrichtung() {
+export async function checkSetup() {
   const d = await api('GET', '/v1/settings/einrichtung');
   if (!d?.success || !d.offen) return;
   if (!d.passwort_aendern) {
     const s = (await api('GET', '/v1/stats'))?.stats;
-    const bestand = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
-    if (bestand > 0) return;
+    const total = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
+    if (total > 0) return;
   }
-  _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
-  _jetzt = 0;
-  _gespeichert = Object.fromEntries(Object.entries(d.quellen || {}).map(([q, ok]) => [q, !!ok]));
-  for (const [q, ok] of Object.entries(_gespeichert)) setzeStand(q, ok ? true : null);
-  zeige();
+  _steps = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
+  _now = 0;
+  _saved = Object.fromEntries(Object.entries(d.quellen || {}).map(([q, ok]) => [q, !!ok]));
+  for (const [q, ok] of Object.entries(_saved)) setStatus(q, ok ? true : null);
+  render();
   G('einrichtung-modal').classList.add('open');
   rbHinweisVerbergen();
 }
 
-function schliessen() {
+function close() {
   G('einrichtung-modal').classList.remove('open');
 }
 
-async function abschliessen() {
-  schliessen();
+async function finish() {
+  close();
   const d = await api('POST', '/v1/settings/einrichtung/fertig');
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
 }
 
 export function einrichtungSpaeter() {
-  schliessen();
-  // Im Assistenten gespeichert, steht der Haken; der Zwischenspeicher weiss es noch nicht.
+  close();
+  // Saved in the wizard, the checkmark is already there; the cache doesn't know yet.
   if (!G('ew-stand-rebrickable')?.classList.contains('ok')) rbHinweisZeigen();
 }
 
 export function einrichtungZurueck() {
-  if (_jetzt > 0) {
-    _jetzt--;
-    zeige();
+  if (_now > 0) {
+    _now--;
+    render();
   }
 }
 
 export async function einrichtungWeiter() {
-  if (_jetzt < _schritte.length - 1) {
-    _jetzt++;
-    zeige();
+  if (_now < _steps.length - 1) {
+    _now++;
+    render();
     return;
   }
-  await abschliessen();
+  await finish();
 }
 
 export async function einrichtungPasswort() {
-  const alt = G('ew-pw-alt').value,
+  const old = G('ew-pw-alt').value,
     neu = G('ew-pw-neu').value,
-    wdh = G('ew-pw-wdh').value;
+    again = G('ew-pw-wdh').value;
   const box = G('ew-pw-fehler');
   formularFehler(box, '');
-  const regel = passwortRegelText(neu);
-  if (regel) {
-    formularFehler(box, regel, ['ew-pw-neu']);
+  const rule = passwortRegelText(neu);
+  if (rule) {
+    formularFehler(box, rule, ['ew-pw-neu']);
     return;
   }
-  if (neu !== wdh) {
+  if (neu !== again) {
     formularFehler(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']);
     return;
   }
   const d = await mitZweitemFaktor(z =>
-    api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu, ...z }),
+    api('POST', '/v1/auth/change-password', { current: old, newPassword: neu, ...z }),
   );
   if (!d) return;
   if (!d?.success) {
@@ -161,39 +161,39 @@ export async function einrichtungPasswort() {
 }
 
 /**
- * Speichern, was eingetragen ist (leere Felder bleiben, wie sie sind), dann testen.
- * @param {string} quelle
+ * Save whatever is filled in (empty fields stay as they are), then test.
+ * @param {string} source
  */
-export async function einrichtungQuelle(quelle) {
-  const felder = QUELLEN_FELDER[quelle];
-  if (!felder) return;
+export async function einrichtungQuelle(source) {
+  const fields = SOURCE_FIELDS[source];
+  if (!fields) return;
   /** @type {Record<string, string>} */
-  const werte = {};
+  const values = {};
   /** @type {string[]} */
-  const leer = [];
-  for (const [schluessel, id] of Object.entries(felder)) {
+  const empty = [];
+  for (const [key, id] of Object.entries(fields)) {
     const v = G(id).value.trim();
-    if (v) werte[schluessel] = v;
-    else leer.push(id);
+    if (v) values[key] = v;
+    else empty.push(id);
   }
-  quellenFehler(quelle, '');
-  // Leer und nichts gespeichert: am Feld sagen, statt den Server „nicht konfiguriert“ melden zu lassen.
-  if (leer.length && !_gespeichert[quelle]) {
-    quellenFehler(quelle, tRaw(leer.length > 1 ? 'setup.fields_missing' : 'setup.key_missing'), '', leer);
-    setzeStand(quelle, null);
+  sourceError(source, '');
+  // Empty and nothing saved: say so at the field, instead of letting the server report "not configured".
+  if (empty.length && !_saved[source]) {
+    sourceError(source, tRaw(empty.length > 1 ? 'setup.fields_missing' : 'setup.key_missing'), '', empty);
+    setStatus(source, null);
     return;
   }
-  if (Object.keys(werte).length) {
-    const s = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
+  if (Object.keys(values).length) {
+    const s = await speichereEinstellungen(tRaw('settings.api_key_title'), values);
     if (!s) return;
     if (!s?.success) {
-      quellenFehler(quelle, s?.error || tRaw('settings.error'), '', Object.values(felder));
+      sourceError(source, s?.error || tRaw('settings.error'), '', Object.values(fields));
       return;
     }
-    if (!leer.length) _gespeichert[quelle] = true;
+    if (!empty.length) _saved[source] = true;
   }
-  const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
-  setzeStand(quelle, !!d?.success);
+  const d = await api('POST', '/v1/settings/quelle-testen', { quelle: source });
+  setStatus(source, !!d?.success);
   if (d?.success) {
     toast(tRaw('setup.test_ok'), 'success');
     return;
@@ -201,30 +201,31 @@ export async function einrichtungQuelle(quelle) {
   const { grund, details } = d?.code
     ? { grund: d.error, details: d.details == null ? undefined : String(d.details) }
     : verstaendlicherGrund(d);
-  quellenFehler(
-    quelle,
+  sourceError(
+    source,
     grund || tRaw('settings.error'),
     details || '',
-    d?.code === 'quelle_abgelehnt' ? Object.values(felder) : [],
+    d?.code === 'quelle_abgelehnt' ? Object.values(fields) : [],
   );
 }
 
 /**
- * Letzter Schritt: dorthin, wo das erste Set entsteht.
- * @param {string} ziel
+ * Last step: head to wherever the first set is created.
+ * @param {string} target
  */
-export function einrichtungZiel(ziel) {
-  const reiter = (/** @type {string} */ name) => eins(`.ntab[data-tab="${name}"]`)?.click();
-  if (ziel === 'katalog') reiter('catalog');
+export function einrichtungZiel(target) {
+  const tab = (/** @type {string} */ name) => eins(`.ntab[data-tab="${name}"]`)?.click();
+  if (target === 'katalog') tab('catalog');
   else {
-    reiter('gallery');
-    // Die Dateiauswahl muss im selben Klick aufgehen, sonst blockt der Browser sie.
-    if (ziel === 'csv') G('csv-file')?.click();
+    tab('gallery');
+    // The file picker must open in the same click, otherwise the browser blocks it.
+    if (target === 'csv') G('csv-file')?.click();
     else oeffneErfassen();
   }
-  abschliessen();
+  finish();
 }
 
+// Names below are registry-exposed (index.html/verbindung.js) — kept unchanged.
 registerActions({
   einrichtungSpaeter,
   einrichtungZurueck,

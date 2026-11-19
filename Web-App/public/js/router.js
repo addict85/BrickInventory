@@ -1,7 +1,7 @@
 import { G } from './dom.js';
 import { toast, verwirfToasts } from './meldungen.js';
 import { tRaw } from '../i18n.js';
-import { beiDialogWechsel, istOffen, obersterDialog } from './dialoge.js';
+import { onDialogChange, isOpen, topDialog } from './dialoge.js';
 import { jumpTo } from './targets.js';
 import { loggedInAccount } from './state.js';
 
@@ -303,10 +303,10 @@ function wennOption(sel, wert) {
  * @returns {boolean} true, wenn die Ansicht abgewiesen wurde (Verwalterseite) */
 function wendeAn(ziel, dlg) {
   // Dialoge, die im Ziel nicht offen sind, von oben her schliessen.
-  for (let d = obersterDialog(), n = 0; d && n < 10; d = obersterDialog(), n++) {
+  for (let d = topDialog(), n = 0; d && n < 10; d = topDialog(), n++) {
     if (dlg.includes(d.id)) break;
     schliesse(d);
-    if (obersterDialog() === d) break;
+    if (topDialog() === d) break;
   }
   const abgewiesen = zeigeAnsicht(ziel.ansicht, ziel.unter ?? '');
   if (abgewiesen) return true;
@@ -342,7 +342,7 @@ window.addEventListener('popstate', ev => {
     return;
   }
   // Dialoge, die nicht wieder hergestellt werden können, fallen aus dem Eintrag.
-  const offen = dlg.filter(id => (G(id) && istOffen(G(id))) || (id === 'set-modal' && ziel.set));
+  const offen = dlg.filter(id => (G(id) && isOpen(G(id))) || (id === 'set-modal' && ziel.set));
   history.replaceState({ brick: 1, ansicht: _ansicht, dlg: offen }, '', location.href);
 });
 
@@ -373,5 +373,5 @@ if (typeof document !== 'undefined') {
       const id = /** @type {HTMLElement} */ (ev.target)?.id;
       if (id && FILTERFELD.get(id) === _ansicht) meldeFilter();
     });
-  beiDialogWechsel(dialogGewechselt);
+  onDialogChange(dialogGewechselt);
 }
