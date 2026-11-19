@@ -6,9 +6,9 @@
  * Gegenproben (01.11.2026 gemessen):
  *   A  routes/auth.ts auf Stand e21f747 (Sperre nur bei `=== '0'`) → rot ab
  *      „ohne Zeile bleibt sie zu" (Konto angelegt, 200)
- *   B  registrierungOffen() mit `!== '0'` → rot: „ohne Zeile …" und „"false"
+ *   B  registrationOpen() mit `!== '0'` → rot: „ohne Zeile …" und „"false"
  *      ist zu" (die Anzeige meldet enabled: true)
- *   C  globalerWertGueltig() liefert immer true → rot: „das Formular nimmt nur
+ *   C  isValidGlobalValue() liefert immer true → rot: „das Formular nimmt nur
  *      0 oder 1" (200, "false" gespeichert)
  *   E  (04.11.) registration_enabled wieder ohne Bestätigung im Import → rot:
  *      „der Import übergeht die Registrierung"

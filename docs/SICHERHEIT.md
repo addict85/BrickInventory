@@ -294,7 +294,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
   `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
-  `waehrung_geteiltes_unterkonto`: `src/einstellungen/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
+  `waehrung_geteiltes_unterkonto`: `src/settings/userSetting.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
 - Datenbankrechte nach Rolle (Migration 0117, `postgres/app-rolle.sh`): Die
   Laufzeitrolle schreibt in `users` nur Vor- und Nachname und liest

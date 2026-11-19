@@ -16,7 +16,7 @@ import * as preisLauf from './repository/preisLauf';
 import * as preisverlauf from './repository/preisverlauf';
 import * as setWert from './repository/setWert';
 import * as wechselkurse from './repository/wechselkurse';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { AuftraegeDienste } from '../auftraege';
@@ -27,7 +27,7 @@ export interface FinanzenAbhaengigkeiten {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;

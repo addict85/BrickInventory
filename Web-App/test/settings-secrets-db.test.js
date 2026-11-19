@@ -1,7 +1,7 @@
 /**
  * KEINE Leseroute der Einstellungen gibt ein Geheimnis im Klartext heraus.
  *
- * Gegenprobe (durchgeführt): einstellungenLesen() in `/raw` durch die alte, rohe
+ * Gegenprobe (durchgeführt): readSettings() in `/raw` durch die alte, rohe
  * Abfrage ersetzt → beide Teilschritte für /raw werden rot (Nicht-Admin sieht
  * den Wert, Admin sieht ihn unmaskiert).
  *
@@ -122,7 +122,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
     );
   }
   // Wie der Start: Klartext in der Tabelle wird vor der ersten Anfrage verschlüsselt.
-  await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
+  await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
 
   const appFuer = isAdmin => {
     const app = express();

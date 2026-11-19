@@ -57,7 +57,7 @@ test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurren
     ]);
   const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang) await setze(k, 'test');
-  await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
+  await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   await db.run('DELETE FROM users WHERE username = $1', ['preise_erfunden']);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('preise_erfunden','x') RETURNING id`))
     .id;

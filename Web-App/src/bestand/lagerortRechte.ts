@@ -41,12 +41,12 @@ export async function orteFuer(k: BestandKontext, nutzer: number, wunsch: string
  * Stern stünde sonst am falschen Eintrag. */
 export async function setzeVorgabe(k: BestandKontext, userId: number, id: number | null): Promise<Lagerort | null> {
   if (id === null) {
-    await k.einstellungen.nutzerEinstellungLoeschen(userId, VORGABE_SCHLUESSEL);
+    await k.einstellungen.deleteUserSetting(userId, VORGABE_SCHLUESSEL);
     return null;
   }
   const ort = await orte.ortDesKontos(k.db, id, userId);
   if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
   // Über die Einstellungen des Kontos: user_settings gehört dorthin.
-  await k.einstellungen.nutzerEinstellungSetzen(userId, VORGABE_SCHLUESSEL, String(id));
+  await k.einstellungen.setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));
   return { id: parseInt(String(ort.id), 10), user_id: userId, name: ort.name };
 }

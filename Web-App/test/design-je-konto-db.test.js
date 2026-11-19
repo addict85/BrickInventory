@@ -3,10 +3,10 @@
  * überschreiben — über den echten Router und die echte Datenbank.
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  in designFuer `eigenes` immer null → rot: „Konto mit eigenem Design“
+ *   A  in themeFor `eigenes` immer null → rot: „Konto mit eigenem Design“
  *      (noppe statt werkbank) und „index.html“
  *   B  GET /theme wieder ohne nutzerIdDerAnfrage → rot: „App mit Token“
- *   C  setzeEigenesDesign schreibt ungeprüft, auch '' → rot: „leer heisst
+ *   C  setOwnTheme schreibt ungeprüft, auch '' → rot: „leer heisst
  *      Vorgabe“ (/settings/raw: app_theme ''), „unbekanntes Design abgewiesen“
  *   D  in indexHtml wieder ALLOWED = ['classic', 'brick'] → rot: „index.html“
  *      (classic statt noppe)
@@ -40,7 +40,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
         .id,
     );
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
-  const { setGlobalSetting } = _req('src/einstellungen/settings.js');
+  const { setGlobalSetting } = _req('src/settings/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
   _req('src/profile/indexHtml.js').forgetTheme();
   t.after(async () => {

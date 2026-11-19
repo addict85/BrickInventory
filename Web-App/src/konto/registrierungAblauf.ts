@@ -19,7 +19,7 @@ const RUECKSETZ_GUELTIG_MIN = 60,
 /** Ausnahme: Die Mail geht auch ohne lesbare Einstellung hinaus, dann deutsch.
  * Das Konto des Inhabers ist nicht das der Anfrage (Zeilenschutz). */
 async function mailSprache(k: KontoKontext, uid: number): Promise<string> {
-  const wert = imSystemkontext('registrierung', () => k.einstellungen.nutzerWert(uid, 'language', 'de'));
+  const wert = imSystemkontext('registrierung', () => k.einstellungen.userValue(uid, 'language', 'de'));
   return String(await wert.catch(meldeUndLiefere('registrierung:sprache', 'de')));
 }
 
@@ -74,9 +74,9 @@ async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
     bis: new Date(k.uhr.jetzt() + 24 * STUNDE_MS),
   }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
   if (neuId)
-    await imSystemkontext('registrierung', () =>
-      k.einstellungen.nutzerEinstellungSetzen(neuId, 'language', r.lang),
-    ).catch(logAndContinue(`registrierung:sprache ${neuId}`));
+    await imSystemkontext('registrierung', () => k.einstellungen.setUserSetting(neuId, 'language', r.lang)).catch(
+      logAndContinue(`registrierung:sprache ${neuId}`),
+    );
   const mehrere = (await k.konten.offeneRegistrierungen(r.email)) > 1;
   return versende(basis => k.mail.mailBestaetigung(r.email, token, basis, r.lang, 'registrierung', mehrere));
 }

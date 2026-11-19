@@ -11,7 +11,7 @@ import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 export function bauePartsRouter(
   d: Pick<
     Dienste,
-    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'parts' | 'collection'
+    'settings' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'parts' | 'collection'
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
@@ -139,7 +139,7 @@ export function bauePartsRouter(
   // Dieselbe Umsetzung wie für die Webapp; steht unten, damit feste Pfade vorher greifen.
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const currency = await d.einstellungen.nutzerWert(uid, 'currency', 'EUR');
+    const currency = await d.settings.userValue(uid, 'currency', 'EUR');
     const data = await d.finanzen.preisverlaufTeil(sichtVon(req), req.pfad.partNumber, req.pfad.colorId, currency);
     return { ...data };
   });

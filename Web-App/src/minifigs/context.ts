@@ -4,7 +4,7 @@ import { mit, type Kontext } from '../infra/bereich';
 import * as minifigsList from './repository/minifigsList';
 import * as minifigParts from './repository/minifigParts';
 import * as manualMinifigs from './repository/manualMinifigs';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
@@ -16,7 +16,7 @@ import type { Uhr } from '../infra/uhr';
 export interface MinifigsDependencies {
   uhr: Uhr;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;

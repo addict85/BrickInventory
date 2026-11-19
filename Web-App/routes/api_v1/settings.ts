@@ -10,7 +10,7 @@ import { fachfehler } from '../../src/infra/fehlerTexte';
 import { eigenerZugang } from '../../src/konto';
 
 export function baueSettingsRouter(
-  d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'profile' | 'verwaltung'>,
+  d: Pick<Dienste, 'settings' | 'mail' | 'haushalt' | 'konto' | 'profile' | 'verwaltung'>,
 ) {
   const { requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
@@ -23,7 +23,7 @@ export function baueSettingsRouter(
     const uid = await nutzerIdDerAnfrage(d.konto, req);
     res.set('Cache-Control', 'no-cache');
     res.set('Vary', 'Cookie, Authorization');
-    return { ...(await d.einstellungen.designFuer(uid)) };
+    return { ...(await d.settings.themeFor(uid)) };
   });
 
   // Vor router.use(requireLogin): Die App verwaltet ihre Zugänge mit Token, nicht mit Sitzung.
@@ -97,16 +97,16 @@ export function baueSettingsRouter(
 
   router.endpunkt('GET /api/v1/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // einstellungenLesen(): price_cache_ttl und default_price_condition sind global.
-    const alle = await d.einstellungen.einstellungenLesen(uid, false);
+    // readSettings(): price_cache_ttl und default_price_condition sind global.
+    const alle = await d.settings.readSettings(uid, false);
     const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
     return {
       settings: {
         ...(gespeichert as Record<(typeof APP_FELDER)[number], string>),
-        // Die Regel steht einmal, in src/einstellungen/settings.ts.
-        effective_condition: await d.einstellungen.nutzerStandardZustand(uid),
+        // Die Regel steht einmal, in src/settings/settings.ts.
+        effective_condition: await d.settings.userDefaultCondition(uid),
         // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
-        app_theme: (await d.einstellungen.designFuer(uid)).theme,
+        app_theme: (await d.settings.themeFor(uid)).theme,
       },
     };
   });
@@ -118,7 +118,7 @@ export function baueSettingsRouter(
     for (const key of allowed) {
       if (req.eingabe[key] !== undefined) {
         // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-        await d.einstellungen.nutzerEinstellungSetzen(uid, key, req.eingabe[key]);
+        await d.settings.setUserSetting(uid, key, req.eingabe[key]);
         updated++;
       }
     }
@@ -127,21 +127,21 @@ export function baueSettingsRouter(
 
   // Der GLOBALE Default; den effektiven liefert GET /settings (effective_condition).
   router.endpunkt('GET /api/v1/settings/default-condition', requireToken, async _req => {
-    return { condition: await d.einstellungen.globalerStandardZustand() };
+    return { condition: await d.settings.globalDefaultCondition() };
   });
 
   // Der wirksame Wert, für Webapp und App aus einer Route.
   router.endpunkt('GET /api/v1/settings/user/default-condition', requireToken, async req => {
-    return { condition: await d.einstellungen.nutzerStandardZustand(req.apiUser.user_id) };
+    return { condition: await d.settings.userDefaultCondition(req.apiUser.user_id) };
   });
 
   router.endpunkt('POST /api/v1/settings/user/default-condition', requireToken, async req => {
     const condition = req.eingabe.condition ?? '';
     if (condition === '') {
-      await d.einstellungen.nutzerEinstellungLoeschen(req.apiUser.user_id, 'user_default_condition');
+      await d.settings.deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
     } else {
-      // nutzerEinstellungSetzen(): GENAU EINE Schreibstelle für Benutzereinstellungen.
-      await d.einstellungen.nutzerEinstellungSetzen(req.apiUser.user_id, 'user_default_condition', condition);
+      // setUserSetting(): GENAU EINE Schreibstelle für Benutzereinstellungen.
+      await d.settings.setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);
     }
     return { condition: condition || null };
   });
@@ -190,8 +190,8 @@ export function baueSettingsRouter(
   // Leer heisst „Vorgabe des Verwalters".
   router.endpunkt('POST /api/v1/settings/user/theme', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    await d.einstellungen.setzeEigenesDesign(uid, req.eingabe.theme);
-    return { ...(await d.einstellungen.designFuer(uid)) };
+    await d.settings.setOwnTheme(uid, req.eingabe.theme);
+    return { ...(await d.settings.themeFor(uid)) };
   });
 
   router.haengeEin(baueSettingsGlobalRouter(d));

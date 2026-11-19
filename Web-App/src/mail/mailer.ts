@@ -5,7 +5,7 @@ import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailDesign } from './vorlage';
 import { sendMail, testSmtp } from './transport';
 import { fachfehler } from '../infra/fehlerTexte';
-const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalerWert(key, '');
+const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalValue(key, '');
 
 // Mitexportiert, damit Aufrufer und Tests bei einer Adresse bleiben.
 export { MAIL_THEMES, mailDesign, emailTemplate } from './vorlage';

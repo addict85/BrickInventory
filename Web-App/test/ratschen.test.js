@@ -1333,6 +1333,7 @@ const ENGLISCH_UMGESTELLT = [
   'src/parts',
   'src/vouchers',
   'src/factors',
+  'src/settings',
 ];
 const nichtUmgestellt = (/** @type {string} */ f) => {
   const rel = path.relative(WEB, f).replace(/\\/g, '/');

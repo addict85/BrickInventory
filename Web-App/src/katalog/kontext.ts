@@ -6,7 +6,7 @@ import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen';
 import type { AuftraegeDienste } from '../auftraege';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { BilderDienste } from '../bilder';
 import * as anleitungen from './repository/anleitungen';
@@ -30,7 +30,7 @@ export interface KatalogAbhaengigkeiten {
   /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
   cdnDrossel: ConcurrentRateLimiter;
   bilder: BilderDienste;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   throttle: ThrottleServices;

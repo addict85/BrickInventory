@@ -9,7 +9,7 @@
  *      → rot: „Verwalter- und öffentliche Antwort sind getrennt“
  *   C  ipThrottle aus routes/api_v1/einrichtung.ts entfernt
  *      → rot: „die Adresse wird gebremst“
- *   D  beiGlobalerAenderung(...) entfernt (14.11.2026: k.einstellungen.beiGlobalerAenderung im Fach)
+ *   D  onGlobalChange(...) entfernt (14.11.2026: k.einstellungen.onGlobalChange im Fach)
  *      → rot: „ein geschriebener Wert gilt sofort“
  *   E  der Zweig `if (erledigt) return …` entfernt
  *      → rot: „nach Abschluss wird kein Schlüssel gelesen“
@@ -54,7 +54,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     }
   });
 
-  const einstellungen = _req('src/einstellungen/settings.js');
+  const einstellungen = _req('src/settings/settings.js');
   const stand = _req('src/profile/setupStatus.js');
   // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
   const gelesen = [];
@@ -90,7 +90,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
 
   await t.test('ein Wert aus einem anderen Prozess leert den Stand hier (NOTIFY)', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
-    const weg = require('./helpers/sources').testDienste().einstellungen.horcheAufAenderungen();
+    const weg = require('./helpers/sources').testDienste().settings.listenForGlobalChanges();
     t.after(async () => {
       weg();
       await zugang.benachrichtigung.close();
@@ -100,7 +100,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     assert.equal((await stand.setupStatus()).konfiguriert, false);
     // Ein zweiter Satz Dienste mit eigenen Fächern schreibt wie ein anderer Prozess.
     const anderer = _req('startup/verdrahtung.js').baueDienste(zugang);
-    await anderer.einstellungen.setzeGlobalenWert('rebrickable_api_key', 'probe2');
+    await anderer.settings.setGlobalValue('rebrickable_api_key', 'probe2');
     assert.ok(
       await bis(async () => (await stand.setupStatus()).konfiguriert, 3000),
       'der Stand hier blieb beim alten Wert, bis seine Frist ablief',

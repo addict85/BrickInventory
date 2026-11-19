@@ -62,36 +62,36 @@ test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht'
   const { baueDienste } = _req('startup/verdrahtung.js');
   const kontexte = {};
   baueDienste(testZugang(), { kontexte });
-  const e = kontexte.einstellungen;
+  const e = kontexte.settings;
   // Globale Werte schreibt nur die Systemrolle (0117): die Transaktion in ihrem Rahmen.
   const { imSystemkontext } = _req('src/infra/kontoKontext.js');
   const imSystem = f => imSystemkontext('test', f);
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;
-  t.after(() => imSystem(() => e.repository.loescheGlobaleWerte([A, B])));
+  t.after(() => imSystem(() => e.repository.deleteGlobalValues([A, B])));
 
   await assert.rejects(
     imSystem(() =>
       e.transaktion(async tx => {
-        await tx.repository.schreibeGlobalenWert(A, 'eins');
-        assert.equal(await tx.repository.globalerWert(A), 'eins', 'innen sichtbar');
-        await tx.repository.schreibeGlobalenWert(B, 'zwei');
+        await tx.repository.writeGlobalValue(A, 'eins');
+        assert.equal(await tx.repository.globalValue(A), 'eins', 'innen sichtbar');
+        await tx.repository.writeGlobalValue(B, 'zwei');
         throw new Error('Abbruch');
       }),
     ),
     /Abbruch/,
   );
   assert.deepEqual(
-    [await e.repository.globalerWert(A), await e.repository.globalerWert(B)],
+    [await e.repository.globalValue(A), await e.repository.globalValue(B)],
     [null, null],
     'ein Fehler nimmt alles zurück',
   );
 
   await imSystem(() =>
     e.transaktion(async tx => {
-      await tx.repository.schreibeGlobalenWert(A, 'eins');
-      await tx.repository.schreibeGlobalenWert(B, 'zwei');
+      await tx.repository.writeGlobalValue(A, 'eins');
+      await tx.repository.writeGlobalValue(B, 'zwei');
     }),
   );
-  assert.deepEqual([await e.repository.globalerWert(A), await e.repository.globalerWert(B)], ['eins', 'zwei']);
+  assert.deepEqual([await e.repository.globalValue(A), await e.repository.globalValue(B)], ['eins', 'zwei']);
 });

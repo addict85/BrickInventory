@@ -3,7 +3,7 @@ import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { AuftraegeLesevertrag } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import * as auftraege from './repository/auftraege';
 import * as importStand from './repository/importStand';
 import * as laufzustand from './repository/laufzustand';
@@ -14,7 +14,7 @@ export interface AuftraegeAbhaengigkeiten {
   uhr: Uhr;
   db: Db;
   faecher: Faecher;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   /** Die angemeldeten Arten; geteilt über alle Sätze dieses Zugangs. */
   arten: Arten;
   lesevertrag: AuftraegeLesevertrag;

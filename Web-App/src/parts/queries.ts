@@ -60,7 +60,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Abst
   }
 
   // Fallback via runCatalogFollowUp-style lookups, only with a Rebrickable key.
-  const rbKey = await k.einstellungen.globalerWert('rebrickable_api_key');
+  const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
       const items = await ab.oder('rebrickable_teile', k.katalog.alleSetTeile(sn), []);

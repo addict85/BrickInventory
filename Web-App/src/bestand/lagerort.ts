@@ -114,7 +114,7 @@ export const VORGABE_SCHLUESSEL = 'default_storage_id';
 
 /** Nur ein Ort des Kontos: Eine Vorgabe, deren Ort gelöscht wurde, ist keine, und eine fremde ID gilt nicht. */
 export async function vorgabeVon(k: BestandKontext, userId: number): Promise<Lagerort | null> {
-  const id = Number.parseInt(String((await k.einstellungen.nutzerWert(userId, VORGABE_SCHLUESSEL)) ?? '').trim(), 10);
+  const id = Number.parseInt(String((await k.einstellungen.userValue(userId, VORGABE_SCHLUESSEL)) ?? '').trim(), 10);
   const row = Number.isInteger(id) ? await orte.ortDesKontos(k.db, id, userId) : undefined;
   if (!row) return null;
   return { id: parseInt(String(row.id), 10), user_id: parseInt(String(row.user_id), 10), name: row.name };

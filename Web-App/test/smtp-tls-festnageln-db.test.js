@@ -11,7 +11,7 @@
  *      Fingerabdruck bricht ab" und „ohne Fingerabdruck gilt der Hostname …"
  *   C  `ca` nicht an nodemailer übergeben → rot: „mit PEM wird zugestellt …",
  *      „ohne Fingerabdruck …" und „das Formular …"
- *   D  globalerWertGueltig() ohne GLOBALE_REGELN → rot: „das Formular …"
+ *   D  isValidGlobalValue() ohne GLOBALE_REGELN → rot: „das Formular …"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, openssl im Pfad.
  */
@@ -154,7 +154,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     };
     for (const [k, v] of Object.entries(alle))
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
-    await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
+    await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   };
   let nr = 0;
   const sende = async server => {

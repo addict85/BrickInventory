@@ -788,7 +788,7 @@ const istBlatt = rel => !/(?:from\s+|import\(\s*)['"]\./.test(quelltext(rel + '.
 
 test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
   // Gegenproben: `import { getSetting } from '../settings'` in
-  // src/einstellungen/repository/werte.ts → rot (31.10.2026); (05.11.2026)
+  // src/settings/repository/values.ts → rot (31.10.2026); (05.11.2026)
   // `import type { SetStamm } from '../dienst'` zurück in
   // src/sets/repository/setDetail.ts → rot.
   const treffer = [];
@@ -934,7 +934,7 @@ const STUFEN = [
   ['src/http'],
   ['db', 'clients'],
   ['src/throttle'],
-  ['src/einstellungen'],
+  ['src/settings'],
   ['src/mail'],
   ['src/auftraege'],
   ['src/fremdquellen'],
@@ -987,8 +987,8 @@ function bereichsKanten() {
 }
 
 test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
-  // Gegenproben (05.11.2026): `import { getSetting } from '../src/einstellungen/settings'`
-  // in clients/brickset.ts → rot (clients → src/einstellungen); dasselbe mit
+  // Gegenproben (05.11.2026): `import { getSetting } from '../src/settings/settings'`
+  // in clients/brickset.ts → rot (clients → src/settings); dasselbe mit
   // `import { mitVersion } from '../sets/setNummer'` in src/katalog/dienst.ts,
   // nachdem setNummer wieder unter src/sets lag → rot (katalog → sets).
   // Gegenproben (15.11.2026, Übersetzer statt Regex): `import type { Db } from '../../db/database'`
@@ -1029,7 +1029,7 @@ test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
 });
 
 test('docs/architektur.md nennt die Rangfolge der Bereiche wie STUFEN', () => {
-  // Gegenprobe: in der Tabelle `src/mail` und `src/einstellungen` vertauscht → rot.
+  // Gegenprobe: in der Tabelle `src/mail` und `src/settings` vertauscht → rot.
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
   const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
   const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
@@ -1043,7 +1043,7 @@ test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse 
   // Gegenproben (15.11.2026): `import type { KatalogDienste } from '../katalog'` in
   // src/auftraege/dienst.ts → rot (Kante src/auftraege → src/katalog); `const P = z.object({})` in
   // src/auftraege/arten.ts → rot (Nutzlastform); `'brickset'` zurück in src/auftraege/dienst.ts → rot.
-  const ERLAUBT = new Set(['src/infra', 'src/einstellungen', 'db']);
+  const ERLAUBT = new Set(['src/infra', 'src/settings', 'db']);
   const fremd = bereichsKanten()
     .filter(k => k.von === 'src/auftraege' && !ERLAUBT.has(k.nach))
     .map(k => `${k.d} -> ${k.ziel}`);
@@ -1064,8 +1064,8 @@ test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse 
   assert.deepEqual(literale, [], 'src/auftraege nennt eine Auftragsart');
 
   // Ereignisse laufen über src/infra/ereignis.ts, nicht über eigene Horcher.
-  // Gegenproben (15.11.2026): in src/einstellungen/nutzerEinstellung.ts wieder
-  // `fach('waehrungswechsel', () => new Set<() => void>())` → rot (eigene Horcher);
+  // Gegenproben (15.11.2026): in src/settings/userSetting.ts wieder
+  // `fach('currencyChange', () => new Set<() => void>())` → rot (eigene Horcher);
   // in src/auftraege/importAuftrag.ts wieder `k.db.benachrichtigung.listen('csv_import_progress', f)`
   // → rot (NOTIFY von Hand); `new EventEmitter()` zurück in importAuftrag.ts → rot.
   const EREIGNIS = 'src/infra/ereignis.ts';

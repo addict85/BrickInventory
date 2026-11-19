@@ -76,7 +76,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
   };
   await weg();
   // Ohne BrickLink-Zugang fragte der Preislauf gar nicht; der Abruf selbst ist gestellt.
-  await _req('src/einstellungen/settings.js').setGlobalSetting('bricklink_consumer_key', 'test');
+  await _req('src/settings/settings.js').setGlobalSetting('bricklink_consumer_key', 'test');
   await db.run("INSERT INTO rb_themes (id, name) VALUES (990001, 'Test') ON CONFLICT (id) DO NOTHING");
   const neu = async n =>
     (await db.get("INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id", [n])).id;

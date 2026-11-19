@@ -10,7 +10,7 @@ import * as lagerort from './repository/lagerort';
 import * as manuelleMengen from './repository/manuelleMengen';
 import * as nachtrag from './repository/nachtrag';
 import * as papierkorb from './repository/papierkorb';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { KontoDienste } from '../konto';
 import type { KatalogDienste } from '../katalog';
@@ -20,7 +20,7 @@ import type { Uhr } from '../infra/uhr';
 export interface BestandAbhaengigkeiten {
   uhr: Uhr;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   haushalt: HaushaltDienste;
   konto: KontoDienste;
   katalog: KatalogDienste;

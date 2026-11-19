@@ -23,7 +23,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.auftraege.faecher,
     // @ts-expect-error
-    d.einstellungen.repository,
+    d.settings.repository,
     // @ts-expect-error
     d.haushalt.db,
     // @ts-expect-error

@@ -25,7 +25,7 @@ import type { Dienste } from '../../src/dienste';
 export function baueApiRouter(
   d: Pick<
     Dienste,
-    | 'einstellungen'
+    | 'settings'
     | 'mail'
     | 'auftraege'
     | 'haushalt'

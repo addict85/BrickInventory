@@ -1,7 +1,7 @@
 /** Sicherung der Einstellungen (JSON) und der Bestandsdaten (ZIP mit CSVs), dazu
  * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
 import type { Writable } from 'node:stream';
-import { SECRET_KEYS, istMaskiert, globalerWertGueltig } from '../einstellungen';
+import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { DAILY_JOBS } from './tageszeiten';
 import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
@@ -20,8 +20,8 @@ export async function konfigExport(k: VerwaltungKontext, uid: number, verwalter:
     exported_at: k.uhr.datum().toISOString(),
     exported_by: name,
     version: '3.0',
-    global: verwalter ? await k.einstellungen.globaleWerteOhneGeheimnisse() : {},
-    user_settings: await k.einstellungen.nutzerEinstellungen(uid),
+    global: verwalter ? await k.einstellungen.globalValuesWithoutSecrets() : {},
+    user_settings: await k.einstellungen.userSettings(uid),
   };
 }
 
@@ -90,14 +90,14 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
   let imported = 0;
   const smtpUebergangen = global ? Object.keys(global).filter(istHeikel) : [];
   if (global && verwalter) {
-    if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !globalerWertGueltig(k, global[k])))
+    if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !isValidGlobalValue(k, global[k])))
       fachfehler('ungueltig', 'wert_ungueltig');
     const geaendert: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
-      if (SECRET_KEYS.has(key) && istMaskiert(global[key])) continue;
-      if (String(global[key]) !== String((await kx.einstellungen.globalerWert(key)) ?? '')) geaendert.push(key);
-      await kx.einstellungen.setzeGlobalenWert(key, global[key]);
+      if (SECRET_KEYS.has(key) && isMasked(global[key])) continue;
+      if (String(global[key]) !== String((await kx.einstellungen.globalValue(key)) ?? '')) geaendert.push(key);
+      await kx.einstellungen.setGlobalValue(key, global[key]);
       imported++;
     }
     if (geaendert.length)
@@ -110,7 +110,7 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
   for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {
-    await kx.einstellungen.nutzerEinstellungSetzen(uid, key, konto![key]);
+    await kx.einstellungen.setUserSetting(uid, key, konto![key]);
     imported++;
   }
   // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache leeren.

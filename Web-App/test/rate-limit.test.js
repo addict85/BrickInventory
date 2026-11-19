@@ -76,7 +76,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   const fn = fc.slice(fc.indexOf('async function grenzeDerQuelle'), fc.indexOf('const grenzeJeKonto'));
   assert.match(
     fn,
-    /await k\.einstellungen\.globalerWert\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
+    /await k\.einstellungen\.globalValue\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
     'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen',
   );
 });

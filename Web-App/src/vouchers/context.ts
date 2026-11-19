@@ -4,7 +4,7 @@ import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
 import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { KontoDienste } from '../konto';
 import type { FremdquellenDienste } from '../fremdquellen';
 import type { Faecher } from '../infra/zwischenspeicher';
@@ -13,7 +13,7 @@ import type { Uhr } from '../infra/uhr';
 export interface VoucherDependencies {
   uhr: Uhr;
   db: Db;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   konto: KontoDienste;
   throttle: ThrottleServices;
   fremdquellen: FremdquellenDienste;

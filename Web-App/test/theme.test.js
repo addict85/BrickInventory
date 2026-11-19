@@ -205,7 +205,7 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
-  const { setGlobalSetting } = _req('src/einstellungen/settings.js');
+  const { setGlobalSetting } = _req('src/settings/settings.js');
   const { forgetTheme } = _req('src/profile/indexHtml.js');
   const sendStartPage = (...a) =>
     _req('src/profile/http/startPage.js').sendStartPage(require('./helpers/sources').testDienste().profile, ...a);

@@ -11,7 +11,7 @@ import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 export function baueMinifigsRouter(
   d: Pick<
     Dienste,
-    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'collection'
+    'settings' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'collection'
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
@@ -76,7 +76,7 @@ export function baueMinifigsRouter(
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    const currency = await d.einstellungen.nutzerWert(uid, 'currency', 'EUR');
+    const currency = await d.settings.userValue(uid, 'currency', 'EUR');
     // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
     const data = await d.finanzen.preisverlaufFigur(sichtVon(req), req.pfad.figNumber, currency);
     return { ...data };

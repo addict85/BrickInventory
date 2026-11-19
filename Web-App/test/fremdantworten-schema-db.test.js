@@ -42,7 +42,7 @@ async function mitKoerper(koerper, lauf) {
 
 test('Fremdantworten gegen ihr Schema', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const S = _req('src/einstellungen/settings.js');
+  const S = _req('src/settings/settings.js');
   const k = _req('src/fremdquellen/apiKontingent.js');
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'brickset_api_key')");

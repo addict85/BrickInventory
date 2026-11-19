@@ -92,7 +92,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
 
     await t.test('eingerichtet: Schlüssel da, Passwort gesetzt → nicht mehr offen', async () => {
       await setze('rebrickable_api_key', 'abc');
-      await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
+      await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.body.offen, false);
       assert.equal(r.body.quellen.rebrickable, true);

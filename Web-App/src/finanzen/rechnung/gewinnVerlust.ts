@@ -125,8 +125,8 @@ export async function gewinnUndVerlust(k: FinanzenKontext, viewerId: number, ids
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
   const uids = await k.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours] = await Promise.all([
-    k.einstellungen.nutzerWert(viewerId, 'currency', 'EUR'),
-    k.einstellungen.globalerWert('price_cache_ttl', '24'),
+    k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
+    k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const sets = await k.gewinnVerlust.setsMitErfassungen(uids);
   // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.

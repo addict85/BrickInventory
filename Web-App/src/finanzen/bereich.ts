@@ -19,7 +19,7 @@ export type { FinanzenAbhaengigkeiten, FinanzenKontext } from './kontext';
 
 export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, einblick?: Einblick<FinanzenKontext>) {
   // Der Preis-Cache gilt je Währung: Ein Wechsel verlangt einen vollen Preislauf.
-  a.einstellungen.beiWaehrungswechsel(() => a.auftraege.ziehePlanVor('preise'));
+  a.einstellungen.onCurrencyChange(() => a.auftraege.ziehePlanVor('preise'));
   return baueBereich(
     { ...a, faecher: new Faecher() },
     (db: Db) => zugang(db, a.lesevertrag),

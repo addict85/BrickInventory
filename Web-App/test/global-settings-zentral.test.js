@@ -1,5 +1,5 @@
 /**
- * `global_settings` wird über src/einstellungen/settings.ts angefasst.
+ * `global_settings` wird über src/settings/settings.ts angefasst.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

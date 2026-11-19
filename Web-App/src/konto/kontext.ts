@@ -10,7 +10,7 @@ import * as qrKopplung from './repository/qrKopplung';
 import * as startVerwalter from './repository/startVerwalter';
 import * as uebernahmen from './repository/uebernahmen';
 import * as zugaenge from './repository/zugaenge';
-import type { EinstellungenDienste } from '../einstellungen';
+import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
 import type { MailDienste } from '../mail';
@@ -25,7 +25,7 @@ export interface KontoAbhaengigkeiten {
   db: Db;
   /** Zustand je Zugang (Token-Cache, Sitzungsversionen); erzeugeKonto legt sie an. */
   faecher: Faecher;
-  einstellungen: EinstellungenDienste;
+  einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   mail: MailDienste;
