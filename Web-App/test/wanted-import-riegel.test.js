@@ -3,18 +3,20 @@
  * Bündel in jsdom, mit einer Serverantwort, die der Test zurückhält, bricht
  * oder stückweise schickt.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
- *   A  `_laeuft` aus der Bedingung in lies() entfernt → rot: „ein zweiter
+ * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen; Namen
+ * seit Phase 2b Runde 5 auf Englisch: `_laeuft`→`_busy`, `lies()`→`read()`,
+ * `liesStrom`→`readStream`, `knoepfeStand()`→`updateButtons()`):
+ *   A  `_busy` aus der Bedingung in read() entfernt → rot: „ein zweiter
  *      Klick startet keinen zweiten Lauf“ (zwei Anfragen)
- *   B  im finally von lies() `_laeuft = false;` gestrichen → rot: „der Riegel
+ *   B  im finally von read() `_busy = false;` gestrichen → rot: „der Riegel
  *      geht auch nach einem Fehler wieder auf“ (ein Fehler, der aus dem Lauf
  *      herausfliegt, liesse sich in jsdom nur als unbehandelte Zurückweisung
  *      auslösen, die der Test-Runner dem Test anrechnet)
- *   C  `_laeuft ||` aus der Zeile für den Schreibknopf gestrichen → rot: „ein
+ *   C  `_busy ||` aus der Zeile für den Schreibknopf gestrichen → rot: „ein
  *      zweiter Klick …“ (Schreiben während des Laufs bedienbar)
- *   D  die Zeile `if (_laeuft) { … return; }` in wantedXmlGewaehlt entfernt →
+ *   D  die Zeile `if (_busy) { … return; }` in wantedXmlGewaehlt entfernt →
  *      rot: „ein zweiter Klick …“ (neue Datei während des Laufs angenommen)
- *   E  in liesStrom `rest = zeilen.pop() ?? ''` → `rest = ''` → rot: „der
+ *   E  in readStream `rest = lines.pop() ?? ''` → `rest = ''` → rot: „der
  *      Fortschritt kommt stückweise an …“ (Bericht über zwei Stücke zerbricht)
  *   F  `p.set('strom', '1')` gestrichen → rot: dieselbe Prüfung
  */
@@ -69,7 +71,7 @@ test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewi
     waehle('andere.xml');
     assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'Keine Meldung zur abgewiesenen Datei');
     assert.equal(importe.length, 1, 'Ein zweiter Import addierte die Mengen auf');
-    // Zurück auf gesperrt, wie es knoepfeStand() hielte: Die Freigabe muss die Vorschau bringen.
+    // Zurück auf gesperrt, wie es updateButtons() hielte: Die Freigabe muss die Vorschau bringen.
     knopf('wanted-xml-neu').disabled = true;
     knopf('wanted-xml-schreiben').disabled = true;
     freigeben();

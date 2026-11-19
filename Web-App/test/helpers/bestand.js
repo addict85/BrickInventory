@@ -325,7 +325,7 @@ async function musterSammlung(db, uid) {
   );
   await haeltFigur(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
   // Über den Dienst: Nur er verschlüsselt die Nummer, wie es die Datenbank verlangt.
-  await require(path.join(__dirname, '..', '..', 'dist', 'src', 'vouchers', 'repository', 'vouchers.js')).createVoucher(
+  await require(path.join(__dirname, '..', '..', 'dist', 'src', 'vouchers', 'repository', 'vouchers.js')).insertVoucher(
     db,
     uid,
     { number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR' },

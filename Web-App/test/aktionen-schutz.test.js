@@ -5,15 +5,16 @@
  * sind über data-click nicht erreichbar. Echte Knöpfe aus Vorlagen und aus
  * index.html wirken weiter. Geprüft am echten Bündel in jsdom.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  GEFAEHRLICH-Prüfung in handle() entfernt → rot: „eingeschleuster Knopf
+ * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut; Namen
+ * seit Phase 2b Runde 5 auf Englisch: `GEFAEHRLICH`→`DANGEROUS`, `NUR`→`ONLY`):
+ *   A  DANGEROUS-Prüfung in handle() entfernt → rot: „eingeschleuster Knopf
  *      öffnet den Passwort-Dialog"
  *   B  mouseenter wieder in DELEGATED → rot: „Überfahren löst aus"
- *   C  NUR-Prüfung für change entfernt → rot: „change mit fremdem Handler"
+ *   C  ONLY-Prüfung für change entfernt → rot: „change mit fremdem Handler"
  *   D  Rückfall auf window in resolveAction() zurück → rot: „window.open"
  *   E  echt() aus nutzerKnopf() in einstellungen.js entfernt → rot: „echter
  *      Knopf der Benutzerliste wirkt"
- *   F  ein Name aus NUR.change gestrichen → rot: „jeder Handler im Markup
+ *   F  ein Name aus ONLY.change gestrichen → rot: „jeder Handler im Markup
  *      steht in der Liste seines Ereignisses"
  *   G  echt() an papierkorbEndgueltig (papierkorb.js) entfernt → rot:
  *      „jede Vorlage mit gefährlicher Aktion trägt echt()"
@@ -161,7 +162,7 @@ test('jede Vorlage mit gefährlicher Aktion trägt echt()', () => {
   // Sonst wäre der Knopf tot: Der Dispatcher weist ihn ab.
   const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'aktionen.js'), 'utf8');
   const gefaehrlich = new Set(
-    [...quelle.match(/GEFAEHRLICH = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),
+    [...quelle.match(/DANGEROUS = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),
   );
   const ohne = [];
   let gesehen = 0;

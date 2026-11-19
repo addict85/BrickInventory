@@ -81,7 +81,7 @@ test('der Dispatcher kommt ohne eval aus', () => {
   assert.match(REG, /typeof fn === 'function'/, 'Der Name muss aufgelöst und geprüft werden');
   assert.match(
     ACT,
-    /console\.warn\('\[actions\] unbekannter Handler:'/,
+    /console\.warn\('\[actions\] unknown handler:'/,
     'Ein Tippfehler im Handlernamen muss auffallen, nicht stumm nichts tun',
   );
 });
