@@ -162,11 +162,11 @@ export async function pruefeAnmeldedaten(
   }
 
   let zugang: Anmeldeweg = 'passwort';
-  if (await k.faktoren.istAktiv(user.id)) {
+  if (await k.factors.isActive(user.id)) {
     // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
     const mitPasskey = passkeyAntwort !== undefined && passkeyAntwort !== null;
     zugang = mitPasskey ? 'passwort+passkey' : 'passwort+code';
-    const hatPasskey = await k.faktoren.hatPasskeys(user.id);
+    const hatPasskey = await k.factors.hasPasskeys(user.id);
     const ergaenzt = (e: AnmeldeErgebnis) => {
       if (!e.ok && hatPasskey) e.absage.passkey = true;
       return e;
@@ -178,8 +178,8 @@ export async function pruefeAnmeldedaten(
     }
     const nurNotweg = !mitPasskey && (await faktorCodeGesperrt(k, user.id));
     const gilt = mitPasskey
-      ? (await k.faktoren.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
-      : await k.faktoren.pruefeCode(user.id, code, !nurNotweg);
+      ? (await k.factors.verifyAuthentication(passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
+      : await k.factors.checkCode(user.id, code, !nurNotweg);
     if (!gilt) {
       await fehlversuch(k, 'zweiter_faktor_falsch', ip, name, user.id);
       // Sofort, nicht erst mit der Kontosperre: Wer hier rät, kennt das Passwort.
@@ -201,7 +201,7 @@ export async function pruefeAnmeldedaten(
 /** Wer sich mit einem Code alter Art anmeldet, erfährt die Frist. Vor der Anmeldung trägt die
  * Anfrage noch kein Konto für den Zeilenschutz, daher der Systemrahmen. */
 async function alteCodesMelden(k: KontoKontext, uid: number): Promise<void> {
-  const bis = (await imSystemkontext('anmeldung: alte Codes', () => k.faktoren.stand(uid))).alte_codes_bis;
+  const bis = (await imSystemkontext('anmeldung: alte Codes', () => k.factors.status(uid))).alte_codes_bis;
   if (bis) hinweisNebenher(k, uid, 'alte_codes_ablauf', undefined, { bis });
 }
 
@@ -215,7 +215,7 @@ async function nurNochMitFaktor(
   mitFaktor: boolean,
 ): Promise<boolean> {
   if (!(await tagesgrenzeErreicht(k, ip, name))) return false;
-  if (mitFaktor && konto !== undefined && (await k.faktoren.istAktiv(konto))) return false;
+  if (mitFaktor && konto !== undefined && (await k.factors.isActive(konto))) return false;
   await gibAnmeldeplatzFrei(k, ip, name);
   meldeAnmeldeereignis('anmeldung_tagesgrenze', { ip, konto: konto ?? null });
   if (konto !== undefined) await freigabeAnbieten(k, ip, konto);
@@ -225,7 +225,7 @@ async function nurNochMitFaktor(
 /** Ohne zweiten Faktor bliebe dem Inhaber an einem neuen Ort nur „Passwort vergessen“: ein Link je
  * Adresse und Stunde, höchstens zehn am Tag, damit ein Fremder das Postfach nicht flutet. */
 async function freigabeAnbieten(k: KontoKontext, ip: string, konto: number): Promise<void> {
-  if (await k.faktoren.istAktiv(konto)) return;
+  if (await k.factors.isActive(konto)) return;
   if ((await zaehleAnfrage(k, `freigabe-mail|konto:${konto}`, ip, 3_600_000)).count > 1) return;
   if (await kontoGedrosselt(k, 'freigabe-mail', konto, 10, TAG_MS)) return;
   hinweisNebenher(k, konto, 'anmeldung_freigeben', undefined, { freigabe: freigabeToken(k, ip, konto), adresse: ip });

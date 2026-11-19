@@ -39,7 +39,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
 });
 
 const db = S.testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Faktor-Passwort-1';
@@ -57,10 +57,10 @@ async function konto(name, { admin = false } = {}) {
 
 /** Zweiten Faktor einschalten; liefert die Wiederherstellungscodes. */
 async function mitFaktor(uid) {
-  await zf.beginneEinrichtung(uid);
+  await zf.beginSetup(uid);
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
-  const code = zf.hotp(zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid))), zf.zeitschritt());
-  const codes = await zf.bestaetigeEinrichtung(uid, code);
+  const code = zf.hotp(zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid))), zf.timeStep());
+  const codes = await zf.confirmSetup(uid, code);
   assert.ok(Array.isArray(codes) && codes.length >= 3, 'Vorbedingung: Faktor active');
   return codes;
 }

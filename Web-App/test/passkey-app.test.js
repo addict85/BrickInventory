@@ -6,7 +6,7 @@
  * Gegenproben (am 31.10.2026 gemessen):
  *   A  in assetlinks() die Doppelpunkte weggelassen (`hex` statt `AB:CD:…`) →
  *      rot: „das Dokument nennt Paket und Fingerabdruck …“
- *   B  in androidHerkuenfte() base64 statt base64url → rot: „die Herkunft ist …“
+ *   B  in androidOrigins() base64 statt base64url → rot: „die Herkunft ist …“
  *   C  in androidZertifikate() die Formprüfung entfernt → rot: „ein falscher
  *      Fingerabdruck ist ein Startfehler …“
  *   D  den Router in routes/wellKnown.ts ohne Pfad `.well-known` → rot: „ohne
@@ -21,8 +21,8 @@ const { testServer } = require('./helpers/server');
 
 const _req = buildAndRequire();
 const { ladeKonfig, KonfigFehler } = _req('src/infra/konfig.js');
-const { androidHerkuenfte: herkuenfte } = _req('src/faktoren/androidApp.js');
-const androidHerkuenfte = () => herkuenfte(_req('src/infra/konfig.js').konfig());
+const { androidOrigins: herkuenfte } = _req('src/factors/androidApp.js');
+const androidOrigins = () => herkuenfte(_req('src/infra/konfig.js').konfig());
 
 /** Ein Hash, dessen base64 ein „+“ und ein „/“ enthält: base64url muss sie ersetzen. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
@@ -45,7 +45,7 @@ test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
   assert.equal(r.status, 404);
   assert.match(await r.text(), /PASSKEY_ANDROID_ZERTIFIKATE/);
-  assert.deepEqual(androidHerkuenfte(), []);
+  assert.deepEqual(androidOrigins(), []);
 });
 
 test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', async t => {
@@ -74,7 +74,7 @@ test('die Herkunft ist base64url des Hashes, gleich in welcher Schreibweise er e
   const erwartet =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   assert.match(HASH.toString('base64'), /[+/]/, 'Die Probe deckt die Ersetzung nicht ab');
-  assert.deepEqual(androidHerkuenfte(), [erwartet], 'Doppelt eingetragen zählt einmal');
+  assert.deepEqual(androidOrigins(), [erwartet], 'Doppelt eingetragen zählt einmal');
 });
 
 test('ein falscher Fingerabdruck oder Paketname ist ein Startfehler mit Namen', () => {

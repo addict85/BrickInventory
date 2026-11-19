@@ -30,7 +30,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const { tokenAnlegen } = _req('src/konto/geraeteToken.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -65,11 +65,11 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await zf.beginneEinrichtung(uid);
+  await zf.beginSetup(uid);
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
-  const codes = await zf.bestaetigeEinrichtung(
+  const codes = await zf.confirmSetup(
     uid,
-    zf.hotp(zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid))), zf.zeitschritt()),
+    zf.hotp(zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
   );
   let naechster = 0;
   const richtig = () => codes[naechster++];

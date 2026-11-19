@@ -6,7 +6,7 @@ import { fehlerText, antwortSprache, fachfehler } from '../../src/infra/fehlerTe
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, emailGueltig, nameGueltig } from '../../src/konto';
-import { vertrauenspartei } from '../../src/faktoren';
+import { relyingParty } from '../../src/factors';
 import type { Dienste } from '../../src/dienste';
 
 /** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */
@@ -28,7 +28,7 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
     const mail = await d.mail.mailBereit();
     res.json({
       enabled: mail && (await d.einstellungen.registrierungOffen()),
-      passkey: !!vertrauenspartei(),
+      passkey: !!relyingParty(),
       passwort_vergessen: mail,
       mail_versand: mail,
     });

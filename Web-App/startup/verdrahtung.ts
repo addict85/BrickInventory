@@ -19,7 +19,7 @@ import { erzeugeKatalog } from '../src/katalog';
 import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { erzeugeKonto } from '../src/konto';
-import { erzeugeFaktoren } from '../src/faktoren';
+import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
@@ -120,9 +120,9 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
   const geraete = erzeugeGeraete({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
-  const faktoren = erzeugeFaktoren({ db, uhr, konfig, einstellungen }, zeige('faktoren'));
+  const factors = createFactors({ db, uhr, konfig, einstellungen }, zeige('factors'));
   const konto = erzeugeKonto(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, throttle, geraete, faktoren },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, throttle, geraete, factors },
     zeige('konto'),
   );
   const profile = createProfile({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profile'));
@@ -148,7 +148,7 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
     auftraege,
     haushalt,
     geraete,
-    faktoren,
+    factors,
     konto,
     profile,
     idempotency,
@@ -167,7 +167,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     mail,
     auftraege,
     haushalt,
-    faktoren,
+    factors,
     konto,
     idempotency,
     fremdquellen,
@@ -210,7 +210,7 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
       uhr,
       einstellungen,
       auftraege,
-      faktoren,
+      factors,
       konto,
       idempotency,
       katalog,

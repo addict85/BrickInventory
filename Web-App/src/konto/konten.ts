@@ -39,7 +39,7 @@ export async function meldeAusstehendeAdressen(k: KontoKontext): Promise<number[
 
 export async function kontenListe(k: KontoKontext) {
   const konten = await k.konten.alleKonten();
-  const mitFaktor = await k.faktoren.aktiveUnter(konten.map(z => z.id));
+  const mitFaktor = await k.factors.activeAmong(konten.map(z => z.id));
   // Angekündigte Änderungen an Verwaltern (24 h): Die übrigen Verwalter sollen sie sehen, nicht nur per Mail.
   const angekuendigt = new Map<number, { type: UebernahmeArt; effective_at: string }[]>();
   for (const a of await k.uebernahmen.angekuendigte())
@@ -73,7 +73,7 @@ export async function kontoAnzeigeName(k: KontoKontext, id: number): Promise<str
 
 /** Verwalterrechte trägt das Passwort allein nicht; ein Passkey ersetzt TOTP hier nicht. */
 export async function faktorPflichtOffen(k: KontoKontext, uid: number, verwalter: boolean): Promise<boolean> {
-  return verwalter && !(await k.faktoren.istAktiv(uid));
+  return verwalter && !(await k.factors.isActive(uid));
 }
 
 /** Der Schritt „Konto“ der Einrichtung: Es gibt eines, und ein Verwalter hat das Startpasswort ersetzt. */
@@ -125,7 +125,7 @@ export async function aendereEigenesPasswort(
   await mitZugangsende(k, uid, async t => {
     await t.konten.setzeEigenesPasswort(uid, hash);
     await zugaengeBeenden(t, uid);
-    if (o.passkeysWiderrufen) await t.faktoren.passkeysWiderrufen(uid);
+    if (o.passkeysWiderrufen) await t.factors.revokePasskeys(uid);
   });
   await startpasswortErledigt(k, uid);
 }
@@ -151,7 +151,7 @@ export async function setzePasswortZurueck(
       const uid = (await t.konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
       if (!uid) return null;
       await zugaengeBeenden(t, uid);
-      await t.faktoren.passkeysWiderrufen(uid);
+      await t.factors.revokePasskeys(uid);
       const haushalt = await t.haushalt.fremdzugriffLoesen(uid);
       const adresse = await t.konten.verwirfAusstehendeAdresse(uid);
       await loescheTagesgrenze(t, uid);

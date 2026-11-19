@@ -8,7 +8,7 @@ import { loggedInAccount } from './state.js';
 import { html } from './escaping.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './rueckfrage.js';
 
-// ═══ Passkeys (Server: src/faktoren/repository/passkeys.ts, routes/auth.ts) ═══════════════
+// ═══ Passkeys (Server: src/factors/repository/passkeys.ts, routes/auth.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der Browser braucht ArrayBuffer —
 // die Umwandlung in beide Richtungen steht hier.
 

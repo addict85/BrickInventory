@@ -1,15 +1,15 @@
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
-/** Challenges liegen nur als Hash vor. */
+/** Challenges are kept only as a hash. */
 
-/** @returns false, wenn schon `hoechstens` Challenges offen sind */
-export async function speichereChallenge(
+/** @returns false if `atMost` challenges are already open */
+export async function storeChallenge(
   db: DbSchnittstelle,
   hash: string,
   purpose: string,
   uid: number | null,
-  bis: Date,
-  hoechstens: number,
+  until: Date,
+  atMost: number,
 ): Promise<boolean> {
   await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
   return (
@@ -17,34 +17,29 @@ export async function speichereChallenge(
       await db.run(
         `INSERT INTO webauthn_challenges (challenge, user_id, purpose, expires_at)
     SELECT $1, $2, $3, $4 WHERE (SELECT COUNT(*) FROM webauthn_challenges WHERE purpose = $3) < $5`,
-        [hash, uid, purpose, bis, hoechstens],
+        [hash, uid, purpose, until, atMost],
       )
     ).changes > 0
   );
 }
 
-/** Für signierte Challenges: Eingetragen wird erst nach gültiger Signatur, darum ohne Obergrenze.
- * @returns false, wenn die Challenge schon verbraucht ist */
-export async function vermerkeVerbraucht(
-  db: DbSchnittstelle,
-  hash: string,
-  purpose: string,
-  bis: Date,
-): Promise<boolean> {
+/** For signed challenges: only entered after a valid signature, so without an upper limit.
+ * @returns false if the challenge is already consumed */
+export async function markConsumed(db: DbSchnittstelle, hash: string, purpose: string, until: Date): Promise<boolean> {
   await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
   return (
     (
       await db.run(
         `INSERT INTO webauthn_challenges (challenge, user_id, purpose, expires_at) VALUES ($1, NULL, $2, $3)
          ON CONFLICT (challenge) DO NOTHING`,
-        [hash, purpose, bis],
+        [hash, purpose, until],
       )
     ).changes > 0
   );
 }
 
-/** Löschen und Prüfen in einem Schritt: Eine Challenge gilt genau einmal. */
-export async function verbraucheChallenge(
+/** Delete and check in one step: a challenge is valid exactly once. */
+export async function consumeChallenge(
   db: DbSchnittstelle,
   hash: string,
   purpose: string,
@@ -59,19 +54,19 @@ export async function verbraucheChallenge(
   ));
 }
 
-export function kennungenDesKontos(db: DbSchnittstelle, uid: number) {
+export function accountCredentialIds(db: DbSchnittstelle, uid: number) {
   return db.all<{ credential_id: string; transports: string | null }>(
     'SELECT credential_id, transports FROM passkeys WHERE user_id = $1',
     [uid],
   );
 }
 
-export async function legeAn(
+export async function createCredential(
   db: DbSchnittstelle,
   uid: number,
   credentialId: string,
   publicKey: Buffer,
-  zaehler: number,
+  counter: number,
   transports: string | null,
   name: string,
 ): Promise<{ id: number; name: string } | null> {
@@ -79,12 +74,12 @@ export async function legeAn(
     (await db.get<{ id: number; name: string }>(
       `INSERT INTO passkeys (user_id, credential_id, public_key, sign_count, transports, name)
      VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (credential_id) DO NOTHING RETURNING id, name`,
-      [uid, credentialId, publicKey, zaehler, transports, name],
+      [uid, credentialId, publicKey, counter, transports, name],
     )) ?? null
   );
 }
 
-export function schluessel(db: DbSchnittstelle, credentialId: string, uid: number | null) {
+export function byCredentialId(db: DbSchnittstelle, credentialId: string, uid: number | null) {
   return db.get<{ id: number; user_id: number; public_key: Buffer; sign_count: string; transports: string | null }>(
     `SELECT id, user_id, public_key, sign_count, transports FROM passkeys
       WHERE credential_id = $1 AND ($2::int IS NULL OR user_id = $2::int)`,
@@ -92,18 +87,18 @@ export function schluessel(db: DbSchnittstelle, credentialId: string, uid: numbe
   );
 }
 
-/** Nur, wenn der Zähler noch der gelesene ist: Zwei gleichzeitige Anmeldungen gelingen nicht beide. */
-export async function zaehlerWeiter(db: DbSchnittstelle, id: number, neu: number, alt: string): Promise<boolean> {
+/** Only if the counter is still the one read: two simultaneous logins do not both succeed. */
+export async function advanceCounter(db: DbSchnittstelle, id: number, neu: number, old: string): Promise<boolean> {
   return !!(
     await db.run('UPDATE passkeys SET sign_count = $2, last_used = NOW() WHERE id = $1 AND sign_count = $3', [
       id,
       neu,
-      alt,
+      old,
     ])
   ).changes;
 }
 
-export function desKontos(db: DbSchnittstelle, uid: number) {
+export function passkeysForAccount(db: DbSchnittstelle, uid: number) {
   return db.all<{
     id: number;
     name: string | null;
@@ -113,14 +108,14 @@ export function desKontos(db: DbSchnittstelle, uid: number) {
   }>('SELECT id, name, created_at, last_used, transports FROM passkeys WHERE user_id = $1 ORDER BY created_at', [uid]);
 }
 
-export async function hatWelche(db: DbSchnittstelle, uid: number): Promise<boolean> {
+export async function hasAny(db: DbSchnittstelle, uid: number): Promise<boolean> {
   return !!(await db.get<Treffer>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
 }
 
-export async function loescheAlleDesKontos(db: DbSchnittstelle, uid: number): Promise<number> {
+export async function deleteAllForAccount(db: DbSchnittstelle, uid: number): Promise<number> {
   return (await db.run('DELETE FROM passkeys WHERE user_id = $1', [uid])).changes ?? 0;
 }
 
-export async function loeschePasskeyZeile(db: DbSchnittstelle, uid: number, id: number): Promise<boolean> {
+export async function deletePasskeyRow(db: DbSchnittstelle, uid: number, id: number): Promise<boolean> {
   return !!(await db.run('DELETE FROM passkeys WHERE user_id = $1 AND id = $2', [uid, id])).changes;
 }

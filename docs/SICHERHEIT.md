@@ -189,8 +189,8 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Geräteliste mit Scope, Netz und Ablauf: `src/konto/geraeteToken.ts` —
   `token-scope-rotation-db`, `token-gleitfrist-db`.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
-  einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/faktoren/passkeys.ts` —
-  `passkeys-db`. TOTP: `src/faktoren/zweiterFaktor.ts` — `zweiter-faktor-db`.
+  einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/factors/passkeys.ts` —
+  `passkeys-db`. TOTP: `src/factors/secondFactor.ts` — `zweiter-faktor-db`.
 - Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
   Key Attestation an (`src/geraete/attestation/`): Kette bis zu Googles Wurzel,
   kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit

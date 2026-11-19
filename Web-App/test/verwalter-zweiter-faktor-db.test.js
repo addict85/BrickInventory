@@ -30,7 +30,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { portVon } = require('./helpers/server');
 const PASS = 'Verwalter-Passwort-1';
@@ -137,7 +137,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
   await t.test('… die Einrichtung geht, danach alles', async () => {
     const e = await alsChef('POST', '/auth/zweiter-faktor/einrichten', { password: PASS });
     assert.equal(e.status, 200, JSON.stringify(e.body));
-    const code = zf.hotp(zf.ausBase32(e.body.geheimnis), zf.zeitschritt());
+    const code = zf.hotp(zf.fromBase32(e.body.geheimnis), zf.timeStep());
     const b = await alsChef('POST', '/auth/zweiter-faktor/bestaetigen', { code });
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal((await alsChef('GET', '/settings')).status, 200);

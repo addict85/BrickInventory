@@ -4,7 +4,7 @@
  * keine Adresse, unter der die App das Bild holen könnte; dann fehlt es.
  * Das Logo selbst liegt öffentlich unter public/assets.
  *
- * Gegenprobe (07.11.2026): in otpauthAdresse() den image-Teil gestrichen →
+ * Gegenprobe (07.11.2026): in otpauthAddress() den image-Teil gestrichen →
  * rot: „mit Basis-URL steht das Logo im Link“.
  */
 const test = require('node:test');
@@ -16,16 +16,16 @@ const _req = require('./helpers/sources').buildAndRequire();
 
 test('otpauth-Link mit Logo', async t => {
   // Die Basis-URL kommt gereicht (k.konfig.appBaseUrl), nicht aus der Umgebung.
-  const { otpauthAdresse } = _req('src/faktoren/zweiterFaktor.js');
+  const { otpauthAddress } = _req('src/factors/secondFactor.js');
 
   await t.test('mit Basis-URL steht das Logo im Link', () => {
-    const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco', 'https://lego.example.org'));
+    const url = new URL(otpauthAddress('JBSWY3DPEHPK3PXP', 'marco', 'https://lego.example.org'));
     assert.equal(url.searchParams.get('image'), 'https://lego.example.org/assets/logo-256.png');
     assert.equal(url.searchParams.get('issuer'), 'BrickInventory');
   });
 
   await t.test('ohne Basis-URL kein image', () => {
-    const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco', null));
+    const url = new URL(otpauthAddress('JBSWY3DPEHPK3PXP', 'marco', null));
     assert.equal(url.searchParams.get('image'), null);
   });
 

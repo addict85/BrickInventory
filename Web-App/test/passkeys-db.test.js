@@ -16,7 +16,7 @@
  *      → rot: „Passkey als zweiter Faktor …“ (Berts Passkey öffnete Annas Konto)
  *   E  gespeicherten Zähler ignoriert (counter: 0, UPDATE ohne Zählerbedingung)
  *      → rot: „… und ein alter Zähler nicht“
- *   F  (31.10.2026) in anmeldungPruefen() `...androidHerkuenfte()` aus
+ *   F  (31.10.2026) in anmeldungPruefen() `...androidOrigins()` aus
  *      expectedOrigin gestrichen → rot: „die eingetragene App meldet sich an …“
  *   G  (31.10.2026) in /passkey/anmelden `mit_token` überhört (immer false) →
  *      rot: „die eingetragene App meldet sich an …“ (kein Token)
@@ -54,7 +54,7 @@ umgebung({ APP_BASE_URL: 'https://lego.test' });
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -265,8 +265,8 @@ test('Passkeys', { concurrency: 1 }, async t => {
   });
 
   await t.test('Passkey als zweiter Faktor statt des TOTP-Codes, nur für das eigene Konto', async () => {
-    const geheim = await zf.beginneEinrichtung(ids.pk_anna);
-    annaCodes = await zf.bestaetigeEinrichtung(ids.pk_anna, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
+    const geheim = await zf.beginSetup(ids.pk_anna);
+    annaCodes = await zf.confirmSetup(ids.pk_anna, zf.hotp(zf.fromBase32(geheim), zf.timeStep()));
     await registriere('pk_bert', bert);
 
     const ohne = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true });
@@ -439,7 +439,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
   });
 
   await t.test('Anmeldeoptionen legen nichts ab, ein voller Topf sperrt nur seinen Zweck', async tt => {
-    const { OFFENE_CHALLENGES_HOECHSTENS: N } = _req('src/faktoren/passkeys.js');
+    const { MAX_OPEN_CHALLENGES: N } = _req('src/factors/passkeys.js');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
     await db.run('DELETE FROM webauthn_challenges');
     tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));

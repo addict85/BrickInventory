@@ -37,7 +37,7 @@ umgebung({ DATA_KEY: A });
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const G = _req('src/infra/geheimnis.js');
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const gut = {
   ..._req('src/vouchers/repository/vouchers.js'),
   ...require('./helpers/sources').testBereich('vouchers').vouchers,
@@ -81,8 +81,8 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     [G.verschluessele('api-geheim-123', apiKontext)],
   );
-  const secret = await zf.beginneEinrichtung(uid);
-  const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(secret), zf.zeitschritt()));
+  const secret = await zf.beginSetup(uid);
+  const codes = await zf.confirmSetup(uid, zf.hotp(zf.fromBase32(secret), zf.timeStep()));
   const g = await gut.createVoucher(uid, { number: '6299-1234-5678', pin: '4711', amount: 25, currency: 'CHF' });
   const pdf = path.join(dateien.VOUCHER_DIR, String(uid), `${g.id}.pdf`);
   await dateien.writeVoucherPdf(pdf, Buffer.from('%PDF-1.4 Gutschein'));
@@ -95,7 +95,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     const datei = G.entschluesselePuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
     return {
       api: G.entschluessele(api, apiKontext),
-      faktor: G.entschluessele(faktor, zf.faktorKontext(uid)),
+      faktor: G.entschluessele(faktor, zf.secondFactorContext(uid)),
       number: G.entschluessele(v.number, gut.numberContext(uid, g.id)),
       pin: G.entschluessele(v.pin, gut.pinContext(uid, g.id)),
       pdf: datei?.toString() ?? null,
@@ -115,7 +115,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   // ── Start mit B und dem vorigen A ────────────────────────────────────────
   schluessel(B, A);
   await t.test('ein Wiederherstellungscode von vor dem Wechsel gilt, solange A bereitsteht', async () => {
-    assert.equal(await zf.pruefeCode(uid, codes[0]), 'wiederherstellung');
+    assert.equal(await zf.checkCode(uid, codes[0]), 'wiederherstellung');
   });
   const warn = console.warn;
   console.warn = () => {};

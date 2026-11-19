@@ -44,7 +44,7 @@ umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
 const { idempotency, responseIsSecret } = _req('src/idempotency/http/middleware.js');
 const { nichtWiederholbar } = _req('src/vertrag/grund.js');
@@ -139,7 +139,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
   });
 
   await t.test('auch die Wiederherstellungscodes stehen nirgends im Klartext', async () => {
-    const code = zf.hotp(zf.ausBase32(g), zf.zeitschritt());
+    const code = zf.hotp(zf.fromBase32(g), zf.timeStep());
     const r = await post('/auth/zweiter-faktor/bestaetigen', 'zf-2', { code });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.codes.length, 10);

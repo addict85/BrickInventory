@@ -231,7 +231,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 7 | `src/mail` |
 | 8 | `src/auftraege` |
 | 9 | `src/fremdquellen` |
-| 10 | `src/haushalt`, `src/geraete`, `src/faktoren` |
+| 10 | `src/haushalt`, `src/geraete`, `src/factors` |
 | 11 | `src/konto` |
 | 12 | `src/bilder`, `src/profile` |
 | 13 | `src/idempotency`, `src/katalog` |
@@ -302,7 +302,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/fremdquellen` | `api_calls`, `api_cadence` |
 | `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
 | `src/geraete` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |
-| `src/faktoren` | `passkeys`, `webauthn_challenges`, `second_factor`, `second_factor_codes` |
+| `src/factors` | `passkeys`, `webauthn_challenges`, `second_factor`, `second_factor_codes` |
 | `src/konto` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
 | `src/bilder` | `image_misses`, `image_wanted` |
 | `src/idempotency` | `idempotency` |

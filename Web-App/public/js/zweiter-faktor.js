@@ -11,7 +11,7 @@ import { emit } from './events.js';
 import { loggedInAccount } from './state.js';
 import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
-// ═══ Zweiter Faktor im Profil (Server: src/faktoren/zweiterFaktor.ts) ══════════════
+// ═══ Zweiter Faktor im Profil (Server: src/factors/secondFactor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn Wiederherstellungscodes einmal
 // zeigen. Danach: abschalten oder neue Codes.
 

@@ -655,7 +655,7 @@ function arbeitseinheitAmAufrufort() {
   // steht nur in src/infra/bereich.ts und db/.
   // Gegenproben: (13.11.2026) in src/collection/deletion.ts wieder `k.db.transaction(async tx =>`
   // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
-  // src/faktoren/repository/zweiterFaktor.ts → rot „…: .transaction(“.
+  // src/factors/repository/secondFactor.ts → rot „…: .transaction(“.
   // Ebenso db/txLock.ts: Bestandssperren sind eine Option von k.transaktion, kein eigener
   // Weg mit rohem tx; und kein Dienst nimmt einen rohen Griff (tx/dbh), er nimmt `t`.
   // Gegenproben (14.11.2026): eine Funktion mit `z.transaction(` in db/txLock.ts → rot
@@ -938,7 +938,7 @@ const STUFEN = [
   ['src/mail'],
   ['src/auftraege'],
   ['src/fremdquellen'],
-  ['src/haushalt', 'src/geraete', 'src/faktoren'],
+  ['src/haushalt', 'src/geraete', 'src/factors'],
   ['src/konto'],
   ['src/bilder', 'src/profile'],
   ['src/idempotency', 'src/katalog'],

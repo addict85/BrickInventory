@@ -1,6 +1,6 @@
 /**
  * Wiederherstellungscodes alter Art (vor dem 01.11.2026: 10 Zeichen, ungesalzenes SHA-256)
- * gelten nur bis `old_valid_until` (Migration 0122, src/faktoren/zweiterFaktor.ts). Wer sich mit
+ * gelten nur bis `old_valid_until` (Migration 0122, src/factors/secondFactor.ts). Wer sich mit
  * einem anmeldet, bekommt eine Mail mit der Frist; die Profilseite nennt sie. Ein Code neuer
  * Art hebt die Frist für seinen Satz auf. Über die echte Anmeldung.
  *
@@ -87,7 +87,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
       gesendet.map(g => [g.type, Date.parse(g.bis)]),
       [['alte_codes_ablauf', bis.getTime()]],
     );
-    const stand = await S.alsKonto(uid, () => _req('src/faktoren/zweiterFaktor.js').stand(uid));
+    const stand = await S.alsKonto(uid, () => _req('src/factors/secondFactor.js').status(uid));
     assert.equal(Date.parse(stand.alte_codes_bis), bis.getTime());
   });
 
@@ -103,7 +103,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     await code(suchwert('zweiter-faktor-code', `${uid}:${neu.replace(/-/g, '')}`), frist);
     await code('anderer-code-desselben-satzes', frist);
     assert.equal(await anmelden(neu), 200);
-    const stand = await S.alsKonto(uid, () => _req('src/faktoren/zweiterFaktor.js').stand(uid));
+    const stand = await S.alsKonto(uid, () => _req('src/factors/secondFactor.js').status(uid));
     assert.deepEqual([stand.codes_uebrig, stand.alte_codes_bis], [1, null]);
   });
 

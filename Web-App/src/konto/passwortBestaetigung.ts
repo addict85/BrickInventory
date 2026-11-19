@@ -61,12 +61,12 @@ export async function pruefeBestaetigung(
   passwort: string | null | undefined,
   faktor: Faktor,
 ): Promise<BestaetigungsAbsage | null> {
-  const mitFaktor = await k.faktoren.istAktiv(uid);
+  const mitFaktor = await k.factors.isActive(uid);
   if (mitFaktor && leer(faktor.code) && leer(faktor.passkey))
     return {
       art: 'ungueltig',
       code: 'zweiter_faktor_noetig',
-      ...((await k.faktoren.hatPasskeys(uid)) ? { passkey: true } : {}),
+      ...((await k.factors.hasPasskeys(uid)) ? { passkey: true } : {}),
     };
   const pw = await gebremst(
     k,
@@ -90,7 +90,7 @@ export async function pruefeBestaetigung(
         'faktor',
         uid,
         zugang,
-        async () => !!(await k.faktoren.pruefeCode(uid, faktor.code)),
+        async () => !!(await k.factors.checkCode(uid, faktor.code)),
         'zweiter_faktor_falsch',
       )
     : gebremst(
@@ -98,7 +98,7 @@ export async function pruefeBestaetigung(
         'faktor',
         uid,
         zugang,
-        async () => (await k.faktoren.anmeldungPruefen(faktor.passkey, 'zweiter_faktor', uid)) === uid,
+        async () => (await k.factors.verifyAuthentication(faktor.passkey, 'zweiter_faktor', uid)) === uid,
         'passkey_ungueltig',
       );
 }
@@ -115,7 +115,7 @@ export function pruefeCodeBestaetigung(
     'faktor',
     uid,
     zugang,
-    async () => !!(await k.faktoren.pruefeCode(uid, code)),
+    async () => !!(await k.factors.checkCode(uid, code)),
     'zweiter_faktor_falsch',
   );
 }
@@ -136,7 +136,7 @@ export async function bestaetigeEinrichtungGebremst(
     uid,
     zugang,
     async () => {
-      codes = await k.faktoren.bestaetigeEinrichtung(uid, String(code ?? ''));
+      codes = await k.factors.confirmSetup(uid, String(code ?? ''));
       return !!codes;
     },
     'zweiter_faktor_falsch',

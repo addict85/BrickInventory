@@ -188,9 +188,9 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
   });
 
   await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
-    const zf = _req('src/faktoren/zweiterFaktor.js');
+    const zf = _req('src/factors/secondFactor.js');
     const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
-    const code = versatz => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
+    const code = versatz => zf.hotp(zf.fromBase32(geheimnis), zf.timeStep() + versatz);
     await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
     assert.deepEqual(
       (await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an),
