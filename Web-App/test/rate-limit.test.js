@@ -233,7 +233,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(
     route,
-    /await d\.verwaltung\.preisJobJetzt\(\)/,
+    /await d\.management\.runPriceJobNow\(\)/,
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
   );
 

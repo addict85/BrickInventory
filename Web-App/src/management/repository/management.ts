@@ -5,27 +5,27 @@ import type { Spalten } from '../../../db/zeilen';
 
 /** Die Route spricht db/ nicht selbst an. */
 
-type Bildzeile = { image_url: string | null; image_local: string | null };
-export type KontoBildzeile = { anzahl_konten: number } & Bildzeile;
-type Fehlanzeige = { checked_at: Date; reason: string | null };
-type Schluessel = { cache_key: string };
+type ImageRow = { image_url: string | null; image_local: string | null };
+export type AccountImageRow = { anzahl_konten: number } & ImageRow;
+type ImageMissRow = { checked_at: Date; reason: string | null };
+type CacheKeyRow = { cache_key: string };
 
 /** COUNT als Zahl: ::int, denn bigint käme als Text an. */
-async function anzahl(db: DbSchnittstelle, sql: string): Promise<number> {
+async function count(db: DbSchnittstelle, sql: string): Promise<number> {
   return (await db.get<{ c: number }>(sql))?.c ?? 0;
 }
 
-export function preiseImCache(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, 'SELECT COUNT(*)::int AS c FROM price_cache');
+export function pricesInCache(db: DbSchnittstelle): Promise<number> {
+  return count(db, 'SELECT COUNT(*)::int AS c FROM price_cache');
 }
 
-export function veraltetePreise(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
+export function stalePrices(db: DbSchnittstelle): Promise<number> {
+  return count(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
 /** Nur die Zahl der Konten (Funktion aus 0119): Welches ein Set führt, geht auch den Verwalter nichts an. */
-export async function bildZeilenDerKonten(db: DbSchnittstelle, sn: string): Promise<KontoBildzeile> {
-  const z = await db.get<KontoBildzeile>(
+export async function accountImageRows(db: DbSchnittstelle, sn: string): Promise<AccountImageRow> {
+  const z = await db.get<AccountImageRow>(
     `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
             CASE WHEN n.anzahl > 0 THEN c.image_url END AS image_url
        FROM (SELECT konten_mit_set($1) AS anzahl) n LEFT JOIN set_catalog c ON c.set_number = $1`,
@@ -34,14 +34,14 @@ export async function bildZeilenDerKonten(db: DbSchnittstelle, sn: string): Prom
   return z ?? { anzahl_konten: 0, image_local: null, image_url: null };
 }
 
-export function katalogBild(db: DbSchnittstelle, sn: string): Promise<Bildzeile | undefined> {
+export function catalogImage(db: DbSchnittstelle, sn: string): Promise<ImageRow | undefined> {
   return db.get<Spalten<'set_catalog', 'image_url' | 'image_local'>>(
     `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`,
     [sn],
   );
 }
 
-export function fehlanzeigeDesSets(db: DbSchnittstelle, sn: string): Promise<Fehlanzeige | undefined> {
+export function setImageMiss(db: DbSchnittstelle, sn: string): Promise<ImageMissRow | undefined> {
   return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
     ['set:' + sn],
@@ -49,27 +49,27 @@ export function fehlanzeigeDesSets(db: DbSchnittstelle, sn: string): Promise<Feh
 }
 
 /** @param datei der Dateiname ohne Endung, wie ihn die Bildablage bildet */
-export function fehlanzeigeDerVorschau(db: DbSchnittstelle, datei: string): Promise<Fehlanzeige | undefined> {
+export function thumbnailImageMiss(db: DbSchnittstelle, datei: string): Promise<ImageMissRow | undefined> {
   return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
     ['thumb:%' + likeWoertlich(datei + '_thumb.jpg')],
   );
 }
 
-export function setFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
+export function setImageMisses(db: DbSchnittstelle): Promise<CacheKeyRow[]> {
   return db.all<Spalten<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`,
   );
 }
 
-export function vorschauFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
+export function thumbnailImageMisses(db: DbSchnittstelle): Promise<CacheKeyRow[]> {
   return db.all<Spalten<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`,
   );
 }
 
 /** Ein 404 vom CDN bleibt vermerkt: Ein neuer Versuch ändert daran nichts. */
-export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[]> {
+export function setImageMissesWithout404(db: DbSchnittstelle): Promise<CacheKeyRow[]> {
   return db.all<Spalten<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses
             WHERE cache_key LIKE 'set:%'
@@ -77,7 +77,7 @@ export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[
   );
 }
 
-export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: string; set_img_url: string }[]> {
+export function catalogImageCandidates(db: DbSchnittstelle): Promise<{ set_num: string; set_img_url: string }[]> {
   return db.all<{ set_num: string; set_img_url: string }>(
     `SELECT rb.set_num, rb.set_img_url FROM rb_sets rb
         WHERE rb.set_img_url IS NOT NULL AND rb.set_img_url <> ''
@@ -86,15 +86,15 @@ export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: s
   );
 }
 
-export function offeneBildauftraege(db: DbSchnittstelle): Promise<{ n: number } | undefined> {
+export function openImageJobs(db: DbSchnittstelle): Promise<{ n: number } | undefined> {
   return db.get<{ n: number }>(`SELECT COUNT(*)::int AS n FROM image_wanted`);
 }
 
-export function katalogBilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM image_wanted`);
+export function catalogImagesOpen(db: DbSchnittstelle): Promise<number> {
+  return count(db, `SELECT COUNT(*)::int AS c FROM image_wanted`);
 }
 
-export function setsOhneAnleitung(db: DbSchnittstelle): Promise<{ set_number: string }[]> {
+export function setsWithoutInstructions(db: DbSchnittstelle): Promise<{ set_number: string }[]> {
   return db.all<{ set_number: string }>(`
       SELECT DISTINCT s.set_number
       FROM sets s
@@ -105,7 +105,7 @@ export function setsOhneAnleitung(db: DbSchnittstelle): Promise<{ set_number: st
     `);
 }
 
-export function protokollSeit(
+export function logSince(
   db: DbSchnittstelle,
   minuten: number,
 ): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
@@ -121,35 +121,35 @@ export function protokollSeit(
 }
 
 /** Nur Art 'part': Die Kennzahl stellt nachgesehene Teile der Zahl der Teile gegenüber. */
-export function zugeordneteTeile(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM bl_mapping WHERE type='part'`);
+export function mappedParts(db: DbSchnittstelle): Promise<number> {
+  return count(db, `SELECT COUNT(*)::int AS c FROM bl_mapping WHERE type='part'`);
 }
 
-export function bricklinkTeile(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(DISTINCT part_number)::int AS c FROM parts WHERE source!='manual'`);
+export function bricklinkParts(db: DbSchnittstelle): Promise<number> {
+  return count(db, `SELECT COUNT(DISTINCT part_number)::int AS c FROM parts WHERE source!='manual'`);
 }
 
-export function rbTeile(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM rb_parts`);
+export function rbParts(db: DbSchnittstelle): Promise<number> {
+  return count(db, `SELECT COUNT(*)::int AS c FROM rb_parts`);
 }
 
-export function rbInventarTeile(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM rb_inventory_parts`);
+export function rbInventoryParts(db: DbSchnittstelle): Promise<number> {
+  return count(db, `SELECT COUNT(*)::int AS c FROM rb_inventory_parts`);
 }
 
-export function teilbilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(
+export function partImagesOpen(db: DbSchnittstelle): Promise<number> {
+  return count(
     db,
     `SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`,
   );
 }
 
-export function teilbilderFertig(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_local IS NOT NULL`);
+export function partImagesDone(db: DbSchnittstelle): Promise<number> {
+  return count(db, `SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_local IS NOT NULL`);
 }
 
-export function setFigurenbilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(
+export function setMinifigImagesOpen(db: DbSchnittstelle): Promise<number> {
+  return count(
     db,
     `SELECT COUNT(*)::int AS c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`,
   );
@@ -157,8 +157,8 @@ export function setFigurenbilderOffen(db: DbSchnittstelle): Promise<number> {
 
 /** Das EXISTS hält die Menge bei dem, was der Hintergrundlauf wirklich holt,
  * sonst passt die offene Zahl nicht zum Fortschritt. */
-export function bestandsFigurenbilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(
+export function holdingMinifigImagesOpen(db: DbSchnittstelle): Promise<number> {
+  return count(
     db,
     `SELECT COUNT(*)::int AS c FROM minifigs_catalog mc
              WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
@@ -167,7 +167,7 @@ export function bestandsFigurenbilderOffen(db: DbSchnittstelle): Promise<number>
 }
 
 /** Die Menge aus den Erfassungen — dieselbe Summe, die die Bewertung sieht. */
-export function probeSet(db: DbSchnittstelle, uid: number, setNumber: string) {
+export function sampleSet(db: DbSchnittstelle, uid: number, setNumber: string) {
   return db.get<{ set_number: string; quantity: number }>(
     `SELECT s.set_number, ${mengeSkalar('s')} AS quantity
               FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`,
@@ -175,7 +175,7 @@ export function probeSet(db: DbSchnittstelle, uid: number, setNumber: string) {
   );
 }
 
-export function probeErfassungen(
+export function sampleAcquisitions(
   db: DbSchnittstelle,
   uid: number,
   setNumber: string,
@@ -186,7 +186,7 @@ export function probeErfassungen(
   );
 }
 
-export function probePreisCache(db: DbSchnittstelle, setNumber: string) {
+export function samplePriceCache(db: DbSchnittstelle, setNumber: string) {
   return db.all<Record<string, unknown>>(
     `SELECT condition, currency_code, avg_price, qty_avg_price, min_price, max_price, fetched_at,
                    EXTRACT(EPOCH FROM (NOW() - fetched_at))/3600 AS age_hours
@@ -195,7 +195,7 @@ export function probePreisCache(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
+export function samplePriceHistory(db: DbSchnittstelle, setNumber: string) {
   return db.all<Record<string, unknown>>(
     `SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
              WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`,
@@ -203,7 +203,7 @@ export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-export function letzterLaufDerArt(db: DbSchnittstelle) {
+export function lastRunOfType(db: DbSchnittstelle) {
   return db.get<{
     status: string;
     due_at: Date;

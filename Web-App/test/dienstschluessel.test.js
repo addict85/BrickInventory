@@ -84,7 +84,7 @@ const JE_BEREICH = {
   wanted: 9,
   vouchers: 16,
   collection: 8,
-  verwaltung: 28,
+  management: 28,
 };
 
 /** Quelltext ausserhalb der Tests, ohne Kommentare, je Datei (Pfad ab ROOT). */
@@ -126,6 +126,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     'parts',
     'vouchers',
     'factors',
+    'management',
   ]);
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(

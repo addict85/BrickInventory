@@ -1,6 +1,6 @@
 /**
  * Die Hintergrundarbeiten in der Verwaltung (routes/api_v1/admin.ts,
- * src/verwaltung/hintergrund.ts) über die echte Route: Auftragsliste, Abbrechen,
+ * src/management/background.ts) über die echte Route: Auftragsliste, Abbrechen,
  * Wiederholen, Leeren, Jetzt — und die alten Adressen (brickset-queue,
  * job-status, job-schedule, trigger-price-job) liefern ihre Felder weiter.
  *
@@ -9,7 +9,7 @@
  *      verwirft Wartende, nicht den Zeitplan“
  *   B  in auftragAbbrechen() planeNaechsten() entfernt → rot: „ein
  *      abgebrochener geplanter Lauf hinterlässt den nächsten Termin“
- *   C  in zeitplanNeuPlanen() zeitplanGeaendert('preise') entfernt → rot: „ein
+ *   C  in rescheduleJobs() zeitplanGeaendert('preise') entfernt → rot: „ein
  *      neues Intervall verschiebt den offenen Termin“
  *   D  in bricksetListe() `to_char(…)` durch den rohen Zeitstempel ersetzt →
  *      rot: „die Brickset-Liste behält ihre Felder“ (retry_after kein Datum)

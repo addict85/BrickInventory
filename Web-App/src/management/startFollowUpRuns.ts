@@ -1,10 +1,10 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import type { VerwaltungKontext } from './kontext';
+import type { ManagementContext } from './context';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
-async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
-  const n = (await k.factors.encryptLegacySecrets()) + (await k.gutscheine.encryptLegacyFiles());
+async function encryptSecrets(k: ManagementContext): Promise<void> {
+  const n = (await k.factors.encryptLegacySecrets()) + (await k.vouchers.encryptLegacyFiles());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 
@@ -17,21 +17,21 @@ export const NACHLAUF_SCHRITTE = [
   'set_bilder',
   'kaufpreise',
 ] as const;
-type Nachlauf = (typeof NACHLAUF_SCHRITTE)[number];
+type FollowUpStep = (typeof NACHLAUF_SCHRITTE)[number];
 
 /** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */
-const NACHLAEUFE = {
+const FOLLOWUP_RUNS = {
   geheimnisse: { nachSekunden: 0 },
   vorschauen: { nachSekunden: 0 },
   katalog: { nachSekunden: 10 },
   anleitungen: { nachSekunden: 15 },
   set_bilder: { nachSekunden: 45 },
   kaufpreise: { nachSekunden: 45 },
-} as const satisfies Record<Nachlauf, { nachSekunden: number }>;
+} as const satisfies Record<FollowUpStep, { nachSekunden: number }>;
 
-function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> {
+function runners(k: ManagementContext): Record<FollowUpStep, () => Promise<unknown>> {
   return {
-    geheimnisse: () => geheimnisseVerschluesseln(k),
+    geheimnisse: () => encryptSecrets(k),
     vorschauen: () => k.katalog.vorschaubilderNachtragen(),
     katalog: () => k.katalog.gleicheFehlendeAb(),
     anleitungen: () => k.katalog.anleitungenNachtragen(),
@@ -40,10 +40,10 @@ function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> 
   };
 }
 
-async function nachlauf(k: VerwaltungKontext, n: Nutzlast<'nachlauf'>, lauf?: AuftragsLauf): Promise<void> {
+async function runFollowUp(k: ManagementContext, n: Nutzlast<'nachlauf'>, lauf?: AuftragsLauf): Promise<void> {
   pruefeAbbruch(lauf);
-  await laeufe(k)[n.schritt]();
+  await runners(k)[n.schritt]();
 }
 
-export { NACHLAEUFE, nachlauf };
-export type { Nachlauf };
+export { FOLLOWUP_RUNS, runFollowUp };
+export type { FollowUpStep };

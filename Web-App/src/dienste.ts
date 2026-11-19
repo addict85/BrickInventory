@@ -21,7 +21,7 @@ import type { WantedServices } from './wanted';
 import type { CollectionServices } from './collection';
 import type { SetsDienste } from './sets';
 import type { PartsServices } from './parts';
-import type { VerwaltungDienste } from './verwaltung';
+import type { ManagementServices } from './management';
 import * as bestandSicht from '../db/bestandSicht';
 import * as bestandsmenge from '../db/bestandsmenge';
 import * as haushaltSicht from '../db/haushaltSicht';
@@ -54,5 +54,5 @@ export interface Dienste {
   wanted: WantedServices;
   vouchers: VoucherServices;
   collection: CollectionServices;
-  verwaltung: VerwaltungDienste;
+  management: ManagementServices;
 }

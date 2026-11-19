@@ -1,8 +1,8 @@
 /** Aufträge plus Bildbedarf des Katalogs: Die Warteschlange kennt den Katalog nicht. */
-import type { VerwaltungKontext } from './kontext';
+import type { ManagementContext } from './context';
 
-export async function auftragsUebersicht(
-  k: VerwaltungKontext,
+export async function jobsOverview(
+  k: ManagementContext,
   filter: { status?: string | undefined; art?: string | undefined } = {},
 ) {
   const [uebersicht, bildbedarf] = await Promise.all([
@@ -13,7 +13,7 @@ export async function auftragsUebersicht(
 }
 
 /** Beim Bildbedarf gehen auch die Notizen. */
-export async function auftragsArtLeeren(k: VerwaltungKontext, artRoh: string) {
+export async function clearJobType(k: ManagementContext, artRoh: string) {
   const r = await k.auftraege.leereAuftragsArt(artRoh);
   return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await k.bilder.leereBildbedarf()) } : r;
 }

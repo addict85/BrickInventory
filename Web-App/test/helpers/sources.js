@@ -553,8 +553,8 @@ function startQuelle() {
   const teile = [
     'server.ts',
     'src/katalog/bildNachlauf.ts',
-    'src/verwaltung/startNachlaeufe.ts',
-    'src/verwaltung/aufraeumen.ts',
+    'src/management/startFollowUpRuns.ts',
+    'src/management/cleanup.ts',
     'src/katalog/bildlage.ts',
   ].map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {

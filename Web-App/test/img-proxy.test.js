@@ -158,7 +158,7 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
   assert.match(route, /router\.endpunkt\('POST \/api\/v1\/admin\/img-probe', requireApiAdmin/, 'img-probe fehlt');
   assert.match(route, /router\.endpunkt\('POST \/api\/v1\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
-  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/diagnose.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'src/management/diagnostics.ts'), 'utf8');
   assert.match(
     admin,
     /content_encoding: k\['content-encoding'\]/,
@@ -229,19 +229,19 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // Fortschritt im bestehenden Job, kein zweiter Eintrag im Monitoring
   assert.match(SERVER, /const tick = async \(\) => \{/, 'Fortschrittszähler fehlt');
   assert.match(SERVER, /text: `\$\{done\} \/ \$\{total\} geladen`/, 'Zwischenstand fehlt');
-  const mon = fs.readFileSync(path.join(ROOT, 'src/verwaltung/kacheln.ts'), 'utf8');
+  const mon = fs.readFileSync(path.join(ROOT, 'src/management/tiles.ts'), 'utf8');
   const figJobs = (mon.match(/^\s{2}\w+:\s*\{/gm) || []).filter(l => /fig|minifig/i.test(l));
   assert.deepEqual(figJobs, [], 'Es darf kein eigener Job dafür entstehen — imgDl deckt es ab');
 
   // Und die offene Menge im Monitoring muss sie mitzählen. Die Abfrage steht
   // im Dienst der Verwaltungsrouten; die Route ruft sie für die Kachel auf.
-  const route = fs.readFileSync(path.join(ROOT, 'src/verwaltung/jobUebersicht.ts'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'src/management/jobMonitor.ts'), 'utf8');
   assert.match(
     route,
-    /verwaltung\.bestandsFigurenbilderOffen\(\)/,
+    /management\.holdingMinifigImagesOpen\(\)/,
     'Die Job-Übersicht muss die Figurenbilder des Bestands abfragen',
   );
-  const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/repository/verwaltung.ts'), 'utf8');
+  const admin = fs.readFileSync(path.join(ROOT, 'src/management/repository/management.ts'), 'utf8');
   assert.match(
     admin,
     /COUNT\(\*\)::int AS c FROM minifigs_catalog mc/,
@@ -259,7 +259,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
 test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   // Das tägliche Aufräumen stand einmal in registerImgProxy() und lief damit
   // in jedem Web-Worker; heute ist es ein Schritt des geplanten Auftrags
-  // 'aufraeumen_taeglich' (src/verwaltung/aufraeumen.ts) und läuft nur im Job-Prozess.
+  // 'aufraeumen_taeglich' (src/management/cleanup.ts) und läuft nur im Job-Prozess.
   assert.match(
     SERVER,
     /export async function raeumeBildCacheAuf/,
@@ -273,10 +273,10 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   );
   assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
   const plan = require('./helpers/sources').ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'src/verwaltung/aufraeumen.ts'), 'utf8'),
+    fs.readFileSync(path.join(ROOT, 'src/management/cleanup.ts'), 'utf8'),
   );
   assert.match(
-    plan.slice(plan.indexOf('function aufraeumenTaeglich')),
+    plan.slice(plan.indexOf('function cleanupDaily')),
     /raeumeBildCacheAuf\(/,
     'Der Bild-Cache gehört zum täglichen Aufräumen',
   );

@@ -472,7 +472,7 @@ const hatSql = rel => {
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
-  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in src/verwaltung/aufraeumen.ts → rot;
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
   // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
@@ -946,7 +946,7 @@ const STUFEN = [
   ['src/bestand'],
   ['src/sets'],
   ['src/parts', 'src/minifigs', 'src/wanted', 'src/vouchers'],
-  ['src/collection', 'src/verwaltung'],
+  ['src/collection', 'src/management'],
   ['src/dienste.ts'],
   ['jobs', 'routes'],
   ['startup'],

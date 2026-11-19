@@ -7,7 +7,7 @@ import { nutzerIdDerAnfrage, istVerwalter } from '../src/konto/http/anmeldung';
 import { oeffentlicherStartZustand } from '../src/auftraege';
 import type { Dienste } from '../src/dienste';
 
-export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'verwaltung'>) {
+export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'management'>) {
   // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
   const router = express.Router({ caseSensitive: true });
 
@@ -24,7 +24,7 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'v
     res.json({ status: 'ok' });
   });
   router.get('/health/ready', async (req, res) => {
-    if (await d.verwaltung.datenbankBereit()) return void res.json({ status: 'ok' });
+    if (await d.management.databaseReady()) return void res.json({ status: 'ok' });
     res.status(503).json({
       success: false,
       code: 'datenbank_nicht_erreichbar',
@@ -38,7 +38,7 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'v
   router.get('/health', async (req, res) => {
     const verwalter =
       !!wertOder(await versuche('health:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null) && istVerwalter(req);
-    res.json(await d.verwaltung.gesundheitsBericht(verwalter));
+    res.json(await d.management.healthReport(verwalter));
   });
   return router;
 }

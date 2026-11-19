@@ -43,7 +43,7 @@ export function baueApiRouter(
     | 'wanted'
     | 'vouchers'
     | 'collection'
-    | 'verwaltung'
+    | 'management'
   >,
 ) {
   const router = vertragsRouter('/api/v1');

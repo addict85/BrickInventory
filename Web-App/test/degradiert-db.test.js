@@ -66,7 +66,7 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Cache-Zahlen sagen, welcher Teil fehlt', async () => {
-    const { cacheStatistik } = _req('src/verwaltung/dienst.js');
+    const { cacheStats: cacheStatistik } = _req('src/management/service.js');
     const heil = await cacheStatistik();
     assert.equal(heil.degradiert, undefined, 'ohne Fehler keine Angabe');
     cacheKaputt = true;

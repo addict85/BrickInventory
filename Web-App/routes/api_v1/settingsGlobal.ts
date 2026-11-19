@@ -2,7 +2,7 @@
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { kontoSchranke, waechterFuer } from './middleware';
-import { hatGlobaleWerte } from '../../src/verwaltung';
+import { hasGlobalValues } from '../../src/management';
 import { istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
 import { fachfehler, Fachfehler } from '../../src/infra/fehlerTexte';
@@ -10,16 +10,16 @@ import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'profile' | 'verwaltung'>) {
+export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'profile' | 'management'>) {
   const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/settings', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Globale Werte eines Verwalters gehen wie jede Verwalter-Route über den Schrittschutz.
-    const verwalter = istVerwalter(req) && hatGlobaleWerte(req.eingabe);
+    const verwalter = istVerwalter(req) && hasGlobalValues(req.eingabe);
     if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
-    const fertig = await d.verwaltung.einstellungenSpeichern(req.eingabe, {
+    const fertig = await d.management.saveSettings(req.eingabe, {
       uid,
       verwalter,
       name: nutzerName(req) ?? '',
@@ -42,7 +42,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
       'Content-Disposition',
       `attachment; filename="brickinventory-config-${new Date().toISOString().substring(0, 10)}.json"`,
     );
-    res.json(await d.verwaltung.konfigExport(req.apiUser.user_id, verwalter, nutzerName(req) ?? null));
+    res.json(await d.management.exportConfig(req.apiUser.user_id, verwalter, nutzerName(req) ?? null));
   });
 
   router.endpunkt('GET /api/v1/settings/export/data', requireToken, async (req, res) => {
@@ -51,7 +51,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
       'Content-Disposition',
       `attachment; filename="brickinventory-export-${new Date().toISOString().substring(0, 10)}.zip"`,
     );
-    await d.verwaltung.datenZip(req.apiUser.user_id, res, e => {
+    await d.management.dataZip(req.apiUser.user_id, res, e => {
       console.error('[export-zip]', e.message);
       res.status(500).end();
     });
@@ -71,7 +71,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
       // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
       const verwalter = istVerwalter(req);
       if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
-      return { ...(await d.verwaltung.konfigImport(req.apiUser.user_id, verwalter, req.file.buffer)) };
+      return { ...(await d.management.importConfig(req.apiUser.user_id, verwalter, req.file.buffer)) };
     },
   );
 
@@ -123,7 +123,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
 
   // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
   router.endpunkt('POST /api/v1/settings/quelle-testen', requireAdmin, async req => {
-    const absage = await d.verwaltung.quellePruefen(req.eingabe.quelle);
+    const absage = await d.management.checkSource(req.eingabe.quelle);
     if (!absage) return {};
     throw new Fachfehler(
       'ungueltig',
