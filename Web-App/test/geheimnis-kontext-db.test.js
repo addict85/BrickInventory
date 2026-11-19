@@ -42,7 +42,7 @@ const gr = {
   ...require('./helpers/sources').testBereich('vouchers').vouchers,
 };
 const dateien = _req('src/vouchers/voucherFiles.js');
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const settings = _req('src/einstellungen/settings.js');
 const idem = _req('src/idempotency/service.js');
 
@@ -116,15 +116,15 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     assert.equal(await stumm(async () => (await gr.voucher(a, ga2.id)).number), '', 'Nummer in anderer Zeile lesbar');
 
     // TOTP-Geheimnis von a nach b.
-    const geheimA = await zf.beginneEinrichtung(a);
-    await zf.beginneEinrichtung(b);
-    const codeA = zf.hotp(zf.ausBase32(geheimA), zf.zeitschritt());
+    const geheimA = await zf.beginSetup(a);
+    await zf.beginSetup(b);
+    const codeA = zf.hotp(zf.fromBase32(geheimA), zf.timeStep());
     await db.run(
       'UPDATE second_factor SET secret = (SELECT secret FROM second_factor WHERE user_id = $1) WHERE user_id = $2',
       [a, b],
     );
-    assert.equal(await stumm(() => zf.bestaetigeEinrichtung(b, codeA)), null, 'fremdes TOTP-Geheimnis lesbar');
-    assert.ok(await zf.bestaetigeEinrichtung(a, codeA), 'Vorbedingung: am eigenen Ort gilt der Code');
+    assert.equal(await stumm(() => zf.confirmSetup(b, codeA)), null, 'fremdes TOTP-Geheimnis lesbar');
+    assert.ok(await zf.confirmSetup(a, codeA), 'Vorbedingung: am eigenen Ort gilt der Code');
 
     // SMTP-Passwort in die Zeile eines API-Schlüssels.
     await settings.setGlobalSetting('smtp_pass', 'Smtp-Geheim-1');
@@ -215,7 +215,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     assert.match((await db.get("SELECT value FROM global_settings WHERE key = 'smtp_pass'")).value, /^v2:/);
     assert.equal(await settings.getGlobalSetting('smtp_pass'), 'Smtp-Alt-2');
     assert.match((await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [b])).secret, /^v2:/);
-    assert.equal(await zf.pruefeCode(b, zf.hotp(zf.ausBase32(totp), zf.zeitschritt())), 'totp');
+    assert.equal(await zf.checkCode(b, zf.hotp(zf.fromBase32(totp), zf.timeStep())), 'totp');
     assert.deepEqual(await idem.begin(a, 'alt-1', abdruck), {
       kind: 'replay',
       status: 200,

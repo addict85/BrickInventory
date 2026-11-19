@@ -11,7 +11,7 @@ import { emit } from './events.js';
 import { loggedInAccount } from './state.js';
 import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
-// ═══ Second factor in the profile (server: src/faktoren/zweiterFaktor.ts) ══════════════
+// ═══ Second factor in the profile (server: src/factors/secondFactor.ts) ══════════════
 // Flow: password → QR code and key → confirm code → show the ten recovery codes once. After that: disable
 // or get new codes.
 

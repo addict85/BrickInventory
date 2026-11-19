@@ -64,7 +64,7 @@ export async function registrierungFreischalten(k: KontoKontext, durch: number, 
 /** Wer den Faktor verlor, war vielleicht nicht der, der ihn entfernen liess: Sitzungen und Tokens enden mit. */
 export function zweitenFaktorEntfernen(k: KontoKontext, durch: number, ziel: number): Promise<void> {
   return mitZugangsende(k, ziel, async t => {
-    await t.faktoren.schalteAb(ziel);
+    await t.factors.disable(ziel);
     await zugaengeBeenden(t, ziel);
     await verwalterAktionMerken(t, durch, ziel, 'zweiter_faktor_entfernt');
   });
@@ -157,7 +157,7 @@ export async function fuehreFaelligeUebernahmenAus(k: KontoKontext): Promise<num
       const erledigt = gilt.filter(u => istUebernahme(u.type));
       for (const u of erledigt) {
         if (u.password_hash) await t.konten.setzePasswortHash(u.target_id, u.password_hash);
-        else await t.faktoren.schalteAb(u.target_id);
+        else await t.factors.disable(u.target_id);
         await zugaengeBeenden(t, u.target_id);
         await verwalterAktionMerken(
           t,

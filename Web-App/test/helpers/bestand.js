@@ -331,7 +331,7 @@ async function musterSammlung(db, uid) {
     { number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR' },
   );
   await db.run(
-    `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
+    `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code)
                 VALUES ($1, '10276-1', 'N', 'unter', 299, 'EUR') ON CONFLICT DO NOTHING`,
     [uid],
   );

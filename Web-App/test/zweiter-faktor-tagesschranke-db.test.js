@@ -35,7 +35,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
 });
 const { zugangOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const lim = _req('src/konto/loginLimiter.js');
 const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -66,11 +66,11 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
     await db.pool.end().catch(() => {});
   });
 
-  const geheimnis = await zf.beginneEinrichtung(uid);
-  const schluessel = zf.ausBase32(geheimnis);
-  const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(schluessel, zf.zeitschritt() - 1));
+  const geheimnis = await zf.beginSetup(uid);
+  const schluessel = zf.fromBase32(geheimnis);
+  const codes = await zf.confirmSetup(uid, zf.hotp(schluessel, zf.timeStep() - 1));
   assert.equal(codes?.length, 10, 'Einrichtung');
-  const s = zf.zeitschritt();
+  const s = zf.timeStep();
   const gueltig = [-1, 0, 1].map(v => zf.hotp(schluessel, s + v));
   const FALSCH = ['000000', '111111', '222222', '333333'].find(c => !gueltig.includes(c));
 
@@ -104,7 +104,7 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
   });
 
   await t.test('über der Schranke gilt auch ein richtiger Einmalcode nicht', async () => {
-    const r = await anmelden(zf.hotp(schluessel, zf.zeitschritt()));
+    const r = await anmelden(zf.hotp(schluessel, zf.timeStep()));
     assert.equal(r.ok, false, 'richtiger Einmalcode über der Schranke angenommen');
     assert.equal(r.absage?.code, 'zweiter_faktor_gesperrt');
   });

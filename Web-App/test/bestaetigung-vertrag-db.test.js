@@ -40,7 +40,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -100,11 +100,11 @@ async function konto(name, admin) {
   ).id;
 }
 async function mitFaktor(uid) {
-  await zf.beginneEinrichtung(uid);
+  await zf.beginSetup(uid);
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
-  const codes = await zf.bestaetigeEinrichtung(
+  const codes = await zf.confirmSetup(
     uid,
-    zf.hotp(zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid))), zf.zeitschritt()),
+    zf.hotp(zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
   );
   assert.ok(Array.isArray(codes), 'Vorbedingung: Faktor active');
   return codes;
@@ -198,7 +198,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
       code: codes[0],
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await zf.istAktiv(ziel), false);
+    assert.equal(await zf.isActive(ziel), false);
     const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
     const tok = await ruf(ohneFaktor, 'POST /api/v1/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));

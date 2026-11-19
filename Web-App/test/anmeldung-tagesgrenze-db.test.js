@@ -56,7 +56,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const gesendet = mailAttrappe();
   t.after(await mailserverEintragen(db));
-  const zf = _req('src/faktoren/zweiterFaktor.js');
+  const zf = _req('src/factors/secondFactor.js');
   const { verschluessele } = _req('src/infra/geheimnis.js');
   const P = process.pid;
   const OHNE = `tg_ohne_${P}`,
@@ -76,12 +76,12 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   const secret = zf.base32(crypto.randomBytes(20));
   await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [
     id[MIT],
-    verschluessele(secret, zf.faktorKontext(id[MIT])),
+    verschluessele(secret, zf.secondFactorContext(id[MIT])),
   ]);
   /** Ein frischer Code: Derselbe Schritt gilt nur einmal, deshalb vorher zurücksetzen. */
   const code = async () => {
     await db.run('UPDATE second_factor SET last_step = 0 WHERE user_id = $1', [id[MIT]]);
-    return zf.hotp(zf.ausBase32(secret), zf.zeitschritt());
+    return zf.hotp(zf.fromBase32(secret), zf.timeStep());
   };
   const { base } = testServer(_req, { t });
   const anmelden = async (name, passwort, mitCode) => {

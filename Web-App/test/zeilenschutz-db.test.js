@@ -388,7 +388,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const request = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
     // Das eigene Konto: sichtbar, ohne Systemrahmen.
     assert.deepEqual(
-      (await request(A, () => d.faktoren.passkeysDesKontos(A))).map(p => p.name),
+      (await request(A, () => d.factors.accountPasskeys(A))).map(p => p.name),
       ['eigen'],
     );
     assert.deepEqual(
@@ -396,10 +396,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       ['eigen'],
     );
     // Ein fremdes Konto, auch mit dessen ID gefragt: nichts, und nichts zu löschen.
-    assert.deepEqual(await request(A, () => d.faktoren.passkeysDesKontos(C)), []);
+    assert.deepEqual(await request(A, () => d.factors.accountPasskeys(C)), []);
     assert.deepEqual(await request(A, () => d.konto.sitzungen.zugaengeListe(C)), []);
     const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
-    assert.equal(await request(A, () => d.faktoren.loeschePasskey(C, pkC.id)), false);
+    assert.equal(await request(A, () => d.factors.deletePasskey(C, pkC.id)), false);
     assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
   });
 
@@ -428,7 +428,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       assert.deepEqual(await als(A, () => app.all(`${sql} WHERE user_id = $1`, [B])), [], sql);
     assert.deepEqual(ids(await als(A, alleSets)), [A, B]);
     const request = f => alsAnfrage({ apiUser: { user_id: A } }, f);
-    assert.deepEqual(await request(() => d.faktoren.passkeysDesKontos(B)), []);
+    assert.deepEqual(await request(() => d.factors.accountPasskeys(B)), []);
     assert.deepEqual(await request(() => d.konto.sitzungen.zugaengeListe(B)), []);
     // Anlegen für das Unterkonto: abgewiesen, auch wo der Zeilenschutz der Bestände es erlaubt.
     const rls = /row-level security/;

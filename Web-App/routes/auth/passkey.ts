@@ -3,7 +3,7 @@ import { waechterFuer } from '../api_v1/middleware';
 import { perSitzung, angemeldeteNutzerId, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import { geraeteNameGueltig } from '../../src/konto';
-import { vertrauenspartei } from '../../src/faktoren';
+import { relyingParty } from '../../src/factors';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
@@ -11,12 +11,12 @@ const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>
   typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey';
 
-export function bauePasskeyRouter(d: Pick<Dienste, 'konto' | 'faktoren'>) {
+export function bauePasskeyRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
   router.endpunkt('GET /api/v1/auth/passkeys', requireLoginOrToken, async req => {
-    return { verfuegbar: !!vertrauenspartei(), passkeys: await d.faktoren.passkeysDesKontos(angemeldeteNutzerId(req)) };
+    return { verfuegbar: !!relyingParty(), passkeys: await d.factors.accountPasskeys(angemeldeteNutzerId(req)) };
   });
 
   // Ein neuer Anmeldeweg verlangt Passwort und Browser-Sitzung: Eine erbeutete
@@ -26,7 +26,7 @@ export function bauePasskeyRouter(d: Pick<Dienste, 'konto' | 'faktoren'>) {
     const uid = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
     const konto = await d.konto.kontoKurzVon(uid);
-    const optionen = await d.faktoren.registrierungsOptionen(uid, konto?.username ?? String(uid));
+    const optionen = await d.factors.registrationOptions(uid, konto?.username ?? String(uid));
     if (!optionen) fachfehler('nicht_verfuegbar', 'passkey_ohne_domain');
     return { optionen };
   });
@@ -34,7 +34,7 @@ export function bauePasskeyRouter(d: Pick<Dienste, 'konto' | 'faktoren'>) {
   router.endpunkt('POST /api/v1/auth/passkey/registrieren', requireLoginOrToken, async req => {
     if (!perSitzung(req)) fachfehler('verboten', 'nur_mit_sitzung');
     if (!geraeteNameGueltig(req.eingabe.name)) fachfehler('ungueltig', 'geraetename_ungueltig');
-    const neu = await d.faktoren.registrierungPruefen(
+    const neu = await d.factors.verifyRegistration(
       angemeldeteNutzerId(req),
       req.eingabe.antwort,
       passkeyName(req.eingabe.name),
@@ -48,7 +48,7 @@ export function bauePasskeyRouter(d: Pick<Dienste, 'konto' | 'faktoren'>) {
     const uid = angemeldeteNutzerId(req);
     const id = req.pfad.id;
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    return { deleted: (await d.faktoren.loeschePasskey(uid, id)) ? 1 : 0 };
+    return { deleted: (await d.factors.deletePasskey(uid, id)) ? 1 : 0 };
   });
   return router;
 }

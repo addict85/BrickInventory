@@ -16,7 +16,7 @@ import type { AuftraegeDienste } from '../auftraege';
 import type { MailDienste } from '../mail';
 import type { ThrottleServices } from '../throttle';
 import type { GeraeteDienste } from '../geraete';
-import type { FaktorenDienste } from '../faktoren';
+import type { FactorsServices } from '../factors';
 import type { Uhr } from '../infra/uhr';
 
 export interface KontoAbhaengigkeiten {
@@ -31,7 +31,7 @@ export interface KontoAbhaengigkeiten {
   mail: MailDienste;
   throttle: ThrottleServices;
   geraete: GeraeteDienste;
-  faktoren: FaktorenDienste;
+  factors: FactorsServices;
 }
 
 /** Zugangsdaten liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer ohne Konto

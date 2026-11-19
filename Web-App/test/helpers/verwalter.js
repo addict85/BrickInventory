@@ -9,12 +9,12 @@
  * @returns {Promise<string[]>} die zehn Wiederherstellungscodes, je einer für eine Anmeldung
  */
 async function verwalterMitFaktor(_req, uid) {
-  const zf = _req('src/faktoren/zweiterFaktor.js');
+  const zf = _req('src/factors/secondFactor.js');
   // Wie im Betrieb im Konto selbst: Der Zeilenschutz verbirgt die Zeilen sonst.
   return _req('src/infra/kontoKontext.js').alsAnfrage({ apiUser: { user_id: uid } }, async () => {
-    const geheimnis = await zf.beginneEinrichtung(uid);
+    const geheimnis = await zf.beginSetup(uid);
     if (!geheimnis) throw new Error(`Konto ${uid} hat schon einen zweiten Faktor`);
-    return zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt()));
+    return zf.confirmSetup(uid, zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));
   });
 }
 

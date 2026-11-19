@@ -7,7 +7,7 @@ import type { ThrottleServices } from './throttle';
 import type { EinstellungenDienste } from './einstellungen';
 import type { MinifigsServices } from './minifigs';
 import type { GeraeteDienste } from './geraete';
-import type { FaktorenDienste } from './faktoren';
+import type { FactorsServices } from './factors';
 import type { FinanzenDienste } from './finanzen';
 import type { FremdquellenDienste } from './fremdquellen';
 import type { VoucherServices } from './vouchers';
@@ -39,7 +39,7 @@ export interface Dienste {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   geraete: GeraeteDienste;
-  faktoren: FaktorenDienste;
+  factors: FactorsServices;
   konto: KontoDienste;
   profile: ProfileServices;
   idempotency: IdempotencyServices;

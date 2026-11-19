@@ -41,14 +41,14 @@ const { testServer } = require('./helpers/server');
 const { bis } = require('./helpers/zeit');
 const db = S.testDaten();
 const { hashePasswort, passwortPasst } = _req('src/konto/passwortHash.js');
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 /** Ein echter zweiter Faktor; zurück kommen die Wiederherstellungscodes. */
 async function mitFaktor(uid) {
-  await S.alsKonto(uid, () => zf.beginneEinrichtung(uid));
+  await S.alsKonto(uid, () => zf.beginSetup(uid));
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
-  const geheim = zf.ausBase32(entschluessele(z.secret, zf.faktorKontext(uid)));
-  return S.alsKonto(uid, () => zf.bestaetigeEinrichtung(uid, zf.hotp(geheim, zf.zeitschritt())));
+  const geheim = zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid)));
+  return S.alsKonto(uid, () => zf.confirmSetup(uid, zf.hotp(geheim, zf.timeStep())));
 }
 const mails = [];
 S.ersetzeDienste('mail', {

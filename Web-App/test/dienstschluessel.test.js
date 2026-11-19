@@ -17,8 +17,8 @@
  *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
  *   D  `setzeAktiv: mit(k)(kontenDienst.setzeAktiv)` zurück in src/konto/bereich.ts → rot
  *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
- *   E  in routes/auth/zweiterFaktor.ts `d.faktoren.erneuereCodes` durch einen
- *      Platzhalter ersetzt → rot „ohne Aufrufer“ (faktoren.erneuereCodes)
+ *   E  in routes/auth/zweiterFaktor.ts `d.factors.renewCodes` durch einen
+ *      Platzhalter ersetzt → rot „ohne Aufrufer“ (factors.renewCodes)
  *   F  JE_BEREICH.konto auf 88 → rot „Schlüssel je Bereich“ (konto 89, erlaubt 88)
  *
  * Rohe Weitergaben (ein Dienst ist das Repository selbst, k.repo.f oder mit(k.db, repo.f)):
@@ -27,7 +27,7 @@
  *      der Dienstschlüssel“ (538, erlaubt 537) und „roh weiterreichen“ (konto.gueltigerToken)
  *   H  'katalog.katalogStand' aus ROH_ERLAUBT gestrichen → rot „roh weiterreichen“ (die Form
  *      mit(k.db, setStamm.katalogStand), über den Bau als Repository-Funktion erkannt)
- *   I  JE_BEREICH.faktoren auf 17 → rot „Schlüssel je Bereich“ (faktoren 18, erlaubt 17)
+ *   I  JE_BEREICH.factors auf 17 → rot „Schlüssel je Bereich“ (factors 18, erlaubt 17)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -69,7 +69,7 @@ const JE_BEREICH = {
   auftraege: 65,
   haushalt: 20,
   geraete: 6,
-  faktoren: 18,
+  factors: 18,
   konto: 65,
   profile: 3,
   idempotency: 8,
@@ -124,6 +124,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     'throttle',
     'parts',
     'vouchers',
+    'factors',
   ]);
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(

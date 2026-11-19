@@ -45,7 +45,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
 });
 
 const db = S.testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const protokoll = _req('src/infra/protokoll.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const P = process.pid,
@@ -67,11 +67,8 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     ).id;
   const uid = await konto(NAME),
     zfId = await konto(FAKTOR);
-  const g = await zf.beginneEinrichtung(zfId);
-  assert.ok(
-    await zf.bestaetigeEinrichtung(zfId, zf.hotp(zf.ausBase32(g), zf.zeitschritt())),
-    'Vorbedingung: Faktor aktiv',
-  );
+  const g = await zf.beginSetup(zfId);
+  assert.ok(await zf.confirmSetup(zfId, zf.hotp(zf.fromBase32(g), zf.timeStep())), 'Vorbedingung: Faktor aktiv');
   const leereZaehler = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%' OR key LIKE 'sperr-hinweis%' OR key LIKE $1`, [
       `%-bestaetigen|${uid}|%`,
@@ -187,7 +184,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
   await t.test('ein falscher Code', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     zeilen.length = 0;
-    const richtig = zf.hotp(zf.ausBase32(g), zf.zeitschritt());
+    const richtig = zf.hotp(zf.fromBase32(g), zf.timeStep());
     assert.equal(await anmelden(FAKTOR, PASS, richtig === '000000' ? '000001' : '000000'), 401);
     assert.deepEqual(
       ereignisse('zweiter_faktor_falsch').map(z => z.kontext.konto),

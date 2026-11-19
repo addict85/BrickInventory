@@ -138,11 +138,11 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
 
   await t.test('richtiger Code zeigt die Wiederherstellungscodes', async () => {
     const _req = require('./helpers/sources').buildAndRequire();
-    const zf = _req('src/faktoren/zweiterFaktor.js');
+    const zf = _req('src/factors/secondFactor.js');
     await b.auswerten(
       `document.getElementById('zf-code').value = ''; document.getElementById('zf-code').focus(); true`,
     );
-    await tippe(zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt()));
+    await tippe(zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));
     await enter();
     await bis(`!!document.getElementById('zf-codes')`, 'Wiederherstellungscodes');
     assert.deepEqual(await b.auswerten(fehlerToasts), [], 'kein liegen gebliebener Fehler-Toast');

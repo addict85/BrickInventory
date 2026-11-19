@@ -32,7 +32,7 @@ export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluessel
   const n =
     (await d.vouchers.reencryptNumbers()) +
     (await d.vouchers.reencryptCopies()) +
-    (await d.faktoren.verschluesseleAltbestand()) +
+    (await d.factors.encryptLegacySecrets()) +
     (await d.idempotency.reencryptResponses()) +
     (await d.vouchers.encryptLegacyFiles());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
@@ -48,7 +48,7 @@ export async function altbestandAufruesten(d: Dienste): Promise<{ umgeschluessel
 export async function schluesselWechsel(d: Dienste): Promise<number | null> {
   if (!altSchluessel()) return null;
   const n =
-    (await d.faktoren.verschluesseleAltbestand({ alle: true })) +
+    (await d.factors.encryptLegacySecrets({ alle: true })) +
     (await d.vouchers.reencryptAllVouchers()) +
     (await d.vouchers.reencryptCopies(true)) +
     (await d.vouchers.encryptLegacyFiles({ alle: true }));

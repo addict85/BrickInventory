@@ -119,7 +119,7 @@ async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: numb
   } as const;
 }
 
-export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'faktoren' | 'profile'>) {
+export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'factors' | 'profile'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
@@ -282,7 +282,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     ipThrottle(d.konto, 'passkey-optionen', 60, 60 * 60 * 1000),
     async req => {
       const zweck = req.eingabe.zweck === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
-      const optionen = await d.faktoren.anmeldeOptionen(zweck);
+      const optionen = await d.factors.authenticationOptions(zweck);
       if (!optionen) fachfehler('nicht_verfuegbar', 'passkey_ohne_domain');
       return { optionen };
     },
@@ -294,7 +294,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     ipThrottle(d.konto, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
       if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-      const uid = await d.faktoren.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
+      const uid = await d.factors.verifyAuthentication(req.eingabe.antwort, 'anmelden');
       if (!uid) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
       const user = await d.konto.kontoVollVon(uid);
       if (!user) fachfehler('nicht_angemeldet', 'passkey_ungueltig');

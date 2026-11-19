@@ -15,7 +15,7 @@
  *   H  (01.11.) hashCode() wieder als blankes SHA-256 → rot: „ungesalzenes SHA-256";
  *      randomBytes(7)/10 Zeichen → rot: Format; Rückfall auf alterHash entfernt → rot:
  *      „alter Code gilt nicht mehr"
- *   I  (01.11.) /zweiter-faktor/bestaetigen wieder direkt über zf.bestaetigeEinrichtung →
+ *   I  (01.11.) /zweiter-faktor/bestaetigen wieder direkt über zf.confirmSetup →
  *      rot: „Einrichtungscode beliebig oft ratbar"
  *   J  (02.11.) in DELETE /users/:id/zweiter-faktor die Prüfung aufs eigene Konto
  *      entfernt → rot: „eigener Faktor nur mit Passwort entfernt"
@@ -35,7 +35,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testDaten();
-const zf = _req('src/faktoren/zweiterFaktor.js');
+const zf = _req('src/factors/secondFactor.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -56,19 +56,19 @@ test('RFC 6238: die Testvektoren für SHA-1', () => {
   }
   // Und Base32 hin und zurück, wie es eine Authenticator-App liest.
   assert.equal(zf.base32(schluessel), 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ');
-  assert.deepEqual(zf.ausBase32('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'), schluessel);
+  assert.deepEqual(zf.fromBase32('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'), schluessel);
 });
 
 test('passenderSchritt: ein Schritt Spielraum, nicht mehr', () => {
   const g = zf.base32(Buffer.from('12345678901234567890'));
   const jetzt = 1234567890 * 1000,
-    s = zf.zeitschritt(jetzt),
-    k = zf.ausBase32(g);
-  assert.equal(zf.passenderSchritt(g, zf.hotp(k, s), jetzt), s);
-  assert.equal(zf.passenderSchritt(g, zf.hotp(k, s - 1), jetzt), s - 1);
-  assert.equal(zf.passenderSchritt(g, zf.hotp(k, s + 1), jetzt), s + 1);
-  assert.equal(zf.passenderSchritt(g, zf.hotp(k, s - 2), jetzt), null);
-  assert.equal(zf.passenderSchritt(g, 'abcdef', jetzt), null);
+    s = zf.timeStep(jetzt),
+    k = zf.fromBase32(g);
+  assert.equal(zf.matchingStep(g, zf.hotp(k, s), jetzt), s);
+  assert.equal(zf.matchingStep(g, zf.hotp(k, s - 1), jetzt), s - 1);
+  assert.equal(zf.matchingStep(g, zf.hotp(k, s + 1), jetzt), s + 1);
+  assert.equal(zf.matchingStep(g, zf.hotp(k, s - 2), jetzt), null);
+  assert.equal(zf.matchingStep(g, 'abcdef', jetzt), null);
 });
 
 test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async t => {
@@ -117,8 +117,8 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       [name],
     );
     return zf.hotp(
-      zf.ausBase32(_req('src/infra/geheimnis.js').entschluessele(z.secret, zf.faktorKontext(z.user_id))),
-      zf.zeitschritt() + versatz,
+      zf.fromBase32(_req('src/infra/geheimnis.js').entschluessele(z.secret, zf.secondFactorContext(z.user_id))),
+      zf.timeStep() + versatz,
     );
   };
   /** Einrichten bis active; gibt den Token und die Wiederherstellungscodes zurück. */
@@ -169,8 +169,8 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       `INSERT INTO second_factor_codes (user_id, code_hash, old_valid_until) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
       [uid, sha('abcde23456')],
     );
-    assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'alter Code gilt nicht mehr');
-    assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
+    assert.equal(await zf.checkCode(uid, 'abcde-23456'), 'wiederherstellung_alt', 'alter Code gilt nicht mehr');
+    assert.equal(await zf.checkCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1 AND consumed_at IS NOT NULL', [uid]);
 
     // Ohne Code: Absage mit Hinweis, kein Token.
@@ -267,9 +267,9 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       [400, 'eigener_zweiter_faktor'],
       'eigener Faktor nur mit Passwort entfernt',
     );
-    assert.equal(await zf.istAktiv(idV), true);
+    assert.equal(await zf.isActive(idV), true);
     assert.equal((await entfernen(idS)).status, 200, 'fremder Faktor lässt sich nicht mehr entfernen');
-    assert.equal(await zf.istAktiv(idS), false);
+    assert.equal(await zf.isActive(idS), false);
   } finally {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE, VERWALTER]]).catch(() => {});
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%zf_%${process.pid}%`]).catch(() => {});
