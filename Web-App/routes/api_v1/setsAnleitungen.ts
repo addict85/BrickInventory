@@ -14,8 +14,8 @@ import {
   checkReceivedFile,
 } from '../../src/http/dateiEmpfang';
 import { ANLEITUNGS_WURZEL } from '../../src/sets';
-import { signedInUserId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { released } from '../../src/konto/http/schrittschutz';
+import { signedInUserId, istVerwalter } from '../../src/account/http/login';
+import { released } from '../../src/account/http/stepGuard';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
@@ -23,7 +23,7 @@ const uploadQuotaMb = () => Math.round(uploadQuotaBytes() / 1024 / 1024);
 
 /** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der Platte. */
 const beforeTheUpload =
-  (d: Pick<Dienste, 'konto' | 'sets'>) =>
+  (d: Pick<Dienste, 'account' | 'sets'>) =>
   async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     const uid = signedInUserId(req);
     if (!(await d.sets.setBelongsAccount(uid, pathParam(req, 'setNumber')))) notFound();
@@ -34,14 +34,14 @@ const beforeTheUpload =
     next();
   };
 
-export function buildSetsInstructionsRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildSetsInstructionsRouter(d: Pick<Dienste, 'account' | 'sets'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/sets/:setNumber/instructions', requireToken, async (req, res) => {
     // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
     const verwalter = istVerwalter(req);
-    if (verwalter && !(await released(d.konto, req, res, 'verwaltung'))) return;
+    if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
     const { instructions, auftrag } = await d.sets.loadInstructionsNew(
       req.apiUser.user_id,
       req.pfad.setNumber,

@@ -104,7 +104,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
 
   await t.test('Anmeldezähler: ein zweiter Prozess sieht die Sperre', async () => {
     const IP = '203.0.113.7';
-    const a = _req('src/konto/loginLimiter.js');
+    const a = _req('src/account/loginLimiter.js');
     assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
     for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.loginFailed(IP, COUNTER);
     // Ein frisch geladenes Modul hat leeren Speicher, wie ein zweiter Arbeitsprozess.
@@ -112,13 +112,13 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    const konto = require('./helpers/sources').testArea('konto');
+    const konto = require('./helpers/sources').testArea('account');
     assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'zu_viele_fehlversuche');
   });
 
   await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {
     const IP = '203.0.113.8';
-    const l = _req('src/konto/loginLimiter.js');
+    const l = _req('src/account/loginLimiter.js');
     const warn = console.warn;
     console.warn = () => {};
     await db.run('ALTER TABLE rate_limit_attempts RENAME TO rate_limit_attempts_weg');
@@ -295,10 +295,10 @@ test('die Webapp hängt keinen Token an eine Adresse', () => {
     if (append.some(re => re.test(src))) treffer.push(path.basename(voll));
   }
   assert.deepEqual(treffer, []);
-  // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/http/anmeldung.ts.
+  // Eine zweite Fassung des Wächters umginge die eine Regel in src/account/http/login.ts.
   assert.doesNotMatch(setCoreSource(), /function requireLoginOrToken/);
   // Während eines Imports ist 503 nach 3 s besser als eine hängende Verbindung.
-  assert.match(setCoreSource(), /loginOrTokenGuard\(d\.konto, \{ timeoutMs: 3000 \}\)/);
+  assert.match(setCoreSource(), /loginOrTokenGuard\(d\.account, \{ timeoutMs: 3000 \}\)/);
 });
 
 test('jede Preisabfrage auf price_cache nennt die Währung', () => {

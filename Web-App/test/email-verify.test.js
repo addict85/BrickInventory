@@ -3,7 +3,7 @@
  *
  * ── Gegenprobe (04.11.2026 gemessen) ────────────────────────────────────────
  * Die Abfrage aus adoptEmailNew() zusätzlich als eigene Funktion in
- * src/konto/repository/zugaenge.ts → rot: „die Verifikationsabfrage steht genau
+ * src/account/repository/accesses.ts → rot: „die Verifikationsabfrage steht genau
  * einmal im Baum" (nennt beide Fundstellen).
  */
 const test = require('node:test');
@@ -19,9 +19,9 @@ const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
 const QUERY = /new_email_token\s*=\s*\$1\s+AND\s+new_email_until\s*>\s*NOW\(\)/;
 const REDEEM = /email_verified\s*=\s*true/i;
 const CANDIDATES = [
-  'src/konto/anmeldepruefung.ts',
-  'src/konto/repository/zugaenge.ts',
-  'src/konto/repository/konten.ts',
+  'src/account/loginCheck.ts',
+  'src/account/repository/accesses.ts',
+  'src/account/repository/accounts.ts',
   'server.ts',
   'routes/auth.ts',
   'routes/auth/registrierung.ts',
@@ -33,7 +33,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     // Typannotation zu ergänzen ist eine Verbesserung und darf keinen Test
     // umwerfen.
     checkParameter(
-      lies('src/konto/anmeldepruefung.ts'),
+      lies('src/account/loginCheck.ts'),
       'verifyEmailToken',
       ['token'],
       'die gemeinsame Verifikationslogik',
@@ -44,7 +44,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     const treffer = CANDIDATES.filter(rel => QUERY.test(lies(rel)));
     assert.deepEqual(
       treffer,
-      ['src/konto/repository/konten.ts'],
+      ['src/account/repository/accounts.ts'],
       'Die Abfrage nach email_neu_token gehört ausschliesslich in ' +
         'adoptEmailNew(). Gefunden in: ' +
         treffer.join(', ') +
@@ -56,7 +56,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     const treffer = CANDIDATES.filter(rel => REDEEM.test(lies(rel)));
     assert.deepEqual(
       treffer,
-      ['src/konto/repository/konten.ts'],
+      ['src/account/repository/accounts.ts'],
       'Auch das Setzen von email_verified gehört nur an eine Stelle. ' + 'Gefunden in: ' + treffer.join(', '),
     );
   });

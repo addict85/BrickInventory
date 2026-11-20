@@ -21,10 +21,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { assertLoginAllowed } = _req('src/konto/anmeldepruefung.js');
-const { ARGON2_COST } = _req('src/konto/passwortHash.js');
-const { USERNAME_RE } = _req('src/konto/namensRegeln.js');
-const { escapeLike } = _req('src/konto/geraeteToken.js');
+const { assertLoginAllowed } = _req('src/account/loginCheck.js');
+const { ARGON2_COST } = _req('src/account/passwordHash.js');
+const { USERNAME_RE } = _req('src/account/nameRules.js');
+const { escapeLike } = _req('src/account/deviceToken.js');
 const { ohneKommentare } = require('./helpers/sources');
 
 /**
@@ -109,7 +109,7 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
     outlier,
     [],
     'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
-      'checkCredentials() aus src/konto/anmeldepruefung.ts:\n  ' +
+      'checkCredentials() aus src/account/loginCheck.ts:\n  ' +
       outlier.join('\n  ') +
       '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
       'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
@@ -122,7 +122,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
   // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
   // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
   const zaehler = /\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/;
-  const erlaubt = new Set(['src/konto/anmeldepruefung.ts', 'src/konto/loginLimiter.ts']);
+  const erlaubt = new Set(['src/account/loginCheck.ts', 'src/account/loginLimiter.ts']);
 
   const collect = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -145,13 +145,13 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     [],
     'Diese Dateien bedienen den Anmelde-Zähler selbst: ' +
       fremd.join(', ') +
-      ' — die Anmeldung gehört ganz in checkCredentials() (src/konto/anmeldepruefung.ts).',
+      ' — die Anmeldung gehört ganz in checkCredentials() (src/account/loginCheck.ts).',
   );
 
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
-  const central = require('./helpers/sources').serviceSource('src/konto/anmeldepruefung.ts');
+  const central = require('./helpers/sources').serviceSource('src/account/loginCheck.ts');
   for (const name of ['loginAllowed', 'loginFailed', 'loginSucceeded'])
-    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
+    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts ruft ${name} nicht auf`);
 });
 
 test('die Benutzernamen-Regel', () => {

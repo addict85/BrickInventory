@@ -218,14 +218,14 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
       .sort();
     assert.deepEqual(
       treffer,
-      ['src/konto/bcryptPool.ts'],
+      ['src/account/bcryptPool.ts'],
       'nur der Rückfall des Pools; alle anderen über passwordFits()',
     );
     // argon2 verify() ginge ebenso an Anmeldung und Bestätigung vorbei.
     const argon2 = dateien
       .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
-    assert.deepEqual(argon2, ['src/konto/passwortHash.ts'], 'argon2 nur über passwordFits()/hashePassword()');
+    assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 nur über passwordFits()/hashePassword()');
   });
 
   await t.test('ohne Marke keine Bestätigung', async () => {

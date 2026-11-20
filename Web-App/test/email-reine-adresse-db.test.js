@@ -157,7 +157,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     console.warn = (...a) => zeilen.push(a.join(' '));
     let ids;
     try {
-      ids = await _req('src/konto/konten.js').reportInvalidAddresses();
+      ids = await _req('src/account/accounts.js').reportInvalidAddresses();
     } finally {
       console.warn = warn;
     }

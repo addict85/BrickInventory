@@ -160,10 +160,10 @@ async function starte(): Promise<void> {
   // Hinweise ins Protokoll: Einer, der scheitert, hält weder den Start noch die übrigen auf.
   const hinweise: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
-    ...dienste.konto.adressHints(),
+    ...dienste.account.adressHints(),
   ];
   if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
-  if (web) dienste.konto.listenOnRevocation();
+  if (web) dienste.account.listenOnRevocation();
   // Web und Jobs (auch getrennte Prozesse) leeren ihr Haushaltsgedächtnis auf jede Änderung.
   dienste.household.listenOnChanges();
   // Ein globaler Wert aus einem anderen Prozess (Nachlauf, zweiter Web-Prozess) leert den Einrichtungsstand.

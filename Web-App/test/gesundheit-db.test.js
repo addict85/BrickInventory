@@ -53,7 +53,7 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
       [NAME],
     )
   ).id;
-  const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
+  const token = await _req('src/account/deviceToken.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
   const { setzeZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
   await setzeZustand(
     'startup_status',

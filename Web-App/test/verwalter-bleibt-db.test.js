@@ -24,7 +24,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testArea('konto').konten };
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
 /** Die Absage wirft der Dienst; hier wird sie zum Wert, damit gleichzeitige Aufrufe zählbar bleiben. */
 const LAST = 'letzter_verwalter';
 const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)));
@@ -33,7 +33,7 @@ const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)))
 const remove = (ziel, durch) =>
   _req('src/infra/kontoKontext.js').inSystemContext('test', () =>
     require('./helpers/sources')
-      .testContext('konto')
+      .testContext('account')
       .transaktion(t => t.konten.deleteAccount(ziel, durch)),
   );
 

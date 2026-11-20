@@ -7,7 +7,7 @@
  *   A  in createInventory (src/inventory/area.ts) wieder `...k,` vor die Dienste →
  *      rot: vier unbenutzte @ts-expect-error (d.inventory.db, .transaktion,
  *      .papierkorb, .manuelleMengen)
- *   B  in createAccount `protokoll: k.protokoll,` ergänzt → rot: d.konto.protokoll
+ *   B  in createAccount `protokoll: k.protokoll,` ergänzt → rot: d.account.protokoll
  *   C  `locationService` aus createInventory entfernt → rot: tsc meldet die Nutzer und die Probe
  */
 const test = require('node:test');

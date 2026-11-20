@@ -1,7 +1,7 @@
 /** Behind login (the key is valid per account). Stored BEFORE the response
  * goes out: if the connection drops, the retry already finds it. */
 import type { Request, Response, NextFunction } from 'express';
-import { nutzerId } from '../../konto/http/anmeldung';
+import { nutzerId } from '../../account/http/login';
 import { reportError } from '../../infra/fehler';
 import * as service from '../service';
 import { routeForRequest } from '../../contract';

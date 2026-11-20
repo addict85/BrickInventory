@@ -1,6 +1,6 @@
 /**
  * Die Sitzungsversion wird je Web-Prozess fünf Sekunden zwischengespeichert
- * (src/konto/sitzungsVersion.ts). Eine Erhöhung in einem Prozess meldet sich über
+ * (src/account/sessionVersion.ts). Eine Erhöhung in einem Prozess meldet sich über
  * NOTIFY, die anderen verwerfen ihren Stand sofort; ohne Horch-Verbindung gilt nur
  * die Datenbank.
  *
@@ -23,7 +23,7 @@ const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const sv = _req('src/konto/sitzungsVersion.js');
+const sv = _req('src/account/sessionVersion.js');
 const signals = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
@@ -83,7 +83,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     const gehoert = [];
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN sitzung_version');
-    await _req('src/konto/zugangsende.js').endAllSessions(uid);
+    await _req('src/account/accessEnd.js').endAllSessions(uid);
     await bis(() => gehoert.length > 0, 1000);
     assert.deepEqual(gehoert.slice(0, 1), ['sitzung_version']);
   });

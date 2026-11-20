@@ -67,7 +67,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
     `UPDATE users SET new_email = $2, new_email_token = 'x', new_email_until = NOW() + INTERVAL '1 day' WHERE id = $1`,
     [V, `boese-${P}@example.org`],
   );
-  const K_ = _req('src/konto/konten.js');
+  const K_ = _req('src/account/accounts.js');
   const H = _req('src/household/household.js');
   const { inSystemContext } = _req('src/infra/kontoKontext.js');
   const mainAccountsOf = () => inSystemContext('test', () => H.householdOf(A)).then(h => h.memberIds.includes(V));
@@ -79,7 +79,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
 
   const link = `pv-link-${P}`;
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2`, [
-    _req('src/konto/geraeteToken.js').tokenDigest(link),
+    _req('src/account/deviceToken.js').tokenDigest(link),
     V,
   ]);
   const { base } = testServer(_req, { t });

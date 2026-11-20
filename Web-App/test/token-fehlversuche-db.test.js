@@ -30,12 +30,12 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 const db = require('./helpers/sources').testData();
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
-const bremse = _req('src/konto/tokenFehlversuche.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
+const bremse = _req('src/account/tokenFailedAttempts.js');
 const loginAtInbox = (...a) =>
   _req('routes/api_v1/middleware.js')
-    .guardFor(require('./helpers/sources').testServices().konto)
+    .guardFor(require('./helpers/sources').testServices().account)
     .loginAtInbox(...a);
 const pgNotify = require('./helpers/sources').testAccess().notification;
 const { bis } = require('./helpers/zeit');

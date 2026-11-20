@@ -4,7 +4,7 @@
  * eine aufgegebene Adresse oder aus der Zeit vor einem Verwalter-Reset gültig.
  *
  * Gegenprobe (01.11.2026 gemessen): OHNE_RUECKSETZLINK in
- * src/konto/repository/konten.ts auf einen leeren Zusatz gesetzt
+ * src/account/repository/accounts.ts auf einen leeren Zusatz gesetzt
  * (`reset_token = reset_token`) → rot: alle drei Wege (200 statt 400).
  * Gegenprobe (11.11.2026 gemessen): der Stand cded051 (Token in der Route
  * gelesen, Passwort danach per `WHERE id = …` geschrieben) → rot: „zwei
@@ -23,8 +23,8 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testArea('konto').konten };
-const { tokenDigest } = _req('src/konto/geraeteToken.js');
+const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+const { tokenDigest } = _req('src/account/deviceToken.js');
 
 test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -71,7 +71,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
           await K.rememberEmailNew(uid, `neu_${p}@example.org`, tokenDigest(`mail${p}`), new Date(Date.now() + 60_000));
           assert.equal(
             !!(await require('./helpers/sources')
-              .testArea('konto')
+              .testArea('account')
               .verifyEmailToken(`mail${p}`)
               .catch(() => null)),
             true,
@@ -111,7 +111,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
     const sieger = antworten.find(a => a[0] === 200)[2];
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
     assert.ok(
-      await _req('src/konto/passwortHash.js').passwordFits(sieger, password_hash),
+      await _req('src/account/passwordHash.js').passwordFits(sieger, password_hash),
       'es gilt das Passwort der Anfrage, die 200 bekam',
     );
   });

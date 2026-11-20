@@ -220,7 +220,7 @@ function buildAndRequire() {
   const V = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js'));
   const dbModule = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
-  const firstStart = () => testServices().konto.putStartAdminAn();
+  const firstStart = () => testServices().account.putStartAdminAn();
   const testDb = () => (_testDb ??= dbModule.createDb(dbModule.dbKonfigFromEnvironment(), { firstStart }));
   _accessFactory = testDb;
   // Dieselbe Verdrahtung wie der Server (buildServices), gebaut erst beim ersten Gebrauch:
@@ -937,8 +937,8 @@ function loginSource() {
     .readdirSync(path.join(ROOT, 'routes', 'auth'))
     .filter(n => n.endsWith('.ts'))
     .sort();
-  // Die Abläufe nach der Prüfung stehen seit dem 09.11.2026 in src/konto/anmeldungAblauf.ts.
-  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/konto/anmeldungAblauf.ts']
+  // Die Abläufe nach der Prüfung stehen seit dem 09.11.2026 in src/account/loginFlow.ts.
+  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/account/loginFlow.ts']
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))
     .join('\n');
 }

@@ -101,7 +101,7 @@ export async function importConfig(kx: ManagementContext, uid: number, verwalter
       imported++;
     }
     if (geaendert.length)
-      await kx.konto.verwalter.rememberAdminAction(
+      await kx.account.verwalter.rememberAdminAction(
         uid,
         uid,
         'einstellungen_geaendert',

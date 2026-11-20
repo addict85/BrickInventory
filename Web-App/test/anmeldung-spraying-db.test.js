@@ -52,8 +52,8 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
-  const lim = _req('src/konto/loginLimiter.js');
+  const { checkCredentials } = _req('src/account/loginCheck.js');
+  const lim = _req('src/account/loginLimiter.js');
 
   await t.test('nach 30 Fehlversuchen gegen verschiedene Namen ist die Adresse gesperrt', async () => {
     const anfrage = { ip: IP, socket: {}, headers: {} };

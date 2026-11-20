@@ -2,7 +2,7 @@
  * nicht ohne Anmeldung hinaus, ein fremdes Set-Bild antwortet wie ein fehlendes. */
 import fs from 'node:fs';
 import type { Request, Response } from 'express';
-import { userIdTheRequest } from '../../konto/http/anmeldung';
+import { userIdTheRequest } from '../../account/http/login';
 import { safeDataPath } from '../../infra/datenPfad';
 import { pathSegments } from '../../http/httpAntwort';
 import { responseOnFileError, deliverFile, sendeDatei } from '../../http/dateiAusliefern';
@@ -38,7 +38,7 @@ async function originalInsteadOfPreview(res: Response, segmente: string[]): Prom
 }
 
 export async function deliverImage(d: ImageServices, req: Request, res: Response) {
-  const imgUserId = await userIdTheRequest(d.konto, req);
+  const imgUserId = await userIdTheRequest(d.account, req);
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
   const segmente = pathSegments(req, 'pfad');
   const filePath = safeDataPath('images', segmente);

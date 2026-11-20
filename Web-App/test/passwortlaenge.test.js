@@ -15,7 +15,7 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/konto/anmeldepruefung.js');
+const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/account/loginCheck.js');
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
   // Seit dem 04.11.2026 zwölf statt acht.

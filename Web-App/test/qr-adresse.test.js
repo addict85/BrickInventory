@@ -137,7 +137,7 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
     'Ein abschliessender Schraegstrich wird nicht entfernt.',
   );
 
-  for (const datei of ['src/konto/anmeldungAblauf.ts', 'routes/auth/registrierung.ts', 'src/mail/mailer.ts']) {
+  for (const datei of ['src/account/loginFlow.ts', 'routes/auth/registrierung.ts', 'src/mail/mailer.ts']) {
     const quelle = lies(datei);
     assert.ok(
       !/process\.env\.APP_BASE_URL/.test(quelle),

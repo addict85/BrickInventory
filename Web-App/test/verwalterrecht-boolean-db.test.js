@@ -19,7 +19,7 @@ const db = testData();
 
 test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const A = _req('src/konto/geraeteToken.js');
+  const A = _req('src/account/deviceToken.js');
   const name = `vb_${process.pid}`;
   const { id } = await db.get(
     `INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`,
@@ -39,7 +39,7 @@ test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
 
   await t.test('requireToken reicht ein boolean weiter', async () => {
     const { requireToken } = _req('routes/api_v1/middleware.js').guardFor(
-      require('./helpers/sources').testServices().konto,
+      require('./helpers/sources').testServices().account,
     );
     for (const [token, soll] of [
       [voll, true],

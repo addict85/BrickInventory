@@ -3,9 +3,9 @@
  * Gutscheinzeile und PDF, Lesen und Schreiben beim Ändern eines Gutscheins.
  *
  * Gegenproben (13.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  putAccountAn (src/konto/konten.ts) ohne db.transaction, der Rumpf direkt →
+ *   A  putAccountAn (src/account/accounts.ts) ohne db.transaction, der Rumpf direkt →
  *      rot: „scheitert der Protokolleintrag, gibt es kein Konto“
- *   B  aktivSetzen (src/konto/verwalterAktionen.ts) ohne withAccessEnd → rot:
+ *   B  aktivSetzen (src/account/adminActions.ts) ohne withAccessEnd → rot:
  *      „… bleibt das Konto aktiv“
  *   C  createVoucherWithPdf (src/vouchers/service.ts) ohne das Löschen im
  *      catch → rot: „… keine verwaiste Datei“
@@ -37,8 +37,8 @@ const stoerung = { protokoll: false, rememberPdf: false, writePdf: false };
 const kaputt = was => {
   throw new Error(`Störung: ${was}`);
 };
-const realLog = _req('src/konto/repository/protokoll.js');
-replace('src/konto/repository/protokoll.js', {
+const realLog = _req('src/account/repository/log.js');
+replace('src/account/repository/log.js', {
   protokolliere: (...a) => (stoerung.protokoll ? kaputt('protokoll') : realLog.protokolliere(...a)),
 });
 const realFiles = _req('src/vouchers/voucherFiles.js');
@@ -80,7 +80,7 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
     ).id;
   const chef = await neu(`${NAME}-chef`, true);
   const nutzer = await neu(`${NAME}-nutzer`);
-  const K = require('./helpers/sources').testServices().konto;
+  const K = require('./helpers/sources').testServices().account;
   const G = _req('src/vouchers/service.js');
   const ordner = path.join(_req('src/vouchers/index.js').VOUCHER_DIR, String(nutzer));
   t.after(async () => {

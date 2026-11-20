@@ -45,7 +45,7 @@ const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testData();
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
-const { MAX_ATTEMPTS, waitTimeSeconds } = _req('src/konto/loginLimiter.js');
+const { MAX_ATTEMPTS, waitTimeSeconds } = _req('src/account/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 

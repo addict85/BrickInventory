@@ -266,7 +266,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
   });
 
   await t.test('Bestätigung angemeldet', async () => {
-    const { tokenDigest } = buildAndRequire()('src/konto/geraeteToken.js');
+    const { tokenDigest } = buildAndRequire()('src/account/deviceToken.js');
     const NEU = `${NAME}-neu@example.org`,
       TOKEN = `r14-${process.pid}-${Date.now()}`;
     await db.run(

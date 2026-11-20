@@ -48,8 +48,8 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
-  const lim = _req('src/konto/loginLimiter.js');
+  const { checkCredentials } = _req('src/account/loginCheck.js');
+  const lim = _req('src/account/loginLimiter.js');
 
   await t.test('20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen', async () => {
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };

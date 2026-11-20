@@ -4,10 +4,10 @@
  * dem ersten eigenen Passwortwechsel verschwindet die Datei.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in putStartAdminAn() (src/konto/startVerwalter.ts) zusätzlich das Passwort per
+ *   A  in putStartAdminAn() (src/account/startAdmin.ts) zusätzlich das Passwort per
  *      console.log ausgegeben → rot: „das Log nennt den Pfad, nicht das Passwort“
  *   B  in writeStartpasswort() `mode: 0o644` → rot: „nur der Dienst kann sie lesen“
- *   C  in aendereEigenesPasswort() (src/konto/konten.ts) startpasswortDone()
+ *   C  in aendereEigenesPasswort() (src/account/accounts.ts) startpasswortDone()
  *      gestrichen → rot: „der erste Passwortwechsel löscht die Datei“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (das Schema wird neu angelegt).
@@ -64,7 +64,7 @@ test('Startpasswort in einer Datei statt im Log', async t => {
 
   await t.test('die Datei trägt das Passwort des Kontos', async () => {
     assert.equal(name, 'admin');
-    assert.ok(await _req('src/konto/passwortHash.js').passwordFits(passwort, admin.password_hash));
+    assert.ok(await _req('src/account/passwordHash.js').passwordFits(passwort, admin.password_hash));
     assert.equal(admin.must_change_password, true);
   });
   await t.test('nur der Dienst kann sie lesen', () => {
@@ -76,7 +76,7 @@ test('Startpasswort in einer Datei statt im Log', async t => {
     assert.ok(!log.includes(passwort), 'Passwort im Log');
   });
   await t.test('der erste Passwortwechsel löscht die Datei', async () => {
-    await _req('src/konto/konten.js').aendereEigenesPasswort(admin.id, 'ein-neues-langes-Passwort-42');
+    await _req('src/account/accounts.js').aendereEigenesPasswort(admin.id, 'ein-neues-langes-Passwort-42');
     assert.equal(fs.existsSync(datei), false);
   });
 });

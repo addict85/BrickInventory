@@ -8,9 +8,9 @@ import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function buildAdminRouter(
-  d: Pick<Dienste, 'settings' | 'auftraege' | 'catalog' | 'konto' | 'externalSources' | 'management'>,
+  d: Pick<Dienste, 'settings' | 'auftraege' | 'catalog' | 'account' | 'externalSources' | 'management'>,
 ) {
-  const { requireApiAdmin } = guardFor(d.konto);
+  const { requireApiAdmin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1', { largeIds: true });
 
   router.endpunkt('GET /api/v1/admin/auftraege', requireApiAdmin, async req => {
@@ -40,7 +40,7 @@ export function buildAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/protokoll', requireApiAdmin, async _req => {
-    return { eintraege: await d.konto.verwalter.managementLog() };
+    return { eintraege: await d.account.verwalter.managementLog() };
   });
 
   router.endpunkt('GET /api/v1/admin/cache-stats', requireApiAdmin, async _req => {

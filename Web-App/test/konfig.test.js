@@ -20,7 +20,7 @@
  *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)
  *   F  den Import von startup/konfigPruefen aus server.ts entfernt → rot:
  *      „der Server startet mit falschem Wert nicht“ (Stacktrace aus
- *      src/konto/sitzungsFrist statt der Meldung)
+ *      src/account/sessionDeadline statt der Meldung)
  *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
  *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
  *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf developmentEnvironment

@@ -39,8 +39,8 @@ require('./helpers/sources').replaceServices('mail', {
 });
 
 const db = S.testData();
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
 const { testServer } = require('./helpers/server');
 const { dataOrSkip } = require('./helpers/db');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));

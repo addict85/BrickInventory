@@ -8,7 +8,7 @@ import type { FinancesServices } from '../finances';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
 import type { SettingsServices } from '../settings';
-import type { AccountServices } from '../konto';
+import type { AccountServices } from '../account';
 import type { Kontext } from '../infra/bereich';
 import type { Uhr } from '../infra/uhr';
 
@@ -26,6 +26,6 @@ export interface SetsDependencies {
   auftraege: JobsServices;
   inventory: InventoryServices;
   einstellungen: SettingsServices;
-  konto: AccountServices;
+  account: AccountServices;
 }
 export type SetsContext = Kontext<SetsDependencies, object>;

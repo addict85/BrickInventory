@@ -6,7 +6,7 @@ import path from 'node:path';
 import { deliverFile, FOREIGN_FILE_CSP } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
-import { signedInUserId } from '../src/konto/http/anmeldung';
+import { signedInUserId } from '../src/account/http/login';
 import type { Dienste } from '../src/dienste';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
@@ -18,8 +18,8 @@ function asAttachment(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'konto' | 'images'>) {
-  const { inboundLock, requireLoginOrToken } = guardFor(d.konto);
+export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'account' | 'images'>) {
+  const { inboundLock, requireLoginOrToken } = guardFor(d.account);
   const router = express.Router();
 
   // Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein

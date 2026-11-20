@@ -104,7 +104,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   const start = src.indexOf('function deliverImage(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);
-  assert.match(route, /userIdTheRequest\(d\.konto, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
+  assert.match(route, /userIdTheRequest\(d\.account, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
   assert.match(
     route,
     /cdnForMissingImage/,

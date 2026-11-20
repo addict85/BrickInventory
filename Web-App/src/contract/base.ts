@@ -23,7 +23,7 @@ export interface Route {
   /** Die Antwort trägt einen Zugang, Code oder Klartext: Sie wird nie gespeichert. */
   geheim?: true;
   /** Ein App-Token braucht vorher die Freigabe des Geräteschlüssels für diesen Schritt
-   * (src/konto/http/schrittschutz.ts); am Vertrag, damit sie an der Route hängt und nicht an einem Pfadmuster. */
+   * (src/account/http/stepGuard.ts); am Vertrag, damit sie an der Route hängt und nicht an einem Pfadmuster. */
   schritt?: 'gutschein' | 'zweiter_faktor';
   /** Die Liste ist von Natur aus kurz (ein Set, eine Zeitspanne); sonst SEITE. */
   klein?: true;

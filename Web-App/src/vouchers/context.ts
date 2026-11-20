@@ -5,7 +5,7 @@ import { mit, type Kontext } from '../infra/bereich';
 import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
 import type { SettingsServices } from '../settings';
-import type { AccountServices } from '../konto';
+import type { AccountServices } from '../account';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Uhr } from '../infra/uhr';
@@ -14,7 +14,7 @@ export interface VoucherDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  konto: AccountServices;
+  account: AccountServices;
   throttle: ThrottleServices;
   externalSources: ForeignSourcesServices;
   /** Sessions of balance lookups and PDF tickets of this set of services. */

@@ -5,8 +5,8 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 
-export function buildSetsRouter(d: Pick<Dienste, 'household' | 'konto' | 'sets'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildSetsRouter(d: Pick<Dienste, 'household' | 'account' | 'sets'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────

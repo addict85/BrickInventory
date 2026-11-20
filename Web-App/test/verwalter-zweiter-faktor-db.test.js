@@ -49,7 +49,7 @@ function server(t, sitzung, token) {
   });
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
@@ -126,7 +126,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
       (await server(t, { userId: nutzer, username: NAMEN[1], isAdmin: false })('GET', '/settings')).status,
       200,
     );
-    const { createToken } = _req('src/konto/geraeteToken.js');
+    const { createToken } = _req('src/account/deviceToken.js');
     const app = server(t, {}, await createToken(chef, 'app', false, null, { scope: 'app' }));
     assert.equal((await app('GET', '/settings')).status, 200);
     const voll = server(t, {}, await createToken(chef, 'voll', false, null, { scope: 'voll' }));

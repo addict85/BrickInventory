@@ -25,7 +25,7 @@
  *      (Konto [A,B,C]: der Systemrahmen des Aufrufers bleibt)
  *
  * Gegenproben Systemrahmen je Funktion (14.11.2026 gemessen, je einzeln):
- *   R  in src/konto/kontext.ts passkeys.desKontos und konten.accessesOfAccount wieder
+ *   R  in src/account/context.ts passkeys.desKontos und konten.accessesOfAccount wieder
  *      in die Liste des Systemrahmens → rot: „ein Konto liest seine Passkeys und
  *      Tokens …“ (Konto A sah den Passkey und den Token von C)
  *   S  pdfAuftraege wieder ganz mit bindeImSystemrahmen und ohne `AND user_id = $2`
@@ -358,14 +358,14 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
 
   await t.test('die Anmeldung findet den Token ohne Konto, der Widerruf löscht ihn', async () => {
     const { d, contexts } = buildWith(app);
-    const K = _req('src/konto/index.js');
+    const K = _req('src/account/index.js');
     const token = `rows-token-${process.pid}`;
     await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
       K.tokenDigest(token),
       C,
     ]);
-    assert.equal((await d.konto.nutzerZumToken(token))?.user_id, C);
-    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(contexts.konto, C);
+    assert.equal((await d.account.nutzerZumToken(token))?.user_id, C);
+    await require(path.join(q.DIST, 'src/account/deviceToken.js')).revokeAllTokens(contexts.account, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 
@@ -389,12 +389,12 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       ['eigen'],
     );
     assert.deepEqual(
-      (await request(A, () => d.konto.sitzungen.accessesList(A))).map(z => z.label),
+      (await request(A, () => d.account.sitzungen.accessesList(A))).map(z => z.label),
       ['eigen'],
     );
     // Ein fremdes Konto, auch mit dessen ID gefragt: nichts, und nichts zu löschen.
     assert.deepEqual(await request(A, () => d.factors.accountPasskeys(C)), []);
-    assert.deepEqual(await request(A, () => d.konto.sitzungen.accessesList(C)), []);
+    assert.deepEqual(await request(A, () => d.account.sitzungen.accessesList(C)), []);
     const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
     assert.equal(await request(A, () => d.factors.deletePasskey(C, pkC.id)), false);
     assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
@@ -426,7 +426,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(ids(await als(A, allSets)), [A, B]);
     const request = f => asRequest({ apiUser: { user_id: A } }, f);
     assert.deepEqual(await request(() => d.factors.accountPasskeys(B)), []);
-    assert.deepEqual(await request(() => d.konto.sitzungen.accessesList(B)), []);
+    assert.deepEqual(await request(() => d.account.sitzungen.accessesList(B)), []);
     // Anlegen für das Unterkonto: abgewiesen, auch wo der Zeilenschutz der Bestände es erlaubt.
     const rls = /row-level security/;
     for (const sql of [

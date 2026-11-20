@@ -6,8 +6,8 @@ import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { prozessweit } from '../../infra/prozessweit';
-import type { AccountServices } from '../../konto';
-import { userIdTheRequest } from '../../konto/http/anmeldung';
+import type { AccountServices } from '../../account';
+import { userIdTheRequest } from '../../account/http/login';
 import { beforeThe, withoutMissingFile, fehlertext, reportError } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
 import { rememberCacheGrowth, imageType } from '../imgCacheServe';
@@ -28,7 +28,7 @@ import type { ImagesServices } from '../area';
 /** Was der Proxy von der Anwendung braucht: Katalog (Cache, Vorschau, Vormerken) und Konto (Anmeldung, Takt). */
 export interface ImageServices {
   images: ImagesServices;
-  konto: AccountServices;
+  account: AccountServices;
 }
 /** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
@@ -302,7 +302,7 @@ async function setImageFromCache(d: ImageServices, url: string, setNummer: strin
 
 export async function passThroughImage(d: ImageServices, req: Request, res: Response) {
   // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
-  const proxyUserId = await userIdTheRequest(d.konto, req);
+  const proxyUserId = await userIdTheRequest(d.account, req);
   if (!proxyUserId) return res.status(401).end();
   const ziel = proxyTarget(String(req.query.url || ''));
   if (typeof ziel === 'number') return res.status(ziel).end();
@@ -356,7 +356,7 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   if (d.images.isKnownMissing(cacheKey)) return sendPlaceholder(res);
 
   // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
-  const takt = await d.konto.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
+  const takt = await d.account.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
   if (takt.count > d.images.imageLimits().fetchesJeMinute) {
     if (await ersatz()) return;
     res.setHeader('Retry-After', String(takt.waitMin * 60));

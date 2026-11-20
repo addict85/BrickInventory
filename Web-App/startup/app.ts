@@ -17,10 +17,10 @@ import {
   sessionIdleMs,
   sessionIdleSec,
   sessionMaxDuration,
-} from '../src/konto';
+} from '../src/account';
 import { startPageStyleHash, type ProfileServices } from '../src/profile';
-import { checkSessionVersion } from '../src/konto/http/sitzungsPruefung';
-import type { AccountServices } from '../src/konto';
+import { checkSessionVersion } from '../src/account/http/sessionCheck';
+import type { AccountServices } from '../src/account';
 import { rememberRequest } from '../src/http/kontoMerken';
 import { proxyVertrauen } from '../src/infra/proxyVertrauen';
 import { proxyHinweis } from '../src/http/proxyHinweis';
@@ -30,7 +30,7 @@ import { PUBLIC_DIR } from '../src/infra/appPaths';
 import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
 import { guardFor, readBody } from '../routes/api_v1/middleware';
-import { stepChutzAtInbox } from '../src/konto/http/schrittschutz';
+import { stepChutzAtInbox } from '../src/account/http/stepGuard';
 import { apiDrossel } from '../src/http/apiDrossel';
 import { idempotency } from '../src/idempotency/http/middleware';
 import { buildDataFilesRouter } from '../routes/datenDateien';
@@ -65,7 +65,7 @@ export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sessionStora
   // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
   app.set('case sensitive routing', true);
   baselineProtection(app, konfig);
-  sitzung(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, konfig), dienste.konto, konfig);
+  sitzung(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, konfig), dienste.account, konfig);
   filesAndImages(app, dienste, konfig);
   apiRoutes(app, dienste);
   fallbacks(app, dienste.profile);
@@ -206,7 +206,7 @@ function sessionInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHan
     },
   });
 
-  // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
+  // Gedrosselt geschrieben (src/account/sessionTouch.ts).
   touchThrottle(sessionStorage, touchMs(sessionIdleMs(k)));
 
   return session({
@@ -267,12 +267,12 @@ function apiInbox(app: express.Express, d: Dienste): void {
   // EIN Eingang: loginAtInbox verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
   // bleibt als zweite Linie.
-  app.use('/api/v1', guardFor(d.konto).loginAtInbox);
+  app.use('/api/v1', guardFor(d.account).loginAtInbox);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
   // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
   app.use('/api/v1', apiDrossel);
-  // Heikle Schritte eines App-Tokens erst nach der Gerätesperre (src/konto/http/schrittschutz.ts).
-  app.use('/api/v1', stepChutzAtInbox(d.konto));
+  // Heikle Schritte eines App-Tokens erst nach der Gerätesperre (src/account/http/stepGuard.ts).
+  app.use('/api/v1', stepChutzAtInbox(d.account));
   // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (readBody).
   app.use('/api/v1', readBody);
   app.use('/api/v1', idempotency(d.idempotency));

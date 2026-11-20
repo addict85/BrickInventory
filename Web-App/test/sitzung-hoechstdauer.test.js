@@ -24,9 +24,9 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
-const { sessionMaxDuration } = _req('src/konto/sitzungsFrist.js');
+const { sessionMaxDuration } = _req('src/account/sessionDeadline.js');
 const establishSession = (...a) =>
-  _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testServices().konto, ...a);
+  _req('src/account/http/login.js').establishSession(require('./helpers/sources').testServices().account, ...a);
 
 const { warte } = require('./helpers/zeit');
 
@@ -118,7 +118,7 @@ test('Verwaltersitzungen haben kürzere Fristen', async t => {
   });
 
   await t.test('Verwalter nie länger als alle anderen', () => {
-    const { sitzungsfristen } = _req('src/konto/sitzungsFrist.js');
+    const { sitzungsfristen } = _req('src/account/sessionDeadline.js');
     const f = sitzungsfristen({
       sitzungHoechstStd: 2,
       sitzungLeerlaufMin: 10,

@@ -4,8 +4,8 @@ import { G } from './dom.js';
 import { formError } from './formular.js';
 
 // Links from emails that work without being logged in: cancel an announced admin action
-// (server: src/konto/verwalterAktionen.ts) and release a login past the daily limit
-// (src/konto/loginLimiter.ts). Only the button acts (POST): a mail provider's link scanner would
+// (server: src/account/adminActions.ts) and release a login past the daily limit
+// (src/account/loginLimiter.ts). Only the button acts (POST): a mail provider's link scanner would
 // otherwise cancel or release it by itself.
 
 /** @type {{ token: string, kind: 'abbrechen' | 'freigeben' } | null} */

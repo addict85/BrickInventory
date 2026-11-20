@@ -1,5 +1,5 @@
 /**
- * Passwörter als argon2id (src/konto/passwortHash.ts): Neue Hashes sind argon2id, ein
+ * Passwörter als argon2id (src/account/passwordHash.ts): Neue Hashes sind argon2id, ein
  * bcrypt-Hash aus der Zeit davor gilt weiter und wird bei der ersten erfolgreichen
  * Anmeldung ersetzt, nicht bei einer gescheiterten. Über die echte Route /login und die
  * Laufzeitrolle (der Hash wird im Systemrahmen gelesen und geschrieben).
@@ -9,7 +9,7 @@
  *      „ein bcrypt-Hash wird bei der Anmeldung ersetzt“ ($2b$04$ bleibt)
  *   B  das Ersetzen vor die Passwortprüfung gezogen (auch bei Fehlversuch) → rot:
  *      „… ein Fehlversuch ersetzt nichts“ (der Hash hiess danach argon2id)
- *   C  replacePasswordHash aus der Systemliste in src/konto/kontext.ts gestrichen →
+ *   C  replacePasswordHash aus der Systemliste in src/account/context.ts gestrichen →
  *      rot: „ein bcrypt-Hash …“ (permission denied for table users, 500)
  *   D  passwordFits prüft nur noch bcrypt → rot: „neue Hashes sind argon2id …“ und
  *      „… danach mit argon2id“ (die zweite Anmeldung 401)
@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
-const { ARGON2_PREFIX, hashePassword, passwordFits } = _req('src/konto/passwortHash.js');
+const { ARGON2_PREFIX, hashePassword, passwordFits } = _req('src/account/passwordHash.js');
 
 test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout: 60_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

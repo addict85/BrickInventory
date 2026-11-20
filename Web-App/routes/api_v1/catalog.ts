@@ -3,8 +3,8 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { notFound } from '../../src/infra/fehlerTexte';
 
-export function buildCatalogRouter(d: Pick<Dienste, 'konto' | 'catalog'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildCatalogRouter(d: Pick<Dienste, 'account' | 'catalog'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/catalog/meta', requireToken, async _req => {

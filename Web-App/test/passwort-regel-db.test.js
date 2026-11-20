@@ -12,11 +12,11 @@
  *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
  *      (14.11.2026, argon2id: Grenze 1024 Zeichen; Längenprüfung gestrichen → rot:
  *      „die Regel selbst“ und „übergrosse Passwörter …“)
- *   E  (14.11.2026) hashe() in src/konto/konten.ts wieder bcrypt mit 12 Runden → rot:
+ *   E  (14.11.2026) hashe() in src/account/accounts.ts wieder bcrypt mit 12 Runden → rot:
  *      „jeder Weg hasht mit denselben Kosten“ (vier Wege „anders“ statt argon2id)
  *   C  /reset-password prüft wieder nur die Länge → rot: „häufige
  *      Passwörter …" und „mehr als 72 Byte …" (nur diese Route nimmt es an)
- *   D  src/konto/startVerwalter.ts nimmt ADMIN_PASSWORD ungeprüft → rot: „ein schwaches
+ *   D  src/account/startAdmin.ts nimmt ADMIN_PASSWORD ungeprüft → rot: „ein schwaches
  *      ADMIN_PASSWORD …"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (der letzte Fall legt das
@@ -38,7 +38,7 @@ const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = testData();
 const { passwordLack } = _req('src/infra/passwortRegel.js');
-const { passwordFits, ARGON2_PREFIX } = _req('src/konto/passwortHash.js');
+const { passwordFits, ARGON2_PREFIX } = _req('src/account/passwordHash.js');
 
 test('die Regel selbst', () => {
   assert.equal(passwordLack('Brick-Sammlung-2026'), null);
@@ -230,7 +230,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     );
   });
 
-  // Gegenprobe (11.11.2026 gemessen): eigenesPasswortAendern() (src/konto/anmeldungAblauf.ts)
+  // Gegenprobe (11.11.2026 gemessen): eigenesPasswortAendern() (src/account/loginFlow.ts)
   // lässt passwort_zu_kurz durch → rot (/change-password 200 statt 400).
   await t.test('zu kurze Passwörter werden auf allen fünf Wegen abgewiesen', async () => {
     const ist = [];
@@ -241,7 +241,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     );
   });
 
-  // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setForeignPassword (src/konto/konten.ts)
+  // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setForeignPassword (src/account/accounts.ts)
   // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4); seit argon2id siehe E im Kopf.
   await t.test('jeder Weg hasht mit denselben Kosten', async () => {
     const NEU = `regel_neu_${process.pid}`,

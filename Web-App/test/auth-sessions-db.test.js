@@ -123,7 +123,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     });
 
     await t.test('Bearer-Token des Kontos verfallen mit', async () => {
-      const { tokenDigest, nutzerZumToken } = _req('src/konto/geraeteToken.js');
+      const { tokenDigest, nutzerZumToken } = _req('src/account/deviceToken.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
       await db.run("INSERT INTO api_tokens (token,user_id,label,expires_at) VALUES ($1,$2,'app',NULL)", [
@@ -149,10 +149,10 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       );
     });
 
-    // Gegenprobe (11.11.2026 gemessen): in setPasswordBack (src/konto/konten.ts)
+    // Gegenprobe (11.11.2026 gemessen): in setPasswordBack (src/account/accounts.ts)
     // `await endAccesses(uid)` gestrichen → rot hier (Sitzung und Token bleiben).
     await t.test('das Zurücksetzen per Link beendet Sitzungen und Token', async () => {
-      const { tokenDigest, createToken, nutzerZumToken } = _req('src/konto/geraeteToken.js');
+      const { tokenDigest, createToken, nutzerZumToken } = _req('src/account/deviceToken.js');
       const fenster = await anmelden('pw_opfer', 'wiederNeu123');
       const tok = await createToken(victimId, 'Fremdgerät', true);
       const roh = 'd'.repeat(64);
@@ -194,7 +194,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
       assert.match(await setze(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
       assert.ok(
-        await _req('src/konto/passwortHash.js').passwordFits(
+        await _req('src/account/passwordHash.js').passwordFits(
           'nochNeuer1234',
           (await db.get('SELECT password_hash FROM users WHERE id = $1', [chefId])).password_hash,
         ),

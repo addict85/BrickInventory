@@ -3,7 +3,7 @@
  * nicht mit einer Zeichenkette, die der Fänger vergleichen müsste.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in sendOrAbortAb (src/konto/http/strom.ts) wieder `throw new Error('CANCELLED')`
+ *   A  in sendOrAbortAb (src/account/http/stream.ts) wieder `throw new Error('CANCELLED')`
  *      → rot: „nach dem Schliessen bricht sendOrAbortAb mit StromGeschlossen ab“
  *   B  die Prüfung `if (zu)` dort gestrichen → rot: dieselbe Zusicherung (nichts geworfen)
  */
@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { openStream, StromGeschlossen } = _req('src/konto/http/strom.js');
+const { openStream, StromGeschlossen } = _req('src/account/http/stream.js');
 
 function fake() {
   const req = Object.assign(new EventEmitter(), { session: {}, headers: {} });

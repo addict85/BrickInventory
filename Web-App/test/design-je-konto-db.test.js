@@ -86,7 +86,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
 
   await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
     als(null);
-    const token = await _req('src/konto/geraeteToken.js').createToken(ids[0], 'Prüfung', true);
+    const token = await _req('src/account/deviceToken.js').createToken(ids[0], 'Prüfung', true);
     const withToken = { headers: { Authorization: `Bearer ${token}` } };
     assert.equal((await hole('/theme', withToken)).theme, 'werkbank');
     assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');

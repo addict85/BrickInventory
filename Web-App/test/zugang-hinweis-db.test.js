@@ -137,7 +137,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
   // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
   const faellig = async () => {
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [zwei]);
-    assert.equal(await _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom(), 1);
+    assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 1);
   };
 
   await t.test('entfernter zweiter Faktor', async () => {

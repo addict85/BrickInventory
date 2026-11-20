@@ -18,7 +18,7 @@ import { createManagement } from '../src/management';
 import { createCatalog } from '../src/catalog';
 import { type ImageWorker, createImages } from '../src/images';
 import { createFinances } from '../src/finances';
-import { createAccount } from '../src/konto';
+import { createAccount } from '../src/account';
 import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
 import { createForeignSources, type Quellen } from '../src/externalSources';
@@ -90,7 +90,7 @@ export class KindNotSignedIn extends Error {}
 function reportJobTypesAn(d: Dienste): void {
   const arten: Anmeldung[] = [
     ...d.images.auftragsarten(),
-    ...d.konto.auftragsarten(),
+    ...d.account.auftragsarten(),
     ...d.catalog.auftragsarten(IMPORT_PROCESS),
     ...d.finances.auftragsarten(),
     ...d.sets.auftragsarten(),
@@ -125,11 +125,11 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
   const household = createHousehold({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('household'));
   const devices = createDevices({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('devices'));
   const factors = createFactors({ db, uhr, konfig, einstellungen }, zeige('factors'));
-  const konto = createAccount(
+  const account = createAccount(
     { db, uhr, konfig, einstellungen, auftraege, household, mail, throttle, devices, factors },
-    zeige('konto'),
+    zeige('account'),
   );
-  const profile = createProfile({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profile'));
+  const profile = createProfile({ db, uhr, konfig, einstellungen, account, mail }, zeige('profile'));
   const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
   const externalSources = createForeignSources(
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
@@ -153,7 +153,7 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     household,
     devices,
     factors,
-    konto,
+    account,
     profile,
     idempotency,
     externalSources,
@@ -166,14 +166,14 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
   const zeige = inspectIn(components.contexts);
   const grund = buildReason(db, components, zeige);
   const { throttle, settings: einstellungen, mail, auftraege, household, factors } = grund;
-  const { konto, idempotency, externalSources, images, catalog } = grund;
+  const { account, idempotency, externalSources, images, catalog } = grund;
   const { konfig, uhr } = components;
   const finances = createFinances(
     { db, uhr, konfig, einstellungen, auftraege, household, catalog, externalSources, mail, lesevertrag: LESEVERTRAG },
     zeige('finances'),
   );
   const inventory = createInventory(
-    { db, uhr, einstellungen, household, konto, catalog, finances, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, household, account, catalog, finances, lesevertrag: LESEVERTRAG },
     zeige('inventory'),
   );
   const sets = createSets(
@@ -189,7 +189,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       auftraege,
       inventory,
       einstellungen,
-      konto,
+      account,
     },
     zeige('sets'),
   );
@@ -205,7 +205,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
     { db, uhr, einstellungen, household, catalog, externalSources, images, finances, sets },
     zeige('wanted'),
   );
-  const vouchers = createVouchers({ db, uhr, einstellungen, konto, externalSources, throttle }, zeige('vouchers'));
+  const vouchers = createVouchers({ db, uhr, einstellungen, account, externalSources, throttle }, zeige('vouchers'));
   const collection = createCollection(
     { db, uhr, household, auftraege, catalog, finances, inventory, sets, parts, minifigs, wanted },
     zeige('collection'),
@@ -217,7 +217,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       settings: einstellungen,
       auftraege,
       factors,
-      konto,
+      account,
       idempotency,
       catalog,
       externalSources,
@@ -241,7 +241,7 @@ export function wireProcess(): { db: Db; dienste: Dienste } {
   const db = createDb(dbKonfigFromEnvironment(), {
     firstStart: async () => {
       if (!fertig.d) throw new Error('Erststart vor der Verdrahtung');
-      await fertig.d.konto.putStartAdminAn();
+      await fertig.d.account.putStartAdminAn();
     },
   });
   fertig.d = buildServices(db);

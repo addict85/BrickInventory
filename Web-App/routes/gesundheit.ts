@@ -3,11 +3,11 @@
 import express from 'express';
 import { versuche, valueOr } from '../src/infra/ergebnis';
 import { errorText, responseLanguage } from '../src/infra/fehlerTexte';
-import { userIdTheRequest, istVerwalter } from '../src/konto/http/anmeldung';
+import { userIdTheRequest, istVerwalter } from '../src/account/http/login';
 import { publicStartState } from '../src/auftraege';
 import type { Dienste } from '../src/dienste';
 
-export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'management'>) {
+export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'account' | 'management'>) {
   // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
   const router = express.Router({ caseSensitive: true });
 
@@ -15,7 +15,7 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | '
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    const angemeldet = !!valueOr(await versuche('startup-status:anmeldung', userIdTheRequest(d.konto, req)), null);
+    const angemeldet = !!valueOr(await versuche('startup-status:anmeldung', userIdTheRequest(d.account, req)), null);
     res.json(publicStartState(await d.auftraege.currentStartState(), angemeldet));
   });
 
@@ -37,7 +37,7 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | '
   // Überwachung fragt mit einem Token ohne Geräteschlüssel.
   router.get('/health', async (req, res) => {
     const verwalter =
-      !!valueOr(await versuche('health:anmeldung', userIdTheRequest(d.konto, req)), null) && istVerwalter(req);
+      !!valueOr(await versuche('health:anmeldung', userIdTheRequest(d.account, req)), null) && istVerwalter(req);
     res.json(await d.management.healthReport(verwalter));
   });
   return router;

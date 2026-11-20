@@ -21,7 +21,7 @@ process.env.DATA_KEY_FILE = path.join(sperre, 'datei', 'unter', 'datenschluessel
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const limiter = _req('src/konto/loginLimiter.js');
+const limiter = _req('src/account/loginLimiter.js');
 
 test('ohne Datenschlüssel sagt die Anmeldebremse ab, statt ungeschlüsselt zu hashen', async () => {
   await assert.rejects(

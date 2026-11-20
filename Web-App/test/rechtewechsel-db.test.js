@@ -8,7 +8,7 @@
  *      „konto_geloescht"
  *
  * Das Ziel ist Verwalter: Entzug und Löschung werden seit Runde 29 angekündigt und
- * wirken im Aufräumlauf (src/konto/verwalterAktionen.ts); der Test führt ihn aus.
+ * wirken im Aufräumlauf (src/account/adminActions.ts); der Test führt ihn aus.
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausfuehren: REQUIRE_DB=1 npm test
@@ -93,7 +93,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
       idTarget,
     ]);
-    return _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom();
+    return _req('src/account/adminActions.js').runDueTakeoversFrom();
   };
 
   try {

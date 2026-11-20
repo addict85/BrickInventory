@@ -6,9 +6,9 @@ import { deliverImage } from '../src/images/http/imageDelivery';
 import { guardFor } from './api_v1/middleware';
 import type { Dienste } from '../src/dienste';
 
-export function buildPagesRouter(d: Pick<Dienste, 'konto' | 'profile' | 'images'>) {
+export function buildPagesRouter(d: Pick<Dienste, 'account' | 'profile' | 'images'>) {
   const router = express.Router();
-  const { requireLoginOrToken, inboundLock } = guardFor(d.konto);
+  const { requireLoginOrToken, inboundLock } = guardFor(d.account);
 
   // Wie die übrigen Dateirouten: Wer erst das Passwort wechseln oder den
   // zweiten Faktor einrichten muss, bekommt auch keine Bilder.

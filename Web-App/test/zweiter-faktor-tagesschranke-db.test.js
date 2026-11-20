@@ -36,8 +36,8 @@ require('./helpers/sources').replaceServices('mail', {
 const { accessOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const zf = _req('src/factors/secondFactor.js');
-const lim = _req('src/konto/loginLimiter.js');
-const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
+const lim = _req('src/account/loginLimiter.js');
+const { checkCredentials } = _req('src/account/loginCheck.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Tagesschranke-Passwort-1';
 const IP = '198.51.100.44';

@@ -1,11 +1,11 @@
 /** Ohne Anmeldung: Registrierung, E-Mail-Bestätigung und Passwort vergessen.
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
-import { ipThrottle } from '../../src/konto/http/anmeldung';
+import { ipThrottle } from '../../src/account/http/login';
 import { passwordLack } from '../../src/infra/passwortRegel';
 import { errorText, responseLanguage, fachfehler } from '../../src/infra/fehlerTexte';
 import { basisUrl, hintWithoutBaseUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type OpenRequest } from '../../src/http/vertragsRouter';
-import { USERNAME_RE, emailValid, nameValid } from '../../src/konto';
+import { USERNAME_RE, emailValid, nameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
 import type { Dienste } from '../../src/dienste';
 
@@ -20,7 +20,7 @@ function registrierungsMangel(e: OpenRequest<'POST /api/v1/auth/register'>['eing
   return null;
 }
 
-export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto'>) {
+export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'>) {
   const router = vertragsRouter('/api/v1/auth');
 
   // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
@@ -34,16 +34,16 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
     });
   });
 
-  router.endpunkt('POST /api/v1/auth/register', ipThrottle(d.konto, 'register', 5, 60 * 60 * 1000), async req => {
+  router.endpunkt('POST /api/v1/auth/register', ipThrottle(d.account, 'register', 5, 60 * 60 * 1000), async req => {
     const { username, email, first_name, last_name, password, language } = req.eingabe;
     if (!(await d.settings.registrationOpen()) || !(await d.mail.mailReady()))
       fachfehler('verboten', 'registrierung_deaktiviert');
     const mangel = registrierungsMangel(req.eingabe);
     if (mangel || !username || !email || !password) fachfehler('ungueltig', mangel ?? 'registrierung_felder');
     // Zählt jeden Versuch, ob es die Adresse gibt oder nicht: Die Absage verrät nichts.
-    const ziel = await d.konto.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
+    const ziel = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
     if (ziel) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: ziel.waitMin });
-    const gesendet = await d.konto.tryRegistration({
+    const gesendet = await d.account.tryRegistration({
       username,
       email,
       first_name,
@@ -64,7 +64,7 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
   // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
   router.endpunkt(
     'POST /api/v1/auth/bestaetigung-erneut',
-    ipThrottle(d.konto, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
+    ipThrottle(d.account, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
     async req => {
       const { email } = req.eingabe;
       if (!emailValid(email)) fachfehler('ungueltig', email ? 'email_ungueltig' : 'email_erforderlich');
@@ -72,17 +72,17 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
         hintWithoutBaseUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
         fachfehler('nicht_verfuegbar', 'bestaetigung_nicht_eingerichtet');
       }
-      await d.konto.confirmationAgainRequest(String(email));
+      await d.account.confirmationAgainRequest(String(email));
       return { message: errorText('bestaetigung_gesendet', responseLanguage(req)) };
     },
   );
 
   router.endpunkt(
     'POST /api/v1/auth/email-bestaetigen/vorschau',
-    ipThrottle(d.konto, 'email-vorschau', 30, 60 * 60 * 1000),
+    ipThrottle(d.account, 'email-vorschau', 30, 60 * 60 * 1000),
     async req => {
       const token = req.eingabe.token;
-      const username = token ? await d.konto.nameToConfirmation(String(token)) : null;
+      const username = token ? await d.account.nameToConfirmation(String(token)) : null;
       if (!username) fachfehler('ungueltig', 'bestaetigungslink_ungueltig');
       return { username };
     },
@@ -90,16 +90,16 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
 
   router.endpunkt(
     'POST /api/v1/auth/email-bestaetigen',
-    ipThrottle(d.konto, 'email-bestaetigen', 30, 60 * 60 * 1000),
+    ipThrottle(d.account, 'email-bestaetigen', 30, 60 * 60 * 1000),
     async req => {
-      await d.konto.verifyEmailToken(req.eingabe.token);
+      await d.account.verifyEmailToken(req.eingabe.token);
       return {};
     },
   );
 
   router.endpunkt(
     'POST /api/v1/auth/forgot-password',
-    ipThrottle(d.konto, 'forgot-password', 5, 60 * 60 * 1000),
+    ipThrottle(d.account, 'forgot-password', 5, 60 * 60 * 1000),
     async req => {
       const { email } = req.eingabe;
       if (!emailValid(email)) fachfehler('ungueltig', email ? 'email_ungueltig' : 'email_erforderlich');
@@ -109,26 +109,26 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
         fachfehler('nicht_verfuegbar', 'passwort_reset_nicht_eingerichtet');
       }
       // Immer dieselbe Antwort nach derselben Mindestdauer, ob es die Adresse gibt oder nicht.
-      await d.konto.ruecksetzLinkRequest(String(email));
+      await d.account.ruecksetzLinkRequest(String(email));
       return { message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' };
     },
   );
 
   router.endpunkt(
     'POST /api/v1/auth/reset-password',
-    ipThrottle(d.konto, 'reset-password', 10, 60 * 60 * 1000),
+    ipThrottle(d.account, 'reset-password', 10, 60 * 60 * 1000),
     async req => {
       const { token, password } = req.eingabe;
       if (!token || !password) fachfehler('ungueltig', 'token_passwort_erforderlich');
       const mangel = passwordLack(password);
       if (mangel) fachfehler('ungueltig', mangel);
-      const user = await d.konto.accountToRuecksetzLink(token);
+      const user = await d.account.accountToRuecksetzLink(token);
       if (!user) fachfehler('ungueltig', 'token_ungueltig');
       // Den Namen kennt erst das Konto hinter dem Token; die Regel gilt wie auf allen anderen Wegen.
       const nameMangel = passwordLack(password, user.username);
       if (nameMangel) fachfehler('ungueltig', nameMangel);
       // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
-      const uid = await d.konto.setPasswordPerLink(token, password);
+      const uid = await d.account.setPasswordPerLink(token, password);
       if (!uid) fachfehler('ungueltig', 'token_ungueltig');
       return { message: 'Passwort erfolgreich geändert.' };
     },
@@ -136,17 +136,17 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
   // Links aus Mails, ohne Anmeldung: Der Token ist das Recht, die Drossel hält Raten auf.
   router.endpunkt(
     'POST /api/v1/auth/uebernahme-abbrechen',
-    ipThrottle(d.konto, 'uebernahme-abbrechen', 20, 60 * 60 * 1000),
+    ipThrottle(d.account, 'uebernahme-abbrechen', 20, 60 * 60 * 1000),
     async req => {
-      await d.konto.redeemMailLink('abbrechen', req.eingabe.token ?? '');
+      await d.account.redeemMailLink('abbrechen', req.eingabe.token ?? '');
       return {};
     },
   );
   router.endpunkt(
     'POST /api/v1/auth/anmeldung-freigeben',
-    ipThrottle(d.konto, 'anmeldung-freigeben', 20, 60 * 60 * 1000),
+    ipThrottle(d.account, 'anmeldung-freigeben', 20, 60 * 60 * 1000),
     async req => {
-      await d.konto.redeemMailLink('freigeben', req.eingabe.token ?? '');
+      await d.account.redeemMailLink('freigeben', req.eingabe.token ?? '');
       return {};
     },
   );

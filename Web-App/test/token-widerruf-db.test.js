@@ -11,7 +11,7 @@
  *      „Abmelden wirkt sofort“
  *   C  (08.11.) TOKEN_TTL_MS wieder 60 s → rot: „ohne Benachrichtigung gilt
  *      ein widerrufener Token höchstens die Cache-Frist“ (Token gilt nach 6 s noch)
- *   D  (09.11.) in cacheUsable() (src/konto/tokenCache.ts) nur `return true` → rot:
+ *   D  (09.11.) in cacheUsable() (src/account/tokenCache.ts) nur `return true` → rot:
  *      „ohne Horch-Verbindung gilt der Cache nicht“ (Token gilt nach dem Abriss weiter)
  *   E  (09.11.) in pgNotify.retire() `_listens.clear()` entfernt → rot: dieselbe Stelle
  *
@@ -28,8 +28,8 @@ const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
 const { bis } = require('./helpers/zeit');
 

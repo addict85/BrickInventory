@@ -121,14 +121,14 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('alle Sitzungen beendet (neue Sitzungsversion): der Strom endet', async () => {
     const s = await oeffne(await sitzung());
-    await _req('src/konto/zugangsende.js').endAllSessions(uid);
+    await _req('src/account/accessEnd.js').endAllSessions(uid);
     await endet(s, 'alle Sitzungen beendet');
   });
 
   await t.test('ohne Ereignis endet der Strom im Takt', async () => {
     const kopf = await token();
     const watchViaAccess = (...a) =>
-      _req('src/konto/http/zugangsWache.js').watchViaAccess(require('./helpers/sources').testServices().konto, ...a);
+      _req('src/account/http/accessWatch.js').watchViaAccess(require('./helpers/sources').testServices().account, ...a);
     let beendet = 0;
     const abmelden = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
     t.after(abmelden);

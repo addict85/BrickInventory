@@ -9,13 +9,13 @@ import {
   accessOf,
   zweiterFaktorPflicht,
   consumeGracePeriod,
-} from '../../src/konto/http/anmeldung';
+} from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function buildSecondFactorRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
-  const { requireLoginOrToken } = guardFor(d.konto);
+export function buildSecondFactorRouter(d: Pick<Dienste, 'account' | 'factors'>) {
+  const { requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
   const requireLogin = requireLoginOrToken;
 
@@ -29,12 +29,12 @@ export function buildSecondFactorRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
     // Anmeldung); sonst sperrte eine erbeutete Sitzung den Inhaber aus. Die Absage zählt nicht zur Bremse.
     const withoutPassword = req.eingabe.password === undefined || req.eingabe.password === '';
     if (withoutPassword) {
-      if (!((await zweiterFaktorPflicht(d.konto, req)) && consumeGracePeriod(req)))
+      if (!((await zweiterFaktorPflicht(d.account, req)) && consumeGracePeriod(req)))
         fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
-    } else if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
+    } else if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
     const geheimnis = await d.factors.beginSetup(uid);
     if (!geheimnis) fachfehler('konflikt', 'zweiter_faktor_schon_aktiv');
-    const u = await d.konto.accountShortOf(uid);
+    const u = await d.account.accountShortOf(uid);
     return { geheimnis, otpauth: d.factors.otpauthFor(geheimnis, u?.username ?? String(uid)) };
   });
 
@@ -42,32 +42,32 @@ export function buildSecondFactorRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
   // hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/bestaetigen', requireLogin, async req => {
     const uid = signedInUserId(req);
-    const codes = await d.konto.confirmSetupThrottled(uid, accessOf(req), req.eingabe.code);
+    const codes = await d.account.confirmSetupThrottled(uid, accessOf(req), req.eingabe.code);
     if (!Array.isArray(codes)) fachfehler(codes.art, codes.code, codes.vars);
     const kopf = String(req.headers.authorization || '');
-    const { version } = await d.konto.sitzungen.endOther(uid, {
+    const { version } = await d.account.sitzungen.endOther(uid, {
       sitzung: req.session?.userId ? req.sessionID : null,
       token: kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
       zugaenge: true,
     });
     if (req.session?.userId) req.session.sitzungsVersion = version;
-    d.konto.hintInBackground(uid, 'zweiter_faktor_eingerichtet');
+    d.account.hintInBackground(uid, 'zweiter_faktor_eingerichtet');
     return { codes };
   });
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/abschalten', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
     if (!(await d.factors.isActive(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
-    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
     await d.factors.disable(uid);
-    d.konto.hintInBackground(uid, 'zweiter_faktor_abgeschaltet');
+    d.account.hintInBackground(uid, 'zweiter_faktor_abgeschaltet');
     return {};
   });
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/codes', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
     if (!(await d.factors.isActive(uid))) fachfehler('konflikt', 'zweiter_faktor_nicht_aktiv');
-    if (!(await confirmCode(d.konto, req, res, uid, req.eingabe.code))) return;
+    if (!(await confirmCode(d.account, req, res, uid, req.eingabe.code))) return;
     return { codes: await d.factors.renewCodes(uid) };
   });
   return router;

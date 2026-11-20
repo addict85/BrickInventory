@@ -56,7 +56,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   // Wie server.ts: Der Zugang bekommt den Erststart mit, der das erste Konto anlegt.
   const modul = require(path.join(ROOT, 'dist', 'db', 'database.js'));
   const db = modul.createDb(modul.dbKonfigFromEnvironment(), {
-    firstStart: () => require('./helpers/sources').testServices().konto.putStartAdminAn(),
+    firstStart: () => require('./helpers/sources').testServices().account.putStartAdminAn(),
   });
   t.after(async () => {
     await db.pool.end().catch(() => {});

@@ -30,7 +30,7 @@
  * Lesestellen zählt eine Ratsche, aufwärts gilt null. Gegenproben (H 15.11., I/J 14.11.2026 gemessen):
  *   H  `SELECT 1 FROM price_cache` in src/sets/repository/sets.ts → rot: „fremde Bereiche lesen
  *      nie aufwärts …“ (27 abwärts von 26)
- *   I  `DELETE FROM user_settings` in src/konto/repository/konten.ts → rot: „jede Tabelle hat
+ *   I  `DELETE FROM user_settings` in src/account/repository/accounts.ts → rot: „jede Tabelle hat
  *      einen Besitzer, nur er schreibt hinein“
  *   J  die Zeile von src/drossel in docs/architektur.md gestrichen → rot: dieselbe Prüfung
  *      (rate_limit_attempts ohne Besitzer)

@@ -152,7 +152,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   await t.test('nach Passwort vergessen geht das Passwort wieder', async () => {
     const link = `tg-link-${P}`;
     await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2`, [
-      _req('src/konto/geraeteToken.js').tokenDigest(link),
+      _req('src/account/deviceToken.js').tokenDigest(link),
       id[OHNE],
     ]);
     const neu = 'neues-Passwort-nach-Link-17';

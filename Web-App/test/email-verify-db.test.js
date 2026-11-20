@@ -24,9 +24,9 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const { verifyEmailToken } = _req('src/konto/anmeldepruefung.js');
+const { verifyEmailToken } = _req('src/account/loginCheck.js');
 const INVALID = { code: 'bestaetigungslink_ungueltig' };
-const { tokenDigest } = _req('src/konto/geraeteToken.js');
+const { tokenDigest } = _req('src/account/deviceToken.js');
 
 async function dbReachable() {
   try {

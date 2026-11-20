@@ -13,7 +13,7 @@ declare module 'express-session' {
     isAdmin?: boolean;
     /** Zeitpunkt der Anmeldung (ms), Grundlage der Höchstdauer */
     angemeldetAm?: number;
-    /** Letzte Anfrage einer Verwaltersitzung, auf eine Minute genau (src/konto/sitzungsFrist.ts). */
+    /** Letzte Anfrage einer Verwaltersitzung, auf eine Minute genau (src/account/sessionDeadline.ts). */
     lastlyAt?: number;
     /** Startpasswort noch nicht ersetzt; undefined bei Sitzungen von vor dem Feld. */
     mussPasswortAendern?: boolean;

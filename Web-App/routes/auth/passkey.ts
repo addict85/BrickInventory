@@ -1,8 +1,8 @@
 /** Passkeys im eigenen Konto verwalten; angemeldet wird mit ihnen in routes/auth.ts. */
 import { guardFor } from '../api_v1/middleware';
-import { perSession, signedInUserId, confirmWithFactor } from '../../src/konto/http/anmeldung';
+import { perSession, signedInUserId, confirmWithFactor } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
-import { devicesNameValid } from '../../src/konto';
+import { devicesNameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
@@ -11,8 +11,8 @@ const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>
   typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey';
 
-export function buildPasskeyRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
-  const { requireLoginOrToken } = guardFor(d.konto);
+export function buildPasskeyRouter(d: Pick<Dienste, 'account' | 'factors'>) {
+  const { requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 
   router.endpunkt('GET /api/v1/auth/passkeys', requireLoginOrToken, async req => {
@@ -24,8 +24,8 @@ export function buildPasskeyRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
   router.endpunkt('POST /api/v1/auth/passkey/registrieren/optionen', requireLoginOrToken, async (req, res) => {
     if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
     const uid = signedInUserId(req);
-    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
-    const konto = await d.konto.accountShortOf(uid);
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
+    const konto = await d.account.accountShortOf(uid);
     const optionen = await d.factors.registrationOptions(uid, konto?.username ?? String(uid));
     if (!optionen) fachfehler('nicht_verfuegbar', 'passkey_ohne_domain');
     return { optionen };
@@ -40,14 +40,14 @@ export function buildPasskeyRouter(d: Pick<Dienste, 'konto' | 'factors'>) {
       passkeyName(req.eingabe.name),
     );
     if (!neu) fachfehler('ungueltig', 'passkey_ungueltig');
-    d.konto.hintInBackground(signedInUserId(req), 'passkey_neu', neu.name);
+    d.account.hintInBackground(signedInUserId(req), 'passkey_neu', neu.name);
     return { passkey: neu };
   });
 
   router.endpunkt('DELETE /api/v1/auth/passkeys/:id', requireLoginOrToken, async (req, res) => {
     const uid = signedInUserId(req);
     const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
     return { deleted: (await d.factors.deletePasskey(uid, id)) ? 1 : 0 };
   });
   return router;

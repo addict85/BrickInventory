@@ -165,7 +165,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein Dienst im Systemrahmen in einer Transaktion ohne ihn wirft', async () => {
-    const konto = testContext('konto');
+    const konto = testContext('account');
     await asRequest({ apiUser: { user_id: uid } }, () =>
       konto.transaktion(async tt => {
         await assert.rejects(async () => tt.zugaenge.validToken('gibt-es-nicht'), SystemrahmenInTransaction);

@@ -11,10 +11,10 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildPartsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'konto' | 'catalog' | 'finances' | 'inventory' | 'parts' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'account' | 'catalog' | 'finances' | 'inventory' | 'parts' | 'collection'
   >,
 ) {
-  const { requireToken } = guardFor(d.konto);
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/parts', requireToken, async req => {

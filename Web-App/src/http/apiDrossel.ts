@@ -98,7 +98,7 @@ export function checkBudget(uid: number, methode: string, pfad: string, jetzt = 
 }
 
 /** Hinter loginAtInbox: Ohne Konto gibt es nichts zu begrenzen, und die
- * Anmeldung hat ihre eigenen Bremsen (src/konto/loginLimiter.ts). */
+ * Anmeldung hat ihre eigenen Bremsen (src/account/loginLimiter.ts). */
 export function apiDrossel(req: Request, res: Response, next: NextFunction): void {
   const uid = nutzerId(req);
   if (uid === null) {

@@ -256,7 +256,7 @@ export const ProfilGespeichert = GenericResponse.extend({
  * `label` fehlt, weil tokenLabel() jeden Wert kürzt oder ersetzt. */
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
-/** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/konto/verwalterAktionen.ts). */
+/** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/account/adminActions.ts). */
 export const VerwalterWeg = Erfolg.extend({ effective_at: z.string().optional() });
 const PASSWORT = 1024;
 const code = z

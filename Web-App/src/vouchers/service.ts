@@ -222,7 +222,7 @@ export async function deleteVoucher(k: VoucherContext, uid: number, id: number):
 
 export async function voucherPlaintext(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
   const z = await existing(k, uid, id);
-  await k.konto.verwalter.rememberAdminAction(uid, uid, 'gutschein_klartext', masked(z).number);
+  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_klartext', masked(z).number);
   return z;
 }
 
@@ -230,14 +230,14 @@ export async function voucherPlaintext(k: VoucherContext, uid: number, id: numbe
 export async function releasePdf(k: VoucherContext, uid: number, id: number): Promise<string> {
   const z = await existing(k, uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await k.konto.verwalter.rememberAdminAction(uid, uid, 'gutschein_pdf', masked(z).number);
+  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
 }
 
 export async function releaseExport(k: VoucherContext, uid: number): Promise<string> {
   const n = (await voucherList(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await k.konto.verwalter.rememberAdminAction(uid, uid, 'gutschein_export', `${n}`);
+  await k.account.verwalter.rememberAdminAction(uid, uid, 'gutschein_export', `${n}`);
   return issueTicket(k, uid, 'export');
 }
 

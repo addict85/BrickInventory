@@ -14,7 +14,7 @@ function withoutClearAmount<T extends { amount: number | null }>(summe: T) {
 
 /** Summe in der Kontowährung (src/inventory/acquisitions.ts), in der Form des Vertrags. */
 async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+  d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
   rows: T[],
   viewer: number,
 ) {
@@ -32,7 +32,7 @@ type Aenderung = Erfassungsanfrage<Anfrage<'PUT /api/v1/sets/:setNumber/acquisit
 
 const aendern =
   (
-    d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+    d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
@@ -41,7 +41,7 @@ const aendern =
 
 const loeschen =
   (
-    d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+    d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
@@ -51,8 +51,10 @@ const setKey: Schluessel = p => [String(p.setNumber)];
 const partKey: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
 const minifigKey: Schluessel = p => [String(p.figNumber)];
 
-export function buildAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildAcquisitionsRouter(
+  d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
+) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/sets/:setNumber/acquisitions', requireToken, async req => {

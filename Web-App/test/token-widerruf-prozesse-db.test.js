@@ -23,8 +23,8 @@ const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 

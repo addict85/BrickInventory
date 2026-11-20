@@ -96,7 +96,7 @@ test('der Eingang lässt ohne Sitzung nur den Stand durch', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const app = express();
   const mw = _req('routes/api_v1/middleware.js');
-  app.use('/api/v1', mw.guardFor(require('./helpers/sources').testServices().konto).loginAtInbox);
+  app.use('/api/v1', mw.guardFor(require('./helpers/sources').testServices().account).loginAtInbox);
   app.use('/api/v1', (req, res) => res.json({ success: true, pfad: req.path }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

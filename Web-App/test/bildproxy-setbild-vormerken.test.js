@@ -117,7 +117,7 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   });
   await t.test('über der Drossel bleibt die Notiz aus', async () => {
     const url = `https://cdn.rebrickable.com/media/sets/6${process.pid}-1.jpg`;
-    await _req('src/konto/loginLimiter.js').countRequest('bild-abruf', 'konto:1', 60_000);
+    await _req('src/account/loginLimiter.js').countRequest('bild-abruf', 'konto:1', 60_000);
     assert.equal(await hole(url), 429);
     assert.deepEqual(notes, []);
   });

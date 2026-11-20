@@ -186,7 +186,7 @@ async function storeSetMinifigs(
 export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string): Promise<number> {
   const set = await findSetInScope(sk, uid, sn);
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
-  const takt = await sk.konto.countRequest('teile-import', `konto:${uid}`, 60 * 60 * 1000);
+  const takt = await sk.account.countRequest('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
   return importParts(sk, set.set_number, set.owner_user_id);
 }

@@ -1,5 +1,5 @@
 /**
- * bcrypt rechnet in Worker-Threads (src/konto/bcryptPool.ts, Sicherheitsprüfung
+ * bcrypt rechnet in Worker-Threads (src/account/bcryptPool.ts, Sicherheitsprüfung
  * Runde 13, H1): Der Hauptthread bleibt während der Prüfungen ansprechbar, ein
  * untätiger Arbeiter hält den Prozess nicht am Leben, und ohne Arbeiterdatei
  * rechnet der Hauptthread wie früher.
@@ -28,7 +28,7 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { newPool } = _req('src/konto/bcryptPool.js');
+const { newPool } = _req('src/account/bcryptPool.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 /** Längste Verzögerung der Ereignisschleife (ms), während `work` läuft. */
@@ -73,7 +73,7 @@ test('ohne Arbeiterdatei rechnet der Hauptthread', async () => {
 });
 
 test('ein untätiger Arbeiter hält den Prozess nicht am Leben', () => {
-  const code = `const { newPool } = require(${JSON.stringify(path.join(S.DIST, 'src/konto/bcryptPool.js'))});
+  const code = `const { newPool } = require(${JSON.stringify(path.join(S.DIST, 'src/account/bcryptPool.js'))});
     newPool(1).hash('x', 4).then((h) => console.log(h.length));`;
   const r = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', timeout: 15_000 });
   assert.equal(r.signal, null, 'ein untätiger Arbeiter …: der Prozess endete nicht von selbst');
@@ -81,8 +81,8 @@ test('ein untätiger Arbeiter hält den Prozess nicht am Leben', () => {
 });
 
 test('die Anmeldung prüft alte bcrypt-Hashes über den Pool', async () => {
-  const { bcryptPool } = _req('src/konto/bcryptSchranke.js');
-  const { passwordFits } = _req('src/konto/passwortHash.js');
+  const { bcryptPool } = _req('src/account/bcryptLimit.js');
+  const { passwordFits } = _req('src/account/passwordHash.js');
   assert.equal(await passwordFits('Geheim-2026', bcrypt.hashSync('Geheim-2026', 4)), true);
   assert.ok(bcryptPool.stand().worker >= 1 && !bcryptPool.stand().hauptthread, JSON.stringify(bcryptPool.stand()));
   await bcryptPool.beende();
@@ -100,7 +100,7 @@ test('ein untätiger Arbeiter endet nach der Leerlaufzeit', async t => {
 });
 
 test('die Zahl der Arbeiter ist gedeckelt', () => {
-  const { bcryptArbeiter, quotaCores } = _req('src/konto/bcryptSchranke.js');
+  const { bcryptArbeiter, quotaCores } = _req('src/account/bcryptLimit.js');
   const { ladeKonfig } = _req('src/infra/konfig.js');
   assert.equal(bcryptArbeiter(null, 64, null), 4, '64 Kerne ohne Kontingent');
   assert.equal(bcryptArbeiter(null, 64, 1), 2, '64 Kerne, Kontingent 1');

@@ -516,7 +516,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // ═══════════════════════════════════════════════════════════════════════════
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
-const authModule = buildAndRequire()('src/konto/namensRegeln.js');
+const authModule = buildAndRequire()('src/account/nameRules.js');
 const { loginNameValid, USERNAME_RE, EMAIL_RE } = authModule;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
@@ -559,7 +559,7 @@ test('beide Login-Wege prüfen gleich', async () => {
   // Webapp und Android-API gehen durch checkCredentials(); dort fällt ein
   // unbrauchbarer Name ab, bevor Zähler oder Datenbank ihn sehen.
   // Gegenprobe (11.11.2026): die Formprüfung in checkCredentials() gestrichen → rot hier.
-  const { checkCredentials } = buildAndRequire()('src/konto/anmeldepruefung.js');
+  const { checkCredentials } = buildAndRequire()('src/account/loginCheck.js');
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
       await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),

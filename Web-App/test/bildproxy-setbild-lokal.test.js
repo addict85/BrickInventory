@@ -90,7 +90,7 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
     const url = `https://cdn.rebrickable.com/media/sets/${withoutCache}.jpg`;
     put(path.join(SET_IMAGES_DIR, `${withoutCache}.jpg`), ORIGINAL);
     put(path.join(SET_IMAGES_DIR, `${withoutCache}_thumb.jpg`), VORSCHAU);
-    const { countRequest } = _req('src/konto/loginLimiter.js');
+    const { countRequest } = _req('src/account/loginLimiter.js');
     await countRequest('bild-abruf', 'konto:1', 60_000);
     await countRequest('bild-abruf', 'konto:1', 60_000);
     const r = await hole(`url=${encodeURIComponent(url)}&thumb=1`);

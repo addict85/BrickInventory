@@ -1,14 +1,14 @@
 /**
  * Eine beendete Sitzung kommt nicht wieder: Auch wenn eine laufende Anfrage
  * die gelöschte Zeile nach dem Rechteentzug per Upsert zurückschreibt, gilt
- * sie nicht mehr (users.session_version, src/konto/sitzungsVersion.ts).
+ * sie nicht mehr (users.session_version, src/account/sessionVersion.ts).
  * Echter connect-pg-simple-Store, echte Routen, echte Kekse; das Zurückschreiben
  * wird nachgestellt, indem die alte Zeile wieder eingefügt wird.
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln):
  *   A  checkSessionVersion() ruft immer next() → rot: „die zurückgeschriebene
  *      Verwaltersitzung gilt nicht mehr" und „das andere Fenster bleibt draussen"
- *   B  increaseSessionVersion() in endAllSessions (src/konto/zugangsende.ts) entfernt → rot:
+ *   B  increaseSessionVersion() in endAllSessions (src/account/accessEnd.ts) entfernt → rot:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
  *   C  in routes/api_v1/settings.ts die neue Version nicht in die eigene
  *      Sitzung geschrieben → rot: „das eigene Fenster bleibt angemeldet"
@@ -71,11 +71,11 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
     }),
   );
   app.use(
-    _req('src/konto/http/sitzungsPruefung.js').checkSessionVersion(require('./helpers/sources').testServices().konto),
+    _req('src/account/http/sessionCheck.js').checkSessionVersion(require('./helpers/sources').testServices().account),
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
@@ -119,7 +119,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
         id.sv_second,
       ]);
-      assert.equal(await _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom(), 1);
+      assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 1);
       assert.equal(await zeile(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
       await writeBack(alt);
 

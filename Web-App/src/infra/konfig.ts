@@ -92,7 +92,7 @@ export interface Konfig {
   imageFetchesJeMinute: number;
   csvRowDeadlineMs: number;
   jobParallel: number;
-  /** null: nach Kernen und cgroup-Kontingent (src/konto/bcryptSchranke.ts). */
+  /** null: nach Kernen und cgroup-Kontingent (src/account/bcryptLimit.ts). */
   bcryptArbeiter: number | null;
   jobDeadlineSec: number;
   /** PEM; null: keine eigene CA. */
@@ -321,7 +321,7 @@ function developmentEnvironment(env: Umgebung): boolean {
 }
 
 /** Wirft KonfigFehler mit allen Fehlern auf einmal. */
-/** Fristen der Browsersitzung; für Verwalter eigene, kürzere (src/konto/sitzungsFrist.ts). */
+/** Fristen der Browsersitzung; für Verwalter eigene, kürzere (src/account/sessionDeadline.ts). */
 function sitzungsKonfig(env: Umgebung, f: string[]) {
   return {
     sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),

@@ -30,7 +30,7 @@ export function buildApiRouter(
     | 'auftraege'
     | 'household'
     | 'devices'
-    | 'konto'
+    | 'account'
     | 'profile'
     | 'catalog'
     | 'externalSources'

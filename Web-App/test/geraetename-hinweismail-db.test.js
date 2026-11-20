@@ -29,7 +29,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const { devicesNameValid } = _req('src/konto/namensRegeln.js');
+const { devicesNameValid } = _req('src/account/nameRules.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const BOESE = [

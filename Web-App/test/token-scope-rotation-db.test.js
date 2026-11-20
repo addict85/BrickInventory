@@ -49,8 +49,8 @@ const { pairQr } = require('./helpers/qr');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -91,7 +91,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));

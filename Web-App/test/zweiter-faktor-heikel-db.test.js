@@ -1,7 +1,7 @@
 /**
  * Bei aktivem zweitem Faktor verlangen Passwortwechsel, Passkey löschen und
  * E-Mail ändern zusätzlich einen Code (confirmWithFactor in
- * src/konto/http/anmeldung.ts). Ein fehlender Code wird abgewiesen, bevor
+ * src/account/http/login.ts). Ein fehlender Code wird abgewiesen, bevor
  * etwas geprüft wird; ein falscher zählt in der Bremse. Ohne zweiten Faktor …
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln):

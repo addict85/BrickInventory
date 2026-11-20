@@ -22,8 +22,8 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 const ipThrottle = (...a) =>
-  _req('src/konto/http/anmeldung.js').ipThrottle(require('./helpers/sources').testServices().konto, ...a);
-const L = _req('src/konto/loginLimiter.js');
+  _req('src/account/http/login.js').ipThrottle(require('./helpers/sources').testServices().account, ...a);
+const L = _req('src/account/loginLimiter.js');
 const { drosselAdresse } = _req('src/infra/drosselAdresse.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 

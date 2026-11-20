@@ -1,6 +1,6 @@
 /**
  * Ein Verwalter setzt Passwort oder zweiten Faktor eines anderen Kontos zurück, deaktiviert es,
- * entzieht die Rolle oder löscht es (routes/auth/benutzer.ts, src/konto/verwalterAktionen.ts).
+ * entzieht die Rolle oder löscht es (routes/auth/benutzer.ts, src/account/adminActions.ts).
  * Ist das Ziel Verwalter (oder war es eben noch), gilt das erst nach 24 Stunden, im Aufräumlauf;
  * eine Anmeldung des Ziels (Passwort, Passkey, QR-Abholung) oder der Link aus seiner Mail hebt
  * es auf. Über die echten Routen und die Laufzeitrolle.
@@ -40,7 +40,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { bis } = require('./helpers/zeit');
 const db = S.testData();
-const { hashePassword, passwordFits } = _req('src/konto/passwortHash.js');
+const { hashePassword, passwordFits } = _req('src/account/passwordHash.js');
 const zf = _req('src/factors/secondFactor.js');
 const { decrypt } = _req('src/infra/geheimnis.js');
 /** Ein echter zweiter Faktor; zurück kommen die Wiederherstellungscodes. */
@@ -130,7 +130,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
   const faktor = uid => db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [uid]);
   const faellig = async uid => {
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [uid]);
-    return _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom();
+    return _req('src/account/adminActions.js').runDueTakeoversFrom();
   };
   const offen = async uid =>
     (await db.all('SELECT type FROM admin_takeovers WHERE target_id = $1 ORDER BY type', [uid])).map(z => z.type);
@@ -167,7 +167,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     const f = await ruf('DELETE', `/users/${vw}/zweiter-faktor`, { admin_password: PASS });
     for (const r of [p, f]) inFrist(r);
     assert.deepEqual(await stand(vw), { tokens: 1, sitzungen: 1, faktor: 1, neuesPasswort: false });
-    assert.equal(await _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom(), 0, 'vor der Frist');
+    assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 0, 'vor der Frist');
     assert.equal(await faellig(vw), 2);
     assert.deepEqual(await stand(vw), { tokens: 0, sitzungen: 0, faktor: 0, neuesPasswort: true });
     assert.deepEqual(await offen(vw), []);
@@ -251,7 +251,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.deepEqual([(await konten(vw8)).is_active, (await stand(vw8)).neuesPasswort], [false, false]);
     // b) seit der Ankündigung auf anderem Weg deaktiviert
     inFrist(await ruf('PUT', `/users/${vw9}/password`, { password: NEU, admin_password: PASS }));
-    await S.asAccount(chef, () => _req('src/konto/verwalterAktionen.js').persistActive(chef, vw9, false), {
+    await S.asAccount(chef, () => _req('src/account/adminActions.js').persistActive(chef, vw9, false), {
       verwalter: true,
     });
     await faellig(vw9);

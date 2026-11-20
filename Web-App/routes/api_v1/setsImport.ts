@@ -6,8 +6,8 @@ import { csvReceive } from '../../src/http/dateiEmpfang';
 import { skippedHint } from '../../src/infra/csvExport';
 import { sendCsv } from '../../src/http/csvAntwort';
 import { responseLanguage, fachfehler } from '../../src/infra/fehlerTexte';
-import { openStream, StromGeschlossen, type Strom } from '../../src/konto/http/strom';
-import { loginOrTokenGuard, signedInUserId } from '../../src/konto/http/anmeldung';
+import { openStream, StromGeschlossen, type Strom } from '../../src/account/http/stream';
+import { loginOrTokenGuard, signedInUserId } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
@@ -15,7 +15,7 @@ import type { Dienste } from '../../src/dienste';
  * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
  * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
 async function supplementInStream(
-  dienste: Pick<Dienste, 'konto' | 'sets'>,
+  dienste: Pick<Dienste, 'account' | 'sets'>,
   strom: Strom,
   req: express.Request,
   r: { set_number: string; besitzer: number; name?: string | null },
@@ -39,14 +39,14 @@ async function supplementInStream(
   strom.ende();
 }
 
-export function buildSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
   // 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
   // Seite und dürfen bei voller Datenbank nicht stauen.
-  const stateGuard = loginOrTokenGuard(d.konto, { timeoutMs: 3000 });
+  const stateGuard = loginOrTokenGuard(d.account, { timeoutMs: 3000 });
 
   router.endpunkt('GET /api/v1/sets/import/csv/status', stateGuard, async (req, res) => {
     res.json(await d.sets.csvImportStand(signedInUserId(req), req));
@@ -55,7 +55,7 @@ export function buildSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
   // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
   router.endpunkt('GET /api/v1/sets/import/csv/stream', stateGuard, kontoSchranke('strom'), async (req, res) => {
     const uid = signedInUserId(req);
-    const strom = openStream(d.konto, req, res, { onlyChanges: true, backpressure: `csv-import ${uid}` });
+    const strom = openStream(d.account, req, res, { onlyChanges: true, backpressure: `csv-import ${uid}` });
     // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
     const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
     const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : responseLanguage(req);
@@ -127,7 +127,7 @@ export function buildSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
       res.json({ success: true, ...r });
       return;
     }
-    await supplementInStream(d, openStream(d.konto, req, res, { heartbeat: false }), req, r);
+    await supplementInStream(d, openStream(d.account, req, res, { heartbeat: false }), req, r);
   });
 
   router.endpunkt('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {

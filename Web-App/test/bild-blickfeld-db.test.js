@@ -91,7 +91,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, `Inhalt ${path.basename(f)}`);
   }
-  const auth = _req('src/konto/geraeteToken.js');
+  const auth = _req('src/account/deviceToken.js');
   const token = {};
   for (const [k, id] of [
     ['haupt', ids[0]],

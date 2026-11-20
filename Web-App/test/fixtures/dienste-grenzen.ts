@@ -29,11 +29,11 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.household.repository,
     // @ts-expect-error
-    d.konto.db,
+    d.account.db,
     // @ts-expect-error
-    d.konto.protokoll,
+    d.account.protokoll,
     // @ts-expect-error
-    d.konto.konten,
+    d.account.konten,
     // @ts-expect-error
     d.catalog.db,
     // @ts-expect-error
@@ -65,6 +65,6 @@ export function probe(d: Dienste): unknown[] {
     // Die ausdrücklichen Dienste dagegen stehen da.
     d.inventory.locationService.lagerorte,
     d.auftraege.liesZustand,
-    d.konto.verwalter.rememberAdminAction,
+    d.account.verwalter.rememberAdminAction,
   ];
 }

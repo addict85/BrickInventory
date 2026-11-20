@@ -2,15 +2,15 @@
  * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
 import { guardFor } from './middleware';
 import { familyFrom } from '../../src/devices';
-import { isAppToken } from '../../src/konto/http/schrittschutz';
+import { isAppToken } from '../../src/account/http/stepGuard';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
 const familie = (req: AuthedRequest) => (isAppToken(req) ? familyFrom(req.apiUser) : null);
 
-export function buildDeviceRouter(d: Pick<Dienste, 'konto' | 'devices'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildDeviceRouter(d: Pick<Dienste, 'account' | 'devices'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/geraet/schluessel/nonce', requireToken, async req => {

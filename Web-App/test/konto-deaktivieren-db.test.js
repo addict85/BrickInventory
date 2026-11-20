@@ -76,7 +76,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
@@ -194,8 +194,8 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Token-Abfrage prüft is_active', async () => {
-    const auth = _req('src/konto/geraeteToken.js');
-    const tokenCache = _req('src/konto/tokenCache.js');
+    const auth = _req('src/account/deviceToken.js');
+    const tokenCache = _req('src/account/tokenCache.js');
     const token = await auth.createToken(nutzer, 'Probe');
     assert.ok(await auth.nutzerZumToken(token));
     await db.run('UPDATE users SET is_active = false WHERE id = $1', [nutzer]);

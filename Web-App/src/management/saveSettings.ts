@@ -53,7 +53,7 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
     await kx.settings.setGlobalValue(key, e[key]);
   }
   if (geaendert.length)
-    await kx.konto.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+    await kx.account.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBAL_SETTINGS.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.settings.deleteGlobalValues('smtp_insecure_tls');
@@ -99,7 +99,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   // Erst nach dem COMMIT: Ein Zwischenspeicher läse vorher noch den alten Wert ein.
   await kx.settings.notifyGlobalChange();
   if (sensitive.some(k => !k.startsWith('smtp_')))
-    kx.konto.adminHintInBackground('einstellungen_geaendert', { konto: sensitive.join(', '), durch: o.name });
+    kx.account.adminHintInBackground('einstellungen_geaendert', { konto: sensitive.join(', '), durch: o.name });
   if (bricksetAlt !== null) await bricksetLimitSet(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));
   return true;
 }

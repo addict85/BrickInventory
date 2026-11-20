@@ -62,7 +62,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
   };
   const ablauf = async token =>
     db.get('SELECT expires_at FROM api_tokens WHERE token = $1', [
-      _req('src/konto/geraeteToken.js').tokenDigest(token),
+      _req('src/account/deviceToken.js').tokenDigest(token),
     ]);
 
   try {
@@ -96,7 +96,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     );
     const appToken = app1.body.token;
     const appRow = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [
-      _req('src/konto/geraeteToken.js').tokenDigest(appToken),
+      _req('src/account/deviceToken.js').tokenDigest(appToken),
     ]);
     assert.ok(
       appRow.expires_at,
@@ -144,7 +144,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     );
 
     // ── 3b. Scheitert das Entwerten, ist die Abmeldung nicht gelungen ───────
-    const konto = require('./helpers/sources').testServices().konto;
+    const konto = require('./helpers/sources').testServices().account;
     const echt = konto.tokenLoeschen;
     konto.tokenLoeschen = async () => {
       throw new Error('Datenbank weg');

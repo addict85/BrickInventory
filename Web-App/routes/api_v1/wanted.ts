@@ -3,7 +3,7 @@
 import type express from 'express';
 import { publicError } from '../../src/infra/fehler';
 import { kontoSchranke, viewOf, guardFor } from './middleware';
-import { watchViaAccess } from '../../src/konto/http/zugangsWache';
+import { watchViaAccess } from '../../src/account/http/accessWatch';
 import { errorText, responseLanguage, fachfehler } from '../../src/infra/fehlerTexte';
 import type { Korrektur } from '../../src/wanted';
 import { csvReceive, xmlReceive } from '../../src/http/dateiEmpfang';
@@ -33,7 +33,7 @@ function correctionsFrom(roh: string | undefined): Korrektur[] | undefined | nul
  * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
  * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
 async function importInStream(
-  d: Pick<Dienste, 'settings' | 'household' | 'konto' | 'wanted' | 'collection'>,
+  d: Pick<Dienste, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -49,7 +49,7 @@ async function importInStream(
     res.write(JSON.stringify(o) + '\n');
     (res as unknown as { flush?: () => void }).flush?.();
   };
-  const wache = watchViaAccess(d.konto, req, () => {
+  const wache = watchViaAccess(d.account, req, () => {
     zeile({ success: false, error: errorText('zugang_beendet', responseLanguage(req)), code: 'zugang_beendet' });
     res.end();
   });
@@ -61,8 +61,8 @@ async function importInStream(
   if (!res.writableEnded) res.end();
 }
 
-export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'konto' | 'wanted' | 'collection'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.

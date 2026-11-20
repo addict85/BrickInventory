@@ -221,7 +221,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     getrennt,
     sub,
   ]);
-  await _req('src/konto/geraeteToken.js').createToken(uid, 'Vertragsprobe');
+  await _req('src/account/deviceToken.js').createToken(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/jobs keine leeren Listen liefert.
   const auftrag = await {

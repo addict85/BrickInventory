@@ -24,7 +24,7 @@ async function runSteps(schritte: Step[], auftrag?: JobRun): Promise<void> {
 function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
   return runSteps(
     [
-      ...k.konto.onRaeumSteps('stuendlich'),
+      ...k.account.onRaeumSteps('stuendlich'),
       ['Papierkorb', k.inventory.cleanTrashOn],
       ['PDF-Aufträge', k.catalog.pdf.raeumeAuf],
       ['alte Aufträge', k.auftraege.cleanCompletedOn],
@@ -39,7 +39,7 @@ function cleanupDaily(k: ManagementContext, lauf?: JobRun): Promise<void> {
   return runSteps(
     [
       ['Preisverlauf', k.finances.deleteOldPrices],
-      ...k.konto.onRaeumSteps('taeglich'),
+      ...k.account.onRaeumSteps('taeglich'),
       ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.uhr.jetzt())],
       ['Kopien vor Migrationen', () => cleanOldBackupsOn(k.db)],
     ],

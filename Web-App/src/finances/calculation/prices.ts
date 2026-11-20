@@ -281,7 +281,7 @@ export async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: numbe
 // nicht ändern; je Teil kostete die Abfrage sonst die meiste Zeit.
 const SUPPLEMENT_TTL_MS = 10 * 60 * 1000;
 // Beim Überschreiten wird geleert statt einzeln aufgeräumt: eine Handvoll
-// Nutzer, kleine Tabellen (wie _tokenCache in src/konto/tokenCache.ts).
+// Nutzer, kleine Tabellen (wie _tokenCache in src/account/tokenCache.ts).
 const SUPPLEMENT_MAX = 5000;
 
 /** Ein `null` (nichts gefunden) wird nicht gemerkt. */

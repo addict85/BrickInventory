@@ -2,17 +2,17 @@
  * hier an einer Stelle entschieden wird; settingsGlobal.ts hängt dahinter. */
 import { bearerToken, guardFor } from './middleware';
 import { buildSettingsGlobalRouter } from './settingsGlobal';
-import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/konto/http/anmeldung';
+import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/account/http/login';
 import { tlsInfo } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
-import { ownAccess } from '../../src/konto';
+import { ownAccess } from '../../src/account';
 
 export function buildSettingsRouter(
-  d: Pick<Dienste, 'settings' | 'mail' | 'household' | 'konto' | 'profile' | 'management'>,
+  d: Pick<Dienste, 'settings' | 'mail' | 'household' | 'account' | 'profile' | 'management'>,
 ) {
-  const { requireToken, requireLoginOrToken } = guardFor(d.konto);
+  const { requireToken, requireLoginOrToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   const requireLogin = requireLoginOrToken;
@@ -20,7 +20,7 @@ export function buildSettingsRouter(
   // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
   // Design, und es verrät nichts über Konten.
   router.endpunkt('GET /api/v1/settings/theme', async (req, res) => {
-    const uid = await userIdTheRequest(d.konto, req);
+    const uid = await userIdTheRequest(d.account, req);
     res.set('Cache-Control', 'no-cache');
     res.set('Vary', 'Cookie, Authorization');
     return { ...(await d.settings.themeFor(uid)) };
@@ -31,7 +31,7 @@ export function buildSettingsRouter(
     const eigener = bearerToken(req);
     // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
     // Gerät ausgesperrt wird.
-    const tokens = await d.konto.sitzungen.accessesList(req.apiUser.user_id);
+    const tokens = await d.account.sitzungen.accessesList(req.apiUser.user_id);
     return {
       tokens: tokens.map(t => ({
         token_prefix: t.token.substring(0, 8),
@@ -57,23 +57,23 @@ export function buildSettingsRouter(
     const uid = req.apiUser.user_id;
     const eigener = bearerToken(req);
     const ownDevice = ownAccess(eigener, req.pfad.tokenId);
-    if (!ownDevice && !(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
-    return { deleted: await d.konto.sitzungen.endAccess(uid, req.pfad.tokenId, ownDevice) };
+    if (!ownDevice && !(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
+    return { deleted: await d.account.sitzungen.endAccess(uid, req.pfad.tokenId, ownDevice) };
   });
 
   // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
   // `zugaenge` nimmt die App-Zugänge mit, damit ein Code für alles reicht.
   router.endpunkt('POST /api/v1/settings/sessions/andere-beenden', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
-    const { sitzungen, zugaenge, version } = await d.konto.sitzungen.endOther(uid, {
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
+    const { sitzungen, zugaenge, version } = await d.account.sitzungen.endOther(uid, {
       sitzung: req.sessionID,
       token: bearerToken(req),
       zugaenge: !!req.eingabe.zugaenge,
     });
     // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
     if (perSession(req)) req.session.sitzungsVersion = version;
-    if (sitzungen || zugaenge) d.konto.hintInBackground(uid, 'zugaenge_beendet');
+    if (sitzungen || zugaenge) d.account.hintInBackground(uid, 'zugaenge_beendet');
     return { deleted: sitzungen, zugaenge };
   });
 
@@ -156,7 +156,7 @@ export function buildSettingsRouter(
   });
 
   router.endpunkt('POST /api/v1/settings/household/redeem/pruefen', requireToken, async req => {
-    const zuOft = await d.konto.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
+    const zuOft = await d.account.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
     return { ...(await d.household.checkInvitation(req.apiUser.user_id, req.eingabe.code)) };
   });
@@ -166,8 +166,8 @@ export function buildSettingsRouter(
   router.endpunkt('POST /api/v1/settings/household/redeem', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
-    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-    return { ...(await d.konto.joinHousehold(uid, req.eingabe.code)) };
+    if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
+    return { ...(await d.account.joinHousehold(uid, req.eingabe.code)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/unlink', requireToken, async req => {

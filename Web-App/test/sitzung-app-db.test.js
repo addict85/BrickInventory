@@ -49,7 +49,7 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const SESSION_IDLE_SEC = _req('src/konto/sitzungsFrist.js').sessionIdleSec(_req('src/infra/konfig.js').konfig());
+  const SESSION_IDLE_SEC = _req('src/account/sessionDeadline.js').sessionIdleSec(_req('src/infra/konfig.js').konfig());
 
   const r = await fetch(`${basis}/api/v1/auth/login`, {
     method: 'POST',

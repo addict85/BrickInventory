@@ -22,8 +22,8 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const argon2 = require('@node-rs/argon2');
-const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
-const { hashePassword } = _req('src/konto/passwortHash.js');
+const { checkCredentials } = _req('src/account/loginCheck.js');
+const { hashePassword } = _req('src/account/passwordHash.js');
 
 /** Minimaler Request: checkCredentials braucht davon nur die IP (Zähler). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });

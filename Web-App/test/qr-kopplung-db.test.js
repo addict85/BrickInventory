@@ -6,7 +6,7 @@
  * zu sehen und nicht zu bestätigen.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in holeQrTokenAb() (src/konto/qrKopplung.ts) auch `wartet` wie `bestaetigt`
+ *   A  in holeQrTokenAb() (src/account/qrPairing.ts) auch `wartet` wie `bestaetigt`
  *      behandelt → rot: „ohne Bestätigung kein Token“
  *   B  codeFits() gibt immer true → rot: „ein falscher Code zählt …“
  *   C  qrPairingOfAccount() ohne `AND user_id = $2` → rot: „die Kopplung eines anderen Kontos …“
@@ -98,7 +98,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal(da.body.userId, ids[0]);
     assert.equal(da.body.token_info.scope, 'app');
     const zeile = await db.get('SELECT label FROM api_tokens WHERE token = $1', [
-      _req('src/konto/geraeteToken.js').tokenDigest(da.body.token),
+      _req('src/account/deviceToken.js').tokenDigest(da.body.token),
     ]);
     assert.equal(zeile.label, 'Pixel Probe');
     assert.equal((await abholen(m)).status, 401, 'Ein zweites Abholen gibt keinen zweiten Token');
@@ -122,7 +122,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     const n = await db.get(
       `SELECT n.from_qr FROM device_nonces n JOIN api_tokens t ON t.user_id = n.user_id
          AND date_trunc('milliseconds', t.created_at) = n.token_family WHERE n.nonce = $1 AND t.token = $2`,
-      [ja.body.schluessel_nonce, _req('src/konto/geraeteToken.js').tokenDigest(ja.body.token)],
+      [ja.body.schluessel_nonce, _req('src/account/deviceToken.js').tokenDigest(ja.body.token)],
     );
     assert.equal(n?.from_qr, true);
   });
@@ -181,7 +181,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
   });
 
   await t.test('über der Obergrenze offener Kopplungen gibt es 503, abgeholte zählen nicht', async tt => {
-    const { OPEN_PAIRINGS_AT_MOST } = _req('src/konto/qrKopplung.js');
+    const { OPEN_PAIRINGS_AT_MOST } = _req('src/account/qrPairing.js');
     await db.run(`DELETE FROM qr_login_tokens`);
     tt.after(() => db.run(`DELETE FROM qr_login_tokens`));
     await db.run(

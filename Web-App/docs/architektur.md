@@ -232,7 +232,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 8 | `src/auftraege` |
 | 9 | `src/externalSources` |
 | 10 | `src/household`, `src/devices`, `src/factors` |
-| 11 | `src/konto` |
+| 11 | `src/account` |
 | 12 | `src/images`, `src/profile` |
 | 13 | `src/idempotency`, `src/catalog` |
 | 14 | `src/finances` |
@@ -303,7 +303,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/household` | `account_link_invites`, `account_links`, `household_former_links` |
 | `src/devices` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |
 | `src/factors` | `passkeys`, `webauthn_challenges`, `second_factor`, `second_factor_codes` |
-| `src/konto` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
+| `src/account` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
 | `src/images` | `image_misses`, `image_wanted` |
 | `src/idempotency` | `idempotency` |
 | `src/catalog` | `bl_mapping`, `bl_mapping_custom`, `catalog_cache`, `minifig_custom`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_minifigs`, `set_parts`, `shared_instructions`, `subsets_cache`, `part_custom`, `part_color_custom` |

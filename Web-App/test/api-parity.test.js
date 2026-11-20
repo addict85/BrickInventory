@@ -55,7 +55,7 @@ async function seed() {
 
   // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`, [
-    _req('src/konto/geraeteToken.js').tokenDigest(TOKEN),
+    _req('src/account/deviceToken.js').tokenDigest(TOKEN),
     USER.id,
   ]);
 

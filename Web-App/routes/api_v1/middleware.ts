@@ -4,16 +4,16 @@ import { reportError } from '../../src/infra/fehler';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { toLargeId } from '../../src/infra/validate';
-import type { AccountServices } from '../../src/konto';
+import type { AccountServices } from '../../src/account';
 import {
   loginOrTokenGuard,
   userIdTheRequest,
   sendTokenRejection,
   nutzerId,
   zweiterFaktorPflicht,
-} from '../../src/konto/http/anmeldung';
+} from '../../src/account/http/login';
 import { receiptsAccountSpace, type Schranke } from '../../src/http/kontoSchranke';
-import { requireRelease } from '../../src/konto/http/schrittschutz';
+import { requireRelease } from '../../src/account/http/stepGuard';
 import type { Sicht } from '../../src/household';
 
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
@@ -53,7 +53,7 @@ const VOR_DEM_WECHSEL = /^\/(auth\/(change-password|logout)|geraet\/schluessel)$
 const TO_SETUP: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/auth\/(me|zweiter-faktor)$/],
   ['POST', /^\/auth\/(change-password|zweiter-faktor\/(einrichten|bestaetigen))$/],
-  // Die Einrichtung in der App verlangt den Schrittschutz (src/konto/http/schrittschutz.ts).
+  // Die Einrichtung in der App verlangt den Schrittschutz (src/account/http/stepGuard.ts).
   ['POST', /^\/geraet\/(schluessel|schritt\/(challenge|freigabe))$/],
 ];
 
@@ -132,7 +132,7 @@ function tokenGuardFor(konto: AccountServices) {
 
   return {
     requireToken,
-    /** Ohne Systemrahmen: Wer über Konten geht, betritt ihn im Dienst (src/konto/kontext.ts). */
+    /** Ohne Systemrahmen: Wer über Konten geht, betritt ihn im Dienst (src/account/context.ts). */
     requireApiAdmin: guard<AuthedRequest>((req, res, next) => {
       requireToken(req, res, (e?: unknown) => {
         if (e) return next(e);

@@ -56,9 +56,9 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const uid = await seed();
-  const K = _req('src/konto/konten.js');
-  const A = _req('src/konto/geraeteToken.js');
-  const zugangsende = _req('src/konto/zugangsende.js');
+  const K = _req('src/account/accounts.js');
+  const A = _req('src/account/deviceToken.js');
+  const zugangsende = _req('src/account/accessEnd.js');
   const tokens = async () =>
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
   const stand = () => db.get('SELECT password_hash, session_version FROM users WHERE id=$1', [uid]);

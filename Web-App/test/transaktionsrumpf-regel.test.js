@@ -7,7 +7,7 @@
  *   A  in der Regel `contains JsIdentifierExpression()` → `contains \`nichts\`` → „findet jeden
  *      äusseren Zugang“ rot (0 statt 5 Funde)
  *   B  `not $treffer <: $p` gestrichen → „erlaubt den Parameter …“ rot (Fund in erlaubt.ts)
- *   C  in src/konto/geraeteToken.ts `t.konfig` zurück auf `kx.konfig` → „der Bestand“ rot
+ *   C  in src/account/deviceToken.ts `t.konfig` zurück auf `kx.konfig` → „der Bestand“ rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

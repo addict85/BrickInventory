@@ -6,7 +6,7 @@
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in loeseQrTokenEin `AND used_at IS NULL` gestrichen → rot: „QR-Zugang:
- *      einmalig …“ (heute melde() in src/konto/repository/qrKopplung.ts)
+ *      einmalig …“ (heute melde() in src/account/repository/qrPairing.ts)
  *   B  in POST /qr-token `expires_in: 1800` → rot: dieselbe Prüfung
  *   C  in PUT /profile die Prüfung mit USERNAME_RE gestrichen → rot:
  *      „Profil: Benutzername …“; nameTaken() ohne LOWER() → rot: dort

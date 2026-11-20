@@ -12,7 +12,7 @@ import * as nachtrag from './repository/backfill';
 import * as papierkorb from './repository/trash';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { AccountServices } from '../konto';
+import type { AccountServices } from '../account';
 import type { CatalogServices } from '../catalog';
 import type { FinancesServices } from '../finances';
 import type { Uhr } from '../infra/uhr';
@@ -22,7 +22,7 @@ export interface InventoryDependencies {
   db: Db;
   einstellungen: SettingsServices;
   household: HouseholdServices;
-  konto: AccountServices;
+  account: AccountServices;
   catalog: CatalogServices;
   finances: FinancesServices;
   lesevertrag: InventoryReadContract;

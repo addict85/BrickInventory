@@ -57,10 +57,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 
-  // Tokens liegen GEHASHT in der Tabelle (src/konto/geraeteToken.ts) — der Klartextpfad
+  // Tokens liegen GEHASHT in der Tabelle (src/account/deviceToken.ts) — der Klartextpfad
   // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
   // Klartext, genau wie ein echter Client.
-  const { tokenDigest } = _req('src/konto/geraeteToken.js');
+  const { tokenDigest } = _req('src/account/deviceToken.js');
   const tokenFor = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
     await db.run('INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL)', [

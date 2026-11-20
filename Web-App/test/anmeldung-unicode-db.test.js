@@ -58,7 +58,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
+  const { checkCredentials } = _req('src/account/loginCheck.js');
 
   await t.test('nach fünf Fehlversuchen ist auch die Unicode-Schreibweise gesperrt', async () => {
     const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };

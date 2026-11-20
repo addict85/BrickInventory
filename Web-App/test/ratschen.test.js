@@ -321,7 +321,7 @@ function konfigNurAmStart() {
   // Gegenproben (14.11.2026): `const _k = konfig();` in src/sets/lesen.ts → rot (Fachbereich);
   // dasselbe in src/http/csvAntwort.ts → rot (14 von 13).
   const LIMIT = 13;
-  const EXCEPTION = ['src/konto/bcryptSchranke.ts'];
+  const EXCEPTION = ['src/account/bcryptLimit.ts'];
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
   const lesend = quellen()
@@ -992,7 +992,7 @@ test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
   // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
-  // Gegenproben: eine Nachtragsnummer in src/konto/geraeteToken.ts → rot; dasselbe in
+  // Gegenproben: eine Nachtragsnummer in src/account/deviceToken.ts → rot; dasselbe in
   // test/tab-layout.test.js und in public/index.html → rot (05.11.2026).
   const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
   const treffer = [];

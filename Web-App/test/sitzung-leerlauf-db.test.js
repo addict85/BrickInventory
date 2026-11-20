@@ -31,8 +31,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
-const { touchThrottle, touchMs } = _req('src/konto/sitzungsBeruehrung.js');
-const { sessionIdleMs, sessionIdleSec, IDLE_DEFAULT_MIN } = _req('src/konto/sitzungsFrist.js');
+const { touchThrottle, touchMs } = _req('src/account/sessionTouch.js');
+const { sessionIdleMs, sessionIdleSec, IDLE_DEFAULT_MIN } = _req('src/account/sessionDeadline.js');
 // Die Vorgabe als gereichte Konfiguration, wie buildServices sie reicht.
 const VORGABE = { sitzungLeerlaufMin: IDLE_DEFAULT_MIN };
 const SESSION_IDLE_MS = sessionIdleMs(VORGABE);

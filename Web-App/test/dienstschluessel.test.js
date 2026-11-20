@@ -13,7 +13,7 @@
  *      der Dienstschlüssel“
  *   C  in src/parts/area.ts `readParts` wieder `partsList` (wie das Repository im
  *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
- *   D  `setzeAktiv: mit(k)(accountsService.setzeAktiv)` zurück in src/konto/bereich.ts → rot
+ *   D  `setzeAktiv: mit(k)(accountsService.setzeAktiv)` zurück in src/account/area.ts → rot
  *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
  *   E  in routes/auth/zweiterFaktor.ts `d.factors.renewCodes` durch einen
  *      Platzhalter ersetzt → rot „ohne Aufrufer“ (factors.renewCodes)
@@ -21,7 +21,7 @@
  *
  * Rohe Weitergaben (ein Dienst ist das Repository selbst, k.repo.f oder mit(k.db, repo.f)):
  * Gegenproben (15.11.2026):
- *   G  `validToken: k.zugaenge.validToken` zurück in src/konto/bereich.ts → rot „Zahl
+ *   G  `validToken: k.zugaenge.validToken` zurück in src/account/area.ts → rot „Zahl
  *      der Dienstschlüssel“ (538, erlaubt 537) und „roh weiterreichen“ (konto.validToken)
  *   H  'catalog.catalogStatus' aus RAW_ALLOWED gestrichen → rot „roh weiterreichen“ (die Form
  *      mit(k.db, setStamm.catalogStatus), über den Bau als Repository-Funktion erkannt)
@@ -67,7 +67,7 @@ const JE_AREA = {
   household: 20,
   devices: 6,
   factors: 18,
-  konto: 65,
+  account: 65,
   profile: 3,
   idempotency: 8,
   externalSources: 12,
@@ -107,7 +107,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
   const schluessel = Object.entries(d).flatMap(([b, x]) => leaves(x, b));
   assert.ok(Object.keys(d).length > 15, `nur ${Object.keys(d).length} Bereiche gebaut`);
   assert.ok(schluessel.length > 300, `nur ${schluessel.length} Dienstschlüssel — greift die Zählung noch?`);
-  assert.ok(schluessel.includes('konto.sitzungen.endOther'), 'Selbstbeweis: Teilflächen zählen je Dienst');
+  assert.ok(schluessel.includes('account.sitzungen.endOther'), 'Selbstbeweis: Teilflächen zählen je Dienst');
 
   const LIMIT_NUMBER = 537;
   assert.ok(
@@ -130,7 +130,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
   });
   assert.deepEqual(gleich, [], 'Dienst heisst wie ein Teil des Kontexts');
 
-  // Gerufen über den Satz (`d.konto.…`, `k.konto.…`) oder genannt in Pick<…>; die Fabrik des Bereichs zählt nicht.
+  // Gerufen über den Satz (`d.account.…`, `k.konto.…`) oder genannt in Pick<…>; die Fabrik des Bereichs zählt nicht.
   const q = quellen();
   const ohne = schluessel.filter(s => {
     const name = s.split('.').at(-1);

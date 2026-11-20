@@ -2,8 +2,8 @@ import { viewOf, guardFor } from './middleware';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function buildMiscRouter(d: Pick<Dienste, 'konto' | 'inventory'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildMiscRouter(d: Pick<Dienste, 'account' | 'inventory'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/stats', requireToken, async req => {

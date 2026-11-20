@@ -18,8 +18,8 @@ function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
   );
 }
 
-export function buildFinanceRouter(d: Pick<Dienste, 'konto' | 'finances'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildFinanceRouter(d: Pick<Dienste, 'account' | 'finances'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/finance/valuation', requireToken, async req => {

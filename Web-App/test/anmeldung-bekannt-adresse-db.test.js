@@ -21,7 +21,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const limiter = _req('src/konto/loginLimiter.js');
+const limiter = _req('src/account/loginLimiter.js');
 
 test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1 }, async t => {
   try {

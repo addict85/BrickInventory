@@ -23,8 +23,8 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
@@ -43,7 +43,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
   app.use(express.json());
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));

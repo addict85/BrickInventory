@@ -544,7 +544,7 @@ test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => 
 });
 
 test('Routen, Aufträge und Clients importieren keine Repositories', () => {
-  // Gegenprobe (31.10.2026): `import * as r from '../../src/konto/repository/konten'`
+  // Gegenprobe (31.10.2026): `import * as r from '../../src/account/repository/accounts'`
   // in routes/api_v1/admin.ts → rot.
   const treffer = [];
   for (const d of tsBelow('routes', 'jobs', 'clients', 'startup').concat('server.ts'))
@@ -578,15 +578,15 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
 function routesWithoutSlotFlow() {
   // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, tokenDigest oder
   // forgetTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
-  // Gegenproben (14.11.2026): `import { tokenDigest } from '../../src/konto'` in
+  // Gegenproben (14.11.2026): `import { tokenDigest } from '../../src/account'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { createMail } from '../../src/mail'` in
   // routes/auth/registrierung.ts → rot.
   /** @type {[RegExp, string][]} */
   const MUSTER = [
     [
-      /import\s*\{[^}]*\b(?:tokenDigest|forgetTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profile)'/g,
-      'Werkzeug aus src/konto',
+      /import\s*\{[^}]*\b(?:tokenDigest|forgetTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:account|profile)'/g,
+      'Werkzeug aus src/account',
     ],
     [/import\s*\*\s*as\s*\w+\s*from\s*'[./]+\/src\/\w+'/g, 'Bereich als Namensraum'],
     [/from\s*'[./]+\/src\/mail(?:\/\w+)?'/g, 'src/mail'],
@@ -595,7 +595,7 @@ function routesWithoutSlotFlow() {
     MUSTER.every(([re], i) =>
       new RegExp(re.source).test(
         [
-          "import { tokenDigest } from '../../src/konto';",
+          "import { tokenDigest } from '../../src/account';",
           "import * as sets from '../../src/sets';",
           "import { sendMail } from '../../src/mail';",
         ][i],
@@ -715,7 +715,7 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und inde
         .filter(z => tief(d, z))
         .map(z => `${d} -> ${z}`),
     );
-  // Gegenprobe (11.11.2026): `import { USERNAME_RE } from '../../src/konto/namensRegeln'`
+  // Gegenprobe (11.11.2026): `import { USERNAME_RE } from '../../src/account/nameRules'`
   // in routes/auth/benutzer.ts → rot.
   assert.deepEqual(tiefe(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
@@ -767,7 +767,7 @@ function indexWithoutAccess(indizes) {
   // Gegenproben (14.11.2026): `export { catalogStatus } from './setStamm'` zurück in
   // src/catalog/index.ts → rot (src/catalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
   // in src/images/index.ts → rot (asynchron).
-  const alle = indizes.filter(i => !/^src\/(?:infra|vertrag|http)\//.test(i)).flatMap(valueExports);
+  const alle = indizes.filter(i => !/^src\/(?:infra|contract|http)\//.test(i)).flatMap(valueExports);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
     alle.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
@@ -818,7 +818,7 @@ const isHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 
 test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen', () => {
   // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
-  // src/sets/dienst.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
+  // src/sets/dienst.ts → rot; dasselbe in src/account/loginLimiter.ts → rot.
   // (10.11.2026): dasselbe in src/infra/geld.ts, src/contract/base.ts und
   // db/txLock.ts → rot.
   const usesExpress = d =>
@@ -833,7 +833,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
 
   // Dienste antworten mit einer Fehlerart, nicht mit einem HTTP-Status; clients/
   // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
-  // src/konto/passwortBestaetigung.ts wieder `return { status: 429, ...gesperrt }` → rot.
+  // src/account/passwordConfirmation.ts wieder `return { status: 429, ...gesperrt }` → rot.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
   // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/images/imgCacheServe.ts → rot.
   const withStatus = tsBelow('src', 'db', 'jobs')
@@ -845,7 +845,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
 test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/http', () => {
   // Ein Dienst, der die HTTP-Seite importiert, hängt wieder am Request.
   // Gegenprobe (31.10.2026): `import { adresse } from './http/anmeldung'` in
-  // src/konto/geraeteToken.ts → rot.
+  // src/account/deviceToken.ts → rot.
   const treffer = [];
   for (const d of tsBelow('src', 'jobs', 'clients').filter(d => !isHttp(d)))
     for (const z of resolvedImports(d)) if (isHttp(z)) treffer.push(`${d} -> ${z}`);
@@ -854,7 +854,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
   // Dasselbe für src/http/: Die gemeinsamen Helfer hängen am Request, ein Dienst,
   // der sie holt, hinge es auch; umgekehrt kennt src/http nur src/infra.
   // Gegenproben (08.11.2026): `import { errorResponse } from '../http/httpAntwort'`
-  // in src/konto/geraeteToken.ts → rot; `import { setKey } from '../sets/dienst'` in
+  // in src/account/deviceToken.ts → rot; `import { setKey } from '../sets/dienst'` in
   // src/http/httpAntwort.ts → rot.
   const http = tsBelow('src').filter(d => areaOf(d) === 'http');
   assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);
@@ -938,7 +938,7 @@ const LEVELS = [
   ['src/auftraege'],
   ['src/externalSources'],
   ['src/household', 'src/devices', 'src/factors'],
-  ['src/konto'],
+  ['src/account'],
   ['src/images', 'src/profile'],
   ['src/idempotency', 'src/catalog'],
   ['src/finances'],

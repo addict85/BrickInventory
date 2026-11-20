@@ -242,7 +242,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(
           `INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
-          [_req('src/konto/geraeteToken.js').tokenDigest(nonce), uid],
+          [_req('src/account/deviceToken.js').tokenDigest(nonce), uid],
         );
         w.qr = 'bim:' + nonce;
       },
@@ -257,7 +257,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/auth/qr-login/abholen',
       davor: async () => {
         await db.run('UPDATE qr_login_tokens SET confirmed_at = NOW() WHERE token = $1', [
-          _req('src/konto/geraeteToken.js').tokenDigest(w.qr.slice(4)),
+          _req('src/account/deviceToken.js').tokenDigest(w.qr.slice(4)),
         ]);
       },
       body: () => ({ abholung: w.abholung }),
@@ -338,7 +338,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       m: 'DELETE',
       p: '/api/v1/settings/tokens/{tokenId}',
       davor: async () => {
-        await _req('src/konto/geraeteToken.js').createToken(uid, 'Zum Entwerten');
+        await _req('src/account/deviceToken.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (
           await erst(
             `SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`,
@@ -353,7 +353,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/settings/sessions/andere-beenden',
       body: { password: PASS, zugaenge: true },
       davor: async () => {
-        await _req('src/konto/geraeteToken.js').createToken(uid, 'Anderes Gerät');
+        await _req('src/account/deviceToken.js').createToken(uid, 'Anderes Gerät');
       },
       danach: j => {
         assert.equal(j.zugaenge, 1);

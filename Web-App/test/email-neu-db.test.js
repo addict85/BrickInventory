@@ -390,7 +390,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
         adr('h5'),
       ])
     ).id;
-    const { reportPendingAddresses } = _req('src/konto/konten.js');
+    const { reportPendingAddresses } = _req('src/account/accounts.js');
     assert.ok((await reportPendingAddresses()).includes(h5));
     assert.ok(!(await reportPendingAddresses()).includes(uid));
   });

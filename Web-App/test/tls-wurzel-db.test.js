@@ -106,7 +106,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   app.use(_req('routes/zertifikat.js').buildCertificateRouter());
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));

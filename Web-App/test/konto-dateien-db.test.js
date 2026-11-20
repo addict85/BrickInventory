@@ -8,7 +8,7 @@
  *      und Kartennummer stehen im Klartext auf der Platte“
  *   B  encryptLegacyVoucherFiles() überspringt alles → rot: „der
  *      Altbestand bleibt Klartext“
- *   C  in kontoEntfernen() (src/konto) den Aufruf von deleteAccountFiles() entfernt → rot:
+ *   C  in kontoEntfernen() (src/account) den Aufruf von deleteAccountFiles() entfernt → rot:
  *      „data/uploads/<id> bleibt nach dem Löschen liegen“
  *   D  GET /vouchers/:id/pdf liefert die Datei wieder roh (deliverFile) →
  *      rot: „das ausgelieferte PDF ist nicht das hochgeladene“

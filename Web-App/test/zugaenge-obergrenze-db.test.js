@@ -85,7 +85,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
       }
     }
     const establishSession = (...a) =>
-      _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testServices().konto, ...a);
+      _req('src/account/http/login.js').establishSession(require('./helpers/sources').testServices().account, ...a);
     const app = express();
     app.use(
       session({
@@ -126,7 +126,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
       `grenze_${uid}_00`,
       `grenze_${uid}_54`,
     ]);
-    const auth = _req('src/konto/geraeteToken.js');
+    const auth = _req('src/account/deviceToken.js');
     const neu = auth.tokenDigest(await auth.createToken(uid, 'neu'));
     const rest = (await db.all('SELECT token FROM api_tokens WHERE user_id = $1 ORDER BY token', [uid])).map(
       z => z.token,
@@ -144,7 +144,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
   });
 
   await t.test('nach 30 Anmeldungen je Adresse und Konto nur noch ohne Vorrang', async () => {
-    const L = _req('src/konto/loginLimiter.js');
+    const L = _req('src/account/loginLimiter.js');
     const ip = '203.0.113.77';
     assert.equal(await L.knownLogin(ip, NAME), false, 'ein unbekanntes Gerät hat keinen Vorrang');
     for (let i = 0; i < L.SUCCESSES_WITH_PRIORITY - 1; i++) await L.loginSucceeded(ip, NAME);

@@ -14,7 +14,7 @@ import type { VoucherServices } from './vouchers';
 import type { HouseholdServices } from './household';
 import type { IdempotencyServices } from './idempotency';
 import type { CatalogServices } from './catalog';
-import type { AccountServices } from './konto';
+import type { AccountServices } from './account';
 import type { MailServices } from './mail';
 import type { ProfileServices } from './profile';
 import type { WantedServices } from './wanted';
@@ -40,7 +40,7 @@ export interface Dienste {
   household: HouseholdServices;
   devices: DevicesServices;
   factors: FactorsServices;
-  konto: AccountServices;
+  account: AccountServices;
   profile: ProfileServices;
   idempotency: IdempotencyServices;
   externalSources: ForeignSourcesServices;

@@ -6,8 +6,8 @@ import { guardFor } from './api_v1/middleware';
 import { IMG_PROXY_PATH, IMG_PROXY_PATH_LEGACY } from '../src/images';
 import type { Dienste } from '../src/dienste';
 
-function registerImgProxy(app: Express, d: Pick<Dienste, 'konto' | 'images'>) {
-  const { requireLoginOrToken, inboundLock } = guardFor(d.konto);
+function registerImgProxy(app: Express, d: Pick<Dienste, 'account' | 'images'>) {
+  const { requireLoginOrToken, inboundLock } = guardFor(d.account);
   const durchreichen = (req: Request, res: Response) => passThroughImage(d, req, res);
   app.get(IMG_PROXY_PATH, requireLoginOrToken, inboundLock, durchreichen);
   app.get(IMG_PROXY_PATH_LEGACY, requireLoginOrToken, inboundLock, durchreichen);

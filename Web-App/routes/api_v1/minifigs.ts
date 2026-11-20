@@ -11,10 +11,10 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildMinifigsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'konto' | 'finances' | 'inventory' | 'minifigs' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'account' | 'finances' | 'inventory' | 'minifigs' | 'collection'
   >,
 ) {
-  const { requireToken } = guardFor(d.konto);
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {

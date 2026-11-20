@@ -6,8 +6,8 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finances' | 'inventory' | 'sets'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' | 'inventory' | 'sets'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('PUT /api/v1/sets/:setNumber/storage', requireToken, async req => {

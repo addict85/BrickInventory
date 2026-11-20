@@ -12,7 +12,7 @@ const PASSWORT = 'Fabrik-Passwort-2026';
 /** Ein Konto über konto.putAccountAn (ohne Verwalter: das Protokoll nennt keinen).
  * @param {string} name @param {{ verwalter?: boolean }} [o] @returns {Promise<number>} */
 async function konto(name, o = {}) {
-  const id = await testServices().konto.putAccountAn(null, name, PASSWORT, !!o.verwalter);
+  const id = await testServices().account.putAccountAn(null, name, PASSWORT, !!o.verwalter);
   if (id === null) throw new Error(`Konto „${name}“ gibt es schon`);
   return id;
 }

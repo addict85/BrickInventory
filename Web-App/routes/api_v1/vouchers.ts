@@ -6,7 +6,7 @@ import { FOREIGN_FILE_CSP } from '../../src/http/dateiAusliefern';
 import { Fachfehler, fileError, type ErrorCode, fachfehler } from '../../src/infra/fehlerTexte';
 import { GAP_SEC, TICKET_SEC, readAs, masked, type VoucherRow } from '../../src/vouchers';
 import { kontoSchranke, guardFor } from './middleware';
-import { confirmWithFactor } from '../../src/konto/http/anmeldung';
+import { confirmWithFactor } from '../../src/account/http/login';
 import { pageFrom } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -38,8 +38,8 @@ function gesperrt(grund: string, wartenSek: number): never {
   throw new Fachfehler('zu_viele', code, vars, { grund, wartenSek });
 }
 
-export function buildVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
-  const { requireToken } = guardFor(d.konto);
+export function buildVouchersRouter(d: Pick<Dienste, 'account' | 'vouchers'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   /** PDF only: only text is read out, a photo the server could not read anyway. */
@@ -85,7 +85,7 @@ export function buildVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
   // The batch paths BEFORE the :id paths: otherwise `:id` would catch the word "export".
 
   router.endpunkt('POST /api/v1/vouchers/export/pdf-freigabe', requireToken, async (req, res) => {
-    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), gueltig_sek: TICKET_SEC };
   });
 
@@ -110,21 +110,21 @@ export function buildVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
   // Final and cash: with confirmation, like emptying the trash.
   router.endpunkt('DELETE /api/v1/vouchers/:id', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     await d.vouchers.deleteVoucher(req.apiUser.user_id, id);
     return {};
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/klartext', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     const z = await d.vouchers.voucherPlaintext(req.apiUser.user_id, id);
     return { id: z.id, number: z.number, pin: z.pin };
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/pdf-freigabe', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), gueltig_sek: TICKET_SEC };
   });
 

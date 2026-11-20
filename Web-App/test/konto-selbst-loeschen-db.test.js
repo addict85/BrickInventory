@@ -108,9 +108,9 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     assert.ok(await da(id));
   });
 
-  const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testArea('konto').konten };
-  const { verifyEmailToken } = _req('src/konto/anmeldepruefung.js');
-  const { tokenDigest } = _req('src/konto/geraeteToken.js');
+  const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
+  const { verifyEmailToken } = _req('src/account/loginCheck.js');
+  const { tokenDigest } = _req('src/account/deviceToken.js');
   const registered = async (name, daysAlt) => {
     const roh = crypto.randomBytes(16).toString('hex');
     const id = await K.register({

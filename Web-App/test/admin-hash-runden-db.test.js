@@ -3,7 +3,7 @@
  * wie jedes andere Passwort. Mit weniger antwortete ein Fehlversuch gegen
  * „admin“ messbar schneller als gegen einen unbekannten Namen.
  *
- * Gegenprobe (am 28.10.2026 gemessen; seit 09.11. in src/konto/startVerwalter.ts): wieder
+ * Gegenprobe (am 28.10.2026 gemessen; seit 09.11. in src/account/startAdmin.ts): wieder
  * `hashSync(plainPassword, 10)` → rot (10 statt 12).
  * Gegenprobe (14.11.2026, argon2id): in hashePasswordImmediately `timeCost: 1` → rot
  * (Präfix mit t=1 statt t=2).
@@ -40,6 +40,6 @@ test('Verwalterkonto mit derselben Rundenzahl', async t => {
   }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
   assert.ok(admin, 'kein Verwalterkonto angelegt');
-  const { ARGON2_PREFIX } = _req('src/konto/passwortHash.js');
+  const { ARGON2_PREFIX } = _req('src/account/passwordHash.js');
   assert.ok(admin.password_hash.startsWith(ARGON2_PREFIX), admin.password_hash.slice(0, 40));
 });

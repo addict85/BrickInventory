@@ -6,7 +6,7 @@ import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as management from './repository/management';
 import type { SettingsServices } from '../settings';
 import type { JobsServices } from '../auftraege';
-import type { AccountServices } from '../konto';
+import type { AccountServices } from '../account';
 import type { FactorsServices } from '../factors';
 import type { IdempotencyServices } from '../idempotency';
 import type { CatalogServices } from '../catalog';
@@ -23,7 +23,7 @@ export interface ManagementDependencies {
   db: Db;
   settings: SettingsServices;
   auftraege: JobsServices;
-  konto: AccountServices;
+  account: AccountServices;
   factors: FactorsServices;
   idempotency: IdempotencyServices;
   catalog: CatalogServices;

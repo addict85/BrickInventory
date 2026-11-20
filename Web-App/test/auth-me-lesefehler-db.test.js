@@ -8,7 +8,7 @@
  * token_ungueltig, sonst 200 loggedIn: false) → rot in beiden Teiltests.
  * Gegenprobe (16.11.2026 gemessen): checkSessionVersion reicht den Lesefehler wieder als
  * next(e) durch → rot: „mit Sitzung …“ (500 interner_fehler; die Sitzungsversion wird ohne
- * Horch-Verbindung nicht mehr zwischengespeichert, src/konto/sitzungsVersion.ts).
+ * Horch-Verbindung nicht mehr zwischengespeichert, src/account/sessionVersion.ts).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -22,8 +22,8 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const auth = _req('src/konto/geraeteToken.js');
-const tokenCache = _req('src/konto/tokenCache.js');
+const auth = _req('src/account/deviceToken.js');
+const tokenCache = _req('src/account/tokenCache.js');
 
 test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

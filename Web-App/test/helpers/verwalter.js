@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Verwalterrechte verlangen einen eingerichteten Code-Generator (403
- * zweiter_faktor_pflicht, src/konto/http/anmeldung.ts). Tests, die als
+ * zweiter_faktor_pflicht, src/account/http/login.ts). Tests, die als
  * Verwalter arbeiten, richten ihn hier auf dem echten Weg ein.
  *
  * @param {(pfad: string) => any} _req  buildAndRequire() der Testdatei

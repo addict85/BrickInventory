@@ -1,6 +1,6 @@
 /**
  * Höchstens so viele bcrypt-Läufe gleichzeitig, wie die Schranke zulässt
- * (src/konto/bcryptSchranke.ts); dahinter eine begrenzte Warteschlange mit
+ * (src/account/bcryptLimit.ts); dahinter eine begrenzte Warteschlange mit
  * Frist, alles darüber bekommt 503 server_ausgelastet — bei der Anmeldung und
  * bei jeder Passwortbestätigung.
  *
@@ -36,7 +36,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { newLimit, bcryptSchranke, BcryptOverload } = _req('src/konto/bcryptSchranke.js');
+const { newLimit, bcryptSchranke, BcryptOverload } = _req('src/account/bcryptLimit.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test.after(async () => {

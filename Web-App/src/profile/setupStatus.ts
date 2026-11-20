@@ -94,7 +94,7 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
   steps.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   steps.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   steps.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const account = await ab.oder('konten', kx.konto.accountConfigured(isAdmin), false);
+  const account = await ab.oder('konten', kx.account.accountConfigured(isAdmin), false);
   steps.push({ id: 'konto', ok: account, pflicht: true });
   steps.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 

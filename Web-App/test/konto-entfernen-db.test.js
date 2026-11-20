@@ -1,7 +1,7 @@
 /**
  * Ein Konto entfernen: Protokoll, Zeile und Sitzungen in einer Transaktion,
  * Dateien danach mit Ausgleich (Auftrag „konto_dateien“), wenn sie sich nicht
- * löschen lassen. Ein Ablauf für Verwalter und eigenes Konto (src/konto/kontoEntfernen.ts).
+ * löschen lassen. Ein Ablauf für Verwalter und eigenes Konto (src/account/removeAccount.ts).
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in kontoEntfernen() Sitzungsversion und Sitzungen erst nach der Transaktion
@@ -28,7 +28,7 @@ const { dataOrSkip } = require('./helpers/db');
 test('Konto entfernen', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { kontoEntfernen, removeAccountFiles } = _req('src/konto/kontoEntfernen.js');
+  const { kontoEntfernen, removeAccountFiles } = _req('src/account/removeAccount.js');
   const P = process.pid;
   const VERW = `entf-verw-${P}`,
     ZIEL = `entf-ziel-${P}`;
