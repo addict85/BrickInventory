@@ -1,5 +1,5 @@
 /**
- * scripts/verweise-pruefen.js: Pfadverweise in Code-Kommentaren, README.md und
+ * scripts/check-references.js: Pfadverweise in Code-Kommentaren, README.md und
  * docs/ zeigen auf Dateien, die es gibt. Geprüft am echten Skript, einmal an
  * einem Probebaum mit bekannten toten Verweisen und einmal am Bestand.
  *
@@ -17,7 +17,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const SCRIPT = path.join(__dirname, '..', 'scripts', 'verweise-pruefen.js');
+const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-references.js');
 
 /** Repo/Web-App mit src/, docs/ und README.md; tote Verweise stehen nur in Kommentaren und Doku. */
 function probebaum() {

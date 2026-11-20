@@ -4,7 +4,7 @@
  * Nicht-ASCII-Byte an Stelle 2 im selben Lesestück direkt hinter einem Rahmen,
  * wird seine Länge negativ gelesen und der Text deserialisiert. Unter Last …
  *
- * Gegenprobe (05.11.2026): in scripts/test-lauf.js das Vorladen von
+ * Gegenprobe (05.11.2026): in scripts/test-run.js das Vorladen von
  * test/helpers/textausgabe.js gestrichen → rot (Exit 1, der Lauf bricht nach
  * wenigen Rahmen ohne Zusammenfassung ab).
  */
@@ -15,14 +15,14 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-test('test-lauf.js übersteht Rahmen mit Nicht-ASCII-Text dahinter', () => {
+test('test-run.js übersteht Rahmen mit Nicht-ASCII-Text dahinter', () => {
   const env = { ...process.env };
   // Ohne Datenbank: Geprüft wird nur der Weg der Ausgabe.
   delete env.TEST_DATABASE_URL;
   delete env.NODE_TEST_CONTEXT;
   const r = spawnSync(
     process.execPath,
-    [path.join(ROOT, 'scripts', 'test-lauf.js'), 'test/fixtures/rahmen-und-text.js'],
+    [path.join(ROOT, 'scripts', 'test-run.js'), 'test/fixtures/rahmen-und-text.js'],
     { cwd: ROOT, env, encoding: 'utf8', timeout: 120_000 },
   );
   const output = r.stdout + r.stderr;

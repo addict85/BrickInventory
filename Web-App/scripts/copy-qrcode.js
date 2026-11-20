@@ -4,7 +4,7 @@
  * package.json), damit npm audit und Dependabot es sehen. Dieses Skript legt
  * Skript und Lizenz nach public/vendor/qrcode/; build-frontend.js ruft es.
  *
- *   node scripts/qrcode-kopieren.js [Zielwurzel]
+ *   node scripts/copy-qrcode.js [Zielwurzel]
  */
 const fs = require('node:fs');
 const path = require('node:path');

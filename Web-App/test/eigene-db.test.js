@@ -1,11 +1,11 @@
 /**
- * Im parallelen Lauf (scripts/test-lauf.js) hat jede Testdatei ihre eigene
+ * Im parallelen Lauf (scripts/test-run.js) hat jede Testdatei ihre eigene
  * Datenbank: eine Kopie der Vorlage mit fertigem Schema, benannt nach dem
  * Prozess. Ausserhalb dieses Laufs (npm run test:seriell, Einzelaufruf)
  * gibt es nichts zu prüfen.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in scripts/test-lauf.js den Vorlader (--require) weggelassen → rot:
+ *   A  in scripts/test-run.js den Vorlader (--require) weggelassen → rot:
  *      „die Datei hat ihre eigene Kopie der Vorlage“ (die Basis-Datenbank)
  *   B  in test/helpers/test-db.js `TEMPLATE` weggelassen (leere Datenbank)
  *      → rot: dieselbe Prüfung (relation schema_migrations fehlt)

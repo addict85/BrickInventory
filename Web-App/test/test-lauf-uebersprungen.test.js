@@ -27,7 +27,7 @@ function dateien(t) {
   return [browser, caddy];
 }
 
-/** test-lauf.js als Kind, ohne Datenbank und ohne Neubau; `zusatz` setzt die Werkzeug-Variablen. */
+/** test-run.js als Kind, ohne Datenbank und ohne Neubau; `zusatz` setzt die Werkzeug-Variablen. */
 function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
   const env = { ...process.env, TEST_LAUF_GEBAUT: '1', PATH: path.dirname(process.execPath), ...zusatz };
   for (const k of [
@@ -42,7 +42,7 @@ function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
     'REQUIRE_CADDY',
   ])
     if (!(k in zusatz)) delete env[k];
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-lauf.js'), ...dateien(t)], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), ...dateien(t)], {
     cwd: ROOT,
     env,
     encoding: 'utf8',

@@ -11,7 +11,7 @@
  *      „jede Antwort liest die App mit dem erzeugten Typ ihres Schemas“
  *   C  in KontoApi.kt login mit @Body QrLoginRequest → rot: „jeder Rumpf der App ist der
  *      erzeugte Rumpf seiner Route“
- *   D  in vertrag-kotlin-zuordnung.js ANFRAGEN eine erfundene Route ergänzt → rot: „jeder
+ *   D  in contract-kotlin-mapping.js ANFRAGEN eine erfundene Route ergänzt → rot: „jeder
  *      Rumpf der App ist der erzeugte Rumpf seiner Route“ (toter Rumpf)
  *   E  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size` → rot:
  *      „jeder Abfrageparameter der App steht im Vertrag“
@@ -30,8 +30,8 @@ const { kotlinFehlercodes, apiRouten, schreibRouten } = require('./kotlin-vertra
 const { ANDROID, API } = require('./app-schnittstelle.js');
 // Erzeuger und Namenszuordnung der Kotlin-Typen liegen beim Vertrag (Web-App/scripts).
 const SKRIPTE = path.join(ANDROID, '..', 'Web-App', 'scripts');
-const { klassenname, ZIEL } = require(path.join(SKRIPTE, 'vertrag-kotlin-dtos.js'));
-const Z = require(path.join(SKRIPTE, 'vertrag-kotlin-zuordnung.js'));
+const { klassenname, ZIEL } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
+const Z = require(path.join(SKRIPTE, 'contract-kotlin-mapping.js'));
 // Der Vertrag, wie der Server ihn veröffentlicht (npm run vertrag:openapi).
 const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi.json'), 'utf8'));
 const routen = [

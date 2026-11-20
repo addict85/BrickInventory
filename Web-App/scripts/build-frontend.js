@@ -145,11 +145,11 @@ function allowedStyles() {
   return [...werte].sort();
 }
 
-/** Bündelt nach `outAbs` (Auslieferung, test-lauf.js). */
+/** Bündelt nach `outAbs` (Auslieferung, test-run.js). */
 /**
  * @param {string} outAbs
  * @param {{ quellkarte?: boolean }} [opt]  quellkarte: Sourcemap eingebettet, nur für die
- *   Abdeckungsmessung (test-lauf.js --abdeckung); das ausgelieferte Bündel bleibt ohne.
+ *   Abdeckungsmessung (test-run.js --abdeckung); das ausgelieferte Bündel bleibt ohne.
  */
 function buildBundle(outAbs, opt = {}) {
   // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
@@ -223,9 +223,9 @@ function main() {
   const after = fs.statSync(outAbs).size;
   console.log(`[build-frontend] ${ENTRY} → ${OUT_REL}: ${(after / 1024).toFixed(0)} KB`);
 
-  const pdfjs = require('./pdfjs-kopieren').copyPdfjs();
+  const pdfjs = require('./copy-pdfjs').copyPdfjs();
   if (pdfjs) console.log(`[build-frontend] PDF.js ${pdfjs} aus pdfjs-dist → public/vendor/pdfjs/`);
-  const qr = require('./qrcode-kopieren').copyQrcode();
+  const qr = require('./copy-qrcode').copyQrcode();
   if (qr) console.log(`[build-frontend] QRCode.js ${qr} aus qrcodejs → public/vendor/qrcode/`);
 }
 

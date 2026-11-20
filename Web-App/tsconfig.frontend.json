@@ -3,7 +3,7 @@
   // Übersetzen: esbuild bündelt, tsc prüft nur. moduleDetection "force", weil
   // sonst die Namen der klassischen Skripte als globale gelten und ein
   // fehlender Import nicht auffällt. Die zwei klassischen Skripte prüft
-  // tsconfig.frontend-skripte.json; beide laufen über scripts/check-frontend-typen.js.
+  // tsconfig.frontend-skripte.json; beide laufen über scripts/check-frontend-types.js.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,

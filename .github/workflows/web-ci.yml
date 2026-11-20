@@ -69,7 +69,7 @@ jobs:
 
     env:
       # Der Superuser legt nur Datenbanken und Rollen an; die Tests verbinden wie im
-      # Betrieb als Laufzeit-, System- und Eigentümerrolle (scripts/test-lauf.js).
+      # Betrieb als Laufzeit-, System- und Eigentümerrolle (scripts/test-run.js).
       TEST_DATABASE_URL: postgres://tester:tester@localhost:5432/cattest
       REQUIRE_DB: '1'
       # Ohne Chrome schlagen die Browser-Tests fehl statt zu überspringen
@@ -78,7 +78,7 @@ jobs:
       # Einige Suiten bauen eine echte Session auf. Der Wert ist beliebig, muss
       # aber die Mindestlänge aus server.ts erfüllen (32 Zeichen).
       SESSION_SECRET: ci-secret-nur-fuer-den-testlauf-lang-genug
-      # npm test (scripts/test-lauf.js) gibt jeder Testdatei eine eigene Kopie
+      # npm test (scripts/test-run.js) gibt jeder Testdatei eine eigene Kopie
       # der Vorlage-Datenbank; vier zugleich passen zu den vier Kernen des
       # Runners und bleiben unter max_connections=100 des Dienstes.
       TEST_PARALLEL: '4'
@@ -213,7 +213,7 @@ jobs:
 
       # Zeilenabdeckung je Bereich gegen scripts/abdeckung-schranken.json.
       - name: Abdeckung
-        run: node scripts/abdeckung.js pruefen
+        run: node scripts/coverage.js pruefen
 
       - name: Abdeckungsbericht
         if: always()

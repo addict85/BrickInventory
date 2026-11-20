@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const art = process.argv[2];
 if (art !== 'lint' && art !== 'format') {
-  console.error('Aufruf: node scripts/lint-ratsche.js lint|format');
+  console.error('Aufruf: node scripts/lint-ratchet.js lint|format');
   process.exit(2);
 }
 const limitsFile = process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-schranken.json');

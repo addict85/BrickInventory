@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Vorgeladen in jede Testdatei (scripts/test-lauf.js, `--require`): Text auf
+ * Vorgeladen in jede Testdatei (scripts/test-run.js, `--require`): Text auf
  * stdout geht nach stderr. node:test liest Berichtsrahmen und Text des Kindes
  * aus demselben Strom; folgt Text mit einem Nicht-ASCII-Byte an Stelle 2
  * („✅ …", „╔══…") im selben Lesestück direkt auf einen Rahmen, rechnet der …

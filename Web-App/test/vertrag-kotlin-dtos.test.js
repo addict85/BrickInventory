@@ -24,12 +24,12 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const { create } = require('../scripts/vertrag-kotlin-dtos.js');
+const { create } = require('../scripts/contract-kotlin-dtos.js');
 
 test('die eingecheckten Kotlin-Typen sind aus openapi.json erzeugt', () => {
   const r = spawnSync(
     process.execPath,
-    [path.join(__dirname, '..', 'scripts', 'vertrag-kotlin-dtos.js'), '--pruefen'],
+    [path.join(__dirname, '..', 'scripts', 'contract-kotlin-dtos.js'), '--pruefen'],
     {
       encoding: 'utf8',
     },

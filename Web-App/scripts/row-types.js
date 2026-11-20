@@ -4,7 +4,7 @@
  * Zeilentypen aus dem Schema: liest db/schema-stand.sql und schreibt db/rows.ts. Ein
  * Repository bindet seine Zeile daran (`Spalten<'price_cache', 'avg_price'>`), statt die
  * Spaltentypen neu zu raten; NUMERIC kommt als Zahl an (db/database.ts), BIGINT als Text.
- * `node scripts/zeilentypen.js --pruefen` meldet nur, ob die Datei dem Schema entspricht.
+ * `node scripts/row-types.js --pruefen` meldet nur, ob die Datei dem Schema entspricht.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -29,7 +29,7 @@ function jsType(pg) {
   const liste = pg.endsWith('[]');
   const basis = liste ? pg.slice(0, -2) : pg;
   const treffer = JS_TYPE.find(([m]) => m.test(basis));
-  if (!treffer) throw new Error(`Unbekannter Spaltentyp „${pg}“: in scripts/zeilentypen.js eintragen`);
+  if (!treffer) throw new Error(`Unbekannter Spaltentyp „${pg}“: in scripts/row-types.js eintragen`);
   return liste ? `${treffer[1]}[]` : treffer[1];
 }
 
@@ -57,7 +57,7 @@ function tabellen(sql) {
 function create() {
   const t = tabellen(fs.readFileSync(SCHEMA, 'utf8'));
   const zeilen = [
-    '// Erzeugt von scripts/zeilentypen.js aus db/schema-stand.sql; nicht von Hand ändern.',
+    '// Erzeugt von scripts/row-types.js aus db/schema-stand.sql; nicht von Hand ändern.',
     '// Neu erzeugen nach jeder Migration: npm run schema:stand && npm run schema:zeilen',
     '',
     '/** Je Tabelle die Spalten, wie node-pg sie liefert (NUMERIC als Zahl, BIGINT als Text). */',

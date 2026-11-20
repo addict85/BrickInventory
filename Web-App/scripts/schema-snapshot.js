@@ -52,7 +52,7 @@ async function schemaText(db) {
   const von = (zeilen, tabelle) => zeilen.filter(z => z.tabelle === tabelle);
   const tabellen = [...new Set(spalten.map(s => s.tabelle))];
   const teile = [
-    '-- Erzeugt von scripts/schema-stand.js aus einer frischen Datenbank.',
+    '-- Erzeugt von scripts/schema-snapshot.js aus einer frischen Datenbank.',
     '-- Nicht von Hand ändern und nicht einspielen: Das Schema entsteht aus',
     '-- db/basis.sql und db/migrations/. Neu erzeugen mit',
     '-- `npm run build && npm run schema:stand`.',

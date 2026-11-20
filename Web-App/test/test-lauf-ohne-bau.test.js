@@ -1,5 +1,5 @@
 /**
- * Ein Lauf innerhalb eines Laufs baut nicht neu: Die Tests von scripts/test-lauf.js
+ * Ein Lauf innerhalb eines Laufs baut nicht neu: Die Tests von scripts/test-run.js
  * starten ihn als Kind, während parallele Dateien Migrationen aus dist/ und das
  * Bündel lesen; ein Neubau dort ergab „Migration nachträglich geändert“.
  *
@@ -34,7 +34,7 @@ test('ein Lauf im Lauf baut nicht', { timeout: 120_000 }, t => {
   const env = { ...process.env, TEST_LAUF_GEBAUT: '1' };
   for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
     delete env[k];
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-lauf.js'), datei], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), datei], {
     cwd: ROOT,
     env,
     encoding: 'utf8',

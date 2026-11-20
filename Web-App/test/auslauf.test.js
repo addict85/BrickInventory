@@ -19,7 +19,7 @@ const EXPIRY = path.join(__dirname, 'helpers', 'auslauf.js');
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'auslauf-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
-/** Eine Testdatei in einem eigenen `node --test` laufen lassen, wie test-lauf.js es tut.
+/** Eine Testdatei in einem eigenen `node --test` laufen lassen, wie test-run.js es tut.
  * @param {string} name @param {string} inhalt @param {Record<string, string>} env */
 function lauf(name, inhalt, env) {
   const datei = path.join(ordner, name);

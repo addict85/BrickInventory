@@ -1,7 +1,7 @@
 /**
  * Kein Antwortfeld ohne Verbraucher.
  *
- * Die Regel selbst steht in scripts/check-antwortfelder.js — dort, weil sie
+ * Die Regel selbst steht in scripts/check-response-fields.js — dort, weil sie
  * auch von Hand aufrufbar sein soll. Was die App liest, nimmt sie aus
  * shared/app-schnittstelle.json. Dieser Test führt sie im normalen Lauf mit aus;
  * ohne ihn wäre sie ein Skript, das niemand startet.
@@ -26,12 +26,13 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 test('kein Antwortfeld ohne Verbraucher', () => {
-  const script = path.join(__dirname, '..', 'scripts', 'check-antwortfelder.js');
+  const script = path.join(__dirname, '..', 'scripts', 'check-response-fields.js');
   try {
     execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
     assert.fail(
-      `${e.stdout || ''}${e.stderr || ''}`.trim() || 'check-antwortfelder.js ist fehlgeschlagen, ohne etwas zu melden',
+      `${e.stdout || ''}${e.stderr || ''}`.trim() ||
+        'check-response-fields.js ist fehlgeschlagen, ohne etwas zu melden',
     );
   }
 });

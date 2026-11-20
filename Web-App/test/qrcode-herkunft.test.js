@@ -1,7 +1,7 @@
 /**
  * QRCode.js steht unter Abhängigkeitsverwaltung: qrcodejs mit exakter
  * Fassung in package.json und Lockfile; public/vendor/qrcode/ ist die Kopie,
- * die scripts/qrcode-kopieren.js beim Bauen schreibt.
+ * die scripts/copy-qrcode.js beim Bauen schreibt.
  *
  * Gegenproben (05.11.2026, je einzeln):
  *   A  package.json "qrcodejs": "^1.0.0" → „exakte Fassung …“ rot
@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { DATEIEN } = require('../scripts/qrcode-kopieren');
+const { DATEIEN } = require('../scripts/copy-qrcode');
 
 const ROOT = path.join(__dirname, '..');
 const paket = require('../package.json');
@@ -32,7 +32,7 @@ test('das Skript erzeugt genau die ausgelieferten Dateien', () => {
   assert.ok(fs.existsSync(installiert), 'qrcodejs nicht installiert (npm ci)');
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'qrcode-'));
   try {
-    const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'qrcode-kopieren.js'), ziel], {
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'copy-qrcode.js'), ziel], {
       encoding: 'utf8',
     });
     assert.match(r.stdout, new RegExp(`qrcodejs ${fassung.replace(/\./g, '\\.')} → public/vendor/qrcode/`));

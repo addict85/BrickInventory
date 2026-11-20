@@ -55,7 +55,7 @@ Schweizer Nutzer verständlich.
 
 - `npm test` im Verzeichnis `Web-App/` braucht eine Test-Datenbank
   (`TEST_DATABASE_URL`, `REQUIRE_DB=1`) und läuft parallel, jede Testdatei auf
-  einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-lauf.js`);
+  einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-run.js`);
   `npm run test:seriell` läuft wie früher nacheinander.
 - Ohne Chrome überspringen die Browser-Dateien still. Lokal deshalb mit
   `CHROME_BIN=<pfad zu chrome>` und `REQUIRE_BROWSER=1` laufen lassen (dann

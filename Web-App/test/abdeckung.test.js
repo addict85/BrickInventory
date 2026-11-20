@@ -1,5 +1,5 @@
 /**
- * scripts/abdeckung.js: aus echten V8-Dateien entsteht ein lcov-Bericht mit
+ * scripts/coverage.js: aus echten V8-Dateien entsteht ein lcov-Bericht mit
  * Bereichen, und die Schranken machen einen Rückgang rot.
  *
  * Gegenproben (05.11.2026, je einzeln):
@@ -15,7 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { buildDist } = require('./helpers/sources');
-const { bericht, pruefen } = require('../scripts/abdeckung');
+const { bericht, pruefen } = require('../scripts/coverage');
 
 const ROOT = path.join(__dirname, '..');
 

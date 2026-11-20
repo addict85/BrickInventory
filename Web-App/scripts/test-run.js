@@ -143,9 +143,9 @@ function reportFollowUp() {
   }
 }
 
-/** Bericht aus den V8-Dateien (scripts/abdeckung.js); die Rohdaten sind danach überflüssig. */
+/** Bericht aus den V8-Dateien (scripts/coverage.js); die Rohdaten sind danach überflüssig. */
 async function reportsCoverage() {
-  const bereiche = await require('./abdeckung').bericht(path.join(COVERAGE, 'v8'));
+  const bereiche = await require('./coverage').bericht(path.join(COVERAGE, 'v8'));
   console.log(`[test-lauf] Abdeckung (Zeilen %): ${JSON.stringify(bereiche)}`);
   fs.rmSync(path.join(COVERAGE, 'v8'), { recursive: true, force: true });
 }
@@ -194,7 +194,7 @@ async function main() {
     fs.mkdirSync(path.join(COVERAGE, 'v8'), { recursive: true });
     Object.assign(measurement, { NODE_V8_COVERAGE: path.join(COVERAGE, 'v8'), TEST_BUENDEL: withCard });
     const erledigt = new Set();
-    setInterval(() => require('./abdeckung').compact(path.join(COVERAGE, 'v8'), erledigt), 5000).unref();
+    setInterval(() => require('./coverage').compact(path.join(COVERAGE, 'v8'), erledigt), 5000).unref();
   }
 
   const dateien = auswahl.length

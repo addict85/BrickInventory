@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Vorgeladen in jede Testdatei (scripts/test-lauf.js): eine eigene Kopie der Vorlage,
+ * Vorgeladen in jede Testdatei (scripts/test-run.js): eine eigene Kopie der Vorlage,
  * damit Dateien parallel laufen, ohne Zeilen, NOTIFY-Kanäle oder Sperren zu teilen.
  * Die App verbindet sich wie im Betrieb als Laufzeitrolle, der Systemrahmen als
  * Systemrolle (in HTTP-Anfragen als Web-Systemrolle), Testdaten schreibt die Eigentümerin (helpers/rollen.js, sources.js);
@@ -40,7 +40,7 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
         env: { ...process.env, TEST_DATABASE_URL: process.env.TEST_DB_BASIS },
       });
     } catch {
-      /* der Lauf räumt Reste am Ende ab (scripts/test-lauf.js) */
+      /* der Lauf räumt Reste am Ende ab (scripts/test-run.js) */
     }
   });
 }

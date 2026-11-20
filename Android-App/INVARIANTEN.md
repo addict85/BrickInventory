@@ -125,7 +125,7 @@ Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund
 core-zustand (`zustandsViewModels`).
 Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt), als ein Satz
 Typen, erzeugt aus `Web-App/docs/openapi.json` (`vertrag/Vertrag.kt`, nie von Hand; Namen und
-Fachtypen in `Web-App/scripts/vertrag-kotlin-zuordnung.js`). Nur core-data bindet
+Fachtypen in `Web-App/scripts/contract-kotlin-mapping.js`). Nur core-data bindet
 es ein (`implementation`, `Modulkanten.wireKenner`), die Ablage hält Fachtypen; jedes Repository gibt Fachtypen (`model.fach`)
 zurück, ein `success: false` ist eine `Absage`.
 Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`

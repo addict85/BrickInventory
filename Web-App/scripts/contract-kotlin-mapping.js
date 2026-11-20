@@ -3,7 +3,7 @@
 /**
  * Was der Vertrag nicht sagt, die Kotlin-Typen der App aber brauchen: Namen
  * für Formen ohne sprechenden Namen, Fachtypen statt Text, die Rümpfe der
- * Anfragen. Gelesen von vertrag-kotlin-dtos.js.
+ * Anfragen. Gelesen von contract-kotlin-dtos.js.
  */
 
 /** Fachtypen aus core-model: Paket, Leerwert, wahlweise ein eigener Serializer (dann immer nullbar). */

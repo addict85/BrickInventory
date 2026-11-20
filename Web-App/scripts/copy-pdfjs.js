@@ -7,7 +7,7 @@
  * beiden Dateien nach public/vendor/pdfjs/ und zieht die Fassung im
  * Cache-Brecher von public/js/pdfjs-boot.js nach; build-frontend.js ruft es.
  *
- *   node scripts/pdfjs-kopieren.js [Zielwurzel]
+ *   node scripts/copy-pdfjs.js [Zielwurzel]
  */
 const fs = require('node:fs');
 const path = require('node:path');

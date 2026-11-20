@@ -442,7 +442,7 @@ REQUIRE_DB=1 npm test -- test/ratschen.test.js   # einzelne Dateien, gleicher Au
 npm run test:seriell                          # alles nacheinander auf der Basis-DB
 ```
 
-`npm test` (`scripts/test-lauf.js`) baut einmal nach `dist/`, legt aus
+`npm test` (`scripts/test-run.js`) baut einmal nach `dist/`, legt aus
 `TEST_DATABASE_URL` eine Vorlage-Datenbank `<name>_vorlage` an (Basis und
 Migrationen) und gibt jeder Testdatei eine eigene Kopie davon. Die Dateien
 laufen parallel (`TEST_PARALLEL`, Vorgabe doppelte Kernzahl, höchstens 8),
@@ -477,7 +477,7 @@ Die betroffenen Dateien überspringen sich dann selbst.
 **Abdeckung:** `npm run abdeckung` (= `npm test -- --abdeckung`) misst Server
 (`dist/`) und Oberfläche (über ein Mess-Bündel mit Sourcemap bis `public/js/`)
 und schreibt `coverage/lcov.info`, `coverage-summary.json` und
-`coverage/bereiche.json`. `node scripts/abdeckung.js pruefen` vergleicht die
+`coverage/bereiche.json`. `node scripts/coverage.js pruefen` vergleicht die
 Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
 
 Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in

@@ -1,4 +1,4 @@
--- Erzeugt von scripts/schema-stand.js aus einer frischen Datenbank.
+-- Erzeugt von scripts/schema-snapshot.js aus einer frischen Datenbank.
 -- Nicht von Hand ändern und nicht einspielen: Das Schema entsteht aus
 -- db/basis.sql und db/migrations/. Neu erzeugen mit
 -- `npm run build && npm run schema:stand`.

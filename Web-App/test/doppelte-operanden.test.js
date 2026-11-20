@@ -1,7 +1,7 @@
 /**
  * Derselbe Operand zweimal in der Webapp.
  *
- * Die Regel steht in scripts/check-doppelte-operanden.js; dort ist auch
+ * Die Regel steht in scripts/check-duplicate-operands.js; dort ist auch
  * begründet, warum es sie gibt. Dieser Test führt sie im normalen Lauf mit aus.
  *
  * Gegenproben (durchgeführt):
@@ -16,13 +16,13 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 test('kein Ausdruck steht zweimal auf beiden Seiten', () => {
-  const script = path.join(__dirname, '..', 'scripts', 'check-doppelte-operanden.js');
+  const script = path.join(__dirname, '..', 'scripts', 'check-duplicate-operands.js');
   try {
     execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
     assert.fail(
       `${e.stdout || ''}${e.stderr || ''}`.trim() ||
-        'check-doppelte-operanden.js ist fehlgeschlagen, ohne etwas zu melden',
+        'check-duplicate-operands.js ist fehlgeschlagen, ohne etwas zu melden',
     );
   }
 });

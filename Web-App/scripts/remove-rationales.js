@@ -4,7 +4,7 @@
  * ist nicht mehr im Baum (CLAUDE.md); ein Verweis zeigte ins Leere. Idempotent: Ein zweiter Lauf ändert
  * nichts, deshalb lässt es sich nach jedem Zusammenführen erneut anwenden.
  *
- * Aufruf: node scripts/begruendungen-entfernen.js [--pruefen] [wurzel]
+ * Aufruf: node scripts/remove-rationales.js [--pruefen] [wurzel]
  *   --pruefen: nur nennen, Exit 1 bei Funden; wurzel: Vorgabe ist Web-App/
  */
 const fs = require('node:fs');

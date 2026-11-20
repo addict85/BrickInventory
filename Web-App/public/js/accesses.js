@@ -72,7 +72,7 @@ async function qrKopplungAblehnen() {
   checkPairing();
 }
 
-// QR code via QRCode.js from public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js); without the
+// QR code via QRCode.js from public/vendor/qrcode (npm qrcodejs, scripts/copy-qrcode.js); without the
 // library, the content shows as plain text.
 /** @param {HTMLElement} container @param {string} qrData */
 function drawQr(container, qrData) {

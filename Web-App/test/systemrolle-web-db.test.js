@@ -86,7 +86,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     return;
   }
   if (!WEB) {
-    keineDb(t, new Error('ohne Testlauf (scripts/test-lauf.js) keine Web-Systemrolle'));
+    keineDb(t, new Error('ohne Testlauf (scripts/test-run.js) keine Web-Systemrolle'));
     return;
   }
   const zugang = quellen.testAccess();

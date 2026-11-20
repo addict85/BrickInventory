@@ -2,7 +2,7 @@
 /**
  * Die Android-App, gelesen aus ihrem eigenen Quelltext: die Routen aus data/api/
  * (je Bereich eine Datei) und die Fehlercodes. Die Kotlin-Typen selbst erzeugt
- * vertrag-kotlin-dtos.js aus dem Vertrag; vertrag-kotlin.test.js prüft, dass jede
+ * contract-kotlin-dtos.js aus dem Vertrag; vertrag-kotlin.test.js prüft, dass jede
  * Route den erzeugten Typ ihres Schemas nimmt.
  */
 const fs = require('node:fs');

@@ -5,12 +5,12 @@
  * Schreibt die Kotlin-Typen der App (core-vertrag, Paket vertrag) aus
  * docs/openapi.json, ohne Netz und ohne Gradle: Antworten aus den Schemas,
  * Rümpfe aus den Anfragen der Routen, die die App schickt. Namen und Fachtypen
- * stehen in vertrag-kotlin-zuordnung.js. Eingecheckt; mit --pruefen nur
+ * stehen in contract-kotlin-mapping.js. Eingecheckt; mit --pruefen nur
  * vergleichen (Rückgabe 1 bei Abweichung). Aufruf: npm run vertrag:kotlin
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const STANDARD = require('./vertrag-kotlin-zuordnung.js');
+const STANDARD = require('./contract-kotlin-mapping.js');
 
 /** Die Zuordnung des laufenden Aufrufs; Tests geben eine kleine eigene mit. */
 let Z = STANDARD;
@@ -209,7 +209,7 @@ function collect(dok) {
     const [methode, pfad] = route.split(' ');
     const op = Object.entries(dok.paths ?? {}).find(([p]) => uniform(p) === uniform(pfad ?? ''))?.[1];
     const s = op?.[(methode ?? '').toLowerCase()]?.requestBody?.content?.['application/json']?.schema;
-    if (!s) throw new Error(`${route}: kein Rumpf im Vertrag (vertrag-kotlin-zuordnung.js, ANFRAGEN)`);
+    if (!s) throw new Error(`${route}: kein Rumpf im Vertrag (contract-kotlin-mapping.js, ANFRAGEN)`);
     form(name, s, true);
   }
   return shapes;
@@ -413,7 +413,7 @@ function datei(dok) {
   for (const [n, paket] of Object.entries(Z.CONSTANTS)) if (new RegExp(`= ${n}\\b`).test(rumpf)) importe.push(paket);
   const optIn = /@EncodeDefault/.test(rumpf) ? '@file:OptIn(ExperimentalSerializationApi::class)\n' : '';
   return (
-    '// Erzeugt aus Web-App/docs/openapi.json durch Web-App/scripts/vertrag-kotlin-dtos.js.\n' +
+    '// Erzeugt aus Web-App/docs/openapi.json durch Web-App/scripts/contract-kotlin-dtos.js.\n' +
     '// Nicht von Hand ändern: npm run vertrag:kotlin (im Ordner Web-App).\n' +
     '@file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")\n' +
     optIn +

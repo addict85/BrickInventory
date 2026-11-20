@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pruefe, RUNS } = require('../scripts/check-frontend-typen');
+const { pruefe, RUNS } = require('../scripts/check-frontend-types');
 
 test('Oberfläche: die CI prüft beide Konfigurationen als eigenen Schritt', () => {
   // Den tsc-Lauf macht die CI (npm run typecheck:frontend, beide RUNS); hier
@@ -24,7 +24,7 @@ test('Oberfläche: die CI prüft beide Konfigurationen als eigenen Schritt', () 
   const path = require('node:path');
   const ci = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   assert.match(ci, /^\s+run: npm run typecheck:frontend\s*$/m);
-  assert.equal(require('../package.json').scripts['typecheck:frontend'], 'node scripts/check-frontend-typen.js');
+  assert.equal(require('../package.json').scripts['typecheck:frontend'], 'node scripts/check-frontend-types.js');
   assert.deepEqual(RUNS, ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json']);
   assert.equal(typeof pruefe, 'function');
 });

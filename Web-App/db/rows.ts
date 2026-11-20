@@ -1,4 +1,4 @@
-// Erzeugt von scripts/zeilentypen.js aus db/schema-stand.sql; nicht von Hand ändern.
+// Erzeugt von scripts/row-types.js aus db/schema-stand.sql; nicht von Hand ändern.
 // Neu erzeugen nach jeder Migration: npm run schema:stand && npm run schema:zeilen
 
 /** Je Tabelle die Spalten, wie node-pg sie liefert (NUMERIC als Zahl, BIGINT als Text). */

@@ -2,19 +2,19 @@
 /**
  * Namen für Datenbanken und Rollen, die ein Test selbst anlegt. Alle beginnen
  * mit `<Basis-DB>_vorlage_`: So sind sie auf einem geteilten Server als Reste
- * dieser Suite erkennbar, und scripts/test-lauf.js räumt sie beim nächsten
+ * dieser Suite erkennbar, und scripts/test-run.js räumt sie beim nächsten
  * Lauf ab, auch wenn ein Test vor seinem t.after abgebrochen ist.
  * Gegenprobe (04.11.2026): Rest-DB …_schema_basis_999999 angelegt, in
  * schema-basis-db cleanRemainder() gestrichen → die DB blieb; mit dem Aufruf weg.
  */
 const STANDARD = 'postgres://tester:test@localhost/cattest';
 
-/** Die Basis-Datenbank (nicht die Kopie, die test-lauf.js je Datei anlegt). */
+/** Die Basis-Datenbank (nicht die Kopie, die test-run.js je Datei anlegt). */
 function basisUrl() {
   return new URL(process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL || STANDARD);
 }
 
-/** `<basis>_vorlage` — derselbe Stamm wie die Vorlage in scripts/test-lauf.js. */
+/** `<basis>_vorlage` — derselbe Stamm wie die Vorlage in scripts/test-run.js. */
 function stamm() {
   return `${decodeURIComponent(basisUrl().pathname.slice(1))}_vorlage`.toLowerCase();
 }

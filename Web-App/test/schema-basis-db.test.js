@@ -176,7 +176,7 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
   });
 
   await t.test('db/basis.sql ist ein unverändertes Abbild der Datenbank, die es erzeugt', async tt => {
-    const sk = require(path.join(ROOT, 'scripts', 'schema-stand.js'));
+    const sk = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const createdWith = Number((datei.match(/^-- Erzeugt mit pg_dump (\d+)\./m) || [])[1]);
     let jetzt = null;
     try {

@@ -1,5 +1,5 @@
 /**
- * scripts/begruendungen-entfernen.js streicht die Verweise ins frühere Archiv, ohne leere Kommentare,
+ * scripts/remove-rationales.js streicht die Verweise ins frühere Archiv, ohne leere Kommentare,
  * kaputte JSDoc oder doppelte Leerzeilen zu hinterlassen, und ein zweiter Lauf ändert nichts.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { removeReferences } = require('../scripts/begruendungen-entfernen');
+const { removeReferences } = require('../scripts/remove-rationales');
 
 // Zusammengesetzt, damit das Skript diese Datei nicht selbst bereinigt.
 const V = `Ausführlich: ${['docs', 'begruendungen'].join('/')}/src/x.ts.md#anker`;
@@ -56,13 +56,9 @@ test('ohne Verweis bleibt der Text unverändert; ein zweiter Lauf ändert nichts
 test('das Skript bereinigt einen Baum und lässt node_modules und Fremdes liegen', () => {
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'begr-'));
   const script = (/** @type {string[]} */ ...args) =>
-    spawnSync(
-      process.execPath,
-      [path.join(__dirname, '..', 'scripts', 'begruendungen-entfernen.js'), ...args, wurzel],
-      {
-        encoding: 'utf8',
-      },
-    );
+    spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'remove-rationales.js'), ...args, wurzel], {
+      encoding: 'utf8',
+    });
   const lies = (/** @type {string} */ rel) => fs.readFileSync(path.join(wurzel, rel), 'utf8');
   try {
     fs.mkdirSync(path.join(wurzel, 'baum'));

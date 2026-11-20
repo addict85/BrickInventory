@@ -1,5 +1,5 @@
 /**
- * scripts/test-lauf.js: Eine Datei, die nur an der Frist scheitert, läuft
+ * scripts/test-run.js: Eine Datei, die nur an der Frist scheitert, läuft
  * einzeln mit doppelter Frist nach. Wird sie dort grün, ist der Lauf grün und
  * sagt es; bleibt sie rot, ist er rot. Ein echter Fehler wird nie nachgeholt.
  *
@@ -33,7 +33,7 @@ function runner(dateien, mehr = {}) {
   // Ohne Datenbank und nicht als Kind dieses Testlaufs: sonst schriebe node --test anders.
   for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
     delete env[k];
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-lauf.js'), ...dateien], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), ...dateien], {
     cwd: ROOT,
     env,
     encoding: 'utf8',

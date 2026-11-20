@@ -1,4 +1,4 @@
-// Erzeugt von scripts/vertrag-frontend-typen.js aus docs/openapi.json — nicht von Hand ändern.
+// Erzeugt von scripts/contract-frontend-types.js aus docs/openapi.json — nicht von Hand ändern.
 // Neu schreiben: npm run vertrag:frontend
 
 export type Acquisition = {

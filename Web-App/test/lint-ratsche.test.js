@@ -9,7 +9,7 @@
  *   B  nur `lint/style` gezählt statt aller Regeln → „lint: … zählt die Funde eines
  *      Probebaums“ rot (seit der Bestand 0 Funde hat, zählt ein Probebaum mit Funden;
  *      12.11.2026 wiederholt)
- *   C  check-test-typen.js: `if (meldungen.length > limit)` → `if (false)`
+ *   C  check-test-types.js: `if (meldungen.length > limit)` → `if (false)`
  *      → „typecheck:tests …“ rot (14.11.2026 mit Schranke 0 und Probe -1 wiederholt)
  */
 const test = require('node:test');
@@ -44,7 +44,7 @@ function ratsche(art, schranken, wurzel) {
     fs.writeFileSync(datei, JSON.stringify(schranken));
     env.LINT_SCHRANKEN = datei;
   }
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratsche.js'), art], {
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'lint-ratchet.js'), art], {
     cwd: ROOT,
     env,
     encoding: 'utf8',
@@ -87,7 +87,7 @@ test('typecheck:tests: rot über der Schranke, der Bestand hält sie', () => {
       fs.writeFileSync(datei, JSON.stringify({ testtypen: limit }));
       env.LINT_SCHRANKEN = datei;
     }
-    return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-typen.js')], {
+    return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-types.js')], {
       cwd: ROOT,
       env,
       encoding: 'utf8',

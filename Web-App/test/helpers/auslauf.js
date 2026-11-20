@@ -1,5 +1,5 @@
 /**
- * Vorgeladen in jede Testdatei (scripts/test-lauf.js, `--require`): Endet das
+ * Vorgeladen in jede Testdatei (scripts/test-run.js, `--require`): Endet das
  * Kind nach seinem letzten Test nicht, beendet es sich rot und nennt, was offen
  * blieb. Seit Node 26 bricht --test-timeout nur Tests ab, nicht die Datei; der
  * Runner wartete sonst auf das Kind, bis die CI den ganzen Job abbricht.

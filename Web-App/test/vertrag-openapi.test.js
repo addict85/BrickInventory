@@ -26,7 +26,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { DATEI, alsText } = require('../scripts/vertrag-openapi.js');
+const { DATEI, alsText } = require('../scripts/contract-openapi.js');
 const { CONTRACT, AREAS } = _req('src/contract/index.js');
 const { openapi } = _req('src/contract/openapi.js');
 

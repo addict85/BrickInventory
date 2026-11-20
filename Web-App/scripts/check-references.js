@@ -2,7 +2,7 @@
 /**
  * Pfadverweise in Code-Kommentaren, README.md und docs/ auflösen; tote melden.
  * Ein Kommentar, der auf eine verschwundene Datei zeigt, schickt den Leser ins
- * Leere. Aufruf: node scripts/verweise-pruefen.js [Web-App-Verzeichnis]
+ * Leere. Aufruf: node scripts/check-references.js [Web-App-Verzeichnis]
  * Ausgabe je totem Verweis `datei:zeile pfad`, Exit-Code 1, wenn es welche gibt.
  */
 const fs = require('node:fs');

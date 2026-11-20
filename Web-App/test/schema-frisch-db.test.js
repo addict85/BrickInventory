@@ -155,7 +155,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
   });
 
   await t.test('db/schema-stand.sql zeigt das Schema, das entsteht', async () => {
-    const { schemaText, DATEI } = require(path.join(ROOT, 'scripts', 'schema-stand.js'));
+    const { schemaText, DATEI } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const eingecheckt = require('node:fs').readFileSync(DATEI, 'utf8');
     assert.equal(
       await schemaText(db),

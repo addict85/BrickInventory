@@ -1,7 +1,7 @@
 /**
  * PDF.js steht unter Abhängigkeitsverwaltung: pdfjs-dist mit exakter Fassung
  * in package.json und Lockfile (sichtbar für npm audit und Dependabot);
- * public/vendor/pdfjs/ ist eine Kopie, die scripts/pdfjs-kopieren.js beim
+ * public/vendor/pdfjs/ ist eine Kopie, die scripts/copy-pdfjs.js beim
  * Bauen schreibt. Läuft die Kopie der Fassung hinterher, wird dieser Test rot.
  *
  * Gegenproben (am 01.11.2026 gemessen):
@@ -68,7 +68,7 @@ test('das Kopierskript legt die Dateien ab und zieht die Fassung nach', t => {
     path.join(ziel, 'public', 'js', 'pdfjs-boot.js'),
     "import '/vendor/pdfjs/pdf.min.mjs?v=1.0.0';\nw = '/vendor/pdfjs/pdf.worker.min.mjs?v=1.0.0';\n",
   );
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'pdfjs-kopieren.js'), ziel], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'copy-pdfjs.js'), ziel], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   assert.ok(fs.existsSync(path.join(ziel, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs')));
   assert.equal(

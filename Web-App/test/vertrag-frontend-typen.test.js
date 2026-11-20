@@ -24,7 +24,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { QUELLE, ZIEL, create, formatiert } = require('../scripts/vertrag-frontend-typen.js');
+const { QUELLE, ZIEL, create, formatiert } = require('../scripts/contract-frontend-types.js');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
 test('die eingecheckten Typen sind aus openapi.json erzeugt', () => {

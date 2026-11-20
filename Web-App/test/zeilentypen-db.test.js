@@ -1,15 +1,15 @@
 /**
- * db/rows.ts (scripts/zeilentypen.js) bindet die Zeilentypen der Repositories an das
+ * db/rows.ts (scripts/row-types.js) bindet die Zeilentypen der Repositories an das
  * Schema. Geprüft an der echten Datenbank: Jede Tabelle und Spalte samt NULL steht dort
  * so, und jeder Spaltentyp kommt über den Zugang (createDb) als der JavaScript-Typ an,
  * den die Datei verspricht.
  *
  * Gegenproben (14.11.2026, je einzeln):
- *   A  in scripts/zeilentypen.js `numeric` unter 'string' statt 'number' → rot: „jeder
+ *   A  in scripts/row-types.js `numeric` unter 'string' statt 'number' → rot: „jeder
  *      Spaltentyp kommt so an“ (numeric(12,4): erwartet string, kam number)
  *   B  den NUMERIC-Leser in db/database.ts gestrichen → rot: dieselbe Stelle, umgekehrt
  *   C  in db/rows.ts eine Spalte von price_cache gelöscht → rot: „db/rows.ts ist erzeugt“
- *      (der Aufruf `scripts/zeilentypen.js --pruefen` endet mit 1)
+ *      (der Aufruf `scripts/row-types.js --pruefen` endet mit 1)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const Z = require('../scripts/zeilentypen');
+const Z = require('../scripts/row-types');
 
 /** Je PostgreSQL-Typ ein Wert; `typeof` bzw. Klasse, wie node-pg ihn liefert. */
 const PROBE = {
@@ -53,7 +53,7 @@ function art(v) {
 }
 
 test('db/rows.ts ist erzeugt und passt zum Schema', () => {
-  const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'zeilentypen.js'), '--pruefen'], {
+  const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'row-types.js'), '--pruefen'], {
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr + r.stdout);

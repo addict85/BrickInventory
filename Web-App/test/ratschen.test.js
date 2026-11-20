@@ -1417,13 +1417,13 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
   );
   const r = require('node:child_process').spawnSync(
     process.execPath,
-    [path.join(WEB, 'scripts', 'begruendungen-entfernen.js'), '--pruefen'],
+    [path.join(WEB, 'scripts', 'remove-rationales.js'), '--pruefen'],
     { encoding: 'utf8' },
   );
   assert.equal(
     r.status,
     0,
-    `Verweise ins frühere Archiv — \`node scripts/begruendungen-entfernen.js\` entfernt sie:\n${r.stdout}${r.stderr}`,
+    `Verweise ins frühere Archiv — \`node scripts/remove-rationales.js\` entfernt sie:\n${r.stdout}${r.stderr}`,
   );
 });
 
