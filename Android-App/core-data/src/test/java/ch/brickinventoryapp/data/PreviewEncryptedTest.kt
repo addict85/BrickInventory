@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.security.StoreCipher
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse

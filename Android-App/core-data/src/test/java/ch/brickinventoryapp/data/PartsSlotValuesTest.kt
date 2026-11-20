@@ -4,10 +4,10 @@ import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
-import ch.brickinventoryapp.model.fach.Erfasst
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.PartInventory
-import ch.brickinventoryapp.model.fach.PartialKey
+import ch.brickinventoryapp.model.domain.Erfasst
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.PartInventory
+import ch.brickinventoryapp.model.domain.PartialKey
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.StorageExit
 import ch.brickinventoryapp.offline.StorageInventory

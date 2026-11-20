@@ -1,0 +1,35 @@
+package ch.brickinventoryapp.model.domain
+
+/**
+ * Ein Teil, wie es der Erfassungsdialog einsammelt. Benannte Felder statt neun Werten
+ * nach ihrer Stellung: Farbname und Farbcode sind beide `String?` und liessen sich
+ * unbemerkt vertauschen. [KEINE_FARBE] heisst wie am Server „ohne Farbe“, 0 wäre Schwarz.
+ */
+data class Teilerfassung(
+    val nummer: String,
+    val farbId: Int = KEINE_FARBE,
+    val farbname: String? = null,
+    val farbHex: String? = null,
+    val menge: Int = 1,
+    val stueckpreis: Geld? = null,
+    val zustand: Zustand? = null,
+    val besitzer: Int? = null,
+    val lagerort: String? = null,
+)
+
+/**
+ * Was der Server zu einem erfassten Teil oder einer Figur meldet: neu angelegt oder zur
+ * Menge gezählt, und aus welchem Zustand der Kaufpreis stammt, wo BrickLink nur einen kennt.
+ */
+data class Erfasst(val angelegt: Boolean, val nummer: String?, val priceFromState: Zustand? = null)
+
+/** Eine Minifigur, wie es der Erfassungsdialog einsammelt; siehe [Teilerfassung]. */
+data class Figurenerfassung(
+    val nummer: String,
+    val blNumber: String? = null,
+    val menge: Int = 1,
+    val stueckpreis: Geld? = null,
+    val zustand: Zustand? = null,
+    val besitzer: Int? = null,
+    val lagerort: String? = null,
+)

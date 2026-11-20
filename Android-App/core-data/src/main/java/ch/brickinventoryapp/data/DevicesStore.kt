@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import android.content.Context
 import androidx.core.content.edit
@@ -9,9 +9,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import ch.brickinventoryapp.sicherheit.Tresorbefund
-import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
-import ch.brickinventoryapp.netz.util.Protokoll
+import ch.brickinventoryapp.security.Tresorbefund
+import ch.brickinventoryapp.security.Vertrauenschiffre
+import ch.brickinventoryapp.network.util.Protokoll
 import ch.brickinventoryapp.model.ui.theme.brightnessApplies
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow

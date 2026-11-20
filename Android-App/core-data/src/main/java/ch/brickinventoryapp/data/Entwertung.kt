@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.netz.util.PlaintextRejected
-import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.sicherheit.Tresorbefund
-import ch.brickinventoryapp.sicherheit.CertificateUnresolved
-import ch.brickinventoryapp.netz.util.ownAddress
-import ch.brickinventoryapp.sicherheit.pinKey
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
+import ch.brickinventoryapp.network.util.PlaintextRejected
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.security.Tresorbefund
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.network.util.ownAddress
+import ch.brickinventoryapp.security.pinKey
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -17,7 +17,7 @@ import javax.inject.Inject
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509ExtendedTrustManager
 
-/** Legt einen Auftrag in die dauerhafte Warteschlange (data/lokal/EntwertungsWorker). */
+/** Legt einen Auftrag in die dauerhafte Warteschlange (data/local/EntwertungsWorker). */
 fun interface RedemptionPlanner {
     fun plane(job: Entwertungsauftrag)
 }

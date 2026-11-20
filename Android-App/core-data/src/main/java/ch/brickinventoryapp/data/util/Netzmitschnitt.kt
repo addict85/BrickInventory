@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.util
 
-import ch.brickinventoryapp.netz.util.Protokoll
+import ch.brickinventoryapp.network.util.Protokoll
 import okhttp3.logging.HttpLoggingInterceptor
 
 /**

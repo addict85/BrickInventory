@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui.util
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Waehrung
 import androidx.appcompat.app.AppCompatDelegate
 import android.text.format.DateFormat
 import androidx.compose.runtime.Composable

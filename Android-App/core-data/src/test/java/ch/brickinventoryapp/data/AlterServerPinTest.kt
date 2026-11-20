@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.trustJob
-import ch.brickinventoryapp.sicherheit.spkiFingerprint
+import ch.brickinventoryapp.security.trustJob
+import ch.brickinventoryapp.security.spkiFingerprint
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer

@@ -1,11 +1,11 @@
 Gegenprobe: Die Familie einer Wurzel wieder aus dem O= im Subjekt statt aus der festen Liste
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
 Rot: dasselbe O= im Subjekt macht noch keine Familie
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 @@ -293,7 +293,8 @@
      /** Beide sind System-Wurzeln derselben bekannten Familie; das O= im Subjekt wählt jede CA selbst. */
      private fun sameOperator(a: String, b: String): Boolean {

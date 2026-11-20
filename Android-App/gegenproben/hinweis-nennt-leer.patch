@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.DefaultStateTermsTest
 Rot: der Hinweis nennt die Wahl
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 index c0b6003..642ddbd 100644
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -8,7 +8,7 @@
      <string name="settings_price_condition">Preiszustand</string>
      <string name="settings_default_condition">Mein Zustand beim Hinzufügen</string>

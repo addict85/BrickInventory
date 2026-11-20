@@ -8,7 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
 /**
  * „gelöscht“ mit „Rückgängig“ zu einem vorgemerkten Löschen. Gelöscht wird, wenn die

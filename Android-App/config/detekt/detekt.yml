@@ -89,7 +89,7 @@ style:
       - 'androidx.compose.ui.graphics.*'
       - 'androidx.navigation.compose.*'
       - 'androidx.camera.core.*'
-    excludes: ['**/gemeinsam/ui/SetDetailComponents.kt', '**/verwaltung/ui/screens/MonitoringScreen.kt']
+    excludes: ['**/shared/ui/SetDetailComponents.kt', '**/management/ui/screens/MonitoringScreen.kt']
   ReturnCount:
     # Früh zurückgeben statt verschachteln ist Projektstil, auch nach der
     # Prüfung mitten in der Funktion (Netzantworten, Passkeys).

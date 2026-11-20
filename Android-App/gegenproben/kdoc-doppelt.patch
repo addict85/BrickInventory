@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: kein Verweis auf das Begruendungsarchiv
 
-diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
---- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
-+++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
 @@ -14,6 +14,7 @@
   */
  typealias Frage = suspend (String?) -> Abrufergebnis<AlarmabrufView>

@@ -44,16 +44,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.components.GroupTitle
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
-import ch.brickinventoryapp.konto.ui.KontoZiel
-import ch.brickinventoryapp.sammlung.ui.SammlungZiel
-import ch.brickinventoryapp.teile.ui.TeileZiel
-import ch.brickinventoryapp.verwaltung.ui.ManagementTarget
+import ch.brickinventoryapp.finances.ui.FinanzZiel
+import ch.brickinventoryapp.account.ui.KontoZiel
+import ch.brickinventoryapp.collection.ui.SammlungZiel
+import ch.brickinventoryapp.parts.ui.TeileZiel
+import ch.brickinventoryapp.management.ui.ManagementTarget
 
 /**
  * Das Ziel „Mehr“ der unteren Leiste: alle Seiten, die kein Bestandsreiter sind, in

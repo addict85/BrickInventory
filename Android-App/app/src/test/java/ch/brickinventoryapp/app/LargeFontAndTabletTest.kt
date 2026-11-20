@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.teile.ui.PartsListAndDetailRoute
+import ch.brickinventoryapp.parts.ui.PartsListAndDetailRoute
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Zustand
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Icon
@@ -30,7 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -45,14 +45,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
-import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.fach.PricePointView
-import ch.brickinventoryapp.model.fach.PriceSeriesView
-import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
-import ch.brickinventoryapp.teile.ui.screens.PartsRoute
-import ch.brickinventoryapp.gemeinsam.ui.PriceChart
-import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
-import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.model.domain.PreisDiagrammAnsicht
+import ch.brickinventoryapp.model.domain.PricePointView
+import ch.brickinventoryapp.model.domain.PriceSeriesView
+import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.shared.ui.PriceChart
+import ch.brickinventoryapp.shared.ui.Zustandszeile
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.ui.util.fmtMoney
 import android.content.Context
 import androidx.compose.foundation.layout.Column
@@ -61,9 +61,9 @@ import java.util.Locale
 import org.robolectric.RuntimeEnvironment
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
-import ch.brickinventoryapp.katalog.ui.KatalogZiel
-import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.finances.ui.FinanzZiel
+import ch.brickinventoryapp.catalog.ui.KatalogZiel
+import ch.brickinventoryapp.collection.ui.SammlungZiel
 
 /**
  * Grosse Schrift und Tablet, als Verhalten ausgeführt: Navigationsziele stehen

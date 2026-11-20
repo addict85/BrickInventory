@@ -7,7 +7,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Was an der Vorschau-Ablage nur im Aufbau zu sehen ist: die Reihenfolge im Bild-Client,
  * der Anlauf beim App-Start, Manifest und Hinweis. Das Verhalten prüfen ausgeführt
  * PreviewStorageTest, PreviewWarmerTest (auch jede Netzlage),
- * PreviewTapTest, PreviewDeviceTest und CollectionWarmUpTest (core-zustand),
+ * PreviewTapTest, PreviewDeviceTest und CollectionWarmUpTest (core-state),
  * die Clients selbst ServerClientsTest.
  */
 class PreviewStoreTest {
@@ -42,7 +42,7 @@ class PreviewStoreTest {
 
     @Test
     fun `der App-Start wartet den Anlauf ab und fragt vor dem Sammeln`() {
-        val fe = quelle("zustand/ui/Vorwaermen.kt")
+        val fe = quelle("state/ui/Vorwaermen.kt")
         assert(fe.contains("delay(VorschauVorwaermer.ANLAUF_MS)")) {
             "Der Anlauf fehlt — das Vorwaermen startet dann mitten in Anmeldung und erster Kachelwand"
         }

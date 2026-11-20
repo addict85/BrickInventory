@@ -484,7 +484,7 @@ class QuelltextRatscheTest {
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_FOLDER: öffentlich, weil core-data und core-update ihn teilen.
         val GRENZE = 222
-        val andere = setOf("core-model", "core-vertrag", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-navigation", "core-sitzung",
+        val andere = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
@@ -725,7 +725,7 @@ class QuelltextRatscheTest {
         val probe = zaehle(listOf("    val avgPrice: Double? = null,", "    val createdAt: String? = null,", "    val pnlProzent: Double? = null,"))
         assertEquals("Das Muster erkennt die alten Formen nicht mehr", listOf("avgPrice") to listOf("createdAt"), probe)
         val (money, days) = zaehle(rowsPerModule().filter { it.first == "core-model" }.flatMap { it.second })
-        ratchet("Beträge als Double in core-model", AMOUNTS, money.size, "Geld nehmen (model/fach/Geld.kt): $money")
+        ratchet("Beträge als Double in core-model", AMOUNTS, money.size, "Geld nehmen (model/domain/Geld.kt): $money")
         ratchet("Daten als String in core-model", DATA, days.size, "Instant nehmen, gelesen mit zeitpunkt(): $days")
     }
     /** Ob [pattern] eine Boolean-Eigenschaft dieses Namens als alte Ladeform zählt. */
@@ -739,5 +739,5 @@ class QuelltextRatscheTest {
     }
 
     private val eigenschaft = Regex("""^\s*(?:(?:private|internal|public|override)\s+)*(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(Boolean|String\?|String)(?![A-Za-z0-9_<?])""")
-    private val presentation = listOf("feature-", "core-zustand", "core-sitzung", "app")
+    private val presentation = listOf("feature-", "core-state", "core-session", "app")
 }

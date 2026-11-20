@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Tablet zeigt Teil
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/TeileGraph.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/TeileGraph.kt
 index ed487ef..1672ebe 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/TeileGraph.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/TeileGraph.kt
 @@ -226,7 +226,7 @@ internal fun ListAndDetailRoute(
      liste: @Composable (openManual: (Postenart, String, Int, String) -> Unit) -> Unit,
  ) {

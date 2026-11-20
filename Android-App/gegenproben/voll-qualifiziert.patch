@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: kein voll qualifizierter Projektname im Code
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
 @@ -89,7 +89,7 @@
              delay(VorschauVorwaermer.ANLAUF_MS)
              // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.

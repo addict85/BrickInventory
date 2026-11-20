@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.alarm
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 
 /**
  * Was aus dem, was jemand ins Schwellenfeld tippt, wird. Gespeichert wird beim Tippen,

@@ -1,12 +1,12 @@
 Gegenprobe: „Als Datei speichern“ teilt die Codes wieder über ACTION_SEND
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.SecondFactorMaskTest
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
 Rot: die Notfallcodes lassen sich als Datei speichern
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
 index 2b5a715..2e5a5d9 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
 @@ -121,7 +121,7 @@ fun ZweiterFaktorPflichtMaske(
                          Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                              modifier = Modifier.readAloudAs(zustand.codes.joinToString(", ") { charByChar(it) }))

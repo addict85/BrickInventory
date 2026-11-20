@@ -1,23 +1,23 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.lokal.asRequest
-import ch.brickinventoryapp.model.fach.Erfassungswunsch
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.SetAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.data.local.asRequest
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.SetAnsicht
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.vertrag.AddSetResponse
-import ch.brickinventoryapp.model.fach.SetRecorded
+import ch.brickinventoryapp.contract.AddSetResponse
+import ch.brickinventoryapp.model.domain.SetRecorded
 import ch.brickinventoryapp.data.asRecorded
-import ch.brickinventoryapp.vertrag.LagerortRequest
-import ch.brickinventoryapp.vertrag.MengeGeaendert
-import ch.brickinventoryapp.vertrag.MoveSetRequest
-import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
-import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.contract.LagerortRequest
+import ch.brickinventoryapp.contract.MengeGeaendert
+import ch.brickinventoryapp.contract.MoveSetRequest
+import ch.brickinventoryapp.contract.UpdateQuantityRequest
+import ch.brickinventoryapp.model.domain.Setsortierung
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Filterspalten

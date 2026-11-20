@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
-import ch.brickinventoryapp.vertrag.CatalogSetDetail
-import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
-import ch.brickinventoryapp.vertrag.CatalogSetsResponse
+import ch.brickinventoryapp.contract.CatalogMetaResponse
+import ch.brickinventoryapp.contract.CatalogSetDetail
+import ch.brickinventoryapp.contract.CatalogSetDetailResponse
+import ch.brickinventoryapp.contract.CatalogSetsResponse
 import ch.brickinventoryapp.data.util.BrickLinkUrls
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals

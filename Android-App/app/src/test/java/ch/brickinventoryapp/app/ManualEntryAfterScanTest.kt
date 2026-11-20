@@ -25,19 +25,19 @@ class ManualEntryAfterScanTest {
     fun `jeder Scanner-Einstieg reagiert darauf`() {
         // Die Galerie öffnet ihren Dialog, die Teileliste setzt den Cursor.
         // Beide quittieren.
-        val g = code(lies("sammlung/ui/screens/GalleryScreen.kt"))
+        val g = code(lies("collection/ui/screens/GalleryScreen.kt"))
         assert(g.contains("barcode.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
         }
         assert(g.contains("erfassung.manuelleErfassungQuittieren()")) { "Die Galerie quittiert nicht" }
 
-        val pl = code(lies("teile/ui/screens/PartsListScreen.kt"))
+        val pl = code(lies("parts/ui/screens/PartsListScreen.kt"))
         assert(pl.contains("manuelleErfassungAnfordern") && pl.contains("setFeldFokus.requestFocus()")) {
             "Die Teileliste setzt den Cursor nach einem erfolglosen Scan nicht ins Feld"
         }
         assert(pl.contains("onManuelleErfassungQuittiert()")) { "Die Teileliste quittiert nicht" }
 
-        val tg = code(lies("teile/ui/TeileGraph.kt"))
+        val tg = code(lies("parts/ui/TeileGraph.kt"))
         assert(tg.contains("manuelleErfassungAnfordern = scan.manuellErfassen")) {
             "Der Graph reicht die Anforderung nicht an die Teileliste durch"
         }
@@ -48,7 +48,7 @@ class ManualEntryAfterScanTest {
         // „Dies soll immer so sein, wenn das Formular angezeigt wird" — deshalb
         // LaunchedEffect(Unit): Der Dialog wird bei jedem Öffnen neu
         // zusammengesetzt, also läuft es bei jeder Anzeige genau einmal.
-        val g = lies("sammlung/ui/screens/GalerieErfassen.kt")
+        val g = lies("collection/ui/screens/GalerieErfassen.kt")
         val i = g.indexOf("fun AddSetDialog(")
         assert(i >= 0) { "AddSetDialog nicht gefunden" }
         val fn = g.substring(i)

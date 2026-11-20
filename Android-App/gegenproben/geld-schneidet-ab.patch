@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.MoneyTest
 Rot: ein Betrag wird auf vier Stellen gerundet
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
 @@ -34,7 +34,7 @@
          val NULL = Geld(0)
  

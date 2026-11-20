@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.AddMinifigRequest
-import ch.brickinventoryapp.vertrag.AddMinifigResponse
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.LagerortRequest
-import ch.brickinventoryapp.vertrag.LagerortResponse
-import ch.brickinventoryapp.vertrag.MinifigsResponse
-import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
-import ch.brickinventoryapp.vertrag.VerwendendeSetsResponse
+import ch.brickinventoryapp.contract.AddMinifigRequest
+import ch.brickinventoryapp.contract.AddMinifigResponse
+import ch.brickinventoryapp.contract.GenericResponse
+import ch.brickinventoryapp.contract.LagerortRequest
+import ch.brickinventoryapp.contract.LagerortResponse
+import ch.brickinventoryapp.contract.MinifigsResponse
+import ch.brickinventoryapp.contract.UpdateManualItemRequest
+import ch.brickinventoryapp.contract.VerwendendeSetsResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -17,8 +17,8 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.vertrag.ManualFigsResponse
-import ch.brickinventoryapp.vertrag.MinifigStatsResponse
+import ch.brickinventoryapp.contract.ManualFigsResponse
+import ch.brickinventoryapp.contract.MinifigStatsResponse
 
 /**
  * Die Figurenliste abfragen — für den Figuren-Reiter und den Inhalt eines Sets.

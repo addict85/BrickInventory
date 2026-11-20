@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * Schreibt die Kotlin-Typen der App (core-vertrag, Paket vertrag) aus
+ * Schreibt die Kotlin-Typen der App (core-contract, Paket vertrag) aus
  * docs/openapi.json, ohne Netz und ohne Gradle: Antworten aus den Schemas,
  * Rümpfe aus den Anfragen der Routen, die die App schickt. Namen und Fachtypen
  * stehen in contract-kotlin-mapping.js. Eingecheckt; mit --pruefen nur
@@ -21,13 +21,13 @@ const ZIEL = path.join(
   ROOT,
   '..',
   'Android-App',
-  'core-vertrag',
+  'core-contract',
   'src',
   'main',
   'java',
   'ch',
   'brickinventoryapp',
-  'vertrag',
+  'contract',
   'Vertrag.kt',
 );
 
@@ -417,7 +417,7 @@ function datei(dok) {
     '// Nicht von Hand ändern: npm run vertrag:kotlin (im Ordner Web-App).\n' +
     '@file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")\n' +
     optIn +
-    '\npackage ch.brickinventoryapp.vertrag\n\n' +
+    '\npackage ch.brickinventoryapp.contract\n\n' +
     importe
       .sort()
       .map(i => `import ${i}`)

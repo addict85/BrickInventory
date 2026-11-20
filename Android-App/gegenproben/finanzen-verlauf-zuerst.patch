@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Finanzen nennen den Marktwert vor dem Verlauf
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/FinanceScreen.kt
 @@ -177,7 +177,6 @@ fun FinanceScreen(
                      }
                  }

@@ -126,12 +126,12 @@
         </service>
 
         <service
-            android:name=".dienste.service.CsvImportService"
+            android:name=".services.service.CsvImportService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
         <service
-            android:name=".dienste.service.PdfExportService"
+            android:name=".services.service.PdfExportService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
@@ -282,7 +282,7 @@
 
         <!-- PDFs von Dritten rendert pdfium ohne Rechte, Dateien und Konto (ui/pdf/PdfRenderDienst). -->
         <service
-            android:name="ch.brickinventoryapp.finanzen.ui.pdf.PdfRenderDienst"
+            android:name="ch.brickinventoryapp.finances.ui.pdf.PdfRenderDienst"
             android:isolatedProcess="true"
             android:process=":pdf"
             android:exported="false" />

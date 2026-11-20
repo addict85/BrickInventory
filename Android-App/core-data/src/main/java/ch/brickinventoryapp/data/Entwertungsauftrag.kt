@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.sicherheit.Tresorbefund
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.security.Tresorbefund
 
 /**
  * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, das Token

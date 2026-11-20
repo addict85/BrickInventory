@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.BewertungAnsicht
-import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.MetricsView
-import ch.brickinventoryapp.model.fach.PriceHistoryView
-import ch.brickinventoryapp.model.fach.SetPriceView
-import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.fach.ValueHistoryView
+import ch.brickinventoryapp.model.domain.BewertungAnsicht
+import ch.brickinventoryapp.model.domain.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.domain.GewinnAnsicht
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.SetPriceView
+import ch.brickinventoryapp.model.domain.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.domain.ValueHistoryView
 
-import ch.brickinventoryapp.model.fach.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Kontoauswahl
 /**
  * Preise, Bewertung, Verlauf und Gewinn/Verlust.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit

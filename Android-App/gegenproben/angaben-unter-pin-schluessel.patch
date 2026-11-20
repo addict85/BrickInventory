@@ -1,12 +1,12 @@
 Gegenprobe: Die Angaben liegen wieder unter dem Schlüssel der Pins, der auch gesperrt arbeitet
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.VertrauenschiffreTest
+Modul: core-security
+Test: ch.brickinventoryapp.security.VertrauenschiffreTest
 Rot: gesperrt ist eine Angabe spaeter lesbar
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
 index 25f2ada..cad01ca 100644
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Vertrauenschiffre.kt
 @@ -23,7 +23,7 @@ class Vertrauenschiffre(
  ) {
      private val cipher = StoreCipher(schluessel)

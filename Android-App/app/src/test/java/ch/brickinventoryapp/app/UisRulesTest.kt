@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Zustand
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -50,12 +50,12 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
-import ch.brickinventoryapp.sammlung.ui.TilePrice
+import ch.brickinventoryapp.collection.ui.TilePrice
 import ch.brickinventoryapp.ui.components.ErrorHint
-import ch.brickinventoryapp.model.fach.SetAnsicht
-import ch.brickinventoryapp.sammlung.ui.screens.WantedRoute
-import ch.brickinventoryapp.sammlung.ui.screens.SetCard
-import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.model.domain.SetAnsicht
+import ch.brickinventoryapp.collection.ui.screens.WantedRoute
+import ch.brickinventoryapp.collection.ui.screens.SetCard
+import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
@@ -70,17 +70,17 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.data.SetCreateStep
 import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.ui.components.IMAGE_FALLBACK
 import ch.brickinventoryapp.ui.components.SegmentChoice
-import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
-import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
-import ch.brickinventoryapp.teile.ui.screens.PartsRoute
-import ch.brickinventoryapp.finanzen.ui.setRows
-import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
-import ch.brickinventoryapp.finanzen.ui.inGroupsOfFour
+import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
+import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.finances.ui.inGroupsOfFour
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -96,9 +96,9 @@ import java.math.BigDecimal
 import java.util.Locale
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.app.nav.AppTarget
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
-import ch.brickinventoryapp.sammlung.ui.SammlungZiel
-import ch.brickinventoryapp.teile.ui.TeileZiel
+import ch.brickinventoryapp.finances.ui.FinanzZiel
+import ch.brickinventoryapp.collection.ui.SammlungZiel
+import ch.brickinventoryapp.parts.ui.TeileZiel
 
 /**
  * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Auf dem Tablet liegt der

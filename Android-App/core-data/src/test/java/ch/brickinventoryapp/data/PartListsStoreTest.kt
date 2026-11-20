@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.data.util.PART_LIST_FILE
 import ch.brickinventoryapp.data.util.PART_LIST_DEADLINE_MS
 import ch.brickinventoryapp.data.util.Teilelistentresor

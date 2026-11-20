@@ -1,0 +1,204 @@
+package ch.brickinventoryapp.state
+
+import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.state.ui.viewmodel.Texte
+import ch.brickinventoryapp.network.util.followUpMay
+import ch.brickinventoryapp.network.util.reportsTheSessionLayer
+import org.junit.Test
+import ch.brickinventoryapp.testing.Quellen
+
+/**
+ * Nach dem Anmelden darf kein „Ungültiger oder abgelaufener Token" stehen
+ * bleiben — und niemand darf den Token wieder nachlaufend lesen.
+ *
+ * ── Was NICHT bewiesen ist ──────────────────────────────────────────────────
+ *
+ * Welche Anfrage den 401 bekam, war ohne Logcat nicht festzustellen. Diese
+ * Datei prüft deshalb ausdrücklich nicht
+ * „der Fehler ist weg", sondern zwei Regeln, die die KLASSE schliessen. Wer
+ * das später liest, soll den Unterschied sehen.
+ *
+ * Belegt war nur, was der Fall ausschliesst: Die App blieb angemeldet, und der
+ * Interceptor meldet jeden 401 MIT mitgeschicktem Token als abgelaufene
+ * Sitzung. Also ging die Anfrage ohne Token hinaus.
+ *
+ * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
+ *   a) Methodenbedingung entfernt      → „ein fehlgeschlagener Login" rot
+ *   b) !hadAuthHeader entfernt         → „ein wirklich ungültiger Token" rot
+ *   c) eine Datei wieder auf authToken.first() → die Quellenregel rot
+ *   d) `angemeldet` in reportsTheSessionLayer ignoriert → „ein falsches
+ *      Passwort bleibt ein falsches Passwort" rot
+ *   e) in Texte.meldungFuerSnackbar() immer meldung(fehler) → „die Snackbar
+ *      schweigt …" rot
+ * Dass der Interceptor die Regel anwendet, prüft ServerGuardTest ausgeführt.
+ */
+class RejectedTest {
+
+    // ── Die Regel selbst ────────────────────────────────────────────────────
+
+    @Test
+    fun `der beobachtete Fall - ein GET ohne Token an unseren Server`() {
+        assert(followUpMay(401, ourServer = true, hadAuthHeader = false, methode = "GET")) {
+            "Genau dieser Fall ist Marcos Meldung: Die Galerie lädt beim Anmelden " +
+                "per GET, und die Anfrage ging im Anmeldefenster ohne Token hinaus."
+        }
+    }
+
+    @Test
+    fun `ein wirklich ungueltiger Token wird nicht wiederholt`() {
+        // Trug die Anfrage bereits einen Token und wurde trotzdem abgewiesen,
+        // ist er ungültig. Diese Bedingung schliesst zugleich jede Schleife
+        // aus: Der zweite Anlauf TRÄGT den Kopf.
+        assert(!followUpMay(401, ourServer = true, hadAuthHeader = true, methode = "GET")) {
+            "Ein 401 trotz mitgeschicktem Token wird wiederholt — das ist entweder " +
+                "sinnlos oder eine Endlosschleife."
+        }
+    }
+
+    @Test
+    fun `ein fehlgeschlagener Login wird nicht wiederholt`() {
+        // POST /auth/login antwortet mit 401 auf ein falsches Passwort. Ein
+        // zweiter Anlauf zählte denselben Versuch doppelt — gegen die Drossel
+        // des Servers und gegen die Kontosperre.
+        assert(!followUpMay(401, ourServer = true, hadAuthHeader = false, methode = "POST")) {
+            "Ein fehlgeschlagener Anmeldeversuch geht ein zweites Mal hinaus und " +
+                "zählt doppelt gegen die Kontosperre."
+        }
+        for (m in listOf("PUT", "DELETE", "PATCH")) {
+            assert(!followUpMay(401, ourServer = true, hadAuthHeader = false, methode = m)) {
+                "$m wird blind wiederholt — schreibende Anfragen sind keine " +
+                    "Wettlaufsituation, sondern eine eigene Fehlerquelle."
+            }
+        }
+    }
+
+    @Test
+    fun `ein fremder Host geht uns nichts an`() {
+        assert(!followUpMay(401, ourServer = false, hadAuthHeader = false, methode = "GET")) {
+            "Ein 401 von einem Bild-CDN löst einen zweiten Abruf MIT unserem Token aus."
+        }
+    }
+
+    @Test
+    fun `alles ausser 401 bleibt unberuehrt`() {
+        for (code in listOf(200, 204, 304, 400, 403, 404, 500, 503)) {
+            assert(!followUpMay(code, ourServer = true, hadAuthHeader = false, methode = "GET")) {
+                "Status $code wird als Anmeldeproblem behandelt."
+            }
+        }
+    }
+
+    // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ──────────────
+
+    @Test
+    fun `ein 401 im angemeldeten Zustand gehoert der Sitzungsschicht`() {
+        // Zwei Faelle, EINE Antwort: Bei einem echten Ablauf meldet der
+        // Interceptor „Sitzung abgelaufen" und meldet ab; bei einem Wettlauf
+        // beim Anmelden ist ueberhaupt nichts zu melden. In beiden Faellen hat
+        // der Abruf dem Nutzer nichts zu sagen.
+        assert(reportsTheSessionLayer(unauthorized = true, angemeldet = true)) {
+            "Der Abruf redet wieder ueber einen 401, den die Sitzungsschicht " +
+                "schon behandelt hat — entweder doppelt (echter Ablauf) oder " +
+                "falsch (Wettlauf beim Anmelden, Marcos Befund)."
+        }
+    }
+
+    @Test
+    fun `ein falsches Passwort bleibt ein falsches Passwort`() {
+        // Der Server antwortet auf ein falsches Passwort mit demselben 401 und
+        // demselben Satz. Wer nicht angemeldet ist, hat aber keine Sitzung, die
+        // ablaufen koennte — „Sitzung abgelaufen" waere dort schlicht gelogen.
+        assert(!reportsTheSessionLayer(unauthorized = true, angemeldet = false)) {
+            "Ein fehlgeschlagener Anmeldeversuch wird als abgelaufene Sitzung " +
+                "gemeldet — der Nutzer sucht dann nach einem Problem, das es nicht gibt."
+        }
+    }
+
+    @Test
+    fun `ohne 401 aendert sich nichts`() {
+        for (angemeldet in listOf(true, false)) {
+            assert(!reportsTheSessionLayer(unauthorized = false, angemeldet = angemeldet)) {
+                "Ein Fehler ohne 401 wird als abgelaufene Sitzung gemeldet."
+            }
+        }
+    }
+
+    @Test
+    fun `die Snackbar schweigt, statt einen anderen Satz zu zeigen`() {
+        // Ausgeführt an Texte, der einen Stelle für alle ViewModels: Ein 401
+        // bei vorliegendem Token gibt null (der Kanal zeigt nichts), ohne Token
+        // bleibt der Satz — dann heisst 401 „falsches Passwort".
+        fun texts(mitToken: Boolean) = object : Texte {
+            override fun text(id: Int, vararg args: Any?) = "t$id"
+            override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
+            override fun meldung(fehler: Ergebnis.Fehler) = "Satz"
+            override fun angemeldet() = mitToken
+        }
+        val abgewiesen = Ergebnis.Fehler.Abgewiesen()
+        assert(texts(mitToken = true).meldungFuerSnackbar(abgewiesen) == null) {
+            "Ein 401 bei angemeldeter App erscheint wieder als Satz in der Snackbar."
+        }
+        assert(texts(mitToken = false).meldungFuerSnackbar(abgewiesen) == "Satz") {
+            "Ohne Token ist ein 401 ein falsches Passwort und muss gezeigt werden."
+        }
+        assert(texts(mitToken = true).meldungFuerSnackbar(Ergebnis.Fehler.Netz()) == "Satz") {
+            "Ein Netzfehler bei angemeldeter App verschwindet aus der Snackbar."
+        }
+    }
+
+    @Test
+    fun `keine Snackbar bekommt den Satz an der Regel vorbei`() {
+        // Wer in die Snackbar schreibt, geht ueber meldungFuerSnackbar(); eine neue
+        // Stelle mit meldung() faellt hier auf.
+        val treffer = mutableListOf<String>()
+        val schreibt = Regex("""\bzeigeMeldung\(|\b(?:meldungen|kanal)\.zeige\(""")
+        var schreiber = 0
+        for (datei in Quellen.alle()) {
+            val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
+            val code = Quellen.withoutComments(datei.readText())
+            for (zeile in code.lines()) {
+                if (!schreibt.containsMatchIn(zeile)) continue
+                schreiber++
+                if (!Regex("""[^a-zA-Z]meldung\(""").containsMatchIn(zeile)) continue
+                if (zeile.contains("meldungFuerSnackbar(")) continue
+                treffer += "$name: ${zeile.trim()}"
+            }
+        }
+        assert(schreiber >= 50) { "Nur $schreiber Schreibstellen der Snackbar gefunden — Muster veraltet?" }
+        assert(treffer.isEmpty()) {
+            "Diese Stellen schreiben meldung() direkt in die Snackbar und umgehen " +
+                "damit die Regel: $treffer"
+        }
+    }
+
+    // ── Und niemand liest den Token wieder nachlaufend ──────────────────
+
+    @Test
+    fun `keine Datei liest authToken oder serverUrl am DataStore vorbei`() {
+        // `authToken`/`serverUrl` sind die DataStore-Flüsse und LAUFEN NACH:
+        // Zwischen saveAuthToken() und der fertigen Plattenschreibung tragen
+        // sie noch den alten Wert. Genau in diesem Fenster feuert jede
+        // Anmeldung ihre ersten Abrufe. tokenJetzt()/serverUrlJetzt() nehmen
+        // erst den führenden Speicherwert.
+        //
+        val treffer = mutableListOf<String>()
+        for (datei in Quellen.alle()) {
+            // invariantSeparatorsPath und nicht path: Auf Windows — und dort
+            // wird dieses Projekt gebaut — liefert `path` Backslashes, und der
+            // Schnitt ginge ins Leere (siehe Quellen.unter()).
+            val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
+            if (name.endsWith("TokenAblage.kt")) continue
+            val code = Quellen.withoutComments(datei.readText())
+            // Ohne `prefs.` davor: Der Manager heisst nicht ueberall gleich,
+            // und die Regel gilt dem Fluss, nicht dem Variablennamen.
+            if (Regex("""\.(authToken|serverUrl)\.first\(\)""").containsMatchIn(code))
+                treffer += name
+        }
+        assert(treffer.isEmpty()) {
+            "Diese Dateien lesen den nachlaufenden DataStore-Fluss statt " +
+                "tokenJetzt()/serverUrlJetzt(): $treffer — beim Anmelden geht dort " +
+                "eine Anfrage ohne Token hinaus, und der Server antwortet mit " +
+                "„Ungültiger oder abgelaufener Token\"."
+        }
+    }
+}

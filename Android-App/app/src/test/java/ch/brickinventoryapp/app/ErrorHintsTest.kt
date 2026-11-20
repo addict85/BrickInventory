@@ -17,10 +17,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.screens.CameraPermissionHint
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After

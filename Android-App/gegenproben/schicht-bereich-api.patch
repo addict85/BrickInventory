@@ -3,14 +3,14 @@ Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
 Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 @@ -12,6 +12,7 @@
- import ch.brickinventoryapp.model.fach.Zustand
- import ch.brickinventoryapp.sitzung.abgeleitet
+ import ch.brickinventoryapp.model.domain.Zustand
+ import ch.brickinventoryapp.session.abgeleitet
  import androidx.lifecycle.SavedStateHandle
 +import ch.brickinventoryapp.data.api.SetsApi
  import androidx.lifecycle.viewModelScope
- import ch.brickinventoryapp.ressourcen.R
+ import ch.brickinventoryapp.resources.R
  import ch.brickinventoryapp.data.alarm.Alarmeingabe

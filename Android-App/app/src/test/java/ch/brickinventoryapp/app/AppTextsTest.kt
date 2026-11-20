@@ -5,8 +5,8 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.model.util.Textquelle
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
+import ch.brickinventoryapp.model.domain.Fehlercode
+import ch.brickinventoryapp.state.ui.viewmodel.AppTexte
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.junit.Assert.assertEquals

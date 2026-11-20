@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Fehlercode
+import ch.brickinventoryapp.model.domain.Fehlercode
 /**
  * Ergebnis eines Serveraufrufs — genau zwei Fälle, damit jedes `when` erschöpfend
  * ist und eine neue Variante an jeder Stelle bricht, die sie behandeln muss. Bitte

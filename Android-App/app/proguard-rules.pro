@@ -7,8 +7,8 @@
 
 # Navigation lädt den Typ eines Enum-Felds einer Route über seinen Namen (Class.forName);
 # umbenannt fände es ihn nicht. core-model ist reines Kotlin und kennt kein @Keep.
--keep enum ch.brickinventoryapp.model.fach.Postenart { *; }
--keep enum ch.brickinventoryapp.model.fach.Zustand { *; }
+-keep enum ch.brickinventoryapp.model.domain.Postenart { *; }
+-keep enum ch.brickinventoryapp.model.domain.Zustand { *; }
 -keep enum ch.brickinventoryapp.model.ui.Scannerherkunft { *; }
 
 # ── ML Kit / Play Services ────────────────────────────────────────────────────

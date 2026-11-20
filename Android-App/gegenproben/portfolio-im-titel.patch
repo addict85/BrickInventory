@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: die Wertentwicklung heisst nach der Sammlung
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 index 4d47196..194041a 100644
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -62,7 +62,7 @@
      <string name="csv_import_done">Import abgeschlossen</string>
  

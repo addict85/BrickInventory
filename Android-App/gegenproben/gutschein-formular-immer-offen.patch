@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Gutschein hinzufuegen oeffnet das Formular
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 index e29fd93..b78d5db 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 @@ -133,7 +133,7 @@ fun GutscheineCard(
  
      zustand.confirmation?.let { VoucherPrompt(zustand, onBestaetigen, cancelOnConfirmation) }

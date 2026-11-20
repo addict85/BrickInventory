@@ -1,12 +1,12 @@
 Gegenprobe: der Lagerort eines Teils geht bei jedem Tastendruck hinaus (ohne Ruhezeit)
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.PartsViewModelTest
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
 Rot: der Lagerort wird entprellt gespeichert und im offenen Dialog gezeigt
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
 index 8f1f892..6947686 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/PartsViewModel.kt
 @@ -206,7 +206,6 @@ class PartsViewModel @Inject constructor(
      override fun setPartLocation(nummer: String, farbe: Int, ort: String) {
          storageJob?.cancel()

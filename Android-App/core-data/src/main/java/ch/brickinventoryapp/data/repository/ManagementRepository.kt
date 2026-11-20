@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.ApiLimitsView
-import ch.brickinventoryapp.model.fach.BricksetEntryView
-import ch.brickinventoryapp.model.fach.CacheMetricsView
-import ch.brickinventoryapp.model.fach.CsvResultView
-import ch.brickinventoryapp.model.fach.CsvImportKind
-import ch.brickinventoryapp.model.fach.BackgroundView
-import ch.brickinventoryapp.model.fach.JobsView
-import ch.brickinventoryapp.model.fach.LogRowView
-import ch.brickinventoryapp.model.fach.StartStateView
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.ApiLimitsView
+import ch.brickinventoryapp.model.domain.BricksetEntryView
+import ch.brickinventoryapp.model.domain.CacheMetricsView
+import ch.brickinventoryapp.model.domain.CsvResultView
+import ch.brickinventoryapp.model.domain.CsvImportKind
+import ch.brickinventoryapp.model.domain.BackgroundView
+import ch.brickinventoryapp.model.domain.JobsView
+import ch.brickinventoryapp.model.domain.LogRowView
+import ch.brickinventoryapp.model.domain.StartStateView
 import ch.brickinventoryapp.model.ui.theme.Design
 
 /**

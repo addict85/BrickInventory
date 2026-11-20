@@ -56,12 +56,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
+import ch.brickinventoryapp.login.ui.AnmeldeFormular
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.konto.ui.AccountUiState
-import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
+import ch.brickinventoryapp.account.ui.AccountUiState
+import ch.brickinventoryapp.account.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
@@ -81,25 +81,25 @@ import ch.brickinventoryapp.ui.components.AddFab
 import ch.brickinventoryapp.ui.components.BrandsHeader
 import ch.brickinventoryapp.ui.components.OfflineHint
 import ch.brickinventoryapp.ui.components.movementReduced
-import ch.brickinventoryapp.model.fach.BrickLinkView
-import ch.brickinventoryapp.model.fach.CatalogDetailView
-import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
-import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
+import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.finances.ui.screens.FinanceRoute
+import ch.brickinventoryapp.shared.ui.GalleryStatChip
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
-import ch.brickinventoryapp.gemeinsam.ui.partsBreakdown
-import ch.brickinventoryapp.gemeinsam.ui.MetricsSeries
-import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
-import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
-import ch.brickinventoryapp.anmeldung.ui.screens.SetupScreen
-import ch.brickinventoryapp.konto.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.gemeinsam.ui.StatChipV2
-import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.shared.ui.partsBreakdown
+import ch.brickinventoryapp.shared.ui.MetricsSeries
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.account.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.login.ui.screens.SetupScreen
+import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
+import ch.brickinventoryapp.shared.ui.StatChipV2
+import ch.brickinventoryapp.account.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.Lesebreite
-import ch.brickinventoryapp.model.datei.FileReader
-import ch.brickinventoryapp.model.datei.FileRef
-import ch.brickinventoryapp.konto.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
 import ch.brickinventoryapp.ui.util.fmtInt
 import android.content.Context
 import android.os.Looper
@@ -110,7 +110,7 @@ import java.util.Locale
 import org.robolectric.Shadows
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.sammlung.ui.SammlungZiel
+import ch.brickinventoryapp.collection.ui.SammlungZiel
 
 /**
  * Befunde der zehnten und elften UI-Prüfung (Android), als Verhalten ausgeführt: Der

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.di.SseClient
-import ch.brickinventoryapp.netz.di.PLACEHOLDER_BASE
-import ch.brickinventoryapp.vertrag.CsvImportStatus
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.model.fach.CsvImportStatusView
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
+import ch.brickinventoryapp.contract.CsvImportStatus
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow

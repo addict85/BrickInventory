@@ -58,7 +58,7 @@ class ThumbFallbackTest {
 
     @Test
     fun `GalleryScreen benutzt den Rückfall statt eines wirkungslosen Wiederholversuchs`() {
-        val src = read("sammlung/ui/screens/GalerieKarte.kt")
+        val src = read("collection/ui/screens/GalerieKarte.kt")
         assert(src.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "GalleryScreen muss den neuen Rückfall-Helfer benutzen"
         }
@@ -82,7 +82,7 @@ class ThumbFallbackTest {
     fun `CatalogSetCard faellt bei einem Fehler auf die volle Aufloesung zurueck`() {
         // Das Ersatzbild steht seit ProduktBild (ui/components) an EINER Stelle; die
         // Katalogkachel reicht nur noch den Fehler an den Rückfall weiter.
-        val src = read("katalog/ui/screens/KatalogKarte.kt")
+        val src = read("catalog/ui/screens/KatalogKarte.kt")
         assert(src.contains("ProduktBild(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
         assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
             "Ein Fehler muss den Rückfall auf die volle Auflösung auslösen"
@@ -195,7 +195,7 @@ class PartsMinifigsFullResBypassProxyTest {
         // eine vergessene Stelle faellt damit auf, eine hinzugefuegte richtige
         // nicht.
         val call = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
-        for (rel in listOf("teile/ui/screens/PartsScreen.kt", "teile/ui/screens/MinifigsScreen.kt")) {
+        for (rel in listOf("parts/ui/screens/PartsScreen.kt", "parts/ui/screens/MinifigsScreen.kt")) {
             // withoutComments: Beide Dateien ERWAEHNEN den Helfer in einem
             // Erklaerkommentar („siehe model/util/ImageUrls.kt,
             // rememberTileImageWithFallback()"). Ohne diesen Schritt meldet
@@ -221,7 +221,7 @@ class PartsMinifigsFullResBypassProxyTest {
         val gallery = Quellen.galerie()
         assert(!gallery.contains("fullViaProxy")) { "Die Galerie darf fullViaProxy nicht setzen — Sets bleiben direkt" }
 
-        val catalog = Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt")
+        val catalog = Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt")
         assert(!catalog.contains("fullViaProxy")) { "Der Katalog darf fullViaProxy nicht setzen — Katalog bleibt direkt" }
     }
 }
@@ -245,7 +245,7 @@ class SetDetailUsesFullResolutionTest {
 
     @Test
     fun `SetDetailScreen zeigt fuer Vorschau und Zoom dieselbe volle Aufloesung`() {
-        val src = read("sammlung/ui/screens/SetDetailScreen.kt")
+        val src = read("collection/ui/screens/SetDetailScreen.kt")
         assert(src.contains("val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)")) {
             "Das Hauptbild im Detail-Dialog muss resolveFullUrl() benutzen, nicht resolveThumbUrl()"
         }

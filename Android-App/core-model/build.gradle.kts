@@ -13,5 +13,5 @@ dependencies {
     implementation(libs.javax.inject)
     testImplementation(libs.junit)
     // Einige Tests prüfen Fachtypen an der Antwort, die sie trägt; nur im Test.
-    testImplementation(project(":core-vertrag"))
+    testImplementation(project(":core-contract"))
 }

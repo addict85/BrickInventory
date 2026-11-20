@@ -1,11 +1,11 @@
 Gegenprobe: Der Mengenregler behält seine Annahme statt der Menge des Servers
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetDetailDisplayTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailDisplayTest
 Rot: der Mengenregler folgt der Menge
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
 @@ -179,7 +179,7 @@
              // Mengenregler, an set.quantity gekoppelt: Der Server kann eine Verringerung
              // deckeln und meldet die wirkliche Menge zurück; ohne die Kopplung behielte der

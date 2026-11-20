@@ -25,9 +25,9 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.model.ui.ScrollStorage
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.teile.ui.screens.MinifigsRoute
-import ch.brickinventoryapp.teile.ui.screens.PartsRoute
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.parts.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.parts.ui.screens.PartsRoute
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -180,7 +180,7 @@ class ManualItemsFirstTest {
     fun `beide Listen zaehlen als geladen, nicht nur die aus den Sets`() {
         // Verdrahtung im Graphen: Erst wenn auch die manuellen Einträge da sind (null heisst
         // „noch nicht geladen“), stellt der Merker die Stelle wieder her.
-        val graph = Quellen.withoutComments(Quellen.lies("teile/ui/TeileGraph.kt"))
+        val graph = Quellen.withoutComments(Quellen.lies("parts/ui/TeileGraph.kt"))
         for ((schluessel, liste) in listOf("TeileZiel.Parts.rollSchluessel" to "manualParts", "TeileZiel.Minifigs.rollSchluessel" to "manualFigs")) {
             val block = Quellen.fenster(graph, "$schluessel, ", 12)
             assertTrue("Kein ScrollPositionKeeper für $schluessel gefunden", block.isNotEmpty())

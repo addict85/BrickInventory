@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
 /**
  * Der Schlüssel des Eintrags, dessen Detail gerade daneben steht — die Liste markiert

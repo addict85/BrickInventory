@@ -65,7 +65,7 @@ class MediaAuthTest {
 
     @Test
     fun `der PDF-Download kopiert die geladene Datei, statt neu zu laden`() {
-        val viewer = code(read("finanzen/ui/screens/PdfViewerScreen.kt"))
+        val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
         assert(!viewer.contains("DownloadManager")) {
             "DownloadManager kennt den Bearer-Token nicht — der Abruf endet in einer 401, " +
             "die als PDF gespeichert wird"
@@ -78,12 +78,12 @@ class MediaAuthTest {
 
     @Test
     fun `der Herunterladen-Knopf erscheint erst, wenn die Datei geladen ist`() {
-        val viewer = code(read("finanzen/ui/screens/PdfViewerScreen.kt"))
+        val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
         val actions = viewer.substringAfter("actions = {").substringBefore("            )")
         // Beide Knöpfe arbeiten auf der geladenen Quelle des Ready-Zustands und dürfen
         // nur dort sichtbar sein. Das Feld wird aus Ready gelesen, nicht fest benannt.
         // Gegenprobe: gegenproben/pdf-download-ausserhalb-ready.patch → rot hier.
-        val zustand = code(read("finanzen/ui/pdf/PdfQuelle.kt"))
+        val zustand = code(read("finances/ui/pdf/PdfQuelle.kt"))
         val feld = Regex("""class Ready\(val (\w+): \w+,""").find(zustand)?.groupValues?.get(1)
         assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
         assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }

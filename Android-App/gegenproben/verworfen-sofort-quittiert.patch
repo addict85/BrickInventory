@@ -1,12 +1,12 @@
 Gegenprobe: Der Hinweis auf Verworfenes wird quittiert, bevor ihn jemand gesehen hat
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.AusgangsmelderTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.AusgangsmelderTest
 Rot: ein Verworfenes bleibt, bis sein Hinweis weggeraeumt ist
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 index d0af378..97acbd6 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 @@ -77,8 +77,6 @@ class InitialObserver @Inject constructor(
              else v.meldung.ifBlank { null } ?: Meldung.Resource(R.string.offline_verworfen_ohne_grund)
          val hinweis = Meldung.Resource(R.string.offline_verworfen, listOf(v.ziel, grund))

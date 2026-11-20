@@ -1,11 +1,11 @@
 Gegenprobe: Eine abgelehnte Bearbeitung wird entfernt, ohne sie festzuhalten
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ExitSyncTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.ExitSyncTest
 Rot: eine Ablehnung verwirft und hält sie fest
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Abgleich.kt
 @@ -140,7 +140,6 @@
  
      private suspend fun discard(bereich: String, p: Ausgangsposten, meldung: String, code: Int?, betroffen: MutableSet<StockKind>) {

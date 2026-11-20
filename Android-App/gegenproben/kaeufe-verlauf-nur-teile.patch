@@ -1,11 +1,11 @@
 Gegenprobe: Der Preisverlauf manueller Posten fragt auch für Figuren den Teile-Pfad
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.PurchasesViewModelTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.PurchasesViewModelTest
 Rot: der Preisverlauf kommt fuer Teile und Figuren vom passenden Pfad
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/KaeufeViewModel.kt
 @@ -97,7 +97,7 @@
      fun loadManualPriceHistory(type: Postenart, id: String, colorId: Int = KEINE_FARBE) {
          viewModelScope.launch {

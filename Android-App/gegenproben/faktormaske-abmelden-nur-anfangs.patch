@@ -1,11 +1,11 @@
 Gegenprobe: Abmelden nur im ersten Schritt der Maske
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.SecondFactorMaskTest
+Modul: feature-account
+Test: ch.brickinventoryapp.account.SecondFactorMaskTest
 Rot: Abmelden bleibt
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
 @@ -205,7 +205,7 @@
              if (zustand.abruf.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
              zustand.abruf.errorMessage?.let { ErrorRow(it) }

@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.PriceAlertMessageTest
 Rot: auf dem Sperrbildschirm
 
-diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
---- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
-+++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/PreisalarmWorker.kt
 @@ -86,8 +86,6 @@ class PreisalarmWorker @AssistedInject constructor(
                  .setSmallIcon(android.R.drawable.ic_dialog_info)
                  .setContentTitle(context.getString(R.string.detail_alert))

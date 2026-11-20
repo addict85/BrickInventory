@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.sitzung.AppUiState
-import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.model.fach.StartStateView
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.session.AppUiState
+import ch.brickinventoryapp.session.Sitzung
+import ch.brickinventoryapp.model.domain.StartStateView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

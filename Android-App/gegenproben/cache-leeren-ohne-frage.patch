@@ -1,11 +1,11 @@
 Gegenprobe: „Alles leeren“ leert den Preis-Cache ohne Rückfrage
-Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.CacheClearAsksTest
+Modul: feature-management
+Test: ch.brickinventoryapp.management.CacheClearAsksTest
 Rot: das Leeren fragt erst nach
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
 @@ -149,7 +149,7 @@
              // Tageskontingent; ein Fehlgriff nimmt allen anderen Kontingent weg.
              CacheClearButtons(

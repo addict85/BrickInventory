@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.WrapGuardTest
 Rot: Set-Detail schmal bei 200 Prozent
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 index 5b45eb7..4687087 100644
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 @@ -428,7 +428,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
          } + Abstaende.mittel * 2 + 2.dp
          val demand = listOf(markt, kauf, pnlSingleLine).maxOf { breite(it) }

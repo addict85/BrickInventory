@@ -21,7 +21,7 @@ import ch.brickinventoryapp.testing.Quellen
 class InstructionRowTest {
 
     private val quelle by lazy {
-        Quellen.withoutComments(Quellen.lies("sammlung/ui/screens/SetDetailAnleitungen.kt"))
+        Quellen.withoutComments(Quellen.lies("collection/ui/screens/SetDetailAnleitungen.kt"))
     }
 
     /**

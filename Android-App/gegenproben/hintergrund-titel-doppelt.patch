@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringHintergrund.kt
 @@ -50,7 +50,7 @@
          Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
              // „Aufträge“, nicht noch einmal der Name der Seite: Er steht schon darüber.

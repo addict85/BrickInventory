@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.vertrag.LagerortVorgabeResponse
+import ch.brickinventoryapp.contract.LagerortVorgabeResponse
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals

@@ -1,11 +1,11 @@
 Gegenprobe: die stille Prüfung beim Start hinterlässt eine Fehlermeldung
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.UpdateViewModelTest
+Modul: feature-account
+Test: ch.brickinventoryapp.account.UpdateViewModelTest
 Rot: eine unsignierte Beschreibung meldet sich nur auf Knopfdruck
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt
 @@ -109,7 +109,7 @@
                  if (beschreibung == null || !isAllowedApkAddress(beschreibung.apkUrl)) {
                      _state.update {

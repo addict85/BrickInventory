@@ -6,8 +6,8 @@ import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.Netzvertrauen
 import ch.brickinventoryapp.data.Tokenspiegel
-import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.netz.util.VersionsHint
+import ch.brickinventoryapp.network.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.VersionsHint
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.MeldungsKanal
@@ -15,20 +15,20 @@ import ch.brickinventoryapp.data.PasswordRequired
 import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.SecondFactorRequired
-import ch.brickinventoryapp.netz.util.RenewableTlsFactory
+import ch.brickinventoryapp.network.util.RenewableTlsFactory
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.sicherheit.PinTrust
-import ch.brickinventoryapp.sicherheit.ChoiceTrust
-import ch.brickinventoryapp.sicherheit.CertificateQuestion
-import ch.brickinventoryapp.sicherheit.trustJob
+import ch.brickinventoryapp.security.PinTrust
+import ch.brickinventoryapp.security.ChoiceTrust
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.security.trustJob
 import ch.brickinventoryapp.data.util.networkRecording
-import ch.brickinventoryapp.sicherheit.pinKey
-import ch.brickinventoryapp.sicherheit.spkiFingerprint
-import ch.brickinventoryapp.sicherheit.SystemRoots
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.netz.di.Rotationsanlass
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
+import ch.brickinventoryapp.security.pinKey
+import ch.brickinventoryapp.security.spkiFingerprint
+import ch.brickinventoryapp.security.SystemRoots
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.network.di.Rotationsanlass
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
 
 /**
  * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel der

@@ -1,11 +1,11 @@
 Gegenprobe: Das gemerkte Design kommt nicht mehr vor dem ersten Bild in die Sitzung
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.RenderingAndTrustTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
 Rot: der Zustand wird mit dem gemerkten Design geboren
 
-diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
---- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
-+++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Kontowerte.kt
 @@ -49,7 +49,7 @@
  ) : Kontowerte {
      override val waehrung: StateFlow<Waehrung> = ablage.currency.stateIn(bereich, SharingStarted.Eagerly, Waehrung.EUR)

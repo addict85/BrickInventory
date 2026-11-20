@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.AccessibilityTest
 Rot: Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
 @@ -133,11 +133,11 @@
                  Box {
                      Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),

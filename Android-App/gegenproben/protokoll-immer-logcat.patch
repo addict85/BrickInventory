@@ -1,11 +1,11 @@
 Gegenprobe: das Protokoll schreibt auch ohne Android ins Logcat (android.util.Log ist im JVM-Test eine werfende Attrappe)
-Modul: core-netz
-Test: ch.brickinventoryapp.netz.LogWithoutAndroidTest
+Modul: core-network
+Test: ch.brickinventoryapp.network.LogWithoutAndroidTest
 Rot: ohne Android landet eine Warnung auf stderr
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
 @@ -22,7 +22,7 @@ object Protokoll {
       * a log line. There, the line goes to stderr instead.
       */

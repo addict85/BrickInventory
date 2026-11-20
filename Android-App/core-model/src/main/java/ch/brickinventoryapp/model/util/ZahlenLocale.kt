@@ -5,7 +5,7 @@ import java.util.Locale
 /**
  * Wie das Web: die Landesform des Geräts, wenn sie zur App-Sprache passt
  * (de-DE schreibt 4.894,77, de-CH 4’894.77), sonst de-CH bzw. en-GB. In core-model,
- * weil auch die Preisalarm-Meldung im Hintergrund (core-dienste) ohne Oberfläche formatiert.
+ * weil auch die Preisalarm-Meldung im Hintergrund (core-services) ohne Oberfläche formatiert.
  */
 fun numbersLocale(sprache: Locale, geraet: Locale): Locale {
     val ziel = if (sprache.language == "de") "de" else "en"

@@ -6,7 +6,7 @@ import ch.brickinventoryapp.offline.room.InventoryDatabase
 import ch.brickinventoryapp.offline.room.RoomExit
 import ch.brickinventoryapp.offline.room.RoomInventory
 import ch.brickinventoryapp.offline.room.EncryptedInventoryFactory
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.security.Ablageschluessel
 import dagger.Binds
 import dagger.Module
 import dagger.Provides

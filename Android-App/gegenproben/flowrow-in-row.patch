@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ComposeLayoutRulesTest
 Rot: keine FlowRow in einer waagerechten Row
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/HouseholdComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/HouseholdComposables.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/HouseholdComposables.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/HouseholdComposables.kt
 @@ -188,7 +188,8 @@
      // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
      // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit

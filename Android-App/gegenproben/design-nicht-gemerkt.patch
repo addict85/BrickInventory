@@ -1,11 +1,11 @@
 Gegenprobe: Das Design des Servers geht nicht in die Ablage
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SessionServiceTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
 Rot: das Design des Servers gilt und wird gemerkt
 
-diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
---- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
-+++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/Sitzung.kt
 @@ -106,7 +106,7 @@
  
      override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }

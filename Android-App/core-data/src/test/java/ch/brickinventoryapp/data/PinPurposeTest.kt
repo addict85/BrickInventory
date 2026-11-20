@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.fitsToPin
-import ch.brickinventoryapp.sicherheit.spkiFingerprint
+import ch.brickinventoryapp.security.fitsToPin
+import ch.brickinventoryapp.security.spkiFingerprint
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

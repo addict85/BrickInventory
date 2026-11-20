@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.cache
 
 import android.content.Context
-import ch.brickinventoryapp.sicherheit.StoreCipher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.Ablageschluessel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.crypto.Mac

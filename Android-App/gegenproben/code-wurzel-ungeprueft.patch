@@ -1,11 +1,11 @@
 Gegenprobe: Ein Pin aus dem Code auf eine System-Wurzel deckt jede öffentlich gültige Kette
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
 Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 @@ -274,7 +274,7 @@
       * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
       */

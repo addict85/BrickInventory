@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.MetricsView
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.Manifest
 import android.app.Application
@@ -15,16 +15,16 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.testing.Testablage
-import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.contract.SetItem
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.data.repository.AccountDataDeletion
-import ch.brickinventoryapp.zustand.ui.Abmeldehaken
-import ch.brickinventoryapp.zustand.ui.Abmelden
-import ch.brickinventoryapp.zustand.ui.Scope
-import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.sicherheit.StoreCipher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
-import ch.brickinventoryapp.sicherheit.TokenEncryption
+import ch.brickinventoryapp.state.ui.Abmeldehaken
+import ch.brickinventoryapp.state.ui.Abmelden
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.session.Sitzung
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.Ablageschluessel
+import ch.brickinventoryapp.security.TokenEncryption
 import coil3.ImageLoader
 import coil3.disk.DiskCache
 import kotlinx.coroutines.CoroutineScope

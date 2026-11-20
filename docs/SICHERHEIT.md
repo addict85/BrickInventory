@@ -646,7 +646,7 @@ Vorschlag.
 
 1. **Beschreibungsschlüssel offline (Hardware).** Die App nimmt eine Fassung
    nur mit einer Beschreibung an, die einer der Schlüssel aus
-   `Android-App/core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem` signiert hat
+   `Android-App/core-resources/src/main/res/raw/beschreibungs_schluessel.pem` signiert hat
    (ECDSA P-256, SHA-256). Liegt dieser Schlüssel nicht bei GitHub, genügt ein
    erbeutetes Konto nicht mehr.
    - Schlüssel auf einem Token erzeugen, etwa YubiKey (PIV, Slot 9c):

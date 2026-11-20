@@ -1,6 +1,6 @@
 Gegenprobe: ein Gutschein-PDF bekommt wieder eine Datei im Zwischenspeicher (Stand vor sec11 N1)
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.VoucherPdfStoreTest
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherPdfStoreTest
 Rot: ein Gutschein-PDF bekommt keine Datei
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt

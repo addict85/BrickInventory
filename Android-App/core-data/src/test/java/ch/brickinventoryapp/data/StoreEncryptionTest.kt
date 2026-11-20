@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.StoreCipher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
-import ch.brickinventoryapp.sicherheit.TokenEncryption
-import ch.brickinventoryapp.sicherheit.Tresorbefund
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.Ablageschluessel
+import ch.brickinventoryapp.security.TokenEncryption
+import ch.brickinventoryapp.security.Tresorbefund
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

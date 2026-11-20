@@ -1,11 +1,11 @@
 Gegenprobe: Die Preisalarm-Meldung schreibt Beträge wieder fest mit Locale.US
-Modul: core-dienste
-Test: ch.brickinventoryapp.dienste.AlarmabholungTest
+Modul: core-services
+Test: ch.brickinventoryapp.services.AlarmabholungTest
 Rot: die Betraege stehen in der Zahlenform der App-Sprache
 
-diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
---- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
-+++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/Alarmabholung.kt
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/Alarmabholung.kt
 @@ -72,7 +72,7 @@
       */
      fun text(a: PriceAlertView, unter: String, ueber: String, zahlen: Locale): String {

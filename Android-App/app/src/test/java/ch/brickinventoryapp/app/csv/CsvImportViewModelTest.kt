@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.ui.laeuft
-import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.domain.Laufstatus
 import ch.brickinventoryapp.data.CsvImportObserver
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStream
-import ch.brickinventoryapp.vertrag.CsvImportStatus
-import ch.brickinventoryapp.model.fach.CsvImportStatusView
-import ch.brickinventoryapp.vertrag.GenericAdminResponse
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.dienste.service.CsvImportDienst
+import ch.brickinventoryapp.contract.CsvImportStatus
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.services.service.CsvImportDienst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation

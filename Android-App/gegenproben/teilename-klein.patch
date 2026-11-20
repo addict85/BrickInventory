@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.TileReadAloudTest
 Rot: Name Farbe und zweite Zeile stehen in mindestens 12 sp
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
 @@ -147,7 +147,7 @@
                  fontWeight = FontWeight.SemiBold)
              Text(part.partName?.let { catalogName(it) }

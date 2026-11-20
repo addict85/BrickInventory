@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Katalog-Detail steht auf dem Tablet in zwei Spalten
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/CatalogDetailScreen.kt
 @@ -210,7 +210,7 @@
                  horizontalArrangement = Arrangement.spacedBy(Abstaende.veryLarge)) {
                  Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),

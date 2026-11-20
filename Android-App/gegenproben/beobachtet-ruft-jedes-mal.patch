@@ -1,12 +1,12 @@
 Gegenprobe: Beobachtet meldet jeden Sammler statt nur den ersten
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.LoadOnObserveTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.LoadOnObserveTest
 Rot: Beobachtet zaehlt die Beobachter
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
 index 2c2fb0b..3dff0df 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/Bereichshelfer.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/Bereichshelfer.kt
 @@ -165,7 +165,8 @@ class Observed<T>(private val quelle: StateFlow<T>, private val observeOn
      override val value: T get() = quelle.value
      override val replayCache: List<T> get() = quelle.replayCache

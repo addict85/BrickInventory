@@ -2,8 +2,8 @@ package ch.brickinventoryapp.app
 
 import android.app.Notification
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.dienste.alarm.PreisalarmWorker
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.services.alarm.PreisalarmWorker
+import ch.brickinventoryapp.resources.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

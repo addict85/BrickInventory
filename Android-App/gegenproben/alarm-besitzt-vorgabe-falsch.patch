@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.AlarmOverviewTest
 Rot: ein fehlendes besitzt-Feld
 
-diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 index 7bc71ec..27b9cec 100644
---- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
-+++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 @@ -1855,7 +1855,7 @@ data class Preisalarm(
      @SerialName("image_local") val imageLocal: String? = null,
      @SerialName("image_url") val imageUrl: String? = null,

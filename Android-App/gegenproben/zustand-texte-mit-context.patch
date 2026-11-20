@@ -1,13 +1,13 @@
 Gegenprobe: AppTexte hält wieder einen Context
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: core-zustand und core-sitzung kennen keinen Context
+Rot: core-state und core-session kennen keinen Context
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
 @@ -1,5 +1,6 @@
- package ch.brickinventoryapp.zustand.ui.viewmodel
+ package ch.brickinventoryapp.state.ui.viewmodel
  
 +import android.content.Context
  import ch.brickinventoryapp.data.Anmeldestand

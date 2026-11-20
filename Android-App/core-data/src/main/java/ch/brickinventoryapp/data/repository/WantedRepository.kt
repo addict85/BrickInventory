@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.WantedItemView
-import ch.brickinventoryapp.model.fach.WantedItemPricesView
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.WantedItemPricesView
 
-import ch.brickinventoryapp.model.fach.Merksortierung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.model.domain.Merksortierung
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 
 /** Die Merkliste: Sets, die man noch nicht hat, in der Ablage und ihre Übernahme in den Bestand. */

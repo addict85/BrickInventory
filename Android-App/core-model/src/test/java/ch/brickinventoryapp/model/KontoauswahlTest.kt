@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.vertrag.Preisalarm
-import ch.brickinventoryapp.vertrag.PreisalarmRequest
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.contract.Preisalarm
+import ch.brickinventoryapp.contract.PreisalarmRequest
+import ch.brickinventoryapp.model.domain.Alarmrichtung
+import ch.brickinventoryapp.model.domain.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Zustand
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

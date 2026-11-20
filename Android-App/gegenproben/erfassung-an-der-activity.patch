@@ -7,11 +7,11 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
 @@ -70,6 +70,7 @@
- import ch.brickinventoryapp.konto.ui.viewmodel.AccountViewModel
- import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
+ import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+ import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
  import ch.brickinventoryapp.app.csv.CsvImportViewModel
-+import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
- import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
++import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
+ import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
  import ch.brickinventoryapp.app.nav.ActivityState
  import ch.brickinventoryapp.ui.util.SecretClipboard
 @@ -84,6 +85,7 @@

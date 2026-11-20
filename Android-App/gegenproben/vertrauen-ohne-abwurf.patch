@@ -1,11 +1,11 @@
 Gegenprobe: Ein bestätigtes Zertifikat lässt die Verbindungen mit dem alten Vertrauen offen
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.RenderingAndTrustTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.RenderingAndTrustTest
 Rot: ein bestaetigter Erstkontakt merkt den Pin
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/VertrauenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/VertrauenViewModel.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/VertrauenViewModel.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/VertrauenViewModel.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/VertrauenViewModel.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/VertrauenViewModel.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/VertrauenViewModel.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/VertrauenViewModel.kt
 @@ -33,7 +33,6 @@ class VertrauenViewModel @Inject constructor(
      /** Ja zum gezeigten Zertifikat. Ohne bekannte CA oder geändert nur mit [eingabe]. */
      fun trustCertificate(eingabe: String? = null): Boolean {

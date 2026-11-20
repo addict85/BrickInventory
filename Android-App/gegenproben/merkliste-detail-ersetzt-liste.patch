@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Tablet zeigt Merkliste und Detail nebeneinander
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/MerklisteScreen.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/MerklisteScreen.kt
 @@ -312,7 +312,7 @@ fun WantedAndDetail(
              onOeffnen = { sn, z -> if (sideBySide) offen = listOf(sn, z.kennung) else onOpenSingle(sn, z) },
              gewaehlt = selection.takeIf { sideBySide })

@@ -209,7 +209,7 @@ class NumberPadTest {
      */
     @Test
     fun `der Preisvergleich nimmt Ziffern und Bindestrich`() {
-        val s = Quellen.withoutComments(Quellen.lies("sammlung/ui/screens/ComparisonScreen.kt"))
+        val s = Quellen.withoutComments(Quellen.lies("collection/ui/screens/ComparisonScreen.kt"))
         assert(s.contains("NumericInput.setNumber(")) {
             "Das Suchfeld filtert nicht mehr auf Ziffern und Bindestrich."
         }

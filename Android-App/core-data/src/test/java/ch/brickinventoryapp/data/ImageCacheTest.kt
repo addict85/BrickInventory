@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.StoreCipher
-import ch.brickinventoryapp.sicherheit.EncryptedFileSystem
-import ch.brickinventoryapp.sicherheit.cleanPlaintextImageCachesOn
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.EncryptedFileSystem
+import ch.brickinventoryapp.security.cleanPlaintextImageCachesOn
 import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient

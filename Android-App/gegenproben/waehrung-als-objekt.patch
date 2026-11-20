@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.FachtypenTest
 Rot: eine Waehrung reist als blosser Text
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Waehrung.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Waehrung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Waehrung.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Waehrung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Waehrung.kt
 @@ -9,7 +9,6 @@
   * unbekannten zeigt sie als Text vor dem Betrag, statt die Antwort zu verwerfen.
   */

@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
 import ch.brickinventoryapp.model.util.passwordToShort
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
 /** Ein Feld des Passwortwechsels, das vor dem Absenden nicht stimmt. */
 enum class PasswordFieldError { AKTUELL, NEU, WIEDERHOLUNG }

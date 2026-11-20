@@ -13,9 +13,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.composable
 import androidx.navigation.createGraph
-import ch.brickinventoryapp.dienste.alarm.PreisalarmWorker
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.Meldungseingang
+import ch.brickinventoryapp.services.alarm.PreisalarmWorker
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.state.ui.Meldungseingang
 import ch.brickinventoryapp.app.ui.components.UserCaDialog
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.Assert.assertEquals

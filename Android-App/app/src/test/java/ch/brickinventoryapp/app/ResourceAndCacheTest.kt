@@ -30,8 +30,8 @@ class ResourceAndCacheTest {
     @Test
     fun `beide Kamera-Screens geben Executor und ML-Kit-Client frei`() {
         for ((rel, close) in listOf(
-            "sammlung/ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
-            "anmeldung/ui/screens/SetupScreen.kt" to "scanner.close()",
+            "collection/ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
+            "login/ui/screens/SetupScreen.kt" to "scanner.close()",
         )) {
             val src = code(withAnalyse(rel))
             assert(src.contains("DisposableEffect(Unit)") && src.contains("onDispose")) {
@@ -108,7 +108,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `der CSV-Service teilt sich den SSE-Client mit dem ViewModel`() {
-        val src = code(read("dienste/service/CsvImportService.kt"))
+        val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sseClient")) {
             "CsvImportService pollt wieder eigenständig, statt den CsvImportSseClient " +
                 "zu benutzen — zwei getrennte Implementierungen desselben Sachverhalts"
@@ -124,7 +124,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `eine erste idle-Antwort beendet den Service nicht sofort`() {
-        val src = code(read("dienste/service/CsvImportService.kt"))
+        val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sawRunning") && src.contains("GRACE_MS")) {
             "Kein Anlaufschutz in applyStatus(). Der Service startet im selben Moment " +
                 "wie der Upload; bis der Import-Job angelegt ist, meldet der Server " +

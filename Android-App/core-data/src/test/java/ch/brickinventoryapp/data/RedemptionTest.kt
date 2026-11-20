@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.sicherheit.Tresorbefund
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
+import ch.brickinventoryapp.security.Tresorbefund
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType

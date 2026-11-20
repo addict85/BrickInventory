@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Such-Platzhalter
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
 @@ -122,12 +122,13 @@ private fun FilterButton(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
          modifier = modifier,
      ) {

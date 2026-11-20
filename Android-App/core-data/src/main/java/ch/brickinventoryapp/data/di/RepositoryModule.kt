@@ -29,7 +29,7 @@ import ch.brickinventoryapp.data.repository.PartsRepository
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.repository.ManagementRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
-import ch.brickinventoryapp.model.schritt.Schrittbindung
+import ch.brickinventoryapp.model.step.Schrittbindung
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

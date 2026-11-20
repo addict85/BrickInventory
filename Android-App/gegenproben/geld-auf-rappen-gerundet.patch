@@ -1,11 +1,11 @@
 Gegenprobe: Geld.aus rundet schon beim Lesen auf Rappen
-Modul: core-vertrag
-Test: ch.brickinventoryapp.vertrag.UiModelFigureTest
+Modul: core-contract
+Test: ch.brickinventoryapp.contract.UiModelFigureTest
 Rot: Betraege kommen als Geld
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
 @@ -34,7 +34,7 @@
          val NULL = Geld(0)
  

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.Gutscheinangabe
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.Confirmation
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Gutscheinangabe
+import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.Confirmation
 import ch.brickinventoryapp.data.repository.VouchersRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -62,10 +62,10 @@ class VouchersContractTest {
     }
 
     private val repo by lazy { code(lies("data/repository/GutscheineRepositoryImpl.kt")) }
-    private val feature by lazy { code(lies("finanzen/ui/viewmodel/GutscheinViewModel.kt")) }
+    private val feature by lazy { code(lies("finances/ui/viewmodel/GutscheinViewModel.kt")) }
     // Die Karte samt ihren Geschwisterdateien: Liste, Formular und Einzelkarte.
     private val karte by lazy {
-        code(listOf("GutscheineCard.kt", "GutscheinFormular.kt", "GutscheinKarte.kt").joinToString("\n") { lies("finanzen/ui/screens/$it") })
+        code(listOf("GutscheineCard.kt", "GutscheinFormular.kt", "GutscheinKarte.kt").joinToString("\n") { lies("finances/ui/screens/$it") })
     }
 
     /** Gutscheine gegen einen Testserver, mit Plattenablage in einem Wegwerf-Ordner. */
@@ -265,7 +265,7 @@ class VouchersContractTest {
      */
     @Test
     fun `die Einstellungen fuehren nicht mehr selbst zu den Rubriken`() {
-        val once = code(lies("konto/ui/screens/SettingsScreen.kt"))
+        val once = code(lies("account/ui/screens/SettingsScreen.kt"))
         for (route in listOf("FinanzZiel.Gutscheine", "KontoZiel.Preisalarme", "KontoZiel.Lagerorte",
                              "KontoZiel.Haushalt", "KontoZiel.CsvImport", "KontoZiel.Konto")) {
             assert(!once.contains(route)) {

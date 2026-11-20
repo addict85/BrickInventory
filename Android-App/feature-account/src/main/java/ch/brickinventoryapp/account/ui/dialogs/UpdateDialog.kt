@@ -1,0 +1,113 @@
+package ch.brickinventoryapp.account.ui.dialogs
+
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.ui.theme.fensterFlaeche
+// Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
+// SetCheckDialog.kt) — siehe die Begruendung dort.
+import ch.brickinventoryapp.account.ui.UpdateUiState
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateAktionen
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.versionsName
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.update.util.permissionIntent
+
+/**
+ * „Es gibt eine neue Fassung — jetzt aktualisieren?“ Ein Dialog beim Start, weil
+ * ein Punkt am Konto-Symbol leicht übersehen wird. Geladen wird trotzdem nie von
+ * allein: Der Dialog fragt, der Ladevorgang beginnt erst auf „Jetzt aktualisieren“
+ * — fragen ist nicht automatisch handeln.
+ */
+@Composable
+fun UpdateRoute(selbstUpdate: UpdateAktionen.WithState) {
+    val zustand by selbstUpdate.zustand.collectAsStateWithLifecycle()
+    UpdateDialog(zustand, selbstUpdate)
+}
+
+@Composable
+internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
+    val neuere = zustand.newerVersion ?: return
+    if (zustand.dialogRejected) return
+    val ctx = LocalContext.current
+
+    val laedt = zustand.fortschritt != null
+    val schliessen = { selbstUpdate.closeUpdateHint() }
+
+    val titel = stringResource(R.string.update_dialog_title)
+    AlertDialog(
+        containerColor = fensterFlaeche(),
+        modifier = Modifier.semantics { paneTitle = titel },
+        // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
+        onDismissRequest = { if (!laedt) schliessen() },
+        title = { Text(titel, Modifier.semantics { heading() }) },
+        text = {
+            Ueberdeckungsschutz()
+            UpdateContent(zustand, neuere.versionName)
+        },
+        confirmButton = {
+            when {
+                // Die Systemerlaubnis fehlt: Der einzige Knopf, der jetzt
+                // weiterhilft, fuehrt in die Systemeinstellungen.
+                zustand.permissionAbsent -> TextButton(onClick = {
+                    ctx.startActivity(permissionIntent(ctx))
+                }) { Text(stringResource(R.string.update_permission_grant)) }
+                // Liegt schon auf der Platte (etwa weil der System-Installer
+                // abgebrochen wurde): nicht noch einmal laden.
+                zustand.readyToInstallation -> TextButton(onClick = { selbstUpdate.startInstallation() }) {
+                    Text(stringResource(R.string.update_install))
+                }
+                laedt -> {}
+                else -> TextButton(onClick = { selbstUpdate.ladeUpdate() }) {
+                    Text(stringResource(R.string.update_dialog_now))
+                }
+            }
+        },
+        dismissButton = {
+            // Waehrend des Ladens kein „Spaeter": Der Vorgang laeuft, und ein
+            // Knopf, der ihn nicht anhaelt, aber so aussieht, waere eine
+            // Zusage, die der Dialog nicht einhalten kann.
+            if (!laedt) TextButton(onClick = schliessen) {
+                Text(stringResource(R.string.update_dialog_later))
+            }
+        },
+    )
+}
+
+/** Fassung, Fortschritt und was fehlt — der Text des Dialogs, getrennt vom Rahmen und den Knöpfen. */
+@Composable
+private fun UpdateContent(zustand: UpdateUiState, versionName: String) {
+    Column {
+        Text(stringResource(R.string.update_dialog_text, versionName, versionsName()))
+        zustand.fortschritt?.let { p ->
+            Spacer(Modifier.height(Abstaende.mittel))
+            Text(stringResource(R.string.update_downloading, p),
+                style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(Abstaende.tiny))
+            LinearProgressIndicator(
+                progress = { p / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (zustand.permissionAbsent) {
+            Spacer(Modifier.height(Abstaende.mittel))
+            Text(stringResource(R.string.update_permission_needed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        zustand.fehler?.let { f ->
+            Spacer(Modifier.height(Abstaende.mittel))
+            Text(f.satz(), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+    }
+}

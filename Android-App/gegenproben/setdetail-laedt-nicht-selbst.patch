@@ -1,11 +1,11 @@
 Gegenprobe: Das Set-Detail lädt beim Erzeugen nichts; früher stiess der Bildschirm das Laden an
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
 Rot: das Set kommt aus dem SavedStateHandle und alles wird beim Erzeugen geladen
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
 @@ -122,7 +122,6 @@
      )
  

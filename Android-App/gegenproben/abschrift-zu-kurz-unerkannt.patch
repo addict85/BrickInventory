@@ -1,11 +1,11 @@
 Gegenprobe: Eine zu kurze Abschrift heisst wieder nur „passt nicht“
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
 Rot: eine Abschrift mit Doppelpunkten ist zu kurz, nicht falsch
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 @@ -406,7 +406,7 @@
              return when {
                  getippt.isEmpty() -> LEER

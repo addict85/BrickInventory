@@ -1,11 +1,11 @@
 Gegenprobe: Wertachse auch bei grosser Schrift ausgeschrieben
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.AxesRoundTest
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.AxesRoundTest
 Rot: grosse Schrift beschriftet die Wertachse kurz
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/DiagrammAchsen.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/DiagrammAchsen.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/DiagrammAchsen.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/DiagrammAchsen.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/DiagrammAchsen.kt
 @@ -48,7 +48,6 @@
   * bei 200 % ein Drittel der Diagrammbreite; der Betrag steht in der Kopfkarte darüber.
   */

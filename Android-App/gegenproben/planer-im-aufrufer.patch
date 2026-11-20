@@ -1,11 +1,11 @@
 Gegenprobe: Der Alarmplaner ruft WorkManager auf dem Thread des Aufrufers
-Modul: core-dienste
-Test: ch.brickinventoryapp.dienste.AlarmScheduleTest
+Modul: core-services
+Test: ch.brickinventoryapp.services.AlarmScheduleTest
 Rot: der Planer wechselt fuer WorkManager auf seinen Dispatcher
 
-diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/WorkManagerAlarmPlanner.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/WorkManagerAlarmPlanner.kt
---- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/WorkManagerAlarmPlanner.kt
-+++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/WorkManagerAlarmPlanner.kt
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/alarm/WorkManagerAlarmPlanner.kt
 @@ -18,7 +18,7 @@
      @param:ApplicationContext private val context: Context,
      @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,

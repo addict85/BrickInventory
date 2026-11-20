@@ -73,7 +73,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   const alle = buildServices(zugang);
   Object.assign(alle.catalog, recording(notiz));
   const sets = alle.sets;
-  quellen.replaceServices('katalog', recording(processNote));
+  quellen.replaceServices('catalog', recording(processNote));
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await sets.setInfo(SN), null);

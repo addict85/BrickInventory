@@ -6,7 +6,7 @@ import ch.brickinventoryapp.BuildConfig
 import ch.brickinventoryapp.app.MeldungsEinstieg
 import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.data.Startziel
-import ch.brickinventoryapp.zustand.ui.Abmeldehaken
+import ch.brickinventoryapp.state.ui.Abmeldehaken
 import ch.brickinventoryapp.app.widget.SammlungsWidget
 import ch.brickinventoryapp.app.widget.WidgetStore
 import dagger.Module
@@ -14,7 +14,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import ch.brickinventoryapp.zustand.ui.Widgetanstoss
+import ch.brickinventoryapp.state.ui.Widgetanstoss
 
 /**
  * Was nur die App kennt: ihre Activity und ihr Widget. Die Module darunter sehen

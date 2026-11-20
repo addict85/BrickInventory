@@ -1,11 +1,11 @@
 Gegenprobe: der Canvas des Preisdiagramms trägt keine Beschreibung
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.PriceChartDescriptionTest
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.PriceChartDescriptionTest
 Rot: das Preisdiagramm beschreibt
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 @@ -178,7 +178,7 @@
      val edgeTop = with(androidx.compose.ui.platform.LocalDensity.current) {
          (MaterialTheme.typography.labelSmall.lineHeight.toPx() / 2)

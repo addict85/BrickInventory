@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.DesignTokensTest
 Rot: Knoepfe tragen alle dieselbe Form, Nebenknoepfe dieselben Farben
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
 index 2b5a715..8a7ab71 100644
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/ZweiterFaktorPflichtMaske.kt
 @@ -121,8 +121,7 @@ fun ZweiterFaktorPflichtMaske(
                          Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
                              modifier = Modifier.readAloudAs(zustand.codes.joinToString(", ") { charByChar(it) }))

@@ -1,11 +1,11 @@
 Gegenprobe: Der Schlüssel des Tokens arbeitet auch bei gesperrtem Gerät
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.KeystoreVaultTest
+Modul: core-security
+Test: ch.brickinventoryapp.security.KeystoreVaultTest
 Rot: der Schluessel des Tokens arbeitet nur entsperrt
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
 @@ -103,4 +103,3 @@
          .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
          .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)

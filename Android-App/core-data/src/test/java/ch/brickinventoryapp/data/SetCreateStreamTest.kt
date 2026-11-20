@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.SetRecorded
+import ch.brickinventoryapp.model.domain.SetRecorded
 import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.toList

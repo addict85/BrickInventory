@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.DeviceApi
-import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
-import ch.brickinventoryapp.model.schritt.Schluesselnonce
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.model.schritt.Schrittbindung
-import ch.brickinventoryapp.vertrag.SchrittChallengeAnfrage
-import ch.brickinventoryapp.vertrag.SchrittFreigabeAnfrage
+import ch.brickinventoryapp.contract.GeraeteSchluesselAnfrage
+import ch.brickinventoryapp.model.step.Schluesselnonce
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
+import ch.brickinventoryapp.model.step.Schrittbindung
+import ch.brickinventoryapp.contract.SchrittChallengeAnfrage
+import ch.brickinventoryapp.contract.SchrittFreigabeAnfrage
 import java.util.Base64
 import javax.inject.Inject
 import javax.inject.Singleton

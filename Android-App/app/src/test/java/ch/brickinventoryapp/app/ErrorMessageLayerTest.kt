@@ -60,13 +60,13 @@ class ErrorMessageLayerTest {
         // Aussage, die eine Textsuche wirklich treffen kann: dass die
         // Zuordnung eine eigene, Context-freie Funktion IST. Wandert sie
         // zurück in meldung(), ist sie wieder nur über Android prüfbar.
-        val texts = Quellen.withoutComments(Quellen.lies("zustand/ui/FehlerTexte.kt"))
+        val texts = Quellen.withoutComments(Quellen.lies("state/ui/FehlerTexte.kt"))
         assert(texts.contains("fun fehlerTextId(")) { "fehlerTextId() fehlt" }
         assert(!texts.contains("ctx.") && !texts.contains("Context")) {
             "FehlerTexte.kt darf keinen Context brauchen — sonst ist die Zuordnung " +
                 "wieder nur mit Android-Laufzeit prüfbar"
         }
-        val vm = Quellen.withoutComments(Quellen.lies("zustand/ui/viewmodel/AppTexte.kt"))
+        val vm = Quellen.withoutComments(Quellen.lies("state/ui/viewmodel/AppTexte.kt"))
         val meldung = Quellen.function(vm, "override fun meldung(")
         assert(meldung.isNotEmpty()) { "meldung() fehlt in AppTexte" }
         assert(meldung.contains("fehlerTextId(")) {

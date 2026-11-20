@@ -1,11 +1,11 @@
 Gegenprobe: Ein gesperrter Keystore gilt in einer Ablage wieder als unlesbarer Geheimtext
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.StoreUnlockedTest
+Modul: core-security
+Test: ch.brickinventoryapp.security.StoreUnlockedTest
 Rot: gesperrt entsteht kein neuer Schluessel
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 @@ -131,8 +131,8 @@
      // unlesbarer Geheimtext; als null gelesen, löschten Aufrufer die Datei.
      private fun oeffne(daten: ByteArray, kennung: ByteArray, bindung: String?): ByteArray? {

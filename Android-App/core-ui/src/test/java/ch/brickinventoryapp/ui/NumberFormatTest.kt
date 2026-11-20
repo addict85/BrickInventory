@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.ui.util.fmtAmount
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
@@ -41,20 +41,20 @@ class NumberFormatTest {
     fun `keine Ansicht setzt Betrag und Waehrung selbst zusammen`() {
         val screens = listOf(
             "app/AppNavigation.kt",
-            "teile/ui/screens/PartsScreen.kt",
-            "teile/ui/screens/TeileFilterBlatt.kt",
-            "teile/ui/screens/TeileKarte.kt",
-            "finanzen/ui/screens/FinanceScreen.kt",
-            "sammlung/ui/screens/SetDetailScreen.kt",
-            "gemeinsam/ui/SetDetailComponents.kt",
-            "gemeinsam/ui/ManualItemComposables.kt",
-            "teile/ui/screens/ManualItemDetailScreen.kt",
-            "sammlung/ui/screens/AcquisitionManagementScreen.kt",
-            "sammlung/ui/screens/GalleryScreen.kt",
-            "sammlung/ui/screens/GalerieFilter.kt",
-            "sammlung/ui/screens/GalerieKarte.kt",
-            "sammlung/ui/screens/GalerieErfassen.kt",
-            "konto/ui/screens/EinstellungenAlarme.kt",
+            "parts/ui/screens/PartsScreen.kt",
+            "parts/ui/screens/TeileFilterBlatt.kt",
+            "parts/ui/screens/TeileKarte.kt",
+            "finances/ui/screens/FinanceScreen.kt",
+            "collection/ui/screens/SetDetailScreen.kt",
+            "shared/ui/SetDetailComponents.kt",
+            "shared/ui/ManualItemComposables.kt",
+            "parts/ui/screens/ManualItemDetailScreen.kt",
+            "collection/ui/screens/AcquisitionManagementScreen.kt",
+            "collection/ui/screens/GalleryScreen.kt",
+            "collection/ui/screens/GalerieFilter.kt",
+            "collection/ui/screens/GalerieKarte.kt",
+            "collection/ui/screens/GalerieErfassen.kt",
+            "account/ui/screens/EinstellungenAlarme.kt",
         )
         for (f in screens) {
             val c = code(read(f))

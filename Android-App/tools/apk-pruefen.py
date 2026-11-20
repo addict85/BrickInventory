@@ -64,7 +64,7 @@ UEBER_NAMEN = {
 
 # Stichprobe für das Umbenennen der API-Modelle: Steht sie mit ihrem Namen im APK,
 # hält eine Regel wieder das ganze Paket.
-MODELL_STICHPROBE = "Lch/brickinventoryapp/vertrag/SetItem;"
+MODELL_STICHPROBE = "Lch/brickinventoryapp/contract/SetItem;"
 
 
 class Dex:
@@ -194,7 +194,7 @@ def main() -> int:
     for eintrag in z.namelist():
         if re.fullmatch(r'classes\d*\.dex', eintrag):
             namen.update(name for name, _o, _m in Dex(z.read(eintrag)).klassen())
-    modelle = sorted(n for n in namen if n.startswith('Lch/brickinventoryapp/vertrag/'))
+    modelle = sorted(n for n in namen if n.startswith('Lch/brickinventoryapp/contract/'))
     if MODELL_STICHPROBE in namen:
         schlimm.append(
             f'{MODELL_STICHPROBE} steht mit seinem Namen im APK: Eine Keep-Regel hält die '

@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.cache.areaName
 import ch.brickinventoryapp.data.cache.cleanOldResponseStore
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.CatalogRepository
-import ch.brickinventoryapp.model.lokal.StockKind
+import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.StorageExit
 import ch.brickinventoryapp.offline.StorageInventory

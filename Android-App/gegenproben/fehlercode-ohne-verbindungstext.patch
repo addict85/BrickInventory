@@ -6,7 +6,7 @@ Rot: Upload-Sperre, Verbindungsgrenze
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/FehlercodeTexte.kt
-@@ -10,7 +10,6 @@ import ch.brickinventoryapp.ressourcen.R
+@@ -10,7 +10,6 @@ import ch.brickinventoryapp.resources.R
   */
  fun errorTextToCode(code: Fehlercode?): Int? = when (code) {
      Fehlercode.UPLOAD_LAEUFT -> R.string.err_upload_laeuft

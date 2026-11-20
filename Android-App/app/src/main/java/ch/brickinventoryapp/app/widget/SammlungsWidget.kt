@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app.widget
 
-import ch.brickinventoryapp.sicherheit.Geraetesperre
+import ch.brickinventoryapp.security.Geraetesperre
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.content.Context
 import androidx.compose.runtime.Composable
@@ -35,7 +35,7 @@ import androidx.work.WorkerParameters
 import ch.brickinventoryapp.app.AppLockStore
 import ch.brickinventoryapp.app.MainActivity
 import ch.brickinventoryapp.ui.components.AppLock
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import androidx.hilt.work.HiltWorker
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.Widgetablage

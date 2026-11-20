@@ -1,11 +1,11 @@
 Gegenprobe: Kennzahl fragt den Plural immer mit 2 („1 Exemplare“)
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.MetricsPluralTest
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.MetricsPluralTest
 Rot: bei 1 steht auf Deutsch die Einzahl
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
 @@ -25,7 +25,7 @@
  @Composable
  fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {

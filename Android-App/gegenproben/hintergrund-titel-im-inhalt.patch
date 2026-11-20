@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Hintergrundarbeiten mit einem Titel
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt
 index b6f8df7..4d16e87 100644
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringScreen.kt
 @@ -111,7 +111,8 @@ fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, c
          ) {
              // Kein eigener Titel: Die Leiste darüber nennt die Seite schon (VerwaltungGraph).

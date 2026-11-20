@@ -5,9 +5,9 @@ import androidx.core.app.NotificationManagerCompat
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.repository.AccountDataDeleter
 import ch.brickinventoryapp.data.di.ImageClient
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.security.Ablageschluessel
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.util.raeumeAnleitungenAuf
 import ch.brickinventoryapp.data.util.raeumeKontoDateienAuf

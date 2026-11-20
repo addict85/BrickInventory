@@ -1,11 +1,11 @@
 Gegenprobe: Die Frage beim Erstkontakt erfährt nie, dass das System CT prüft
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
 Rot: beim Erstkontakt mit CT-Pflicht genuegt der Vergleich
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 @@ -260,8 +260,7 @@
          if (chain.isEmpty() || schluessel != ownServer()) return mit(foreignHosts)
          // Ohne Pin wird nie still vertraut; was die Rückfrage ist, sagt die Lage der Kette.

@@ -6,7 +6,7 @@ Rot: heikle Seiten sind vor Ueberlagerung
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
-@@ -19,7 +19,6 @@ import ch.brickinventoryapp.ressourcen.R
+@@ -19,7 +19,6 @@ import ch.brickinventoryapp.resources.R
   */
  @Composable
  fun Sichtschutz(coverage: Boolean = true) {

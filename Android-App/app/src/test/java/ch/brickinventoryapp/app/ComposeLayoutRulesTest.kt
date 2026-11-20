@@ -48,7 +48,7 @@ class ComposeLayoutRulesTest {
 
     @Test
     fun `die Tabellenzeile sagt der Sprachausgabe, was das Antippen tut`() {
-        val zeile = Quellen.withoutComments(Quellen.lies("gemeinsam/ui/TabellenZeile.kt"))
+        val zeile = Quellen.withoutComments(Quellen.lies("shared/ui/TabellenZeile.kt"))
         assertTrue("TabellenZeile nimmt keine Beschriftung für die Sprachausgabe",
             zeile.contains("onClickLabel: String? = null"))
         assertTrue("TabellenZeile reicht die Beschriftung nicht an clickable weiter",

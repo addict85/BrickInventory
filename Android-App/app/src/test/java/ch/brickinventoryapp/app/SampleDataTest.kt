@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.teile.ui.viewmodel.MinifigsViewModel
-import ch.brickinventoryapp.model.fach.Teilelistenauftrag
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.model.domain.Teilelistenauftrag
+import ch.brickinventoryapp.model.domain.Waehrung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.testing.testMinifigsRepository
 import ch.brickinventoryapp.testing.testFinancesRepository
@@ -10,21 +10,21 @@ import ch.brickinventoryapp.testing.testHouseholdRepository
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.model.datei.FileReader
-import ch.brickinventoryapp.model.datei.FileRef
-import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanceViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.teile.ui.viewmodel.PartsViewModel
-import ch.brickinventoryapp.teile.ui.PartListsSource
-import ch.brickinventoryapp.teile.ui.PlPart
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.MerklisteViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.parts.ui.PartListsSource
+import ch.brickinventoryapp.parts.ui.PlPart
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.service.ExportResult
 import ch.brickinventoryapp.data.service.PartListsExport
 import ch.brickinventoryapp.data.service.PdfFailure
-import ch.brickinventoryapp.model.fach.PdfProgress
-import ch.brickinventoryapp.teile.ui.viewmodel.PartListViewModel
+import ch.brickinventoryapp.model.domain.PdfProgress
+import ch.brickinventoryapp.parts.ui.viewmodel.PartListViewModel
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,11 +36,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.finanzen.ui.finanzSummen
-import ch.brickinventoryapp.gemeinsam.ui.localAxis
-import ch.brickinventoryapp.gemeinsam.ui.localValues
-import ch.brickinventoryapp.finanzen.ui.setRows
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.finances.ui.finanzSummen
+import ch.brickinventoryapp.shared.ui.localAxis
+import ch.brickinventoryapp.shared.ui.localValues
+import ch.brickinventoryapp.finances.ui.setRows
+import ch.brickinventoryapp.state.ui.viewmodel.Texte
 import java.util.Locale
 import ch.brickinventoryapp.testing.NumbersTexts
 import ch.brickinventoryapp.testing.PfadServer
@@ -248,7 +248,7 @@ object Examples {
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1,"kachel_quelle":"markt"},
             {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5,"kachel_quelle":"markt"},
             {"set_number":"21318-1","quantity":1,"current_price":null,"baseline_price":180,"kachel_preis":180.0,"kachel_pnl_pct":null,"kachel_quelle":"kauf"}]}""",
-        // Wie der Server (finanzen/rechnung/bewertung.ts): wert_gesamt, Kaufpreis, G&V und
+        // Wie der Server (finances/rechnung/bewertung.ts): wert_gesamt, Kaufpreis, G&V und
         // je Erfassung eine Zeile mit Zustand. Ohne wert_gesamt zeigt jede Zeile „noch
         // kein Preis“ unter einer gefüllten Kopfkachel.
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[

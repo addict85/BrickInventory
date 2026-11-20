@@ -5,7 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.fragment.app.FragmentActivity
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.DevicesStepProtection
 import ch.brickinventoryapp.ui.components.WithoutLockWarning
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

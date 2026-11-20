@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.CacheAreaTest
 Rot: die Offline-Ablage kennt genau die eingeordneten Faecher
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Local.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Local.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
 index f3d66d9..7de19c9 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Local.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Local.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/local/Local.kt
 @@ -12,5 +12,5 @@ data class Local<T>(val liste: List<T>, val stand: Long?, val verworfen: Int = 0
   */
  enum class StockKind {
@@ -27,9 +27,9 @@ index 0c9232a..d5ac501 100644
      }
  
      /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 @@ -93,5 +93,5 @@ class Ausgangsmelder
          // Ändern sich nie über den Ausgang, nur online.
          StockKind.GUTSCHEINE, StockKind.PREISALARME, StockKind.LAGERORTE,

@@ -9,9 +9,9 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
-import ch.brickinventoryapp.sicherheit.StoreCipher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
-import ch.brickinventoryapp.sicherheit.EncryptedFileSystem
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.Ablageschluessel
+import ch.brickinventoryapp.security.EncryptedFileSystem
 
 /** Namensanfang der Anleitungen im Zwischenspeicher ([pdfAblage]); `.part` dahinter heisst: Download läuft. */
 internal const val INSTRUCTION_PREFIX = "anleitung_"

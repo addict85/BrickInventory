@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.PriceAlertsDisplayTest
 Rot: die Uebersicht holt
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt
 @@ -136,7 +136,7 @@
                      // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
                      // Rückfrage danach trägt das Gewicht.

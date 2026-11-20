@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.fach.Merksortierung
+import ch.brickinventoryapp.model.domain.Setsortierung
+import ch.brickinventoryapp.model.domain.Merksortierung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.WantedItemView
-import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.SetAnsicht
 import java.time.Instant
 
 /**

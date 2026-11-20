@@ -1,5 +1,5 @@
 // Design-System: Theme, Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge,
-// Kamera) und reine Anzeigeregeln. Fachliche Bausteine liegen in core-ui-bestand.
+// Kamera) und reine Anzeigeregeln. Fachliche Bausteine liegen in core-ui-inventory.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -14,7 +14,7 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.bundles.camera)

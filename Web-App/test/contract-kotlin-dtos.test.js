@@ -1,5 +1,5 @@
 /**
- * Die Kotlin-Typen der App (core-vertrag, Paket vertrag) sind aus docs/openapi.json
+ * Die Kotlin-Typen der App (core-contract, Paket vertrag) sind aus docs/openapi.json
  * erzeugt und eingecheckt — Antworten und Rümpfe, ein Satz, keine Handtypen daneben.
  * Weicht die Datei vom Vertrag ab, ist dieser Test rot, bis `npm run vertrag:kotlin`
  * sie neu schreibt.
@@ -41,7 +41,7 @@ test('die eingecheckten Kotlin-Typen sind aus openapi.json erzeugt', () => {
 const zuordnung = (mehr = {}) => ({
   OMIT: new Set(),
   STRICT: new Set(),
-  FACHTYPEN: { Zustand: { paket: 'ch.brickinventoryapp.model.fach.Zustand', leer: 'Zustand.NEU' } },
+  FACHTYPEN: { Zustand: { paket: 'ch.brickinventoryapp.model.domain.Zustand', leer: 'Zustand.NEU' } },
   NAMEN: {},
   FIELD_TYPES: {},
   DEFAULTS: {},
@@ -134,7 +134,7 @@ test('ein Fachtyp ersetzt den Text, Liste und Nullbarkeit bleiben', () => {
   );
   assert.match(kt, /val condition: Zustand = Zustand\.NEU,/);
   assert.match(kt, /val conditions: List<Zustand> = emptyList\(\),/);
-  assert.match(kt, /^import ch\.brickinventoryapp\.model\.fach\.Zustand$/m);
+  assert.match(kt, /^import ch\.brickinventoryapp\.model\.domain\.Zustand$/m);
 });
 
 test('gleichnamige Formen werden eine: Felder vereint, Pflicht nur wo alle es verlangen', () => {

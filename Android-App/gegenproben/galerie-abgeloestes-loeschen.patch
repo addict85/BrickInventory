@@ -1,11 +1,11 @@
 Gegenprobe: Die Snackbar eines abgelösten Löschens führt das nächste aus
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalleryViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
 Rot: die Snackbar eines abgeloesten Loeschens fuehrt das naechste nicht aus
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
 @@ -212,7 +212,6 @@ class GalleryViewModel @Inject constructor(
       */
      fun executeDelete(nur: ReservedDelete? = null) {

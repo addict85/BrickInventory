@@ -6,10 +6,10 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.sicherheit.EntsperrVault
-import ch.brickinventoryapp.sicherheit.TokenEncryption
-import ch.brickinventoryapp.sicherheit.Tresorbefund
-import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
+import ch.brickinventoryapp.security.EntsperrVault
+import ch.brickinventoryapp.security.TokenEncryption
+import ch.brickinventoryapp.security.Tresorbefund
+import ch.brickinventoryapp.security.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

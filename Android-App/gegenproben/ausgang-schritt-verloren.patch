@@ -1,11 +1,11 @@
 Gegenprobe: die Anfrage zur Stückänderung verliert den Schritt
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.OfflineEditingTest
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.OfflineEditingTest
 Rot: reist als Menge und Schritt
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Ausgangsanfragen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Ausgangsanfragen.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Ausgangsanfragen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/Ausgangsanfragen.kt
 @@ -31,7 +31,7 @@
  internal fun Figurenerfassung.asRequest() = AddMinifigRequest(figNumber = nummer, blFigNumber = blNumber, quantity = menge,
      unitPrice = stueckpreis?.asDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)

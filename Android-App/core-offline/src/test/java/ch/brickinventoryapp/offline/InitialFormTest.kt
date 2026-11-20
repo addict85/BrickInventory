@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.Stueckaenderung
-import ch.brickinventoryapp.model.fach.Figurenerfassung
-import ch.brickinventoryapp.model.fach.Teilerfassung
-import ch.brickinventoryapp.model.fach.Merkwunsch
-import ch.brickinventoryapp.model.fach.Erfassungswunsch
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Stueckaenderung
+import ch.brickinventoryapp.model.domain.Figurenerfassung
+import ch.brickinventoryapp.model.domain.Teilerfassung
+import ch.brickinventoryapp.model.domain.Merkwunsch
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.descriptors.elementNames
 import kotlinx.serialization.json.jsonObject

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.datei.FileReader
-import ch.brickinventoryapp.model.datei.FileRef
-import ch.brickinventoryapp.model.datei.Gelesen
-import ch.brickinventoryapp.data.datei.readLimited
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
+import ch.brickinventoryapp.model.file.Gelesen
+import ch.brickinventoryapp.data.file.readLimited
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

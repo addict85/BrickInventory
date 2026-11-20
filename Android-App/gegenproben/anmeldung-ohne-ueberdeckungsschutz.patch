@@ -1,11 +1,11 @@
 Gegenprobe: Die Anmeldung ohne Schutz vor Überlagerung
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.LoginProtectionTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginProtectionTest
 Rot: die Anmeldung ist vor Ueberlagerung
 
-diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
---- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
-+++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/LoginScreen.kt
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/LoginScreen.kt
 @@ -91,7 +91,6 @@ fun LoginScreen(
      val focusMgr = LocalFocusManager.current
      // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey. Den

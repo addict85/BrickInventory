@@ -1,12 +1,12 @@
 Gegenprobe: Ohne Netz melden die Figuren einen Fehler, obwohl die Quelle einen Stand hat
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.PartsTest
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsTest
 Rot: ohne Netz bleiben die Figuren stehen
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Teile.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Teile.kt
 index 694bfff..3eb0dd9 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/Teile.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Teile.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/Teile.kt
 @@ -84,7 +84,6 @@ internal class Listenfolge<S>(
      fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Fehler) -> S) {
          when {

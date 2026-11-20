@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.schritt.Schluesselnonce
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.model.schritt.Schrittbindung
+import ch.brickinventoryapp.model.step.Schluesselnonce
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
+import ch.brickinventoryapp.model.step.Schrittbindung
 import ch.brickinventoryapp.ui.components.AttestierbarerKey
 import ch.brickinventoryapp.ui.components.Schluesselbindung
 import kotlinx.coroutines.Dispatchers

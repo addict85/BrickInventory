@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.data.datei.AppFileReader
+import ch.brickinventoryapp.data.file.AppFileReader
 import ch.brickinventoryapp.data.util.AppTextSource
-import ch.brickinventoryapp.model.datei.FileReader
+import ch.brickinventoryapp.model.file.FileReader
 import ch.brickinventoryapp.model.util.Textquelle
 import dagger.Binds
 import dagger.Module

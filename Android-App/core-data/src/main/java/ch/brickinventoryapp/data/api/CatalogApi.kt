@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
-import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
-import ch.brickinventoryapp.vertrag.CatalogSetsResponse
+import ch.brickinventoryapp.contract.CatalogMetaResponse
+import ch.brickinventoryapp.contract.CatalogSetDetailResponse
+import ch.brickinventoryapp.contract.CatalogSetsResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
-import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers: Themen, Liste, Detail, Jahresverteilung (CatalogRepository).

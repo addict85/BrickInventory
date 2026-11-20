@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.ImageCacheTest
 Rot: die Namen im Zwischenspeicher verraten die Adressen nicht
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
 @@ -40,7 +40,7 @@
      override fun onPathParameter(path: Path, functionName: String, parameterName: String): Path = jittered(path)
  

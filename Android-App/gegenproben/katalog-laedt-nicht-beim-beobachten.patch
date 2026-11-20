@@ -1,11 +1,11 @@
 Gegenprobe: der Katalog lädt nicht mehr, wenn ihn jemand beobachtet
-Modul: feature-katalog
-Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
 Rot: wer den Katalog sieht
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 @@ -67,7 +67,7 @@
          // Erst wer den Katalog sieht, lädt ihn; ein Zurückkehren lädt nur, was noch fehlt.
          observeLoadOn(_catalogState) {

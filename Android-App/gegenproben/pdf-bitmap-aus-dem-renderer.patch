@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: PdfRenderer steht nur im isolierten Render-Dienst
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/pdf/PdfRenderDienst.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/pdf/PdfRenderDienst.kt
 @@ -127,12 +127,7 @@
                  writeInt(index); writeInt(dimensions.breite); writeInt(dimensions.hoehe); speicher.writeToParcel(this, 0)
              }, ::zahlen) != null

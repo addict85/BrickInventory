@@ -28,21 +28,21 @@ class OcrSetNumberTest {
     fun `Texterkennung laeuft NUR beim Erfassen, nicht im Preisvergleich`() {
         // Der Schalter steht auf AUS: So erbt kein künftiger Aufrufer die Texterkennung.
         val screen = code(File(Quellen.root,
-            "sammlung/ui/screens/BarcodeScannerScreen.kt").readText())
+            "collection/ui/screens/BarcodeScannerScreen.kt").readText())
         assert(screen.contains("ocrEnabled: Boolean = false")) {
             "Der Standard muss AUS sein — sonst bekommt jeder Aufrufer die Texterkennung ungefragt"
         }
 
         // Der Scanner für Galerie und Teileliste schaltet sie ein …
         val tools = code(File(Quellen.root,
-            "sammlung/ui/SammlungGraph.kt").readText())
+            "collection/ui/SammlungGraph.kt").readText())
         assert(tools.contains("ocrEnabled = true")) {
             "Beim Erfassen fehlt die Texterkennung — genau dort ist sie gewollt"
         }
 
         // … der Preisvergleich nicht.
         val comparison = code(File(Quellen.root,
-            "sammlung/ui/screens/ComparisonScreen.kt").readText())
+            "collection/ui/screens/ComparisonScreen.kt").readText())
         assert(!comparison.contains("ocrEnabled")) {
             "Der Preisvergleich schaltet die Texterkennung ein — dort ist sie ausdrücklich nicht gewollt"
         }

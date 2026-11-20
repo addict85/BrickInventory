@@ -4,8 +4,8 @@ import android.app.Notification
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.lokal.EntwertungsWorker
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.data.local.EntwertungsWorker
+import ch.brickinventoryapp.resources.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

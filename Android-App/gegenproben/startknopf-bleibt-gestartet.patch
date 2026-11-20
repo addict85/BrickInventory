@@ -1,11 +1,11 @@
 Gegenprobe: ein Startknopf stellt nach dem Start nicht mehr zurück
-Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.MonitoringStartButtonsTest
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringStartButtonsTest
 Rot: ein Startknopf zeigt
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/viewmodel/MonitoringViewModel.kt
 @@ -271,7 +271,6 @@
              }
              setButton(job, gestartet)

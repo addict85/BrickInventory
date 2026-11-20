@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.AcquisitionsResponse
-import ch.brickinventoryapp.vertrag.DeleteWithQuantityResponse
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.HouseholdInviteResponse
-import ch.brickinventoryapp.vertrag.HouseholdMembersResponse
-import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
-import ch.brickinventoryapp.vertrag.UpdateAcquisitionRequest
+import ch.brickinventoryapp.contract.AcquisitionsResponse
+import ch.brickinventoryapp.contract.DeleteWithQuantityResponse
+import ch.brickinventoryapp.contract.GenericResponse
+import ch.brickinventoryapp.contract.HouseholdInviteResponse
+import ch.brickinventoryapp.contract.HouseholdMembersResponse
+import ch.brickinventoryapp.contract.HouseholdStatusResponse
+import ch.brickinventoryapp.contract.UpdateAcquisitionRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE

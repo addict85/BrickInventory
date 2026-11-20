@@ -1,11 +1,11 @@
 Gegenprobe: Preis und Preisverlauf verwerfen ihren Fehler still
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailViewModelTest
 Rot: scheitern Preis und Verlauf, steht der Fehler im Zustand
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/SetDetailViewModel.kt
 @@ -152,7 +152,7 @@
          _setDetailState.update { it.copy(priceFetch = Laden.Loads) }
          when (val r = finanzen.getSetPrice(setNumber)) {

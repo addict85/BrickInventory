@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.domain.Laufstatus
 /**
  * Was folgt aus einer CSV-Statusmeldung? Getrennt von CsvImportCoordinator, der
  * handelt: Die Entscheidung braucht weder Dienst noch Zeit und lässt sich so als

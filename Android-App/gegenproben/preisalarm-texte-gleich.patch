@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.PriceAlertsDisplayTest
 Rot: die beiden Zustaende
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -866,7 +866,7 @@
      <string name="alerts_intro">Hier legst du Alarme an, änderst Schwelle und Richtung oder entfernst sie.</string>
      <string name="alerts_empty">Noch kein Preisalarm gesetzt. Lege unten einen an oder in der Detailansicht eines Sets.</string>

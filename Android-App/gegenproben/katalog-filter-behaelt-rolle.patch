@@ -1,11 +1,11 @@
 Gegenprobe: Nach einem Filterwechsel bleibt die alte Rollposition des Katalogs stehen
-Modul: feature-katalog
-Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
 Rot: ein Filterwechsel beginnt oben
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 @@ -109,7 +109,6 @@
          catalogListJob = viewModelScope.launch {
              // Auch die gemerkte Stelle vergessen: Nach einem Filterwechsel zeigte sie auf

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.contract.Preisalarm
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,7 +68,7 @@ class AlarmOverviewTest {
      */
     @Test
     fun `die Zeile zeigt das Bild wie die Finanzen`() {
-        val s = quelle("konto/ui/screens/EinstellungenAlarme.kt")
+        val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
         assert(s.contains("FinanzBild(")) {
             "Die Zeile hat kein Vorschaubild — oder ein eigenes statt des der Finanzen."
         }
@@ -103,7 +103,7 @@ class AlarmOverviewTest {
      */
     @Test
     fun `die Einstellungen merken sich ihre Rollposition`() {
-        val graph = quelle("konto/ui/KontoGraph.kt")
+        val graph = quelle("account/ui/KontoGraph.kt")
         assert(graph.contains("settingsScrollState")) {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
                 "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
@@ -116,7 +116,7 @@ class AlarmOverviewTest {
         assert(graph.contains("val settingsScrollState = remember { ScrollState(0) }")) {
             "Die Einstellungen legen ihren Rollzustand nicht im Ziel an"
         }
-        val screen = quelle("konto/ui/screens/SettingsScreen.kt")
+        val screen = quelle("account/ui/screens/SettingsScreen.kt")
         assert(!screen.contains("rememberScrollState()")) {
             "In SettingsScreen steht wieder ein eigenes rememberScrollState() — " +
                 "damit ist der durchgereichte Zustand wirkungslos."
@@ -137,7 +137,7 @@ class AlarmOverviewTest {
     @Test
     fun `der Alarmzustand steht als Plakette da`() {
         // Dass sie „Aktiv“ und „Ausgelöst“ in Worten zeigt, prüft PriceAlertsDisplayTest.
-        val s = quelle("konto/ui/screens/EinstellungenAlarme.kt")
+        val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
         // Der Speichern-Knopf erscheint nur bei einer Aenderung. Ohne diese
         // Schranke steht wieder dauerhaft ein Symbol daneben, das wie eine
         // Zustandsanzeige aussieht.

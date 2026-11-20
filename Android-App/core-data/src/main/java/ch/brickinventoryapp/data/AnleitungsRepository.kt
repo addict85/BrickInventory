@@ -3,8 +3,8 @@ package ch.brickinventoryapp.data
 import android.content.Context
 import android.net.wifi.WifiManager
 import ch.brickinventoryapp.data.di.ApiClient
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
 import ch.brickinventoryapp.data.util.INSTRUCTION_EXTENSION
 import ch.brickinventoryapp.data.util.INSTRUCTION_PREFIX
 import ch.brickinventoryapp.data.util.InstructionStore

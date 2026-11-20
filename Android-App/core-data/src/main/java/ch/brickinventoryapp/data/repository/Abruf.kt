@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.Flow
-import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.contract.GenericResponse
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
+import ch.brickinventoryapp.network.data.api.Fehlerrumpf
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
-import ch.brickinventoryapp.model.fach.Fehlercode
+import ch.brickinventoryapp.model.domain.Fehlercode
 import retrofit2.Response
-import ch.brickinventoryapp.netz.util.PlaintextRejected
+import ch.brickinventoryapp.network.util.PlaintextRejected
 
 /*
  * Was die Repositories gemeinsam brauchen, als Funktionen statt als Basisklasse:

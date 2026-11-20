@@ -10,19 +10,19 @@
 /** @type {Record<string, { paket: string, leer: string, serializer?: string }>} */
 const FACHTYPEN = {
   Zustand: {
-    paket: 'ch.brickinventoryapp.model.fach.Zustand',
+    paket: 'ch.brickinventoryapp.model.domain.Zustand',
     leer: 'Zustand.NEU',
   },
   Waehrung: {
-    paket: 'ch.brickinventoryapp.model.fach.Waehrung',
+    paket: 'ch.brickinventoryapp.model.domain.Waehrung',
     leer: 'Waehrung.KEINE',
   },
   Laufstatus: {
-    paket: 'ch.brickinventoryapp.model.fach.Laufstatus',
+    paket: 'ch.brickinventoryapp.model.domain.Laufstatus',
     leer: 'Laufstatus.UNBEKANNT',
   },
   Alarmrichtung: {
-    paket: 'ch.brickinventoryapp.model.fach.Alarmrichtung',
+    paket: 'ch.brickinventoryapp.model.domain.Alarmrichtung',
     leer: 'Alarmrichtung.UNTER',
   },
   Design: {
@@ -414,8 +414,8 @@ const PROPERTIES = {
 /** Konstanten aus core-model, die eine Vorgabe nennen darf. */
 /** @type {Record<string, string>} */
 const CONSTANTS = {
-  KEINE_FARBE: 'ch.brickinventoryapp.model.fach.KEINE_FARBE',
-  TOKEN_SCOPE_APP: 'ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP',
+  KEINE_FARBE: 'ch.brickinventoryapp.model.domain.KEINE_FARBE',
+  TOKEN_SCOPE_APP: 'ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP',
 };
 
 /** Antwortfelder, die fehlen dürfen und dann null statt leer sind. */

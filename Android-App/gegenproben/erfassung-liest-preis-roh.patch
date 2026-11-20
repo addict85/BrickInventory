@@ -1,11 +1,11 @@
 Gegenprobe: erfassungsWerte liest den Preis wieder mit replace statt nach der Sprache
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.ErfassungswerteTest
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ErfassungswerteTest
 Rot: die Erfassung liest den Preis
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
 @@ -31,7 +31,7 @@
      haushalt: List<MemberView>,
  ): EntryValues = EntryValues(

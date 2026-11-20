@@ -12,6 +12,6 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
                  "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
 -            k.onlyTest -> null
 +            false -> null
-             k.nach == "core-vertrag" && k.von !in wireKenner ->
+             k.nach == "core-contract" && k.von !in wireKenner ->
                  "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
              k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"

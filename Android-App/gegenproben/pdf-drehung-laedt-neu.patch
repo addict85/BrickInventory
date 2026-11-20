@@ -1,11 +1,11 @@
 Gegenprobe: PdfBetrachterViewModel lädt bei jedem oeffne() neu, wie früher der LaunchedEffect nach einer Drehung
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.PdfViewerViewModelTest
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
 Rot: eine Drehung laedt nicht neu
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
 @@ -48,7 +48,6 @@
      fun oeffne(pdfUrl: String, serverUrl: String) {
          val bisher = _state.value

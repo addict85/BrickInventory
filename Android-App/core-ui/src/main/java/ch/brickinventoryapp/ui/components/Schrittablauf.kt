@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.model.schritt.Schrittbindung
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
+import ch.brickinventoryapp.model.step.Schrittbindung
 import java.security.Signature
 
 /**

@@ -10,7 +10,7 @@ diff --git a/Android-App/core-offline/build.gradle.kts b/Android-App/core-offlin
  
  dependencies {
      api(project(":core-model"))
-+    implementation(project(":core-vertrag"))
++    implementation(project(":core-contract"))
      // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
-     implementation(project(":core-sicherheit"))
+     implementation(project(":core-security"))
      implementation(libs.androidx.core.ktx)

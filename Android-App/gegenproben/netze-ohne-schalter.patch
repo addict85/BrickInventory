@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
 index 41c4f1a..c65416f 100644
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringCache.kt
 @@ -232,7 +232,7 @@ private fun VorwaermNetworkChoice(networks: Map<VorwaermNetwork, Boolean>, onNetwork: (Vorwaer
          val erlaubt = networks[netz] == true
          Row(

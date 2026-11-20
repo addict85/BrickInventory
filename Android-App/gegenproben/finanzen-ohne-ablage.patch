@@ -1,11 +1,11 @@
 Gegenprobe: Die Bewertung folgt der Ablage nicht
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.FinanceViewModelTest
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.FinanceViewModelTest
 Rot: eine Aenderung am Bestand in der Ablage laedt die Bewertung nach
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
 @@ -46,7 +46,6 @@
      init {
          sequenceSignOut(sitzung) { reset() }

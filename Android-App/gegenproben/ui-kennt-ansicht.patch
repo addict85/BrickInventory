@@ -10,7 +10,7 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
  import androidx.compose.ui.text.TextStyle
  import androidx.compose.ui.text.font.FontWeight
  import ch.brickinventoryapp.ui.theme.Abstaende
-+import ch.brickinventoryapp.model.fach.KaufAnsicht
++import ch.brickinventoryapp.model.domain.KaufAnsicht
  import ch.brickinventoryapp.ui.theme.Lesebreite
  
  /** Eine Zeile der Detailkarten (Katalog, Merkposten), auf dem Tablet höchstens in Lesebreite. */

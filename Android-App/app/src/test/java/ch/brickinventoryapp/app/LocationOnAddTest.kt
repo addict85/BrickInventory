@@ -35,11 +35,11 @@ class LocationOnAddTest {
         // Fuenf Wege, fuenf Dateien. Weniger als fuenf heisst: Die Suche greift
         // nicht mehr, und die Regel waere still zufrieden.
         val routes = listOf(
-            Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
-            Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
-            Triple("sammlung/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
-            Triple("gemeinsam/ui/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
-            Triple("sammlung/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
+            Triple("collection/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("catalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
+            Triple("collection/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
+            Triple("shared/ui/ManualItemComposables.kt", "fun ErfassungsFelder(", "manuelle Teile und Figuren"),
+            Triple("collection/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
         check(routes.size >= 5) { "Nur ${routes.size} Wege — Liste unvollstaendig?" }
         val ohne = mutableListOf<String>()
@@ -77,12 +77,12 @@ class LocationOnAddTest {
     @Test
     fun `jeder Erfassungsweg startet beim vorgegebenen Lagerort`() {
         val holder = listOf(
-            Triple("sammlung/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
-            Triple("katalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
-            Triple("sammlung/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
-            Triple("teile/ui/screens/PartsDialogs.kt", "fun AddPartDialog(", "manuelles Teil"),
-            Triple("teile/ui/screens/FigurenErfassen.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
-            Triple("sammlung/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
+            Triple("collection/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
+            Triple("catalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
+            Triple("collection/ui/screens/MerklisteDialoge.kt", "fun UebernahmeDialog(", "Merkliste → Galerie"),
+            Triple("parts/ui/screens/PartsDialogs.kt", "fun AddPartDialog(", "manuelles Teil"),
+            Triple("parts/ui/screens/FigurenErfassen.kt", "fun AddMinifigDialog(", "manuelle Minifigur"),
+            Triple("collection/ui/dialogs/BarcodeResultDialog.kt", "fun BarcodeResultDialog(", "Barcode"),
         )
         check(holder.size >= 6) { "Nur ${holder.size} Halter — Liste unvollstaendig?" }
         val leer = mutableListOf<String>()
@@ -111,7 +111,7 @@ class LocationOnAddTest {
     fun `der Merkposten-Dialog fragt nach dem Konto`() {
         // Der Server nahm owner_user_id seit jeher an (routes/api_v1/wanted.ts),
         // und die Webapp fragte es ab (cat-m-owner) — nur dieser Dialog nicht.
-        val quelle = Quellen.withoutComments(Quellen.lies("katalog/ui/screens/CatalogDetailScreen.kt"))
+        val quelle = Quellen.withoutComments(Quellen.lies("catalog/ui/screens/CatalogDetailScreen.kt"))
         val koerper = rumpf(quelle, "fun MerkpostenDialog(")
         assert(koerper.contains("OwnerPicker(")) {
             "Der Merkposten-Dialog im Katalog hat keine Kontowahl — ein Wunsch " +

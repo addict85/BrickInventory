@@ -14,7 +14,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ch.brickinventoryapp.netz.di.Rotationsanlass
+import ch.brickinventoryapp.network.di.Rotationsanlass
 
 /**
  * Wie ein Tausch ausging. DISCARDED: Während des Tauschs wurde abgemeldet, neu

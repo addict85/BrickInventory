@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.LockScreenMessageTest
 Rot: die gescheiterte Abmeldung nennt den Server nur entsperrt
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/EntwertungsWorker.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/local/EntwertungsWorker.kt
 @@ -108,7 +108,6 @@
                  .setContentTitle(titel)
                  .setContentText(text)

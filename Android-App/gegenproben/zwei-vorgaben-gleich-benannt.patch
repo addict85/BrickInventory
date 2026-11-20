@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.DefaultStateTermsTest
 Rot: die eigene Vorgabe und die fuer alle Konten heissen verschieden
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 index c0b6003..0a761af 100644
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -6,11 +6,11 @@
      <!-- ══════════════ Settings screen ══════════════ -->
      <string name="settings_currency">Währung</string>

@@ -45,7 +45,7 @@ guavaMindestens             = "33.7.2-android"
 appcompat                   = "1.8.0"
 # Rückfrage per Gerätesperre vor heiklen Schritten (core-ui, Schrittschutz).
 biometric                   = "1.1.0"
-# Passkeys (feature-anmeldung); play-services-auth reicht sie vor Android 14 an Play weiter.
+# Passkeys (feature-login); play-services-auth reicht sie vor Android 14 an Play weiter.
 credentials                 = "1.6.0"
 # Ab 3.6 verlangt coil-core-android compileSdk 37 (siehe build-logic, Sdk.kt).
 coil                        = "3.6.3"

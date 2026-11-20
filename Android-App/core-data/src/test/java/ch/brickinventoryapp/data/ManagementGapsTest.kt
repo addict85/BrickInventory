@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.vertrag.JobsResponse
+import ch.brickinventoryapp.contract.JobsResponse
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

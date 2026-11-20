@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
@@ -24,7 +24,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import ch.brickinventoryapp.netz.di.Rotationsanlass
+import ch.brickinventoryapp.network.di.Rotationsanlass
 
 /**
  * Ein Serverwechsel, während eine Anfrage beim alten Server hängt: Der alte (A)

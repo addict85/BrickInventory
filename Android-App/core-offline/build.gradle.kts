@@ -24,7 +24,7 @@ android {
 dependencies {
     api(project(":core-model"))
     // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
-    implementation(project(":core-sicherheit"))
+    implementation(project(":core-security"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.room.runtime)
@@ -34,7 +34,7 @@ dependencies {
 
     testImplementation(project(":core-testing"))
     // Die Tests bauen Antworten des Servers, wie core-data sie abbildet; die Ablage selbst kennt sie nicht.
-    testImplementation(project(":core-vertrag"))
+    testImplementation(project(":core-contract"))
     // Abgleich und Repositories gegen die echte Room-Ablage (InventoryDatabaseTest, WithoutNetworkFilterTest).
     testImplementation(project(":core-data"))
     // Room-Tests laufen unter Robolectric (BestandMigrationTest).

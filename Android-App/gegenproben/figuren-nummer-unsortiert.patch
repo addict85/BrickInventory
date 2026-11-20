@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
 Rot: Minifiguren lassen sich sortieren
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
 @@ -64,7 +64,7 @@
  
      fun sort(figuren: List<FigurAnsicht>): List<FigurAnsicht> = when (this) {

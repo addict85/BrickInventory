@@ -1,6 +1,6 @@
 Gegenprobe: der Download schreibt mehr als angekündigt
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.UpdateViewModelTest
+Modul: feature-account
+Test: ch.brickinventoryapp.account.UpdateViewModelTest
 Rot: mehr als angekuendigt wird nicht geschrieben
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt

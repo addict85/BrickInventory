@@ -3,14 +3,14 @@ Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: kein Verweis auf das Begruendungsarchiv
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/TokenTresor.kt
 @@ -12,6 +12,7 @@
  /**
   * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
   * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
-+ * Ausführlich: docs/begruendungen/core-sicherheit/sicherheit/TokenTresor.kt.md#z12
++ * Ausführlich: docs/begruendungen/core-security/sicherheit/TokenTresor.kt.md#z12
   */
  
  /** Wo die Schlüssel liegen: im Gerät der AndroidKeyStore, im Test ein Bund im Speicher. */

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.model.domain.Fehlercode
+import ch.brickinventoryapp.resources.R
 
 /**
  * Fehlercodes des Servers mit eigenem Satz der App, für Wege ohne Satz des Servers:

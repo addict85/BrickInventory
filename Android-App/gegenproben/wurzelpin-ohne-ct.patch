@@ -1,11 +1,11 @@
 Gegenprobe: ein Pin auf eine System-Wurzel gilt wieder über den Abgleich mit der mitgeschickten Wurzel, an der CT-Prüfung vorbei (Stand vor sec11 H6)
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
 Rot: ein Pin auf eine System-Wurzel gilt nur mit der System-Pruefung
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 @@ -248,7 +248,7 @@
          // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
          // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.

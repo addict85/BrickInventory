@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.fach.accountOptions
-import ch.brickinventoryapp.model.fach.MemberView
+import ch.brickinventoryapp.model.domain.accountOptions
+import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.data.ScopeFilter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

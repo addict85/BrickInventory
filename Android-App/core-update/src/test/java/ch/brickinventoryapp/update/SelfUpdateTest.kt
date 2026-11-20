@@ -34,7 +34,7 @@ class SelfUpdateTest {
      *
      * NACHGEMESSEN war die Antwort trotzdem nur einem Bildschirm bekannt:
      * `updateState` wurde im ganzen Hauptbaum an GENAU EINER Stelle gelesen,
-     * in konto/ui/screens/SettingsScreen.kt — und der Bildschirm war damals von
+     * in account/ui/screens/SettingsScreen.kt — und der Bildschirm war damals von
      * nirgendwo erreichbar (siehe ReachableRoutesTest). Die Pruefung fand
      * also etwas, legte es ins ViewModel, und niemand zeichnete es.
      *
@@ -77,7 +77,7 @@ class SelfUpdateTest {
             "Die eigene Adresse wird abgelehnt"
         }
         // Der klassische Praefix-Fehler: `startsWith(BASIS)` ohne Schraegstrich
-        // liesse das hier durch. Genau diese Falle ist in netz/util/NetworkPolicy.kt
+        // liesse das hier durch. Genau diese Falle ist in network/util/NetworkPolicy.kt
         // schon einmal beim Bearer-Token behoben worden.
         assert(!isAllowedApkAddress("$UPDATE_RELEASE_BASE.angreifer.tld/x.apk")) {
             "Eine Adresse, die nur mit unserer ANFAENGT, wird zugelassen"
@@ -117,7 +117,7 @@ class SelfUpdateTest {
         val nav = quelle("app/AppNavigation.kt")
         // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft; dass
         // die Anmeldung es auslöst, prüft UpdateViewModelTest am ausgeführten ViewModel.
-        val vm = Quellen.function(Quellen.withoutComments(Quellen.lies("konto/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
+        val vm = Quellen.function(Quellen.withoutComments(Quellen.lies("account/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
         assert(vm.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }

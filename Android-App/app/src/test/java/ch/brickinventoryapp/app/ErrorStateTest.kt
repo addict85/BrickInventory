@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.teile.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.MinifigsViewModel
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.errorMessage
@@ -12,18 +12,18 @@ import ch.brickinventoryapp.testing.testVouchersRepository
 import ch.brickinventoryapp.testing.testHouseholdRepository
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.model.datei.FileReader
-import ch.brickinventoryapp.model.datei.FileRef
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.loadingIndicator
-import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanceViewModel
-import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.teile.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.finances.ui.viewmodel.FinanceViewModel
+import ch.brickinventoryapp.finances.ui.viewmodel.GutscheinViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.MerklisteViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.SetDetailViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

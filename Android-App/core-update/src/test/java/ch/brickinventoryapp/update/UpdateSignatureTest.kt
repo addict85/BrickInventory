@@ -125,7 +125,7 @@ class UpdateSignatureTest {
     /** Die Datei, die die App liest: nur Kommentare oder lesbare EC-Schlüssel. */
     @Test
     fun `die Schluesseldatei der App enthaelt nur lesbare Schluessel`() {
-        val datei = File(Quellen.project, "core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem")
+        val datei = File(Quellen.project, "core-resources/src/main/res/raw/beschreibungs_schluessel.pem")
         val text = datei.readText()
         val schluessel = descriptionKey(text)
         assertEquals("Ein Block ist kein lesbarer Schlüssel", text.split("-----BEGIN PUBLIC KEY-----").size - 1, schluessel.size)

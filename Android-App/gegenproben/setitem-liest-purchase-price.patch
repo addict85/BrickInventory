@@ -3,10 +3,10 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PurchasePriceDisplayTest
 Rot: die Anzeigeregel steht im Modell
 
-diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 index 7bc71ec..6dd7713 100644
---- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
-+++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 @@ -2215,6 +2215,7 @@ data class SetItem(
      @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
      @SerialName("bricklink") val bricklink: BrickLinkRef? = null,

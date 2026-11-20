@@ -1,11 +1,11 @@
 Gegenprobe: Ein Token ohne Herkunft gilt wieder für den eingetragenen Server
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ServerGuardTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.ServerGuardTest
 Rot: ein Token ohne Bindung geht an keinen Server
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
 @@ -136,7 +136,7 @@ class ServerWaechter(
      private fun setHeaders(original: Request, reqBuilder: Request.Builder, token: String, ourServer: Boolean, finalUrl: HttpUrl): Boolean {
          // A token only goes to the origin it is bound to; unbound, it goes to none.

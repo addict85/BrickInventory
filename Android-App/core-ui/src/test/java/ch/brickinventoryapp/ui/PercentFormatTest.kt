@@ -68,7 +68,7 @@ class PercentFormatTest {
 
     @Test
     fun `kein Bildschirm formatiert Prozente selbst`() {
-        val screens = Quellen.unter("ui/screens") + Quellen.unter("gemeinsam/ui")
+        val screens = Quellen.unter("ui/screens") + Quellen.unter("shared/ui")
         val ofHand = Regex("""%\.1f%%|"%\.1f"\s*,\s*pct|\+\s*" %"""")
         val treffer = screens.filter { ofHand.containsMatchIn(it.readText()) }.map { it.name }
         assertEquals("Prozente laufen über fmtProzent()", emptyList<String>(), treffer)

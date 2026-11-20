@@ -1,6 +1,6 @@
 Gegenprobe: Die Tastatur darf Passwort und Codes lernen (Stand vor sec8 H4)
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.LoginProtectionTest
+Modul: feature-login
+Test: ch.brickinventoryapp.login.LoginProtectionTest
 Rot: lernt die Tastatur
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KeyboardWithoutLearn.kt

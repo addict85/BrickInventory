@@ -1,11 +1,11 @@
 Gegenprobe: Nach dem Anlegen holt die Ablage Name und Bild nicht nach
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.EntryViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.EntryViewModelTest
 Rot: das Anlegen zeigt die Schritte des Servers
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/EntryViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/EntryViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/EntryViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/EntryViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/EntryViewModel.kt
 @@ -314,7 +314,6 @@
      private fun supplementStore(antwort: SetRecorded) {
          viewModelScope.launch {

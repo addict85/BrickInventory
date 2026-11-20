@@ -1,6 +1,6 @@
 Gegenprobe: Ein übernommener Merkposten erscheint nicht in der Galerie
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.WantedViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
 Rot: eine Uebernahme nimmt den Merkposten aus der Ablage
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt

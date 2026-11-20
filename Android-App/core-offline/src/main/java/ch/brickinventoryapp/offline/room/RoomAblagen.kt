@@ -5,9 +5,9 @@ import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.InitialForm
 import ch.brickinventoryapp.offline.Editing
-import ch.brickinventoryapp.model.lokal.StockKind
+import ch.brickinventoryapp.model.local.StockKind
 import ch.brickinventoryapp.offline.Filterspalten
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.offline.LocalRow
 import ch.brickinventoryapp.offline.LocalInventory
 import ch.brickinventoryapp.offline.Ausgang.DiscardedItem

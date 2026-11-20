@@ -1,21 +1,21 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.data.lokal.asSummary
-import ch.brickinventoryapp.model.fach.Kaufaenderung
-import ch.brickinventoryapp.model.fach.Kaufkorrektur
-import ch.brickinventoryapp.model.fach.InvitationView
-import ch.brickinventoryapp.model.fach.HouseholdStatusView
-import ch.brickinventoryapp.model.fach.PurchasesView
-import ch.brickinventoryapp.model.fach.MemberView
+import ch.brickinventoryapp.data.local.asSummary
+import ch.brickinventoryapp.model.domain.Kaufaenderung
+import ch.brickinventoryapp.model.domain.Kaufkorrektur
+import ch.brickinventoryapp.model.domain.InvitationView
+import ch.brickinventoryapp.model.domain.HouseholdStatusView
+import ch.brickinventoryapp.model.domain.PurchasesView
+import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.offline.Offlineablage.FollowUp
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.vertrag.AcquisitionsResponse
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.changeForSet
-import ch.brickinventoryapp.vertrag.changeForPiece
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.contract.AcquisitionsResponse
+import ch.brickinventoryapp.contract.GenericResponse
+import ch.brickinventoryapp.contract.changeForSet
+import ch.brickinventoryapp.contract.changeForPiece
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.data.api.HouseholdApi
 import javax.inject.Inject
 import javax.inject.Singleton

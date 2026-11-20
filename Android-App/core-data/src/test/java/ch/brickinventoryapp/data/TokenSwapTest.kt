@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
 import kotlinx.coroutines.test.advanceTimeBy
-import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.vertrag.TokenRotation
+import ch.brickinventoryapp.model.domain.Fehlercode
+import ch.brickinventoryapp.contract.TokenRotation
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope

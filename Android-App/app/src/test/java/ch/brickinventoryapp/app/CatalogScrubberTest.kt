@@ -35,7 +35,7 @@ class CatalogScrubberTest {
 
     @Test
     fun `die Leiste rollt, statt zu filtern`() {
-        val s = code(read("katalog/ui/screens/CatalogScreen.kt"))
+        val s = code(read("catalog/ui/screens/CatalogScreen.kt"))
         val i = s.indexOf("YearScrubber(")
         assert(i > 0) { "die Leiste fehlt ganz" }
         val call = s.substring(i, minOf(i + 700, s.length))
@@ -75,7 +75,7 @@ class CatalogScrubberTest {
 
     @Test
     fun `die Liste fuehrt alle Plaetze und laedt in beide Richtungen`() {
-        val s = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
+        val s = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("items(count = state.total")) {
             "Die Liste zählt über die geladene Teilmenge statt über das ganze Ergebnis — " +
                 "dann gibt es an der Sprungstelle nichts"
@@ -97,7 +97,7 @@ class CatalogScrubberTest {
         // Die Liste verlässt beim Wechsel ins Detail die Komposition, und ihre Länge kommt
         // erst nachträglich. Die Stelle hält der ScrollMemory wie bei jedem Reiter; bereit
         // ist die Liste, sobald `total` da ist, denn die Plätze zählen über die Gesamtzahl.
-        val s = code(read("katalog/ui/screens/CatalogScreen.kt"))
+        val s = code(read("catalog/ui/screens/CatalogScreen.kt"))
         assert(s.contains("ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0")) {
             "Die Wiederherstellung hängt nicht an state.total — vor dem Eintreffen " +
                 "der Länge gibt es keine Stelle, an die gesprungen werden könnte"

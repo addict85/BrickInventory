@@ -67,7 +67,7 @@ class LibraryComponentsTest {
     }
 
     private companion object {
-        // Die Klasse ist internal in feature-finanzen; das Manifest nennt sie beim Namen.
-        const val PDF_SERVICE = "ch.brickinventoryapp.finanzen.ui.pdf.PdfRenderDienst"
+        // Die Klasse ist internal in feature-finances; das Manifest nennt sie beim Namen.
+        const val PDF_SERVICE = "ch.brickinventoryapp.finances.ui.pdf.PdfRenderDienst"
     }
 }

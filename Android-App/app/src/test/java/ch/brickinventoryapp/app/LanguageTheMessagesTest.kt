@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.Quellen
  * `LanguageManager.localizedContext(...)` stammt. Der Name des Empfängers ist
  * dabei gleichgültig — geprüft wird die Herkunft.
  *
- * NICHT geprüft werden die Bildschirme unter `ui/screens/` und `gemeinsam/ui/`: Dort ist `ctx`
+ * NICHT geprüft werden die Bildschirme unter `ui/screens/` und `shared/ui/`: Dort ist `ctx`
  * `LocalContext.current`, also der Activity-Context — und den lokalisiert
  * AppCompatDelegate. Sie mit derselben Regel zu belegen hiesse, eine
  * Umständlichkeit zu erzwingen, die nichts repariert.

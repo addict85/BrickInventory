@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * Was an die Authenticator-App geht: nur `otpauth://totp|hotp/…`. Lag früher in
- * core-netz; die Regel braucht kein Netz, und so kennt feature-konto core-netz nicht.
+ * core-network; die Regel braucht kein Netz, und so kennt feature-account core-network nicht.
  *
  * Gegenprobe (kotlinc und JUnit gegen Otpauth.kt, gegenproben/otpauth-jedes-schema.patch):
  *   die Schema-Prüfung in otpauthAddress() entfernt → rot „an die Authenticator-App

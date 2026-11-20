@@ -16,8 +16,8 @@ import ch.brickinventoryapp.testing.Quellen
 class CameraXUpgradeTest {
 
     private val screens = listOf(
-        "sammlung/ui/screens/BarcodeScannerScreen.kt",
-        "anmeldung/ui/screens/SetupScreen.kt",
+        "collection/ui/screens/BarcodeScannerScreen.kt",
+        "login/ui/screens/SetupScreen.kt",
     )
 
     private fun code(src: String): String {
@@ -79,7 +79,7 @@ class CameraXUpgradeTest {
      */
     @Test
     fun `die Bildanalyse bleibt auf YUV`() {
-        val src = code(withAnalyse("sammlung/ui/screens/BarcodeScannerScreen.kt"))
+        val src = code(withAnalyse("collection/ui/screens/BarcodeScannerScreen.kt"))
         assert(src.contains("OUTPUT_IMAGE_FORMAT_YUV_420_888")) {
             "Die ImageAnalysis läuft nicht mehr auf YUV_420_888. ML Kit bekommt das " +
                 "mediaImage bisher direkt; bei RGBA würde CameraX zusätzlich seine " +

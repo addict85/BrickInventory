@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.StoreEncryptionTest
 Rot: eine Datei unter fremdem Namen gilt nicht
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Ablageschluessel.kt
 @@ -114,7 +114,6 @@
          val iv = ByteArray(IV_LENGTH).also(SecureRandom()::nextBytes)
          val c = Cipher.getInstance(PROCEDURE)

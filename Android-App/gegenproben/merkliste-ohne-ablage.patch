@@ -1,11 +1,11 @@
 Gegenprobe: Die Merkliste sieht ihre Quelle nicht an; der Abruf schreibt nur in die Ablage
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.WantedViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
 Rot: die Suche wartet die Pause ab
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 @@ -112,7 +112,7 @@
       */
      val wantedState: StateFlow<WantedUiState> = _wantedState

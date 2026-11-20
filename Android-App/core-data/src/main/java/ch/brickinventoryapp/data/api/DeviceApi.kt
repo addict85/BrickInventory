@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
-import ch.brickinventoryapp.vertrag.Erledigt
-import ch.brickinventoryapp.vertrag.SchluesselNonce
-import ch.brickinventoryapp.vertrag.SchrittChallenge
-import ch.brickinventoryapp.vertrag.SchrittChallengeAnfrage
-import ch.brickinventoryapp.vertrag.SchrittFreigabe
-import ch.brickinventoryapp.vertrag.SchrittFreigabeAnfrage
+import ch.brickinventoryapp.contract.GeraeteSchluesselAnfrage
+import ch.brickinventoryapp.contract.Erledigt
+import ch.brickinventoryapp.contract.SchluesselNonce
+import ch.brickinventoryapp.contract.SchrittChallenge
+import ch.brickinventoryapp.contract.SchrittChallengeAnfrage
+import ch.brickinventoryapp.contract.SchrittFreigabe
+import ch.brickinventoryapp.contract.SchrittFreigabeAnfrage
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST

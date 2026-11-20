@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.ImageCacheTest
 Rot: ein Klartext-Zwischenspeicher aelterer Fassungen verschwindet, der verschluesselte bleibt
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
 @@ -180,5 +180,4 @@
      }
      if (klartext) http.deleteRecursively()

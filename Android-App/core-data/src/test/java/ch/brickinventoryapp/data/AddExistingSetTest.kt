@@ -51,8 +51,8 @@ class AddExistingSetTest {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
         // Der Erfassungsrahmen wertet aus, der Graph navigiert.
-        val nav = code(File(Quellen.root, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
-            File(Quellen.root, "sammlung/ui/SammlungGraph.kt").readText())
+        val nav = code(File(Quellen.root, "collection/ui/Erfassungsrahmen.kt").readText() + "\n" +
+            File(Quellen.root, "collection/ui/SammlungGraph.kt").readText())
         // Geprueft wird das FIELD, nicht der Name des Zustands davor.
         assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"

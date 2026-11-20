@@ -38,7 +38,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlin.math.roundToInt

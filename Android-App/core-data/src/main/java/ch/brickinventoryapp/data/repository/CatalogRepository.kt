@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
-import ch.brickinventoryapp.model.fach.CatalogDetailView
-import ch.brickinventoryapp.model.fach.CatalogMetaView
-import ch.brickinventoryapp.model.fach.CatalogPageView
+import ch.brickinventoryapp.model.domain.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.domain.CatalogMetaView
+import ch.brickinventoryapp.model.domain.CatalogPageView
 
-import ch.brickinventoryapp.model.fach.Katalogsortierung
+import ch.brickinventoryapp.model.domain.Katalogsortierung
 
 /**
  * Der Set-Katalog des Servers.

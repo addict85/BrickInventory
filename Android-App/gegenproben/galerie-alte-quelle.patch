@@ -1,11 +1,11 @@
 Gegenprobe: Ein Filterwechsel lässt die Quelle des alten Filters weiter in die Galerie schreiben
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalleryTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryTest
 Rot: nach einem Filterwechsel zeigt die Galerie nur die neue Quelle
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/Galerie.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/Galerie.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/Galerie.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/Galerie.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/Galerie.kt
 @@ -58,7 +58,6 @@
       */
      fun laden() {

@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.model.koroutinen.ApplicationScope
+import ch.brickinventoryapp.model.coroutines.ApplicationScope
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.DataStore
 import ch.brickinventoryapp.data.AccountStore
 import ch.brickinventoryapp.data.TokenAblage
-import ch.brickinventoryapp.sicherheit.Geraetesperre
+import ch.brickinventoryapp.security.Geraetesperre
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

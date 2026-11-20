@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.WarmUp
 import ch.brickinventoryapp.data.di.vorschauAbgriff
-import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.security.StoreCipher
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse

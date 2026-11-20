@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app.nav
 
-import ch.brickinventoryapp.zustand.ui.AppViewModel
+import ch.brickinventoryapp.state.ui.AppViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
-import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
 
 /**
  * Die ViewModels, die so lange leben wie die Activity — nur, was über jedem Ziel

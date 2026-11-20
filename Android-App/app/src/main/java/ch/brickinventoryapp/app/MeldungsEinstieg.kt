@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import ch.brickinventoryapp.dienste.alarm.PreisalarmWorker
-import ch.brickinventoryapp.zustand.ui.Meldungseingang
+import ch.brickinventoryapp.services.alarm.PreisalarmWorker
+import ch.brickinventoryapp.state.ui.Meldungseingang
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

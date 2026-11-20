@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.model.koroutinen.ApplicationScope
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

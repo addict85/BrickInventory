@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ComposeLayoutRulesTest
 Rot: die Tabellenzeile sagt der Sprachausgabe
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/TabellenZeile.kt
 @@ -76,7 +76,7 @@
      Surface(
          modifier = modifier.fillMaxWidth()

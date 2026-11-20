@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.Erfasst
-import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.lokal.Local
-import ch.brickinventoryapp.model.fach.FigurAnsicht
-import ch.brickinventoryapp.model.fach.MinifigsMetricsView
-import ch.brickinventoryapp.model.fach.ManualMinifigView
-import ch.brickinventoryapp.model.fach.UsageView
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Erfasst
+import ch.brickinventoryapp.model.domain.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.local.Local
+import ch.brickinventoryapp.model.domain.FigurAnsicht
+import ch.brickinventoryapp.model.domain.MinifigsMetricsView
+import ch.brickinventoryapp.model.domain.ManualMinifigView
+import ch.brickinventoryapp.model.domain.UsageView
 import kotlinx.coroutines.flow.Flow
 
 /**

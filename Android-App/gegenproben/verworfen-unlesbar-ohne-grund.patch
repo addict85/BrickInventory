@@ -1,12 +1,12 @@
 Gegenprobe: Ein unlesbarer Posten wird wie eine Ablehnung ohne Grund gemeldet
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.AusgangsmelderTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.AusgangsmelderTest
 Rot: ein nach dem Update unlesbarer Posten
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 index d0af378..7019986 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Ausgangsmelder.kt
 @@ -73,7 +73,7 @@ class InitialObserver @Inject constructor(
  
      /** Quittiert erst, wenn der Hinweis an der Reihe war und weggeräumt ist; bis dahin hält ihn die Ablage. */

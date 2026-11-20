@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.data.util.UpdateRedirects
-import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides
@@ -28,14 +28,14 @@ import ch.brickinventoryapp.data.TokenSwap
 import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.cache.WarmUp
-import ch.brickinventoryapp.sicherheit.StoreCipher
-import ch.brickinventoryapp.sicherheit.Ablageschluessel
-import ch.brickinventoryapp.netz.util.ImageHostGuard
-import ch.brickinventoryapp.sicherheit.EncryptedFileSystem
-import ch.brickinventoryapp.sicherheit.CertificateQuestion
-import ch.brickinventoryapp.netz.util.isOwnImageServer
+import ch.brickinventoryapp.security.StoreCipher
+import ch.brickinventoryapp.security.Ablageschluessel
+import ch.brickinventoryapp.network.util.ImageHostGuard
+import ch.brickinventoryapp.security.EncryptedFileSystem
+import ch.brickinventoryapp.security.CertificateQuestion
+import ch.brickinventoryapp.network.util.isOwnImageServer
 import ch.brickinventoryapp.data.Verbindungsabwurf
-import ch.brickinventoryapp.sicherheit.SystemRoots
+import ch.brickinventoryapp.security.SystemRoots
 
 /** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
 @Module

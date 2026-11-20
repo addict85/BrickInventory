@@ -6,9 +6,9 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.session.Sitzung
+import ch.brickinventoryapp.state.ui.viewmodel.Texte
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map

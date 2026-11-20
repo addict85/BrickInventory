@@ -1,12 +1,12 @@
 Gegenprobe: Die Galerie lädt nicht mehr, wenn jemand sie zeigt
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalleryViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
 Rot: wer die Galerie zeigt
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
 index 941844b..8fc1d05 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
 @@ -123,7 +123,6 @@ class GalleryViewModel @Inject constructor(
              thema = gemerkt[THEME] ?: "",
              sorting = Setsortierung.aus(gemerkt[SORTING]),

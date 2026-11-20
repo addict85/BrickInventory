@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
 import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.KontoName
-import ch.brickinventoryapp.vertrag.Merkposten
-import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.contract.FigValuationItem
+import ch.brickinventoryapp.contract.KontoName
+import ch.brickinventoryapp.contract.Merkposten
+import ch.brickinventoryapp.contract.PartValuationItem
+import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.StorageExit

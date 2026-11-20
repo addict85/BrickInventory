@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.data.util.pdfAblage
 import kotlinx.coroutines.ExperimentalCoroutinesApi

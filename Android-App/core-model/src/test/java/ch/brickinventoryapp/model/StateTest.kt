@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.vertrag.AddSetRequest
-import ch.brickinventoryapp.vertrag.Merkposten
-import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.StateSerializer
+import ch.brickinventoryapp.contract.AddSetRequest
+import ch.brickinventoryapp.contract.Merkposten
+import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.StateSerializer
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

@@ -47,15 +47,15 @@ class ListScrollPositionTest {
 
     /** Raster-Reiter, die den Zustand von aussen bekommen. */
     private val raster = listOf(
-        "sammlung/ui/screens/GalleryScreen.kt",
-        "teile/ui/screens/PartsScreen.kt",
-        "teile/ui/screens/MinifigsScreen.kt",
+        "collection/ui/screens/GalleryScreen.kt",
+        "parts/ui/screens/PartsScreen.kt",
+        "parts/ui/screens/MinifigsScreen.kt",
     )
 
     /** Listen-Reiter, dasselbe mit LazyColumn. */
     private val spalten = listOf(
-        "finanzen/ui/screens/FinanceScreen.kt",
-        "teile/ui/screens/PartsListScreen.kt",
+        "finances/ui/screens/FinanceScreen.kt",
+        "parts/ui/screens/PartsListScreen.kt",
     )
 
     @Test
@@ -114,8 +114,8 @@ class ListScrollPositionTest {
         //
         // Diese Prüfung zählt sie. Kommt ein Reiter dazu, der scrollt und in
         // eine Detailansicht führt, wird sie rot, bis er hier eingetragen ist.
-        val abgedeckt = raster + spalten + listOf("katalog/ui/screens/CatalogScreen.kt")
-        val ohneRollbereich = listOf("sammlung/ui/screens/ComparisonScreen.kt")
+        val abgedeckt = raster + spalten + listOf("catalog/ui/screens/CatalogScreen.kt")
+        val ohneRollbereich = listOf("collection/ui/screens/ComparisonScreen.kt")
 
         val allTab = abgedeckt + ohneRollbereich
         assert(allTab.size == 7) {
@@ -144,8 +144,8 @@ class ListScrollPositionTest {
         for (alt in listOf("Rollzustaende", "rememberLazyGridState", "rememberLazyListState", "rememberScrollState")) {
             assert(!nav.contains(alt)) { "AppNavigation hält wieder Rollzustände ($alt) — eine zweite Quelle" }
         }
-        val graphs = listOf("sammlung/ui/SammlungGraph.kt", "teile/ui/TeileGraph.kt", "finanzen/ui/FinanzenGraph.kt",
-            "konto/ui/KontoGraph.kt")
+        val graphs = listOf("collection/ui/SammlungGraph.kt", "parts/ui/TeileGraph.kt", "finances/ui/FinanzenGraph.kt",
+            "account/ui/KontoGraph.kt")
         val graph = graphs.joinToString("\n") { code(read(it)) }
         for (zweite in listOf("rememberLazyGridState(", "rememberLazyListState(", "rememberScrollState(", "navigation.rollen")) {
             assert(!graph.contains(zweite)) { "Ein Graph hält die Stelle wieder selbst ($zweite)" }
@@ -159,7 +159,7 @@ class ListScrollPositionTest {
         )) {
             assert(graph.contains(paar.first) && graph.contains(paar.second)) { "Der Graph legt `${paar.first}` nicht an oder übergibt ihn nicht" }
         }
-        val katalog = code(read("katalog/ui/screens/CatalogScreen.kt")) + code(read("katalog/ui/ZustandKatalog.kt"))
+        val katalog = code(read("catalog/ui/screens/CatalogScreen.kt")) + code(read("catalog/ui/ZustandKatalog.kt"))
         for (alt in listOf("scrollIndex", "onScrollPos", "rememberLazyGridState()")) {
             assert(!katalog.contains(alt)) { "Der Katalog merkt sich die Stelle wieder selbst ($alt)" }
         }
@@ -176,8 +176,8 @@ class ListScrollPositionTest {
         // beim Betreten ausdrücklich scrollToItem() rufen („im Katalog ist sie
         // auf der korrekten Zeile"). Den nimmt jetzt jeder Reiter — einmal
         // umgesetzt in ScrollMemory.kt statt dreimal abgeschrieben.
-        val col = code(read("sammlung/ui/SammlungGraph.kt") + read("teile/ui/TeileGraph.kt"))
-        val tools = code(read("finanzen/ui/FinanzenGraph.kt"))
+        val col = code(read("collection/ui/SammlungGraph.kt") + read("parts/ui/TeileGraph.kt"))
+        val tools = code(read("finances/ui/FinanzenGraph.kt"))
         for (schluessel in listOf("SammlungZiel.Gallery.rollSchluessel", "TeileZiel.Parts.rollSchluessel", "TeileZiel.Minifigs.rollSchluessel")) {
             assert(col.contains("ScrollPositionKeeper(") && col.contains(schluessel)) {
                 "Für $schluessel wird die Position nicht ausdrücklich wiederhergestellt"
@@ -186,11 +186,11 @@ class ListScrollPositionTest {
         assert(tools.contains("ScrollPositionKeeper(") && tools.contains("FinanzZiel.Finance.rollSchluessel")) {
             "Die Finanz-Liste stellt ihre Position nicht ausdrücklich wieder her"
         }
-        assert(code(read("katalog/ui/screens/CatalogScreen.kt")).contains(
+        assert(code(read("catalog/ui/screens/CatalogScreen.kt")).contains(
                 "ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0")) {
             "Der Katalog stellt seine Position nicht über den ScrollMemory wieder her, sobald die Länge da ist"
         }
-        assert(code(read("konto/ui/KontoGraph.kt")).contains("ScrollPositionKeeper(")) {
+        assert(code(read("account/ui/KontoGraph.kt")).contains("ScrollPositionKeeper(")) {
             "Die Einstellungen stellen ihre Position nicht ausdrücklich wieder her"
         }
         assert(Regex("""ScrollPositionKeeper\(TEILELISTE_ROLLSCHLUESSEL, teilelistenState""").containsMatchIn(col)) {
@@ -216,7 +216,7 @@ class ListScrollPositionTest {
 
         // Ein Filterwechsel muss die gemerkte Stelle verwerfen: Sie zeigt sonst
         // auf Sets, die in der neuen Liste woanders oder gar nicht stehen.
-        val gal = code(read("sammlung/ui/Galerie.kt"))
+        val gal = code(read("collection/ui/Galerie.kt"))
         for (fn in listOf("setzeSuche", "setzeThema", "setzeSortierung")) {
             // Funktionsrumpf statt eines festen Zeichenfensters. Siehe Quellen.kt.
             val rumpf = Quellen.function(gal, "fun $fn(")
@@ -243,7 +243,7 @@ class ListScrollPositionTest {
         // Seit die Leiste dieselbe ist wie in der Webapp, haengt sie nicht mehr
         // am JAHR, sondern an der STELLE in der Liste. Die Aussage bleibt: ohne
         // Ziehen zeigt der Griff, wo man IST.
-        val katalog = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
+        val katalog = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
         assert(katalog.contains("if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)")) {
             "Der Griff zeigt weiterhin nur die gezogene Stelle — ohne Ziehen bliebe " +
                 "er dort stehen, wo zuletzt gezogen wurde"

@@ -12,7 +12,7 @@ import java.security.KeyPairGenerator
 import java.security.Signature
 import java.util.Base64
 import ch.brickinventoryapp.data.util.Teilelistentresor
-import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.update.util.checkedDescription
 

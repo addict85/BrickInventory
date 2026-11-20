@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.vertrag.CatalogSetItem
-import ch.brickinventoryapp.vertrag.CatalogSetDetail
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.contract.CatalogSetItem
+import ch.brickinventoryapp.contract.CatalogSetDetail
 import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Test
 import java.io.File
@@ -52,7 +52,7 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `Katalog-Bildschirme reichen das Feld durch, statt null zu erzwingen`() {
-        val list = code(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
+        val list = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
         // rememberTileImageWithFallback(...) zählt ebenfalls:
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
@@ -62,7 +62,7 @@ class CatalogUsesLocalImagesTest {
             "Ein hart verdrahtetes null verhindert die Nutzung bereits vorhandener Dateien"
         }
 
-        val detail = code(read("katalog/ui/screens/CatalogDetailScreen.kt"))
+        val detail = code(read("catalog/ui/screens/CatalogDetailScreen.kt"))
         assert(detail.contains("resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)")) {
             "Der Katalog-Detail-Dialog muss detail.imageLocal an resolveFullUrl() übergeben"
         }
@@ -77,11 +77,11 @@ class CatalogUsesLocalImagesTest {
         // Funktion serverUrl überhaupt als Parameter kannte — Compile-Fehler
         // "Unresolved reference 'serverUrl'". Jetzt in der Signatur UND am
         // einzigen Aufrufort mit state.serverUrl versorgt.
-        val screenSrc = read("katalog/ui/screens/CatalogDetailScreen.kt").replace("\n", " ")
+        val screenSrc = read("catalog/ui/screens/CatalogDetailScreen.kt").replace("\n", " ")
         assert(Regex("""fun CatalogDetailScreen\([^)]*serverUrl: String""").containsMatchIn(screenSrc)) {
             "serverUrl fehlt in der Funktionssignatur"
         }
-        val graphSrc = code(read("katalog/ui/KatalogGraph.kt"))
+        val graphSrc = code(read("catalog/ui/KatalogGraph.kt"))
         assert(graphSrc.contains("serverUrl = state.serverUrl")) {
             "Der Aufrufer in KatalogGraph.kt muss serverUrl übergeben"
         }
@@ -103,7 +103,7 @@ class CatalogUsesLocalImagesTest {
         // Die Aussage ist „serverUrl steht an dritter Stelle", nicht „der
         // Aufruf hat genau vier Argumente". Das Zeichen danach darf deshalb
         // ein Komma sein.
-        val src = read("katalog/ui/screens/CatalogScreen.kt")
+        val src = read("catalog/ui/screens/CatalogScreen.kt")
         assert(Regex("""CatalogSetCard\(set, imageLoader, serverUrl, onSetClick[,)]""")
                 .containsMatchIn(src)) {
             "Der Aufruf muss serverUrl an dritter Stelle übergeben"
@@ -126,13 +126,13 @@ class CatalogUsesLocalImagesTest {
         // resolve*Url(serverUrl, …)-Aufruf enthält, muss "serverUrl: String"
         // in DERSELBEN Signatur stehen.
         val screensToCheck = listOf(
-            "sammlung/ui/screens/GalerieKarte.kt",
-            "sammlung/ui/screens/SetDetailScreen.kt",
-            "teile/ui/screens/PartsScreen.kt",
-            "finanzen/ui/screens/FinanceScreen.kt",
-            "teile/ui/screens/MinifigsScreen.kt",
-            "katalog/ui/screens/CatalogScreen.kt",
-            "katalog/ui/screens/CatalogDetailScreen.kt",
+            "collection/ui/screens/GalerieKarte.kt",
+            "collection/ui/screens/SetDetailScreen.kt",
+            "parts/ui/screens/PartsScreen.kt",
+            "finances/ui/screens/FinanceScreen.kt",
+            "parts/ui/screens/MinifigsScreen.kt",
+            "catalog/ui/screens/CatalogScreen.kt",
+            "catalog/ui/screens/CatalogDetailScreen.kt",
         ).flatMap { Quellen.screenFiles(it) }
         for (rel in screensToCheck) {
             val raw = read(rel)
@@ -166,9 +166,9 @@ class CatalogUsesLocalImagesTest {
         // fehlt — rememberTileImageWithFallback() wechselt bei einem
         // Ladefehler auf die volle Auflösung.
         val expectations = mapOf(
-            "teile/ui/screens/PartsScreen.kt" to 2,      // ManualPartTile, PartCard
-            "teile/ui/screens/MinifigsScreen.kt" to 2,   // ManualFigTile, MinifigCard
-            "katalog/ui/screens/CatalogScreen.kt" to 1,     // CatalogSetCard
+            "parts/ui/screens/PartsScreen.kt" to 2,      // ManualPartTile, PartCard
+            "parts/ui/screens/MinifigsScreen.kt" to 2,   // ManualFigTile, MinifigCard
+            "catalog/ui/screens/CatalogScreen.kt" to 1,     // CatalogSetCard
         )
         for ((rel, expectedCount) in expectations) {
             val src = Quellen.bildschirm(rel)

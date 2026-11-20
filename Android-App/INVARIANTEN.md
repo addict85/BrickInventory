@@ -13,8 +13,8 @@ verletzt — den Code korrigieren, nicht den Test.
 Gerät). Kein getaktetes `startFocusAndMetering`; Tap-to-Focus nur im Touch-Listener.
 Genau **ein** Touch-Listener (`setOnTouchListener` ersetzt), in der `factory`, mit
 `disableAutoCancel()`. Änderungen daran nur mit Gerätetest.
-Dateien: `sammlung/ui/screens/BarcodeScannerScreen.kt`, `BarcodeAnalyzer.kt`,
-`anmeldung/ui/screens/SetupQr.kt` · Test: `CameraFocusConfigTest`
+Dateien: `collection/ui/screens/BarcodeScannerScreen.kt`, `BarcodeAnalyzer.kt`,
+`login/ui/screens/SetupQr.kt` · Test: `CameraFocusConfigTest`
 
 **CameraX 1.6.** `future.get()` und das ganze Binden stehen im `try` des Listeners (ab 1.4
 wirft CameraX bei belegter Kamera). Die Analyse bleibt `YUV_420_888`; RGBA lädt eine
@@ -28,8 +28,8 @@ ML-Kit-Client), braucht `DisposableEffect { onDispose { … } }`. Test: `Resourc
 **Doppelklick-Sperre.** `confirmAddBarcode()` prüft `hinzufuegen` zuerst und setzt es synchron
 **vor** `viewModelScope.launch`; jeder Ausgang und `cancelBarcode()` setzt es zurück. Der
 gesperrte Knopf ist nur Rückmeldung, kein Schutz.
-Dateien: `sammlung/ui/viewmodel/EntryViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`,
-`sammlung/ui/dialogs/BarcodeResultDialog.kt` · Test: `EntryViewModelTest`
+Dateien: `collection/ui/viewmodel/EntryViewModel.kt`, `collection/ui/ZustandErfassung.kt`,
+`collection/ui/dialogs/BarcodeResultDialog.kt` · Test: `EntryViewModelTest`
 
 **Ein Barcode-Pfad.** Scanner → `vm.resolveBarcode()` → `repo.resolveBarcode()`; keine
 Zweitimplementierung. Test: `SessionAndLifecycleTest`
@@ -43,7 +43,7 @@ und quittiert. Test: `ManualEntryAfterScanTest`
 
 **Zwei Preisfelder.** Sets schicken `purchase_price`, Teile und Figuren `unit_price`; der
 Rumpf entsteht nur über `changeForSet()` bzw. `changeForPiece()`.
-Datei: `vertrag/Ergaenzungen.kt` · Test: `PurchasesViewModelTest`
+Datei: `contract/Ergaenzungen.kt` · Test: `PurchasesViewModelTest`
 
 ## Sitzung und Netz
 
@@ -51,13 +51,13 @@ Datei: `vertrag/Ergaenzungen.kt` · Test: `PurchasesViewModelTest`
 `reconciledSingle()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
 und es der eigene Server war.
 Dateien: `data/repository/Abruf.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,
-`sitzung/SitzungsDienst.kt` · Test: `SessionAndLifecycleTest`
+`session/SitzungsDienst.kt` · Test: `SessionAndLifecycleTest`
 
 **Token nur an die eigene Herkunft** (Schema, Host, Port, Basispfad). Was eine Antwort
 auslöst, gilt nur der Sitzung, in der die Anfrage hinausging (Generation der
 `TokenLimit`); Umleitungen bleiben in der Herkunft. Abmelden entwertet am Server oder
 über `EntwertungsWorker`; ein gesperrter Keystore heisst „später“, nie „abgemeldet“.
-Dateien: `netz/di/ServerWaechter.kt`, `data/Entwertung.kt`, `sicherheit/Tresorbefund.kt` ·
+Dateien: `network/di/ServerWaechter.kt`, `data/Entwertung.kt`, `security/Tresorbefund.kt` ·
 Tests: `ServerwechselTest`, `TokenSwapTest`, `RedirectTest`, `BasePathTest`,
 `RedemptionTest`, `VaultLockTest`
 
@@ -73,7 +73,7 @@ Dateien: `ui/components/Schluesselbindung.kt`, `data/repository/SchrittbindungIm
 liefe am Wächter vorbei (Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()`
 des injizierten Clients. core-data baut drei Grundlagen: Server (mit Wächter), Update (nur
 GitHub), Entwertung (ohne Wächter, mit dem Token des Auftrags).
-Dateien: `finanzen/ui/pdf/AnleitungsLader.kt`, `data/di/ServerClient.kt` · Test: `AnleitungsDownloadTest`
+Dateien: `finances/ui/pdf/AnleitungsLader.kt`, `data/di/ServerClient.kt` · Test: `AnleitungsDownloadTest`
 
 **Ergebnis hat zwei Varianten.** Kein `else` in einem `when` über `Ergebnis`: Eine neue
 Variante soll den Bau dort brechen, wo sie behandelt werden muss.
@@ -96,7 +96,7 @@ Datei: `model/json/BrickJson.kt` · Test: `BrickJsonTest`
 (Fassung 1) abgelegt, nie als Server-Anfrage; eine unverträgliche Änderung bekommt eine
 neue Fassung daneben. Lesen schreibt nie; ein unlesbarer Posten wird über
 `cleanUnreadable()` als verworfen gemeldet, nie still gelöscht.
-Dateien: `offline/InitialForm.kt`, `offline/room/RoomAblagen.kt`, `data/lokal/Abgleich.kt` ·
+Dateien: `offline/InitialForm.kt`, `offline/room/RoomAblagen.kt`, `data/local/Abgleich.kt` ·
 Tests: `InitialFormTest`, `InventoryDatabaseTest`, `AusgangsmelderTest`
 
 **Eine Ablage.** Was offline gelten soll, liegt als Fach (`StockKind`) in der Room-Ablage,
@@ -115,16 +115,16 @@ checkt das Schema unter `core-offline/schemas` ein. Test: `BestandMigrationTest`
 **Zustand nach Domänen.** `AppUiState` hält nur die Sitzung, jeder Bereich hat seinen Fluss;
 wer nur einen Teil braucht, leitet ihn mit `abgeleitet { }` ab. Jede Feature-Datei schreibt
 nur Felder ihrer Domäne; Ausnahmen stehen begründet im Test. Abmelden leert jeden Bereich.
-Dateien: `sitzung/AppUiState.kt`, `sitzung/AbgeleiteterZustand.kt` · Tests:
+Dateien: `session/AppUiState.kt`, `session/AbgeleiteterZustand.kt` · Tests:
 `StateFlowWidthTest`, `DerivedStateTest`, `StateDomainBoundaryTest`, `PartsViewModelTest`
 
 **Modulkanten.** app → feature-* → core-*, kein Bereich kennt einen anderen; die Kernmodule
 in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter ohne Compose
 (`withoutUi`); die Bereiche bekommen die App nur als `Bereichsumgebung` aus einzelnen
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
-core-zustand (`zustandsViewModels`).
-Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt), als ein Satz
-Typen, erzeugt aus `Web-App/docs/openapi.json` (`vertrag/Vertrag.kt`, nie von Hand; Namen und
+core-state (`zustandsViewModels`).
+Das Wire-Format liegt in core-contract (kennt core-model, nicht umgekehrt), als ein Satz
+Typen, erzeugt aus `Web-App/docs/openapi.json` (`contract/Vertrag.kt`, nie von Hand; Namen und
 Fachtypen in `Web-App/scripts/contract-kotlin-mapping.js`). Nur core-data bindet
 es ein (`implementation`, `Modulkanten.wireKenner`), die Ablage hält Fachtypen; jedes Repository gibt Fachtypen (`model.fach`)
 zurück, ein `success: false` ist eine `Absage`.
@@ -149,12 +149,12 @@ Listenzustand liegt oberhalb des NavHost. Im Helfer: Merker `remember`, nie
 `vergiss(…)`; Reiter antippen → `vergissReiter(route)` **vor** der Navigation. Ausnahme:
 der Katalog merkt sich seine Position selbst (`CatalogScreen.kt`).
 Dateien: `ui/ScrollMemory.kt`, `AppNavigation.kt`, `MainScaffold.kt`,
-`sammlung/ui/SammlungGraph.kt`, `teile/ui/TeileGraph.kt`, `finanzen/ui/FinanzenGraph.kt` ·
+`collection/ui/SammlungGraph.kt`, `parts/ui/TeileGraph.kt`, `finances/ui/FinanzenGraph.kt` ·
 Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
 
 **Endlos-Scroll.** Die Ladesperre wird synchron vor dem `launch` gesetzt und in jedem
 Ausgang gelöst; beim Anhängen werden bekannte Schlüssel ausgesiebt.
-Datei: `sammlung/ui/Galerie.kt` · Test: `GalleryTest`
+Datei: `collection/ui/Galerie.kt` · Test: `GalleryTest`
 
 **Schlüssel.** Stehen `items(…, key = …)` und ein `item { }` in derselben Liste, trägt auch
 dieser einen Schlüssel. Test: `LazyGridItemKeyTest`
@@ -166,8 +166,8 @@ solange „läuft nicht“ gilt. Datei: `app/csv/CsvImportViewModel.kt` · Test:
 
 **Services lokalisiert.** Texte aus den Ressourcen über
 `LanguageManager.localizedContext(this)`; `setSmallIcon()` nur mit monochromem Drawable.
-Dateien: `dienste/service/CsvImportService.kt`, `dienste/service/PdfExportService.kt`,
-`dienste/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
+Dateien: `services/service/CsvImportService.kt`, `services/service/PdfExportService.kt`,
+`services/service/PdfExportManager.kt`, `data/util/LanguageManager.kt` · Test: `ServicePolishTest`
 
 **Kein FileProvider.** Die Teileliste gibt nur der eigene `TeilelistenProvider` weiter:
 nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im Speicher
@@ -180,11 +180,11 @@ Beschreibungsschlüssels gilt keine Beschreibung, auch keine unsignierte `versio
 Datei: `update/util/UpdateSignatur.kt` · Tests: `UpdateFreshTest`, `InvariantsReferencesTest`
 
 **Ein CSV-Statuspfad.** SSE zuerst, Polling nur als Rückfall, die Statuslogik in
-`applyStatus()` samt Anlaufschutz. Dateien: `dienste/service/CsvImportService.kt`,
+`applyStatus()` samt Anlaufschutz. Dateien: `services/service/CsvImportService.kt`,
 `data/CsvImportSseClient.kt` · Test: `ResourceAndCacheTest`
 
 **PDF-Cache mit Budget.** `prunePdfCache()` hält `PDF_CACHE_BUDGET_BYTES`, älteste zuerst,
-ohne die gerade angeforderte Datei. Datei: `finanzen/ui/pdf/AnleitungsLader.kt` · Tests:
+ohne die gerade angeforderte Datei. Datei: `finances/ui/pdf/AnleitungsLader.kt` · Tests:
 `ResourceAndCacheTest`, `InstructionStoreTest`
 
 **Abmelden leert alle Caches**, den Bild-Speicher vor dem Bild-Plattencache.
@@ -196,7 +196,7 @@ Datei: `data/SitzungsBereinigung.kt` · Test: `ResourceAndCacheTest`
 **Polling am Lifecycle.** Jede getaktete Schleife eines Bildschirms in
 `repeatOnLifecycle(STARTED)`. Dienste (CSV-Import, PDF-Export) und das Warten auf den
 Serverstart takten nur, solange ihr Auftrag läuft, und enden mit ihm.
-Datei: `verwaltung/ui/screens/MonitoringScreen.kt` · Test: `SessionAndLifecycleTest`
+Datei: `management/ui/screens/MonitoringScreen.kt` · Test: `SessionAndLifecycleTest`
 
 ## Bedienung
 
@@ -219,17 +219,17 @@ Test: `TipTargetAndNameTest`
 
 **Preisverlauf.** Eine `0` vor `firstRealIndex` heisst „kein Wert“; die x-Position kommt
 vom Datum; eine Skala für beide Linien. Die Rechnung liegt Compose-frei daneben.
-Dateien: `gemeinsam/ui/PriceChartMath.kt`, `gemeinsam/ui/SetDetailComponents.kt` ·
+Dateien: `shared/ui/PriceChartMath.kt`, `shared/ui/SetDetailComponents.kt` ·
 Test: `PriceChartMathTest`
 
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
-rechnet, die App rechnet nicht nach. Dateien: `finanzen/ui/screens/FinanceScreen.kt`,
-`vertrag/Vertrag.kt` · Test: `PriceHistorySerializationTest`
+rechnet, die App rechnet nicht nach. Dateien: `finances/ui/screens/FinanceScreen.kt`,
+`contract/Vertrag.kt` · Test: `PriceHistorySerializationTest`
 
 **Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
 (Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als
 `Instant`, der Kalendertag ist der in UTC. Double und Text gibt es nur auf der Leitung.
-Dateien: `model/fach/Geld.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `QuelltextRatscheTest`
+Dateien: `model/domain/Geld.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `QuelltextRatscheTest`
 
 ## Bau und Plattform
 

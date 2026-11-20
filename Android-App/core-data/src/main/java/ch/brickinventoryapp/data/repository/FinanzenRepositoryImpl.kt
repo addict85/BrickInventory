@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.BewertungAnsicht
-import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
-import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.MetricsView
-import ch.brickinventoryapp.model.fach.PriceHistoryView
-import ch.brickinventoryapp.model.fach.SetPriceView
-import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.fach.ValueHistoryView
-import ch.brickinventoryapp.vertrag.PriceHistoryResponse
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.domain.BewertungAnsicht
+import ch.brickinventoryapp.model.domain.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.domain.GewinnAnsicht
+import ch.brickinventoryapp.model.domain.MetricsView
+import ch.brickinventoryapp.model.domain.PriceHistoryView
+import ch.brickinventoryapp.model.domain.SetPriceView
+import ch.brickinventoryapp.model.domain.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.domain.ValueHistoryView
+import ch.brickinventoryapp.contract.PriceHistoryResponse
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 
-import ch.brickinventoryapp.model.fach.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Kontoauswahl
 import ch.brickinventoryapp.data.api.FinancesApi
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage

@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.FachtypenTest
 Rot: eine unbekannte Sortierung
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Sortierung.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Sortierung.kt
 @@ -19,6 +19,6 @@
 
      companion object {

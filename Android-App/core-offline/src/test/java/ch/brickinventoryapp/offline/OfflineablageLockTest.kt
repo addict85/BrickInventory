@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.model.lokal.StockKind
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.model.local.StockKind
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first

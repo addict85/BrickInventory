@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.lokal.StockKind
+import ch.brickinventoryapp.model.local.StockKind
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase

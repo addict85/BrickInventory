@@ -1,11 +1,11 @@
 Gegenprobe: die Figuren werden nicht mehr vorgewärmt
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.CollectionWarmUpTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.CollectionWarmUpTest
 Rot: vorgewaermt wird jeder Reiter
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/Vorwaermen.kt
 @@ -44,8 +44,6 @@
          .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
  

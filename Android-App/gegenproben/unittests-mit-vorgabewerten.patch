@@ -1,6 +1,6 @@
 Gegenprobe: die Unit-Test-Konvention schaltet isReturnDefaultValues wieder ein; Android-Methoden liefern still 0 oder null
-Modul: core-netz
-Test: ch.brickinventoryapp.netz.LogWithoutAndroidTest
+Modul: core-network
+Test: ch.brickinventoryapp.network.LogWithoutAndroidTest
 Rot: eine Android-Methode wirft im JVM-Test
 
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt

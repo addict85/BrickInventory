@@ -14,7 +14,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 
 /**

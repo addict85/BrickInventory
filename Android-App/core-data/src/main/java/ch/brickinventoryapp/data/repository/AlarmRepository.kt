@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.AlarmabrufView
-import ch.brickinventoryapp.model.fach.PriceAlertView
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.AlarmabrufView
+import ch.brickinventoryapp.model.domain.PriceAlertView
+import ch.brickinventoryapp.model.domain.Alarmrichtung
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 
 /**

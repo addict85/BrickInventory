@@ -3,10 +3,10 @@ Modul: app
 Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Barcode nennt die Nummer beim Namen und hat dieselben Hilfezeilen
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
 index 88c576a..6f3266b 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/dialogs/BarcodeResultDialog.kt
 @@ -212,7 +212,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                          blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                      )

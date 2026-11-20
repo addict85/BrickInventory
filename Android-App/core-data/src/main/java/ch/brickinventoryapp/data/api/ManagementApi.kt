@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.ApiLimitsResponse
-import ch.brickinventoryapp.vertrag.AuftraegeResponse
-import ch.brickinventoryapp.vertrag.AuftragAenderung
-import ch.brickinventoryapp.vertrag.AuftragsArtLeerung
-import ch.brickinventoryapp.vertrag.AuftragsArtStart
-import ch.brickinventoryapp.vertrag.BricksetQueueResponse
-import ch.brickinventoryapp.vertrag.CacheStatsResponse
-import ch.brickinventoryapp.vertrag.CacheTtlResponse
-import ch.brickinventoryapp.vertrag.CsvImportErgebnis
-import ch.brickinventoryapp.vertrag.GenericAdminResponse
-import ch.brickinventoryapp.vertrag.JobsResponse
-import ch.brickinventoryapp.vertrag.ProtokollResponse
+import ch.brickinventoryapp.contract.ApiLimitsResponse
+import ch.brickinventoryapp.contract.AuftraegeResponse
+import ch.brickinventoryapp.contract.AuftragAenderung
+import ch.brickinventoryapp.contract.AuftragsArtLeerung
+import ch.brickinventoryapp.contract.AuftragsArtStart
+import ch.brickinventoryapp.contract.BricksetQueueResponse
+import ch.brickinventoryapp.contract.CacheStatsResponse
+import ch.brickinventoryapp.contract.CacheTtlResponse
+import ch.brickinventoryapp.contract.CsvImportErgebnis
+import ch.brickinventoryapp.contract.GenericAdminResponse
+import ch.brickinventoryapp.contract.JobsResponse
+import ch.brickinventoryapp.contract.ProtokollResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -22,7 +22,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Part
-import ch.brickinventoryapp.vertrag.StartupStatus
+import ch.brickinventoryapp.contract.StartupStatus
 
 /**
  * Betrieb des Servers und Datenpflege: CSV-Import, Protokoll, Startzustand,

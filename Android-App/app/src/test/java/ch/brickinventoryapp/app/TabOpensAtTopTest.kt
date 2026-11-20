@@ -17,13 +17,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
-import ch.brickinventoryapp.sammlung.ui.SammlungZiel
-import ch.brickinventoryapp.teile.ui.TeileZiel
+import ch.brickinventoryapp.finances.ui.FinanzZiel
+import ch.brickinventoryapp.collection.ui.SammlungZiel
+import ch.brickinventoryapp.parts.ui.TeileZiel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

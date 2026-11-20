@@ -1,12 +1,12 @@
 Gegenprobe: Wert-Kacheln immer zu dritt nebeneinander, wie vor H1
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.ValueTilesTest
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ValueTilesTest
 Rot: Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 index 5b45eb7..bdb1cca 100644
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 @@ -431,7 +431,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
          val pnlText = if (breite(pnlSingleLine) > maxWidth) pnlParts.joinToString("\n") else pnlSingleLine
          val abstand = Abstaende.klein

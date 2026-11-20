@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Erfassungswunsch
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.SetRecorded
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.domain.SetRecorded
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.Offlineablage
 import kotlinx.coroutines.flow.Flow

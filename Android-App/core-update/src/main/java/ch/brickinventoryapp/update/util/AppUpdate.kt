@@ -10,7 +10,7 @@ import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull

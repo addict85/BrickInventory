@@ -18,7 +18,7 @@ android {
 dependencies {
     implementation(project(":core-data"))
     // R.string und R.raw.beschreibungs_schluessel: Die R-Klassen sind nicht transitiv.
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.serialization.json)
     // Nur für den blanken Update-Client; kein Modul darüber sieht OkHttp.

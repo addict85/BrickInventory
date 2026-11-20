@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
-import ch.brickinventoryapp.model.schritt.Schrittbindung
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
+import ch.brickinventoryapp.model.step.Schrittbindung
 import ch.brickinventoryapp.ui.components.Schrittablauf
 import ch.brickinventoryapp.ui.components.Schrittfreigabe
 import kotlinx.coroutines.runBlocking

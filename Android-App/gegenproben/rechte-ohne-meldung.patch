@@ -1,11 +1,11 @@
 Gegenprobe: Der Entzug der Verwalterrechte wird still übernommen
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SessionServiceTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
 Rot: entzogene Verwalterrechte gelten sofort
 
-diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
---- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
-+++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 @@ -116,7 +116,7 @@ class SitzungsDienst @Inject constructor(
          bereich.launch {
              rights.entzogen.filter { it }.collect {

@@ -45,10 +45,10 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
+import ch.brickinventoryapp.security.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import ch.brickinventoryapp.sitzung.SitzungsRepository
+import ch.brickinventoryapp.session.SitzungsRepository
 import kotlinx.coroutines.Job
 
 // Testvorgaben gehören nicht in die @Inject-Konstruktoren: Dort bekäme, wer ohne Hilt

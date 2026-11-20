@@ -176,10 +176,10 @@ jobs:
       - name: Unit-Tests
         # Mitschnitt, weil Gradle den roten Test einmal mitten ins Protokoll
         # schreibt; pipefail, sonst bestimmt tee den Rückgabewert. core-model
-        # und core-vertrag sind reines Kotlin und haben `test` statt testDebugUnitTest.
+        # und core-contract sind reines Kotlin und haben `test` statt testDebugUnitTest.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-vertrag:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
+          ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-contract:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
 
       # Das Vergleichsbild liegt nur als Artefakt vor, das hier nicht abrufbar ist:
       # Lage und Grösse der Abweichung je rotem Foto stehen deshalb im Log.
@@ -439,7 +439,7 @@ jobs:
       sha256_apk: ${{ needs.build.outputs.sha256_apk }}
       sha256_aab: ${{ needs.build.outputs.sha256_aab }}
 
-  # Die Typen in core-vertrag sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
+  # Die Typen in core-contract sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
   # sein, wenn die Datei veraltet ist oder eine Route nicht den erzeugten Typ nimmt.
   vertrag:
     if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
@@ -467,7 +467,7 @@ jobs:
         run: node --test ../Android-App/tools/vertrag/vertrag-kotlin.test.js ../Android-App/tools/release-wege.test.js
       - name: Erzeugte Design-Tokens aktuell
         run: node scripts/generate-design-tokens.js --pruefen
-      # Die erzeugten Antworttypen (core-vertrag, vertrag.erzeugt) passen zu docs/openapi.json.
+      # Die erzeugten Antworttypen (core-contract, vertrag.erzeugt) passen zu docs/openapi.json.
       - name: Erzeugte Kotlin-Typen aktuell
         run: node --test test/contract-kotlin-dtos.test.js
 
@@ -589,7 +589,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
-            testDebugUnitTest :core-model:test :core-vertrag:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
+            testDebugUnitTest :core-model:test :core-contract:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
             :app:assembleDebugAndroidTest \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml

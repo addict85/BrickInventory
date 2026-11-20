@@ -17,13 +17,13 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.zustand.ui.AppViewModel
+import ch.brickinventoryapp.state.ui.AppViewModel
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
 import androidx.compose.runtime.CompositionLocalProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.LocalAppVersion
 import ch.brickinventoryapp.model.util.AppVersion
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,10 +32,10 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import ch.brickinventoryapp.dienste.alarm.PriceAlertRepository
-import ch.brickinventoryapp.zustand.ui.Meldungseingang
+import ch.brickinventoryapp.services.alarm.PriceAlertRepository
+import ch.brickinventoryapp.state.ui.Meldungseingang
 import ch.brickinventoryapp.ui.components.DevicesStepProtection
-import ch.brickinventoryapp.model.schritt.Schrittbindung
+import ch.brickinventoryapp.model.step.Schrittbindung
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.AppLock
 import ch.brickinventoryapp.ui.components.AppLockScreen
@@ -50,17 +50,17 @@ import ch.brickinventoryapp.ui.components.WithoutLockWarning
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
 import ch.brickinventoryapp.app.ui.components.CertificateDialog
-import ch.brickinventoryapp.konto.ui.screens.StartPasswordMask
-import ch.brickinventoryapp.konto.ui.screens.ZweiterFaktorPflichtMaske
-import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
-import ch.brickinventoryapp.konto.ui.viewmodel.AccountViewModel
-import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.account.ui.screens.StartPasswordMask
+import ch.brickinventoryapp.account.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.AccountViewModel
+import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
-import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.ActivityState
 import ch.brickinventoryapp.ui.util.SecretClipboard
 import ch.brickinventoryapp.data.util.LanguageManager
-import ch.brickinventoryapp.netz.util.Protokoll
+import ch.brickinventoryapp.network.util.Protokoll
 import ch.brickinventoryapp.BuildConfig
 
 @AndroidEntryPoint

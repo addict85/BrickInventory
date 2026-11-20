@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Confirmation
-import ch.brickinventoryapp.model.fach.Guthabenauskunft
-import ch.brickinventoryapp.model.fach.Gutscheinangabe
-import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
-import ch.brickinventoryapp.model.fach.VoucherView
-import ch.brickinventoryapp.model.fach.PlaintextView
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.Guthabenauskunft
+import ch.brickinventoryapp.model.domain.Gutscheinangabe
+import ch.brickinventoryapp.model.domain.Gutscheinspeicherung
+import ch.brickinventoryapp.model.domain.VoucherView
+import ch.brickinventoryapp.model.domain.PlaintextView
 
 /**
  * Gutscheine samt PDF und Guthabenabfrage.

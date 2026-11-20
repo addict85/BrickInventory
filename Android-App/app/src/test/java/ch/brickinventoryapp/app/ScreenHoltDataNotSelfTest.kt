@@ -14,7 +14,7 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class ScreenHoltDataNotSelfTest {
 
-    private val screenFolder = listOf("ui/screens", "ui/dialogs", "ui/components", "gemeinsam/ui")
+    private val screenFolder = listOf("ui/screens", "ui/dialogs", "ui/components", "shared/ui")
 
     // Jedes Modul trägt die Ordner unter seinem eigenen Paketstamm; unter() sammelt sie.
     private fun dateien(): List<File> = screenFolder.flatMap { Quellen.unter(it) }.distinct()
@@ -51,13 +51,13 @@ class ScreenHoltDataNotSelfTest {
      * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
      * auffallen, nicht in einem Composable. Ohne Ausnahme.
      * Gegenprobe: in GutscheineCard.kt wieder
-     * `import ch.brickinventoryapp.vertrag.Gutschein` → rot, nennt die Datei.
+     * `import ch.brickinventoryapp.contract.Gutschein` → rot, nennt die Datei.
      */
     @Test
     fun `kein Bildschirm kennt die Server-Modelle`() {
-        val screens = listOf("screens", "components", "dialogs", "gemeinsam/ui").flatMap { Quellen.unter(it) }
+        val screens = listOf("screens", "components", "dialogs", "shared/ui").flatMap { Quellen.unter(it) }
         assert(screens.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
-        val withModel = screens.filter { "brickinventoryapp.vertrag" in Quellen.withoutComments(it.readText()) }.map { it.name }
+        val withModel = screens.filter { "brickinventoryapp.contract" in Quellen.withoutComments(it.readText()) }.map { it.name }
         assert(withModel.isEmpty()) {
             "Diese Bildschirme greifen auf das Wire-Format (vertrag) zu: $withModel — Fachtyp aus model.fach nehmen, " +
                 "die Abbildung gehört ins ViewModel."

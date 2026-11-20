@@ -1,12 +1,12 @@
 Gegenprobe: Ein 401 landet in fehlerklasse() bei UNBEKANNT statt ANMELDUNG
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ErrorTextsTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.ErrorTextsTest
 Rot: jede Fehlerart hat eine passende Klasse
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
 index 3300543..039ca8a 100644
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/FehlerTexte.kt
 @@ -27,7 +27,7 @@ fun fehlerTextId(f: Ergebnis.Fehler): Int = when (f) {
   * Auskunft des Servers (Eingabe, Recht), kein Ausfall.
   */

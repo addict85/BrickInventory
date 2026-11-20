@@ -23,7 +23,7 @@ import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.sicherheit.TokenEncryption
+import ch.brickinventoryapp.security.TokenEncryption
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame

@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
 Rot: ohne Geraetesperre wird auch die Nummer nicht kopiert
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 @@ -212,7 +212,7 @@ fun GutscheineCard(
                  editOn = { geschuetzt { editOn(g.id) } },
                  deleteOn = { geschuetzt { deleteOn(g.id) } },

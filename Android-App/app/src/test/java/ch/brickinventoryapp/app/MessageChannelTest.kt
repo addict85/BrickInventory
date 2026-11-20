@@ -2,8 +2,8 @@ package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.sammlung.ui.viewmodel.GalleryViewModel
-import ch.brickinventoryapp.teile.ui.viewmodel.PartsViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.GalleryViewModel
+import ch.brickinventoryapp.parts.ui.viewmodel.PartsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

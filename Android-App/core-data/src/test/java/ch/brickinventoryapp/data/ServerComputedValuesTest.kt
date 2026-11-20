@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.vertrag.AcquisitionsResponse
+import ch.brickinventoryapp.contract.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -28,8 +28,8 @@ class ServerComputedValuesTest {
     @Test
     fun `die Summenzeile der Erfassungen kommt vom Server`() {
         for (f in listOf(
-            "sammlung/ui/screens/AcquisitionManagementScreen.kt",
-            "gemeinsam/ui/ManualItemComposables.kt",
+            "collection/ui/screens/AcquisitionManagementScreen.kt",
+            "shared/ui/ManualItemComposables.kt",
         )) {
             val c = code(read(f))
             assert(!c.contains("acquisitions.sumOf")) {
@@ -37,7 +37,7 @@ class ServerComputedValuesTest {
                     "aus der Antwort (utils/acquisitions.ts, acquisitionTotals)"
             }
         }
-        val acq = code(read("sammlung/ui/screens/AcquisitionManagementScreen.kt"))
+        val acq = code(read("collection/ui/screens/AcquisitionManagementScreen.kt"))
         assert(acq.contains("totals.quantity")) { "Die Menge muss aus totals kommen" }
         assert(acq.contains("totals.amount")) { "Der Betrag muss aus totals kommen" }
         // Gegenrichtung: `amount` ist nullable, und die Ansicht darf daraus keine
@@ -64,7 +64,7 @@ class ServerComputedValuesTest {
 
     @Test
     fun `die Minifiguren-Kacheln kommen vom Server, nicht aus der gefilterten Liste`() {
-        val s = code(Quellen.bildschirm("teile/ui/screens/MinifigsScreen.kt"))
+        val s = code(Quellen.bildschirm("parts/ui/screens/MinifigsScreen.kt"))
         for (pattern in listOf("figs.size", "figs.sumOf", "figs.count")) {
             assert(!s.contains(pattern)) {
                 "MinifigsScreen rechnet die Kacheln aus `figs` ($pattern). Diese Liste ist " +

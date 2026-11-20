@@ -16,9 +16,9 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
  *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexte → dasselbe rot
- *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-zustand und core-sitzung kennen keinen Context“
- *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
- *                               „core-zustand und core-sitzung kennen keinen Context“
+ *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-state und core-session kennen keinen Context“
+ *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-session) → rot
+ *                               „core-state und core-session kennen keinen Context“
  *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
  *                               „ein Bereich kennt … das Wire-Format nur core-data“
  *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → rot, derselbe Test
@@ -42,9 +42,9 @@ class SchichtregelnTest {
         return geprueft.flatMap { d -> d.importe.filter(verboten).map { "${d.modul}/${d.name}: $it" } }
     }
 
-    private val WIRE_KENNER = setOf("core-vertrag", "core-data", "core-testing")
+    private val WIRE_KENNER = setOf("core-contract", "core-data", "core-testing")
 
-    private fun presentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
+    private fun presentation(d: Datei) = d.modul in setOf("core-state", "core-session") || d.modul.startsWith("feature-")
 
     @Test
     fun `ein ViewModel kennt weder Android noch Netz noch Bildschirmcode`() {
@@ -63,7 +63,7 @@ class SchichtregelnTest {
 
     /**
      * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
-     * Das Wire-Format übersetzt nur core-data (Abbildungen in core-vertrag); jedes andere
+     * Das Wire-Format übersetzt nur core-data (Abbildungen in core-contract); jedes andere
      * Modul, auch die Ablage, nimmt Fachtypen. Die Kante dazu prüft Modulkanten. Die Umsetzungen
      * der Repositories sind öffentlich, weil core-testing sie baut; benutzen darf sie sonst niemand.
      */
@@ -71,8 +71,8 @@ class SchichtregelnTest {
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data`() {
         val f = violations(::presentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
-        val wire = violations({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
-        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
+        val wire = violations({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.contract.") }
+        assert(wire.isEmpty()) { "Importe aus core-contract ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
         val implementation = violations({ it.modul !in setOf("core-data", "core-testing") }) {
             Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
         }
@@ -81,10 +81,10 @@ class SchichtregelnTest {
 
     /** Texte und Dateien kommen über Textquelle und FileReader aus core-data, ohne Ausnahme. */
     @Test
-    fun `core-zustand und core-sitzung kennen keinen Context`() {
-        val f = violations({ it.modul in setOf("core-zustand", "core-sitzung") }) {
+    fun `core-state und core-session kennen keinen Context`() {
+        val f = violations({ it.modul in setOf("core-state", "core-session") }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
-        assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context:\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "core-state oder core-session mit Context:\n  " + f.joinToString("\n  ") }
     }
 }

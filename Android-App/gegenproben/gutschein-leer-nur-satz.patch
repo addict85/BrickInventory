@@ -1,12 +1,12 @@
 Gegenprobe: Leerzustand der Gutscheine wieder nur eine graue Zeile
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.VoucherEmptyAndErrorTest
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.VoucherEmptyAndErrorTest
 Rot: ohne Gutscheine steht eine Ueberschrift
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 index c3f8e48..02b6cdf 100644
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 @@ -217,8 +217,8 @@ private fun EmptyOrError(zustand: GutscheinUiState, onErneut: () -> Unit) {
      else Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.mittel),
          horizontalAlignment = Alignment.CenterHorizontally,

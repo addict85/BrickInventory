@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.service
 
-import ch.brickinventoryapp.model.fach.Teilelistenauftrag
+import ch.brickinventoryapp.model.domain.Teilelistenauftrag
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.fach.PdfProgress
+import ch.brickinventoryapp.model.domain.PdfProgress
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 

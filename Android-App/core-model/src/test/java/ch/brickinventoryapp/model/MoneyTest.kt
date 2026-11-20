@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.Herkunft
-import ch.brickinventoryapp.model.fach.asMoney
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Herkunft
+import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.util.DateYear
 import ch.brickinventoryapp.model.util.fmtDatum
 import ch.brickinventoryapp.model.util.zeitpunkt

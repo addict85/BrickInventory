@@ -1,27 +1,27 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.SwappedToken
-import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.fach.Anmeldung
-import ch.brickinventoryapp.model.fach.Confirmation
-import ch.brickinventoryapp.model.fach.Designstand
-import ch.brickinventoryapp.model.fach.Kontoanlage
-import ch.brickinventoryapp.model.fach.AccountSettings
-import ch.brickinventoryapp.model.fach.AccountOwner
-import ch.brickinventoryapp.model.fach.ProfilGespeichert
-import ch.brickinventoryapp.model.fach.Profilaenderung
-import ch.brickinventoryapp.model.fach.QrAbholstand
-import ch.brickinventoryapp.model.fach.QrPairing
-import ch.brickinventoryapp.model.fach.Registrierung
-import ch.brickinventoryapp.model.fach.Registrierungsstand
-import ch.brickinventoryapp.model.fach.ZweiterFaktorEinrichtung
-import ch.brickinventoryapp.model.fach.ZweiterFaktorStand
-import ch.brickinventoryapp.model.fach.DeviceView
-import ch.brickinventoryapp.model.fach.ProfileView
+import ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.domain.Anmeldung
+import ch.brickinventoryapp.model.domain.Confirmation
+import ch.brickinventoryapp.model.domain.Designstand
+import ch.brickinventoryapp.model.domain.Kontoanlage
+import ch.brickinventoryapp.model.domain.AccountSettings
+import ch.brickinventoryapp.model.domain.AccountOwner
+import ch.brickinventoryapp.model.domain.ProfilGespeichert
+import ch.brickinventoryapp.model.domain.Profilaenderung
+import ch.brickinventoryapp.model.domain.QrAbholstand
+import ch.brickinventoryapp.model.domain.QrPairing
+import ch.brickinventoryapp.model.domain.Registrierung
+import ch.brickinventoryapp.model.domain.Registrierungsstand
+import ch.brickinventoryapp.model.domain.ZweiterFaktorEinrichtung
+import ch.brickinventoryapp.model.domain.ZweiterFaktorStand
+import ch.brickinventoryapp.model.domain.DeviceView
+import ch.brickinventoryapp.model.domain.ProfileView
 import kotlinx.serialization.json.JsonObject
 
 /**

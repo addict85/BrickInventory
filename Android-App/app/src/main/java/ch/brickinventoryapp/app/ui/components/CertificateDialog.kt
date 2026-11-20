@@ -22,14 +22,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.sicherheit.CertificateUnresolved
-import ch.brickinventoryapp.sicherheit.fingerprintStart
-import ch.brickinventoryapp.sicherheit.fingerprintReadable
+import ch.brickinventoryapp.security.CertificateUnresolved
+import ch.brickinventoryapp.security.fingerprintStart
+import ch.brickinventoryapp.security.fingerprintReadable
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.components.Fingerabdruckfeld
-import ch.brickinventoryapp.sicherheit.Transcript
+import ch.brickinventoryapp.security.Transcript
 import androidx.compose.ui.window.DialogProperties
 
 /**

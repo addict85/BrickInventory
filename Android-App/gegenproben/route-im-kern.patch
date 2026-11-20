@@ -15,13 +15,13 @@ index 0000000..0fb082b
 +
 +@Serializable
 +data object Zentralziel
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt
 index a22234f..0ab6c1f 100644
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt
 @@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.components.Schrittsperre
  import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
- import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringRoute
+ import ch.brickinventoryapp.management.ui.screens.MonitoringRoute
  import ch.brickinventoryapp.navigation.Bereichsumgebung
 +import ch.brickinventoryapp.model.ui.Zentralziel
  

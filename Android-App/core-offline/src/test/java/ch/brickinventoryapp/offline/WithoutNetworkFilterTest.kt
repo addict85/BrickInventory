@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.fach.ColorPicker
-import ch.brickinventoryapp.model.fach.Kategoriewahl
-import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.domain.Kategoriewahl
+import ch.brickinventoryapp.model.domain.Setsortierung
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.api.SetsApi
@@ -12,12 +12,12 @@ import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.vertrag.Part
-import ch.brickinventoryapp.vertrag.PartsResponse
-import ch.brickinventoryapp.vertrag.ManualPartsResponse
-import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.SetsResponse
+import ch.brickinventoryapp.contract.Part
+import ch.brickinventoryapp.contract.PartsResponse
+import ch.brickinventoryapp.contract.ManualPartsResponse
+import ch.brickinventoryapp.contract.PartValuationItem
+import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.SetsResponse
 import ch.brickinventoryapp.offline.room.InventoryDatabase
 import ch.brickinventoryapp.offline.room.RoomExit
 import ch.brickinventoryapp.offline.room.RoomInventory

@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.FachtypenTest
 Rot: leer heisst alle Farben
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Teilefilter.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Teilefilter.kt
 @@ -13,7 +13,7 @@
      val wert: String? get() = (this as? Farbe)?.name
  

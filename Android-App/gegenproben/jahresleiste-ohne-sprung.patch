@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
 Rot: Jahresleiste springt ueber ein Menue der Jahrgaenge
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogScrubber.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogScrubber.kt
 @@ -109,7 +109,7 @@
                  .semantics {
                      contentDescription = jumpName

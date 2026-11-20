@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Kaufaenderung
-import ch.brickinventoryapp.model.fach.Kaufkorrektur
-import ch.brickinventoryapp.model.fach.InvitationView
-import ch.brickinventoryapp.model.fach.HouseholdStatusView
-import ch.brickinventoryapp.model.fach.PurchasesView
-import ch.brickinventoryapp.model.fach.MemberView
+import ch.brickinventoryapp.model.domain.Kaufaenderung
+import ch.brickinventoryapp.model.domain.Kaufkorrektur
+import ch.brickinventoryapp.model.domain.InvitationView
+import ch.brickinventoryapp.model.domain.HouseholdStatusView
+import ch.brickinventoryapp.model.domain.PurchasesView
+import ch.brickinventoryapp.model.domain.MemberView
 
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Zustand
 /**
  * Der Haushalt: Mitglieder, Einladungen, Konten.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit

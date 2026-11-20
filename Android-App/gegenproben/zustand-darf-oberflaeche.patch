@@ -1,4 +1,4 @@
-Gegenprobe: core-zustand fehlt in Modulkanten.ohneOberflaeche und dürfte Compose einschalten
+Gegenprobe: core-state fehlt in Modulkanten.ohneOberflaeche und dürfte Compose einschalten
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: die Kantenregel verbietet
@@ -9,9 +9,9 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
 @@ -53,7 +53,7 @@
       */
      val withoutUi: Set<String> = setOf(
-         "core-model", "core-vertrag", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
--        "core-sitzung", "core-zustand",
-+        "core-sitzung",
+         "core-model", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-update", "core-services",
+-        "core-session", "core-state",
++        "core-session",
      )
  
-     /** Wer core-vertrag einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */
+     /** Wer core-contract einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */

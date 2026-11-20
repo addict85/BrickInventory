@@ -1,6 +1,6 @@
 // Netz (Retrofit, OkHttp), DataStore, Repositories, das Senden des Ausgangs und
 // die Hilt-Module dafür. Room und Offlineablage liegen in core-offline, Tresor und
-// TLS-Vertrauen in core-sicherheit. Kennt keine Oberfläche: Was die App beisteuern
+// TLS-Vertrauen in core-security. Kennt keine Oberfläche: Was die App beisteuern
 // muss (Startziel, AppVersion), kommt über Hilt herein.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
@@ -23,16 +23,16 @@ android {
 dependencies {
     api(project(":core-model"))
     // Nur innen: Die Repositories bilden das Wire-Format auf Fach- und Ansichtstypen ab.
-    implementation(project(":core-vertrag"))
+    implementation(project(":core-contract"))
     // Wächter und Netzrichtlinie. Wer selbst etwas daraus nennt (NetworkPolicy, Protokoll),
-    // bindet core-netz selbst ein; über core-data reicht nichts davon hinaus.
-    implementation(project(":core-netz"))
+    // bindet core-network selbst ein; über core-data reicht nichts davon hinaus.
+    implementation(project(":core-network"))
     // Tresor, Ablageschlüssel und TLS-Vertrauen; die Bereiche, die davon etwas zeigen, nennen es selbst.
-    implementation(project(":core-sicherheit"))
+    implementation(project(":core-security"))
     // Room und Offlineablage nur innen: Die Repositories liefern Lokal aus core-model,
     // den Ausgang sieht die Oberfläche über Ausgangslage.
     implementation(project(":core-offline"))
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     // Netz nur als implementation: Kein Modul darüber soll OkHttp oder Retrofit sehen,
@@ -42,7 +42,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.okhttp.sse)
     // Coil, DataStore und WorkManager nur hier: Bereiche bekommen Coil über Compose,
-    // wer DataStore oder WorkManager selbst nennt (App, core-dienste, core-update), bindet sie selbst ein.
+    // wer DataStore oder WorkManager selbst nennt (App, core-services, core-update), bindet sie selbst ein.
     implementation(libs.coil.core)
     implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.datastore)
@@ -54,8 +54,8 @@ dependencies {
 
     testImplementation(project(":core-testing"))
     // SignOutCleansEverythingTest prüft das Abmelden samt Sitzung und Blickfeld.
-    testImplementation(project(":core-zustand"))
-    testImplementation(project(":core-sitzung"))
+    testImplementation(project(":core-state"))
+    testImplementation(project(":core-session"))
     // Robolectric-Tests (InventoryDatabaseTest, Ablagen, Netz-Clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

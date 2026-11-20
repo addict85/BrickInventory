@@ -27,7 +27,7 @@ if (require.main === module) {
   const typen = require('./contract-frontend-types.js');
   fs.writeFileSync(typen.ZIEL, typen.create(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
   console.log(`geschrieben: ${path.relative(ROOT, typen.ZIEL)}`);
-  // Ebenso die Antworttypen der Android-App (core-vertrag).
+  // Ebenso die Antworttypen der Android-App (core-contract).
   const kotlin = require('./contract-kotlin-dtos.js');
   fs.writeFileSync(kotlin.ZIEL, kotlin.create(JSON.parse(fs.readFileSync(DATEI, 'utf8'))));
   console.log(`geschrieben: ${path.relative(ROOT, kotlin.ZIEL)}`);

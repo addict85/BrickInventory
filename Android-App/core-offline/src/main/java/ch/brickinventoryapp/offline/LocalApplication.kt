@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.fach.AccountView
-import ch.brickinventoryapp.model.fach.ManualMinifigView
-import ch.brickinventoryapp.model.fach.ManualPartView
-import ch.brickinventoryapp.model.fach.WantedItemView
-import ch.brickinventoryapp.model.fach.PriceAlertView
-import ch.brickinventoryapp.model.fach.SetAnsicht
-import ch.brickinventoryapp.model.fach.Stueckaenderung
-import ch.brickinventoryapp.model.fach.StockLocationView
+import ch.brickinventoryapp.model.domain.AccountView
+import ch.brickinventoryapp.model.domain.ManualMinifigView
+import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.PriceAlertView
+import ch.brickinventoryapp.model.domain.SetAnsicht
+import ch.brickinventoryapp.model.domain.Stueckaenderung
+import ch.brickinventoryapp.model.domain.StockLocationView
 import ch.brickinventoryapp.offline.Offlineablage.FollowUp
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
 

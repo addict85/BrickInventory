@@ -1,6 +1,6 @@
 Gegenprobe: Danebentippen schliesst auch einen ausgefüllten Erfassen-Dialog
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.AddDialogTest
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.AddDialogTest
 Rot: daneben tippen
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt

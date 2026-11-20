@@ -1,0 +1,34 @@
+// Was die Bereiche teilen, ohne einander zu kennen: Blickfeld, Texte, die Grundlage
+// der Bereichs-ViewModels und der AppViewModel — ohne Compose; die Umgebung der Ziele
+// liegt in core-navigation. Was nur die App kennt (Widget), kommt als Schnittstelle herein.
+plugins {
+    alias(libs.plugins.brickinventory.android.library)
+    alias(libs.plugins.brickinventory.android.unittests)
+    alias(libs.plugins.brickinventory.android.hilt)
+}
+
+android {
+    namespace = "ch.brickinventoryapp.core.state"
+}
+
+dependencies {
+    api(project(":core-model"))
+    // Innen: Die Bereiche nennen core-data selbst.
+    implementation(project(":core-data"))
+    implementation(project(":core-session"))
+    implementation(project(":core-security"))
+    // NetworkPolicy und die Regel, wer einen 401 meldet.
+    implementation(project(":core-network"))
+    implementation(project(":core-resources"))
+    implementation(libs.androidx.core.ktx)
+    api(libs.androidx.lifecycle.runtime.ktx)
+    // Die ViewModels hier sind öffentliche Basis aller Bereiche; wer sie
+    // erweitert oder im Test startet, braucht ViewModel und viewModelScope.
+    api(libs.androidx.lifecycle.viewmodel)
+
+    testImplementation(project(":core-testing"))
+    // Die Testserver antworten im Wire-Format.
+    testImplementation(project(":core-contract"))
+    // ExitSyncTest baut Ablage und Ausgang im Speicher.
+    testImplementation(project(":core-offline"))
+}

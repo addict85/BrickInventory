@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.DesignTokensTest
 Rot: kein Eingabefeld steht in der eckigen Vorgabe
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/LocationField.kt
 @@ -60,7 +60,6 @@ fun LocationField(
          modifier = modifier,
      ) {

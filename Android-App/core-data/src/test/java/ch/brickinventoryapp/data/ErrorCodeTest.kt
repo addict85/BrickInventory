@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
+import ch.brickinventoryapp.model.domain.Fehlercode
+import ch.brickinventoryapp.network.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.repository.errorTextToCode
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest

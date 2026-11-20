@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 
 /** Der Name eines Designs; vollständig, damit ein neues Design hier auffällt. */
 fun Design.titel(): Int = when (this) {

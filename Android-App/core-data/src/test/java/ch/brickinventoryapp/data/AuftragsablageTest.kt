@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
+import ch.brickinventoryapp.security.Vertrauenschiffre
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

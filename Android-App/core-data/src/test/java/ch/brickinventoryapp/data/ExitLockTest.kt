@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.lokal.Abgleichsergebnis
+import ch.brickinventoryapp.data.local.Abgleichsergebnis
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -3,9 +3,9 @@ Modul: core-model
 Test: ch.brickinventoryapp.model.MoneyTest
 Rot: auf Rappen gerundet wird halb
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Geld.kt
 @@ -21,7 +21,7 @@
      fun asBigDecimal(): BigDecimal = BigDecimal.valueOf(tenThousandths, PLACES)
  

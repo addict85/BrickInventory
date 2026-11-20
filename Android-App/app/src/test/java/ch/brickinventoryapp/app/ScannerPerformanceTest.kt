@@ -15,7 +15,7 @@ class ScannerPerformanceTest {
     // letzteOcr und textRecognizer.process() stehen ausschliesslich in der
     // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.
     private val src: String by lazy {
-        val w = "sammlung/ui/screens/"
+        val w = "collection/ui/screens/"
         File(Quellen.root, w + "BarcodeScannerScreen.kt").readText() + "\n" +
             File(Quellen.root, w + "BarcodeAnalyzer.kt").readText()
     }

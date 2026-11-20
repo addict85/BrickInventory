@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Finanzen nennen
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/Finanzzeilen.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/Finanzzeilen.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/Finanzzeilen.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/Finanzzeilen.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/Finanzzeilen.kt
 @@ -32,7 +32,7 @@
       * „Kauf: 400“ neben „899.90“ bei zwei Stück wie ein Gewinn von 125 %.
       */

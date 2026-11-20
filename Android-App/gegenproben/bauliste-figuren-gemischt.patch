@@ -1,12 +1,12 @@
 Gegenprobe: Minifiguren wieder nach Farbe zwischen den Teilen
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.BuildListLegendTest
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.BuildListLegendTest
 Rot: die Minifiguren bilden eine eigene Gruppe
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt
 index 61f82de..dd22850 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt
 @@ -195,7 +195,7 @@ internal fun buildListsGroups(parts: List<PlPart>): List<Pair<String?, List<PlPa
      val afterNumber = Comparator<PlPart> { a, b ->
          comparePartNumbers(a.blPartNumber ?: a.partNumber, b.blPartNumber ?: b.partNumber)

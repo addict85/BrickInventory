@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.util.INSTRUCTION_DISPLAY_FOLDER
-import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.security.StoreCipher
 import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.data.util.pdfAblage
 import ch.brickinventoryapp.data.util.raeumeAnleitungenAuf

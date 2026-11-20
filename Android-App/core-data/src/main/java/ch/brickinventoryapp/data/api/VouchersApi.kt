@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.GuthabenAntwort
-import ch.brickinventoryapp.vertrag.GutscheinAntwort
-import ch.brickinventoryapp.vertrag.GutscheinKlartext
-import ch.brickinventoryapp.vertrag.GutscheinListe
-import ch.brickinventoryapp.vertrag.GutscheinPdfFreigabe
-import ch.brickinventoryapp.vertrag.GutscheinRequest
-import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.contract.GenericResponse
+import ch.brickinventoryapp.contract.GuthabenAntwort
+import ch.brickinventoryapp.contract.GutscheinAntwort
+import ch.brickinventoryapp.contract.GutscheinKlartext
+import ch.brickinventoryapp.contract.GutscheinListe
+import ch.brickinventoryapp.contract.GutscheinPdfFreigabe
+import ch.brickinventoryapp.contract.GutscheinRequest
+import ch.brickinventoryapp.contract.ZweiterFaktorAnfrage
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET

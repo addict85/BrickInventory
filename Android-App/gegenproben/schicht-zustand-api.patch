@@ -3,11 +3,11 @@ Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
 Rot: ein Bereich kennt die Retrofit-Schnittstellen nicht
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/AppTexte.kt
+diff --git a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
+--- a/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
++++ b/Android-App/core-state/src/main/java/ch/brickinventoryapp/state/ui/viewmodel/AppTexte.kt
 @@ -1,6 +1,7 @@
- package ch.brickinventoryapp.zustand.ui.viewmodel
+ package ch.brickinventoryapp.state.ui.viewmodel
  
  import ch.brickinventoryapp.data.Anmeldestand
 +import ch.brickinventoryapp.data.api.AccountApi

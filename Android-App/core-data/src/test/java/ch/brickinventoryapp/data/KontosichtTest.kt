@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Erfassungswunsch
-import ch.brickinventoryapp.model.fach.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Kontoauswahl
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.domain.Setsortierung
 import ch.brickinventoryapp.offline.Editing
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.StorageExit

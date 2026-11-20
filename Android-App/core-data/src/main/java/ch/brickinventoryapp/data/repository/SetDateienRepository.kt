@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.model.fach.PdfJobStatus
-import ch.brickinventoryapp.model.fach.Teilelistenauftrag
-import ch.brickinventoryapp.model.fach.CsvImportStatusView
-import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
-import ch.brickinventoryapp.vertrag.PdfAuftragSet
-import ch.brickinventoryapp.vertrag.PdfAuftragStand
-import ch.brickinventoryapp.vertrag.PdfAuftragTeil
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.domain.PdfJobStatus
+import ch.brickinventoryapp.model.domain.Teilelistenauftrag
+import ch.brickinventoryapp.model.domain.CsvImportStatusView
+import ch.brickinventoryapp.contract.PdfAuftragAnfrage
+import ch.brickinventoryapp.contract.PdfAuftragSet
+import ch.brickinventoryapp.contract.PdfAuftragStand
+import ch.brickinventoryapp.contract.PdfAuftragTeil
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody

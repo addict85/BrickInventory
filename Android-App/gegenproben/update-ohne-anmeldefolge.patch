@@ -1,11 +1,11 @@
 Gegenprobe: Die Anmeldung stösst die stille Update-Prüfung nicht mehr an
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.UpdateViewModelTest
+Modul: feature-account
+Test: ch.brickinventoryapp.account.UpdateViewModelTest
 Rot: die Anmeldung prueft still
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/viewmodel/UpdateViewModel.kt
 @@ -70,7 +70,7 @@
          viewModelScope.launch {
              anmeldestand.authTokenState.map { !it.isNullOrBlank() }.distinctUntilChanged()

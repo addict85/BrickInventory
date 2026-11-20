@@ -45,7 +45,7 @@ class DetektKonvention : Plugin<Project> {
                 ),
             )
             task.outputs.file(report)
-            // Ohne Quellordner (core-ressourcen) läse detekt sonst das ganze Modul samt build/.
+            // Ohne Quellordner (core-resources) läse detekt sonst das ganze Modul samt build/.
             task.onlyIf("das Modul hat Kotlin-Quellen") { !quellen.isEmpty }
         }
         target.tasks.matching { it.name == "check" }.configureEach { it.dependsOn(detekt) }

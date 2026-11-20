@@ -7,7 +7,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import ch.brickinventoryapp.app.MehrBildschirm
 import ch.brickinventoryapp.app.openOfMore
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import kotlinx.serialization.Serializable
 
 /** Die Ziele, die keinem Bereich gehören. */

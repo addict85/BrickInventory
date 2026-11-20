@@ -2,7 +2,7 @@ package ch.brickinventoryapp.testing
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.state.ui.viewmodel.Texte
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -26,12 +26,12 @@ import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
-import ch.brickinventoryapp.zustand.ui.Scope
-import ch.brickinventoryapp.zustand.ui.FilterStore
+import ch.brickinventoryapp.state.ui.Scope
+import ch.brickinventoryapp.state.ui.FilterStore
 import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
-import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
+import ch.brickinventoryapp.session.Sitzung
+import ch.brickinventoryapp.state.ui.viewmodel.Filterwahl
+import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

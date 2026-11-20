@@ -1,12 +1,12 @@
 Gegenprobe: „Vorhanden“ wieder als „8/12“
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.BuildListLegendTest
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.BuildListLegendTest
 Rot: ueber der Liste steht die Legende
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt
 index 61f82de..d949f0a 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/BaulisteZeilen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/BaulisteZeilen.kt
 @@ -164,7 +164,7 @@ private fun QuantitiesPills(part: PlPart) {
              val reicht = habe >= part.quantity
              Pill(

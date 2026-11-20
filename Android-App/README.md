@@ -173,7 +173,7 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
 ## Datenschutz: mit wem die App spricht
 
 - **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
-  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`netz/util/BildHosts.kt`).
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`network/util/BildHosts.kt`).
 - **GitHub** — nur die Update-Prüfung (`update/util/AppUpdate.kt`): beim Start, solange
   der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
   Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
@@ -190,7 +190,7 @@ Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
-der Wächter (`netz/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
+der Wächter (`network/di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
 und die Network-Security-Config (`app/src/main/res/xml/`) verbietet Klartext
 für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 `10.0.2.2` (Emulator), festgelegt in `app/src/debug/res/xml/` und
@@ -198,7 +198,7 @@ für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
 führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
 https-Adresse eintragen).
 
-**Wem die App beim eigenen Server vertraut** (`sicherheit/ServerVertrauen.kt`):
+**Wem die App beim eigenen Server vertraut** (`security/ServerVertrauen.kt`):
 
 | Weg | Was passiert |
 | --- | --- |
@@ -224,7 +224,7 @@ wählbaren `O=` des Subjekts. Andere Hosts
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.
 
-**Logcat.** Die App schreibt nur über `netz/util/Protokoll.kt`, und das nur im
+**Logcat.** Die App schreibt nur über `network/util/Protokoll.kt`, und das nur im
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
@@ -233,7 +233,7 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
-(`sicherheit/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+(`security/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
 mit `setUnlockedDeviceRequired` umhüllt (`EntsperrVault`, Alias
 `brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
@@ -348,7 +348,7 @@ Geheimnis nur, wenn man sie dort auswählt.
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
-`core-ui-bestand`. Die Regel steht einmal in
+`core-ui-inventory`. Die Regel steht einmal in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
 Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
 gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
@@ -372,42 +372,42 @@ Modulkanten und echte Zusatzabhängigkeiten:
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` und `core-vertrag` bleiben reines Kotlin (`brickinventory.jvm.library`).
+`core-model` und `core-contract` bleiben reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
 | `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAddress`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
-| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
-| `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
-| `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
-| `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
+| `core-contract` | `ch.brickinventoryapp.contract` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
+| `core-resources` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.resources.R` |
+| `core-network` | `ch.brickinventoryapp.network` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
+| `core-security` | `ch.brickinventoryapp.security` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
 | `core-offline` | `ch.brickinventoryapp.offline` | Room samt Schema (`core-offline/schemas`, SQLCipher), Offlineablage, Ausgang und lokale Anwendung von Bearbeitungen, alles in Fachtypen; kennt weder Netz noch Repositories noch das Wire-Format |
 | `core-data` | `ch.brickinventoryapp.data` | Retrofit, OkHttp, Repositories (geben Fach- und Ansichtstypen zurück), DataStore, Senden des Ausgangs (Abgleich, Worker), Abmelde-Arbeiter, Vertrag und Strom des PDF-Auftrags |
 | `core-update` | `ch.brickinventoryapp.update` | Selbstaktualisierung: signierte Beschreibung, Frische, APK-Download, Signaturvergleich, Installation; hängt an `core-data` |
-| `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
+| `core-services` | `ch.brickinventoryapp.services` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
-| `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
-| `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` und ohne Compose (`Modulkanten.withoutUi`) |
+| `core-ui-inventory` | `ch.brickinventoryapp.shared` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-resources`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
+| `core-session` | `ch.brickinventoryapp.session` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
+| `core-state` | `ch.brickinventoryapp.state` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-session`, ohne `core-ui` und ohne Compose (`Modulkanten.withoutUi`) |
 | `core-navigation` | `ch.brickinventoryapp.navigation` | `Bereichsumgebung`: was jeder Bereich von der App zum Zeigen seiner Ziele bekommt (NavController, Bilder, Snackbar, Sitzung, Blickfeld, Rollgedächtnis) — einzelne Flüsse und Rückrufe, kein AppViewModel |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
-| `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
-| `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |
-| `feature-sammlung` | `ch.brickinventoryapp.sammlung` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
-| `feature-teile` | `ch.brickinventoryapp.teile` | Teile, Minifiguren, eigene Einträge, Teilelisten |
-| `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
-| `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
-| `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
+| `feature-login` | `ch.brickinventoryapp.login` | Anmelden, Server einrichten, QR |
+| `feature-catalog` | `ch.brickinventoryapp.catalog` | Katalog und Katalog-Detail |
+| `feature-collection` | `ch.brickinventoryapp.collection` | Galerie, Set-Detail, Merkliste, Käufe, Vergleich, Scanner |
+| `feature-parts` | `ch.brickinventoryapp.parts` | Teile, Minifiguren, eigene Einträge, Teilelisten |
+| `feature-finances` | `ch.brickinventoryapp.finances` | Finanzen, Gutscheine, PDF-Betrachter |
+| `feature-account` | `ch.brickinventoryapp.account` | Einstellungen |
+| `feature-management` | `ch.brickinventoryapp.management` | Monitoring für Verwalter |
 | `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `TargetEnvironment` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger
-Unterpfad (`ui.screens` in `feature-sammlung` heisst
-`ch.brickinventoryapp.sammlung.ui.screens`); `core-ui` und `core-data` beginnen
+Unterpfad (`ui.screens` in `feature-collection` heisst
+`ch.brickinventoryapp.collection.ui.screens`); `core-ui` und `core-data` beginnen
 schon mit ihrem Stamm (`ch.brickinventoryapp.ui.*`, `ch.brickinventoryapp.data.*`).
 Die Tests eines Moduls liegen direkt im Stamm. Aus einem Import ist so das Modul
 ablesbar, und kein Paket verteilt sich auf zwei Module; `ModulgrenzenTest` prüft
 es an jeder Kotlin-Datei. Die R-Klassen folgen dem `namespace` des Moduls
-(`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.ressourcen.R`), die der
+(`ch.brickinventoryapp.core.ui.R`, `ch.brickinventoryapp.resources.R`), die der
 App bleibt `ch.brickinventoryapp.R`. Was ein Modul dem anderen zeigt, ist
 öffentlich, der Rest `internal`.
 
@@ -759,7 +759,7 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 
 Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
 APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
-App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
+App einen solchen Schlüssel (`core-resources/src/main/res/raw/beschreibungs_schluessel.pem`),
 nimmt sie nur dessen Signatur an. Ist die Datei leer, nimmt sie keine Beschreibung an.
 
 **Stand:** Eingerichtet (10.11.2026): ein Schlüssel in

@@ -1,6 +1,6 @@
 Gegenprobe: Der Kachelausgleich steht nur da, wenn eine Namenszeile fehlt (dann kostet er einen Abstand mehr)
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetTileTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetTileTest
 Rot: Kacheln einer Reihe
 
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/TileBalance.kt

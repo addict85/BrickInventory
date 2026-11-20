@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Teile-Aufschluesselung bricht
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
 @@ -28,7 +28,7 @@
      val text = pluralStringResource(plural, anzahl, zahl)
      // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie

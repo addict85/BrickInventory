@@ -8,7 +8,7 @@ import android.widget.FrameLayout
 import android.widget.RemoteViews
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R as Texte
+import ch.brickinventoryapp.resources.R as Texte
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue

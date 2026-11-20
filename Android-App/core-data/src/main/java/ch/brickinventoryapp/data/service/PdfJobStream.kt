@@ -4,12 +4,12 @@ import ch.brickinventoryapp.data.SseEvent
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.sseStream
-import ch.brickinventoryapp.vertrag.PdfAuftragStand
-import ch.brickinventoryapp.model.fach.PdfJobStatus
+import ch.brickinventoryapp.contract.PdfAuftragStand
+import ch.brickinventoryapp.model.domain.PdfJobStatus
 import ch.brickinventoryapp.data.repository.asStatus
-import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
-import ch.brickinventoryapp.netz.di.PLACEHOLDER_BASE
-import ch.brickinventoryapp.netz.util.Protokoll
+import ch.brickinventoryapp.network.data.api.Fehlerrumpf
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
+import ch.brickinventoryapp.network.util.Protokoll
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json

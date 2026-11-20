@@ -13,7 +13,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/erzeugt/**'
+      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/erzeugt/**'
       - '.github/**'
       - 'docs/**'
       - 'README.md'
@@ -22,7 +22,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/erzeugt/**'
+      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/erzeugt/**'
       - '.github/**'
       - 'docs/**'
       - 'README.md'

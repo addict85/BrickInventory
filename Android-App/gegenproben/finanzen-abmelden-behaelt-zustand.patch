@@ -1,11 +1,11 @@
 Gegenprobe: Nach dem Abmelden bleibt der Finanzzustand stehen
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.FinanceViewModelTest
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.FinanceViewModelTest
 Rot: nach dem Abmelden ist nichts mehr da
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/FinanceViewModel.kt
 @@ -136,7 +136,6 @@
      }
  

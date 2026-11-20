@@ -1,12 +1,12 @@
 Gegenprobe: Die Kennzahlen zählen das vorgemerkte Set weiter mit
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalleryViewModelTest
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
 Rot: die Kennzahlen zaehlen das vorgemerkte Set nicht und nach Rueckgaengig wieder
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
 index 941844b..1cadb61 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/GalleryViewModel.kt
 @@ -109,7 +109,7 @@ class GalleryViewModel @Inject constructor(
          .abgeleitet(_reserved) { st, v ->
              // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.

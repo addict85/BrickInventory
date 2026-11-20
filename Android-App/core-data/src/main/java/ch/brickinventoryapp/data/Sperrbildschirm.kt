@@ -7,7 +7,7 @@ import androidx.core.app.NotificationCompat
  * Auf dem gesperrten Bildschirm nur der Titel: Texte nennen Server, Dateien oder
  * Fortschritt des Kontos, und das Telefon liegt oft offen herum. Entsperrt gilt
  * die volle Meldung (wie PreisalarmWorker.meldung). Öffentlich, weil der PDF-Dienst
- * in core-dienste dieselbe Regel braucht.
+ * in core-services dieselbe Regel braucht.
  */
 fun NotificationCompat.Builder.onlyUnlocked(context: Context, kanal: String, titel: String, symbol: Int): NotificationCompat.Builder =
     setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.app.csv
 
-import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.domain.Laufstatus
 import org.junit.Test
 
 /**

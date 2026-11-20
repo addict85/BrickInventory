@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
 Rot: Fachtypen tragen Betraege
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
 @@ -40,6 +40,7 @@
      val createdAt: Instant? = null,
      val ownerUserId: Int? = null,

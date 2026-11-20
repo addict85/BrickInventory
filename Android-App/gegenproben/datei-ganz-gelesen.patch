@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.FileLimitTest
 Rot: ein endloser Strom wird nach der Grenze nicht weiter gelesen
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/datei/Dateileser.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/file/Dateileser.kt
 @@ -78,15 +78,6 @@
  internal const val FILE_AT_MOST = 50L * 1024 * 1024
  

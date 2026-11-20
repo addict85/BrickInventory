@@ -1,12 +1,12 @@
 Gegenprobe: Ein 401 vor dem ersten Sammler geht verloren (Ereignis statt Zustand)
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SessionServiceTest
+Modul: core-state
+Test: ch.brickinventoryapp.state.SessionServiceTest
 Rot: ein 401 vor dem Start geht nicht verloren
 
-diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
+diff --git a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 index 9092168..bdca144 100644
---- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
-+++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
+--- a/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
++++ b/Android-App/core-session/src/main/java/ch/brickinventoryapp/session/SitzungsDienst.kt
 @@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
  import kotlinx.coroutines.flow.collectLatest
  import kotlinx.coroutines.flow.combine

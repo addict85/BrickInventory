@@ -3,9 +3,9 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.api.DeviceApi
 import ch.brickinventoryapp.data.repository.SchrittbindungImpl
-import ch.brickinventoryapp.model.schritt.Schluesselnonce
-import ch.brickinventoryapp.model.schritt.Schrittaktion
-import ch.brickinventoryapp.model.schritt.Schrittantwort
+import ch.brickinventoryapp.model.step.Schluesselnonce
+import ch.brickinventoryapp.model.step.Schrittaktion
+import ch.brickinventoryapp.model.step.Schrittantwort
 import ch.brickinventoryapp.testing.TestApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking

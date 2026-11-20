@@ -113,7 +113,7 @@ class ColorAloneTest {
      */
     @Test
     fun `die Kontingent-Zeile warnt nicht nur mit Farbe`() {
-        val s = Quellen.withoutComments(Quellen.lies("verwaltung/ui/screens/MonitoringKontingente.kt"))
+        val s = Quellen.withoutComments(Quellen.lies("management/ui/screens/MonitoringKontingente.kt"))
         val i = s.indexOf("private fun RateLimitRow(")
         assert(i > 0) { "RateLimitRow fehlt — Muster veraltet?" }
         val rumpf = s.substring(i, minOf(i + 2400, s.length))

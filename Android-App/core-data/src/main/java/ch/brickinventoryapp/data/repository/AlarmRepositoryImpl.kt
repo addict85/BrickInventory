@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.vertrag.PreisalarmRequest
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.model.fach.AlarmabrufView
-import ch.brickinventoryapp.model.fach.PriceAlertView
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.contract.PreisalarmRequest
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
+import ch.brickinventoryapp.model.domain.AlarmabrufView
+import ch.brickinventoryapp.model.domain.PriceAlertView
+import ch.brickinventoryapp.model.domain.Alarmrichtung
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.Offlineablage.FollowUp

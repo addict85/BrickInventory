@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.vertrag.PnlResponse
-import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.contract.PnlResponse
+import ch.brickinventoryapp.contract.PortfolioHistoryResponse
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 import ch.brickinventoryapp.app.widget.WithoutToken
 import ch.brickinventoryapp.app.widget.WIDGET_HIDDEN
 import ch.brickinventoryapp.app.widget.ohneToken

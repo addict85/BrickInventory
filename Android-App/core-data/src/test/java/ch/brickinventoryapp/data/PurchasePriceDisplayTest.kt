@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.displayPurchasePrice
+import ch.brickinventoryapp.contract.SetItem
+import ch.brickinventoryapp.contract.displayPurchasePrice
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -13,7 +13,7 @@ import org.junit.Test
  * des Servers, nicht den Preis der neuesten Erfassung. Die Regel steht einmal im Modell
  * (`displayPurchasePrice`), damit keine Ansicht ein anderes Feld liest; `purchasePrice` an
  * SetItem darf nicht zurückkommen, weil es immer leer vom Server käme. Was die Detailansicht
- * daraus zeichnet, prüft SetDetailDisplayTest (feature-sammlung) unter Robolectric.
+ * daraus zeichnet, prüft SetDetailDisplayTest (feature-collection) unter Robolectric.
  */
 class PurchasePriceDisplayTest {
 

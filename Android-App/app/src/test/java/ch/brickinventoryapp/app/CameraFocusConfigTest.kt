@@ -20,7 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
 class CameraFocusConfigTest {
 
     private fun scanner(): String =
-        File(Quellen.root, "sammlung/ui/screens/BarcodeScannerScreen.kt").readText()
+        File(Quellen.root, "collection/ui/screens/BarcodeScannerScreen.kt").readText()
 
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }

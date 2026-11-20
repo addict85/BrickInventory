@@ -3,7 +3,7 @@ package ch.brickinventoryapp.app
 import android.content.Context
 import android.content.res.Configuration
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -2,8 +2,8 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.model.fach.Teilelistenauftrag
-import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.domain.Teilelistenauftrag
+import ch.brickinventoryapp.model.domain.Laufstatus
 import ch.brickinventoryapp.testing.testSetFilesRepository
 import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.runBlocking

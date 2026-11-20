@@ -124,7 +124,7 @@ android {
         abortOnError = true
         warningsAsErrors = false
         // Ein Lauf hier prüft alle Module mit, als wären sie eins: Ressourcen aus
-        // core-ressourcen gelten als benutzt, wenn ein Bereich sie liest, und der
+        // core-resources gelten als benutzt, wenn ein Bereich sie liest, und der
         // Bericht bleibt die eine Datei, die tools/lint-zaehlen.py zählt.
         checkDependencies = true
     }
@@ -212,28 +212,28 @@ dependencies {
     // Die App setzt zusammen: Navigation, Hilt-Einstieg, Widget. Alles andere
     // liegt in den Modulen darunter.
     implementation(project(":core-model"))
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(project(":core-data"))
     // Protokoll und NetworkPolicy.
-    implementation(project(":core-netz"))
-    implementation(project(":core-sicherheit"))
+    implementation(project(":core-network"))
+    implementation(project(":core-security"))
     implementation(project(":core-update"))
-    implementation(project(":core-dienste"))
+    implementation(project(":core-services"))
     implementation(project(":core-ui"))
-    implementation(project(":core-ui-bestand"))
-    implementation(project(":core-zustand"))
+    implementation(project(":core-ui-inventory"))
+    implementation(project(":core-state"))
     implementation(project(":core-navigation"))
-    implementation(project(":core-sitzung"))
-    implementation(project(":feature-anmeldung"))
-    implementation(project(":feature-katalog"))
-    implementation(project(":feature-sammlung"))
-    implementation(project(":feature-teile"))
-    implementation(project(":feature-finanzen"))
-    implementation(project(":feature-konto"))
-    implementation(project(":feature-verwaltung"))
+    implementation(project(":core-session"))
+    implementation(project(":feature-login"))
+    implementation(project(":feature-catalog"))
+    implementation(project(":feature-collection"))
+    implementation(project(":feature-parts"))
+    implementation(project(":feature-finances"))
+    implementation(project(":feature-account"))
+    implementation(project(":feature-management"))
     testImplementation(project(":core-testing"))
     // Die Testserver antworten im Wire-Format.
-    testImplementation(project(":core-vertrag"))
+    testImplementation(project(":core-contract"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     // DevicesProtectionTest baut die TokenAblage auf einem eigenen DataStore.

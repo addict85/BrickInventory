@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app.widget
 
-import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.ValueHistoryView
+import ch.brickinventoryapp.model.domain.Waehrung
+import ch.brickinventoryapp.model.domain.GewinnAnsicht
+import ch.brickinventoryapp.model.domain.ValueHistoryView
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import kotlinx.serialization.Serializable

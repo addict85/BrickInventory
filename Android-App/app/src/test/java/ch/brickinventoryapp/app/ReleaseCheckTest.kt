@@ -95,7 +95,7 @@ class ReleaseCheckTest {
 
     @Test
     fun `die Schluesseldatei der App ist fuer den Workflow lesbar`() {
-        val returnValue = pruefe("schluessel", "/gibt/es/nicht.pem", "../core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem")
+        val returnValue = pruefe("schluessel", "/gibt/es/nicht.pem", "../core-resources/src/main/res/raw/beschreibungs_schluessel.pem")
         assertEquals("Der Workflow kann res/raw/beschreibungs_schluessel.pem nicht lesen", false, returnValue == 2)
     }
 

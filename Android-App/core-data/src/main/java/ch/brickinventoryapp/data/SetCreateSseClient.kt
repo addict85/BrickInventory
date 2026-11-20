@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.SetRecorded
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.SetRecorded
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.data.di.SseClient
-import ch.brickinventoryapp.netz.di.PLACEHOLDER_BASE
-import ch.brickinventoryapp.vertrag.AddSetResponse
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
+import ch.brickinventoryapp.contract.AddSetResponse
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn

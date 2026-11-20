@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.app
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Zustand
 import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -30,15 +30,15 @@ import ch.brickinventoryapp.data.SetCreator
 import ch.brickinventoryapp.testing.testCatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.testing.testManagementRepository
-import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
-import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
-import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
-import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
-import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
-import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
+import ch.brickinventoryapp.login.ui.AnmeldeFormular
+import ch.brickinventoryapp.catalog.ui.screens.CatalogDetailScreen
+import ch.brickinventoryapp.collection.ui.screens.GalleryRoute
+import ch.brickinventoryapp.login.ui.screens.LoginScreen
+import ch.brickinventoryapp.account.ui.screens.PreisalarmeRoute
+import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.konto.ui.viewmodel.SettingsViewModel
-import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
+import ch.brickinventoryapp.account.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.collection.ui.viewmodel.EntryViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.After
@@ -51,18 +51,18 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import ch.brickinventoryapp.model.fach.BrickLinkView
-import ch.brickinventoryapp.model.fach.CatalogDetailView
-import ch.brickinventoryapp.model.datei.FileReader
-import ch.brickinventoryapp.model.datei.FileRef
+import ch.brickinventoryapp.model.domain.BrickLinkView
+import ch.brickinventoryapp.model.domain.CatalogDetailView
+import ch.brickinventoryapp.model.file.FileReader
+import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testPartsRepository
-import ch.brickinventoryapp.verwaltung.ui.ManagementUiState
-import ch.brickinventoryapp.verwaltung.ui.screens.CacheEvents
-import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringScreen
-import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringState
-import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
-import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.management.ui.ManagementUiState
+import ch.brickinventoryapp.management.ui.screens.CacheEvents
+import ch.brickinventoryapp.management.ui.screens.MonitoringScreen
+import ch.brickinventoryapp.management.ui.screens.MonitoringState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import kotlinx.coroutines.runBlocking
 
 /**

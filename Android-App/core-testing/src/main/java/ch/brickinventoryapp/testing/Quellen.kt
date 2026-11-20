@@ -23,7 +23,7 @@ object Quellen {
      */
     val root: File by lazy { vereint("src/main/java/ch/brickinventoryapp", "quellen") }
 
-    /** Alle Ressourcen (app/ und core-ressourcen/), ebenso zusammengelegt. */
+    /** Alle Ressourcen (app/ und core-resources/), ebenso zusammengelegt. */
     val res: File by lazy { vereint("src/main/res", "res") }
 
     /** Die Tests aller Module (ohne core-testing, dessen Hilfen Hauptquellen sind). */
@@ -71,19 +71,19 @@ object Quellen {
      * Bildschirms gilt für alle, gleich in welcher Datei der Abschnitt gerade steht.
      */
     fun galerie(): String = listOf("GalleryScreen.kt", "GalerieFilter.kt", "GalerieKarte.kt", "GalerieErfassen.kt")
-        .joinToString("\n") { lies("sammlung/ui/screens/$it") }
+        .joinToString("\n") { lies("collection/ui/screens/$it") }
 
     /** Bildschirme, die wie die Galerie auf Geschwisterdateien verteilt sind, mit ihren Teilen. */
     private val distributed = mapOf(
-        "teile/ui/screens/PartsScreen.kt" to listOf("TeileFilterBlatt.kt", "TeileKarte.kt"),
-        "teile/ui/screens/MinifigsScreen.kt" to listOf("FigurenKarte.kt", "FigurenErfassen.kt"),
-        "teile/ui/screens/PartsListScreen.kt" to listOf("BaulisteZeilen.kt"),
-        "katalog/ui/screens/CatalogScreen.kt" to listOf("KatalogScrubber.kt", "KatalogKarte.kt"),
-        "sammlung/ui/screens/MerklisteScreen.kt" to listOf("MerklisteDialoge.kt", "MerklisteZeile.kt"),
-        "finanzen/ui/screens/GutscheineCard.kt" to listOf("GutscheinFormular.kt", "GutscheinKarte.kt"),
-        "finanzen/ui/screens/PdfViewerScreen.kt" to listOf("PdfSeiten.kt"),
-        "anmeldung/ui/screens/LoginScreen.kt" to listOf("LoginAnmelden.kt", "LoginRegistrieren.kt"),
-        "anmeldung/ui/screens/SetupScreen.kt" to listOf("SetupQr.kt"),
+        "parts/ui/screens/PartsScreen.kt" to listOf("TeileFilterBlatt.kt", "TeileKarte.kt"),
+        "parts/ui/screens/MinifigsScreen.kt" to listOf("FigurenKarte.kt", "FigurenErfassen.kt"),
+        "parts/ui/screens/PartsListScreen.kt" to listOf("BaulisteZeilen.kt"),
+        "catalog/ui/screens/CatalogScreen.kt" to listOf("KatalogScrubber.kt", "KatalogKarte.kt"),
+        "collection/ui/screens/MerklisteScreen.kt" to listOf("MerklisteDialoge.kt", "MerklisteZeile.kt"),
+        "finances/ui/screens/GutscheineCard.kt" to listOf("GutscheinFormular.kt", "GutscheinKarte.kt"),
+        "finances/ui/screens/PdfViewerScreen.kt" to listOf("PdfSeiten.kt"),
+        "login/ui/screens/LoginScreen.kt" to listOf("LoginAnmelden.kt", "LoginRegistrieren.kt"),
+        "login/ui/screens/SetupScreen.kt" to listOf("SetupQr.kt"),
     )
 
     /** Die Pfade eines Bildschirms samt seinen Teilen; für einen unverteilten nur er selbst. */
@@ -223,7 +223,7 @@ object Quellen {
     fun cameraSource(rel: String): String = buildString {
         append(bildschirm(rel))
         if (rel.endsWith("BarcodeScannerScreen.kt")) {
-            append("\n"); append(lies("sammlung/ui/screens/BarcodeAnalyzer.kt"))
+            append("\n"); append(lies("collection/ui/screens/BarcodeAnalyzer.kt"))
         }
         append("\n"); append(lies("ui/screens/KameraAufbau.kt"))
     }

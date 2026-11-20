@@ -31,7 +31,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.theme.Abstaende

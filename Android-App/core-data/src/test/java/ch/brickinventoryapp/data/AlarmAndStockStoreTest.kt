@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.domain.Geld
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
-import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.domain.Alarmrichtung
+import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.StorageExit
 import ch.brickinventoryapp.offline.StorageInventory

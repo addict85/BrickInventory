@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.Kategoriewahl
-import ch.brickinventoryapp.model.fach.ColorPicker
-import ch.brickinventoryapp.model.fach.WantedItemView
-import ch.brickinventoryapp.model.fach.SetAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.domain.Kategoriewahl
+import ch.brickinventoryapp.model.domain.ColorPicker
+import ch.brickinventoryapp.model.domain.WantedItemView
+import ch.brickinventoryapp.model.domain.SetAnsicht
+import ch.brickinventoryapp.contract.mapping.alsAnsicht
 
-import ch.brickinventoryapp.model.fach.Kontoauswahl
+import ch.brickinventoryapp.model.domain.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.MinifigsApi
 import ch.brickinventoryapp.data.api.SetsApi
@@ -14,14 +14,14 @@ import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.asQuery
 import ch.brickinventoryapp.data.api.withSetsAsQuery
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.fach.FigurAnsicht
-import ch.brickinventoryapp.model.fach.ManualMinifigView
-import ch.brickinventoryapp.model.fach.ManualPartView
-import ch.brickinventoryapp.model.fach.TeilAnsicht
-import ch.brickinventoryapp.model.fach.Merksortierung
-import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.lokal.Local
+import ch.brickinventoryapp.model.domain.FigurAnsicht
+import ch.brickinventoryapp.model.domain.ManualMinifigView
+import ch.brickinventoryapp.model.domain.ManualPartView
+import ch.brickinventoryapp.model.domain.TeilAnsicht
+import ch.brickinventoryapp.model.domain.Merksortierung
+import ch.brickinventoryapp.model.domain.Setsortierung
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.local.Local
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage

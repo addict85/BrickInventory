@@ -1,11 +1,11 @@
 Gegenprobe: Merken aus dem Katalog setzt den Preisalarm nicht
-Modul: feature-katalog
-Test: ch.brickinventoryapp.katalog.CatalogViewModelTest
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogViewModelTest
 Rot: merken legt den Posten an
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/viewmodel/CatalogViewModel.kt
 @@ -231,7 +231,6 @@
                  is Ergebnis.Fehler ->
                      meldungen.zeige(texts.meldungFuerSnackbar(r)?.let { Meldung.Resource(R.string.vm_error, listOf(it)) })

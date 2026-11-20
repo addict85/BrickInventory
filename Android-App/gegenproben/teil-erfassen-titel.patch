@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.UiUniformTest
 Rot: Texte sagen hinzufuegen und Preisvergleich
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -328,7 +328,7 @@
      <string name="parts_add">Teil hinzufügen</string>
      <string name="parts_delete_title">Teil löschen?</string>

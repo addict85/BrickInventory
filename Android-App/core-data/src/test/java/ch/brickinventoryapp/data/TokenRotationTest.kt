@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.netz.util.NetworkPolicy
+import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.repository.AccountRepository
-import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.di.Zugangslage
+import ch.brickinventoryapp.network.di.ServerWaechter
+import ch.brickinventoryapp.network.di.Zugangslage
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -27,7 +27,7 @@ import java.util.Collections
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.netz.di.PLACEHOLDER_BASE
+import ch.brickinventoryapp.network.di.PLACEHOLDER_BASE
 import java.io.IOException
 import okhttp3.mockwebserver.SocketPolicy
 import ch.brickinventoryapp.testing.testAccountRepository
