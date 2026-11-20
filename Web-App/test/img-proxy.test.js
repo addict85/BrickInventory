@@ -1,13 +1,13 @@
 /**
  * Bild-Proxy: Auslieferung, Zwischenspeicherung, Diagnose.
  *
- * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
+ * Gegenproben zu den nach image-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
  * die `req.fresh`-Zeile in src/images/http/imageCacheDelivery.ts entfernt → dort rot
  * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
  * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
  * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →
- * bild-proxy-deckel.test.js I und J.
+ * image-proxy-deckel.test.js I und J.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

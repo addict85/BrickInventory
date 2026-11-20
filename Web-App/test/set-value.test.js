@@ -5,15 +5,15 @@
  *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
  *   Null-Preis …“; effectiveCondition bei Erfassungen immer 'N' → rot
  *   „Bewertung und Anzeige …“; buildChart() mit firstRealIndex immer 0 oder
- *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-zustand-aggregat-db.test.js
+ *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-state-aggregate-db.test.js
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
  *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot);
- *   „nur 404 wird negativ gemerkt, kein 403“ läuft in bild-proxy-deckel.test.js.
+ *   „nur 404 wird negativ gemerkt, kein 403“ läuft in image-proxy-deckel.test.js.
  *   Am 08.11.2026 gestrichen: „priceGuideQuery holt ohne Angabe den Neupreis“ und
  *   „ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen“ →
- *   bricklink-preisfuehrer-db.test.js (Gegenproben A–D dort).
+ *   bricklink-price-guide-db.test.js (Gegenproben A–D dort).
  *   Am 09.11.2026 gestrichen: drei SQL-Suchen in Dateien ohne SQL (prüften nichts) und „der Preisjob
- *   holt alle Zustände …“ → preislauf-zustaende-db.test.js führt statesJeSet() aus.
+ *   holt alle Zustände …“ → price-run-states-db.test.js führt statesJeSet() aus.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -459,7 +459,7 @@ test('keine Testdatei prüft REQUIRE_DB selbst', () => {
   // Die Regel steht in test/helpers/db.js (dbOderSkip, keineDb,
   // missingPrecondition); eine eigene Fassung war 115-mal kopiert.
   // Gegenprobe (11.11.2026): `if (process.env.REQUIRE_DB === '1') throw e;`
-  // zurück in anleitung-auftrag-db.test.js → rot.
+  // zurück in instruction-job-db.test.js → rot.
   const eigene = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.js') && n !== path.basename(__filename))
@@ -570,10 +570,10 @@ test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
 
 test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () => {
   // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
-  // Gegenprobe (15.11.2026): sicherheit-server-grenzen-db.test.js zurück auf
+  // Gegenprobe (15.11.2026): security-server-limits-db.test.js zurück auf
   // sicherheit-runde11-db.test.js → rot mit diesem Namen.
   const ROUND = /runde\d|runde-|kleinbefunde|-befunde-/;
-  assert.ok(ROUND.test('oberflaeche-runde25b-browser.test.js') && !ROUND.test('admin-hash-runden-db.test.js'));
+  assert.ok(ROUND.test('oberflaeche-runde25b-browser.test.js') && !ROUND.test('admin-hash-rounds-db.test.js'));
   assert.deepEqual(
     fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && ROUND.test(n)),
     [],
@@ -794,9 +794,9 @@ const FALLBACKS = {
 test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
   // Die DB-Fassade ist durch testData()/testAccess() ersetzt; umgebogene require und
   // eigene Router (routerServer) werden weniger.
-  // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
+  // Gegenproben (13.11.2026): in indexes-db.test.js wieder `_req('db/database.js')` → rot
   // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
-  // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
+  // in app-chain-db.test.js testServer → routerServer → rot (14 statt 13).
   // Seit dem 13.11.2026 zählt test/helpers/ mit (helpers/systemrahmen.js, die Definition in
   // helpers/server.js; je +1 gegenüber der Zählung nur der Testdateien); Gegenprobe:
   // `Module._load = l;` in helpers/zeit.js → rot (12 statt 11).
@@ -902,7 +902,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
   // eine Bedingung (helpers/zeit.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
   // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt.
-  // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot.
+  // Gegenprobe (05.11.2026): `await warte(500);` in history-browser.test.js → rot.
   const LIMIT = 40;
   assert.equal(
     fixedWaitTimes(
@@ -1525,7 +1525,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
   // werden beim Anfassen nachgetragen.
-  // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
+  // Gegenprobe (05.11.2026): in lint-ratchet.test.js „Gegenproben“ umbenannt → rot (112).
   const LIMIT = 70;
   const ohne = fs
     .readdirSync(__dirname)
@@ -1541,7 +1541,7 @@ test('in Testkommentaren genannte Pfade gibt es', () => {
   // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
   // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der
   // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle. Gegenprobe (14.11.2026): ohne gebautes
-  // Bündel und ohne ARTIFACTS → rot (buendel-gebaut.test.js); derselbe Pfad mit `app.bundle2.js` → rot.
+  // Bündel und ohne ARTIFACTS → rot (bundle-built.test.js); derselbe Pfad mit `app.bundle2.js` → rot.
   const REPO = path.join(WEB, '..');
   const ordner = [WEB, REPO]
     .flatMap(w =>

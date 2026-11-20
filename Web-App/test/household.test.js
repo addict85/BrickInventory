@@ -64,7 +64,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   });
 
   await t.test('Schreibrechte kommen nie aus dem Gedächtnis', async () => {
-    // Das Blickfeld ist gemerkt (haushalt-gedaechtnis-db.test.js); über einen
+    // Das Blickfeld ist gemerkt (household-memory-db.test.js); über einen
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
     hh.reportHouseholdChange();
@@ -176,7 +176,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass die
   // Sperre wirklich greift — und zwar auf (Quellkonto, Set) und nicht auf dem
   // Zielkonto oder einem festen Schluessel — laeuft in
-  // test/sperre-beim-verschieben-db.test.js ueber die echte Adresse; beides
+  // test/lock-on-move-db.test.js ueber die echte Adresse; beides
   // zusammen, nicht eines statt des anderen.
   assert.ok(src.includes('sets.moveSet('), 'Die Route ruft den Dienst');
   assert.ok(

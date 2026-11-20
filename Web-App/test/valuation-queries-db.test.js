@@ -1,0 +1,138 @@
+/**
+ * Die Teile-Bewertung darf nicht je Teil viermal nachfragen.
+ *
+ * @superuser (Ratsche in test/roles-separation-db.test.js)
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const db = testData();
+const fc = _req('src/finances/financeCalc.js');
+const { holdsPart } = require('./helpers/bestand');
+
+const UID = 990101;
+const N = 20; // genug, damit „je Stück" von „einmalig" trennbar ist
+const NR = i => `bwt-teil-${i}`;
+
+// Alle Abfragen dieses Laufs mitschreiben.
+const gesehen = [];
+let count = false;
+const altQuery = db.pool.query.bind(db.pool);
+db.pool.query = (text, ...rest) => {
+  if (count) {
+    const sql = String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' ');
+    gesehen.push(sql);
+  }
+  return altQuery(text, ...rest);
+};
+const howOften = muster => gesehen.filter(q => muster.test(q)).length;
+
+async function aufraeumen() {
+  await db.run('DELETE FROM parts WHERE user_id = $1', [UID]).catch(() => {});
+  await db.run('DELETE FROM part_price_cache WHERE part_number LIKE $1', ['bwt-teil-%']).catch(() => {});
+  await db.run("DELETE FROM bl_mapping WHERE type='part' AND rb_id LIKE $1", ['bwt-teil-%']).catch(() => {});
+  await db.run('DELETE FROM users WHERE id = $1', [UID]).catch(() => {});
+}
+
+test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch {
+    return t.skip('keine Test-Datenbank erreichbar');
+  }
+
+  try {
+    await aufraeumen();
+    await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
+    for (let i = 0; i < N; i++) {
+      // Zustand und Preis stehen seit Migration 0035 in der Erfassung, die
+      // Stückzahl seit 0038 — holdsPart() legt beides an.
+      await holdsPart(db, UID, NR(i), { menge: 1, colorId: 4 });
+      // Der Betriebsfall: Der Nachtrag-Job hat nachgesehen. Eine Zeile mit
+      // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
+      // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.
+      await db.run(
+        "INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = NULL",
+        [NR(i)],
+      );
+      // Warmer Preis-Cache — der Normalfall. Ohne ihn misst man den
+      // BrickLink-Abruf mit, den es beim zweiten Aufruf nicht mehr gibt.
+      for (const zustand of ['N', 'U'])
+        await db.run(
+          `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
+           VALUES ($1, 4, $2, 'EUR', 1.5, 1.4, NOW()) ON CONFLICT DO NOTHING`,
+          [NR(i), zustand],
+        );
+    }
+    // Farbtabelle: rb_colors wird als GANZES gemerkt. Ohne Zeile für Farbe 4
+    // wäre die Karte leer und würde bewusst nicht gemerkt (siehe farbkarte).
+    await db
+      .run(
+        'INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4, $1, 4) ON CONFLICT (id) DO UPDATE SET bl_color_id = 4',
+        ['Rot'],
+      )
+      .catch(() => {});
+
+    gesehen.length = 0;
+    count = true;
+    const ergebnis = await fc.valueParts(UID, [UID]);
+    count = false;
+
+    assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');
+
+    // ── 1. Keine EINZELabfrage je Teil mehr ────────────────────────────────
+    //
+    // Es ist nur noch EINE Einzelabfrage, nicht zwei: Der Rückfall auf
+    // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
+    // Quelle nicht mehr gibt (die Begründung steht in src/finances/calculation/prices.ts).
+    assert.equal(
+      howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
+      0,
+      'die Zuordnung wurde einzeln gefragt — das Vorladen (loadBlNumbersBefore) greift nicht',
+    );
+
+    // ── 2. Statt dessen genau eine Sammelabfrage ───────────────────────────
+    assert.equal(
+      howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
+      1,
+      'die Sammelabfrage auf bl_mapping fehlt oder lief mehrfach',
+    );
+
+    // ── 3. Die Farbtabelle höchstens einmal ────────────────────────────────
+    // Höchstens, nicht genau: Ein vorheriger Test im selben Prozess kann sie
+    // bereits geladen haben, und dann ist Null die richtige Zahl.
+    const farben = howOften(/FROM rb_colors/);
+    assert.ok(farben <= 1, `rb_colors wurde ${farben}x gefragt — erwartet höchstens 1x für alle Teile`);
+
+    // ── 4. Die Gesamtzahl bleibt unter zwei Umläufen je Teil ───────────────
+    // Gemessen: 1,1 je Teil (die Preis-Cache-Zeile plus ein paar einmalige).
+    // Die Grenze steht bei 2, damit sie nicht bei jeder harmlosen Änderung
+    // reisst — aber weit unter den 4,1 von vorher.
+    assert.ok(
+      gesehen.length < 2 * N,
+      `${gesehen.length} Abfragen für ${N} Teile (${(gesehen.length / N).toFixed(1)} je Teil) — erwartet unter 2 je Teil`,
+    );
+
+    // ── GEGENPROBE ────────────────────────────────────────────────────────
+    // Sähe der Zähler die Einzelabfragen überhaupt? Ein Teil, das NICHT
+    // vorgeladen wurde, muss beide Einzelwege auslösen — sonst prüfen die
+    // Zusicherungen oben nichts.
+    gesehen.length = 0;
+    count = true;
+    await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
+    count = false;
+    assert.equal(
+      howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
+      1,
+      'Gegenprobe: die Einzelabfrage auf bl_mapping wurde nicht mitgezählt',
+    );
+  } finally {
+    db.pool.query = altQuery;
+    await aufraeumen();
+    await db.pool.end().catch(() => {});
+  }
+});

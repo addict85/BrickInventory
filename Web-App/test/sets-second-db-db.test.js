@@ -1,0 +1,206 @@
+/**
+ * Ein Sets-Bereich mit eigenem Zugang (buildServices(zweite, …)) liest und schreibt nur
+ * dort, auch über Haushalt, Einstellungen, Lagerort, Preisalarm, Papierkorb, Katalog (Inventar),
+ * Finanzen (fetchPrice, priceHistorySet) und Aufträge. Der Zugang des Prozesses zählt mit und
+ * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
+ *
+ * Gegenproben (11.11.2026 gemessen, je einzeln):
+ *   A  currencyOf() in src/sets/service.ts wieder über getSetting(uid, …) →
+ *      rot: „Währung aus der zweiten Datenbank“, „Preisalarm …“ (Währung des
+ *      Alarms) und „der Prozesszugang blieb unberührt“
+ *   B  deleteSetFor() in src/sets/delete.ts mit
+ *      haushaltBereich().schreibbereich(s.nutzer) → rot: „der
+ *      Prozesszugang blieb unberührt“
+ *   C  setLocationOfSets() wieder über bestandBereich().locationService →
+ *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
+ *
+ * Gegenproben (11.11.2026 gemessen, je einzeln):
+ *   D  setPrice() in src/sets/prices.ts ruft fetchPrice() ohne den Zugang der
+ *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
+ *      Prozesszugang …“
+ *   E  setPriceHistory() ruft priceHistorySet() ohne sk.finances → rot:
+ *      „Preisverlauf aus der zweiten Datenbank“ und „der Prozesszugang …“
+ *   F  partListOfSets() ruft newestInventory(setNum) ohne sk.katalog → rot:
+ *      „Teileliste aus dem Katalog …“ und „der Prozesszugang …“
+ *   G  derselbe placeJobOne('bilder', …) ohne sk.auftraege → rot:
+ *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
+ *      Prozesszugang …“
+ *   H  src/household/household.ts wieder mit einem Gedächtnis für alle Zugänge →
+ *      rot: „Haushaltsgedächtnis je Zugang“ (14.11.2026 erneut, das Gedächtnis jetzt im
+ *      Fach des Bereichs: gedaechtnis() mit einem Fach für alle → rot, derselbe Test)
+ *
+ * @superuser (Ratsche in test/roles-separation-db.test.js)
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const ROOT = path.join(__dirname, '..');
+const { testName, cleanRemainder, id } = require('./helpers/testnamen');
+const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+const quellen = require('./helpers/sources');
+const _req = quellen.buildAndRequire();
+const { dataOrSkip } = require('./helpers/db');
+const { createDb } = _req('db/database.js');
+
+const NAME = testName('sets_zweite');
+const SN = '99877-1';
+
+/** Zählt jede Anfrage, die über den Zugang oder seinen Pool geht. */
+function zaehle(zugang) {
+  const n = { anfragen: 0 };
+  const pool = zugang.pool;
+  const echt = { query: pool.query.bind(pool), connect: pool.connect.bind(pool) };
+  pool.query = (...a) => {
+    n.anfragen++;
+    return echt.query(...a);
+  };
+  pool.connect = (...a) => {
+    n.anfragen++;
+    return echt.connect(...a);
+  };
+  n.zurueck = () => Object.assign(pool, echt);
+  return n;
+}
+
+test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t => {
+  const db = await dataOrSkip(t, _req);
+  if (!db) return;
+  const admin = new Client({ connectionString: process.env.DATABASE_URL });
+  await admin.connect();
+  await cleanRemainder(admin, 'sets_zweite');
+  await admin.query(`CREATE DATABASE ${id(NAME)}`);
+  const url = new URL(process.env.DATABASE_URL);
+  url.pathname = '/' + NAME;
+  const zweite = createDb({ verbindung: { connectionString: url.toString() }, pool: { max: 4 } });
+  t.after(async () => {
+    await zweite.notification.close();
+    await zweite.pool.end().catch(() => {});
+    await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
+    await admin.end().catch(() => {});
+    quellen.buildAndRequire();
+    await db.pool.end().catch(() => {});
+  });
+  await zweite.initSchemaOnce();
+
+  const { id: uid } = await zweite.get(
+    "INSERT INTO users (username, password_hash) VALUES ('nur_in_zwei', 'x') RETURNING id",
+  );
+  await zweite.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
+  await zweite.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
+  for (const zustand of ['N', 'U'])
+    await zweite.run(
+      `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
+       VALUES ($1, $2, 'CHF', 40, 42.5, 45, 42.5, 7, NOW())`,
+      [SN, zustand],
+    );
+  await zweite.run(
+    `INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price)
+     VALUES ($1, 'N', 'CHF', 41, 41, 39, 43)`,
+    [SN],
+  );
+  await zweite.run('INSERT INTO rb_inventories (id, set_num, version) VALUES (77, $1, 1)', [SN]);
+  await zweite.run(
+    `INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare) VALUES (77, '3001', 0, 4, false)`,
+  );
+
+  // Wie der Server (startup/wiring.ts), nur über den zweiten Zugang.
+  const { buildServices } = _req('startup/wiring.js');
+  // Dienste ohne Schlüssel dafür rufen die Module über den Kontext dieses Zugangs.
+  const contexts = {};
+  const alle = buildServices(zweite, { contexts });
+  const sets = alle.sets;
+  const prozess = zaehle(quellen.testAccess());
+  t.after(() => prozess.zurueck());
+
+  await t.test('Währung aus der zweiten Datenbank', async () => {
+    assert.equal(await require(path.join(ROOT, 'dist/src/sets/prices.js')).currencyOf(contexts.sets, uid), 'CHF');
+  });
+
+  await t.test('Lagerort in der zweiten Datenbank', async () => {
+    const { ort, n } = await sets.setLocationOfSets(uid, SN, 'Kiste Z');
+    assert.equal(ort, 'Kiste Z');
+    assert.equal(n, 1);
+    const { orte } = await sets.locationsWithDefault(uid, undefined);
+    assert.ok(
+      orte.some(o => o.name === 'Kiste Z' || o === 'Kiste Z'),
+      JSON.stringify(orte),
+    );
+  });
+
+  await t.test('Preisalarm in der zweiten Datenbank', async () => {
+    const alarm = await sets.setAlarmOfSets(uid, SN, { direction: 'unter', threshold: 12.5, condition: 'N' });
+    assert.equal(alarm.currency_code, 'CHF', 'die Währung des Alarms kommt aus der zweiten Datenbank');
+    assert.equal((await sets.readSetAlerts(uid, SN)).length, 1);
+    assert.equal(await sets.deleteAlarmOfSets(uid, SN, 'N'), 1);
+  });
+
+  await t.test('Marktpreis aus dem Cache der zweiten Datenbank', async () => {
+    const p = await sets.setPrice(uid, { nutzer: uid }, SN);
+    assert.equal(p.error, undefined, JSON.stringify(p));
+    assert.equal(Number(p.avg_price), 42.5);
+    assert.equal(p.from_cache, true);
+    assert.equal(p.currency, 'CHF');
+  });
+
+  await t.test('Preisverlauf aus der zweiten Datenbank', async () => {
+    const v = await sets.setPriceHistory(uid, { nutzer: uid }, SN);
+    assert.equal(Number(v.current.N?.avg_price), 42.5);
+    assert.deepEqual(
+      v.history_new.map(p => Number(p.avg_price)),
+      [41],
+    );
+  });
+
+  await t.test('Teileliste aus dem Katalog der zweiten Datenbank, Bilderauftrag dort', async () => {
+    const r = await require(path.join(ROOT, 'dist/src/sets/content.js')).partListOfSets(
+      contexts.sets,
+      SN,
+      async () => {},
+    );
+    assert.equal(r.source, 'db');
+    assert.deepEqual(
+      r.parts.map(p => [p.part_number, p.total_quantity]),
+      [['3001', 4]],
+    );
+    const { n } = await zweite.get(
+      "SELECT count(*)::int AS n FROM jobs WHERE type = 'bilder' AND payload->>'set_number' = $1",
+      [SN],
+    );
+    assert.equal(n, 1, 'der Bilderauftrag steht in der zweiten Datenbank');
+  });
+
+  await t.test('Löschen über Haushalt und Papierkorb der zweiten Datenbank', async () => {
+    const trash = await sets.deleteSetFor({ nutzer: uid }, SN);
+    assert.equal(trash.length, 1);
+    assert.equal((await zweite.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [uid])).n, 0);
+    assert.equal(
+      (await zweite.get("SELECT count(*)::int AS n FROM trash WHERE user_id = $1 AND type = 'set'", [uid])).n,
+      1,
+    );
+  });
+
+  await t.test('der Prozesszugang blieb unberührt', () => {
+    assert.equal(prozess.anfragen, 0);
+  });
+
+  await t.test('Haushaltsgedächtnis je Zugang', async () => {
+    // Dieselbe Konto-ID, zwei Datenbanken: In der zweiten hat sie ein Unterkonto, im Prozesszugang nicht.
+    const UNTER = 987654;
+    await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
+    await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
+    alle.household.reportHouseholdChange();
+    assert.deepEqual(
+      (await require(path.join(ROOT, 'dist/src/household/household.js')).householdOf(contexts.household, uid))
+        .memberIds,
+      [uid, UNTER],
+    );
+    const inProcess = await _req('src/household/household.js').householdOf(uid);
+    assert.ok(
+      !inProcess.memberIds.includes(UNTER),
+      `Gedächtnis der zweiten Datenbank geliehen: ${inProcess.memberIds}`,
+    );
+  });
+});

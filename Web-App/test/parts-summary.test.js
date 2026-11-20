@@ -343,7 +343,7 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   );
 
   // Sorten und Farben zählen beide Quellen, wie die Liste darunter (siehe
-  // teile-kennzahlen-einzeln-db.test.js); die Menge bleibt nach Quelle getrennt.
+  // parts-metrics-single-db.test.js); die Menge bleibt nach Quelle getrennt.
   assert.equal(fromSummary.unique_parts, 2, 'Das manuelle Teil fehlt in den Sorten');
   assert.equal(fromSummary.unique_colors, 2, 'Die Farbe des manuellen Teils fehlt');
   assert.equal(fromSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');

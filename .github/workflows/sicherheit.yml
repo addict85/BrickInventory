@@ -256,7 +256,7 @@ jobs:
       # Wie im Betrieb: NODE_ENV=production (Startverbote, Cookies, CSP).
       # Das Protokoll geht in eine Datei, damit ein Fehlstart lesbar ist.
       # Der Dienstcontainer kennt nur den Superuser; ZAP prüft die HTTP-Seite,
-      # die Datenbankrolle prüft db-rolle-db.test.js.
+      # die Datenbankrolle prüft db-role-db.test.js.
       - name: Server starten
         env:
           NODE_ENV: production

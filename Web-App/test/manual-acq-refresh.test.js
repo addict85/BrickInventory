@@ -318,7 +318,7 @@ test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', asy
 
 test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   // Verbot: Erfassungen entstehen nur über addPurchaseAtTag — sonst
-  // gälte die Tagesregel (erfassung-je-zustand-db.test.js) nicht für jeden Weg.
+  // gälte die Tagesregel (entry-per-state-db.test.js) nicht für jeden Weg.
   for (const f of [
     'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',

@@ -5,7 +5,7 @@
  * Typprüfung der Oberfläche: tsc über tsconfig.frontend.json (ES-Module) und
  * tsconfig.frontend-skripte.json (die zwei klassischen Skripte). Beide müssen
  * 0 Meldungen haben. `--json` gibt die Meldungen je Lauf maschinenlesbar aus
- * (für test/browser-namen.test.js).
+ * (für test/browser-names.test.js).
  *
  *   npm run typecheck:frontend
  */

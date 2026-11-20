@@ -9,7 +9,7 @@ import org.junit.Test
  * Download zeigte `Range: bytes=<Grösse>-` hinter das letzte Byte, und der Server
  * antwortet zu Recht mit 416 (über die Anleitungs-Route als 404). Die Entscheidung
  * „fertig oder ab welchem Byte" ist darum eine reine Funktion und hier ausgeführt;
- * die Serverhälfte prüft Web-App/test/anleitung-bereich.test.js.
+ * die Serverhälfte prüft Web-App/test/instruction-area.test.js.
  *
  * Gegenprobe: in pdfSchritt() den ersten Zweig entfernt, so dass eine fertige Datei
  * wieder als Fortsetzpunkt gilt → der erste Schritt unten wird rot.

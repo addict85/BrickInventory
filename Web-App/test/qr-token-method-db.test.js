@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // APP_BASE_URL eine VORBEDINGUNG der Route: Ohne sie sagt sie mit 503 ab,
 // damit kein Code mit der Browseradresse hinausgeht. Diese Datei prueft etwas
 // anderes — hier wird die Vorbedingung nur erfuellt, nicht geprueft. Das tut
-// test/qr-adresse.test.js.
+// test/qr-address.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const { buildAndRequire, testData } = require('./helpers/sources');

@@ -49,7 +49,7 @@ test('Annotationen fuer rote Tests', async t => {
       'not ok 7 - Sitzung: gelesen wird immer',
       '  ---',
       '  duration_ms: 3178.8',
-      "  location: '/home/runner/work/x/Web-App/test/sitzung-beruehrung-db.test.js:78:1'",
+      "  location: '/home/runner/work/x/Web-App/test/session-touch-db.test.js:78:1'",
       '  failureType: testCodeFailure',
       '  error: |-',
       '    2 Schreibvorgaenge bei 20 Anfragen — erwartet genau 1',
@@ -74,7 +74,7 @@ test('Annotationen fuer rote Tests', async t => {
     );
     assert.match(m, /expected: 1/, 'die Erwartung fehlt');
     assert.match(m, /actual: 2/, 'der Istwert fehlt');
-    assert.match(m, /sitzung-beruehrung-db\.test\.js:78/, 'die Fundstelle fehlt');
+    assert.match(m, /session-touch-db\.test\.js:78/, 'die Fundstelle fehlt');
     // Der Stapelabzug bleibt draussen: lang, und die Fundstelle steht schon da.
     assert.doesNotMatch(m, /TestContext/, 'der Stapelabzug gehoert nicht in die Annotation');
     // Eine Annotation ist EINE Zeile; Umbrueche stehen als %0A darin.

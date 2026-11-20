@@ -211,7 +211,7 @@ function main() {
     return;
   }
 
-  // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-gebaut.test.js).
+  // --outfile=…: nur bündeln, an einen anderen Ort (test/bundle-built.test.js).
   const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
   if (ziel) {
     buildBundle(path.resolve(ziel));

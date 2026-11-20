@@ -291,7 +291,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
     'startImageDemand() wird nicht beim Aufbau der Datenbank aufgerufen',
   );
 
-  // Abgearbeitet wird nur im Job-Prozess: test/web-und-jobs-db.test.js prüft das am echten Server.
+  // Abgearbeitet wird nur im Job-Prozess: test/web-and-jobs-db.test.js prüft das am echten Server.
 });
 
 test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {

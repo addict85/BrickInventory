@@ -251,7 +251,7 @@ export const FEHLER = {
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).',
   },
   // Die 60 steht ausgeschrieben, weil fachfehler() keine Platzhalter füllt;
-  // test/lagerort-vorrat-db.test.js prüft die Grenze (60 erlaubt, 61 abgewiesen).
+  // test/location-stock-db.test.js prüft die Grenze (60 erlaubt, 61 abgewiesen).
   lagerort_zu_lang: {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
     en: 'Storage location is too long (at most 60 characters).',

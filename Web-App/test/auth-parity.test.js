@@ -113,7 +113,7 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
       outlier.join('\n  ') +
       '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
       'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
-      '(415 ms Unterschied, siehe test/login-zeitgleich-db.test.js).',
+      '(415 ms Unterschied, siehe test/login-time-equal-db.test.js).',
   );
 });
 
@@ -160,7 +160,7 @@ test('die Benutzernamen-Regel', () => {
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  // Dass PUT /profile sie anwendet (auch gross/klein), prüft anmeldung-regeln-db.test.js.
+  // Dass PUT /profile sie anwendet (auch gross/klein), prüft login-rules-db.test.js.
 });
 
 test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {

@@ -13,7 +13,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * Diese Regel zaehlt die Wege ab. Sie kann nicht pruefen, ob das Feld auch
  * gesendet wird — das tun die Datenbankpruefungen der Webapp
- * (test/lagerort-beim-erfassen-db.test.js), und beide Oberflaechen rufen
+ * (test/location-on-add-db.test.js), und beide Oberflaechen rufen
  * dieselben Routen.
  *
  * ── Gegenprobe (durchgefuehrt, Ergebnis im Commit) ──────────────────────────

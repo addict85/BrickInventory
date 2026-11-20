@@ -257,7 +257,7 @@ const C = {
   // Die Merkliste — Marcos „was man haben moechte", getrennt
   // vom Besitz. nur-v1 und nicht paritaet: Beide Oberflaechen rufen dieselben
   // Adressen, es gibt also gar kein zweites Gegenstueck zu vergleichen.
-  // Die Regeln dahinter pruefet test/merkliste-db.test.js gegen die DB.
+  // Die Regeln dahinter pruefet test/wanted-db.test.js gegen die DB.
   'GET /api/v1/wanted': 'nur-v1',
   'POST /api/v1/wanted': 'nur-v1',
   'DELETE /api/v1/wanted/:setNumber/:condition': 'nur-v1',
@@ -311,7 +311,7 @@ const C = {
   // geaendert werden"). Ebenfalls nur-v1: Beide Oberflaechen rufen dieselbe
   // Adresse. Die Regel dahinter — Aufnahmedatum bleibt, Preisalarm zieht mit,
   // ein Merkposten, den das Ziel schon hat, wird zusammengefuehrt — prueft
-  // test/merkliste-db.test.js gegen die Datenbank.
+  // test/wanted-db.test.js gegen die Datenbank.
   'PUT /api/v1/wanted/:setNumber/:condition/inhaber': 'nur-v1',
   // Die Marktpreise eines Merkpostens. Eigene Adresse, weil /sets/:sn/price mit
   // 404 antwortet, wenn einem das Set nicht gehoert — Begruendung an der Route.

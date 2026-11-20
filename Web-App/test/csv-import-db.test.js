@@ -264,7 +264,7 @@ test('der Importprozess baut seinen Zugang über createDb, ohne Fristen der Anfr
 });
 
 test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', () => {
-  // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/abruf-helfer.test.js
+  // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/fetch-helper.test.js
   // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
   const call = src.slice(src.indexOf('await openHttps('), src.indexOf('});', src.indexOf('await openHttps(')));

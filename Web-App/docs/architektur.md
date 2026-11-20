@@ -1,6 +1,6 @@
 # Architektur der Web-App
 
-Kurzüberblick. Die Regeln selbst prüft `test/schichten.test.js`; dieses
+Kurzüberblick. Die Regeln selbst prüft `test/layers.test.js`; dieses
 Dokument sagt, wo was hingehört. Ändert sich die Rangfolge dort, ändert sie
 sich hier (der Test vergleicht beide).
 
@@ -54,7 +54,7 @@ Absicht, solange es nur von unten gebraucht wird:
   `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
   Sie gibt nur Typen, die Fabrik (`erzeugeX`) und reine Funktionen her; was
   Datenbank, Netz oder Dateien braucht, ruft ein anderer Bereich über den Kontext
-  (`k.katalog.…`, in einer Transaktion `t.katalog.…`). Das prüft `test/schichten.test.js`.
+  (`k.katalog.…`, in einer Transaktion `t.katalog.…`). Das prüft `test/layers.test.js`.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
   (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur Typen
@@ -156,7 +156,7 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
   wählt nur `src/http/errorKind.ts`, die Antwort schreibt nur `fehlerAntwort`.
   Felder neben `code` und `error` (etwa `wartenSek`) trägt der Fehler als `zusatz`.
   Dienste geben keine Absage als Ergebnis zurück (`{ fehler }`, `{ ok: false }`),
-  Routen rufen kein `sendeFehler` (`test/schichten.test.js`; die eine Ausnahme ist die
+  Routen rufen kein `sendeFehler` (`test/layers.test.js`; die eine Ausnahme ist die
   Uhr in `rumpfFrist`, die nach `next()` läuft). Alles andere fliegt weiter bis zum
   Fehlerweg der App oder des Auftrags.
 - **Lesepfade** mit Teilen, die ausfallen dürfen, nehmen `versuche()` oder
@@ -252,9 +252,9 @@ Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugen
 
 | Datei | Wozu | Prüfung |
 |---|---|---|
-| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-basis-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
-| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-frisch-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
-| `db/rows.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/zeilentypen-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
+| `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-base-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
+| `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-fresh-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
+| `db/rows.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/rows-types-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
 
 Von Hand geändert wird keine davon; eine Schemaänderung ist immer eine
 neue Migration.
@@ -278,7 +278,7 @@ einbindet. Die Stufen gelten deshalb auch für Daten:
 - Die Kontobedingung eines Bausteins ist nur ein Platzhalter (`Konten` in `db/accounts.ts`:
   `= $n` oder `= ANY($n)`).
 
-`test/gemeinsame-tabellen-db.test.js` teilt die Lesestellen ein: Aufwärts gibt es keine, weder
+`test/shared-tables-db.test.js` teilt die Lesestellen ein: Aufwärts gibt es keine, weder
 direkt noch über `db/` (was ein Baustein liest, zeigt sein Ergebnis); Lesen des Katalogs und
 direkt abwärts zählen je eine Ratsche, die nur sinken darf. Ein Trigger schreibt nur in Tabellen
 seines Besitzers; die Ausnahmen (Teilezähler, Vormerkung für die Teile-Zusammenfassung) stehen
@@ -322,15 +322,15 @@ schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige
 Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertrag schon
 umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt
-`req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/schichten.test.js`).
+`req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/layers.test.js`).
 Ein Ereignisstrom (`art: 'strom'`) nennt sein Ereignis (`ereignis`); die Oberfläche öffnet ihn nur
 über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-typen/vertrag.d.ts`).
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
 Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft
 die Datei aus dem Kotlin-Quelltext (`Android-App/tools/vertrag/`), die Web-Suite prüft den
-Server gegen sie (`test/app-schnittstelle.test.js`, `vertrag-lesen-db`,
-`vertrag-schreiben-db`). Kotlin-Quelltext liest die Web-Suite nicht (`test/ratschen.test.js`).
+Server gegen sie (`test/app-interface.test.js`, `contract-read-db`,
+`contract-write-db`). Kotlin-Quelltext liest die Web-Suite nicht (`test/ratschen.test.js`).
 
 Eine Route registriert sich über ihren Schlüssel:
 `router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async req => …)`.

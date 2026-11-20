@@ -117,7 +117,7 @@ function openLogViewer() {
   win.document.close();
 }
 
-/** Je Code des Servers ein ausgeschriebener Schlüssel: So prüft test/i18n-aufrufe.test.js, dass es ihn gibt. */
+/** Je Code des Servers ein ausgeschriebener Schlüssel: So prüft test/i18n-calls.test.js, dass es ihn gibt. */
 /** @type {Record<string, (w?: Record<string, string | number>) => string>} */
 const SUB_TEXTS = {
   teil_gemappt: w => tRaw('monitor.sub.teil_gemappt', w),
@@ -287,7 +287,7 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
 const serviceName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : j.label || k;
 
-/** Feste Schlüssel statt zusammengesetzter (test/i18n-aufrufe.test.js); Text wie im Protokoll (src/http/proxyHint.ts). */
+/** Feste Schlüssel statt zusammengesetzter (test/i18n-calls.test.js); Text wie im Protokoll (src/http/proxyHint.ts). */
 const PROXY_HINT = {
   gateway: 'monitor.proxy.gateway',
   docker_netz: 'monitor.proxy.docker_netz',

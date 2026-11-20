@@ -4,7 +4,7 @@
  * Gegenproben (08.11.2026 gemessen): in finanzen.js den Gesamtwert wieder
  * selbst addieren (`const grandTotal = setsQtyAvg + extra`) → rot: „die
  * Webapp zeigt den Gesamtwert des Servers“. Dass der Server ihn liefert,
- * prüft geschenk-guv-db.test.js („der Gesamtwert kommt fertig …“, C).
+ * prüft gift-guv-db.test.js („der Gesamtwert kommt fertig …“, C).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

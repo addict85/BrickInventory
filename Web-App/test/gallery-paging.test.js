@@ -2,7 +2,7 @@
  * Seitenweise Listen am Server, an den Routen gegen die Datenbank:
  * Sortier-Whitelist mit Rückfall, gebundener Suchbegriff, Themenliste über
  * den ganzen Bestand nur auf Seite 1, Zähler über Gruppen, ohne page_size
- * alles. Das Verhalten der Oberfläche prüft test/listen-paging-oberflaeche.test.js.
+ * alles. Das Verhalten der Oberfläche prüft test/listen-paging-ui.test.js.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  in SET_SORTS qty_asc auf `s.quantity DESC, …` → rot: „nach Anzahl …“

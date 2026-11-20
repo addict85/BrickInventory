@@ -135,7 +135,7 @@ test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
       [datei],
       `${name}() muss genau einmal deklariert sein (in ${datei}) — sonst haengt ` +
         'das Escaping an der Ladereihenfolge, und zwei Fassungen laufen ' +
-        'auseinander. Genau das hat test/wunschliste-xml.test.js schon einmal ' +
+        'auseinander. Genau das hat test/wish-list-xml.test.js schon einmal ' +
         'gemeldet: Die App maskierte, die Webapp nicht.',
     );
   }

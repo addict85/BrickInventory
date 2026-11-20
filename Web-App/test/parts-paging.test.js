@@ -1,7 +1,7 @@
 /**
  * Teileliste und Bilder: was der Server liefern muss (Seiten, Grenzen,
  * Farbfilter) an der Test-DB, und was die Oberfläche daraus macht in jsdom.
- * Das Blättern selbst prüft test/listen-paging-oberflaeche.test.js.
+ * Das Blättern selbst prüft test/listen-paging-ui.test.js.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
  *   A  in pageFromSummary den Farbfilter wieder über

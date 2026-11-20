@@ -12,7 +12,7 @@
  *   C  `listen('csv_sync_trigger', …)` wieder in startup/jobsProcess.ts →
  *      rot: „kein Planer fragt mehr nach Auslösern“
  *
- * @superuser (Ratsche in test/rollen-trennung-db.test.js)
+ * @superuser (Ratsche in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

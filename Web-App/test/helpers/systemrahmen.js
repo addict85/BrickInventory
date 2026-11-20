@@ -4,7 +4,7 @@
  * Dienste, Dienste ohne Konto), läuft im Systemrahmen, also
  * über die Systemrolle am Zeilenschutz vorbei. HTTP-Anfragen verlassen ihn
  * (asRequest) und laufen wie im Betrieb. Die Zahl dieser Dateien darf nur sinken
- * (test/rollen-trennung-db.test.js); eine umgestellte Datei setzt das Konto selbst (asRequest).
+ * (test/roles-separation-db.test.js); eine umgestellte Datei setzt das Konto selbst (asRequest).
  */
 const Module = /** @type {any} */ (require('node:module'));
 const path = require('node:path');

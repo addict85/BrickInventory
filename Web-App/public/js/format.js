@@ -5,7 +5,7 @@ import { accountCurrency } from './state.js';
 
 /**
  * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest EUR: Sonst
- * stand bei Franken still „EUR“ da. test/geldformat.test.js hält fest, dass kein Aufruf sie weglässt.
+ * stand bei Franken still „EUR“ da. test/money-format.test.js hält fest, dass kein Aufruf sie weglässt.
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
  */

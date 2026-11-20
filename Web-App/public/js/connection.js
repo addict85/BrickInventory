@@ -46,7 +46,7 @@ export function showConnection(erreichbar) {
 // Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine Meldung zu zeigen, sind die
 // schreibenden Bedienelemente gesperrt und nennen per aria-describedby das Band als Grund. Ob ein Knopf
 // schreibt, entscheidet seine Aktion, nicht ihr Name: Ein Wort im Namen verfehlte Handler wie revokeToken.
-// Jede angemeldete Aktion steht in genau einer der beiden Listen (test/offline-einstufung-oberflaeche.test.js).
+// Jede angemeldete Aktion steht in genau einer der beiden Listen (test/offline-rating-ui.test.js).
 const SERVED = 'button, input[type=file], .import-menue > summary, [data-click]';
 
 /**

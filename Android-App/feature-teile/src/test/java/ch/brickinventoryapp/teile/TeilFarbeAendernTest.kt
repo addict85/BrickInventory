@@ -24,7 +24,7 @@ import ch.brickinventoryapp.testing.TestDienste
  *
  * Was die Aenderung TUT — Umziehen oder Zusammenlegen, Erfassungen vom
  * gleichen Tag addieren, ein Set-Teil abweisen — prueft der Server gegen eine
- * echte Datenbank: Web-App/test/teil-farbe-aendern-db.test.js. Eine zweite,
+ * echte Datenbank: Web-App/test/part-color-change-db.test.js. Eine zweite,
  * schwaechere Fassung davon gehoert nicht hierher.
  *
  * Hier stehen die drei Aussagen, die nur auf DIESER Seite nachweisbar sind:

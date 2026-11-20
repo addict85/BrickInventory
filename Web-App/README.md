@@ -254,7 +254,7 @@ den Commit-Hash in `.git-blame-ignore-revs` (Wurzel) eintragen und
 | | Image (`Dockerfile`, `compose.yaml`) | CI (`web-ci.yml`) | lokal |
 |---|---|---|---|
 | Node | 26 | 26 | `.nvmrc` nennt 26 (`nvm use`) |
-| PostgreSQL | 18 | 18 (Dienst), `pg_dump` 18 | auch 16 läuft; `db-rolle-db` braucht `psql` ab 15, `backup-restore-db` ein `pg_dump` in der Hauptversion des Servers |
+| PostgreSQL | 18 | 18 (Dienst), `pg_dump` 18 | auch 16 läuft; `db-role-db` braucht `psql` ab 15, `backup-restore-db` ein `pg_dump` in der Hauptversion des Servers |
 
 Ein lokaler Lauf mit einer älteren Fassung (etwa Node 22, PostgreSQL 16) ist
 eine Plausibilisierung; ein Unterschied zwischen den Hauptversionen zeigt sich

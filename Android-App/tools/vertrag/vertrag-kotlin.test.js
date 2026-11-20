@@ -1,7 +1,7 @@
 /**
  * Die Routen der App gegen den Vertrag des Servers (src/contract/, als JSON-Schema wie in
  * docs/openapi.json). Die Kotlin-Typen selbst sind aus dem Vertrag erzeugt
- * (vertrag-kotlin-dtos.test.js prüft, dass die Datei aktuell ist); hier bleibt, dass jede
+ * (contract-kotlin-dtos.test.js prüft, dass die Datei aktuell ist); hier bleibt, dass jede
  * Route der App genau den erzeugten Typ ihres Schemas liest und schickt.
  *
  * Gegenproben (14.11.2026 gemessen):

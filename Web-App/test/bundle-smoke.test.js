@@ -2,7 +2,7 @@
  * Rauchtest für das Frontend-Bündel.
  *
  * „jeder Handler aus dem Markup ist angemeldet“ läuft seit dem 08.11.2026 am
- * laufenden Bündel in aktionen-dispatcher-oberflaeche.test.js (Gegenprobe:
+ * laufenden Bündel in actions-dispatcher-ui.test.js (Gegenprobe:
  * `closePwModal,` aus registerActions() gestrichen → dort rot).
  */
 const test = require('node:test');

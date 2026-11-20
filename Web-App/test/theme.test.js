@@ -12,7 +12,7 @@
  *   D  routes/api_v1/settingsGlobal.ts: forgetTheme() im Admin-Speichern
  *      entfernt → rot „der Server setzt data-theme selbst …“ (brick statt noppe)
  *   Gestrichen „GET /api/settings/theme ist ohne Login erreichbar“: deckt
- *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
+ *   design-per-account-db.test.js; Route hinter requireLogin gelegt → dort rot
  *   „ohne Anmeldung: die Vorgabe“.
  */
 const test = require('node:test');
@@ -54,7 +54,7 @@ function bootWindow({ server = '', gecacht = '', antwort = {} } = {}) {
 }
 
 // „GET /api/v1/settings/theme ist ohne Login erreichbar" stand hier als Reihenfolge im
-// Quelltext; ausgeführt prüft es design-je-konto-db.test.js („ohne Anmeldung: die Vorgabe").
+// Quelltext; ausgeführt prüft es design-per-account-db.test.js („ohne Anmeldung: die Vorgabe").
 
 test('das Boot-Skript steht vor Start- und Anmeldemarkup', () => {
   // Struktur: Nur ein blockierendes Skript im <head> wirkt vor dem ersten Paint.

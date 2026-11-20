@@ -268,7 +268,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
     !/requestAnimationFrame\([\s\S]{0,160}_measureBlocks/.test(quelle),
     null,
   );
-  // 2. Geladen wird erst in der Ruhe; dass das wirkt, misst katalog-zug-entprellt.test.js.
+  // 2. Geladen wird erst in der Ruhe; dass das wirkt, misst catalog-move-debounced.test.js.
   check('Laden wartet auf Ruhe', /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
   // Der Beobachter ist entfallen — ein Weg, der immer greift, statt zweier,
   // die sich ergänzen sollen.

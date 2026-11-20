@@ -1,0 +1,80 @@
+/**
+ * Auf dem Handy erscheint bei Zahlenfeldern die Zahlentastatur.
+ *
+ * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
+ *   a) inputmode bei #add-price entfernt   → Schritt 1 rot, nennt die Stelle
+ *   b) decimal → numeric bei #add-price    → Schritt 2 rot
+ *   c) #add-price wieder type="number" (02.11.2026) → Schritt 3 rot, nennt
+ *      public/index.html:1719
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const ROOT = path.join(__dirname, '..');
+
+/** index.html plus alle Frontend-Bausteine — NICHT das gebaute Bündel. */
+function quellen() {
+  const js = fs
+    .readdirSync(path.join(ROOT, 'public/js'))
+    .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
+    .map(f => 'public/js/' + f);
+  return ['public/index.html', ...js].map(p => [p, fs.readFileSync(path.join(ROOT, p), 'utf8')]);
+}
+
+function numberFields() {
+  const treffer = [];
+  for (const [p, s] of quellen()) {
+    for (const m of s.matchAll(/<input\b[^>]*>/g)) {
+      const tag = m[0];
+      if (!/type=["']?number|inputmode=["']?decimal/.test(tag)) continue;
+      treffer.push({ datei: p, zeile: s.slice(0, m.index).split('\n').length, tag });
+    }
+  }
+  return treffer;
+}
+
+test('1. jedes type="number" trägt einen inputmode', () => {
+  const felder = numberFields();
+  // Selbstnachweis: Findet die Suche überhaupt etwas? Ohne das wäre eine
+  // leere Liste für immer grün, ohne je ein Feld angesehen zu haben.
+  assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
+
+  const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.zeile}`);
+  assert.deepEqual(
+    ohne,
+    [],
+    'Diese Zahlenfelder sagen dem Handy nicht, welche Tastatur es zeigen soll:\n  ' +
+      ohne.join('\n  ') +
+      '\n`numeric` für ganze Zahlen, `decimal` für alles mit Komma.',
+  );
+});
+
+test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
+  // `numeric` ist ein reiner Ziffernblock — ohne Komma. Bei einem Preisfeld
+  // heisst das: Man kann 12 tippen, aber nicht 12.50. Der Unterschied fällt
+  // erst auf, wenn jemand einen Rappenbetrag eingeben will.
+  const falsch = [];
+  for (const f of numberFields()) {
+    const commaField = /step=["']?0?\.\d/.test(f.tag);
+    const modus = (f.tag.match(/inputmode=["']?(\w+)/i) || [])[1];
+    if (commaField && modus !== 'decimal') falsch.push(`${f.datei}:${f.zeile} (${modus})`);
+  }
+  assert.deepEqual(
+    falsch,
+    [],
+    'Diese Felder erlauben Kommastellen (step=0.01), zeigen aber einen reinen ' +
+      'Ziffernblock:\n  ' +
+      falsch.join('\n  '),
+  );
+});
+
+test('3. Geldfelder sind Textfelder: type="number" verwirft „149,95“', () => {
+  // Chrome liefert für ein Zahlenfeld mit Komma je nach Sprache "" oder 149;
+  // gelesen wird mit readAmount() (money-input.test.js prüft das Verhalten).
+  const falsch = numberFields()
+    .filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
+    .map(f => `${f.datei}:${f.zeile}`);
+  assert.deepEqual(falsch, []);
+});

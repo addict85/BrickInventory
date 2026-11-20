@@ -9,7 +9,7 @@ import { todayIso } from './components.js';
 
 /**
  * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
- * test/passwortlaenge.test.js hält Server, Web und App gleich.
+ * test/password-length.test.js hält Server, Web und App gleich.
  */
 export const PASSWORD_MIN_CHARS = 12;
 

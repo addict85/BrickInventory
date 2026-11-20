@@ -837,7 +837,7 @@ function routesFromSource(src, mount) {
   return raus;
 }
 
-/** Die Dateiliste steht hier, damit test/api-eingang-db.test.js keinen
+/** Die Dateiliste steht hier, damit test/api-inbox-db.test.js keinen
  *  variablen Pfad liest (test/eigenbruecken.test.js zählt sie). */
 function v1Routes() {
   const gefunden = [];

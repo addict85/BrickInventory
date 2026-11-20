@@ -16,7 +16,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Eigentümer ist.
  *
- * @superuser (Ratsche in test/rollen-trennung-db.test.js)
+ * @superuser (Ratsche in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

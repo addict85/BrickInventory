@@ -10,7 +10,7 @@ import { toast } from './messages.js';
 // certificate (src/profile/setupStatus.ts) — no accounts, no keys.
 
 /** Order of the checks; the texts sit as fixed keys next to them, so no path assembles an
- * i18n name (test/i18n-aufrufe.test.js). */
+ * i18n name (test/i18n-calls.test.js). */
 const STEPS = [
   { id: 'datenbank', name: 'es.step.datenbank', hint: 'es.hint.datenbank' },
   { id: 'basis_url', name: 'es.step.basis_url', hint: 'es.hint.basis_url' },

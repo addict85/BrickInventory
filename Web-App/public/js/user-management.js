@@ -83,7 +83,7 @@ const reportResult = (d, immediate) =>
     'success',
   );
 // Written out rather than assembled, so each key appears as a literal call in the source and
-// the dictionary check (i18n-aufrufe.test.js) finds it.
+// the dictionary check (i18n-calls.test.js) finds it.
 /** @type {Record<string, () => string>} */
 const ACTIONS = {
   konto_angelegt: () => tRaw('users.aktion.konto_angelegt'),

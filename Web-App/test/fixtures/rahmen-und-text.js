@@ -1,4 +1,4 @@
-// Für test/test-lauf-textausgabe.test.js: schreibt im Takt einen Berichtsrahmen
+// Für test/test-run-text-output.test.js: schreibt im Takt einen Berichtsrahmen
 // und direkt danach Text, dessen drittes Byte kein ASCII ist — so, wie es der
 // Admin-Kasten und „✅ PostgreSQL schema ready" beim Schema-Aufbau tun.
 const test = require('node:test');

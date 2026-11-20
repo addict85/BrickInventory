@@ -25,7 +25,7 @@ import { deleteManualPart } from './parts.js';
   const NEEDS_CAPTURE = new Set(['blur', 'error', 'load']);
 
   // Except for click, every event only accepts the handlers the markup actually uses for it;
-  // test/aktionen-schutz.test.js checks this list against the markup.
+  // test/actions-protection.test.js checks this list against the markup.
   /** @type {Record<string, Set<string>>} */
   const ONLY = {
     change: new Set([

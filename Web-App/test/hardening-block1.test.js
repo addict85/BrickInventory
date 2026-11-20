@@ -19,7 +19,7 @@
  *   F  in herunterfahren() `closeAllSse()` gestrichen → rot: „offene
  *      Ereignis-Ströme …“ (Ende erst nach der Frist von 8 s)
  * Gestrichen, weil ein Verhaltenstest dasselbe ausführt: „Preis-Vorhandensein
- * hängt an avg_price“ (preisregel-db.test.js), Vorschau der Teile und Sets
+ * hängt an avg_price“ (price-rule-db.test.js), Vorschau der Teile und Sets
  * (listen-paging-oberflaeche, bilder-proxy-oberflaeche), thumb=1 am Proxy
  * (img-cache-serve.test.js).
  */

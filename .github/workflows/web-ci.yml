@@ -3,7 +3,7 @@
 # fehlenden Datenbank oder einem fehlenden Chrome einen Fehler statt eines
 # stillen Überspringens. Der paths-Filter schliesst ein, was die Suite liest: shared/
 # (darunter app-schnittstelle.json, was die App vom Server braucht), die aus dem Vertrag
-# erzeugten Kotlin-Typen, workflow-ort.test.js die Workflows und die Wurzeldateien.
+# erzeugten Kotlin-Typen, workflow-location.test.js die Workflows und die Wurzeldateien.
 # Android-Quelltext liest die Suite nicht (test/ratschen.test.js).
 name: CI
 
@@ -144,7 +144,7 @@ jobs:
           "$RUNNER_TEMP/caddy" version
           echo "CADDY_BIN=$RUNNER_TEMP/caddy" >> "$GITHUB_ENV"
 
-      # age für test/backup-verschluesselt.test.js (scripts/backup.sh mit BACKUP_AGE_EMPFAENGER).
+      # age für test/backup-encrypted.test.js (scripts/backup.sh mit BACKUP_AGE_EMPFAENGER).
       - name: age bereitstellen
         run: command -v age || { sudo apt-get update -qq && sudo apt-get install -y -qq age; }
 

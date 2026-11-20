@@ -57,7 +57,7 @@ const EXEMPT = new Map([
     '/export',
     'Die Konfigurations-Sicherung lässt Geheimnisse ganz weg statt sie ' +
       'zu maskieren; für Nicht-Verwalter enthält sie gar keine globalen ' +
-      'Werte (test/einstellungen-pruefung-db.test.js).',
+      'Werte (test/settings-check-db.test.js).',
   ],
   [
     '/export/data',
@@ -74,7 +74,7 @@ const EXEMPT = new Map([
     '/einrichtung',
     'Stand des Einrichtungs-Assistenten: je Quelle nur ja/nein, ' +
       'keine Werte, und nur für Verwalter. Dass kein Schlüssel ' +
-      'herauskommt, prüft test/einrichtung-db.test.js.',
+      'herauskommt, prüft test/setup-db.test.js.',
   ],
 ]);
 

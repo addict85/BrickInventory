@@ -1,7 +1,7 @@
 /** Die Wurzeln der Android-Schlüssel-Attestation. Quelle:
  * https://android.googleapis.com/attestation/root (abgerufen am 11.11.2026; die
  * Liste nennt auch https://developer.android.com/privacy-and-security/security-key-attestation).
- * FINGERPRINTS ist die Prüfsumme (SHA-256 des DER); test/geraete-attestation.test.js
+ * FINGERPRINTS ist die Prüfsumme (SHA-256 des DER); test/devices-attestation.test.js
  * rechnet sie nach. Eine neue Wurzel kommt nur mit Quelle und Fingerabdruck hinein. */
 
 export const GOOGLE_ROOTS: readonly string[] = [

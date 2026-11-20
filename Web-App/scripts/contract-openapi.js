@@ -3,7 +3,7 @@
 
 /**
  * Schreibt docs/openapi.json aus dem Vertrag in src/contract/.
- * Die Datei ist eingecheckt; test/vertrag-openapi.test.js prüft, dass sie
+ * Die Datei ist eingecheckt; test/contract-openapi.test.js prüft, dass sie
  * zum Code passt. Aufruf: npm run vertrag:openapi
  */
 const fs = require('node:fs');

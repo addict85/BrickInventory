@@ -4,7 +4,7 @@
 /**
  * API-Vertrag gegen einen laufenden Server: jede GET-Route des Vertrags
  * (src/contract/) ohne Platzhalter gegen ihr Schema. Die vollständige
- * Prüfung mit Bestand steht in test/vertrag-lesen-db.test.js; dieses Skript
+ * Prüfung mit Bestand steht in test/contract-read-db.test.js; dieses Skript
  * ist für einen echten Bestand (nach `npm run build`).
  */
 const path = require('node:path');

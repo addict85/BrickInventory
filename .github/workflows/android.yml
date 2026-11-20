@@ -469,7 +469,7 @@ jobs:
         run: node scripts/generate-design-tokens.js --pruefen
       # Die erzeugten Antworttypen (core-vertrag, vertrag.erzeugt) passen zu docs/openapi.json.
       - name: Erzeugte Kotlin-Typen aktuell
-        run: node --test test/vertrag-kotlin-dtos.test.js
+        run: node --test test/contract-kotlin-dtos.test.js
 
   # Gerätetests (app/src/androidTest) auf einem Emulator, den Gradle anlegt (Managed
   # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur

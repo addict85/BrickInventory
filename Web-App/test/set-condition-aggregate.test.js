@@ -1,7 +1,7 @@
 /**
  * Zustands-Aggregat eines Sets.
  *
- * Aggregat, Zustand beim Anlegen und im Marktpreis: set-zustand-aggregat-db.test.js.
+ * Aggregat, Zustand beim Anlegen und im Marktpreis: set-state-aggregate-db.test.js.
  *
  * Gegenprobe (08.11.2026): in theme-boot.js apply() ohne ALLOWED-Prüfung →
  * rot „ein unbekannter Theme-Wert setzt nichts zurück“.
@@ -216,7 +216,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
     src.indexOf('async function currentMinifigMarketPrice'),
   );
 
-  // Cache und Verlauf je Zustand prüft test/figurenschaetzung-ablage-db.test.js.
+  // Cache und Verlauf je Zustand prüft test/minifigs-estimate-store-db.test.js.
   // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
   assert.match(est, /if \(priced === 0\) return null;/, 'Ohne bepreiste Teile darf nichts geschrieben werden');
 
@@ -341,7 +341,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   );
 });
 
-// Preis- und Verlaufsroute im Zustand des Sets prüft test/preis-zustand-des-sets-db.test.js am Server.
+// Preis- und Verlaufsroute im Zustand des Sets prüft test/price-state-of-sets-db.test.js am Server.
 test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
   // Fünfter Fundort desselben Fehlers in dieser Sitzung: valueSets,
   // aktuellerMarktpreis, gainAndLoss, die Webapp-Verlaufsroute und jetzt die
@@ -379,7 +379,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
-// Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
+// Die Datenbank-Sperre des Neuaufbaus prüft test/parts-summary-lock-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {
   // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
@@ -552,7 +552,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   // Spalten.
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
-  // Dass /register diese Regel anwendet, prüft passwort-regel-db.test.js.
+  // Dass /register diese Regel anwendet, prüft password-rule-db.test.js.
 });
 
 test('beide Login-Wege prüfen gleich', async () => {

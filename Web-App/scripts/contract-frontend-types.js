@@ -5,7 +5,7 @@
  * Schreibt frontend-typen/vertrag.d.ts aus docs/openapi.json: die Antwort
  * jeder Route als TypeScript-Typ, damit tsc die api()-Aufrufe der Oberfläche
  * gegen den Vertrag prüft. Die Datei ist eingecheckt;
- * test/vertrag-frontend-typen.test.js prüft, dass sie zu openapi.json passt.
+ * test/contract-frontend-types.test.js prüft, dass sie zu openapi.json passt.
  *
  *   npm run vertrag:frontend
  */

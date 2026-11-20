@@ -1,6 +1,6 @@
 /**
  * Der Papierkorb auf der Kachel ist auch am Desktop mindestens 32 × 32 px gross, gemessen im Browser
- * (mit Maus reichen 32 px; die 44 px für Touch prüft tippziele-browser.test.js).
+ * (mit Maus reichen 32 px; die 44 px für Touch prüft tip-targets-browser.test.js).
  *
  * Gegenprobe (am 07.11. gemessen): in styles.css `.delbtn` wieder auf 26 px
  *   → rot: „Löschknopf misst 26×26“.

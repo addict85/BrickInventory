@@ -2,10 +2,10 @@
  * Bilder und PDFs verlangen ausnahmslos eine Anmeldung.
  *
  * Gegenproben zu den 08.11.2026 gestrichenen Fällen, die anderswo laufen:
- * Anmeldung und `private` an Bild und Anleitung → bild-blickfeld-db.test.js
+ * Anmeldung und `private` an Bild und Anleitung → image-scope-db.test.js
  * (deliverImage ohne 401 bzw. mit `public` → dort rot); PDF-Download ohne
- * requireToken → verdrahtung-laeuft-db.test.js rot.
- * „die Webapp ruft nie direkt ein CDN auf“ → bilder-proxy-oberflaeche.test.js
+ * requireToken → wiring-running-db.test.js rot.
+ * „die Webapp ruft nie direkt ein CDN auf“ → images-proxy-ui.test.js
  * (imgUrl() bzw. fullUrl() geben eine CDN-Adresse roh zurück → dort rot, H bzw. D).
  */
 const { isAppModule } = require('../scripts/build-frontend');
@@ -177,7 +177,7 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
   );
 });
 
-// Wer hochgeladene Anleitungen lesen darf, prüft test/daten-dateien-db.test.js am Handler.
+// Wer hochgeladene Anleitungen lesen darf, prüft test/data-files-db.test.js am Handler.
 
 // „Eine geteilte Anleitungsdatei überlebt, bis die letzte Zeile weg ist“ prüft
 // test/sets-routes-db.test.js am laufenden Router (Löschen durch beide Konten).

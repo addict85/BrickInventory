@@ -206,7 +206,7 @@ test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerra
 test('alle drei CSV-Importwege entschärfen zurück', () => {
   // Die Zeilenleser der Importe laufen hier selbst: der der Sets und der
   // gemeinsame für Teile und Figuren (csvRowsFromRequest). Dass beide
-  // Importe ihn benutzen, zeigt test/csv-rundlauf-db.test.js.
+  // Importe ihn benutzen, zeigt test/csv-round-run-db.test.js.
   // Gegenprobe (29.10.2026): defusingUndo in setCsvRows
   // weggelassen → rot („Sets: …“).
   const { setCsvRows } = _reqCsv('src/sets/csvImport.js');

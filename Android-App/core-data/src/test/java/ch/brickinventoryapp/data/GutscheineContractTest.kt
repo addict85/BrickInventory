@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.TestApi
  * Adressen und Ablage laufen gegen einen Testserver; der Rest liest Quelltext,
  * weil er Bildschirme betrifft. Was die Routen TUN — wer welchen Gutschein sehen darf,
  * wie aus dem PDF die drei Werte werden —, prueft der Server gegen eine echte
- * Datenbank (Web-App/test/gutscheine-db.test.js) und braucht hier keine
+ * Datenbank (Web-App/test/vouchers-db.test.js) und braucht hier keine
  * zweite, schwaechere Fassung.
  *
  * Hier steht die eine Aussage, die NUR auf dieser Seite nachweisbar ist: dass

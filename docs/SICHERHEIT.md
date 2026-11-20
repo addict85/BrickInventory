@@ -42,7 +42,7 @@ Eingabe) und die Rollenrechte: Die Laufzeitrolle liest weder Passwort-Hashes noc
 Sitzungen (0115), keine Adressen und Links in `users` (0121) und schreibt weder
 Passwort noch Verwalterrecht (0117). In `users` sieht sie nur das eigene Konto und
 den Haushalt, in `account_links` nur Verknüpfungen mit dem eigenen Konto (0121) —
-`konten-zeilenschutz-db`.
+`accounts-rows-protection-db`.
 
 **Zwei Systemrollen.** Den Zeilenschutz heben zwei Rollen auf (`BYPASSRLS`):
 `brickinventory_system` hält nur der Dienst `jobs` (Aufträge, Umschlüsselung,
@@ -99,23 +99,23 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
   Port 80 leitet nur um, `/ca.crt` gibt es nur über HTTPS (nach einmal
   bestätigter Warnung, Abgleich des Fingerabdrucks): `compose.yaml`,
-  `Caddyfile`, `routes/certificate.ts` — `compose-haertung`, `tls-wurzel-db`.
+  `Caddyfile`, `routes/certificate.ts` — `compose-haertung`, `tls-root-db`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
   eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
   `CA_OHNE_NAMENSBESCHRAENKUNG=ja`; ohne Aussteller aus dem Startskript ist
   das Caddyfile ungültig. Das Protokoll von Caddy und `ca-einrichten.sh`
   nennen den SHA-256-Fingerabdruck der Wurzel zum Abgleich auf dem Gerät —
-  `ca-eigene-wurzel`.
+  `ca-own-root`.
 - Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
   Caddy Rümpfe bis 16 KB an und gehen ohne Verbindungsgrenze an die App: Die
   Zahl gleichzeitiger Passwortprüfungen begrenzt die Schranke des Servers
   (`src/account/bcryptLimit.ts`, Vorrang bekannter Anmeldungen, sonst 503),
-  die Raten je Adresse und Konto zählt der Server — `caddy-anmeldebremse`,
-  `bcrypt-schranke-db`.
+  die Raten je Adresse und Konto zählt der Server — `caddy-login-brake`,
+  `bcrypt-limit-db`.
 - Passwörter als argon2id (19 MiB, 2 Durchläufe, OWASP-Vorgabe:
   `src/account/passwordHash.ts`); ein alter bcrypt-Hash gilt, bis die nächste
-  Anmeldung ihn ersetzt — `passwort-argon2-db`. bcrypt rechnet dafür in
+  Anmeldung ihn ersetzt — `password-argon2-db`. bcrypt rechnet dafür in
   höchstens 4 Worker-Threads (weniger bei kleinerem cgroup-Kontingent, mehr
   mit `BCRYPT_ARBEITER`); untätige enden nach 60 s — `bcrypt-pool`.
 - Langsame Clients erreichen die App nicht: Caddy liest den Rumpf der
@@ -123,41 +123,41 @@ handelte der Prozess für jede gerade aktive Sitzung.
   ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
   selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
   10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
-  `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-anmeldebremse`,
-  `sicherheit-server-grenzen-db`.
+  `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-login-brake`,
+  `security-server-limits-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
-  (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
+  (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-root-db`.
 - `TRUST_PROXY` nennt genau Caddy; dahinter Cookie mit `Secure` und HSTS:
-  `src/infra/config.ts` (`cookieSicher`), `server.ts` — `tls-wurzel-db`, `hsts`.
+  `src/infra/config.ts` (`cookieSicher`), `server.ts` — `tls-root-db`, `hsts`.
 - Die Schlüssel der CA bleiben bei Caddy: Die App sieht den Ordner nur lesend
   und als Nicht-root nur die vom Entrypoint kopierte Wurzel.
 
 ### Anmeldung und Sitzung (2, 3)
 - „Passwort ≠ Benutzername“ gilt auch beim Ändern mit App-Token und beim
-  Setzen durch den Verwalter (Name aus der Tabelle) — `passwort-regel-db`.
+  Setzen durch den Verwalter (Name aus der Tabelle) — `password-rule-db`.
 - „Andere Sitzungen beenden“ verlangt das Passwort (und bei aktivem TOTP den
-  Code): Eine erbeutete Sitzung sperrt den Inhaber nicht aus — `web-ohne-token-db`.
+  Code): Eine erbeutete Sitzung sperrt den Inhaber nicht aus — `web-without-token-db`.
 - Bremsen der erneuten Bestätigung je Konto **und** Zugang (Sitzung, gehasht,
   oder Token-Familie über `created_at`, das der Tausch erbt): Fehlversuche aus
   einer erbeuteten Sitzung sperren weder „andere beenden“ noch den
   Passwortwechsel des Inhabers. Falsche Codes zählen in einem eigenen Zähler
   (5 je Stunde), den nur ein richtiger Code löscht; ein richtiges Passwort
   setzt ihn nicht zurück: `src/account/passwordConfirmation.ts`,
-  `src/account/loginLimiter.ts` — `bestaetigung-bremsen-db`.
+  `src/account/loginLimiter.ts` — `confirmation-brakes-db`.
 - Kein Passwort-Orakel für gesperrte und unbestätigte Konten: Sie bekommen bei
   richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
   (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
   `POST /auth/bestaetigung-erneut` mit gleicher Antwort und Dauer für jede
-  Adresse — `konto-deaktivieren-db`. **Ausnahme, bewusst:** Bei aktivem zweitem
+  Adresse — `account-deactivate-db`. **Ausnahme, bewusst:** Bei aktivem zweitem
   Faktor antwortet ein richtiges Passwort ohne Code mit 401
   `zweiter_faktor_noetig` (ohne Fehlversuch), ein falsches mit
   `anmeldedaten_ungueltig` — die Absage verrät also, dass das Passwort stimmte.
   Weiter kommt man damit nicht: Nach 20 falschen Codes in 24 Stunden gelten nur
   noch Wiederherstellungscode und Passkey, und der Inhaber erfährt es per Mail (`src/account/loginCheck.ts`) —
-  `zweiter-faktor-db`.
+  `second-factor-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
-  `src/account/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
+  `src/account/loginLimiter.ts` — `login-lock-db`, `ip-throttle-parallel-db`.
 - Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
   mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
   Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
@@ -165,21 +165,21 @@ handelte der Prozess für jede gerade aktive Sitzung.
   alle Zähler. Ohne zweiten Faktor bekommt der Inhaber für einen gesperrten neuen
   Ort einen signierten, einmal gültigen Link, der diese Adresse einen Tag lang wie
   eine bekannte zählen lässt (je Adresse eine Mail pro Stunde, zehn am Tag):
-  `src/account/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
+  `src/account/loginLimiter.ts` — `login-daily-limit-db`.
 - Sitzung: `httpOnly`, `sameSite=strict`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/account/sessionDeadline.ts`,
-  `src/account/accessEnd.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
+  `src/account/accessEnd.ts` — `session-idle-db`, `session-max-duration`, `session-app-db`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
-  `auth-sessions-db`, `token-laufzeit-db`.
+  `auth-sessions-db`, `token-runtime-db`.
 - Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
   `users.sitzungs_version` von der Anmeldung; wer Zugänge beendet (Passwort,
   Sperre, Rolle, Löschen, „andere beenden“, 2FA eingeschaltet), erhöht sie,
   jede Anfrage vergleicht (5 s Zwischenspeicher je Konto, den eine Erhöhung in jedem
   Web-Prozess über NOTIFY sofort leert; ohne Horch-Verbindung keiner). Eine von einer
   laufenden Anfrage zurückgeschriebene Zeile gilt damit nicht mehr:
-  `src/account/sessionVersion.ts` — `sitzungsversion-db`, `sitzungsversion-prozesse-db`.
+  `src/account/sessionVersion.ts` — `session-version-db`, `session-version-processes-db`.
 - Drosseln je Adresse zählen ein IPv6-/64 als eine Adresse, IPv4 in IPv6 als
-  IPv4: `drosselAdresse` in `src/account/loginLimiter.ts` — `drossel-ipv6-db`.
+  IPv4: `drosselAdresse` in `src/account/loginLimiter.ts` — `throttle-ipv6-db`.
 - App-Anmeldung: Token mit fester Höchstdauer 180 Tage ab Anmeldung, die der
   Tausch erbt — `token-scope-rotation-db`.
 - Tokens mit Scope: `app` hat nie Verwalterrechte, QR-Codes geben nur `app`;
@@ -190,7 +190,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `token-scope-rotation-db`, `token-gleitfrist-db`.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/factors/passkeys.ts` —
-  `passkeys-db`. TOTP: `src/factors/secondFactor.ts` — `zweiter-faktor-db`.
+  `passkeys-db`. TOTP: `src/factors/secondFactor.ts` — `second-factor-db`.
 - Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
   Key Attestation an (`src/devices/attestation/`): Kette bis zu Googles Wurzel,
   kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
@@ -200,7 +200,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Job-Prozess alle sechs Stunden (Auftrag `widerrufsliste`); fehlt sie oder ist
   sie älter als `ATTESTATION_WIDERRUF_TAGE` (7), nimmt der Server keinen neuen
   Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
-  `geraete-attestation`, `schrittschutz-db`, `attestation-widerrufsliste-db`.
+  `devices-attestation`, `step-protection-db`, `attestation-revocation-list-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
   `bestaetigeMitFaktor` (`src/account/http/login.ts`). Bei aktivem TOTP
   verlangt er immer Code oder Passkey-Antwort, auch mit dem
@@ -209,34 +209,34 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `bestaetigung` (token-create, qr-token, Passkey anlegen/löschen, alle
   Verwalterrouten an Konten, `DELETE /bestand`, andere beenden, Passwort,
   E-Mail, 2FA abschalten, Haushalt beitreten, SMTP). Der Wächter
-  `bestaetigung-vertrag-db` ruft jede markierte Route ohne und mit falschem
+  `confirmation-contract-db` ruft jede markierte Route ohne und mit falschem
   Code, verlangt die Marke für jede Passwort-Eingabe des Vertrags und lässt
   `bcrypt.compare` nur im Pool und `@node-rs/argon2` nur in
   `src/account/passwordHash.ts` zu (Vergleich nur über `passwortPasst`); eine Route ohne Marke,
   die bestätigt, antwortet in Tests mit 500. Den Notausgang des Verwalters
   (`DELETE /auth/users/:id/zweiter-faktor`) gibt es nur für fremde Konten.
   Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt
-  — `zweiter-faktor-heikel-db`, `passkeys-db`, `haushalt-beitreten-db`.
+  — `second-factor-sensitive-db`, `passkeys-db`, `household-join-db`.
 - Hinweis-Mails bei neuem App-Token und QR-Zugang (Inhaber), neuem Verwalter
   und vom Verwalter entferntem zweitem Faktor (alle Verwalter, das Konto
-  selbst): `src/account/accountNotice.ts` — `zugang-hinweis-db`.
+  selbst): `src/account/accountNotice.ts` — `access-hint-db`.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
-  Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`. Codes von vor
+  Datenschlüssels und an das Konto gebunden — `second-factor-db`. Codes von vor
   dem 01.11.2026 (50 Bit, SHA-256) gelten nur noch 90 Tage ab dem Update (0122);
-  wer einen benutzt, bekommt eine Mail — `alte-wiederherstellungscodes-db`.
+  wer einen benutzt, bekommt eine Mail — `old-recovery-codes-db`.
 - Verwalter gegen Verwalter: Passwort setzen, zweiten Faktor entfernen,
   deaktivieren, Rolle entziehen und löschen gelten erst nach 24 Stunden, mit Mail an
   das Ziel und alle Verwalter. Das Ziel bricht ab durch Anmeldung (Passwort,
   Passkey, QR-Abholung) oder über den einmal gültigen Link in seiner Mail; eine
   fällige Übernahme entfällt, wenn das Ziel inzwischen deaktiviert wurde:
-  `src/account/adminActions.ts` — `verwalter-uebernahme-db`.
-- AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/secret.ts` — `geheimnis-tag-laenge`.
+  `src/account/adminActions.ts` — `admin-takeover-db`.
+- AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/secret.ts` — `secret-tag-length`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys und löst
   ausserdem, was ein Eindringling angelegt haben könnte: die Verknüpfung mit
   Hauptkonten über diesem Konto (der Haushalt nach oben), offene
   Haushaltseinladungen und eine ausstehende Adressänderung; die Hinweis-Mail
   nennt, was wegfiel (`setzePasswortZurueck` in `src/account/accounts.ts`) —
-  `passwort-vergessen-fremdzugriff-db`. Der Wechsel widerruft Passkeys auf
+  `password-forgotten-foreign-access-db`. Der Wechsel widerruft Passkeys auf
   Wunsch der API (`passkeys_widerrufen`); die Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
   Passwortwechsel/-rücksetzung, mit den Konten, die die Sammlung sehen —
   `passkeys-db`.
@@ -247,11 +247,11 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `change-password`, `logout` und `POST /geraet/schluessel` (der
   Geräteschlüssel der App, den der Server nur gleich nach der Anmeldung
   annimmt), sonst 403 `passwort_wechsel_noetig`: `VOR_DEM_WECHSEL` in
-  `routes/api_v1/middleware.ts` — `passwort-pflichtwechsel-db`, `schrittschutz-db`.
+  `routes/api_v1/middleware.ts` — `password-required-switch-db`, `step-protection-db`.
 - Benutzernamen ohne Rücksicht auf Gross-/Kleinschreibung eindeutig
-  (Index, Migration 0090) — `konto-anlegen-db`.
-- „Alle meine Daten löschen" nur mit Passwort — `alles-loeschen-haushalt-db`.
-- Mailadressen stehen im Protokoll nur maskiert — `haushalt-beitreten-db`.
+  (Index, Migration 0090) — `account-create-db`.
+- „Alle meine Daten löschen" nur mit Passwort — `everything-delete-household-db`.
+- Mailadressen stehen im Protokoll nur maskiert — `household-join-db`.
 - In Produktion kein Start mit Beispiel-`SESSION_SECRET` oder
   Beispiel-Datenbankpasswort: `server.ts`, `src/infra/config.ts` (`startVerbote`) — `startverbot`.
 - `/api/v1/startup-status` nennt Schritt und Unterstand nur angemeldet — `gesundheit-db`.
@@ -259,92 +259,92 @@ handelte der Prozess für jede gerade aktive Sitzung.
 ### Herkunft der Client-Adresse (1)
 - `TRUST_PROXY` vertraut nur ausdrücklich genannten Adressen oder kleinen
   Netzen; Vorgabe Loopback, `docker`/`true`/Hop-Zahlen verweigern den Start:
-  `src/infra/proxyTrust.ts` — `anmeldesperre-db`, `proxy-hinweis`, `startverbot`.
+  `src/infra/proxyTrust.ts` — `login-lock-db`, `proxy-hint`, `startverbot`.
 - `compose.yaml`: festes Netz `172.28.73.0/24`; ein Reverse-Proxy bekommt
   darin eine feste Adresse, und genau die steht in `TRUST_PROXY` — `compose-haertung`.
 
 ### CSRF (2)
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
-  ohne Cookie ausgenommen: `src/http/origin.ts` — `herkunft`.
+  ohne Cookie ausgenommen: `src/http/origin.ts` — `origin`.
 - Die App antwortet nur unter dem Namen aus `APP_BASE_URL` (sonst 421
   `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb; ohne
   `APP_BASE_URL` (nur mit `APP_BASE_URL_FEHLT_OK=1`) unter keinem Namen. Frei
   bleiben Loopback, IP-Adressen, `/ca.crt` und die Gesundheitspfade:
-  `nurEigenerHost` in `src/http/origin.ts` — `sicherheit-server-grenzen-db`, `herkunft`.
+  `nurEigenerHost` in `src/http/origin.ts` — `security-server-limits-db`, `origin`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
   `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
-  — `sicherheit-server-grenzen-db`.
+  — `security-server-limits-db`.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
-  `src/household/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
-- Uploads nur für Besitzer und Hauptkonto: `routes/dataFiles.ts` — `daten-dateien-db`, `media-auth`.
+  `src/household/household.ts` — `entry-foreign-delete-db`, `vouchers-db`, `pdf-jobs-db`.
+- Uploads nur für Besitzer und Hauptkonto: `routes/dataFiles.ts` — `data-files-db`, `media-auth`.
 - Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
   (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
-  `acquisitionMoveSource` in `src/household/household.ts` — `sicherheit-server-grenzen-db`.
+  `acquisitionMoveSource` in `src/household/household.ts` — `security-server-limits-db`.
 - Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
   Figurenbilder sind Katalog. Katalog, `/sets/info` und `/sets/barcode` nennen
   `image_local` nur im Blickfeld: `src/images/imageScope.ts` —
-  `bild-blickfeld-db`, `katalog-bilder-db`.
+  `image-scope-db`, `catalog-images-db`.
 - Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
-  deren Besitzer: `routes/api_v1/sets.ts` — `teile-import-besitz-db`.
+  deren Besitzer: `routes/api_v1/sets.ts` — `parts-import-ownership-db`.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
   `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
-  `waehrung_geteiltes_unterkonto`: `src/settings/userSetting.ts` — `haushalt-waehrung-db`.
-- Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
+  `waehrung_geteiltes_unterkonto`: `src/settings/userSetting.ts` — `household-currency-db`.
+- Gutscheine nie über den Haushalt, auch nicht für Verwalter — `vouchers-db`.
 - Datenbankrechte nach Rolle (Migration 0117, `postgres/app-rolle.sh`): Die
   Laufzeitrolle schreibt in `users` nur Vor- und Nachname und liest
   `global_settings` nur; Passwort, Verwalterrecht, Adresse, Links,
   Sitzungsversion und globale Einstellungen schreibt nur die Systemrolle.
   `verwaltungsprotokoll` ist für beide nur anfügbar, aufgeräumt wird über eine
   Funktion der Eigentümerin mit fester Frist. Gutscheine und Idempotenzeinträge
-  sieht nur das eigene Konto (0118) — `db-rolle-db`, `zeilenschutz-db`.
+  sieht nur das eigene Konto (0118) — `db-role-db`, `rows-protection-db`.
 
 ### Gemeinsame Daten (3)
 - Bildcache nur aus geprüften Katalogadressen (`bild_von IS NULL`), nie aus
   Angaben des Clients: `src/catalog/pdf/pdfGeneration.ts`, `src/catalog/imageFollowUp.ts` —
-  `bildcache-quelle-db`.
+  `image-cache-source-db`.
 - Setnummer für den Bild-Job nur aus einer reinen Rebrickable-Setadresse:
-  `routes/imgProxy.ts` — `bildcache-quelle-db`.
+  `routes/imgProxy.ts` — `image-cache-source-db`.
 - Geteilte Anleitungen ersetzen (löschen und neu holen) nur der Verwalter;
   wer das Set hat, holt nur fehlende, einmal je Set und Tag:
-  `routes/api_v1/sets.ts` — `anleitung-neu-laden-db`.
+  `routes/api_v1/sets.ts` — `instruction-new-load-db`.
 
 ### Uploads (4)
 - Typ aus dem Inhalt, Endung aus dem MIME-Typ, Name zufällig, Kontingent je
-  Konto: `routes/api_v1/sets.ts`, `src/http/fileUpload.ts` — `upload-grenzen-db`.
-- Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/vouchers/pdfParsing.ts` — `gutschein-pdf-bombe-db`.
+  Konto: `routes/api_v1/sets.ts`, `src/http/fileUpload.ts` — `upload-limits-db`.
+- Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/vouchers/pdfParsing.ts` — `voucher-pdf-bombe-db`.
 - Gutschein-PDFs verschlüsselt, Konto löschen entfernt Uploads und
-  Gutscheine: `src/vouchers/voucherFiles.ts` — `konto-dateien-db`.
+  Gutscheine: `src/vouchers/voucherFiles.ts` — `account-files-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
 - Die Guthaben-Abfrage bei lego.com geht über `src/infra/fetch.ts`: nur
   `www.lego.com`, auch nach einer Umleitung; ein POST folgt keiner; Antworten
-  höchstens 4 MB (Seite) bzw. 512 KB (Abfrage), 20 s — `gutschein-guthaben-abruf`.
+  höchstens 4 MB (Seite) bzw. 512 KB (Abfrage), 20 s — `voucher-balance-fetch`.
 - Ein Weg nach draussen: `src/infra/fetch.ts` (`holeHttps`, `oeffneHttps`).
   Nur https, Host-Liste für Start und jeden Sprung, relative `Location`
   aufgelöst, höchstens 5 Umleitungen, Byte-Grenze (angesagt und gezählt),
   Gesamtfrist, `Authorization`/`Cookie` fallen bei Hostwechsel weg; jeder
   Fehler wird Ablehnung, kein Wurf im Antwort-Rückruf. Fehlertexte ohne
   Anfrageteil (dort stehen API-Schlüssel), fremder Antworttext nur gekürzt
-  im Protokoll — `abruf-helfer` (echter TLS-Server), `umleitungen` (niemand
-  sonst ruft `https.get`/`fetch`), `download-grenzen`, `img-proxy-size`.
+  im Protokoll — `fetch-helper` (echter TLS-Server), `redirects` (niemand
+  sonst ruft `https.get`/`fetch`), `download-limits`, `img-proxy-size`.
   Hosts exakt (Unterdomänen nur über `*.`-Eintrag, nur bei `lego.com`), nur
-  Standardport, keine Userinfo: `hostErlaubt` in `src/infra/foreignAddresses.ts` — `umleitungen`.
+  Standardport, keine Userinfo: `hostErlaubt` in `src/infra/foreignAddresses.ts` — `redirects`.
   Ausgenommen sind nur `scripts/loadtest.js` und `scripts/check-api-contract.js`,
   die von der Kommandozeile den eigenen Server rufen.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
   Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
   (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
-  `routes/imgProxy.ts`, `src/images/imgCacheServe.ts` — `bild-proxy-deckel`.
+  `routes/imgProxy.ts`, `src/images/imgCacheServe.ts` — `image-proxy-deckel`.
   Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
   nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
-  `bild-proxy-deckel`.
-- Nummern als kodiertes Pfadsegment (`pfadSegment`) — `fremde-pfade-db`.
+  `image-proxy-deckel`.
+- Nummern als kodiertes Pfadsegment (`pfadSegment`) — `foreign-paths-db`.
 
 ### Eingaben (2, 3)
 - Teileliste des PDF-Auftrags nach Schema (`PdfEingabe`): höchstens 5000
@@ -353,12 +353,12 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Rumpf und Abfrage im Betrieb gegen den API-Vertrag, unmittelbar vor der
   Route (`eingabePruefen` in `src/http/contractRouter.ts`): falscher Typ,
   zu langer Text oder wiederholter Abfrageparameter ergeben 400
-  `eingabe_ungueltig` — `eingabe-vertrag-db`. Routen ohne `eingabe` im
+  `eingabe_ungueltig` — `input-contract-db`. Routen ohne `eingabe` im
   Vertrag prüfen selbst (`src/infra/validate.ts`).
 - Vor-/Nachname ohne Steuerzeichen und Webadressen (`nameGueltig`). Mails an
   unbestätigte Adressen (Bestätigung, Rücksetzen, „Name vergeben“) grüssen
   ohne Namen; die Konsole zeigt nur den vom Absender übergebenen Link:
-  `src/mail/transport.ts`, `src/mail/mailer.ts` — `mail-fremder-text-db`, `mail-link-konsole`.
+  `src/mail/transport.ts`, `src/mail/mailer.ts` — `mail-foreign-text-db`, `mail-link-console`.
 
 ### Ausgabe und Kopfzeilen (2)
 - CSP ohne Inline-Skripte, `X-Frame-Options`, `nosniff`, HSTS nur bei
@@ -366,60 +366,60 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `X-Forwarded-Proto`: `server.ts` — `csp-actions`, `hsts`, `frontend-escaping`.
 - Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
   Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
-  im Protokoll: `oeffentlicherFehler` in `src/infra/error.ts` — `fehlertext-intern-db`.
+  im Protokoll: `oeffentlicherFehler` in `src/infra/error.ts` — `error-text-internal-db`.
 - 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
   zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
   `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
-  `handleRouteError` — `sicherheit-server-grenzen-db`.
+  `handleRouteError` — `security-server-limits-db`.
 - Aktions-Dispatcher kein Skript-Gadget: kein `mouseenter`, je Ereignis nur
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus
   Vorlagen mit `echt()` (Zufallsmarke je Seitenladung):
-  `public/js/actions.js`, `public/js/registry.js` — `aktionen-schutz`.
+  `public/js/actions.js`, `public/js/registry.js` — `actions-protection`.
 
 ### Protokoll und Kontingente
 - Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde
   (429 `zu_viele_anfragen`, `grund: konto`), dann eine je 30 s über alle
   Konten; die Pause nach dem Bot-Schutz löst nur eine Abfrage aus, die beide
   Grenzen passiert hat: `src/vouchers/balanceThrottle.ts` —
-  `gutschein-guthaben-db`.
+  `voucher-balance-db`.
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
-  Caddy setzt je Anfrage eine neue: `src/infra/log.ts` — `protokoll`.
+  Caddy setzt je Anfrage eine neue: `src/infra/log.ts` — `log`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
-  `src/externalSources/apiQuota.ts`, `src/jobQueue/jobs.ts` — `api-kontingent-konto-db`.
+  `src/externalSources/apiQuota.ts`, `src/jobQueue/jobs.ts` — `api-quota-account-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
-  (still keine Mail): `src/account/targetThrottle.ts` — `mail-fremder-text-db`.
+  (still keine Mail): `src/account/targetThrottle.ts` — `mail-foreign-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
-  `haushalt-beitreten-db`.
+  `household-join-db`.
 - Jede angemeldete Anfrage zählt in ein Budget je Konto: 600 Einheiten je
   5 Minuten, ein Leseaufruf 1, ein Katalogabruf 5, ein Auftragsstart (PDF,
   Import, Export) 25 und zusätzlich höchstens 20 Aufträge je Fenster; 429
   `zu_viele_anfragen` mit `Retry-After`: `src/http/apiThrottle.ts` —
-  `api-kontingent` (Prozessspeicher, wie die Schranken in
+  `api-quota` (Prozessspeicher, wie die Schranken in
   `src/http/accountLimit.ts`).
 - `GET /api/v1/einrichtung/stand` ist ohne Anmeldung erreichbar und nennt nur
   Schalter (Datenbank, APP_BASE_URL, TLS, CA, Konto, Rebrickable), den
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
   darin, nach `einrichtung_erledigt` nur noch „erledigt“. Ohne Verwaltersitzung
   fehlen die Basis-URL und das Startpasswort („Konto“ heißt dann nur „es gibt
-  eines“): `src/profile/setupStatus.ts` — `einrichtung-stand-db`.
+  eines“): `src/profile/setupStatus.ts` — `setup-status-db`.
 - Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
   nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
   nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die
-  Mail ohne Namen darauf — `email-neu-db`, `email-bestaetigen-browser`,
-  `mail-fremder-text-db`.
+  Mail ohne Namen darauf — `email-new-db`, `email-confirm-browser`,
+  `mail-foreign-text-db`.
 - Teile-Import 30/h je Konto, leere Rebrickable-Antworten 10 min gemerkt;
   Währungswechsel 5/h je Konto (jeder zieht den Preislauf vor).
 - Rumpf höchstens 256 KB, nur der PDF-Auftrag 4 MB (pfadgenau vor dem
-  allgemeinen Parser): `server.ts` — `upload-grenzen-db`.
+  allgemeinen Parser): `server.ts` — `upload-limits-db`.
 
 ### Ruhende Daten
 - Der Fingerabdruck eines `Idempotency-Key` enthält keine Passwort-, Code-,
   PIN- oder Schlüsselfelder und ist ein HMAC mit eigenem Teilschlüssel des
-  Datenschlüssels — `idempotenz-geheim-db`.
+  Datenschlüssels — `idempotency-secret-db`.
 - Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `src/infra/secret.ts`
-  — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
+  — `secrets-encrypted-db`, `account-files-db`.
 - Mail-Links ohne Token in den Protokollen: `src/mail/transport.ts`.
 - Aufbewahrung von Adressen in `rate_limit_attempts` (Anmeldebremsen,
   `src/account/loginLimiter.ts`): Die Zeilen `login|<Adresse>|<Konto>`
@@ -427,12 +427,12 @@ handelte der Prozess für jede gerade aktive Sitzung.
   im Klartext und werden nach einem Tag aufgeräumt. `login-bekannt|…` (Vorrang
   bekannter Anmeldungen, 30 Tage) und `login-erfolg|…` (1 Tag) tragen statt der
   IP deren HMAC mit eigenem Teilschlüssel des Datenschlüssels, Konten stehen
-  als `konto:<id>` oder als HMAC des Namens — `anmeldung-bekannt-adresse-db`.
+  als `konto:<id>` oder als HMAC des Namens — `login-known-address-db`.
   Bei der Umstellung verlor jede bekannte Adresse einmal den Vorrang, bis zur
   nächsten erfolgreichen Anmeldung.
 
 ### Lieferkette (5)
-- Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-haertung`.
+- Actions per Commit-SHA, Images per Digest — `workflow-location`, `compose-haertung`.
   Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles (auch
   `Dockerfile.caddy`) und die Dienste in `compose.yaml` (`docker-compose`), npm und Gradle
   (`.github/dependabot.yml`), npm und Gradle frühestens drei Tage nach
@@ -445,16 +445,16 @@ handelte der Prozess für jede gerade aktive Sitzung.
   mit per Digest festem Scanner; npm als CycloneDX) am Image, dazu
   `actions/attest-build-provenance` und `actions/attest-sbom` am signierten
   Digest; prüfen mit `cosign verify` und `gh attestation verify` (README) —
-  `workflow-ort`. Das Caddy-Image (`addict85/brickinventory-caddy`) läuft durch
+  `workflow-location`. Das Caddy-Image (`addict85/brickinventory-caddy`) läuft durch
   dieselben Schritte (Bau ohne Cache, Trivy vor der Signatur, cosign keyless,
   Provenance, Stückliste aus Trivy); compose.yaml nimmt es nur als geprüften
-  Digest (`CADDY_IMAGE`, `scripts/image-pruefen.sh`) — `workflow-signatur`,
-  `image-pruefen`.
+  Digest (`CADDY_IMAGE`, `scripts/image-pruefen.sh`) — `workflow-signature`,
+  `image-check`.
 - Der Test-Schlüssel `Web-App/test/fixtures/abruf-test.key` (mit
   `abruf-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
   `25:B4:03:BD:C0:2F:3B:87:7B:DC:7F:B6:69:4D:C3:AF:FE:79:C1:42:C9:CE:DD:1E:C1:B2:6C:EF:F7:96:B3:BC`)
   steht seit Commit `227229e` öffentlich in der Historie. Er war nie
-  produktiv: Nur zwei Tests (`abruf-helfer`, `gutschein-guthaben-abruf`)
+  produktiv: Nur zwei Tests (`fetch-helper`, `voucher-balance-fetch`)
   starten damit einen HTTPS-Server auf `127.0.0.1` und reichen das Zertifikat
   ihrem eigenen Client als `ca` — kein Image, kein Truststore, keine
   Konfiguration enthält es. Trotz der Namen im Zertifikat (`localhost`,
@@ -463,9 +463,9 @@ handelte der Prozess für jede gerade aktive Sitzung.
   getäuscht. Die Historie bleibt unverändert.
 - PDF.js lädt ohne eval (`isEvalSupported: false`) und ohne Skripte im PDF;
   die ausgelieferten Dateien enthalten weder `eval(` noch `new Function(` —
-  `pdf-zoom`, `pdfjs-fassung`.
+  `pdf-zoom`, `pdfjs-version`.
 - PDF.js als `pdfjs-dist` mit exakter Fassung; `public/vendor/pdfjs/` ist eine
-  beim Bauen geschriebene, byte-gleiche Kopie — `pdfjs-fassung`. Als
+  beim Bauen geschriebene, byte-gleiche Kopie — `pdfjs-version`. Als
   devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
   deshalb zusätzlich im vollen `npm audit`.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
@@ -481,7 +481,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Umgebung `docker-hub` mit Freigabe. Der Tag beim Handstart nur über `env`
   und in Docker-Tag-Form — `workflow-tag`.
 - Checkouts ohne gespeicherte Zugangsdaten (`persist-credentials: false`),
-  ausser in den zwei Jobs, die einen Zweig pushen — `workflow-ort`.
+  ausser in den zwei Jobs, die einen Zweig pushen — `workflow-location`.
 - `su-exec` im Laufzeit-Image mit fester Fassung — `dockerfile`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
@@ -490,11 +490,11 @@ handelte der Prozess für jede gerade aktive Sitzung.
   steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`. Caddy entsteht aus
   `Dockerfile.caddy`; der Job `trivy-eigenbau` prüft das Ergebnis ohne
   Ausnahmen. Ein Digest, der hinter seinem Tag zurückliegt, wird gemeldet —
-  `workflow-ort`, `compose-betrieb`.
+  `workflow-location`, `compose-operation`.
 - `docker-publish.yml` baut ohne Cache (`no-cache: true`): Den GHA-Cache auf
   `main` beschreibt auch die CI mit allen Entwicklungspaketen. Vor `cosign
   sign` prüft Trivy den veröffentlichten Digest; `web-ci.yml` prüft nach
-  `npm ci` die Registry-Signaturen (`npm audit signatures`) — `workflow-ort`.
+  `npm ci` die Registry-Signaturen (`npm audit signatures`) — `workflow-location`.
 
 ## Betrieb
 
@@ -509,12 +509,12 @@ handelte der Prozess für jede gerade aktive Sitzung.
   der Laufzeitrolle die Zeilenrechte an jeder neuen Tabelle. Den Superuser
   kennen nur Postgres und der einmalige Dienst `db-rolle`
   (`postgres/app-rolle.sh`). Läuft die App doch als Superuser, warnt der
-  Start — `db-rolle-db`, `compose-haertung`.
+  Start — `db-role-db`, `compose-haertung`.
 - `db-rolle` läuft als Superuser in einer Datenbank, die der Migrationsrolle gehört.
   Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
   Verbinden (PGOPTIONS), nur `pg_catalog.`-Funktionen, zuerst
   `ALTER DATABASE … RESET ALL` und `ALTER ROLE <app> … RESET ALL`; bei aktiven
-  Event-Triggern bricht es ab — `db-rolle-db` (stellt den Angriff mit eigenem
+  Event-Triggern bricht es ab — `db-role-db` (stellt den Angriff mit eigenem
   `set_config` und Operator nach). Wer selbst als Superuser `psql` in dieser
   Datenbank öffnet, setzt `PGOPTIONS='-c search_path=pg_catalog,pg_temp'`.
 - `scripts/restore.sh` spielt den Dump als Migrationsrolle ein, in einer
@@ -523,14 +523,14 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Sitzungsgeheimnis und alle Datenbankpasswörter nur als Docker-Secrets
   (`./geheimnisse/`, Ordner 700, `scripts/geheimnisse-einrichten.sh`), kein
   Dienst bekommt sie als Umgebungsvariable (`docker inspect`) —
-  `compose-geheimnisse`, `geheimnisse-einrichten`, `db-rolle-db`. Klartext
+  `compose-secrets`, `secrets-set-up`, `db-role-db`. Klartext
   nur als bewusste Ausnahme (Port 3000 in `compose.yaml` einkommentieren,
   `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
 - Postgres hängt nur im internen Netz `db-net` (ohne Weg nach draussen),
   schreibt nur in Daten und Socket (`read_only`); jedes tmpfs ist `noexec`,
   `nosuid`, `nodev` und begrenzt; jeder Dienst schreibt sein Docker-Protokoll
-  mit `driver: local`, höchstens 5 × 10 MB — `compose-betrieb`.
+  mit `driver: local`, höchstens 5 × 10 MB — `compose-operation`.
 - `migration` hängt ebenfalls nur an `db-net`, `schluessel`, `daten-rechte`
   und `caddy-rechte` laufen ohne Netz. `app`, `jobs` und `caddy` brauchen das
   Internet; den Weg ins Heimnetz sperrt optional eine `DOCKER-USER`-Regel auf
@@ -542,37 +542,37 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `web-einzelinstanz-db`.
 - Ohne `NODE_ENV` gelten alle Regeln des Betriebs (Startverbote, Superuser-
   Verbot, verborgene 5xx-Texte, sicheres Cookie); nur `development` und
-  `test` lockern sie — `betrieb-ohne-node-env-db`.
+  `test` lockern sie — `operation-without-node-env-db`.
 - Der Datenschlüssel lässt sich wechseln (`scripts/datenschluessel-wechseln.sh`,
   `DATA_KEY_ALT_FILE`); der Start schreibt alles mit dem neuen neu —
-  `datenschluessel-wechsel-db`.
+  `data-key-switch-db`.
 - Gelöschte Konten verschwinden auch aus den Kopien `vor_migration_*`; diese
   verfallen nach 30 Tagen, das Verwaltungsprotokoll nach einem Jahr —
-  `konto-loeschen-spuren-db`. Sicherungen enthalten Sitzungen,
+  `account-delete-traces-db`. Sicherungen enthalten Sitzungen,
   Anmeldezähler und Protokollzeilen nicht — `backup-restore-db`.
 - Kein Datenbank-Werkzeug im Browser: pgweb (Debian 11 ohne Pflege) ist
-  entfernt — `compose-betrieb`. Zum Nachsehen dient `psql` als Leserolle
+  entfernt — `compose-operation`. Zum Nachsehen dient `psql` als Leserolle
   `brickinventory_lesen` im Postgres-Container. Die Leserolle liest nur eine
   Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-rolle.sh`): eine neue
   Tabelle oder Spalte bleibt unlesbar, bis sie dort steht; Tokens, Sitzungen,
   Passwort-Hashes, TOTP, Einstellungswerte und Gutschein-PINs stehen nicht
-  darin — `db-rolle-db`.
+  darin — `db-role-db`.
 - `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
-  Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archiv`.
+  Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archive`.
 - Container ohne Capabilities ausser den nötigen, `read_only`,
   `no-new-privileges`, und mit Grenzen für Speicher, Prozesse und CPU
-  (`mem_limit`, `pids_limit`, `cpus`) — `compose-grenzen-schluessel`.
+  (`mem_limit`, `pids_limit`, `cpus`) — `compose-limits-key`.
 - Den Datenschlüssel legt der Einmal-Dienst `schluessel` an
   (`schluessel-anlegen.sh`, ohne Netz); app und jobs sehen ihn nur lesend —
-  `compose-grenzen-schluessel`. Getrennt von `data/` sichern, sonst sind
+  `compose-limits-key`. Getrennt von `data/` sichern, sonst sind
   Geheimnisse und Gutschein-PDFs einer Sicherung nicht lesbar.
 - Der Server liest Geheimnisse aus Dateien (`SESSION_SECRET_FILE`,
   `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`) —
-  `geheimnis-dateien`.
+  `secret-files`.
 - Sicherungen immer mit age an öffentliche Schlüssel verschlüsselt
   (`./backup-empfaenger.txt`), ohne Klartext daneben; ohne Empfänger keine
   Sicherung, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`. Der private
-  Schlüssel liegt nicht auf dem Server — `backup-verschluesselt`.
+  Schlüssel liegt nicht auf dem Server — `backup-encrypted`.
 
 ## Android: Resilienz (MASVS)
 

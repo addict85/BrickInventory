@@ -13,7 +13,7 @@
  *   Argumente/data-val/this, Capture der Bildfehler, Wiederholversuch, Modus
  *   „keep“, Protokollfenster ohne Inline-Skript → aktionen-dispatcher-
  *   oberflaeche (Gegenproben A–H dort); der Platzhalter-Modus →
- *   bilder-platzhalter.test.js.
+ *   images-placeholder.test.js.
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
