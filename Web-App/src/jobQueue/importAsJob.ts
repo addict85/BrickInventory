@@ -2,7 +2,7 @@
  * ab, läuft er weiter, und Fremdabrufe belasten nicht den Prozess, der die Seiten ausliefert. */
 import { placeJobOne } from './service';
 import type { JobKind, Fortschritt, PayloadInput } from './jobs';
-import { Fachfehler, fachfehler, type ErrorKind, type ErrorCode } from '../infra/fehlerTexte';
+import { Fachfehler, fachfehler, type ErrorKind, type ErrorCode } from '../infra/errorTexts';
 import type { JobsContext } from './context';
 
 /** So lange wartet die Anfrage; danach läuft der Auftrag im Hintergrund weiter. */

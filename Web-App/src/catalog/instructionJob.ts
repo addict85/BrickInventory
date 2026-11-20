@@ -1,4 +1,4 @@
-import { withVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNumber';
 import type { CatalogContext } from './context';
 
 /** Ein Set steht höchstens einmal offen. @returns die Kennung, oder null, wenn es schon offen steht */

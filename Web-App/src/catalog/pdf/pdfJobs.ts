@@ -3,10 +3,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { PDF_JOB_DIR } from '../../infra/appPaths';
-import { reportError, withoutMissingFile } from '../../infra/fehler';
-import { Fachfehler, fachfehler, notFound } from '../../infra/fehlerTexte';
+import { reportError, withoutMissingFile } from '../../infra/error';
+import { Fachfehler, fachfehler, notFound } from '../../infra/errorTexts';
 import type { PayloadInput } from '../../jobQueue';
-import { withVersion } from '../../infra/setNummer';
+import { withVersion } from '../../infra/setNumber';
 import type { CatalogContext } from '../context';
 
 /** Jeder Statuswechsel weckt die Statusströme (atJobStatus) mit diesem Schlüssel. */

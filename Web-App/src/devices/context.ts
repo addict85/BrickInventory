@@ -1,8 +1,8 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
-import type { Konfig } from '../infra/konfig';
-import type { Uhr } from '../infra/uhr';
+import type { Konfig } from '../infra/config';
+import type { Uhr } from '../infra/clock';
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/bereich';
+import { imSystem, mit, type Kontext } from '../infra/area';
 import type { DevicesReadContract } from './readContract';
 import type { JobsServices } from '../jobQueue';
 import * as geraeteSchluessel from './repository/deviceKeys';

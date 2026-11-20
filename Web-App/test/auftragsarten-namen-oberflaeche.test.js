@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
 const { openUi, reiter } = require('./helpers/oberflaeche');
 const { buildAndRequire } = require('./helpers/sources');
 
-const { DECLARED_KINDS } = buildAndRequire()('startup/verdrahtung.js');
+const { DECLARED_KINDS } = buildAndRequire()('startup/wiring.js');
 const ARTEN = Object.keys(DECLARED_KINDS).sort();
 
 for (const sprache of ['de', 'en']) {

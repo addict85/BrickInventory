@@ -4,7 +4,7 @@ import type { MailContext } from './context';
 import { basisUrl, hintWithoutBaseUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailTheme } from './template';
 import { sendMail, testSmtp } from './transport';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
 // Re-exported so callers and tests keep a single address.

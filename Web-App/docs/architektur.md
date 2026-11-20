@@ -47,7 +47,7 @@ Absicht, solange es nur von unten gebraucht wird:
   (Stufe 2). Dienste kennen Express nicht; was sie von der Anfrage brauchen,
   trägt der Aufrufrahmen (`kontoKontext`, siehe unten).
 - Den Zugang kennt `src/infra` nur als Schnittstelle (`Zugang` in
-  `src/infra/zugang.ts`); `db/database.ts` erfüllt sie.
+  `src/infra/access.ts`); `db/database.ts` erfüllt sie.
 
 - Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
   `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
@@ -67,11 +67,11 @@ Absicht, solange es nur von unten gebraucht wird:
   (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche, die
   Konfiguration (`k.konfig`) und die Arbeitseinheit. Ein Dienst nimmt den Kontext
   als ersten Parameter (`k`) und holt alles daraus, nichts vom Prozess. Die Fabrik
-  ist eine Closure über `k` (`baueBereich`, `src/infra/bereich.ts`): Jeder Dienst
+  ist eine Closure über `k` (`baueBereich`, `src/infra/area.ts`): Jeder Dienst
   steht ausgeschrieben da (`setsLesen: mit(k)(lesen.setsLesen)`), typgeprüft, ohne
-  Namenslisten und ohne Proxy. `startup/verdrahtung.ts` baut alle Bereiche in
+  Namenslisten und ohne Proxy. `startup/wiring.ts` baut alle Bereiche in
   `baueDienste(db, bauteile)`; Server und Testhilfe rufen dieselbe Funktion.
-- Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
+- Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/services.ts`) und
   rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Einen Speicher
   der Dienste im Prozess gibt es nicht: HTTP-Seiten, Jobs und Tests bekommen ihre
   Dienste ebenso gereicht (`baueDienste`, `testDienste()`); `test/ratschen.test.js`
@@ -86,12 +86,12 @@ Absicht, solange es nur von unten gebraucht wird:
   der laufenden Transaktion. Zustand im Speicher bleibt geteilt. So
   steht am Aufrufort, was zusammen gilt, und nichts leitet eine Abfrage still um.
   Das ist die einzige Form: Repositories öffnen keine Transaktion, sie nehmen den
-  `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/bereich.ts` und `db/`.
+  `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/area.ts` und `db/`.
 - Den Rahmen (Konto oder Systemrahmen, `imSystemkontext`) wählt man vor der
   Transaktion. Ein Wechsel mitten in ihr liefe über den Pool der anderen Rolle,
   also neben ihr; `db/database.ts` wirft dann `NebenDerTransaktion`.
 - Zustand im Speicher gehört einem Zugang: Ein Bereich hält ihn in seinen Fächern
-  (`k.faecher`, `src/infra/zwischenspeicher.ts`). Bewusst prozessweiter Zustand
+  (`k.faecher`, `src/infra/cache.ts`). Bewusst prozessweiter Zustand
   (Drosseln, Schranken) steht mit Grund in `src/infra/prozessweit.ts`; modulweite
   `let` und leer angelegte `Map`/`Set` zählt `test/ratschen.test.js`.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
@@ -103,10 +103,10 @@ Absicht, solange es nur von unten gebraucht wird:
   `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Startseite in `profil`, Bild-Proxy in
   `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
-  den HTTP-Status wählt `src/http/fehlerArt.ts`.
+  den HTTP-Status wählt `src/http/errorKind.ts`.
 - Clients erreicht man nur über `src/externalSources/sources.ts`. Jeder Klient
   entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
-  Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
+  Kontingent und Drossel seines Zugangs (`clients/access.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
 - Den Rumpf `k.transaktion(async t => …)` prüft vorher die Lint-Regel
   `biome/transaktionsrumpf.grit`: kein `k`, `sk`, `kx` oder Empfänger darin.
@@ -114,7 +114,7 @@ Absicht, solange es nur von unten gebraucht wird:
   `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
   zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg
   in die Transaktion ist er nicht.
-- Die Zeit kommt über `k.uhr` (`src/infra/uhr.ts`, `baueDienste(db, { uhr })`), nicht über
+- Die Zeit kommt über `k.uhr` (`src/infra/clock.ts`, `baueDienste(db, { uhr })`), nicht über
   `Date.now()`: Tests stellen sie (`testUhr().vor(ms)`), statt eine Frist abzuwarten. Drosseln
   mit echten Zeitgebern bleiben bei der Systemzeit; den Rest zählt `test/ratschen.test.js`.
 - `konfig()` liest nur der Start (`startup/`, `server.ts`); Fachbereiche, Routen und
@@ -124,7 +124,7 @@ Absicht, solange es nur von unten gebraucht wird:
 
 ## Aufrufrahmen: wer fragt
 
-„Wer fragt“ steht an einer Stelle: im Aufrufrahmen (`src/infra/kontoKontext.ts`),
+„Wer fragt“ steht an einer Stelle: im Aufrufrahmen (`src/infra/accountContext.ts`),
 dem einzigen Kanal über `AsyncLocalStorage` (`test/ratschen.test.js` verbietet
 weitere). Die Anfrage setzt ihn einmal (`merkeAnfrage`, aus Sitzung oder Token), ein
 Auftrag ebenso (`imNamenDesAuftrags`), Arbeit über Konten betritt ausdrücklich den
@@ -153,14 +153,14 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 
 - **Ein Fehlerweg.** Eine Absage ist ein `Fachfehler` mit `FehlerArt`
   (`fachfehler()`, für einen Lesepfad ohne Treffer `nichtGefunden()`); den Status
-  wählt nur `src/http/fehlerArt.ts`, die Antwort schreibt nur `fehlerAntwort`.
+  wählt nur `src/http/errorKind.ts`, die Antwort schreibt nur `fehlerAntwort`.
   Felder neben `code` und `error` (etwa `wartenSek`) trägt der Fehler als `zusatz`.
   Dienste geben keine Absage als Ergebnis zurück (`{ fehler }`, `{ ok: false }`),
   Routen rufen kein `sendeFehler` (`test/schichten.test.js`; die eine Ausnahme ist die
   Uhr in `rumpfFrist`, die nach `next()` läuft). Alles andere fliegt weiter bis zum
   Fehlerweg der App oder des Auftrags.
 - **Lesepfade** mit Teilen, die ausfallen dürfen, nehmen `versuche()` oder
-  `Abstriche` (`src/infra/ergebnis.ts`): Die Antwort nennt sie in `degradiert`.
+  `Abstriche` (`src/infra/result.ts`): Die Antwort nennt sie in `degradiert`.
 - **`logAndContinue`** nur für Nebenwirkungen ohne Folgen für das Ergebnis: Mail
   und Signal nebenher, Fortschritt und Stand, Aufräumen nach dem eigentlichen
   Fehler, Herunterfahren. Einen Ersatzwert liefert `meldeUndLiefere` und nennt
@@ -172,7 +172,7 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 - Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
   keine Zeichenkette, die der Fänger vergleicht.
 - Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) ist die
-  Transaktion selbst: Ihr Stand (`neuerTxStand`, `db/transaktion.ts`) reist im
+  Transaktion selbst: Ihr Stand (`neuerTxStand`, `db/transaction.ts`) reist im
   Aufrufrahmen, kein Zustand des Prozesses.
 
 ## Zeilenschutz: was er leistet und was nicht
@@ -240,7 +240,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 16 | `src/sets` |
 | 17 | `src/parts`, `src/minifigs`, `src/wanted`, `src/vouchers` |
 | 18 | `src/collection`, `src/management` |
-| 19 | `src/dienste.ts` |
+| 19 | `src/services.ts` |
 | 20 | `jobs`, `routes` |
 | 21 | `startup` |
 | 22 | `server.ts` |
@@ -254,7 +254,7 @@ Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugen
 |---|---|---|
 | `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-basis-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
 | `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-frisch-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
-| `db/zeilen.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/zeilentypen-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
+| `db/rows.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/zeilentypen-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
 
 Von Hand geändert wird keine davon; eine Schemaänderung ist immer eine
 neue Migration.
@@ -272,10 +272,10 @@ einbindet. Die Stufen gelten deshalb auch für Daten:
 - Liegt er darunter (Einstellungen, Aufträge, Haushalt, Geräte, Bilder, Katalog, Finanzen,
   Bestand), nennt er in `src/<bereich>/lesevertrag.ts` die Form, die er braucht (Unterabfragen
   mit festen Spalten), und bekommt sie als `lesevertrag` im Kontext. Gefüllt wird der Vertrag
-  aus `LESEVERTRAG` in `src/dienste.ts` (Stufe 19, über jedem Besitzer); die Repositories nehmen
+  aus `LESEVERTRAG` in `src/services.ts` (Stufe 19, über jedem Besitzer); die Repositories nehmen
   ihn nach dem Zugang (`mitVertrag`). Wer eine Tabelle umbaut, passt den Baustein an, der
   Vertrag des Lesers bleibt.
-- Die Kontobedingung eines Bausteins ist nur ein Platzhalter (`Konten` in `db/konten.ts`:
+- Die Kontobedingung eines Bausteins ist nur ein Platzhalter (`Konten` in `db/accounts.ts`:
   `= $n` oder `= ANY($n)`).
 
 `test/gemeinsame-tabellen-db.test.js` teilt die Lesestellen ein: Aufwärts gibt es keine, weder
@@ -363,7 +363,7 @@ Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 Finanzen, Katalog und Mail (`holePreis`, `setZustand`, `aktuellerMarktpreis`);
 `test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
 Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`
-(`src/infra/setNummer`), Sets verschiebt `setVerschieben` (Einstieg) über
+(`src/infra/setNumber`), Sets verschiebt `setVerschieben` (Einstieg) über
 `setErfassungenUmhaengen`; Bild- und Quellenhelfer importiert man aus `bilder` bzw.
 `fremdquellen`, nicht über `katalog`.
 

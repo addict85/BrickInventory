@@ -3,7 +3,7 @@
  * weiter zu. Geprüft wird im Takt und bei jeder Zugangsänderung im Prozess,
  * ohne Zwischenspeicher und ohne Nebenwirkungen (kein last_used, kein Fehlversuch). */
 import type { Request } from 'express';
-import { reportError } from '../../infra/fehler';
+import { reportError } from '../../infra/error';
 import type { AccountServices } from '../area';
 import { atAccessChange } from '../accessChange';
 

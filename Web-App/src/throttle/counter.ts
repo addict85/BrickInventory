@@ -1,6 +1,6 @@
 /** Counter with fallback: when the database locks up, the process keeps counting in memory so
  * a brake doesn't end up wide open. It only counts per process; reported at most once per minute. */
-import { fehlertext } from '../infra/fehler';
+import { fehlertext } from '../infra/error';
 import { prozessweit } from '../infra/prozessweit';
 import type { ThrottleContext } from './context';
 

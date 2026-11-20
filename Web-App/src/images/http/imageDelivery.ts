@@ -3,9 +3,9 @@
 import fs from 'node:fs';
 import type { Request, Response } from 'express';
 import { userIdTheRequest } from '../../account/http/login';
-import { safeDataPath } from '../../infra/datenPfad';
-import { pathSegments } from '../../http/httpAntwort';
-import { responseOnFileError, deliverFile, sendeDatei } from '../../http/dateiAusliefern';
+import { safeDataPath } from '../../infra/dataPath';
+import { pathSegments } from '../../http/httpResponse';
+import { responseOnFileError, deliverFile, sendeDatei } from '../../http/serveFile';
 import { countProxyError } from '../imgProxyStats';
 import { imageReleased } from '../imageScope';
 import { vorschauErzeugenAus, previewType } from '../thumbs';

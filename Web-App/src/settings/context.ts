@@ -1,10 +1,10 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/bereich';
-import type { Faecher } from '../infra/zwischenspeicher';
+import { imSystem, mit, type Kontext } from '../infra/area';
+import type { Faecher } from '../infra/cache';
 import * as repository from './repository/values';
 import type { ThrottleServices } from '../throttle';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 import type { SettingsReadContract } from './readContract';
 
 export interface SettingsDependencies {

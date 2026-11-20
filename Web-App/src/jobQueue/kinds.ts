@@ -1,5 +1,5 @@
 /** Die Warteschlange kennt keine Art: Jeder Bereich meldet seine in der Verdrahtung an,
- * mit Nutzlast, Ausführer und Zeitplan (startup/verdrahtung.ts). */
+ * mit Nutzlast, Ausführer und Zeitplan (startup/wiring.ts). */
 import type { z } from 'zod';
 import type { JobKind, JobContext, JobRow, Nutzlast, PayloadSchema } from './jobs';
 

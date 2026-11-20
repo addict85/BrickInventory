@@ -1,10 +1,10 @@
 /** Anmelden per QR-Code; die App holt ihren Token, wenn die Web-Sitzung bestätigt (src/account/qrPairing.ts). */
 import { guardFor } from '../api_v1/middleware';
 import { signedInUserId, ipThrottle, confirmWithFactor, perSession } from '../../src/account/http/login';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
+import { vertragsRouter } from '../../src/http/contractRouter';
 import { assertLoginAllowed, devicesNameContentValid, reportLogin, QR_TTL_MS } from '../../src/account';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
+import type { Dienste } from '../../src/services';
+import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
 async function signInMay(d: Pick<Dienste, 'account'>, uid: number): Promise<boolean> {

@@ -1,8 +1,8 @@
 import { resolveImageLocal } from '../images';
 import { asIds, type Sicht } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
-import { withVersion } from '../infra/setNummer';
-import { Degradations } from '../infra/ergebnis';
+import { withVersion } from '../infra/setNumber';
+import { Degradations } from '../infra/result';
 import type { MinifigsContext } from './context';
 
 // Read queries for minifigs.

@@ -89,8 +89,8 @@ async function seed() {
   );
   // `sets` bleibt die einzige Attrappe. Die Setmenge steht seit Migration
   // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
-  // (owned_quantity ueber db/bestandsmenge.ts) — mit nur `sets`
-  // antwortete sie 0 (gemessen: „expected 2, actual 0"). Spalten wie setBestand() in db/bestandSicht.ts.
+  // (owned_quantity ueber db/stockQuantity.ts) — mit nur `sets`
+  // antwortete sie 0 (gemessen: „expected 2, actual 0"). Spalten wie setBestand() in db/inventoryView.ts.
   await db.run(
     `CREATE TABLE sets (id SERIAL, user_id INTEGER, set_number TEXT, storage_id INTEGER, added_at TIMESTAMPTZ)`,
   );

@@ -1,10 +1,10 @@
 /** Lagerorte und Preisalarme der Sets; eigene Pfade, deshalb ohne Rücksicht auf die Reihenfolge in sets.ts. */
 import { kontoSchranke, viewOf, guardFor } from './middleware';
-import { csvReceive } from '../../src/http/dateiEmpfang';
+import { csvReceive } from '../../src/http/fileUpload';
 import { zustand } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler } from '../../src/infra/fehlerTexte';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { fachfehler } from '../../src/infra/errorTexts';
 
 export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' | 'inventory' | 'sets'>) {
   const { requireToken } = guardFor(d.account);

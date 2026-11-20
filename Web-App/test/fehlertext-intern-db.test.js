@@ -33,7 +33,7 @@ const replace = (rel, zusatz) => {
   _req(rel);
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
-const { fileError, errorText } = _req('src/infra/fehlerTexte.js');
+const { fileError, errorText } = _req('src/infra/errorTexts.js');
 // Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
 // Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
 replace('src/wanted/repository/wanted.js', {

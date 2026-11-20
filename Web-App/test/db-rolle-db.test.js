@@ -56,7 +56,7 @@
  *      Installation“, „neue Installation“, „… darf kein DROP …“
  *   U  in initSchemaOnce den Zweig für Rollen ohne CREATE gestrichen → rot:
  *      „neue Installation“ (keine Meldung „Die Datenbank ist leer …“)
- *   V  in startup/migrieren.ts die Prüfung changeMaySchema() gestrichen →
+ *   V  in startup/migrate.ts die Prüfung changeMaySchema() gestrichen →
  *      rot: „… offenen Migrationen“ (der Dienst meldet als Laufzeitrolle Erfolg)
  *   W  in scripts/rollen-trennen.sh `docker compose run --rm db-rolle`
  *      gestrichen → rot: „scripts/rollen-trennen.sh stellt … um“
@@ -327,7 +327,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         process.execPath,
         [
           '-e',
-          "const m = require('./dist/db/database.js'); const db = m.createDb(m.dbKonfigFromEnvironment()); require('./dist/startup/datenbank.js').warnAtSuperuser(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })",
+          "const m = require('./dist/db/database.js'); const db = m.createDb(m.dbKonfigFromEnvironment()); require('./dist/startup/database.js').warnAtSuperuser(db).then(w => { console.log('WARNUNG=' + w); return db.pool.end(); })",
         ],
         { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } },
       );
@@ -720,14 +720,14 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         mig.query(`UPDATE schema_migrations SET name = $1 WHERE name = $1 || '.weg'`, [letzte]),
       );
     }
-    const m = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrieren.js')], {
+    const m = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrate.js')], {
       cwd: ROOT,
       encoding: 'utf8',
       env: { ...process.env, DATABASE_URL: url(neu, ROLLE, PASSWORT) },
     });
     assert.notEqual(m.status, 0, 'der Dienst migration meldet als Laufzeitrolle Erfolg');
     assert.match(m.stderr, /PGUSER muss die Migrationsrolle sein/);
-    const ok = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrieren.js')], {
+    const ok = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'startup', 'migrate.js')], {
       cwd: ROOT,
       encoding: 'utf8',
       env: { ...process.env, DATABASE_URL: url(neu, MIG, MIG_PW) },
@@ -1076,7 +1076,7 @@ case "$2 $4" in
        PGWEB_DB_PASSWORD_FILE='${g}/pgweb_db_password' \
        DB_SYSTEM_PASSWORD_FILE='${g}/db_system_password' exec sh '${SCRIPT}' ;;
   'run migration') cd '${ROOT}' && DATABASE_URL="postgres://${MIG}:$(cat '${g}/db_migration_password')@${BASIS.host}/${migration}" \
-       exec '${process.execPath}' dist/startup/migrieren.js ;;
+       exec '${process.execPath}' dist/startup/migrate.js ;;
   exec*) shift 6; PGPASSWORD="$(cat '${g}/db_password')" PGOPTIONS='-c search_path=pg_catalog,pg_temp' exec psql -h '${BASIS.hostname}' -p '${BASIS.port || 5432}' "$@" ;;
   *) echo "unbekannt: $*" >&2; exit 9 ;;
 esac

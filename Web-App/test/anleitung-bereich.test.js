@@ -11,7 +11,7 @@ const os = require('node:os');
 const path = require('node:path');
 const express = require('express');
 
-const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
+const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/serveFile.js');
 const { portOf } = require('./helpers/server');
 
 const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');

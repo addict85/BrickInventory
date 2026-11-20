@@ -2,7 +2,7 @@
  * aus den Quellen. */
 import path from 'node:path';
 import fs from 'node:fs';
-import { konfig } from './konfig';
+import { konfig } from './config';
 
 function findRoot(): string {
   const wurzel = konfig().appRoot;

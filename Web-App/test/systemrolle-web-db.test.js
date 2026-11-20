@@ -13,7 +13,7 @@
  *   C  in db/migrate.ts removeAccountFromBackups() wieder mit DELETE je Kopie → rot:
  *      „ein Konto verschwindet auch aus den Kopien …“ (0 statt 2: Die Web-Rolle sieht die
  *      Kopien im Katalog nicht und löscht still nichts)
- *   D  in startup/datenbank.ts prepareDatabaseBefore() ohne den Zweig `jobs === false` → rot:
+ *   D  in startup/database.ts prepareDatabaseBefore() ohne den Zweig `jobs === false` → rot:
  *      „der Web-Prozess startet …“ (permission denied for table vouchers, kein Start)
  *   E  waitOnLegacyStock() kehrt sofort zurück → rot: „… waiting auf die Umschlüsselung“
  *   F  in src/parts/summary.ts catalogFollowUpOnce() ohne den Zweig für `web` →
@@ -39,7 +39,7 @@ const { keineDb } = require('./helpers/db');
 const { warte } = require('./helpers/zeit');
 const { portOf } = require('./helpers/server');
 const db = quellen.testData();
-const { asRequest, asWebRequest, inSystemContext } = _req('src/infra/kontoKontext.js');
+const { asRequest, asWebRequest, inSystemContext } = _req('src/infra/accountContext.js');
 
 const WEB = process.env.PGSYSTEM_WEB_USER;
 const FULL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].join(', ');

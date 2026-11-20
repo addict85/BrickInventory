@@ -1,13 +1,13 @@
 /** Fremde Dienste und Jobs erreicht die Überwachungsseite nur von hier aus, ohne Schichtsprung in den Routen. */
 import fs from 'node:fs';
-import { AbrufFehler } from '../infra/abruf';
+import { AbrufFehler } from '../infra/fetch';
 import { DAILY_JOBS } from './timesOfDay';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, reportError, withoutMissingFile } from '../infra/fehler';
-import { Degradations, versuche } from '../infra/ergebnis';
+import { fehlertext, reportError, withoutMissingFile } from '../infra/error';
+import { Degradations, versuche } from '../infra/result';
 import { requestsJeMinute } from '../images';
 import { asFetchError } from '../externalSources';
-import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
+import { fachfehler, type ErrorCode } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
 
 const SOURCES: Record<string, (q: ManagementContext['externalSources']['quellen']) => Promise<void>> = {

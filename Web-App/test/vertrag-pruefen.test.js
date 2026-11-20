@@ -1,5 +1,5 @@
 /**
- * Die Prüfung der Antworten gegen den Vertrag (src/http/vertragsRouter.ts):
+ * Die Prüfung der Antworten gegen den Vertrag (src/http/contractRouter.ts):
  * In Tests wird eine abweichende 2xx-Antwort zur 500 mit den Abweichungen;
  * eine vertragswidrige Eingabe ist schon vor der Route 400 (checkInput,
  * auch im Betrieb, siehe test/eingabe-vertrag-db.test.js); im Betrieb
@@ -24,8 +24,8 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { vertragsRouter } = _req('src/http/vertragsRouter.js');
-const { setKonfig } = _req('src/infra/konfig.js');
+const { vertragsRouter } = _req('src/http/contractRouter.js');
+const { setKonfig } = _req('src/infra/config.js');
 
 /** Ein Router mit echten Schlüsseln des Vertrags, der antwortet, was der Test will. */
 function server(t, antworten) {

@@ -75,7 +75,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const worker = _req('jobs/auftraegeStarten.js').startJobWorker(require('./helpers/sources').testServices(), {
+  const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
     arten: ['csv_import'],
     taktMs: 50,
   });

@@ -1,6 +1,6 @@
 // CSV mit richtigem Quoting, damit ein Export mit dem passenden Import unverändert wieder eingelesen werden kann.
 import { parse } from 'csv-parse/sync';
-import { errorText, type Sprache } from './fehlerTexte';
+import { errorText, type Sprache } from './errorTexts';
 
 /** Tabulator und Wagenrücklauf gehören dazu: Excel liest sie als Trennzeichen
  * und behandelt das folgende Feld wieder als Formel. Auch nach Leerraum und in

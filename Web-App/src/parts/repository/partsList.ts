@@ -1,9 +1,9 @@
-import { lagerorte } from '../../../db/bestandSicht';
+import { lagerorte } from '../../../db/inventoryView';
 import type { DbInterface, Treffer } from '../../../db/database';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
-import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/stockQuantity';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import { teilSichtJoin, TEIL } from '../../../db/catalogView';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
 
 /** Both paths (summary and live) return the same shape, so the UIs don't need to
  * know where the rows came from. */

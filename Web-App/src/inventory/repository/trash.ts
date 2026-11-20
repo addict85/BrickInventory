@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/catalogView';
 
 /** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
  * JSON; Wiederherstellen schreibt sie Spalte für Spalte zurück. */

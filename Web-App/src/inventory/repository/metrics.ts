@@ -1,4 +1,4 @@
-import { mengeAus, teilmengeAus } from '../../../db/bestandsmenge';
+import { mengeAus, teilmengeAus } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
 import type { DbInterface } from '../../../db/database';
 

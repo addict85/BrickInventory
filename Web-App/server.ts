@@ -1,25 +1,25 @@
 // Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
-import { konfig } from './startup/konfigPruefen';
+import { konfig } from './startup/checkConfig';
 // Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile und geht
 // nach app_logs, sobald der Pool steht.
-import { installLog, logInDieDatabase, emptyLog } from './src/infra/protokoll';
+import { installLog, logInDieDatabase, emptyLog } from './src/infra/log';
 installLog();
 
 import http, { type Server } from 'node:http';
 import type { Db } from './db/database';
-import { fehlertext, logAndContinue } from './src/infra/fehler';
-import { startBans, startWarnings } from './src/infra/konfig';
+import { fehlertext, logAndContinue } from './src/infra/error';
+import { startBans, startWarnings } from './src/infra/config';
 import { hintWithoutBaseUrl } from './src/infra/basisUrl';
-import { prepareDatabaseBefore } from './startup/datenbank';
-import { startJobs, stopJobs, type JobsLauf } from './startup/jobsProzess';
-import { wireProcess, type Dienste } from './startup/verdrahtung';
+import { prepareDatabaseBefore } from './startup/database';
+import { startJobs, stopJobs, type JobsLauf } from './startup/jobsProcess';
+import { wireProcess, type Dienste } from './startup/wiring';
 import { baueApp } from './startup/app';
-import { HTTP_DEADLINES } from './src/infra/httpFristen';
+import { HTTP_DEADLINES } from './src/infra/httpDeadlines';
 import { closeAllSse } from './src/http/sseRegistry';
 
-import { closeBufferAndTicks } from './startup/abschluss';
-import { holdWebLock } from './startup/einzelinstanz';
-import { inSystemContext } from './src/infra/kontoKontext';
+import { closeBufferAndTicks } from './startup/shutdown';
+import { holdWebLock } from './startup/singleInstance';
+import { inSystemContext } from './src/infra/accountContext';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
 // Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse

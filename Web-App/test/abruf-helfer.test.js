@@ -1,5 +1,5 @@
 /**
- * src/infra/abruf.ts gegen einen echten TLS-Server auf 127.0.0.1: Umleitungen
+ * src/infra/fetch.ts gegen einen echten TLS-Server auf 127.0.0.1: Umleitungen
  * mit relativer, http- und fremder Adresse, Schleifen, zu grosse Körper und
  * Stille dürfen den Prozess nicht beenden; sie werden zu AbrufFehler.
  * setBildHerunterladen läuft über einen Agenten, der jeden Host auf den Testserver
@@ -26,7 +26,7 @@ const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
-const { holeHttps, openHttps, AbrufFehler } = _req('src/infra/abruf.js');
+const { holeHttps, openHttps, AbrufFehler } = _req('src/infra/fetch.js');
 const { setBildHerunterladen } = _req('src/images/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 

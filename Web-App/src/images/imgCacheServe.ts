@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
 import { previewType } from './thumbs';
-import { beforeThe, withoutMissingFile, reportError } from '../infra/fehler';
+import { beforeThe, withoutMissingFile, reportError } from '../infra/error';
 import { prozessweit } from '../infra/prozessweit';
 import path from 'node:path';
 import { APP_ROOT, SET_IMAGES_DIR } from '../infra/appPaths';

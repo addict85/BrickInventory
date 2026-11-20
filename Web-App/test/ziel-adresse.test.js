@@ -1,12 +1,12 @@
 /**
- * Die Hostlisten prüfen Namen; src/infra/zielAdresse.ts prüft die Adresse, auf
+ * Die Hostlisten prüfen Namen; src/infra/targetAddress.ts prüft die Adresse, auf
  * die ein Name auflöst. Das DNS ist hier eine Attrappe: `ziel.fake.test`
  * und die erlaubten Hosts lösen auf, was der Teiltest vorgibt.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
  *   A  in abruf.ts ohne `lookup: publicLookup` → rot: „ein erlaubter
  *      Host, der intern auflöst …“ (grund 'netz' statt 'adresse')
- *   B  in clients/bildCdn.ts den Pool ohne `lookup` → rot: „auch der Pool …“
+ *   B  in clients/imageCdn.ts den Pool ohne `lookup` → rot: „auch der Pool …“
  *   C  `*.lego.com` wieder in ALLOWED_DOWNLOAD_HOSTS → rot: „von LEGO nur …“
  *   D  in checkingLookup() ohne den Filter (alle Adressen weiter) → rot:
  *      „gemischte Antworten …“
@@ -26,10 +26,10 @@ const assert = require('node:assert/strict');
 const dns = require('node:dns');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const Z = _req('src/infra/zielAdresse.js');
-const { holeHttps, AbrufFehler } = _req('src/infra/abruf.js');
-const { oeffneBild } = _req('clients/bildCdn.js');
-const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/fremdeAdressen.js');
+const Z = _req('src/infra/targetAddress.js');
+const { holeHttps, AbrufFehler } = _req('src/infra/fetch.js');
+const { oeffneBild } = _req('clients/imageCdn.js');
+const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/foreignAddresses.js');
 
 /** @param {Record<string, string[]>} antworten  Host → Adressen */
 function withDns(t, antworten) {

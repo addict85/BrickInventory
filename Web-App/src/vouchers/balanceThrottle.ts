@@ -9,7 +9,7 @@ import {
   type Balance,
   type SessionStore,
 } from './balanceLookup';
-import { Fachfehler } from '../infra/fehlerTexte';
+import { Fachfehler } from '../infra/errorTexts';
 import * as repo from './repository/balanceThrottle';
 import type { VoucherContext } from './context';
 

@@ -1,5 +1,5 @@
 /** Anmeldedaten prüfen: Passwort, Kontozustand, zweiter Faktor, Bremse. */
-import * as passwortRegel from '../infra/passwortRegel';
+import * as passwortRegel from '../infra/passwordRule';
 import { BcryptOverload } from './bcryptLimit';
 import { needsNewHash, hashePassword, hashePasswordImmediately, passwordFits } from './passwordHash';
 import {
@@ -20,13 +20,13 @@ import {
   type LoginMethod,
 } from './loginLimiter';
 import { accountThrottled } from './targetThrottle';
-import { duplicateAs, fachfehler, type ErrorKind, type ErrorCode } from '../infra/fehlerTexte';
+import { duplicateAs, fachfehler, type ErrorKind, type ErrorCode } from '../infra/errorTexts';
 import { hintInBackground } from './accountNotice';
 import { tokenDigest } from './deviceToken';
 import { accessTransaction } from './accessEnd';
 import { loginNameValid } from './nameRules';
 import type { AccountContext } from './context';
-import { inSystemContext } from '../infra/kontoKontext';
+import { inSystemContext } from '../infra/accountContext';
 
 const TAG_MS = 86_400_000;
 
@@ -77,7 +77,7 @@ export function assertLoginAllowed(
  * Konto mit aktuellem Hash. */
 const DUMMY_HASH = hashePasswordImmediately('nonexistent-account-placeholder');
 
-/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
+/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/errorKind.ts). */
 export interface LoginRejection {
   art: ErrorKind;
   code: ErrorCode;

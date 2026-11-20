@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createGunzip } from 'node:zlib';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { openHttps, AbrufFehler } from '../src/infra/abruf';
+import { openHttps, AbrufFehler } from '../src/infra/fetch';
 
 const CSV_BASIS = 'https://cdn.rebrickable.com/media/downloads/';
 const CSV_HOSTS = ['cdn.rebrickable.com'] as const;

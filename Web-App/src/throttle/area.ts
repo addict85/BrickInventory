@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
-import { buildArea, mit, type Inspect } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
+import { buildArea, mit, type Inspect } from '../infra/area';
 import * as counter from './counter';
 import { access, type ThrottleDependencies, type ThrottleContext } from './context';
 

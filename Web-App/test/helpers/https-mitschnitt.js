@@ -1,5 +1,5 @@
 /**
- * Schneidet mit, womit src/infra/abruf.ts https.get und https.request ruft,
+ * Schneidet mit, womit src/infra/fetch.ts https.get und https.request ruft,
  * ohne ins Netz zu gehen: Jede Anfrage scheitert sofort mit ECONNREFUSED.
  */
 const https = require('node:https');

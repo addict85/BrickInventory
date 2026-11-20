@@ -84,7 +84,7 @@ test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie meh
     `${ist} stille Faenge, erlaubt sind ${LIMIT}. Ein neuer \`catch {}\` ` +
       'verschluckt einen Fehler und laeuft weiter — im Betrieb sieht man dann ' +
       'ein Verhalten ohne Ursache. Entweder den Fehler behandeln, oder ihn ' +
-      'wenigstens melden (reportError aus src/infra/fehlerTexte).',
+      'wenigstens melden (reportError aus src/infra/errorTexts).',
   );
   if (ist < LIMIT) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
@@ -135,7 +135,7 @@ function onlyReportedCatches() {
   // `.catch(e => console.warn(…))`. Sie verschweigen den Fehler dem Aufrufer wie reportAndDeliver,
   // nur ohne dessen Namen. Wer direkt in die Konsole schreibt statt reportError, nennt sein
   // Warum als „Ausnahme:“ im Fang. Nur src/: Routen fangen nicht, Jobs und db/ haben eigene Regeln.
-  // Gegenproben (14.11.2026): in src/sets/dienst.ts den Zustandswechsel wieder in
+  // Gegenproben (14.11.2026): in src/sets/service.ts den Zustandswechsel wieder in
   // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
   // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
   // (15.11.2026) Kaufpreis-Nachtrag sammelt und wirft, Anleitungen eintragen wirft; in
@@ -229,7 +229,7 @@ function takesProcessAccess(f) {
 test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (createDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot (09.11.2026);
+  // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/rows.ts → rot (09.11.2026);
   // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
   // `import * as _probe from './database'` in db/txLock.ts → rot mit 1 (11.11.2026).
   const LIMIT = 0;
@@ -243,7 +243,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   if (ist < LIMIT) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 
   // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
-  // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
+  // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/cache.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/catalog/context.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
@@ -276,7 +276,7 @@ function routesAnDenContextsPast() {
   // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
   // gibt es nicht mehr.
   // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsServices>('sets');` in
-  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { setsLesen } from '../sets'` in
+  // src/sets/read.ts → rot (1 Holer-Stelle); `import { setsLesen } from '../sets'` in
   // src/collection/deletion.ts (mit `export const setsLesen = …` in src/sets/index.ts) → rot (1 Fassade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
@@ -318,15 +318,15 @@ function routesAnDenContextsPast() {
 function konfigNurAmStart() {
   // buildServices reicht sie als k.konfig, der Start als Parameter. Übrig sind Helfer des Prozesses
   // (src/infra, src/http, db/) und der beim Laden gebaute bcrypt-Pool; ihre Zahl sinkt nur.
-  // Gegenproben (14.11.2026): `const _k = konfig();` in src/sets/lesen.ts → rot (Fachbereich);
-  // dasselbe in src/http/csvAntwort.ts → rot (14 von 13).
+  // Gegenproben (14.11.2026): `const _k = konfig();` in src/sets/read.ts → rot (Fachbereich);
+  // dasselbe in src/http/csvResponse.ts → rot (14 von 13).
   const LIMIT = 13;
   const EXCEPTION = ['src/account/bcryptLimit.ts'];
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
   const lesend = quellen()
     .map(rel)
-    .filter(r => !/^(startup\/|server\.ts$|src\/infra\/konfig\.ts$)/.test(r))
+    .filter(r => !/^(startup\/|server\.ts$|src\/infra\/config\.ts$)/.test(r))
     .filter(r => /\bkonfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
   assert.ok(lesend.length > 0, 'keine Leser von konfig() gefunden — greift die Suche noch?');
   const fach = lesend.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !EXCEPTION.includes(r));
@@ -338,11 +338,11 @@ function konfigNurAmStart() {
 
 /** Bereiche binden ohne Namen und Proxy; AsyncLocalStorage nur im Aufrufrahmen. */
 function bindingWithoutNamesAndProxy() {
-  // Ein Bereich ist eine Fabrik mit Closure über k (src/infra/bereich.ts, mit()); die Transaktion
+  // Ein Bereich ist eine Fabrik mit Closure über k (src/infra/area.ts, mit()); die Transaktion
   // reist über `t` (tx.db), nicht über einen Proxy oder eine Freigabe im Aufrufpfad.
-  // Gegenproben (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/lesen.ts → rot (Proxy);
-  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/bereich.ts → rot (Namensbindung);
-  // `new AsyncLocalStorage()` in db/transaktion.ts → rot (zweiter Kanal).
+  // Gegenproben (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/read.ts → rot (Proxy);
+  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/area.ts → rot (Namensbindung);
+  // `new AsyncLocalStorage()` in db/transaction.ts → rot (zweiter Kanal).
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
   const text = f => ohne(fs.readFileSync(f, 'utf8'));
@@ -362,7 +362,7 @@ function bindingWithoutNamesAndProxy() {
     quellen()
       .filter(f => /\bAsyncLocalStorage\b/.test(text(f)))
       .map(rel),
-    ['src/infra/kontoKontext.ts'],
+    ['src/infra/accountContext.ts'],
     'Ein Kanal über den Aufrufpfad: der Aufrufrahmen (docs/architektur.md)',
   );
 }
@@ -439,10 +439,10 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
 });
 
 test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
-  // Die Zeit kommt über k.uhr (src/infra/uhr.ts): Ein Test stellt sie, statt zu warten.
+  // Die Zeit kommt über k.uhr (src/infra/clock.ts): Ein Test stellt sie, statt zu warten.
   // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
   // Zeitstempel ohne Kontext.
-  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/dienst.ts → rot.
+  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/service.ts → rot.
   // (15.11.2026) Drosseln, Attestation, Portfolio nehmen k.uhr; `Date.now()` zurück in
   // rateLimiter.ts (_schedule) → rot (21 von 20).
   const LIMIT = 20;
@@ -471,7 +471,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbInterface → rot.
-  const quelle = ['database.ts', 'transaktion.ts', 'typen.ts']
+  const quelle = ['database.ts', 'transaction.ts', 'types.ts']
     .map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8'))
     .join('\n');
   assert.equal(
@@ -485,7 +485,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/zeilen.ts ans Schema.
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/rows.ts ans Schema.
   // (15.11.2026) in auftraege.ts writeProgress wieder `db.get(` ohne Typ → rot (4 von 3).
   const LIMIT = 3;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
@@ -496,7 +496,7 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
 test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
   // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
   // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
-  // Vertrag) und routes/auth/registrierung.ts.
+  // Vertrag) und routes/auth/registration.ts.
   // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
   const LIMIT = 4;
   let ist = 0;
@@ -776,7 +776,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     "const { serverOnly } = require('./helpers/sources');",
     "const { testServer } = require('./helpers/server');",
     "const SRC = fs.readFileSync('x.ts', 'utf8');",
-    "const modul = _req('src/infra/fehler.js');",
+    "const modul = _req('src/infra/error.js');",
     'function starte() {',
     '  return testServer();',
     '}',
@@ -1347,7 +1347,7 @@ test('server functions over 80/150 lines become fewer, never more', () => {
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, im Biome-Format.
-  // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
+  // Gegenprobe: 40 Kommentarzeilen an clients/ecb.ts gehängt → rot (clients).
   const LIMIT = { db: 15.1, clients: 12.3, scripts: 19.2 };
   const toMuch = [];
   for (const [ordner, limit] of Object.entries(LIMIT)) {

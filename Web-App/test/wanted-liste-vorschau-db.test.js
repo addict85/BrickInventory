@@ -96,8 +96,8 @@ testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
-const { importiereWantedListe } = _req('src/wanted/wantedListe.js');
-const { describeItem, resolveLocalOn } = _req('src/wanted/wantedAufloesung.js');
+const { importiereWantedListe } = _req('src/wanted/wantedList.js');
+const { describeItem, resolveLocalOn } = _req('src/wanted/wantedResolution.js');
 const { readWantedList } = _req('src/wanted/wantedParser.js');
 
 test.after(async () => {

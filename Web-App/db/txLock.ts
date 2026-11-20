@@ -2,19 +2,19 @@
  * Serialisierung nebenläufiger Mutationen an derselben Bestandszeile.
  */
 import type { Pool } from 'pg';
-import type { DbInterface } from './typen';
+import type { DbInterface } from './types';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { reportError } from '../src/infra/fehler';
+import { reportError } from '../src/infra/error';
 
 /** Eine Transaktionssperre auf (Klasse, hashtext(schluessel)); sie endet mit COMMIT oder ROLLBACK.
- * Bestandssperren nimmt k.transaktion(…, { sperren }) (src/infra/bereich.ts). Die Klasse
+ * Bestandssperren nimmt k.transaktion(…, { sperren }) (src/infra/area.ts). Die Klasse
  * LOCKS.INVENTORY statt der Konto-ID als erstem Wert: Sonst sperrte Konto 42 den
  * Bild-Download (LOCKS.IMAGE_DOWNLOAD = 42) desselben Sets. */
 async function lockUntilToEnd(tx: DbInterface, klasse: number, schluessel: string): Promise<void> {
   await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [klasse, schluessel]);
 }
 
-import type { Bestandssperre } from '../src/infra/zugang';
+import type { Bestandssperre } from '../src/infra/access';
 
 export type { Bestandssperre };
 

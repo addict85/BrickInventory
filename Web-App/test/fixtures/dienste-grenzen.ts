@@ -1,7 +1,7 @@
 // Probe für test/dienste-grenzen.test.js: Jede Zeile mit @ts-expect-error greift auf
 // Innenleben eines Bereichs zu (Zugang, Arbeitseinheit, Repository, Fach). Gibt eine
 // Fabrik es wieder heraus, ist die Erwartung unbenutzt und tsc meldet die Zeile.
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../startup/wiring';
 
 export function probe(d: Dienste): unknown[] {
   return [

@@ -4,7 +4,7 @@ import type { InventoryContext } from './context';
 import * as orte from './repository/storageLocation';
 import type { StorageTable } from './repository/storageLocation';
 import { asIds, type Sicht, type ScopeInput } from '../household';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */

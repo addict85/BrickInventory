@@ -134,9 +134,9 @@ test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
 test('der Verbindungs-Pool ist weit genug', async () => {
   // Mit 8 wartete ein einzeln geöffnetes Bild hinter 60 Kachel-Anfragen
   // 1195 ms; mit 32 sind es 282 ms, ohne Grenze 153 ms.
-  // Der Pool steht im Klienten (clients/bildCdn.ts), der Proxy nimmt ihn mit `pool: true`.
-  // Gegenprobe (05.11.2026): maxSockets 8 in clients/bildCdn.ts → rot.
-  const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/bildCdn.js');
+  // Der Pool steht im Klienten (clients/imageCdn.ts), der Proxy nimmt ihn mit `pool: true`.
+  // Gegenprobe (05.11.2026): maxSockets 8 in clients/imageCdn.ts → rot.
+  const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/imageCdn.js');
   const { recording } = require('./helpers/https-mitschnitt');
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const [withPool, withoutPool] = await recording(async () => {

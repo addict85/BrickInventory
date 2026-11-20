@@ -508,7 +508,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
       process.execPath,
       [
         '-e',
-        "const { db } = require('./dist/startup/verdrahtung.js').wireProcess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
+        "const { db } = require('./dist/startup/wiring.js').wireProcess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
       ],
       { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url }, timeout: CALL_DEADLINE },
     );
@@ -550,7 +550,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
 case "$2 $4" in
   exec*) shift 5; unset PGPASSWORD; PGPASSFILE='${path.join(tmp, 'pgpass')}' exec psql "$@" ;;
   'run db-rolle') exec sh '${path.join(ROOT, 'postgres', 'app-rolle.sh')}' ;;
-  'run migration') cd '${ROOT}' && DATABASE_URL='${dbUrl(ziel, MIG, environment.DB_MIGRATION_PASSWORD)}' exec '${process.execPath}' dist/startup/migrieren.js ;;
+  'run migration') cd '${ROOT}' && DATABASE_URL='${dbUrl(ziel, MIG, environment.DB_MIGRATION_PASSWORD)}' exec '${process.execPath}' dist/startup/migrate.js ;;
   'run '*) echo "unbekannter Dienst $4" >&2; exit 9 ;;
 esac
 `,

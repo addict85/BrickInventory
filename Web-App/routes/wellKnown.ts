@@ -1,7 +1,7 @@
 /** Öffentlich: Google holt es, bevor Android der App die Passkeys der Domain gibt. */
 import express from 'express';
 import { assetlinks } from '../src/factors';
-import type { Konfig } from '../src/infra/konfig';
+import type { Konfig } from '../src/infra/config';
 
 export function buildWellKnownRouter(konfig: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>) {
   const router = express.Router();

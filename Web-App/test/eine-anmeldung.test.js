@@ -18,7 +18,7 @@ const ROUTES = path.join(__dirname, '..', 'routes');
 const ALLOWED = {
   'api_v1/middleware.ts':
     'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' + 'Hier entsteht sie.',
-  'auth/zweiterFaktor.ts':
+  'auth/secondFactor.ts':
     'Nach dem Einrichten des Faktors enden alle anderen Zugänge; die eigene ' +
     'Sitzung bleibt und bekommt die neue Version – das geht nur, wenn es eine gibt.',
   'auth.ts':

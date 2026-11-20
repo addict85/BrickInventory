@@ -1,8 +1,8 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/area';
 import * as wanted from './repository/wanted';
-import * as wantedListe from './repository/wantedListe';
+import * as wantedListe from './repository/wantedList';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
@@ -10,7 +10,7 @@ import type { FinancesServices } from '../finances';
 import type { SetsServices } from '../sets';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { ImagesServices } from '../images';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface WantedDependencies {
   uhr: Uhr;
@@ -35,7 +35,7 @@ export const access = (db: Db) => ({
   },
   // Cross-reference lookups for the BrickLink wanted-list XML import (BL→RB
   // number mapping); left under their established German names, same as
-  // wantedAufloesung.ts/wantedListe.ts that call them — see the Phase 2a report.
+  // wantedResolution.ts/wantedListe.ts that call them — see the Phase 2a report.
   wantedListe: {
     mappings: mit(db)(wantedListe.mappings),
     numbersInCatalog: mit(db)(wantedListe.numbersInCatalog),

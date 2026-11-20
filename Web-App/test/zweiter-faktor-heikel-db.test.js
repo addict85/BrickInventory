@@ -40,7 +40,7 @@ require('./helpers/sources').replaceServices('mail', {
 
 const db = S.testData();
 const zf = _req('src/factors/secondFactor.js');
-const { decrypt } = _req('src/infra/geheimnis.js');
+const { decrypt } = _req('src/infra/secret.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Faktor-Passwort-1';
 

@@ -1,14 +1,14 @@
 /** Globale Einstellungen, Ein- und Ausfuhr, Einrichtung, Quellen- und SMTP-Test; in settings.ts hinter requireLogin. */
 import multer from 'multer';
-import { FORM_LIMITS } from '../../src/http/dateiEmpfang';
+import { FORM_LIMITS } from '../../src/http/fileUpload';
 import { kontoSchranke, guardFor } from './middleware';
 import { hasGlobalValues } from '../../src/management';
 import { istVerwalter, nutzerName, confirmWithFactor } from '../../src/account/http/login';
 import { released, asAdmin } from '../../src/account/http/stepGuard';
-import { fachfehler, Fachfehler } from '../../src/infra/fehlerTexte';
+import { fachfehler, Fachfehler } from '../../src/infra/errorTexts';
 import { emailValid } from '../../src/infra/validate';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 export function buildSettingsGlobalRouter(
   d: Pick<Dienste, 'settings' | 'mail' | 'account' | 'profile' | 'management'>,

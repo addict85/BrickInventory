@@ -1,6 +1,6 @@
 // Balance of a LEGO gift card; if the bot protection kicks in, no further call follows.
-import { reportAndDeliver } from '../infra/fehler';
-import { hostAllowed } from '../infra/fremdeAdressen';
+import { reportAndDeliver } from '../infra/error';
+import { hostAllowed } from '../infra/foreignAddresses';
 import { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../externalSources';
 
 /** Taken from the prototype, not guessed — the part nobody could derive. */

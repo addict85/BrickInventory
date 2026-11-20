@@ -24,7 +24,7 @@ const CANDIDATES = [
   'src/account/repository/accounts.ts',
   'server.ts',
   'routes/auth.ts',
-  'routes/auth/registrierung.ts',
+  'routes/auth/registration.ts',
 ];
 
 test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
@@ -67,9 +67,9 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     // Seite; löste er wieder selbst ein, bestätigte schon ein Link-Scanner.
     // Das Verhalten prüft sicherheit-server-grenzen-db am echten Server.
     assert.match(
-      lies('routes/auth/registrierung.ts'),
+      lies('routes/auth/registration.ts'),
       /verifyEmailToken\s*\(/,
-      'routes/auth/registrierung.ts löst den Token nicht über die gemeinsame Funktion ein',
+      'routes/auth/registration.ts löst den Token nicht über die gemeinsame Funktion ein',
     );
     assert.doesNotMatch(
       lies('server.ts'),

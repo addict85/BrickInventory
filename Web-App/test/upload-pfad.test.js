@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { belowRoot } = _req('src/http/dateiEmpfang.js');
+const { belowRoot } = _req('src/http/fileUpload.js');
 const WURZEL = path.join(path.sep, 'daten', 'uploads');
 
 test('ein Upload unter der Ablage bleibt, alles andere wird abgewiesen', () => {

@@ -8,8 +8,8 @@ import {
   readOldBuffer,
   kontext,
   pufferUmschluesseln,
-} from '../infra/geheimnis';
-import { withoutMissingFile } from '../infra/fehler';
+} from '../infra/secret';
+import { withoutMissingFile } from '../infra/error';
 
 /** The PDFs carry the card number and PIN in plain text; encrypted, a copy of
  * data/ without the key does not give them away. */

@@ -5,8 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import type { ClientBase } from 'pg';
-import { reportError, fehlertext, logAndContinue } from '../src/infra/fehler';
-import type { DbInterface } from './typen';
+import { reportError, fehlertext, logAndContinue } from '../src/infra/error';
+import type { DbInterface } from './types';
 
 /** Wie lange eine Migration auf eine Sperre wartet und wie oft sie es versucht. */
 export interface Sperrfrist {

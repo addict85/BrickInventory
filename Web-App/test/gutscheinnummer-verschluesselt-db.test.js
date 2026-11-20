@@ -53,7 +53,7 @@ function alsV1(klar) {
   const d = Buffer.concat([c.update(klar, 'utf8'), c.final()]);
   return 'v1:' + Buffer.concat([iv, c.getAuthTag(), d]).toString('base64');
 }
-const g = _req('src/infra/geheimnis.js');
+const g = _req('src/infra/secret.js');
 
 const PASS = 'Nummer-Passwort-1';
 const NR1 = '5045076374451234567',
@@ -241,7 +241,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     // echten Reihenfolge der Migrationen.
     await testAccess().initSchemaOnce();
     await db.run('ALTER TABLE vouchers RENAME COLUMN nummer_suche TO number_search');
-    await _req('startup/datenbank.js').legacyStockUpgrade(require('./helpers/sources').testServices());
+    await _req('startup/database.js').legacyStockUpgrade(require('./helpers/sources').testServices());
 
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name = '0087-gutscheinnummer-verschluesselt.sql'`));
     const zeilen = await db.all(

@@ -37,7 +37,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
   // In einer Transaktion über ihren Kontext: Die Sammlung ruft den Umzug so (t.sets).
   const sammlung = require('./helpers/sources').testContext('collection');
   // Zwei fremde Konten: über beide hinweg nur im Systemrahmen (die Daten legt die Eigentümerin an).
-  const { inSystemContext } = _req('src/infra/kontoKontext.js');
+  const { inSystemContext } = _req('src/infra/accountContext.js');
   const setEntriesReassign = (...a) =>
     inSystemContext('Testdaten', () => sammlung.transaktion(t => t.sets.setEntriesReassign(...a)));
 

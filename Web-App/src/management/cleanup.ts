@@ -1,7 +1,7 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
 import { checkAbort, type JobRun } from '../jobQueue';
-import { fehlertext } from '../infra/fehler';
+import { fehlertext } from '../infra/error';
 import { cleanOldBackupsOn } from '../../db/migrate';
 import type { ManagementContext } from './context';
 

@@ -1,5 +1,5 @@
 /**
- * Die Versionsregel der Setnummer steht zweimal: withVersion() in src/infra/setNummer.ts und
+ * Die Versionsregel der Setnummer steht zweimal: withVersion() in src/infra/setNumber.ts und
  * set_nummer_mit_version() in der Datenbank (Migration 0074, Trigger auf set_number/set_num).
  * Beide laufen hier über dieselben Eingaben: die Kandidaten des gemeinsamen Korpus
  * (shared/setnummer-korpus.json), dieselben mit Versionsanhang, und Randfälle.
@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { withVersion } = _req('src/infra/setNummer.js');
+const { withVersion } = _req('src/infra/setNumber.js');
 const { setnummerCandidates } = _req('src/catalog/productTitle.js');
 
 const CORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'));

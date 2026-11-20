@@ -34,7 +34,7 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
   });
   const [MIXED, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
   for (const sn of [MIXED, REIN, GEMERKT]) await catalogSet(db, sn, { name: 'Probe' });
-  const { bookEntry } = _req('src/sets/erfassen.js');
+  const { bookEntry } = _req('src/sets/addSet.js');
   for (const [sn, z] of [
     [MIXED, 'N'],
     [MIXED, 'U'],

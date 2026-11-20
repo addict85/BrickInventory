@@ -1,11 +1,11 @@
 /** RFC 6238 (TOTP, SHA-1, 6 digits, 30 s): the form every authenticator app
  * understands. No third-party package, with node:crypto. */
-import { encrypt, decrypt, kontext, searchValue, searchValueAlt } from '../infra/geheimnis';
+import { encrypt, decrypt, kontext, searchValue, searchValueAlt } from '../infra/secret';
 import crypto from 'node:crypto';
 import type { DbInterface } from '../../db/database';
 import * as repo from './repository/secondFactor';
 import type { FactorsContext } from './context';
-import { imSystemrahmen } from '../infra/bereich';
+import { imSystemrahmen } from '../infra/area';
 
 const STEP_S = 30;
 /** One step forward and back: phone and server clocks never run exactly alike. */

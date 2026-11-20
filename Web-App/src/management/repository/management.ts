@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
-import { LIKE_ESCAPE, likeLiteral } from '../../../db/likeSuche';
-import { mengeSkalar } from '../../../db/bestandsmenge';
-import type { Spalten } from '../../../db/zeilen';
+import { LIKE_ESCAPE, likeLiteral } from '../../../db/likeSearch';
+import { mengeSkalar } from '../../../db/stockQuantity';
+import type { Spalten } from '../../../db/rows';
 
 /** Die Route spricht db/ nicht selbst an. */
 

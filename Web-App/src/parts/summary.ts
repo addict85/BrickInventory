@@ -1,6 +1,6 @@
 /** Precomputed, because the live query over all of a household's set parts takes seconds. */
-import { reportError } from '../infra/fehler';
-import { inSystemContext, rowsContext } from '../infra/kontoKontext';
+import { reportError } from '../infra/error';
+import { inSystemContext, rowsContext } from '../infra/accountContext';
 import * as repo from './repository/summary';
 import type { PartsContext } from './context';
 

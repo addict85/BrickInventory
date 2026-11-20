@@ -29,7 +29,7 @@ const db = testData();
 async function withResponse(status, lauf) {
   const echt = https.get;
   let anfragen = 0;
-  // @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+  // @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
   https.get = (_u, _o, atResponse) => {
     anfragen++;
     const r = Object.assign(Readable.from([Buffer.from('{}')]), { statusCode: status, headers: {} });
@@ -60,7 +60,7 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
   t.after(() => db.pool.end().catch(() => {}));
   const S = _req('src/settings/settings.js');
   const k = _req('src/externalSources/apiQuota.js');
-  const { resolveViaRebrickableOn } = _req('src/wanted/wantedAufloesung.js');
+  const { resolveViaRebrickableOn } = _req('src/wanted/wantedResolution.js');
   await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
 
   await t.test('ohne Schlüssel: abgebrochen mit Grund kein_schluessel', async () => {

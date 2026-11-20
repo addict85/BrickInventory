@@ -3,14 +3,14 @@
  * „Passwortwechsel nötig“ und „2. Faktor Pflicht für Verwalter“ gelten trotzdem.
  *
  * Gegenproben (am 08.11.2026 gemessen):
- *   A  inboundLock aus den beiden Datei-Routen in routes/datenDateien.ts
+ *   A  inboundLock aus den beiden Datei-Routen in routes/dataFiles.ts
  *      gestrichen → rot: Uploads und Anleitungen in „Passwortwechsel“ und
  *      „Verwalter ohne zweiten Faktor“ (200 statt 403)
  *   B  inboundLock aus registerImgProxy gestrichen → rot: dieselben
  *      Teiltests beim Bild-Proxy (nicht mehr 403)
  *   C  Prüfung zweiterFaktorPflicht in inboundLock gestrichen → rot:
  *      „Verwalter ohne zweiten Faktor“, „Passwortwechsel“ bleibt grün
- *   D  (09.11.2026) in routes/seiten.ts die Bildroute wieder ohne
+ *   D  (09.11.2026) in routes/pages.ts die Bildroute wieder ohne
  *      requireLoginOrToken, inboundLock → rot: beide Sperr-Teiltests bei
  *      /images/parts/probe.png (200 statt 403)
  *
@@ -68,7 +68,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
   const sitzung = {};
   const { app, base } = testServer(_req, { sitzung, t });
   _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testServices());
-  app.use('/', _req('routes/seiten.js').buildPagesRouter(require('./helpers/sources').testServices()));
+  app.use('/', _req('routes/pages.js').buildPagesRouter(require('./helpers/sources').testServices()));
   const hole = async (uid, weg) => {
     const k = await db.get('SELECT is_admin FROM users WHERE id = $1', [uid]);
     Object.assign(sitzung, { userId: uid, isAdmin: k.is_admin === true });

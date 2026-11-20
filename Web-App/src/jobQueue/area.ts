@@ -1,7 +1,7 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/bereich';
-import { Faecher } from '../infra/zwischenspeicher';
+import { mit, buildArea, type Inspect } from '../infra/area';
+import { Faecher } from '../infra/cache';
 import { Arten, type Anmeldung } from './kinds';
 import * as dienst from './service';
 import * as eigene from './own';
@@ -88,7 +88,7 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
 /** Was ohne eigene Regel aus Tabelle und Laufzustand durchgereicht wird. */
 function fromTheTable(k: JobsContext) {
   return {
-    // Pacht, Belegen und Zurückgeben für den Worker (jobs/auftragsWorker.ts).
+    // Pacht, Belegen und Zurückgeben für den Worker (jobs/jobWorker.ts).
     lebenszeichen: k.auftraege.lebenszeichen,
     belegeAuftrag: k.auftraege.belegeAuftrag,
     giveBack: k.auftraege.giveBack,

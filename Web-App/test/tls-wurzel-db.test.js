@@ -39,7 +39,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { tlsStatusFrom } = _req('src/infra/tlsWurzel.js');
-const { ladeKonfig, cookieSafe } = _req('src/infra/konfig.js');
+const { ladeKonfig, cookieSafe } = _req('src/infra/config.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -103,7 +103,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
       saveUninitialized: false,
     }),
   );
-  app.use(_req('routes/zertifikat.js').buildCertificateRouter());
+  app.use(_req('routes/certificate.js').buildCertificateRouter());
   app.use(
     '/api/v1',
     _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().account).loginAtInbox,

@@ -7,7 +7,7 @@
  *      → rot: „innerhalb des Fensters rechnet nur der erste Aufruf“
  *   B  beide Antworten unter demselben Schlüssel gemerkt (verwalter ignoriert)
  *      → rot: „Verwalter- und öffentliche Antwort sind getrennt“
- *   C  ipThrottle aus routes/api_v1/einrichtung.ts entfernt
+ *   C  ipThrottle aus routes/api_v1/setup.ts entfernt
  *      → rot: „die Adresse wird gebremst“
  *   D  onGlobalChange(...) entfernt (14.11.2026: k.einstellungen.onGlobalChange im Fach)
  *      → rot: „ein geschriebener Wert gilt sofort“
@@ -99,7 +99,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     stand.forgetSetupStatus();
     assert.equal((await stand.setupStatus()).konfiguriert, false);
     // Ein zweiter Satz Dienste mit eigenen Fächern schreibt wie ein anderer Prozess.
-    const anderer = _req('startup/verdrahtung.js').buildServices(zugang);
+    const anderer = _req('startup/wiring.js').buildServices(zugang);
     await anderer.settings.setGlobalValue('rebrickable_api_key', 'probe2');
     assert.ok(
       await bis(async () => (await stand.setupStatus()).konfiguriert, 3000),
@@ -113,7 +113,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     const offen = await stand.setupStatus({ isAdmin: false });
     assert.equal(offen.basis_url, null, 'die öffentliche Antwort darf die Basis-URL nicht tragen');
     assert.notEqual(verwalter, offen);
-    const k = _req('src/infra/konfig.js').konfig();
+    const k = _req('src/infra/config.js').konfig();
     assert.equal(verwalter.basis_url, k.appBaseUrl);
   });
 

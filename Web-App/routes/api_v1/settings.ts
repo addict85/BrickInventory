@@ -4,9 +4,9 @@ import { bearerToken, guardFor } from './middleware';
 import { buildSettingsGlobalRouter } from './settingsGlobal';
 import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/account/http/login';
 import { tlsInfo } from '../../src/infra/tlsWurzel';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler } from '../../src/infra/fehlerTexte';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { fachfehler } from '../../src/infra/errorTexts';
 import { ownAccess } from '../../src/account';
 
 export function buildSettingsRouter(

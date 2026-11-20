@@ -256,8 +256,8 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
 
   // Die init-Funktionen laufen NACH Schema und Migrationen (sonst fehlt die
   // Tabelle beim Laden des Bestands) und in jedem Arbeitsprozess: Sie stehen in
-  // startup/datenbank.ts hinter initSchemaOnce(), das jeder Prozess aufruft.
-  const preparation = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
+  // startup/database.ts hinter initSchemaOnce(), das jeder Prozess aufruft.
+  const preparation = fs.readFileSync(path.join(ROOT, 'startup/database.ts'), 'utf8');
   const schema = preparation.indexOf('await db.initSchemaOnce()');
   assert.ok(
     schema > 0 && preparation.indexOf('await d.images.startNone()') > schema,
@@ -280,7 +280,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   );
 
   // Und setUpImageDemand() muss tatsächlich überall laufen.
-  const dbInit = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
+  const dbInit = fs.readFileSync(path.join(ROOT, 'startup/database.ts'), 'utf8');
   // UMFORMULIERT in — aus demselben Grund wie zwoelf Zeilen
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
   // Sie verlangte die Schreibweise `jobs/imageQueue').setUpImageDemand()`, also

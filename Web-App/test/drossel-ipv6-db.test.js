@@ -24,7 +24,7 @@ const db = testData();
 const ipThrottle = (...a) =>
   _req('src/account/http/login.js').ipThrottle(require('./helpers/sources').testServices().account, ...a);
 const L = _req('src/account/loginLimiter.js');
-const { drosselAdresse } = _req('src/infra/drosselAdresse.js');
+const { drosselAdresse } = _req('src/infra/throttleAddress.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test.after(() => db.pool.end().catch(() => {}));

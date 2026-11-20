@@ -14,8 +14,8 @@ const { buildAndRequire, ROOT } = require('./helpers/sources');
 buildAndRequire();
 // Das gebaute Modul selbst: Die Funktionen nehmen den Kontext ausdrücklich.
 const { issueTicket, redeemTicket } = require(path.join(ROOT, 'dist/src/vouchers/pdfTicket.js'));
-const { Faecher } = require(path.join(ROOT, 'dist/src/infra/zwischenspeicher.js'));
-const { stellbareClock } = require(path.join(ROOT, 'dist/src/infra/uhr.js'));
+const { Faecher } = require(path.join(ROOT, 'dist/src/infra/cache.js'));
+const { stellbareClock } = require(path.join(ROOT, 'dist/src/infra/clock.js'));
 
 test('PDF-Ticket: einmal, je Konto und Ziel, je Satz Dienste', async t => {
   const a = { faecher: new Faecher(), uhr: stellbareClock() },

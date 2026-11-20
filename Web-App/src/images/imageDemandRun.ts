@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { reportError } from '../infra/fehler';
+import { reportError } from '../infra/error';
 import { reasonFor, isKnownMissing, rememberMissing } from './imageMisses';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { JobInterrupted, JobMove, type JobContext } from '../jobQueue';
@@ -18,7 +18,7 @@ import {
   requestsJeMinute,
   nimmBildwuensche,
 } from './imageDemand';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { ImagesContext } from './context';
 
 /** Über den Proxy angefragte Bilder im BACKGROUND lokal ablegen, samt

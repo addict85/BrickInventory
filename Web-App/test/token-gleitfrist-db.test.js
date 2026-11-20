@@ -64,7 +64,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(klartext)]);
 
   try {
-    const frist = _req('src/infra/konfig.js').konfig().tokenIdleDays;
+    const frist = _req('src/infra/config.js').konfig().tokenIdleDays;
     assert.equal(frist, 23, 'die Frist kommt aus TOKEN_IDLE_DAYS');
 
     // ── 1. Der App-Token ────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
-import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
-import { mengeAus } from '../../../db/bestandsmenge';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
+import { mengeAus } from '../../../db/stockQuantity';
 import type { CatalogReadContract } from '../readContract';
 import { fromTable } from '../../infra/validate';
 

@@ -287,7 +287,7 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
 const serviceName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : j.label || k;
 
-/** Feste Schlüssel statt zusammengesetzter (test/i18n-aufrufe.test.js); Text wie im Protokoll (src/http/proxyHinweis.ts). */
+/** Feste Schlüssel statt zusammengesetzter (test/i18n-aufrufe.test.js); Text wie im Protokoll (src/http/proxyHint.ts). */
 const PROXY_HINT = {
   gateway: 'monitor.proxy.gateway',
   docker_netz: 'monitor.proxy.docker_netz',

@@ -1,21 +1,21 @@
 /** /api/v1/wanted — the wanted list. The rules sit in src/wanted/; here
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import type express from 'express';
-import { publicError } from '../../src/infra/fehler';
+import { publicError } from '../../src/infra/error';
 import { kontoSchranke, viewOf, guardFor } from './middleware';
 import { watchViaAccess } from '../../src/account/http/accessWatch';
-import { errorText, responseLanguage, fachfehler } from '../../src/infra/fehlerTexte';
+import { errorText, responseLanguage, fachfehler } from '../../src/infra/errorTexts';
 import type { Korrektur } from '../../src/wanted';
-import { csvReceive, xmlReceive } from '../../src/http/dateiEmpfang';
+import { csvReceive, xmlReceive } from '../../src/http/fileUpload';
 import { WantedCorrections, type ImportInput } from '../../src/collection';
 import type { CsvImportReport } from '../../src/infra/csvExport';
 import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/contract/wanted';
 
 import { jsonOrNull } from '../../src/infra/validate';
-import { pageFrom } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { pageFrom } from '../../src/infra/page';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 type WantedXmlReport = Pick<
   z.infer<typeof WantedXmlErgebnis>,
   'vorschau' | 'gelesen' | 'angelegt' | 'aufgestockt' | 'fehler' | 'posten' | 'offen'

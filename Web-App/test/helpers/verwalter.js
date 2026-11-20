@@ -11,7 +11,7 @@
 async function adminWithFactor(_req, uid) {
   const zf = _req('src/factors/secondFactor.js');
   // Wie im Betrieb im Konto selbst: Der Zeilenschutz verbirgt die Zeilen sonst.
-  return _req('src/infra/kontoKontext.js').asRequest({ apiUser: { user_id: uid } }, async () => {
+  return _req('src/infra/accountContext.js').asRequest({ apiUser: { user_id: uid } }, async () => {
     const geheimnis = await zf.beginSetup(uid);
     if (!geheimnis) throw new Error(`Konto ${uid} hat schon einen zweiten Faktor`);
     return zf.confirmSetup(uid, zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));

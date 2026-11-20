@@ -82,7 +82,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
     ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
   const { jobSet } = _req('src/jobQueue/importJob.js');
-  const worker = _req('jobs/auftraegeStarten.js').startJobWorker(require('./helpers/sources').testServices(), {
+  const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
     arten: ['csv_import'],
     taktMs: 50,
   });

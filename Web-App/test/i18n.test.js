@@ -148,7 +148,7 @@ test('die Rollen heissen Standard und Administrator, auch in Server-Fehlertexten
   assert.equal(de['users.role.admin'], 'Administrator');
   assert.equal(en['users.role.user'], 'Standard');
   assert.equal(en['users.role.admin'], 'Administrator');
-  const { FEHLER } = require('./helpers/sources').buildAndRequire()('src/infra/fehlerTexte.js');
+  const { FEHLER } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
   assert.match(FEHLER.letzter_verwalter.de, /Administrator/, 'Server-Fehlertext ohne Rollennamen — Code umbenannt?');
   const serverDe = Object.fromEntries(Object.entries(FEHLER).map(([k, v]) => [`fehler.${k}`, v.de]));
   const serverEn = Object.fromEntries(Object.entries(FEHLER).map(([k, v]) => [`fehler.${k}`, v.en]));

@@ -4,8 +4,8 @@ import path from 'node:path';
 import { DAILY_JOBS } from './timesOfDay';
 import { imgDlPending, imgDlReset, tile, tiles } from './tiles';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { reportError } from '../infra/fehler';
-import { Degradations } from '../infra/ergebnis';
+import { reportError } from '../infra/error';
+import { Degradations } from '../infra/result';
 import type { ManagementContext } from './context';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.

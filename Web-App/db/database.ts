@@ -1,14 +1,14 @@
 /** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen. Stand der Transaktion in
- * transaktion.ts, Wiederholung in wiederholung.ts, Erststart in schemaStart.ts. */
+ * transaction.ts, Wiederholung in retry.ts, Erststart in schemaStart.ts. */
 
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { Benachrichtigung, type Signale } from './pgNotify';
-import type { DbInterface } from './typen';
-import { fehlerCode, reportError } from '../src/infra/fehler';
-import { konfig, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/konfig';
-import { queryWithRetry, isReading } from './wiederholung';
-import { inTransactionPath, rowsContext } from '../src/infra/kontoKontext';
+import type { DbInterface } from './types';
+import { fehlerCode, reportError } from '../src/infra/error';
+import { konfig, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/config';
+import { queryWithRetry, isReading } from './retry';
+import { inTransactionPath, rowsContext } from '../src/infra/accountContext';
 import {
   runningTx,
   contextSql,
@@ -22,19 +22,19 @@ import {
   UnboundQuery,
   type TxHandleOf,
   type TxStand,
-} from './transaktion';
+} from './transaction';
 import { initSchema, initSchemaOnce, MAY_SCHEMA_CHANGE, type Erststart } from './schemaStart';
 import { lockInventories } from './txLock';
-import type { Bestandssperre, TxOptions, Zugang } from '../src/infra/zugang';
+import type { Bestandssperre, TxOptions, Zugang } from '../src/infra/access';
 
-export { queryWithRetry, isReading } from './wiederholung';
+export { queryWithRetry, isReading } from './retry';
 export {
   withCommitCompanion,
   TransactionEnded,
   BesideTheTransaction,
   UnboundQuery,
   ConcurrentSavepoint,
-} from './transaktion';
+} from './transaction';
 export type { Erststart } from './schemaStart';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
@@ -63,7 +63,7 @@ export interface DbKonfig {
   system?: PoolConfig | null;
   /** Die Systemrolle für den Systemrahmen von HTTP-Anfragen (nur Zugangstabellen); ohne sie `system`. */
   systemWeb?: PoolConfig | null;
-  /** In Tests wirft ein Ersatzwert in einer Transaktion auch ausserhalb der Datenbank (src/infra/fehler.ts). */
+  /** In Tests wirft ein Ersatzwert in einer Transaktion auch ausserhalb der Datenbank (src/infra/error.ts). */
   streng?: boolean;
   /** Die Zeitzone des Erfassungstags, beim Start in die Datenbank geschrieben (schemaStart.ts). */
   entryTimeZone?: string;
@@ -100,7 +100,7 @@ export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
 // Benannt, damit tx-Rückrufe geprüft werden.
 export type { DbInterface };
-export type { Treffer } from './typen';
+export type { Treffer } from './types';
 
 // In einer äusseren Transaktion ist repeatAtConflict ohne Wirkung; dort entscheidet deren Option.
 export type { TxOptions };
@@ -125,7 +125,7 @@ export interface Db extends DbInterface, Zugang<Db> {
   databaseResponds(): Promise<boolean>;
   asSuperuserConnected(): Promise<boolean>;
   ownConnection(): Promise<Client>;
-  /** Siehe withCommitCompanion (transaktion.ts): gilt für die Transaktionen dieses Aufrufpfads. */
+  /** Siehe withCommitCompanion (transaction.ts): gilt für die Transaktionen dieses Aufrufpfads. */
   withCommitCompanion<T>(companion: (tx: DbInterface) => Promise<void>, work: () => T): T;
   initSchema(): Promise<boolean>;
   initSchemaOnce(): Promise<void>;

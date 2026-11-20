@@ -1,8 +1,8 @@
-import { logAndContinue } from '../infra/fehler';
-import { withVersion } from '../infra/setNummer';
-import type { CatalogRow } from './zeilen';
+import { logAndContinue } from '../infra/error';
+import { withVersion } from '../infra/setNumber';
+import type { CatalogRow } from './rows';
 import type { MinifigsContext } from './context';
-export type { MinifigPart, CatalogRow } from './zeilen';
+export type { MinifigPart, CatalogRow } from './rows';
 
 function catalogParts(k: MinifigsContext, figNumber: string): Promise<CatalogRow[]> {
   return k.minifigParts.catalogPartsOfMinifig(figNumber);

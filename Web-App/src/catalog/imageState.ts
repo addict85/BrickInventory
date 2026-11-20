@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { KEINE_FARBE } from '../infra/validate';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import { anleitungEinreihen } from './instructionJob';
 import type { CatalogContext } from './context';
 

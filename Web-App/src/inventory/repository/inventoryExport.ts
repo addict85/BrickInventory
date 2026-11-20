@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
-import { erfassungsTagSql } from '../../../db/bestandsmenge';
+import { erfassungsTagSql } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/catalogView';
 
 // Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
 const partsCsvSql = (l: InventoryReadContract) => `
@@ -10,7 +10,7 @@ const partsCsvSql = (l: InventoryReadContract) => `
          -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
          -- Zeile JE ERFASSUNG (source='manual' unten). Ohne Erfassung gibt
          -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
-         -- Lesart wie im Sets-Export (src/sets/dienst.ts).
+         -- Lesart wie im Sets-Export (src/sets/service.ts).
          COALESCE(a.quantity, 0) AS quantity,
          p.color_id,
          COALESCE(${TEIL.farbname},'') AS color_name,

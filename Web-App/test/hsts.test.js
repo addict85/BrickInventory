@@ -84,7 +84,7 @@ test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  // Nacheinander: Auf einer Datenbank läuft nur ein Web-Prozess (startup/einzelinstanz.ts).
+  // Nacheinander: Auf einer Datenbank läuft nur ein Web-Prozess (startup/singleInstance.ts).
   // Jeder antwortet einmal mit und einmal ohne TLS; die Fälle prüfen die Antworten.
   /** @type {Record<string, { tls: Headers, ohne: Headers }>} */
   const k = {};

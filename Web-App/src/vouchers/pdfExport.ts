@@ -13,7 +13,7 @@ import {
   rgb,
 } from '@cantoo/pdf-lib';
 import { valuesFromPdf, pdfText, textOperators, type ParsedVoucher } from './pdfParsing';
-import { reportAndDeliver } from '../infra/fehler';
+import { reportAndDeliver } from '../infra/error';
 
 /** Only here does a literal ASCII string print what it says. Without /Encoding it
  * is a standard font with StandardEncoding — the same holds there. */

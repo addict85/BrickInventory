@@ -2,13 +2,13 @@
  * API-Abruf und das Tageskontingent. */
 import type { Nutzlast, JobRun as CsvLauf } from '../jobQueue';
 import { reloadBlNumbers } from './partsImport';
-import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/fehler';
+import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/error';
 import { merkeBlFarbnummer, blColorNumberFrom } from './blMapping';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'node:child_process';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
 const SYNC_KEY = 'rb_csv_last_sync';
@@ -20,7 +20,7 @@ function log(msg: string) {
 }
 
 /** Der Import läuft in einem eigenen Prozess; dessen Einstieg ist Ausführung und liegt in jobs/,
- * die Bearbeitertabelle reicht seinen Pfad herein (jobs/auftraegeStarten.ts). */
+ * die Bearbeitertabelle reicht seinen Pfad herein (jobs/startJobs.ts). */
 type ImportProcess = string | null;
 
 // Jede Datei belegt einen Abschnitt von TOTAL_STEPS, damit der Balken
@@ -91,7 +91,7 @@ function importInWorker(
   const melde = melder(kx, lauf);
   return new Promise((resolve, reject) => {
     if (!_workerPath) {
-      reject(new Error('Kein Importprozess eingesetzt (jobs/auftraegeStarten.ts)'));
+      reject(new Error('Kein Importprozess eingesetzt (jobs/startJobs.ts)'));
       return;
     }
     const worker = _fork(_workerPath, [], { silent: false });

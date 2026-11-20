@@ -10,7 +10,7 @@ import { checkChain } from './attestation/keyAttestation';
 import { applicableList, REVOCATION_STATE } from './attestation/revocationList';
 import type { DevicesContext } from './context';
 import { prozessweit } from '../infra/prozessweit';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 
 export type { Familie };
 

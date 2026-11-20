@@ -1,12 +1,12 @@
 import { kontoSchranke, viewOf, guardFor } from './middleware';
 import { normalizeLocation } from '../../src/inventory';
-import { csvReceive } from '../../src/http/dateiEmpfang';
+import { csvReceive } from '../../src/http/fileUpload';
 import type { CsvImportReport } from '../../src/infra/csvExport';
-import { pageFrom } from '../../src/infra/seite';
-import { Degradations } from '../../src/infra/ergebnis';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
+import { pageFrom } from '../../src/infra/page';
+import { Degradations } from '../../src/infra/result';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
 export function buildMinifigsRouter(
   d: Pick<

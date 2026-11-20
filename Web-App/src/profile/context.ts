@@ -1,12 +1,12 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
-import type { Konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/config';
 import type { Db } from '../../db/database';
-import type { Kontext } from '../infra/bereich';
-import type { Faecher } from '../infra/zwischenspeicher';
+import type { Kontext } from '../infra/area';
+import type { Faecher } from '../infra/cache';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
 import type { MailServices } from '../mail';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface ProfileDependencies {
   konfig: Readonly<Konfig>;

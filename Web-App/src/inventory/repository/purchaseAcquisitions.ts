@@ -1,5 +1,5 @@
 import type { DbInterface, Zeile } from '../../../db/database';
-import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
+import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/stockQuantity';
 
 /** Gleiche Käufe eines Tages sind eine Zeile (eindeutiger Index, Migration 0070). */
 

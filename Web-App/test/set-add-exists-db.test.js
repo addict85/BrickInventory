@@ -3,7 +3,7 @@
  *
  * Gegenprobe (durchgeführt): den findSetInScope-Zweig aus routes/api_v1/sets.ts
  * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
- * Gegenprobe (15.11.2026): in setPresent() (src/sets/erfassen.ts) die Nummer ohne
+ * Gegenprobe (15.11.2026): in setPresent() (src/sets/addSet.ts) die Nummer ohne
  * normalisiereSetNummer zurückgegeben → rot „exists: false, set_number“ (ohne -1).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -174,7 +174,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
 
 test('eine Regel für Setnummern: normalisiereSetNummer', () => {
   // Früher drei Namen (normalizeSetNumber, sanitizeSetNumber); jetzt nur die Stelle, an der die Regel steht.
-  const { normalisiereSetNummer } = _req('src/infra/setNummer.js');
+  const { normalisiereSetNummer } = _req('src/infra/setNumber.js');
   const sets = _req('src/sets/index.js');
   assert.equal(sets.normalizeSetNumber, undefined);
   assert.equal(sets.sanitizeSetNumber, undefined);

@@ -1,6 +1,6 @@
 // BrickLink-Nummern stehen nur in bl_mapping.
 
-import type { BlArt } from '../../db/blZuordnungSql';
+import type { BlArt } from '../../db/blMappingSql';
 import { writeBlNumbers } from './repository/blMapping';
 import type { CatalogContext } from './context';
 

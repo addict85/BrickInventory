@@ -1,5 +1,5 @@
 /**
- * db/zeilen.ts (scripts/zeilentypen.js) bindet die Zeilentypen der Repositories an das
+ * db/rows.ts (scripts/zeilentypen.js) bindet die Zeilentypen der Repositories an das
  * Schema. Geprüft an der echten Datenbank: Jede Tabelle und Spalte samt NULL steht dort
  * so, und jeder Spaltentyp kommt über den Zugang (createDb) als der JavaScript-Typ an,
  * den die Datei verspricht.
@@ -8,7 +8,7 @@
  *   A  in scripts/zeilentypen.js `numeric` unter 'string' statt 'number' → rot: „jeder
  *      Spaltentyp kommt so an“ (numeric(12,4): erwartet string, kam number)
  *   B  den NUMERIC-Leser in db/database.ts gestrichen → rot: dieselbe Stelle, umgekehrt
- *   C  in db/zeilen.ts eine Spalte von price_cache gelöscht → rot: „db/zeilen.ts ist erzeugt“
+ *   C  in db/rows.ts eine Spalte von price_cache gelöscht → rot: „db/rows.ts ist erzeugt“
  *      (der Aufruf `scripts/zeilentypen.js --pruefen` endet mit 1)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -52,7 +52,7 @@ function art(v) {
   return typeof v === 'object' ? 'unknown' : typeof v;
 }
 
-test('db/zeilen.ts ist erzeugt und passt zum Schema', () => {
+test('db/rows.ts ist erzeugt und passt zum Schema', () => {
   const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'zeilentypen.js'), '--pruefen'], {
     encoding: 'utf8',
   });
@@ -80,7 +80,7 @@ test('Zeilentypen gegen die Datenbank', { concurrency: 1 }, async t => {
     assert.deepEqual([...erzeugt].sort(), [...echt].sort());
   });
 
-  await t.test('jeder Spaltentyp kommt so an, wie db/zeilen.ts verspricht', async () => {
+  await t.test('jeder Spaltentyp kommt so an, wie db/rows.ts verspricht', async () => {
     const typen = new Set([...schema.values()].flatMap(sp => sp.map(s => s.typ)));
     const fehlt = [...typen].filter(x => !(x in PROBE));
     assert.deepEqual(fehlt, [], 'Probe für neue Spaltentypen nachtragen');

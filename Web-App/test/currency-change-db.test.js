@@ -3,7 +3,7 @@
  *
  * Gegenprobe (durchgeführt): den Anstoss in setUserSetting() entfernt →
  * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem
- * geplanten Auftrag wiederholt: preisJobAnstossen in startup/verdrahtung.ts leer
+ * geplanten Auftrag wiederholt: preisJobAnstossen in startup/wiring.ts leer
  * → rot: „EUR → CHF muss den Preis-Job anstossen“. Am 15.11.2026 (Ereignis statt
  * Nacharbeit): onCurrencyChange() in createJobs gestrichen → rot, derselbe Fall.
  *

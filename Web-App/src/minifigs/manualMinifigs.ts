@@ -1,14 +1,14 @@
 /** Here, not in a route, because the session route and the v1 factory both
  * reach it — a route should not import another route. */
 import type { Sicht } from '../household';
-import { publicError } from '../infra/fehler';
-import { Degradations, versuche } from '../infra/ergebnis';
+import { publicError } from '../infra/error';
+import { Degradations, versuche } from '../infra/result';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { mengenwunsch } from '../inventory';
 import type { Quellen } from '../externalSources';
 import * as V from '../infra/validate';
 import { moneyInput } from '../infra/geld';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import type { MinifigsContext } from './context';
 
 // Without a BrickLink minifig number the market price is estimated from part

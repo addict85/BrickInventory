@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
-import type { EntryRow } from '../../../db/bestandsmenge';
-import { setErfassungen } from '../../../db/bestandSicht';
+import type { EntryRow } from '../../../db/stockQuantity';
+import { setErfassungen } from '../../../db/inventoryView';
 
 export function setAcquisitionsInScope(db: DbInterface, blickfeld: number[], setNumber: string) {
   return db.all<EntryRow>(

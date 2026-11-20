@@ -1,7 +1,7 @@
-/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
-import { mit, buildArea, type Inspect } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
+import { mit, buildArea, type Inspect } from '../infra/area';
 import * as wantedService from './wanted';
-import * as wantedListService from './wantedListe';
+import * as wantedListService from './wantedList';
 import { access, type WantedDependencies, type WantedContext } from './context';
 
 export type { WantedDependencies, WantedContext } from './context';

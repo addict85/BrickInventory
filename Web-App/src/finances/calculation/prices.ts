@@ -5,14 +5,14 @@
 import type { Preiszeile, SetPreiszeile } from '../repository/priceCache';
 import { type CatalogEntry, hatPrice, marketPriceFrom } from '../../catalog';
 import { asIds } from '../../household';
-import { logAndContinue, reportError } from '../../infra/fehler';
-import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
-import { withVersion, withoutBricklinkPrice } from '../../infra/setNummer';
+import { logAndContinue, reportError } from '../../infra/error';
+import { Fachfehler, fachfehler } from '../../infra/errorTexts';
+import { withVersion, withoutBricklinkPrice } from '../../infra/setNumber';
 import { effectiveCondition } from './condition';
 import { KEINE_FARBE } from '../../infra/validate';
-import { versuche } from '../../infra/ergebnis';
+import { versuche } from '../../infra/result';
 import type { FinancesContext } from '../context';
-import type { Uhr } from '../../infra/uhr';
+import type { Uhr } from '../../infra/clock';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../household';

@@ -1,8 +1,8 @@
 /** If the response never reaches the app's offline outbox, it retries with the
  * same key and gets the stored response back — without a second effect. The
  * same key with different content is a client error. */
-import { HTTP_DEADLINES } from '../infra/httpFristen';
-import { encrypt, decrypt, isEncrypted, kontext, umschluesseln, searchValue } from '../infra/geheimnis';
+import { HTTP_DEADLINES } from '../infra/httpDeadlines';
+import { encrypt, decrypt, isEncrypted, kontext, umschluesseln, searchValue } from '../infra/secret';
 import { withEffectNote as markEffect } from './repository';
 import type { IdempotencyContext } from './context';
 

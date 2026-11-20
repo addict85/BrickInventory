@@ -1,7 +1,7 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
-import type { Uhr } from '../infra/uhr';
+import { mit, type Kontext } from '../infra/area';
+import type { Uhr } from '../infra/clock';
 import * as repository from './repository';
 
 export interface ThrottleDependencies {

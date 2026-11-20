@@ -9,9 +9,9 @@ import {
   voucherPinOrMask,
   voucherCurrency,
   voucherCurrencyChange,
-} from '../infra/gutscheinWerte';
+} from '../infra/voucherValues';
 
-/** Das Format prüft der Vertrag; der Dienst bekommt nur geprüfte Werte (src/infra/gutscheinWerte.ts). */
+/** Das Format prüft der Vertrag; der Dienst bekommt nur geprüfte Werte (src/infra/voucherValues.ts). */
 const VOUCHER_NUMBER = eingabe.regel(gutscheinNummer, { type: 'string', pattern: '^[0-9 -]{4,40}$' });
 const VOUCHER_PIN = eingabe.regel(voucherPin, { type: ['string', 'null'], pattern: '^\\s*([0-9]{3,10})?\\s*$' });
 const VOUCHER_CURRENCY = eingabe.regel(voucherCurrency, { type: ['string', 'null'], pattern: '^([A-Za-z]{3})?$' });

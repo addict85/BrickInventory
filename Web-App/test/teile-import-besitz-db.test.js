@@ -42,7 +42,7 @@ quellen.testSources(null, {
     return { teile: [], verweigert: false };
   },
 });
-replace('src/sets/setInhaltImport.js', {
+replace('src/sets/setContentImport.js', {
   importParts: async (_k, sn, uid) => {
     if (sn.startsWith('TIK')) throw new Error('Rebrickable antwortet nicht');
     importe.push([sn, uid]);

@@ -264,7 +264,7 @@ export async function loadGallery(opts = {}) {
   enrichGalleryWithPrices();
 }
 export function renderGallery() {
-  // Filtering and sorting is done by the server (setsLesen in src/sets/lesen.ts) — this only draws what
+  // Filtering and sorting is done by the server (setsLesen in src/sets/read.ts) — this only draws what
   // is already loaded. Otherwise a filter would merely search the currently loaded page.
   const q = G('gs')?.value?.toLowerCase() || '';
   const list = gallerySets;

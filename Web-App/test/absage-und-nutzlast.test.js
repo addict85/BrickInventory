@@ -102,7 +102,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
 
 test('errorText fällt bei unbekanntem Code nicht um', () => {
   // Eine Fehlermeldung ist das Letzte, was selbst noch abstürzen darf.
-  const { errorText } = _req('src/infra/fehlerTexte.js');
+  const { errorText } = _req('src/infra/errorTexts.js');
   const fehler = console.error;
   console.error = () => {};
   try {

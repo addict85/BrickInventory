@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
-import { reportError } from '../../infra/fehler';
+import { reportError } from '../../infra/error';
 import type { Nutzlast } from '../../jobQueue';
 
 /** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen

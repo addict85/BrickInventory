@@ -2,7 +2,7 @@
  * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
  * dahin gilt die CDN-Adresse. */
 import { newestInventory } from './rbInventory';
-import { withVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNumber';
 import { rememberBlNumber } from './blMapping';
 import {
   rememberPart,
@@ -16,7 +16,7 @@ import { parseThrottleWait as ptw } from '../externalSources';
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
-import { pathSegment, numbersList } from '../infra/fremdeAdressen';
+import { pathSegment, numbersList } from '../infra/foreignAddresses';
 import type * as repo from './repository/partsEnrichment';
 import { KEINE_FARBE } from '../infra/validate';
 import type { CatalogContext } from './context';

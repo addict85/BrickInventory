@@ -29,7 +29,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege };
   const { PayloadInvalid } = _req('src/jobQueue/kinds.js');
-  const { createWorker } = _req('jobs/auftragsWorker.js');
+  const { createWorker } = _req('jobs/jobWorker.js');
   await db.run(`DELETE FROM jobs WHERE type = 'brickset'`);
 
   await t.test('eine falsche Nutzlast wird beim Einstellen abgewiesen', async () => {

@@ -324,8 +324,8 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     'src/minifigs/manualMinifigs.ts',
     'routes/api_v1/sets.ts',
     'routes/api_v1/setsImport.ts',
-    'src/sets/dienst.ts',
-    'src/sets/inhalt.ts',
+    'src/sets/service.ts',
+    'src/sets/content.ts',
   ]) {
     const src = strip(read(f));
     assert.doesNotMatch(
@@ -433,7 +433,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Und die Differenz muss aus der GESAMTMENGE des Blickfelds kommen, nicht
   // aus der Zeile eines einzelnen Kontos — sonst zeigte das Detail eine
   // Haushaltszahl an, während das „+" gegen eine andere rechnete.
-  // Die Abfrage steht seit Migration 0036 in db/bestandsmenge.ts; hier …
+  // Die Abfrage steht seit Migration 0036 in db/stockQuantity.ts; hier …
   assert.match(
     fn,
     /repo\.setMenge\(s\.db, 'blickfeld', readField/,

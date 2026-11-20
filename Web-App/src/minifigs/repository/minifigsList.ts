@@ -1,9 +1,9 @@
-import { lagerorte, setBestand } from '../../../db/bestandSicht';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
+import { lagerorte, setBestand } from '../../../db/inventoryView';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/stockQuantity';
 import type { Zeile, DbInterface } from '../../../db/database';
-import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
-import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
+import { figurSichtJoin, FIGUR } from '../../../db/catalogView';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
 
 // One search for both minifig lists; it searches the number shown on the tile.
 function minifigSearch(nummer: string, name: string, pi: number) {

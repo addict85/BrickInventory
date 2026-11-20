@@ -6,9 +6,9 @@ import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from
 import { istErsatzteil, colorId } from '../infra/validate';
 import { summaryFresh } from './summary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../inventory';
-import { reportError, logAndContinue } from '../infra/fehler';
-import { Degradations } from '../infra/ergebnis';
-import { withVersion, withoutVersion } from '../infra/setNummer';
+import { reportError, logAndContinue } from '../infra/error';
+import { Degradations } from '../infra/result';
+import { withVersion, withoutVersion } from '../infra/setNumber';
 import type { PartsContext } from './context';
 
 /** With fallback levels (CSV cache, Rebrickable), so a set shows a parts list even

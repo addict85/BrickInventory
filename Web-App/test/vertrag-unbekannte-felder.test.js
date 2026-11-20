@@ -52,7 +52,7 @@ test('in einer Union zählt die Option, die passt', () => {
 });
 
 test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
-  const { checkContract } = _req('src/http/vertragsRouter.js');
+  const { checkContract } = _req('src/http/contractRouter.js');
   const checker = checkContract();
   assert.ok(checker, 'VERTRAG_PRUEFEN ist in Tests gesetzt');
   // GET /api/v1/sets/info/:setNumber: SetInfoResponse nennt kein Feld `geheim`.

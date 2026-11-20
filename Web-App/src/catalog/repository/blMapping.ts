@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import type { BlArt } from '../../../db/blZuordnungSql';
+import type { BlArt } from '../../../db/blMappingSql';
 
 /** NULLIF(bl, rb) ist die EINE Schreibweise für „keine abweichende Nummer";
  * eine zweite Form hiesse zwei Aussagen für dasselbe. */

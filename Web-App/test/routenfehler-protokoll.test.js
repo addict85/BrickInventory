@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { handleRouteError } = _req('src/http/httpAntwort.js');
+const { handleRouteError } = _req('src/http/httpResponse.js');
 
 /** Ruft handleRouteError; liefert die eine Zeile samt Stufe (error/warn). */
 function logWithLevel(fehler, req) {

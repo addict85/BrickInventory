@@ -28,7 +28,7 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitAny": true,
     // In JavaScript darf alles geworfen werden; gelesen wird über
-    // fehlertext()/fehlerCode() (src/infra/fehler.ts), nicht über e.message.
+    // fehlertext()/fehlerCode() (src/infra/error.ts), nicht über e.message.
     "useUnknownInCatchVariables": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,

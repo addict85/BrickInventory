@@ -4,7 +4,7 @@
  * Gegenprobe (am 27.10. gemessen): txLock wieder mit der user_id als erstem
  * Wert → rot: „die Bestandssperre eines Kontos trifft keinen Job". Seit die Sperre
  * eine Option von k.transaktion ist (14.11.2026) erneut: in lockInventories()
- * (src/infra/bereich.ts) die Konto-ID als Klasse → rot, derselbe Test.
+ * (src/infra/area.ts) die Konto-ID als Klasse → rot, derselbe Test.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip (ausser
  * REQUIRE_DB=1).

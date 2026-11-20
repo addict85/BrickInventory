@@ -1,6 +1,6 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/bereich';
+import { mit, buildArea, type Inspect } from '../infra/area';
 import * as geraeteChallenge from './deviceChallenge';
 import { zugang, type DevicesDependencies, type DevicesContext } from './context';
 

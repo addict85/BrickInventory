@@ -1,11 +1,11 @@
 /** Passkeys im eigenen Konto verwalten; angemeldet wird mit ihnen in routes/auth.ts. */
 import { guardFor } from '../api_v1/middleware';
 import { perSession, signedInUserId, confirmWithFactor } from '../../src/account/http/login';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
+import { vertragsRouter } from '../../src/http/contractRouter';
 import { devicesNameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler } from '../../src/infra/fehlerTexte';
+import type { Dienste } from '../../src/services';
+import { fachfehler } from '../../src/infra/errorTexts';
 
 const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>

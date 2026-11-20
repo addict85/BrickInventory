@@ -8,7 +8,7 @@ import {
   anzahlAnleitungen,
   scrapeInstructionsFromFallback,
 } from './instructions';
-import { fehlertext } from '../infra/fehler';
+import { fehlertext } from '../infra/error';
 import { asFetchError } from '../externalSources';
 import { type Nutzlast, type JobRun, JobMove } from '../jobQueue';
 import { LOCKS } from '../infra/lockNamespaces';

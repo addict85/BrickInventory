@@ -42,14 +42,14 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
   const { baueApp } = _req('startup/app.js');
   const app = baueApp({
     pool: db.systemPool,
-    konfig: _req('src/infra/konfig.js').konfig(),
+    konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 'p'.repeat(48),
     dienste: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const SESSION_IDLE_SEC = _req('src/account/sessionDeadline.js').sessionIdleSec(_req('src/infra/konfig.js').konfig());
+  const SESSION_IDLE_SEC = _req('src/account/sessionDeadline.js').sessionIdleSec(_req('src/infra/config.js').konfig());
 
   const r = await fetch(`${basis}/api/v1/auth/login`, {
     method: 'POST',

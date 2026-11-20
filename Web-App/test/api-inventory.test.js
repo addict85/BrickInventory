@@ -375,7 +375,7 @@ const C = {
   'GET /api/v1/settings/export/data': 'nur-web',
   'POST /api/v1/settings/import': 'nur-web',
   'POST /api/v1/settings/smtp-test': 'nur-web',
-  // Vor der Anmeldung und für Überwachung/compose.yaml (routes/gesundheit.ts).
+  // Vor der Anmeldung und für Überwachung/compose.yaml (routes/health.ts).
   'GET /api/v1/startup-status': 'nur-v1',
   'GET /api/v1/health': 'nur-v1',
   'GET /api/v1/health/live': 'nur-v1',

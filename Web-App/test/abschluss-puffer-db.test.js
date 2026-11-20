@@ -1,7 +1,7 @@
 /**
  * Beim Herunterfahren schreiben Bildbedarf, Bild-Fehlanzeige und Protokoll
  * ihren Puffer noch in die Datenbank, und ihre Takte enden
- * (startup/abschluss.ts, aufgerufen von herunterfahren() in server.ts).
+ * (startup/shutdown.ts, aufgerufen von herunterfahren() in server.ts).
  *
  * Gegenproben (am 11.11.2026 gemessen):
  *   A  stopImageDemand() ohne `await schreibePuffer()` → rot: „der Bildbedarf
@@ -25,10 +25,10 @@ const db = testData();
 test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const P = _req('src/infra/protokoll.js');
+  const P = _req('src/infra/log.js');
   const B = _req('src/images/imageDemandRun.js');
   const F = _req('src/images/imageMisses.js');
-  const { closeBufferAndTicks } = _req('startup/abschluss.js');
+  const { closeBufferAndTicks } = _req('startup/shutdown.js');
 
   // Welche Takte entstehen, und welche wieder enden.
   const offen = new Set();

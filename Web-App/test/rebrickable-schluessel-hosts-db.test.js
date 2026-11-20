@@ -32,7 +32,7 @@ test.after(async () => {
 /** @type {Array<{ url: string, kopf: Record<string, string> }>} */
 const fetches = [];
 let responseFor = (/** @type {string} */ _url) => ({ status: 404, body: '' });
-// @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+// @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
 https.get = (url, opt, cb) => {
   fetches.push({ url: String(url), kopf: { .../** @type {Record<string, string>} */ (opt?.headers) } });
   const { status, body } = responseFor(String(url));

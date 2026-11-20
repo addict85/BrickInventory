@@ -1,10 +1,10 @@
-import { reportError, logAndContinue } from '../infra/fehler';
-import { errorText, responseLanguage, type ErrorCode, type Sprache } from '../infra/fehlerTexte';
+import { reportError, logAndContinue } from '../infra/error';
+import { errorText, responseLanguage, type ErrorCode, type Sprache } from '../infra/errorTexts';
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen. */
 
 import type { JobsContext } from './context';
-import { signal } from '../infra/ereignis';
+import { signal } from '../infra/event';
 /** Der Stand eines Kontos ist neu geschrieben, in diesem oder einem anderen Prozess; die Nutzlast nennt das Konto. */
 const IMPORT_STAND = signal('csv_import_progress');
 

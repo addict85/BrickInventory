@@ -65,7 +65,7 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
     }
   }
 
-  // Hier stand `src/infra/fehlerTexte.ts` mit der Begruendung „Die Tabelle
+  // Hier stand `src/infra/errorTexts.ts` mit der Begruendung „Die Tabelle
   // selbst." — und die Datei traf das Muster gar nicht: Sie fuehrt ihre Texte
   // als `{ de: '…', en: '…' }`, nie als `error: '…'`. Der Eintrag verbarg
   // also nichts, nahm aber ausgerechnet die Datei, in der ALLE Fehlertexte
@@ -94,7 +94,7 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
 
 test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', () => {
   // Ein fehlender Platzhalter heisst, dass in einer Sprache „{name}" auf dem Bildschirm steht.
-  const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/fehlerTexte.js');
+  const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
   const codes = Object.keys(FEHLER);
   assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
   const skewed = [];

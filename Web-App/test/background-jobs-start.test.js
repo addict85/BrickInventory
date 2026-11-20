@@ -25,7 +25,7 @@ let workerStarted = 0;
 const realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = realRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /jobs[/\\]auftraegeStarten(\.js)?$/.test(name))
+  if (typeof name === 'string' && /jobs[/\\]startJobs(\.js)?$/.test(name))
     return {
       ...m,
       startJobWorker: () => {
@@ -47,7 +47,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   const runs = [];
   t.after(async () => {
     for (const lauf of runs)
-      await _req('startup/jobsProzess.js').stopJobs(require('./helpers/sources').testServices(), lauf);
+      await _req('startup/jobsProcess.js').stopJobs(require('./helpers/sources').testServices(), lauf);
     await testAccess()
       .notification.close()
       .catch(() => {});
@@ -61,7 +61,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     return;
   }
   await db.run('DELETE FROM jobs');
-  runs.push(await _req('startup/jobsProzess.js').startJobs(require('./helpers/sources').testServices()));
+  runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
 
   const zeilen = await db.all(`SELECT type, dedupe_key, payload, EXTRACT(EPOCH FROM due_at - NOW())::int AS in_sek
                                  FROM jobs WHERE status = 'offen'`);
@@ -91,7 +91,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
         zeilen.some(z => z.dedupe_key === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
-    runs.push(await _req('startup/jobsProzess.js').startJobs(require('./helpers/sources').testServices()));
+    runs.push(await _req('startup/jobsProcess.js').startJobs(require('./helpers/sources').testServices()));
     const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE status = 'offen'
                                     GROUP BY dedupe_key HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
@@ -102,7 +102,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   });
 
   await t.test('das Lebenszeichen folgt dem Worker', async () => {
-    const jp = _req('startup/jobsProzess.js');
+    const jp = _req('startup/jobsProcess.js');
     const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
     for (let i = 0; i < 50 && !(await liesZustand(jp.HEARTBEAT_KEY)); i++) await warte(20);
     assert.ok(await liesZustand(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');

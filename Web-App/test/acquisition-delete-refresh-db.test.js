@@ -61,7 +61,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
     // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
     // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
     if (!(await haltRow(db, uid, SN))) return undefined;
-    const agg = await _req('src/sets/lesen.js').zustandsAggregat(
+    const agg = await _req('src/sets/read.js').zustandsAggregat(
       require('./helpers/sources').testContext('sets'),
       [uid],
       SN,

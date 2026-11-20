@@ -1,8 +1,8 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/area';
 import * as repository from './repository';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface IdempotencyDependencies {
   uhr: Uhr;

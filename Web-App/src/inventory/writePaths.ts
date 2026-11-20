@@ -1,6 +1,6 @@
 /** Sets und Käufe gehören dem Bestand (docs/architektur.md); die Bereiche darüber schreiben hierüber. */
-import type { ErfassungsArt } from '../../db/bestandsmenge';
-import { mit } from '../infra/bereich';
+import type { ErfassungsArt } from '../../db/stockQuantity';
+import { mit } from '../infra/area';
 import * as erfassungen from './repository/acquisitions';
 import * as gemeinsam from './repository/shared';
 import * as kaeufe from './repository/purchases';

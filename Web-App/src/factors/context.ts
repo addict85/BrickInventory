@@ -1,8 +1,8 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
-import type { Konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/config';
 import type { Db } from '../../db/database';
-import type { Uhr } from '../infra/uhr';
-import { imSystem, mit, type Kontext } from '../infra/bereich';
+import type { Uhr } from '../infra/clock';
+import { imSystem, mit, type Kontext } from '../infra/area';
 import type { SettingsServices } from '../settings';
 import * as legacySecrets from './repository/legacySecrets';
 import * as passkeys from './repository/passkeys';

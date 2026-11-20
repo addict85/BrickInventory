@@ -8,9 +8,9 @@ import { hintInBackground } from './accountNotice';
 import * as QR from './qrPairing';
 import { basisUrl, hintWithoutBaseUrl, viaTls, unlimitedOnlyWithTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
-import { fachfehler } from '../infra/fehlerTexte';
-import { passwordLack } from '../infra/passwortRegel';
-import { versuche, valueOr } from '../infra/ergebnis';
+import { fachfehler } from '../infra/errorTexts';
+import { passwordLack } from '../infra/passwordRule';
+import { versuche, valueOr } from '../infra/result';
 import type { AccountContext } from './context';
 
 export type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };

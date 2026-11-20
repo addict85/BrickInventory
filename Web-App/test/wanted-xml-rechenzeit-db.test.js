@@ -27,7 +27,7 @@ const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const db = testData();
 const { readWantedList } = _req('src/wanted/wantedParser.js');
-const { XML_MAX_BYTES } = _req('src/http/dateiEmpfang.js');
+const { XML_MAX_BYTES } = _req('src/http/fileUpload.js');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {

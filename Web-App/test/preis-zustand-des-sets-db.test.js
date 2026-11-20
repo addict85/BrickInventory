@@ -5,7 +5,7 @@
  * aus set-condition-aggregate.test.js.
  *
  * Gegenproben (15.11.2026 gemessen):
- *   A  in src/sets/preise.ts (setPrice) `await sk.finances.setState(blickfeld, sn)`
+ *   A  in src/sets/prices.ts (setPrice) `await sk.finances.setState(blickfeld, sn)`
  *      durch 'U' ersetzt → rot: „/price nimmt den Neupreis“ (50 statt 100)
  *   B  in src/finances/priceHistory.ts (priceHistorySet) den Zustand fest auf
  *      DEFAULT_PRICE_CONDITION gesetzt → rot: „/price-history im Zustand des Sets“ ('U')

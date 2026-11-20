@@ -3,8 +3,8 @@
  * the response. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { Fachfehler, asDuplicate, fachfehler, type ErrorCode } from '../infra/fehlerTexte';
-import { withoutMissingFile } from '../infra/fehler';
+import { Fachfehler, asDuplicate, fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { withoutMissingFile } from '../infra/error';
 import type { VoucherRow } from './repository/vouchers';
 import { VOUCHER_DIR, voucherFile, readVoucherPdf, readVoucherPdfOrNothing, writeVoucherPdf } from './voucherFiles';
 import { countryAllowed, countryForCurrency } from './balanceLookup';
@@ -14,11 +14,11 @@ import { combineVouchers } from './pdfExport';
 import { issueTicket } from './pdfTicket';
 import { MAX_PAGES, readInBackground } from './pdfReader';
 import type { VoucherContext } from './context';
-import { PIN_MASK, gutscheinNummer, voucherPin, voucherCurrency, numberMask } from '../infra/gutscheinWerte';
+import { PIN_MASK, gutscheinNummer, voucherPin, voucherCurrency, numberMask } from '../infra/voucherValues';
 
 export type { VoucherRow } from './repository/vouchers';
 
-export { PIN_MASK } from '../infra/gutscheinWerte';
+export { PIN_MASK } from '../infra/voucherValues';
 
 export const masked = (z: { number: string; pin: string | null }) => ({
   number: numberMask(z.number),

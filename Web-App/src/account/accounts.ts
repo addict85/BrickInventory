@@ -8,7 +8,7 @@ import { tokenDigest, revokeAllTokens } from './deviceToken';
 import { emailValid } from '../infra/validate';
 import { removeStartpasswort } from '../infra/startpasswort';
 import { rememberAdminAction } from './adminLog';
-import { asDuplicate, fachfehler, notFound } from '../infra/fehlerTexte';
+import { asDuplicate, fachfehler, notFound } from '../infra/errorTexts';
 import type { ResetSideEffects } from '../mail';
 import { hintInBackground } from './accountNotice';
 import { deleteDailyLimit } from './loginLimiter';

@@ -1,6 +1,6 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
-import { mit, buildArea, type Inspect } from '../infra/bereich';
-import { Faecher } from '../infra/zwischenspeicher';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
+import { mit, buildArea, type Inspect } from '../infra/area';
+import { Faecher } from '../infra/cache';
 import * as anmeldepruefung from './loginCheck';
 import * as anmeldungAblauf from './loginFlow';
 import * as geraeteToken from './deviceToken';

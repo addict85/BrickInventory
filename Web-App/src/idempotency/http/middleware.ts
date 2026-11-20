@@ -2,11 +2,11 @@
  * goes out: if the connection drops, the retry already finds it. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../account/http/login';
-import { reportError } from '../../infra/fehler';
+import { reportError } from '../../infra/error';
 import * as service from '../service';
 import { routeForRequest } from '../../contract';
 import { notRetryable } from '../../contract/base';
-import { sendError } from '../../http/httpAntwort';
+import { sendError } from '../../http/httpResponse';
 import type { IdempotencyServices } from '../area';
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

@@ -2,13 +2,13 @@
 import { KEINE_FARBE } from '../src/infra/validate';
 
 import { pipeline } from 'node:stream/promises';
-import { holeHttps, openHttps, AbrufFehler, type FetchResponse, type FetchStream } from '../src/infra/abruf';
+import { holeHttps, openHttps, AbrufFehler, type FetchResponse, type FetchStream } from '../src/infra/fetch';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fehlertext, reportAndDeliver, reportError } from '../src/infra/fehler';
-import { withVersion } from '../src/infra/setNummer';
-import type { ClientsAccess } from './zugang';
-import { versuche } from '../src/infra/ergebnis';
+import { fehlertext, reportAndDeliver, reportError } from '../src/infra/error';
+import { withVersion } from '../src/infra/setNumber';
+import type { ClientsAccess } from './access';
+import { versuche } from '../src/infra/result';
 import type { z } from 'zod';
 import {
   RbSet,
@@ -21,14 +21,14 @@ import {
   RbPartColor,
   rbPage,
   checkResponse,
-} from './antworten';
+} from './responses';
 import {
   ALLOWED_DOWNLOAD_HOSTS,
   ALLOWED_API_HOSTS,
   ALLOWED_REBRICKABLE_HOSTS,
   hostAllowed,
   pathSegment,
-} from '../src/infra/fremdeAdressen';
+} from '../src/infra/foreignAddresses';
 
 const BASE = 'https://rebrickable.com/api/v3';
 

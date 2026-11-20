@@ -1,14 +1,14 @@
 /** One rule for three kinds, so the webapp and the app don't drift apart. */
 import { moneyInput } from '../infra/geld';
 import type { Sicht } from '../household';
-import { Degradations } from '../infra/ergebnis';
+import { Degradations } from '../infra/result';
 import { inventoryKey } from '../../db/txLock';
-import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
-import { quantityOfSets, quantityThePosition, priceColumn, type ErfassungsArt } from '../../db/bestandsmenge';
+import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { quantityOfSets, quantityThePosition, priceColumn, type ErfassungsArt } from '../../db/stockQuantity';
 import { inventoryQuantity, zustand } from '../infra/validate';
 import type { CollectionContext } from './context';
 
-export type { ErfassungsArt } from '../../db/bestandsmenge';
+export type { ErfassungsArt } from '../../db/stockQuantity';
 type Keys = Array<string | number>;
 
 interface Kind {

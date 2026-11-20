@@ -69,7 +69,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
   );
   const K_ = _req('src/account/accounts.js');
   const H = _req('src/household/household.js');
-  const { inSystemContext } = _req('src/infra/kontoKontext.js');
+  const { inSystemContext } = _req('src/infra/accountContext.js');
   const mainAccountsOf = () => inSystemContext('test', () => H.householdOf(A)).then(h => h.memberIds.includes(V));
 
   await t.test('der normale Passwortwechsel lässt den Haushalt stehen', async () => {

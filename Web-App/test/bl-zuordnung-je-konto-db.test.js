@@ -7,7 +7,7 @@
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  routes/api_v1/wanted.ts: rememberNumber schreibt immer rememberBlNumber →
  *      rot: alle sieben Teiltests (Annas 3001 füllt den Vermerk für 3003)
- *   B  db/blZuordnungSql.ts: blNummerSql ohne `_e.bl_id` → rot: „Bewertung“
+ *   B  db/blMappingSql.ts: blNummerSql ohne `_e.bl_id` → rot: „Bewertung“
  *      (Anna sieht die gemeinsame Nummer)
  *   C  resolveBlPartNumber() übergeht `konto` → rot: „Preisabruf“
  *   D  writeBlNumber() wieder mit `DO UPDATE SET bl_id=…` ohne WHERE → rot:
@@ -149,7 +149,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('der nächste Import: Annas Korrektur löst bei Anna auf, nicht bei Bruno', async () => {
-    const { resolveLocalOn } = _req('src/wanted/wantedAufloesung.js');
+    const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
     const { readWantedList } = _req('src/wanted/wantedParser.js');
     const { posten } = readWantedList(liste(item('P', '3001', 5)));
     assert.equal((await asAccount(ANNA, () => resolveLocalOn(posten, ANNA)))[0].rbId, '3003');

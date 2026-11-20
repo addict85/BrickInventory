@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
+import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/stockQuantity';
 
 export type EntryInField = {
   id: number;

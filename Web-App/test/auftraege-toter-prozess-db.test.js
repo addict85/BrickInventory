@@ -46,7 +46,7 @@ test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   const eigener = await laufend(`${prozess.PROCESS}/3`);
   const status = async id => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
 
-  // Was startup/jobsProzess.ts vor dem Worker aufruft; den ganzen Job-Betrieb
+  // Was startup/jobsProcess.ts vor dem Worker aufruft; den ganzen Job-Betrieb
   // hochzufahren startete echte Aufträge, die Verbindungen halten.
   await prozess.reportProcessAn();
 

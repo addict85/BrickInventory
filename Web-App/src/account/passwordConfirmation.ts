@@ -7,12 +7,12 @@ import {
   reportLoginEvent,
   type Brake,
 } from './loginLimiter';
-import type { ErrorKind, ErrorCode } from '../infra/fehlerTexte';
+import type { ErrorKind, ErrorCode } from '../infra/errorTexts';
 import { accountThrottled } from './targetThrottle';
 import { hintInBackground } from './accountNotice';
 import type { AccountContext } from './context';
 
-/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
+/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/errorKind.ts). */
 export type ConfirmationRejection = {
   art: ErrorKind;
   code: ErrorCode;

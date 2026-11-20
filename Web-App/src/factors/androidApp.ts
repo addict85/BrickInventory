@@ -1,6 +1,6 @@
 /** Origin and asset-links document from the same list: the server never names an
  * app whose passkey responses it would reject, or the other way round. */
-import type { Konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/config';
 
 /** How the app appears in `clientDataJSON.origin`: base64url of the certificate hash. */
 export function androidOrigins(k: Pick<Konfig, 'androidZertifikate'>): string[] {

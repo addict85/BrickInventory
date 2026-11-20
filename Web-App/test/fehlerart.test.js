@@ -1,6 +1,6 @@
 /**
  * Dienste werfen eine fachliche Fehlerart, keinen HTTP-Status; welcher Status
- * dazu gehört, steht nur in src/http/fehlerArt.ts. Geprüft wird die Antwort,
+ * dazu gehört, steht nur in src/http/errorKind.ts. Geprüft wird die Antwort,
  * die der Fehlerweg der Routen (handleRouteError) daraus macht.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
@@ -8,7 +8,7 @@
  *      (konflikt 400 statt 409)
  *   B  in handleRouteError wieder `typeof e.status === 'number' ? e.status : 500`
  *      statt statusOf(e) → rot: „jede Art ergibt ihren Status“ (alle 500)
- *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/dienst.ts →
+ *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/service.ts →
  *      rot: „nur src/http bildet Arten auf Status ab …“
  *   D  in src/infra/geld.ts dem fachfehler() eine Statuszahl 400 angehängt → rot:
  *      dieselbe Prüfung, Liste `status`
@@ -23,9 +23,9 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const ohneKommentare = require('./helpers/sources').ohneKommentare;
-const { handleRouteError, sendError } = _req('src/http/httpAntwort.js');
-const { STATUS_THE_KIND } = _req('src/http/fehlerArt.js');
-const { fachfehler, asDuplicate } = _req('src/infra/fehlerTexte.js');
+const { handleRouteError, sendError } = _req('src/http/httpResponse.js');
+const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
+const { fachfehler, asDuplicate } = _req('src/infra/errorTexts.js');
 
 /** Was handleRouteError an eine Antwort schreibt. */
 function antwort(e) {

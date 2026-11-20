@@ -1,6 +1,6 @@
 /** Der API-Vertrag: je Bereich eine Datei, hier zusammengeführt. Aus ihm
  * entstehen docs/openapi.json (npm run vertrag:openapi), die Typen der
- * Routen (src/http/vertragsRouter.ts) und die Prüfung der Antworten in den Tests. */
+ * Routen (src/http/contractRouter.ts) und die Prüfung der Antworten in den Tests. */
 import type { z } from 'zod';
 import type { Wire, Route } from './base';
 import * as bestand from './inventory';

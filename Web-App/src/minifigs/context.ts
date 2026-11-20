@@ -1,6 +1,6 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/area';
 import * as minifigsList from './repository/minifigsList';
 import * as minifigParts from './repository/minifigParts';
 import * as manualMinifigs from './repository/manualMinifigs';
@@ -11,7 +11,7 @@ import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../inventory';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface MinifigsDependencies {
   uhr: Uhr;

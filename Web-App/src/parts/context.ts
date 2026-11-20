@@ -1,7 +1,7 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import type { Faecher } from '../infra/zwischenspeicher';
-import { mit, type Kontext } from '../infra/bereich';
+import type { Faecher } from '../infra/cache';
+import { mit, type Kontext } from '../infra/area';
 import * as manualParts from './repository/manualParts';
 import * as partsList from './repository/partsList';
 import * as summary from './repository/summary';
@@ -13,7 +13,7 @@ import type { CatalogServices } from '../catalog';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../inventory';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface PartsDependencies {
   uhr: Uhr;

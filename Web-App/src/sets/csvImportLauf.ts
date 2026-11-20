@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { type ImportResult, JobInterrupted, type JobContext } from '../jobQueue';
-import { setErfassen } from './erfassen';
-import { fehlertext } from '../infra/fehler';
-import { Fachfehler, errorText, type ErrorCode } from '../infra/fehlerTexte';
-import type { SetsContext } from './kontext';
+import { setErfassen } from './addSet';
+import { fehlertext } from '../infra/error';
+import { Fachfehler, errorText, type ErrorCode } from '../infra/errorTexts';
+import type { SetsContext } from './context';
 
 /** Nach jedem Set steht der Stand in import_status; ein Neustart setzt dort
  * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set

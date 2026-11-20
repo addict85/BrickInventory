@@ -56,7 +56,7 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
     await holdsMinifig(db, ofId, FN, { setNumber: SN, menge: 1 });
 
     // Wie die Sammlung: in einer Transaktion über deren Kontext; zwei fremde Konten nur im Systemrahmen.
-    const { inSystemContext } = _req('src/infra/kontoKontext.js');
+    const { inSystemContext } = _req('src/infra/accountContext.js');
     const sammlung = require('./helpers/sources').testContext('collection');
     await inSystemContext('Testdaten', () => sammlung.transaktion(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
 

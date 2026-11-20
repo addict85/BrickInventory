@@ -1,8 +1,8 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
-import type { Konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/config';
 import type { Db } from '../../db/database';
-import type { Faecher } from '../infra/zwischenspeicher';
-import { imSystem, mit, type Kontext } from '../infra/bereich';
+import type { Faecher } from '../infra/cache';
+import { imSystem, mit, type Kontext } from '../infra/area';
 import * as einrichtung from './repository/setup';
 import * as konten from './repository/accounts';
 import * as protokoll from './repository/log';
@@ -17,7 +17,7 @@ import type { MailServices } from '../mail';
 import type { ThrottleServices } from '../throttle';
 import type { DevicesServices } from '../devices';
 import type { FactorsServices } from '../factors';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface AccountDependencies {
   uhr: Uhr;

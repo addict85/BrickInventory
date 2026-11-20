@@ -1,7 +1,7 @@
-import { setBestand } from '../../../db/bestandSicht';
+import { setBestand } from '../../../db/inventoryView';
 import type { DbInterface, Treffer } from '../../../db/database';
 import { marktpreisSql } from '../../../db/geldSql';
-import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSuche';
+import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSearch';
 import { fromTable } from '../../infra/validate';
 
 export function markSetWanted(db: DbInterface, userId: number, sn: string, c: string, seit: Date | string | null) {

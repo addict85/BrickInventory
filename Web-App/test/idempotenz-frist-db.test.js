@@ -23,7 +23,7 @@ test('Idempotenz: die Frist folgt der längsten Anfrage', { concurrency: 1 }, as
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const dienst = _req('src/idempotency/service.js');
-  const { HTTP_DEADLINES } = _req('src/infra/httpFristen.js');
+  const { HTTP_DEADLINES } = _req('src/infra/httpDeadlines.js');
   assert.ok(
     dienst.ORPHANED_AFTER_S * 1000 > HTTP_DEADLINES.requestTimeout,
     'die Frist ist kürzer als die längste Anfrage',

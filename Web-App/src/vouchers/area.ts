@@ -1,6 +1,6 @@
-/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
-import { mit, buildArea, type Inspect } from '../infra/bereich';
-import { Faecher } from '../infra/zwischenspeicher';
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
+import { mit, buildArea, type Inspect } from '../infra/area';
+import { Faecher } from '../infra/cache';
 import * as service from './service';
 import * as pdfTicket from './pdfTicket';
 import { encryptLegacyVoucherFiles } from './voucherFiles';
@@ -26,7 +26,7 @@ export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?
       voucherPdf: mit(k)(service.voucherPdf),
       redeemTicket: mit(k)(pdfTicket.redeemTicket),
       encryptLegacyFiles: encryptLegacyVoucherFiles,
-      // Re-encrypting at startup (startup/datenbank.ts): across all accounts, without a request.
+      // Re-encrypting at startup (startup/database.ts): across all accounts, without a request.
       reencryptNumbers: k.vouchers.reencryptNumbers,
       reencryptCopies: k.vouchers.reencryptCopies,
       reencryptAllVouchers: k.vouchers.reencryptAllVouchers,

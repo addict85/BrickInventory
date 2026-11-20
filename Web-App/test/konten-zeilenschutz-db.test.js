@@ -24,7 +24,7 @@ const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = S.testData();
-const { asRequest } = _req('src/infra/kontoKontext.js');
+const { asRequest } = _req('src/infra/accountContext.js');
 
 test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

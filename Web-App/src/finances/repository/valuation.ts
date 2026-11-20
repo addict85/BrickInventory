@@ -1,9 +1,9 @@
 import type { DbInterface } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
-import { mengeAus, teilmengeAus } from '../../../db/bestandsmenge';
+import { mengeAus, teilmengeAus } from '../../../db/stockQuantity';
 import type { FinancesReadContract } from '../readContract';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/catalogView';
 
 /** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
 export interface ManualEntry {

@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { attemptsKeyLock, giveKeyLockFree } from '../../../db/txLock';
 import type { JobKind, Einstellen, JobRow, Belegung, Fortschritt, Pause, JobStatus } from '../jobs';
-import type { Spalten } from '../../../db/zeilen';
+import type { Spalten } from '../../../db/rows';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
  * stehen im Dienst. */

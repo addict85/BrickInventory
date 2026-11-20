@@ -1,7 +1,7 @@
 /** In Zehntausendsteln (NUMERIC(12,4)), gerundet erst am Ende: 120,3333 × 2
  * bleibt 240,67; toFixed() rundet 1,005 dagegen auf 1,00. */
 
-import { fachfehler, type ErrorCode } from './fehlerTexte';
+import { fachfehler, type ErrorCode } from './errorTexts';
 
 /** null heisst „unbekannt", nicht 0. */
 export type Zehntel4 = number;

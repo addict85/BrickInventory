@@ -374,7 +374,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
-  const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
+  const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/prices.ts'), 'utf8');
   const uses = (apiV1.match(/sk\.finances\.setState\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
@@ -398,8 +398,8 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // Verbindung stumm bis zur Frist. abruf.ts ist der eine Weg nach draussen.
   // Gegenprobe (05.11.2026): family: 4 aus https.get in abruf.ts oder aus dem Pool gestrichen → rot.
   const _req = require('./helpers/sources').buildAndRequire();
-  const { holeHttps } = _req('src/infra/abruf.js');
-  const { oeffneBild } = _req('clients/bildCdn.js');
+  const { holeHttps } = _req('src/infra/fetch.js');
+  const { oeffneBild } = _req('clients/imageCdn.js');
   const { recording } = require('./helpers/https-mitschnitt');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';

@@ -1,14 +1,14 @@
 /** Bilder eines Sets laden: Teile und Figuren aus dem CDN in den eigenen Ordner,
  * unter einer Sperre je Set, die auch andere Prozesse sehen. */
-import { reportError, logAndContinue } from '../infra/fehler';
-import { withVersion } from '../infra/setNummer';
+import { reportError, logAndContinue } from '../infra/error';
+import { withVersion } from '../infra/setNumber';
 import { setPartImageLocal, setMinifigImageLocal } from './catalogMaintenance';
 import { IMAGE_HEADERS } from '../externalSources';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
 import { imageExtension, filePart, targetInFolder } from '../images';
-import { ALLOWED_IMAGE_HOSTS } from '../infra/fremdeAdressen';
+import { ALLOWED_IMAGE_HOSTS } from '../infra/foreignAddresses';
 import * as repo from './repository/partsEnrichment';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } from '../infra/appPaths';

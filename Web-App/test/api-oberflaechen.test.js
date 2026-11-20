@@ -189,7 +189,7 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
   }
   // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
   // ZWEI ist der GEMESSENE Stand (die beiden Adressen des Bild-Proxys); health
-  // und startup-status hängen im Router routes/gesundheit.ts.
+  // und startup-status hängen im Router routes/health.ts.
   assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
   const daneben = gefunden.filter(r => !r.split(' ')[1].startsWith('/api/v1') && !WITHOUT_VERSION.has(r)).sort();
@@ -224,7 +224,7 @@ test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () =>
 
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
-  // Und die GET-Routen der in server.ts eingehängten Router (routes/gesundheit.ts).
+  // Und die GET-Routen der in server.ts eingehängten Router (routes/health.ts).
   for (const r of webRouter())
     for (const m of require('./helpers/sources').routesFromSource(
       ohneKommentare(fs.readFileSync(r.datei, 'utf8')),

@@ -124,7 +124,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
 
   await t.test('ein Set wuerde sie ebenfalls bekommen', async () => {
     // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
-    // die Huelle in src/sets/dienst.ts aus demselben Aufruf erhaelt.
+    // die Huelle in src/sets/service.ts aus demselben Aufruf erhaelt.
     assert.equal(await locationForNewEntry(UID, undefined), 'Kiste 7');
     assert.equal(
       await locationForNewEntry(UID, null),

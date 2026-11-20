@@ -2,7 +2,7 @@
 import type { MailServices } from '../mail';
 import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
-import { imSystem, mit, type Kontext } from '../infra/bereich';
+import { imSystem, mit, type Kontext } from '../infra/area';
 import * as management from './repository/management';
 import type { SettingsServices } from '../settings';
 import type { JobsServices } from '../jobQueue';
@@ -16,7 +16,7 @@ import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../inventory';
 import type { SetsServices } from '../sets';
 import type { WantedServices } from '../wanted';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface ManagementDependencies {
   uhr: Uhr;

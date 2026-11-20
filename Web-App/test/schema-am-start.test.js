@@ -1,7 +1,7 @@
 /**
  * Keine Schema-Anweisung im Anfragepfad.
  *
- * Gegenprobe (09.11.2026): `'ALTER TABLE sets ADD COLUMN probe INT'` in src/sets/lesen.ts → rot.
+ * Gegenprobe (09.11.2026): `'ALTER TABLE sets ADD COLUMN probe INT'` in src/sets/read.ts → rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

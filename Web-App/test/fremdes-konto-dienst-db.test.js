@@ -4,7 +4,7 @@
  * statt still nur zu sehen, was der Zeilenschutz des Anfragenden zeigt.
  *
  * Gegenproben (14.11.2026):
- *   A  checkRequester() (src/infra/kontoKontext.ts) geleert → rot: „ein fremdes Konto
+ *   A  checkRequester() (src/infra/accountContext.ts) geleert → rot: „ein fremdes Konto
  *      als Anfragender wirft“ (das Unterkonto bekam still nur sein eigenes Set).
  *   B  in householdOf() den Aufruf von checkRequester() gestrichen → rot: dieselbe.
  *   C  in checkRequester() den Systemrahmen nicht ausgenommen → rot: „im Systemrahmen
@@ -27,7 +27,9 @@ test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const { inSystemContext, ForeignAccount } = require(path.join(__dirname, '..', 'dist', 'src/infra/kontoKontext.js'));
+  const { inSystemContext, ForeignAccount } = require(
+    path.join(__dirname, '..', 'dist', 'src/infra/accountContext.js'),
+  );
   const { setsLesen } = areaPage('sets');
   const [MAIN, SUB] = [`fk_haupt_${process.pid}`, `fk_sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, SUB]]);

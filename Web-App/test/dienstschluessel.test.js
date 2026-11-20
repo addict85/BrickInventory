@@ -15,7 +15,7 @@
  *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
  *   D  `setzeAktiv: mit(k)(accountsService.setzeAktiv)` zurück in src/account/area.ts → rot
  *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
- *   E  in routes/auth/zweiterFaktor.ts `d.factors.renewCodes` durch einen
+ *   E  in routes/auth/secondFactor.ts `d.factors.renewCodes` durch einen
  *      Platzhalter ersetzt → rot „ohne Aufrufer“ (factors.renewCodes)
  *   F  JE_AREA.konto auf 88 → rot „Schlüssel je Bereich“ (konto 89, erlaubt 88)
  *
@@ -43,7 +43,7 @@ function satz(contexts = undefined) {
       throw new Error('Der Bau fragt nicht');
     },
   };
-  return _req('startup/verdrahtung.js').buildServices(stummel, { contexts });
+  return _req('startup/wiring.js').buildServices(stummel, { contexts });
 }
 
 /** Die Klienten der Fremdquellen sind kein Dienst, sondern deren Inhalt; sie zählen als einer. */
@@ -144,10 +144,10 @@ test('service keys become fewer, never more, and each has a caller', () => {
 
 /** Dienste, die ein Repository roh weiterreichen, mit Grund; die Liste wird kürzer, nie länger. */
 const RAW_ALLOWED = {
-  'jobQueue.belegeAuftrag': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.giveBack': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.lebenszeichen': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.belegeAuftrag': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.giveBack': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.lebenszeichen': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.letzteJeArt': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
   'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
   'jobQueue.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
@@ -160,8 +160,8 @@ const RAW_ALLOWED = {
   'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'sets.setsOfAccount': 'Setnummern eines Kontos für das Löschen der Sammlung (src/collection), ohne Regel davor',
   'finances.marketPriceFromCache':
-    'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
-  'finances.marketPriceFromHistory': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
+    'Rückfall der Set-Bewertung (src/sets/service.ts) auf den Zwischenspeicher, ohne Regel',
+  'finances.marketPriceFromHistory': 'Rückfall der Set-Bewertung (src/sets/service.ts) auf den Verlauf, ohne Regel',
   'vouchers.reencryptAllVouchers':
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
   'vouchers.reencryptCopies':

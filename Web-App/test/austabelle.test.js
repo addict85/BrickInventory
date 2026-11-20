@@ -59,7 +59,7 @@ const PLACES = [
   ['src/catalog/repository/catalogSearch.ts', 'ORDERS', /ORDERS\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
   // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
-  ['src/http/dateiEmpfang.ts', 'o.typen', /o\.typen\s*\[/],
+  ['src/http/fileUpload.ts', 'o.typen', /o\.typen\s*\[/],
 ];
 
 for (const [datei, name, muster] of PLACES) {

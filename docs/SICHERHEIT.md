@@ -99,7 +99,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
   Port 80 leitet nur um, `/ca.crt` gibt es nur über HTTPS (nach einmal
   bestätigter Warnung, Abgleich des Fingerabdrucks): `compose.yaml`,
-  `Caddyfile`, `routes/zertifikat.ts` — `compose-haertung`, `tls-wurzel-db`.
+  `Caddyfile`, `routes/certificate.ts` — `compose-haertung`, `tls-wurzel-db`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
   eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
@@ -129,7 +129,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
   (`fp`): `src/infra/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
 - `TRUST_PROXY` nennt genau Caddy; dahinter Cookie mit `Secure` und HSTS:
-  `src/infra/konfig.ts` (`cookieSicher`), `server.ts` — `tls-wurzel-db`, `hsts`.
+  `src/infra/config.ts` (`cookieSicher`), `server.ts` — `tls-wurzel-db`, `hsts`.
 - Die Schlüssel der CA bleiben bei Caddy: Die App sieht den Ordner nur lesend
   und als Nicht-root nur die vom Entrypoint kopierte Wurzel.
 
@@ -230,7 +230,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Passkey, QR-Abholung) oder über den einmal gültigen Link in seiner Mail; eine
   fällige Übernahme entfällt, wenn das Ziel inzwischen deaktiviert wurde:
   `src/account/adminActions.ts` — `verwalter-uebernahme-db`.
-- AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/geheimnis.ts` — `geheimnis-tag-laenge`.
+- AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/secret.ts` — `geheimnis-tag-laenge`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys und löst
   ausserdem, was ein Eindringling angelegt haben könnte: die Verknüpfung mit
   Hauptkonten über diesem Konto (der Haushalt nach oben), offene
@@ -253,25 +253,25 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - „Alle meine Daten löschen" nur mit Passwort — `alles-loeschen-haushalt-db`.
 - Mailadressen stehen im Protokoll nur maskiert — `haushalt-beitreten-db`.
 - In Produktion kein Start mit Beispiel-`SESSION_SECRET` oder
-  Beispiel-Datenbankpasswort: `server.ts`, `src/infra/konfig.ts` (`startVerbote`) — `startverbot`.
+  Beispiel-Datenbankpasswort: `server.ts`, `src/infra/config.ts` (`startVerbote`) — `startverbot`.
 - `/api/v1/startup-status` nennt Schritt und Unterstand nur angemeldet — `gesundheit-db`.
 
 ### Herkunft der Client-Adresse (1)
 - `TRUST_PROXY` vertraut nur ausdrücklich genannten Adressen oder kleinen
   Netzen; Vorgabe Loopback, `docker`/`true`/Hop-Zahlen verweigern den Start:
-  `src/infra/proxyVertrauen.ts` — `anmeldesperre-db`, `proxy-hinweis`, `startverbot`.
+  `src/infra/proxyTrust.ts` — `anmeldesperre-db`, `proxy-hinweis`, `startverbot`.
 - `compose.yaml`: festes Netz `172.28.73.0/24`; ein Reverse-Proxy bekommt
   darin eine feste Adresse, und genau die steht in `TRUST_PROXY` — `compose-haertung`.
 
 ### CSRF (2)
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
-  ohne Cookie ausgenommen: `src/http/herkunft.ts` — `herkunft`.
+  ohne Cookie ausgenommen: `src/http/origin.ts` — `herkunft`.
 - Die App antwortet nur unter dem Namen aus `APP_BASE_URL` (sonst 421
   `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb; ohne
   `APP_BASE_URL` (nur mit `APP_BASE_URL_FEHLT_OK=1`) unter keinem Namen. Frei
   bleiben Loopback, IP-Adressen, `/ca.crt` und die Gesundheitspfade:
-  `nurEigenerHost` in `src/http/herkunft.ts` — `sicherheit-server-grenzen-db`, `herkunft`.
+  `nurEigenerHost` in `src/http/origin.ts` — `sicherheit-server-grenzen-db`, `herkunft`.
 - E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
   `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
   — `sicherheit-server-grenzen-db`.
@@ -279,7 +279,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
   `src/household/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
-- Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
+- Uploads nur für Besitzer und Hauptkonto: `routes/dataFiles.ts` — `daten-dateien-db`, `media-auth`.
 - Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
   (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
   `acquisitionMoveSource` in `src/household/household.ts` — `sicherheit-server-grenzen-db`.
@@ -316,16 +316,16 @@ handelte der Prozess für jede gerade aktive Sitzung.
 
 ### Uploads (4)
 - Typ aus dem Inhalt, Endung aus dem MIME-Typ, Name zufällig, Kontingent je
-  Konto: `routes/api_v1/sets.ts`, `src/http/dateiEmpfang.ts` — `upload-grenzen-db`.
+  Konto: `routes/api_v1/sets.ts`, `src/http/fileUpload.ts` — `upload-grenzen-db`.
 - Gutschein-PDF höchstens 2 MB, Entpackgrenze: `src/vouchers/pdfParsing.ts` — `gutschein-pdf-bombe-db`.
 - Gutschein-PDFs verschlüsselt, Konto löschen entfernt Uploads und
   Gutscheine: `src/vouchers/voucherFiles.ts` — `konto-dateien-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
-- Die Guthaben-Abfrage bei lego.com geht über `src/infra/abruf.ts`: nur
+- Die Guthaben-Abfrage bei lego.com geht über `src/infra/fetch.ts`: nur
   `www.lego.com`, auch nach einer Umleitung; ein POST folgt keiner; Antworten
   höchstens 4 MB (Seite) bzw. 512 KB (Abfrage), 20 s — `gutschein-guthaben-abruf`.
-- Ein Weg nach draussen: `src/infra/abruf.ts` (`holeHttps`, `oeffneHttps`).
+- Ein Weg nach draussen: `src/infra/fetch.ts` (`holeHttps`, `oeffneHttps`).
   Nur https, Host-Liste für Start und jeden Sprung, relative `Location`
   aufgelöst, höchstens 5 Umleitungen, Byte-Grenze (angesagt und gezählt),
   Gesamtfrist, `Authorization`/`Cookie` fallen bei Hostwechsel weg; jeder
@@ -334,7 +334,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   im Protokoll — `abruf-helfer` (echter TLS-Server), `umleitungen` (niemand
   sonst ruft `https.get`/`fetch`), `download-grenzen`, `img-proxy-size`.
   Hosts exakt (Unterdomänen nur über `*.`-Eintrag, nur bei `lego.com`), nur
-  Standardport, keine Userinfo: `hostErlaubt` in `src/infra/fremdeAdressen.ts` — `umleitungen`.
+  Standardport, keine Userinfo: `hostErlaubt` in `src/infra/foreignAddresses.ts` — `umleitungen`.
   Ausgenommen sind nur `scripts/loadtest.js` und `scripts/check-api-contract.js`,
   die von der Kommandozeile den eigenen Server rufen.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
@@ -351,7 +351,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Posten, Feldlängen, Menge 1–9999; nur bekannte Felder gehen in den Auftrag
   — `pdf-jobs-db`.
 - Rumpf und Abfrage im Betrieb gegen den API-Vertrag, unmittelbar vor der
-  Route (`eingabePruefen` in `src/http/vertragsRouter.ts`): falscher Typ,
+  Route (`eingabePruefen` in `src/http/contractRouter.ts`): falscher Typ,
   zu langer Text oder wiederholter Abfrageparameter ergeben 400
   `eingabe_ungueltig` — `eingabe-vertrag-db`. Routen ohne `eingabe` im
   Vertrag prüfen selbst (`src/infra/validate.ts`).
@@ -366,7 +366,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `X-Forwarded-Proto`: `server.ts` — `csp-actions`, `hsts`, `frontend-escaping`.
 - Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
   Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
-  im Protokoll: `oeffentlicherFehler` in `src/infra/fehler.ts` — `fehlertext-intern-db`.
+  im Protokoll: `oeffentlicherFehler` in `src/infra/error.ts` — `fehlertext-intern-db`.
 - 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
   zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
   `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
@@ -384,7 +384,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Grenzen passiert hat: `src/vouchers/balanceThrottle.ts` —
   `gutschein-guthaben-db`.
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
-  Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.
+  Caddy setzt je Anfrage eine neue: `src/infra/log.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
   `src/externalSources/apiQuota.ts`, `src/jobQueue/jobs.ts` — `api-kontingent-konto-db`.
@@ -395,9 +395,9 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Jede angemeldete Anfrage zählt in ein Budget je Konto: 600 Einheiten je
   5 Minuten, ein Leseaufruf 1, ein Katalogabruf 5, ein Auftragsstart (PDF,
   Import, Export) 25 und zusätzlich höchstens 20 Aufträge je Fenster; 429
-  `zu_viele_anfragen` mit `Retry-After`: `src/http/apiDrossel.ts` —
+  `zu_viele_anfragen` mit `Retry-After`: `src/http/apiThrottle.ts` —
   `api-kontingent` (Prozessspeicher, wie die Schranken in
-  `src/http/kontoSchranke.ts`).
+  `src/http/accountLimit.ts`).
 - `GET /api/v1/einrichtung/stand` ist ohne Anmeldung erreichbar und nennt nur
   Schalter (Datenbank, APP_BASE_URL, TLS, CA, Konto, Rebrickable), den
   Fingerabdruck der CA und den Download; Konten und Schlüssel stehen nicht
@@ -418,7 +418,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Der Fingerabdruck eines `Idempotency-Key` enthält keine Passwort-, Code-,
   PIN- oder Schlüsselfelder und ist ein HMAC mit eigenem Teilschlüssel des
   Datenschlüssels — `idempotenz-geheim-db`.
-- Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `src/infra/geheimnis.ts`
+- Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `src/infra/secret.ts`
   — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
 - Mail-Links ohne Token in den Protokollen: `src/mail/transport.ts`.
 - Aufbewahrung von Adressen in `rate_limit_attempts` (Anmeldebremsen,

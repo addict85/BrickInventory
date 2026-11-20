@@ -1,5 +1,5 @@
 import { setAnleitungenLaden, anzahlAnleitungen } from './instructions';
-import { logAndContinue, reportError } from '../infra/fehler';
+import { logAndContinue, reportError } from '../infra/error';
 import { type Nutzlast, checkAbort, type JobRun, JobMove } from '../jobQueue';
 import * as bildlage from './imageState';
 import type { CatalogContext } from './context';

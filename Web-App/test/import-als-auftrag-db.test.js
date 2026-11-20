@@ -3,7 +3,7 @@
  * Die Anfrage reicht ein und waiting; ohne Job-Prozess bleibt der Auftrag offen.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in jobs/auftraegeStarten.ts csv_import immer über runCsvImportFrom
+ *   A  in jobs/startJobs.ts csv_import immer über runCsvImportFrom
  *      (ohne Blick auf `quelle`) → rot: „mit Worker kommt das Ergebnis“
  *   B  importAlsAuftrag() vergisst das Ergebnis nicht (setResult(id, null)
  *      gestrichen) → rot: derselbe Test (result bleibt in der Tabelle)
@@ -28,7 +28,7 @@ const { importWorker } = require('./helpers/auftraege');
 const path = require('node:path');
 
 // Vor dem Laden des Workers: Der Alarm-Import wirft einen Fachfehler.
-const { fileError } = _req('src/infra/fehlerTexte.js');
+const { fileError } = _req('src/infra/errorTexts.js');
 const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/finances/priceAlert.js'));
 _req('src/finances/priceAlert.js');
 require.cache[pa].exports = Object.assign({}, require.cache[pa].exports, {

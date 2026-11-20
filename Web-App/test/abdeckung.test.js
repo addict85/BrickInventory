@@ -27,7 +27,7 @@ test('ein Lauf über dist/ ergibt lcov und Bereiche', async () => {
     // Ein kleiner echter Lauf: ein Modul aus dist/ laden und eine Funktion aufrufen.
     const r = spawnSync(
       process.execPath,
-      ['-e', "const f = require('./dist/src/infra/fehlerTexte.js'); console.log(typeof f)"],
+      ['-e', "const f = require('./dist/src/infra/errorTexts.js'); console.log(typeof f)"],
       { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: v8 }, encoding: 'utf8' },
     );
     assert.equal(r.status, 0, r.stderr);
@@ -35,7 +35,7 @@ test('ein Lauf über dist/ ergibt lcov und Bereiche', async () => {
     assert.ok(bereiche.server > 0, JSON.stringify(bereiche));
     assert.equal(bereiche.oberflaeche, 0);
     const lcov = fs.readFileSync(path.join(ordner, 'lcov.info'), 'utf8');
-    assert.match(lcov, /^SF:.*dist\/src\/infra\/fehlerTexte\.js$/m);
+    assert.match(lcov, /^SF:.*dist\/src\/infra\/errorTexts\.js$/m);
     assert.doesNotMatch(lcov, /node_modules/);
   } finally {
     fs.rmSync(ordner, { recursive: true, force: true });

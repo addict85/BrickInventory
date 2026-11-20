@@ -42,7 +42,7 @@ test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, 
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
-  const { HEARTBEAT_KEY } = _req('startup/jobsProzess.js');
+  const { HEARTBEAT_KEY } = _req('startup/jobsProcess.js');
   await deleteState(HEARTBEAT_KEY);
   t.after(() => db.pool.end().catch(() => {}));
 

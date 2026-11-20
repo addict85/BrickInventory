@@ -202,22 +202,22 @@ const _imageWorker = {
 /** Die ersetzten Klienten der Dienste (src/externalSources/sources.ts): leer heisst echt. */
 const _sources = {};
 
-/** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareClock aus src/infra/uhr.ts): Sie läuft
+/** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareClock aus src/infra/clock.ts): Sie läuft
  *  mit der Systemzeit, ein Test springt mit vor(ms) über eine Frist, statt sie abzuwarten. */
 let _clock = null;
 function testClock() {
-  if (!_clock) _clock = require(path.join(ROOT, 'dist', 'src/infra/uhr.js')).stellbareClock();
+  if (!_clock) _clock = require(path.join(ROOT, 'dist', 'src/infra/clock.js')).stellbareClock();
   return _clock;
 }
 
 function buildAndRequire() {
-  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
+  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/contractRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // ausserhalb von npm test (und mit `@superuser`) ist die Test-DB Superuser, und gestartete Server erben das.
   process.env.NODE_ENV ??= 'test';
   buildDist();
-  const V = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js'));
+  const V = () => require(path.join(ROOT, 'dist', 'startup/wiring.js'));
   const dbModule = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const firstStart = () => testServices().account.putStartAdminAn();
@@ -229,7 +229,7 @@ function buildAndRequire() {
     const contexts = {};
     // Die Konfiguration, die buildServices reicht, liest beim Zugriff: Ein Test, der mit
     // umgebung()/setKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
-    const K = require(path.join(ROOT, 'dist', 'src/infra/konfig.js'));
+    const K = require(path.join(ROOT, 'dist', 'src/infra/config.js'));
     const konfig = {};
     for (const n of Object.keys(K.konfig()))
       Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
@@ -252,7 +252,7 @@ function buildAndRequire() {
   };
 }
 
-/** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/bereich.ts).
+/** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/area.ts).
  *  Ein Test, der ein solches Modul direkt lädt, ruft sie mit dem Kontext dieser Testdatei. */
 const _withContext = new Map();
 const CONTEXT_FN =
@@ -313,7 +313,7 @@ function ownerAccess(dbModule, testDb, firstStart) {
   if (!url || url === process.env.DATABASE_URL) return testDb();
   const k = dbModule.dbKonfigFromEnvironment();
   // Wie server.ts: Der Erststart legt das erste Konto im Systemrahmen an.
-  const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
   const eigen = dbModule.createDb(
     { ...k, verbindung: { connectionString: url }, system: null },
     { firstStart: () => inSystemContext('start', firstStart) },
@@ -333,8 +333,8 @@ function ownerAccess(dbModule, testDb, firstStart) {
 function withAccountTheRequest(m) {
   const isRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
   if (!isRouter(m)) return m;
-  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  const { errorResponse } = require(path.join(ROOT, 'dist', 'src/http/httpAntwort.js'));
+  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
+  const { errorResponse } = require(path.join(ROOT, 'dist', 'src/http/httpResponse.js'));
   // Wie startup/app.ts: Den Fehlerweg hängt die App an, nicht der Router.
   const weiter = (req, res, next) => e =>
     e && e !== 'route' && e !== 'router' ? errorResponse(e, req, res, next) : next();
@@ -374,7 +374,7 @@ function testImageWorker(t, ersatz = {}) {
  *  unter dem Zeilenschutz nur dessen Haushalt, wie im Betrieb.
  *  @template T @param {number} uid @param {() => T} f @param {{ verwalter?: boolean }} [o] @returns {T} */
 function asAccount(uid, f, o = {}) {
-  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
   return asRequest({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
@@ -399,14 +399,14 @@ function testData() {
 const _dataHandle = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _dataFactory()[k] });
 
 /** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
- *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
+ *  lesen: Der Server liest sie einmal beim Start (src/infra/config.ts). */
 function environment(werte) {
   for (const [k, v] of Object.entries(werte)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
   // Noch nicht geladen: Der erste konfig()-Aufruf liest die neuen Werte ohnehin.
-  const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
+  const datei = path.join(ROOT, 'dist', 'src/infra/config.js');
   if (require.cache[datei]) require(datei).readKonfigNew();
 }
 
@@ -506,18 +506,18 @@ function setCoreSource() {
   return [
     ['routes/api_v1/sets.ts'],
     ['routes/api_v1/setsImport.ts'],
-    ['routes/api_v1/setsAnleitungen.ts'],
+    ['routes/api_v1/setsInstructions.ts'],
     ['routes/api_v1/setsLager.ts'],
-    ['src/sets/dienst.ts'],
-    ['src/sets/inhalt.ts'],
+    ['src/sets/service.ts'],
+    ['src/sets/content.ts'],
     ['src/sets/barcode.ts'],
     ['src/sets/csvImport.ts'],
-    ['src/sets/anleitungen.ts'],
-    ['src/sets/preise.ts'],
-    ['src/sets/erfassen.ts'],
+    ['src/sets/instructions.ts'],
+    ['src/sets/prices.ts'],
+    ['src/sets/addSet.ts'],
     ['src/catalog/partsImport.ts'],
     ['src/catalog/minifigsImport.ts'],
-    ['src/sets/setInhaltImport.ts'],
+    ['src/sets/setContentImport.ts'],
   ]
     .map(p => serviceSource(p[0]))
     .join('\n');
@@ -528,8 +528,8 @@ const HANDLER_MODULE = [
   'src/inventory/shared',
   'src/household/household',
   'src/parts/queries',
-  'src/sets/lesen',
-  'src/sets/loeschen',
+  'src/sets/read',
+  'src/sets/delete',
   'src/minifigs/queries',
   'src/inventory/metrics',
 ];

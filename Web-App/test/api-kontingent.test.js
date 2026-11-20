@@ -1,5 +1,5 @@
 /**
- * Anfragebudget je Konto unter /api/v1 (src/http/apiDrossel.ts).
+ * Anfragebudget je Konto unter /api/v1 (src/http/apiThrottle.ts).
  *
  * Gegenproben:
  *   A  COST.auftrag = 1                      → rot: „der Auftragstopf greift vor dem Budget“
@@ -19,7 +19,7 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { checkBudget, clearThrottle, classification, apiDrossel, BUDGET, JOB_BUDGET, WINDOW_MS, COST } =
-  _req('src/http/apiDrossel.js');
+  _req('src/http/apiThrottle.js');
 
 test('ein Konto hat BUDGET Einheiten je Fenster', () => {
   clearThrottle();

@@ -1,7 +1,7 @@
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { fachfehler } from '../infra/fehlerTexte';
-import { inSystemContext } from '../infra/kontoKontext';
-import { ereignis } from '../infra/ereignis';
+import { fachfehler } from '../infra/errorTexts';
+import { inSystemContext } from '../infra/accountContext';
+import { ereignis } from '../infra/event';
 import { isValidUserValue, writeUserSetting } from './settings';
 import * as repo from './repository/currency';
 import type { SettingsContext } from './context';

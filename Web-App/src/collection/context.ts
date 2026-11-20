@@ -1,6 +1,6 @@
 /** What the services get; separate from area.ts so no import cycle forms. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/area';
 import * as setAcquisitions from './repository/setAcquisitions';
 import type { HouseholdServices } from '../household';
 import type { JobsServices } from '../jobQueue';
@@ -11,7 +11,7 @@ import type { SetsServices } from '../sets';
 import type { PartsServices } from '../parts';
 import type { MinifigsServices } from '../minifigs';
 import type { WantedServices } from '../wanted';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface CollectionDependencies {
   uhr: Uhr;

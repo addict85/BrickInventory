@@ -9,7 +9,7 @@ import {
   resolveBlPartNumber,
   resolveBlColorId,
 } from './calculation/prices';
-import { reportError, logAndContinue } from '../infra/fehler';
+import { reportError, logAndContinue } from '../infra/error';
 import { marketPriceFrom } from '../catalog';
 import { KEINE_FARBE, zustand } from '../infra/validate';
 import type { FinancesContext } from './context';

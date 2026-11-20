@@ -1,14 +1,14 @@
-import type { Konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/config';
 import path from 'node:path';
 import fs from 'node:fs';
-import { AbrufFehler } from '../infra/abruf';
+import { AbrufFehler } from '../infra/fetch';
 import { IMAGE_HEADERS } from '../externalSources';
 import type { ImagesContext } from './context';
 
 /** Was das Bildwerk braucht; es entsteht vor dem Kontext des Bereichs (bereich.ts). */
 export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'externalSources'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { withVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNumber';
 
 // Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
 

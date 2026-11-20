@@ -57,10 +57,10 @@ test('die Router unter /api/v1 treffen einander nicht', () => {
 });
 
 test('den Fehlerweg hängt die App an, einmal hinter allen Routern', () => {
-  const { errorResponse } = _req('src/http/httpAntwort.js');
+  const { errorResponse } = _req('src/http/httpResponse.js');
   const app = _req('startup/app.js').baueApp({
     pool: q.testAccess().systemPool,
-    konfig: _req('src/infra/konfig.js').konfig(),
+    konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: q.testServices(),
     sessionStorage: (/** @type {any} */ _q, /** @type {any} */ _r, /** @type {Function} */ n) => n(),

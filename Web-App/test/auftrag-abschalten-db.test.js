@@ -26,7 +26,7 @@ const { warte } = require('./helpers/zeit');
 test('Abschalten während einer Belegung', async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege };
-  const { createWorker } = _req('jobs/auftragsWorker.js');
+  const { createWorker } = _req('jobs/jobWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.

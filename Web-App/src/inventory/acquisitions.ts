@@ -1,6 +1,6 @@
 /** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
  * Käufe eines Tages werden zusammengezählt. */
-import { priceColumn, keyColumns } from '../../db/bestandsmenge';
+import { priceColumn, keyColumns } from '../../db/stockQuantity';
 import * as repo from './repository/purchaseAcquisitions';
 import { zustand } from '../infra/validate';
 import type { InventoryContext } from './context';

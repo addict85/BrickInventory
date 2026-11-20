@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { konfig, readKonfigNew, setKonfig } = _req('src/infra/konfig.js');
+const { konfig, readKonfigNew, setKonfig } = _req('src/infra/config.js');
 
 const vorher = process.env.PORT;
 test.after(() => {

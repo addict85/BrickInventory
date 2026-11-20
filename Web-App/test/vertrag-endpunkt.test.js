@@ -16,7 +16,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { vertragsRouter } = _req('src/http/vertragsRouter.js');
+const { vertragsRouter } = _req('src/http/contractRouter.js');
 
 function server(t, mount, router) {
   const app = express();

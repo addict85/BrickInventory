@@ -1,5 +1,5 @@
 /**
- * Die Guthaben-Abfrage mit ihrem echten Abrufweg (src/infra/abruf.ts) gegen
+ * Die Guthaben-Abfrage mit ihrem echten Abrufweg (src/infra/fetch.ts) gegen
  * einen TLS-Server, der sich als www.lego.com ausgibt: Ein Agent lenkt jede
  * Verbindung auf 127.0.0.1, nichts geht hinaus. Kekse, Token und POST-Rumpf
  * kommen an; eine Umleitung auf einen fremden Host und eine übergrosse Antwort
@@ -26,7 +26,7 @@ const { portOf } = require('./helpers/server');
 const G = _req('src/vouchers/balanceLookup.js');
 /** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
 const vorrat = new Map();
-const { AbrufFehler } = _req('src/infra/abruf.js');
+const { AbrufFehler } = _req('src/infra/fetch.js');
 // Der echte Abruf, wie ihn die Dienste über ihre Quellen reichen (src/externalSources/sources.ts).
 const { legoFetch } = require('./helpers/sources').testServices().externalSources.quellen;
 

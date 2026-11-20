@@ -1,6 +1,6 @@
 /** Bild-Proxy für fremde CDNs: Bilder kommen über den eigenen Server, damit die
  * CSP keine fremden Quellen braucht und jedes Bild nur einmal geholt wird.
- * Den Abruf macht clients/bildCdn.ts; hier stehen Cache, Drossel und Antwort. */
+ * Den Abruf macht clients/imageCdn.ts; hier stehen Cache, Drossel und Antwort. */
 import path from 'node:path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
@@ -8,19 +8,19 @@ import { randomUUID } from 'node:crypto';
 import { prozessweit } from '../../infra/prozessweit';
 import type { AccountServices } from '../../account';
 import { userIdTheRequest } from '../../account/http/login';
-import { beforeThe, withoutMissingFile, fehlertext, reportError } from '../../infra/fehler';
-import { streamFileToResponse } from '../../http/httpAntwort';
+import { beforeThe, withoutMissingFile, fehlertext, reportError } from '../../infra/error';
+import { streamFileToResponse } from '../../http/httpResponse';
 import { rememberCacheGrowth, imageType } from '../imgCacheServe';
 import { deliverFromCache } from './imageCacheDelivery';
 import { imgProxyFailures, countProxyError } from '../imgProxyStats';
 import { proxyAddress, proxyCacheKey } from '../images';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
-import { AbrufFehler, type FetchStream } from '../../infra/abruf';
+import { AbrufFehler, type FetchStream } from '../../infra/fetch';
 import { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../externalSources';
 import zlib from 'node:zlib';
 import { setImageComplete } from '../setImages';
-import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../../infra/fremdeAdressen';
+import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../../infra/foreignAddresses';
 
 import { onceDecoded, urlOrNull } from '../../infra/validate';
 import type { ImagesServices } from '../area';

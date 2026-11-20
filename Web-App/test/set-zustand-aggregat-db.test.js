@@ -38,7 +38,7 @@ const Module = require('node:module');
 const _realRequire = Module.prototype.require;
 Module.prototype.require = function (/** @type {string} */ name, /** @type {any[]} */ ...rest) {
   const m = _realRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
     return new Proxy(m, {
       // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
       get: (t, k) => (k === 'setErfassen' ? (sk, ...a) => (posedAddSet ? posedAddSet(...a) : t[k](sk, ...a)) : t[k]),

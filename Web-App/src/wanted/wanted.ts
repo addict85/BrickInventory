@@ -3,14 +3,14 @@
  * need the same rules. */
 import type { Sicht } from '../household';
 import * as V from '../infra/validate';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import { moneyInput } from '../infra/geld';
-import { publicError } from '../infra/fehler';
-import { Degradations } from '../infra/ergebnis';
+import { publicError } from '../infra/error';
+import { Degradations } from '../infra/result';
 import { forSet } from '../catalog';
 import { imageIfPresent } from '../images';
 import { toCsv, csvRowsFromRequest, csvDatum } from '../infra/csvExport';
-import { possibleSetNumber, withVersion, normalisiereSetNummer } from '../infra/setNummer';
+import { possibleSetNumber, withVersion, normalisiereSetNummer } from '../infra/setNumber';
 import type { WantedContext } from './context';
 
 /** Each condition on its own: if BrickLink doesn't know one, the other still

@@ -1,16 +1,16 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
 import { proxyCacheKey, proxyCachePathFor, imgProxyFailures } from '../images';
-import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/fremdeAdressen';
+import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/foreignAddresses';
 import { urlOrNull } from '../infra/validate';
 import type { AccountImageRow } from './repository/management';
 import fs from 'node:fs';
-import { AbrufFehler, type FetchStream } from '../infra/abruf';
+import { AbrufFehler, type FetchStream } from '../infra/fetch';
 import path from 'node:path';
 import { DATA_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, withoutMissingFile } from '../infra/fehler';
-import { Degradations } from '../infra/ergebnis';
-import { withoutBricklinkPrice } from '../infra/setNummer';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fehlertext, withoutMissingFile } from '../infra/error';
+import { Degradations } from '../infra/result';
+import { withoutBricklinkPrice } from '../infra/setNumber';
+import { fachfehler } from '../infra/errorTexts';
 import type { ManagementContext } from './context';
 
 const UA =

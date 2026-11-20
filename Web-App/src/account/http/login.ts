@@ -6,12 +6,12 @@ import type { LoginResult } from '../loginCheck';
 import type { ConfirmationRejection, Faktor } from '../passwordConfirmation';
 import { createHash } from 'node:crypto';
 import { routeZu } from '../../contract';
-import { errorText, responseLanguage } from '../../infra/fehlerTexte';
-import { reportAndDeliver } from '../../infra/fehler';
-import { nutzerId, signedInUserId } from '../../http/nutzerId';
-import { sendError } from '../../http/httpAntwort';
-import { STATUS_THE_KIND } from '../../http/fehlerArt';
-import { versuche } from '../../infra/ergebnis';
+import { errorText, responseLanguage } from '../../infra/errorTexts';
+import { reportAndDeliver } from '../../infra/error';
+import { nutzerId, signedInUserId } from '../../http/userId';
+import { sendError } from '../../http/httpResponse';
+import { STATUS_THE_KIND } from '../../http/errorKind';
+import { versuche } from '../../infra/result';
 import type { AccountServices } from '../area';
 
 /** Bis zur Einrichtung des Faktors geht nur diese (loginAtInbox); die Regel steht in openFactorRequired. */
@@ -144,7 +144,7 @@ export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: nu
   };
 }
 
-/** Die Rechnung steht in src/http/nutzerId: Auch die Drossel dort braucht sie,
+/** Die Rechnung steht in src/http/userId: Auch die Drossel dort braucht sie,
  * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen. */
 export { nutzerId, signedInUserId };
 

@@ -1,8 +1,8 @@
 import type { DbInterface, Treffer } from '../../../db/database';
-import { mengeSkalar } from '../../../db/bestandsmenge';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { CatalogPart, ListenTeil, SetMaster } from '../zeilen';
-import { setStammJoin, SET } from '../../../db/katalogSicht';
+import { mengeSkalar } from '../../../db/stockQuantity';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import type { CatalogPart, ListenTeil, SetMaster } from '../rows';
+import { setStammJoin, SET } from '../../../db/catalogView';
 
 /** Angaben aus rb_sets, Bild und Figuren aus set_catalog (0108). Ein Platzhalter
  * „Set …“ sagt nur, dass irgendein Konto die Nummer erfasst hat. */

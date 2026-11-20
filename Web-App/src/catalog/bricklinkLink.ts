@@ -1,6 +1,6 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
-import { logAndContinue } from '../infra/fehler';
-import { withVersion, withoutVersion } from '../infra/setNummer';
+import { logAndContinue } from '../infra/error';
+import { withVersion, withoutVersion } from '../infra/setNumber';
 import type { CatalogContext } from './context';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
@@ -17,7 +17,7 @@ export interface BlLink {
   resolved: boolean;
 }
 
-// Die Schreibweise kommt aus src/infra/setNummer.ts, nicht aus einer dritten Fassung.
+// Die Schreibweise kommt aus src/infra/setNumber.ts, nicht aus einer dritten Fassung.
 export function withVariant(setNumber: string): string {
   return withVersion(String(setNumber || '').trim());
 }

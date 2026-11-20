@@ -1,6 +1,6 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
  * eine Dekompressionsbombe. */
-import { reportError } from '../infra/fehler';
+import { reportError } from '../infra/error';
 import fs from 'node:fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */

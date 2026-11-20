@@ -19,7 +19,7 @@
  *      tx-Parameter … ohne Freigabe wirft er“
  *   Seit der Kontext `t` über tx.db gebaut wird (14.11.2026, w5-vertrag), gemessen:
  *   E  in database.ts wache() geleert → rot: „… über dem ungebundenen Zugang wirft er“
- *   F  in umbau() (src/infra/bereich.ts) den Zugang nicht ersetzt (`aus.db = db` gestrichen)
+ *   F  in umbau() (src/infra/area.ts) den Zugang nicht ersetzt (`aus.db = db` gestrichen)
  *      → rot: dieselbe Prüfung und „eine gescheiterte innere Transaktion …“ (der Satz über
  *      tx.db fragt über den ungebundenen Zugang)
  *
@@ -37,7 +37,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
   if (!db) return;
   const S = `tx_umgebung_${process.pid}`;
   // global_settings schreibt nur die Systemrolle (0117): Die Transaktionen laufen in ihrem Rahmen.
-  const { inSystemContext } = _req('src/infra/kontoKontext.js');
+  const { inSystemContext } = _req('src/infra/accountContext.js');
   const transaktion = fn => inSystemContext('test', () => db.transaction(fn));
   t.after(async () => {
     await inSystemContext('test', () => db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`])).catch(

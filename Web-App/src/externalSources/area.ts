@@ -1,6 +1,6 @@
 /** Aus einem Zugang entstehen Kontingent, Drosseln und die Klienten, die genau diese bekommen:
  * Zwei Sätze Dienste in einem Prozess teilen weder Schlüssel noch Zwischenstände. */
-import { mit, buildContext, type Inspect } from '../infra/bereich';
+import { mit, buildContext, type Inspect } from '../infra/area';
 import type { Db } from '../../db/database';
 import * as brickset from './bricksetResubmission';
 import * as apiQuotaService from './apiQuota';

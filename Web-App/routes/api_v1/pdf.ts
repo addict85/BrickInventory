@@ -1,15 +1,15 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
-import { reportError, withoutMissingFile } from '../../src/infra/fehler';
-import { streamFileToResponse } from '../../src/http/httpAntwort';
+import { reportError, withoutMissingFile } from '../../src/infra/error';
+import { streamFileToResponse } from '../../src/http/httpResponse';
 import { kontoSchranke, guardFor } from './middleware';
 import { openStream, type Strom } from '../../src/account/http/stream';
 import _pdfFs from 'node:fs/promises';
 import { pdfKey } from '../../src/catalog';
-import { responseLanguage, fachfehler, notFound } from '../../src/infra/fehlerTexte';
+import { responseLanguage, fachfehler, notFound } from '../../src/infra/errorTexts';
 import type { Request, Response } from 'express';
-import { inShell, vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { inShell, vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 function streamStatus(job: {
   status: string;

@@ -17,7 +17,7 @@ const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = _realRequire.call(this, name, ...rest);
   // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
-  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
+  if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
     return new Proxy(m, {
       // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
       get: (t, k) => {

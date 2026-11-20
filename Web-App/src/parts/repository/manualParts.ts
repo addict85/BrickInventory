@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
-import type { EntryRow } from '../../../db/bestandsmenge';
-import type { Spalten } from '../../../db/zeilen';
+import type { EntryRow } from '../../../db/stockQuantity';
+import type { Spalten } from '../../../db/rows';
 
 /** Price and condition live in the LATEST acquisition, the stock row only holds the key —
  * the quantity is the sum of the acquisitions. */

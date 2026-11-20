@@ -1,7 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
-import { mit, withContract, type Kontext } from '../infra/bereich';
+import { mit, withContract, type Kontext } from '../infra/area';
 import type { CatalogReadContract } from './readContract';
-import type { Faecher } from '../infra/zwischenspeicher';
+import type { Faecher } from '../infra/cache';
 import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, ForeignSourcesServices } from '../externalSources';
@@ -19,7 +19,7 @@ import * as katalogSuche from './repository/catalogSearch';
 import * as rebrickableCache from './repository/rebrickableCache';
 import * as setInhalt from './repository/setContent';
 import * as teileAnreicherung from './repository/partsEnrichment';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface CatalogDependencies {
   uhr: Uhr;

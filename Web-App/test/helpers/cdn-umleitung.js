@@ -2,7 +2,7 @@
  * Vorgeladen (NODE_OPTIONS=--require) in einen echten Server-Prozess: Abrufe an
  * cdn.rebrickable.com gehen an http://127.0.0.1:CDN_UMLEITUNG_PORT, alles andere
  * bleibt. Ohne Netz zum CDN erreicht ein Test so den ganzen Weg über
- * src/infra/abruf.ts, Kopfzeilen eingeschlossen.
+ * src/infra/fetch.ts, Kopfzeilen eingeschlossen.
  */
 const https = require('node:https');
 const http = require('node:http');

@@ -1,4 +1,4 @@
-import { umschluesseln } from '../infra/geheimnis';
+import { umschluesseln } from '../infra/secret';
 import { secondFactorContext } from './secondFactor';
 import type { FactorsContext } from './context';
 

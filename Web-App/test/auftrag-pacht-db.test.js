@@ -56,7 +56,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     {},
     { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege },
   );
-  const { createWorker } = _req('jobs/auftragsWorker.js');
+  const { createWorker } = _req('jobs/jobWorker.js');
   t.after(async () => {
     await testAccess().notification.close();
     await db.pool.end().catch(() => {});
@@ -139,7 +139,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
 
   await t.test('Abbruch eines csv_sync im Download endet in höchstens 2 s', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
-    const EDITOR = _req('jobs/auftraegeStarten.js').editor(require('./helpers/sources').testServices());
+    const EDITOR = _req('jobs/startJobs.js').editor(require('./helpers/sources').testServices());
     const w = createWorker(
       require('./helpers/sources').testServices().jobQueue,
       { csv_sync: EDITOR.csv_sync },

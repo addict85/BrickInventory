@@ -168,7 +168,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
     mv,
     /UPDATE\s+sets\s+SET[^;`']*\bquantity\s*=/,
     'Die Stückzahl eines Sets wird nicht mehr geschrieben — sie steht in ' +
-      'set_acquisitions und wird beim Lesen gerechnet (db/bestandsmenge.ts)',
+      'set_acquisitions und wird beim Lesen gerechnet (db/stockQuantity.ts)',
   );
 
   // Der Wechsel des ganzen Sets liegt seit einer früheren Runde in der v1-Fabrik.

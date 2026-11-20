@@ -201,7 +201,7 @@ test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
       route.indexOf('export function buildSetsImportRouter'),
     );
   assert.ok(strom.includes('setSupplement('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
-  const erfassen = lies('src/sets/erfassen.ts');
+  const erfassen = lies('src/sets/addSet.ts');
   const katalog = erfassen.slice(
     erfassen.indexOf('async function fetchCatalog('),
     erfassen.indexOf('export async function setSupplement('),

@@ -360,7 +360,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(pd.voucher.pin, '•••', 'nach aussen nur die Maske');
     const gespeichert = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
     assert.equal(
-      _req('src/infra/geheimnis.js').decrypt(
+      _req('src/infra/secret.js').decrypt(
         gespeichert.pin,
         _req('src/vouchers/repository/vouchers.js').pinContext(gespeichert.user_id, WITH_PIN),
       ),
@@ -389,7 +389,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     // die gar nicht mehr die PIN dieser Karte war. Die Zusicherung muss gegen
     // DEN Wert prüfen, den die Route an verdecke() gibt.
     const pinRow = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
-    const pinNow = _req('src/infra/geheimnis.js').decrypt(
+    const pinNow = _req('src/infra/secret.js').decrypt(
       pinRow.pin,
       _req('src/vouchers/repository/vouchers.js').pinContext(pinRow.user_id, WITH_PIN),
     );

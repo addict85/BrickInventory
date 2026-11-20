@@ -1,4 +1,4 @@
-import { fehlertext, reportError } from '../infra/fehler';
+import { fehlertext, reportError } from '../infra/error';
 
 // Eigenes Modul, damit Proxy und Vorschau zählen, ohne über global zu greifen.
 export const imgProxyFailures = {

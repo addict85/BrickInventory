@@ -10,8 +10,9 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { nextRedirect, hostAllowed, REDIRECT_LIMIT, ALLOWED_IMAGE_HOSTS, ALLOWED_DOWNLOAD_HOSTS } =
-  _req('src/infra/fremdeAdressen.js');
+const { nextRedirect, hostAllowed, REDIRECT_LIMIT, ALLOWED_IMAGE_HOSTS, ALLOWED_DOWNLOAD_HOSTS } = _req(
+  'src/infra/foreignAddresses.js',
+);
 
 const HEADER = { Authorization: 'key GEHEIM', 'User-Agent': 'test' };
 
@@ -147,7 +148,7 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   );
 });
 
-test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
+test('Abrufe nach draussen gehen nur über src/infra/fetch.ts', () => {
   // Struktur, kein Verhalten: Das Verhalten des Helfers prüft
   // test/abruf-helfer.test.js gegen einen echten TLS-Server. Gegenprobe
   // (02.11.2026 gemessen): globalThis.fetch zurück in gutscheinGuthaben.ts → rot.
@@ -159,14 +160,14 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
         if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(n)) lauf(p);
         continue;
       }
-      if (!n.endsWith('.ts') || p.endsWith(path.join('src', 'infra', 'abruf.ts'))) continue;
+      if (!n.endsWith('.ts') || p.endsWith(path.join('src', 'infra', 'fetch.ts'))) continue;
       if (/\bhttps?\.(get|request)\(|\bfetch\(|\bglobalThis\.fetch\b/.test(ohneKommentare(fs.readFileSync(p, 'utf8'))))
         fremd.push(path.relative(ROOT, p));
     }
   })(ROOT);
   assert.deepEqual(fremd, [], 'eigener Abrufweg an Hostliste, Umleitungs- und Grössengrenze vorbei');
   assert.match(
-    ohneKommentare(read('src/infra/abruf.ts')),
+    ohneKommentare(read('src/infra/fetch.ts')),
     /nextRedirect\(u, r\.headers\?\.location, kopf, o\.hosts\)/,
     'der Helfer prüft die Umleitungsziele nicht gegen die Hostliste',
   );
@@ -181,7 +182,7 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   assert.doesNotMatch(
     proxy,
     /const ALLOWED_IMAGE_HOSTS = \[/,
-    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/fremdeAdressen.ts, ' +
+    'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/foreignAddresses.ts, ' +
       'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll',
   );
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der

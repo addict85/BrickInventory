@@ -46,7 +46,7 @@ require('./helpers/sources').replaceServices('mail', {
 
 const db = S.testData();
 const zf = _req('src/factors/secondFactor.js');
-const protokoll = _req('src/infra/protokoll.js');
+const protokoll = _req('src/infra/log.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const P = process.pid,
   PASS = 'Protokoll-Passwort-1',

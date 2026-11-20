@@ -1,5 +1,5 @@
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { MinifigPart, CatalogRow } from '../zeilen';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import type { MinifigPart, CatalogRow } from '../rows';
 import type { DbInterface } from '../../../db/database';
 
 export function catalogPartsOfMinifig(db: DbInterface, figNumber: string) {

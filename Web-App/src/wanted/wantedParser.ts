@@ -1,5 +1,5 @@
 /** BrickLink-Wanted-XML lesen: Die Datei trägt BL-Nummern; die Abbildung auf
- * Rebrickable-Nummern macht wantedAufloesung.ts. */
+ * Rebrickable-Nummern macht wantedResolution.ts. */
 
 export type WantedArt = 'part' | 'fig' | 'set';
 

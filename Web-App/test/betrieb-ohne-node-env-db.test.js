@@ -23,7 +23,7 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { startBans, ladeKonfig, cookieSafe } = _req('src/infra/konfig.js');
+const { startBans, ladeKonfig, cookieSafe } = _req('src/infra/config.js');
 
 /** Ohne NODE_ENV starten; `PATH` allein, damit nichts aus der Testumgebung hineinfällt. */
 function starte(env, ms = 25_000) {
@@ -86,7 +86,7 @@ test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
   const alt = process.env.NODE_ENV;
   environment({ NODE_ENV: undefined });
   try {
-    const { handleRouteError } = _req('src/http/httpAntwort.js');
+    const { handleRouteError } = _req('src/http/httpResponse.js');
     let antwort;
     const res = {
       headersSent: false,

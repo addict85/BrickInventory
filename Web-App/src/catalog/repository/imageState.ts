@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import type { Spalten } from '../../../db/zeilen';
+import type { Spalten } from '../../../db/rows';
 import type { CatalogReadContract } from '../readContract';
 
 export async function setsWithMissingCatalogImages(db: DbInterface): Promise<string[]> {

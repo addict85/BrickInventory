@@ -1,15 +1,15 @@
 // For both apps: cookie and token. The work lives in src/vouchers/service.ts.
 import type express from 'express';
 import multer from 'multer';
-import { FORM_LIMITS, totalSufficesFor, uploadTotalMb } from '../../src/http/dateiEmpfang';
-import { FOREIGN_FILE_CSP } from '../../src/http/dateiAusliefern';
-import { Fachfehler, fileError, type ErrorCode, fachfehler } from '../../src/infra/fehlerTexte';
+import { FORM_LIMITS, totalSufficesFor, uploadTotalMb } from '../../src/http/fileUpload';
+import { FOREIGN_FILE_CSP } from '../../src/http/serveFile';
+import { Fachfehler, fileError, type ErrorCode, fachfehler } from '../../src/infra/errorTexts';
 import { GAP_SEC, TICKET_SEC, readAs, masked, type VoucherRow } from '../../src/vouchers';
 import { kontoSchranke, guardFor } from './middleware';
 import { confirmWithFactor } from '../../src/account/http/login';
-import { pageFrom } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { pageFrom } from '../../src/infra/page';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 // Amount once as a number; `hat_pdf` instead of the path, which is nobody's business.
 function forOuter(z: VoucherRow) {

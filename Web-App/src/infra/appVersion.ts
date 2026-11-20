@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { konfig } from './konfig';
+import { konfig } from './config';
 import { prozessweit } from './prozessweit';
 
 const G = prozessweit('appVersion', () => ({ v: null as string | null }));

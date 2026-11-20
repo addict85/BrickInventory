@@ -5,8 +5,8 @@ import path from 'node:path';
 import { vorschauErzeugenAus } from './thumbs';
 import { imageSize } from './imageGuard';
 import { APP_ROOT } from '../infra/appPaths';
-import { versuche } from '../infra/ergebnis';
-import { withoutMissingFile } from '../infra/fehler';
+import { versuche } from '../infra/result';
+import { withoutMissingFile } from '../infra/error';
 import type { ImagesContext } from './context';
 
 export const FITTED_MARKER = 'vorschauen_eingepasst';

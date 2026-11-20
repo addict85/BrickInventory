@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { sendError } from './httpAntwort';
+import { sendError } from './httpResponse';
 import { API_MIN_APP } from '../contract/version';
 export { API_VERSION, API_MIN_APP } from '../contract/version';
 

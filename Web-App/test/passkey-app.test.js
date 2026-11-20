@@ -20,9 +20,9 @@ const { buildAndRequire } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 
 const _req = buildAndRequire();
-const { ladeKonfig, KonfigFehler } = _req('src/infra/konfig.js');
+const { ladeKonfig, KonfigFehler } = _req('src/infra/config.js');
 const { androidOrigins: origins } = _req('src/factors/androidApp.js');
-const androidOrigins = () => origins(_req('src/infra/konfig.js').konfig());
+const androidOrigins = () => origins(_req('src/infra/config.js').konfig());
 
 /** Ein Hash, dessen base64 ein „+“ und ein „/“ enthält: base64url muss sie ersetzen. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');

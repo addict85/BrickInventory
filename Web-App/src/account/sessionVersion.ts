@@ -2,7 +2,7 @@
  * Sitzung am Ende per Upsert zurück. Deshalb trägt jede Sitzung die Version
  * des Kontos; wer Zugänge beendet, erhöht sie, und jede Anfrage vergleicht. */
 import { reportAccessChange } from './accessChange';
-import { processEvent } from '../infra/ereignis';
+import { processEvent } from '../infra/event';
 import type { AccountContext } from './context';
 
 const CACHE_MS = 5_000;

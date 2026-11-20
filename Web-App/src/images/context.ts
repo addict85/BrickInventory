@@ -1,9 +1,9 @@
 /** Was die Bilddienste bekommen: Zugang, Fächer, Aufträge, Haushalt, Fremdquellen und das
  * Bildwerk. Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
-import type { Konfig } from '../infra/konfig';
-import { mit, withContract, type Kontext } from '../infra/bereich';
+import type { Konfig } from '../infra/config';
+import { mit, withContract, type Kontext } from '../infra/area';
 import type { ImagesReadContract } from './readContract';
-import type { Faecher } from '../infra/zwischenspeicher';
+import type { Faecher } from '../infra/cache';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -12,7 +12,7 @@ import * as bildBlickfeld from './repository/imageScope';
 import * as bildFehlschlaege from './repository/imageFailures';
 import * as bildStammCdn from './repository/imageMasterCdn';
 import * as bildbedarf from './repository/imageDemand';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 /** Set-Bild holen und verkleinern über den Kontext statt über den Import: So ersetzt ein
  * Test Netz und sharp an der Verdrahtung (buildServices), statt Module umzubiegen. */

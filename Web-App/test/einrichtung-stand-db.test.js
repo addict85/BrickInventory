@@ -7,7 +7,7 @@
  *   B  Pfad aus PUBLIC gestrichen               → rot: 401 statt 200
  *   C  users-Zeile in die Antwort übernommen         → rot: „keine Adressen, keine Namen“
  *   D  BrickLink-/Rebrickable-Prüfung in setupStatus.ts entfernt → rot: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
- *   E  in routes/api_v1/einrichtung.ts `verwalter: true` fest gesetzt (07.11.2026)
+ *   E  in routes/api_v1/setup.ts `verwalter: true` fest gesetzt (07.11.2026)
  *      → rot: „ohne Verwalter verrät der Stand kein Startpasswort“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

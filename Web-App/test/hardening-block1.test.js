@@ -108,7 +108,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
     for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.loginFailed(IP, COUNTER);
     // Ein frisch geladenes Modul hat leeren Speicher, wie ein zweiter Arbeitsprozess.
-    const datei = path.join(ROOT, 'dist', 'src', 'konto', 'loginLimiter.js');
+    const datei = path.join(ROOT, 'dist', 'src', 'account', 'loginLimiter.js');
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');

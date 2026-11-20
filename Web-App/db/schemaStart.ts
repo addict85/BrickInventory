@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { Client, Pool } from 'pg';
 import { runMigrations, openMigrations } from './migrate';
 import { LOCKS } from '../src/infra/lockNamespaces';
-import { logAndContinue } from '../src/infra/fehler';
+import { logAndContinue } from '../src/infra/error';
 
 /** Was nach dem Einspielen der Basis in eine leere Datenbank geschieht (das erste
  * Konto). Die Datenbankschicht kennt keine Konten; wer den Zugang anlegt, gibt es mit. */

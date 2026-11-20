@@ -1,6 +1,6 @@
 /**
  * Der Kontext `t` einer Transaktion entsteht je Verbindung einmal, nicht je Transaktion
- * (db/database.ts connectionAccess, src/infra/bereich.ts buildContext). Dass er beständig
+ * (db/database.ts connectionAccess, src/infra/area.ts buildContext). Dass er beständig
  * ist, darf nichts umleiten: Ein Nachzügler einer beendeten Transaktion, deren Verbindung
  * schon die nächste trägt, fragt nicht in die fremde hinein. Pool mit einer Verbindung.
  *
@@ -23,9 +23,9 @@ require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const DIST = path.join(__dirname, '..', 'dist');
 const modul = require(path.join(DIST, 'db', 'database.js'));
-const { buildServices } = require(path.join(DIST, 'startup', 'verdrahtung.js'));
-const { konfig } = require(path.join(DIST, 'src', 'infra', 'konfig.js'));
-const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'kontoKontext.js'));
+const { buildServices } = require(path.join(DIST, 'startup', 'wiring.js'));
+const { konfig } = require(path.join(DIST, 'src', 'infra', 'config.js'));
+const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'accountContext.js'));
 
 test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
   const k0 = modul.dbKonfigFromEnvironment();

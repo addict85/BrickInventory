@@ -73,7 +73,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
         (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
-      const { possibleSetNumber } = _req('src/infra/setNummer.js');
+      const { possibleSetNumber } = _req('src/infra/setNumber.js');
       for (const gut of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])
         assert.ok(possibleSetNumber(gut), gut);
       for (const schlecht of ['abc-1', '-1', 'x'.repeat(21) + '1-1', '10294'])

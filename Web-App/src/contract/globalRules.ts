@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eingabe } from '../infra/validate';
-import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
+import { fachfehler, type ErrorCode } from '../infra/errorTexts';
 
 /** Dieselbe Liste wie ALLOWED in public/js/theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];

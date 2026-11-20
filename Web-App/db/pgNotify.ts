@@ -2,7 +2,7 @@
  * PostgreSQL LISTEN/NOTIFY statt Datenbank-Polling. Jeder Zugang (Db) hat seine
  * eigene Benachrichtigung: Horch-Verbindung und Handler gehören ihm, nicht dem Prozess.
  */
-import { logAndContinue } from '../src/infra/fehler';
+import { logAndContinue } from '../src/infra/error';
 import { Client, type ClientConfig } from 'pg';
 import { AsyncResource } from 'node:async_hooks';
 

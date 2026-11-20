@@ -37,7 +37,7 @@ const db = testData();
 test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const repo = _req('src/catalog/repository/imageState.js');
-  const { LESEVERTRAG } = _req('src/dienste.js');
+  const { LESEVERTRAG } = _req('src/services.js');
   const { reloadSetImages } = _req('src/catalog/imageState.js');
   const IM = _req('src/images/imageMisses.js');
 

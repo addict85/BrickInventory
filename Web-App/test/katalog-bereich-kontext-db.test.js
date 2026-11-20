@@ -1,6 +1,6 @@
 /**
  * Der Bereich Katalog bekommt seinen Datenbankzugang übergeben (src/catalog/area.ts,
- * gebaut von buildServices in startup/verdrahtung.ts): Lesen, Schreiben und
+ * gebaut von buildServices in startup/wiring.ts): Lesen, Schreiben und
  * Transaktionen der Dienste gehen über diesen Zugang. Einen Prozess-Speicher, auf
  * den sie fallen könnten, gibt es nicht mehr (Verbot in test/ratschen.test.js).
  *
@@ -10,7 +10,7 @@
  *      Zugang“ (gezählt: nichts)
  *   B  in src/externalSources/apiQuota.ts (damals src/catalog/) die Transaktion über standardDb() → rot:
  *      „die Transaktion geht über den übergebenen Zugang“
- *   C  in buildAreas (startup/verdrahtung.ts) createCatalog mit { db: testAccess() }
+ *   C  in buildAreas (startup/wiring.ts) createCatalog mit { db: testAccess() }
  *      statt db → rot: „Lesen geht …“ (gezählt: nichts); das Kontingent zählen seit
  *      15.11.2026 die Fremdquellen selbst (kein Durchreichen im Katalog).
  */
@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { buildServices } = _req('startup/verdrahtung.js');
+const { buildServices } = _req('startup/wiring.js');
 
 const SN = '99872-1';
 const INVENTORY = 987655;

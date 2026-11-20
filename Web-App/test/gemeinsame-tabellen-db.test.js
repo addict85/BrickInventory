@@ -40,13 +40,13 @@
  *      nur in Tabellen ihres Besitzers …“ (15.11.2026)
  *
  * Ein Lesebaustein in db/ zählt beim Bereich, der ihn importiert; was er liest, zeigt sein Ergebnis.
- * Liegt der Bereich unter dem Besitzer, bekommt er den Baustein über seinen Lesevertrag (src/dienste.ts
+ * Liegt der Bereich unter dem Besitzer, bekommt er den Baustein über seinen Lesevertrag (src/services.ts
  * reicht ihn). Gegenproben (15.11.2026 gemessen, je einzeln):
- *   M  src/images/repository/imageScope.ts importiert countedSets wieder aus db/bestandSicht →
+ *   M  src/images/repository/imageScope.ts importiert countedSets wieder aus db/inventoryView →
  *      rot: „… aufwärts über db/“ ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
- *   N  src/catalog/repository/catalogSearch.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
+ *   N  src/catalog/repository/catalogSearch.ts importiert mengeJoin wieder aus db/stockQuantity → rot:
  *      dieselbe Prüfung, ['src/catalog → set_acquisitions']
- *   O  setBestand in db/bestandSicht.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
+ *   O  setBestand in db/inventoryView.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
  *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
  *
  * Wählt eine Datei den Tabellennamen zur Laufzeit, zählt, was sie beim Aufruf über einen mitschreibenden
@@ -575,7 +575,7 @@ function readerViaDb(bausteine) {
     lauf(d);
   for (const p of dateien) {
     const datei = path.relative(ROOT, p).split(path.sep).join('/');
-    const b = datei === 'src/dienste.ts' ? datei : areaOf(datei);
+    const b = datei === 'src/services.ts' ? datei : areaOf(datei);
     const s = fs.readFileSync(p, 'utf8');
     for (const m of s.matchAll(/^import\s+(?:type\s+)?(\{[^}]*\}|\*\s+as\s+\w+)\s+from\s+'(?:\.\.?\/)+db\/(\w+)'/gm)) {
       const component = bausteine[m[2]];
@@ -778,7 +778,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(
       je.aufwärts,
       [],
-      'Ein tieferer Bereich liest die Tabelle eines höheren: Form im eigenen Lesevertrag nennen, SQL über src/dienste.ts reichen.',
+      'Ein tieferer Bereich liest die Tabelle eines höheren: Form im eigenen Lesevertrag nennen, SQL über src/services.ts reichen.',
     );
     for (const [type, limit] of [
       ['katalog', KATALOG_LESER_HOECHSTENS],
@@ -798,13 +798,13 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     const stufen = stufenAusDoku();
     const bausteine = await lesebausteine(_req);
     // Selbstbeweis: Was die Bausteine lesen, kommt aus ihrem Ergebnis, auch über Konstanten.
-    assert.deepEqual(bausteine.bestandSicht?.setBestand, ['sets'], 'setBestand liest sets');
-    assert.deepEqual(bausteine.zugangSicht?.familieLebt, ['api_tokens']);
-    assert.ok(bausteine.bestandSicht?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
-    assert.ok(bausteine.bestandsmenge?.quantityOfSets?.includes('sets'), 'asynchrone Bausteine zählen');
+    assert.deepEqual(bausteine.inventoryView?.setBestand, ['sets'], 'setBestand liest sets');
+    assert.deepEqual(bausteine.accessView?.familieLebt, ['api_tokens']);
+    assert.ok(bausteine.inventoryView?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
+    assert.ok(bausteine.stockQuantity?.quantityOfSets?.includes('sets'), 'asynchrone Bausteine zählen');
     const reader = readerViaDb(bausteine);
     assert.ok(reader.includes('src/sets → set_acquisitions'), 'Selbstbeweis: sets liest eigene Käufe über db/');
-    assert.ok(reader.includes('src/dienste.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
+    assert.ok(reader.includes('src/services.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
     const aufwaerts = reader.filter(paar => {
       const [b, tabelle] = paar.split(' → ');
       assert.ok(stufen.has(b), `${b} hat keine Stufe`);
@@ -813,7 +813,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(
       aufwaerts,
       [],
-      'Ein Bereich liest über db/ aufwärts: die Form in seinen Lesevertrag (src/<bereich>/lesevertrag.ts), den Baustein über src/dienste.ts reichen.',
+      'Ein Bereich liest über db/ aufwärts: die Form in seinen Lesevertrag (src/<bereich>/lesevertrag.ts), den Baustein über src/services.ts reichen.',
     );
   });
 

@@ -1,7 +1,7 @@
 /** Jeder Dienst nimmt den Kontext; Regeln ohne Datenbank stehen in regeln.ts. */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/bereich';
-import { Faecher } from '../infra/zwischenspeicher';
+import { mit, buildArea, type Inspect } from '../infra/area';
+import { Faecher } from '../infra/cache';
 import * as haushalt from './household';
 import { zugang, type HouseholdDependencies, type HouseholdContext } from './context';
 

@@ -37,7 +37,7 @@ const { routerServer } = require('./helpers/server');
 const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = testData();
-const { passwordLack } = _req('src/infra/passwortRegel.js');
+const { passwordLack } = _req('src/infra/passwordRule.js');
 const { passwordFits, ARGON2_PREFIX } = _req('src/account/passwordHash.js');
 
 test('die Regel selbst', () => {

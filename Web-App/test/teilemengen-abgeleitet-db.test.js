@@ -546,7 +546,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   //
   // Eine manuelle Bestandszeile ohne Erfassung sollte es nicht geben
   // (Migration 0035 traegt fuer jede eine nach), aber sie darf die Liste
-  // nicht LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet
+  // nicht LEEREN — deshalb LEFT JOIN in db/stockQuantity.ts. Sie bedeutet
   // dann null Stueck, nicht eines.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`, [haupt]);
   const leer = rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3070b');

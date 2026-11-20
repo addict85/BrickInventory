@@ -103,7 +103,7 @@ test('Bilddownloads sind nach oben begrenzt', () => {
     /fs\.writeFileSync|fs\.existsSync/,
     'blockierende Dateizugriffe im Anfragepfad — dieselbe Sache wie in routes/parts.ts',
   );
-  // fetchImage (clients/bildCdn.ts) geht über denselben Helfer mit Umleitungsgrenze.
+  // fetchImage (clients/imageCdn.ts) geht über denselben Helfer mit Umleitungsgrenze.
   assert.match(
     body,
     /(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,

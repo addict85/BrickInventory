@@ -1,5 +1,5 @@
-/** Was die Finanzen aus höherem Bestand, Käufen und Merkliste lesen; Spalten wie in db/bestandSicht.ts
- * und db/bestandsmenge.ts. Ohne Import, damit Repositories ihn lesen dürfen (Konten wie db/konten.ts). */
+/** Was die Finanzen aus höherem Bestand, Käufen und Merkliste lesen; Spalten wie in db/inventoryView.ts
+ * und db/stockQuantity.ts. Ohne Import, damit Repositories ihn lesen dürfen (Konten wie db/accounts.ts). */
 type Konten = `= $${number}` | `= ANY($${number})`;
 
 export interface FinancesReadContract {

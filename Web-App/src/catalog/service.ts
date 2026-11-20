@@ -4,9 +4,9 @@ import { fileMaster, imageIfPresent, resolveImageLocal } from '../images';
 import { resolveSingle, resolveViaInterface } from './bricklinkLink';
 import { forSet } from './priceComparison';
 import { newestInventory } from './rbInventory';
-import { withVersion } from '../infra/setNummer';
-import { Zwischenspeicher } from '../infra/zwischenspeicher';
-import { versuche } from '../infra/ergebnis';
+import { withVersion } from '../infra/setNumber';
+import { Zwischenspeicher } from '../infra/cache';
+import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
 // rb_themes ändert sich höchstens täglich; der Baum wird je Zugang eine

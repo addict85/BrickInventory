@@ -59,7 +59,7 @@ export function ico(name) {
 }
 
 /**
- * Abfragen im Takt ruhen in verborgenen Tabs: Jede zählt gegen das Budget des Kontos (src/http/apiDrossel.ts),
+ * Abfragen im Takt ruhen in verborgenen Tabs: Jede zählt gegen das Budget des Kontos (src/http/apiThrottle.ts),
  * auch wenn niemand hinsieht. `fn` läuft sofort oder beim nächsten Sichtbarwerden.
  * @param {() => unknown} fn
  */

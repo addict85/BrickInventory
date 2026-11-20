@@ -1,5 +1,5 @@
 /**
- * Die Set-Dienste unterscheiden „fehlgeschlagen“ von „leer“ (src/infra/ergebnis.ts).
+ * Die Set-Dienste unterscheiden „fehlgeschlagen“ von „leer“ (src/infra/result.ts).
  *
  * Gegenproben (09.11.2026 gemessen):
  *   A  in partListOfSets() nach dem Fehlschlag wieder mit null weitergerechnet (wie reportAndDeliver) → rot:
@@ -34,7 +34,7 @@ testSources(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};
 replace('src/catalog/partsImport.js', { reloadBlNumbers: still });
-replace('src/sets/setInhaltImport.js', { importParts: still, importMinifigs: still });
+replace('src/sets/setContentImport.js', { importParts: still, importMinifigs: still });
 replace('src/catalog/instructionJob.js', { anleitungEinreihen: still });
 replace('src/catalog/partsEnrichment.js', {
   enrichSetParts: stoerung,
@@ -43,7 +43,7 @@ replace('src/catalog/partsEnrichment.js', {
 });
 
 test('Ergebnis: Wert, Ersatz und gemeldeter Fehlschlag', async () => {
-  const { versuche, valueOr } = _req('src/infra/ergebnis.js');
+  const { versuche, valueOr } = _req('src/infra/result.js');
   assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, wert: [] });
   const r = await versuche('probe', async () => {
     throw new Error('weg');
@@ -58,7 +58,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const SN = `99${String(process.pid).slice(-4)}-1`;
   const { minifigsListOfSets } = require('./helpers/sources').areaPage('sets');
-  const { partListOfSets } = _req('src/sets/inhalt.js');
+  const { partListOfSets } = _req('src/sets/content.js');
 
   await t.test('eine gestörte Quelle ist keine leere Liste', async () => {
     rebrickable = 'gestoert';

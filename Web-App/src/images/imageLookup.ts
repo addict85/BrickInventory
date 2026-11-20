@@ -1,4 +1,4 @@
-import { Zwischenspeicher } from '../infra/zwischenspeicher';
+import { Zwischenspeicher } from '../infra/cache';
 import type { ImagesContext } from './context';
 
 /** Umleiten auf die CDN-Adresse heilt Web und App, ohne verwaiste

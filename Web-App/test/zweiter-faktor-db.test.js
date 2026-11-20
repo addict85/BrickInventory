@@ -117,7 +117,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       [name],
     );
     return zf.hotp(
-      zf.fromBase32(_req('src/infra/geheimnis.js').decrypt(z.secret, zf.secondFactorContext(z.user_id))),
+      zf.fromBase32(_req('src/infra/secret.js').decrypt(z.secret, zf.secondFactorContext(z.user_id))),
       zf.timeStep() + versatz,
     );
   };

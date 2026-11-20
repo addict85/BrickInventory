@@ -89,7 +89,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     );
 
     // Liste und Detail müssen dasselbe sagen. Genau zwischen diesen beiden ist
-    // schon die MENGE auseinandergelaufen (siehe readSet in src/sets/lesen.ts).
+    // schon die MENGE auseinandergelaufen (siehe readSet in src/sets/read.ts).
     const liste = await S.setsLesen(writable, { page: 1, page_size: 10 });
     const zeile = (liste.sets || []).find(s => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Liste');

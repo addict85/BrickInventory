@@ -1,6 +1,6 @@
-import { reportError } from '../infra/fehler';
-import { ereignis } from '../infra/ereignis';
-import { Zwischenspeicher } from '../infra/zwischenspeicher';
+import { reportError } from '../infra/error';
+import { ereignis } from '../infra/event';
+import { Zwischenspeicher } from '../infra/cache';
 import type { ImagesContext } from './context';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN

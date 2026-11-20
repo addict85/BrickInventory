@@ -24,7 +24,7 @@ require('./helpers/sources').buildAndRequire();
 
 /** Lädt den Schlüssel in einem frischen Prozess; liefert ihn base64 samt stderr. */
 function lade(wurzel, env = {}) {
-  const script = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/geheimnis.js'))});
+  const script = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/secret.js'))});
     process.stdout.write(g.datenSchluessel().toString('base64'));`;
   const r = spawnSync(process.execPath, ['-e', script], {
     encoding: 'utf8',

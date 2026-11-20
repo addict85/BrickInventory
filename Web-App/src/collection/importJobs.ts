@@ -1,7 +1,7 @@
 /** The imports other than the set CSV (which continues row-by-row in setCsvImport.ts).
  * The route submits and waits (runImport). */
 import { csvImportReport } from '../infra/csvExport';
-import { Fachfehler } from '../infra/fehlerTexte';
+import { Fachfehler } from '../infra/errorTexts';
 import { z } from 'zod';
 import type { JobRow, JobContext, Fortschritt } from '../jobQueue';
 import { SetCsvPayload } from '../sets';

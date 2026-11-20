@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import * as repo from './repository/jobs';
-import { reportError } from '../infra/fehler';
+import { reportError } from '../infra/error';
 import type { JobsContext } from './context';
 
 /** Jede Belegung trägt die Kennung ihres Prozesses. Ein Prozess, der hart endet

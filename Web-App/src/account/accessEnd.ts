@@ -2,8 +2,8 @@
 import { increaseSessionVersion, listenOnSessionVersion, forgetSessionVersion } from './sessionVersion';
 import { tokenDigest, ACCESSES_AT_MOST } from './deviceToken';
 import { listenOnTokenRevocation, emptyTokenCache } from './tokenCache';
-import { inSystemContext } from '../infra/kontoKontext';
-import { imSystemrahmen } from '../infra/bereich';
+import { inSystemContext } from '../infra/accountContext';
+import { imSystemrahmen } from '../infra/area';
 import type { AccountContext } from './context';
 
 /** Token-Zwischenspeicher und Sitzungsversionen dieses Prozesses folgen den Widerrufen der anderen (NOTIFY). */

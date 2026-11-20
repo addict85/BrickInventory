@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
-const { inSystemContext, asRequest } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'kontoKontext.js'));
+const { inSystemContext, asRequest } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'accountContext.js'));
 
 const PID = 'SELECT pg_backend_pid() AS p';
 

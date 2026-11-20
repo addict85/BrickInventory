@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { reportError } from '../../infra/fehler';
+import { reportError } from '../../infra/error';
 import { PUBLIC_DIR } from '../../infra/appPaths';
 import type { ProfileServices } from '../area';
 

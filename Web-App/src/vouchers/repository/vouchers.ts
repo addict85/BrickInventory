@@ -1,6 +1,6 @@
 /** Only this repository encrypts and decrypts number and PIN: even the number unlocks it. */
 import type { DbInterface } from '../../../db/database';
-import { encrypt, decrypt, searchValue, kontext, umschluesseln, readOldValue } from '../../infra/geheimnis';
+import { encrypt, decrypt, searchValue, kontext, umschluesseln, readOldValue } from '../../infra/secret';
 
 export interface VoucherRow {
   id: number;

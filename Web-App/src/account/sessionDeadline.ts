@@ -1,5 +1,5 @@
 // Abmelden nach Stunden Leerlauf.
-import { type Konfig, VORGABE } from '../infra/konfig';
+import { type Konfig, VORGABE } from '../infra/config';
 
 export const IDLE_DEFAULT_MIN = VORGABE.sitzungLeerlaufMin;
 

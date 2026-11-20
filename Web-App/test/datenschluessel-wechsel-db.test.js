@@ -36,14 +36,14 @@ environment({ DATA_KEY: A });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const G = _req('src/infra/geheimnis.js');
+const G = _req('src/infra/secret.js');
 const zf = _req('src/factors/secondFactor.js');
 const gut = {
   ..._req('src/vouchers/repository/vouchers.js'),
   ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
 const dateien = _req('src/vouchers/voucherFiles.js');
-const { keySwitch } = _req('startup/datenbank.js');
+const { keySwitch } = _req('startup/database.js');
 
 /** Schlüssel umstellen, wie ein Neustart mit anderer Umgebung. */
 function schluessel(aktuell, previous) {

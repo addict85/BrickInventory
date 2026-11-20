@@ -1,6 +1,6 @@
 /** The mail factory: every mail reads SMTP and theme from the settings carried by the
  * context at send time, so no module needs the process. */
-import { mit, type Inspect } from '../infra/bereich';
+import { mit, type Inspect } from '../infra/area';
 import type { Db } from '../../db/database';
 import * as mailer from './mailer';
 import type { MailDependencies, MailContext } from './context';

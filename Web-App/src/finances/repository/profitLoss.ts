@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import { setStammJoin, SET } from '../../../db/katalogSicht';
+import { setStammJoin, SET } from '../../../db/catalogView';
 import type { FinancesReadContract } from '../readContract';
 
 /** Eine Zeile je Set über alle Konten: Die Rechnung fasst die Käufe je

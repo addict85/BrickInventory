@@ -18,7 +18,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { ladeKonfig, databaseConnection, KonfigFehler } = _req('src/infra/konfig.js');
+const { ladeKonfig, databaseConnection, KonfigFehler } = _req('src/infra/config.js');
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnis-datei-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));

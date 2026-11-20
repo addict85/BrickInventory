@@ -9,7 +9,7 @@
  *      allen vier Zeilen (unbekannter Schlüssel, Präfix, Antwort, Pfadparameter).
  *   C  `Ergebnis<K>` durch `Record<string, unknown>` ersetzt → rot an „Antwort weicht ab“.
  */
-import type { VertragsRouter } from '../../src/http/vertragsRouter';
+import type { VertragsRouter } from '../../src/http/contractRouter';
 
 declare const api: VertragsRouter<'/api/v1'>;
 declare const auth: VertragsRouter<'/api/v1/auth'>;

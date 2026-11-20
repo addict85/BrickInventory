@@ -1,12 +1,12 @@
-import { Zwischenspeicher } from '../infra/zwischenspeicher';
+import { Zwischenspeicher } from '../infra/cache';
 /** Erst der eigene Bestand (CSV-Tabellen, Zwischenspeicher), dann der Client:
  * Das Kontingent ist knapp. Der Client fragt nur ab, ablegen tut dieser Dienst. */
 import type { Quellen } from '../externalSources';
 import { istErsatzteil } from '../infra/validate';
-import { withVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNumber';
 import { newestInventory } from './rbInventory';
 
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
 /** Ein kaputter Eintrag zählt als keiner. */

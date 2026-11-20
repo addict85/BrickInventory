@@ -354,7 +354,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     [
       '-e',
       `
-    const V = require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'verdrahtung.js'))});
+    const V = require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'wiring.js'))});
     const { dbKonfigFromEnvironment, createDb } = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
     const db = createDb(dbKonfigFromEnvironment(), { firstStart: async () => {} });
     const contexts = {};

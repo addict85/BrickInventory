@@ -1,6 +1,6 @@
 /** Googles Widerrufsliste der Attestierungsschlüssel. Nur dieser Host, keine
  * Umleitung: Eine Liste aus fremder Quelle könnte widerrufene Ketten freigeben. */
-import { holeHttps } from '../src/infra/abruf';
+import { holeHttps } from '../src/infra/fetch';
 
 export const REVOCATION_LIST = 'https://android.googleapis.com/attestation/status';
 const HOSTS = ['android.googleapis.com'] as const;

@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
 import { marktpreisSql } from '../../../db/geldSql';
-import type { Spalten, Tabellen } from '../../../db/zeilen';
+import type { Spalten, Tabellen } from '../../../db/rows';
 
 /** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
 export type AlarmRow = Spalten<

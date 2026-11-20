@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { konfig } from './konfig';
+import { konfig } from './config';
 import { prozessweit } from './prozessweit';
 
 export interface TlsStand {

@@ -1,5 +1,5 @@
 import type { Client } from 'pg';
-import { fehlertext, reportError } from '../infra/fehler';
+import { fehlertext, reportError } from '../infra/error';
 import fs from 'node:fs';
 import { rememberMissing, isKnownMissing } from './imageMisses';
 import { imgProxyFailures, countProxyError } from './imgProxyStats';

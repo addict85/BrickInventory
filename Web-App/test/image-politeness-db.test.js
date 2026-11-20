@@ -153,7 +153,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
 test('der Bild-Auftrag holt mit der Browser-Kennung des Proxys', () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');
-  const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/bildCdn.js'));
+  const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/imageCdn.js'));
   const ua = require(dist).bildUserAgent({ bildUserAgent: null });
   assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
   assert.match(ua, /^Mozilla\/5\.0 /);

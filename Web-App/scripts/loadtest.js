@@ -36,13 +36,13 @@ const N_SETS = arg('sets', 800); // Sammlungsgrösse (wie in Durchgang 119)
 const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
 const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
 // Die Routen rufen die Bereiche über ihre Verdrahtung, wie im Server.
-const verdrahtung = require(path.join(ROOT, 'dist/startup/verdrahtung.js'));
+const verdrahtung = require(path.join(ROOT, 'dist/startup/wiring.js'));
 const dienste = verdrahtung.buildServices(db);
 
 /**
  * Lesbarer Text eines gefangenen Fehlers.
  *
- * Bewusst eine eigene, kurze Fassung statt src/infra/fehler: Dieses Skript
+ * Bewusst eine eigene, kurze Fassung statt src/infra/error: Dieses Skript
  * laeuft als eigenstaendiges Werkzeug ueber `node`, ohne den Build — es kann
  * ein TypeScript-Modul gar nicht laden. Die Regel ist dieselbe: Ein geworfener
  * String oder ein Objekt ohne `message` soll nicht als „undefined" enden.
@@ -56,7 +56,7 @@ function fehlertext(e) {
   // den Typ auf `object` verengt und der kein `message` kennt.
   const m = e ? /** @type {any} */ (e).message : undefined;
   if (typeof m === 'string' && m) return m;
-  // `String([])` ist leer — siehe src/infra/fehler.ts, dort gefunden.
+  // `String([])` ist leer — siehe src/infra/error.ts, dort gefunden.
   return e === null || e === undefined ? 'Unbekannter Fehler' : String(e) || 'Unbekannter Fehler';
 }
 
@@ -191,7 +191,7 @@ async function seed() {
 function buildApp() {
   return require(path.join(ROOT, 'dist/startup/app.js')).baueApp({
     pool: db.pool,
-    konfig: require(path.join(ROOT, 'dist/src/infra/konfig.js')).konfig(),
+    konfig: require(path.join(ROOT, 'dist/src/infra/config.js')).konfig(),
     sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
     dienste,
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {

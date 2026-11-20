@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AccountServices } from '../area';
-import { Fachfehler } from '../../infra/fehlerTexte';
-import { reportError } from '../../infra/fehler';
+import { Fachfehler } from '../../infra/errorTexts';
+import { reportError } from '../../infra/error';
 
 /** Ein Lesefehler ist keine Abmeldung: 503 wie /auth/me, Browser und App versuchen es wieder. */
 function busy(e: unknown): Fachfehler {

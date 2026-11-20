@@ -11,9 +11,9 @@
  *      „jede Route antwortet“ (/api/v1/sets: 500 vertrag_verletzt, Text statt
  *      Zahl) und „so viele Routen geprüft“
  *   B  MIN_CHECKED auf 59 gesetzt → rot: „so viele Routen geprüft“
- *   C  in src/sets/inhalt.ts `...einePage(…)` aus der Teileliste entfernt →
+ *   C  in src/sets/content.ts `...einePage(…)` aus der Teileliste entfernt →
  *      rot: „jede Route antwortet“ (parts-list: 500 vertrag_verletzt)
- *   D  in src/infra/seite.ts slice() durch die ganze Liste ersetzt → rot:
+ *   D  in src/infra/page.ts slice() durch die ganze Liste ersetzt → rot:
  *      „lange Listen blättern“ (05.11.2026)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

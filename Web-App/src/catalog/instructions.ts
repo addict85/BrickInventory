@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
-import { reportError, logAndContinue } from '../infra/fehler';
-import { withVersion, withoutVersion } from '../infra/setNummer';
-import { pathSegment } from '../infra/fremdeAdressen';
-import { versuche } from '../infra/ergebnis';
+import { reportError, logAndContinue } from '../infra/error';
+import { withVersion, withoutVersion } from '../infra/setNumber';
+import { pathSegment } from '../infra/foreignAddresses';
+import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
 const PDF_START = Buffer.from('%PDF-');

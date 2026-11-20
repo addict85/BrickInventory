@@ -16,8 +16,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-// Die Bildroute steht in routes/seiten.ts, ihr Rumpf in src/images/http/imageDelivery.ts.
-const SERVER = ['startup/app.ts', 'routes/seiten.ts', 'src/images/http/imageDelivery.ts'].map(read).join('\n');
+// Die Bildroute steht in routes/pages.ts, ihr Rumpf in src/images/http/imageDelivery.ts.
+const SERVER = ['startup/app.ts', 'routes/pages.ts', 'src/images/http/imageDelivery.ts'].map(read).join('\n');
 /**
  * Kommentare weg — der Erklärtext oben nennt express.static selbst.
  */

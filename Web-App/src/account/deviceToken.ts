@@ -5,7 +5,7 @@ import * as repo from './repository/accesses';
 import type { TokenScope } from './repository/accesses';
 import { hintInBackground } from './accountNotice';
 import { countFailedAttempt, toManyFailedAttempts } from './tokenFailedAttempts';
-import { inSystemContext } from '../infra/kontoKontext';
+import { inSystemContext } from '../infra/accountContext';
 import {
   cacheStand,
   tokenFromCache,
@@ -17,9 +17,9 @@ import {
   type TokenUser,
 } from './tokenCache';
 import type { AccountContext } from './context';
-import { reportError } from '../infra/fehler';
-import { fachfehler } from '../infra/fehlerTexte';
-import { versuche } from '../infra/ergebnis';
+import { reportError } from '../infra/error';
+import { fachfehler } from '../infra/errorTexts';
+import { versuche } from '../infra/result';
 
 export type { TokenScope, TokenUser };
 

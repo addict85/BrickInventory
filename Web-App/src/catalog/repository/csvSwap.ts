@@ -1,8 +1,8 @@
 import type { PoolClient } from 'pg';
-import { maintainTable } from '../../../db/tabellePflegen';
+import { maintainTable } from '../../../db/maintainTable';
 import type { CatalogReadContract } from '../readContract';
 import { LOCKS } from '../../infra/lockNamespaces';
-import { logAndContinue } from '../../infra/fehler';
+import { logAndContinue } from '../../infra/error';
 
 /** Auf EINER Verbindung, weil Sitzungssperre, Schatten und Transaktion an ihr
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */

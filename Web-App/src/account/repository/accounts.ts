@@ -1,7 +1,7 @@
 import type { Db, DbInterface, Treffer } from '../../../db/database';
 import { removeAccountFromBackups } from '../../../db/migrate';
 import { LOCKS } from '../../infra/lockNamespaces';
-import type { Spalten } from '../../../db/zeilen';
+import type { Spalten } from '../../../db/rows';
 
 export type AccountShort = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 

@@ -6,13 +6,13 @@
  *
  * Gegenproben (10.11.2026 gemessen):
  * - erfassungen.ts: mengeDesBestands wieder mit `.catch(reportAndDeliver(…, null))`
- *   UND in db/transaktion.ts (newTxStatus) `verdirbt: () => false` → rot: „die Ursache kommt an“
+ *   UND in db/transaction.ts (newTxStatus) `verdirbt: () => false` → rot: „die Ursache kommt an“
  *   (25P02 statt 22003, das Aufräumen lief in die tote Transaktion).
  *   Nur der alte Fang, Wächter aktiv → grün: Der Wächter allein trägt.
  * - fehler.ts: in checkFallbackInTransaction die erste Zeile durch `return;`
  *   ersetzt → rot: „ein Datenbankfehler geht weiter“ und „ausserhalb der
  *   Datenbank wirft er in Tests“.
- * - db/transaktion.ts: `fromSavepointCaught.add(e)` entfernt → rot:
+ * - db/transaction.ts: `fromSavepointCaught.add(e)` entfernt → rot:
  *   „hinter einem Sicherungspunkt gilt der Ersatz“.
  * - db/database.ts: in oneTimeTransaction `streng: false` statt `streng: r.streng` → rot:
  *   „ausserhalb der Datenbank wirft er in Tests“.
@@ -29,8 +29,8 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, record, haltRow } = require('./helpers/bestand');
 const db = testData();
-const { reportAndDeliver, logAndContinue } = _req('src/infra/fehler.js');
-const { versuche } = _req('src/infra/ergebnis.js');
+const { reportAndDeliver, logAndContinue } = _req('src/infra/error.js');
+const { versuche } = _req('src/infra/result.js');
 const { deleteAcquisition } = _req('src/collection/acquisitions.js');
 
 const NAME = `ersatz_tx_${process.pid}`,

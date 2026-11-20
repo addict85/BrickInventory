@@ -1,5 +1,5 @@
 /**
- * Die Datenbankverbindung steht an EINER Stelle (src/infra/konfig.ts). Der
+ * Die Datenbankverbindung steht an EINER Stelle (src/infra/config.ts). Der
  * CSV-Worker hatte eigene Standardwerte (brickinv statt brickinventory) und
  * verband sich ausserhalb von Docker mit einer anderen Datenbank.
  *
@@ -11,14 +11,14 @@
  *   C  in standardPasswordInUse den Zweig für connectionString auf
  *      `return false` gesetzt → rot: „das Beispielpasswort wird erkannt"
  *
- * Seit dem 30.10. liest NUR src/infra/konfig.ts die Umgebung; ein ungültiger Wert
+ * Seit dem 30.10. liest NUR src/infra/config.ts die Umgebung; ein ungültiger Wert
  * beendet den Start mit einer Meldung je Variable. Gegenproben (D–F in einem
  * Lauf gemessen):
- *   D  in src/http/dateiEmpfang.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
+ *   D  in src/http/fileUpload.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
  *      → rot: „niemand ausser der Konfiguration liest process.env“
  *   E  in ganzzahl() die Grenzprüfung `n < min || n > max` entfernt → rot:
  *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)
- *   F  den Import von startup/konfigPruefen aus server.ts entfernt → rot:
+ *   F  den Import von startup/checkConfig aus server.ts entfernt → rot:
  *      „der Server startet mit falschem Wert nicht“ (Stacktrace aus
  *      src/account/sessionDeadline statt der Meldung)
  *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
@@ -35,7 +35,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VARIABLES } = _req('src/infra/konfig.js');
+const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VARIABLES } = _req('src/infra/config.js');
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
@@ -75,7 +75,7 @@ test('niemand sonst liest die Verbindungsvariablen', () => {
       }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
-      if (rel === path.join('src/infra/konfig.ts')) continue;
+      if (rel === path.join('src/infra/config.ts')) continue;
       const s = fs.readFileSync(p, 'utf8');
       for (const m of s.matchAll(/process\.env\.(PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE|DATABASE_URL)\b/g))
         funde.push(`${rel}: ${m[1]}`);
@@ -96,7 +96,7 @@ test('niemand ausser der Konfiguration liest process.env', () => {
       }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
-      if (rel === path.join('src/infra/konfig.ts')) continue;
+      if (rel === path.join('src/infra/config.ts')) continue;
       const zeilen = ohneKommentare(fs.readFileSync(p, 'utf8')).split('\n');
       zeilen.forEach((z, i) => {
         if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`);

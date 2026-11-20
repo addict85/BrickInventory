@@ -1,7 +1,7 @@
 /** Der Wanted-XML-Import als Auftrag: Er legt Teile, Figuren und Sets an und
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
 import type { Nutzlast, JobContext } from '../jobQueue';
-import { logAndContinue } from '../infra/fehler';
+import { logAndContinue } from '../infra/error';
 import type { CollectionContext } from './context';
 
 export type WantedXmlInput = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];

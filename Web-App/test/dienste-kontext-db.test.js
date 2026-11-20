@@ -6,7 +6,7 @@
  * Gegenproben (13.11.2026):
  *   A  in src/parts/queries.ts partStatsQuery() wieder über teileBereich() statt k
  *      → rot: „partStatsQuery fragt über den übergebenen Zugang“.
- *   B  in src/infra/bereich.ts buildContext(): transaktion ruft fn mit dem äusseren
+ *   B  in src/infra/area.ts buildContext(): transaktion ruft fn mit dem äusseren
  *      Kontext statt in a.db.transaction → rot: „ein Fehler nimmt alles zurück“.
  */
 const test = require('node:test');
@@ -35,10 +35,10 @@ function counting(z) {
 
 test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async t => {
   if (!(await accessOrSkip(t, _req))) return;
-  const { buildServices } = _req('startup/verdrahtung.js');
+  const { buildServices } = _req('startup/wiring.js');
   // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
   const eigen = quellen.testData();
-  const { asRequest } = _req('src/infra/kontoKontext.js');
+  const { asRequest } = _req('src/infra/accountContext.js');
   const db = testAccess();
   const name = `kontext_${process.pid}`;
   await eigen.run('DELETE FROM users WHERE username = $1', [name]);
@@ -59,12 +59,12 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
 
 test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht', async t => {
   if (!(await accessOrSkip(t, _req))) return;
-  const { buildServices } = _req('startup/verdrahtung.js');
+  const { buildServices } = _req('startup/wiring.js');
   const contexts = {};
   buildServices(testAccess(), { contexts });
   const e = contexts.settings;
   // Globale Werte schreibt nur die Systemrolle (0117): die Transaktion in ihrem Rahmen.
-  const { inSystemContext } = _req('src/infra/kontoKontext.js');
+  const { inSystemContext } = _req('src/infra/accountContext.js');
   const imSystem = f => inSystemContext('test', f);
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;

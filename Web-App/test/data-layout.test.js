@@ -23,9 +23,9 @@ const SOURCES = [
   'server.ts',
   'routes/api_v1/parts.ts',
   'routes/api_v1/sets.ts',
-  'routes/api_v1/setsAnleitungen.ts',
-  'src/sets/dienst.ts',
-  'src/sets/anleitungen.ts',
+  'routes/api_v1/setsInstructions.ts',
+  'src/sets/service.ts',
+  'src/sets/instructions.ts',
   'src/images/thumbs.ts',
   'routes/api_v1/pdf.ts',
   'src/catalog/partsEnrichment.ts',
@@ -96,7 +96,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // Anmeldung ausgeliefert wird (kein statischer Mount: test/media-auth.test.js).
   // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
   assert.match(
-    strip(read('routes/seiten.ts')),
+    strip(read('routes/pages.ts')),
     /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*deliverImage\(d, req, res\)\)/,
     'Bildroute nicht gefunden',
   );

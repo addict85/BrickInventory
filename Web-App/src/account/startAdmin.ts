@@ -2,7 +2,7 @@
  * für jedes andere Konto; ein schwaches ADMIN_PASSWORD wird durch ein zufälliges
  * ersetzt, das beim ersten Login zu ändern ist. */
 import crypto from 'node:crypto';
-import { passwordLack } from '../infra/passwortRegel';
+import { passwordLack } from '../infra/passwordRule';
 import { removeStartpasswort, writeStartpasswort } from '../infra/startpasswort';
 import { hashePasswordImmediately } from './passwordHash';
 import type { AccountContext } from './context';

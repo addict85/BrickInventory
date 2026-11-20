@@ -1,4 +1,4 @@
-import { systemClock, type Uhr } from '../infra/uhr';
+import { systemClock, type Uhr } from '../infra/clock';
 
 /** Rebrickable erlaubt im Mittel einen Aufruf je Sekunde; ein 429 nennt die
  * Wartezeit, und genau so lange wird zurückgehalten. */
@@ -59,9 +59,9 @@ export class RateLimiter {
   }
 }
 
-import { reportError } from '../infra/fehler';
+import { reportError } from '../infra/error';
 import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { ForeignSourcesContext } from './context';
 
 /** Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen

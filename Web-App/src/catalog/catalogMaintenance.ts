@@ -1,4 +1,4 @@
-import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/fremdeAdressen';
+import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/foreignAddresses';
 import { colorId as readColor } from '../infra/validate';
 import * as stamm from './repository/catalogMaster';
 import type { CatalogContext } from './context';

@@ -1,8 +1,8 @@
 /** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus beim Lesen. */
-import { fachfehler } from '../infra/fehlerTexte';
-import { withVersion } from '../infra/setNummer';
-import * as repo from './repository/verschieben';
-import type { SetsContext } from './kontext';
+import { fachfehler } from '../infra/errorTexts';
+import { withVersion } from '../infra/setNumber';
+import * as repo from './repository/move';
+import type { SetsContext } from './context';
 
 export interface Shift {
   quantity: number;

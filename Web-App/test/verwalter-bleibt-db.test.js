@@ -31,7 +31,7 @@ const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)))
 /** Wie kontoEntfernen(), ohne Protokoll: Dessen Eintrag zum gleichzeitig gelöschten Verwalter stiesse an den Fremdschlüssel. */
 /** Im Systemrahmen wie dort: Konten löscht nur die Systemrolle (0117). */
 const remove = (ziel, durch) =>
-  _req('src/infra/kontoKontext.js').inSystemContext('test', () =>
+  _req('src/infra/accountContext.js').inSystemContext('test', () =>
     require('./helpers/sources')
       .testContext('account')
       .transaktion(t => t.konten.deleteAccount(ziel, durch)),

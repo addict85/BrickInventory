@@ -5,7 +5,7 @@ import * as kauf from './repository/purchaseAcquisitions';
 import type { PaperKind } from './repository/trash';
 import type { InventoryContext } from './context';
 import type { InventoryReadContract } from './readContract';
-import { fachfehler, notFound } from '../infra/fehlerTexte';
+import { fachfehler, notFound } from '../infra/errorTexts';
 
 export type Art = PaperKind;
 export const RETENTION_DAYS = 30;

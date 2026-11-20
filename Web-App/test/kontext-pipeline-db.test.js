@@ -24,7 +24,7 @@ const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
 const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
-const { asRequest } = _req('src/infra/kontoKontext.js');
+const { asRequest } = _req('src/infra/accountContext.js');
 
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);

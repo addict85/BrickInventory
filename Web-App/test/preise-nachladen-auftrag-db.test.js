@@ -44,7 +44,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   const { rememberPricesBefore } = _req('src/finances/priceItems.js');
   const D = { ...D_, rememberPricesBefore: n => asAccount(uid, () => rememberPricesBefore(n)) };
   const repo = require('./helpers/sources').testArea('jobQueue').auftraege;
-  const { createWorker } = _req('jobs/auftragsWorker.js');
+  const { createWorker } = _req('jobs/jobWorker.js');
   const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   const zeilen = () =>
     db.all(

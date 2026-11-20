@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/verwalter');
-const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHinweis.js');
+const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHint.js');
 
 test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
@@ -72,11 +72,11 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
   await t.test('die App legt ihren Hinweisgeber dort ab, wo die Verwaltung liest', () => {
     const echt = _req('startup/app.js').baueApp({
       pool: db.systemPool,
-      konfig: _req('src/infra/konfig.js').konfig(),
+      konfig: _req('src/infra/config.js').konfig(),
       sitzungsGeheimnis: 'p'.repeat(48),
       dienste: require('./helpers/sources').testServices(),
     });
-    const { proxyHintStatus } = _req('src/http/proxyHinweis.js');
+    const { proxyHintStatus } = _req('src/http/proxyHint.js');
     assert.equal(proxyHintStatus(echt), null);
     const leise = console.warn;
     console.warn = () => {};

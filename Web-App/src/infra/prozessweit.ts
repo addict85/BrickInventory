@@ -1,8 +1,8 @@
 /** Zustand, der bewusst dem Prozess gehört und nicht einem Zugang. Alles andere hält
- * ein Bereich in seinen Fächern (zwischenspeicher.ts), damit zwei Zugänge in einem
+ * ein Bereich in seinen Fächern (cache.ts), damit zwei Zugänge in einem
  * Prozess (Tests, Werkzeuge) einander nichts vorspiegeln. Wer hier etwas ablegt,
  * nennt den Grund in REASONS; die Ratsche in test/ratschen.test.js zählt den Rest. */
-import { Faecher } from './zwischenspeicher';
+import { Faecher } from './cache';
 
 export const REASONS = {
   apiDrossel: 'Anfragebudget je Konto: schützt Rechenzeit und Speicher dieses Prozesses, gleich welcher Zugang',

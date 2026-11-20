@@ -1,5 +1,5 @@
 /**
- * Freitextsuche: `%` und `_` in der Eingabe gelten wörtlich (db/likeSuche.ts).
+ * Freitextsuche: `%` und `_` in der Eingabe gelten wörtlich (db/likeSearch.ts).
  * Sonst fände `%` jeden Eintrag und `_` jedes einzelne Zeichen.
  *
  * Gegenproben (am 03.11.2026 gemessen, je einzeln):

@@ -2,9 +2,9 @@
  * nach dem Link; die Mails gehen über den Mailbereich. */
 import crypto from 'node:crypto';
 import { mailBasisUrl } from '../infra/basisUrl';
-import { fachfehler } from '../infra/fehlerTexte';
-import { versuche, valueOr } from '../infra/ergebnis';
-import { inSystemContext } from '../infra/kontoKontext';
+import { fachfehler } from '../infra/errorTexts';
+import { versuche, valueOr } from '../infra/result';
+import { inSystemContext } from '../infra/accountContext';
 import { tokenDigest } from './deviceToken';
 import { accountThrottled } from './targetThrottle';
 import type { Konto as AccountRow } from './repository/accounts';

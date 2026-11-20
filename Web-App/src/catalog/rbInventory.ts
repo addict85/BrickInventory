@@ -1,5 +1,5 @@
 // Sucht mit und ohne Versionsanhang.
-import { withVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNumber';
 import type { CatalogContext } from './context';
 
 /** Fehler werden NICHT geschluckt: Die Aufrufer gehen verschieden damit um,

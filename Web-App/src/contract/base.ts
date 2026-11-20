@@ -3,7 +3,7 @@
  * ignoreUnknownKeys). Eingaben und Abfragen sind geschlossen (strictObject):
  * Ein vertippter Feldname ist 400 statt still ignoriert. */
 import { z } from 'zod';
-import { FEHLER, type ErrorCode } from '../infra/fehlerTexte';
+import { FEHLER, type ErrorCode } from '../infra/errorTexts';
 
 export interface Route {
   /** Der Rumpf einer 2xx-Antwort. Fehlt er, ist die Antwort kein JSON (`art`). */
@@ -87,7 +87,7 @@ export type Wire<T> = T extends Zeit
       ? { [K in keyof T as string extends K ? never : K]: Wire<T[K]> }
       : T;
 
-/** Jede Fehlerantwort (src/infra/fehlerTexte.ts): Die Apps entscheiden am
+/** Jede Fehlerantwort (src/infra/errorTexts.ts): Die Apps entscheiden am
  * Code, der Satz ist nur für Menschen. */
 export const Fehler = z.looseObject({
   success: z.literal(false),
@@ -171,7 +171,7 @@ export const Q = {
 };
 /** Seiten einer langen Liste; ohne page_size alles (ältere App-Stände). */
 export const SEITE = { page: Q.zahl(), page_size: Q.zahl() };
-/** Was eine Seite über die ganze Liste sagt (src/infra/seite.ts). */
+/** Was eine Seite über die ganze Liste sagt (src/infra/page.ts). */
 export const PAGES_DETAIL = { total: ganz, page: ganz, page_size: ganz };
 /** Eine Kennung im Rumpf; App und Oberfläche schicken Zahl oder Ziffern, die Route liest eine Zahl. */
 export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]).transform(Number);

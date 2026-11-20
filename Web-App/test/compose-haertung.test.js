@@ -201,7 +201,7 @@ test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => 
     /^\s*TRUST_PROXY:\s*\$\{TRUST_PROXY:-172\.28\.73\.10\}\s*$/m,
     'TRUST_PROXY nennt ohne Angabe nicht genau Caddy',
   );
-  const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('src/infra/proxyVertrauen.js');
+  const { proxyVertrauen } = require('./helpers/sources').buildAndRequire()('src/infra/proxyTrust.js');
   assert.deepEqual(proxyVertrauen(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
@@ -283,7 +283,7 @@ test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, Port 80 leit
     'der Aussteller hat eine Vorgabe',
   );
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
-  // Auch /ca.crt nur über HTTPS (routes/zertifikat.ts sagt über HTTP 403, tls-wurzel-db).
+  // Auch /ca.crt nur über HTTPS (routes/certificate.ts sagt über HTTP 403, tls-wurzel-db).
   assert.match(datei, /http:\/\/ \{\s*redir \{\$BRICK_BASE_URL\}\{uri\} 308\s*\}/, 'Port 80 leitet nicht nur um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
 });
@@ -381,7 +381,7 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
   assert.deepEqual(geheimnisse(mig), ['db_migration_password']);
   assert.match(mig, /^\s*PGUSER:\s*brickinventory_migration\s*$/m);
   assert.match(mig, /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m);
-  assert.match(mig, /^\s*entrypoint: \["node", "dist\/startup\/migrieren\.js"\]\s*$/m);
+  assert.match(mig, /^\s*entrypoint: \["node", "dist\/startup\/migrate\.js"\]\s*$/m);
   assert.equal(image('migration'), image('app'), 'migration nimmt ein anderes Image als app');
   const netze = mig
     .split(/\n\s*networks:\s*\n/)[1]

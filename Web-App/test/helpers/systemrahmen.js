@@ -12,7 +12,7 @@ const path = require('node:path');
 const echt = require('node:test');
 // Erst beim Aufruf: Zum Ladezeitpunkt ist dist/ womöglich noch nicht gebaut.
 const inSystemContext = (grund, f) =>
-  require(path.join(__dirname, '..', '..', 'dist', 'src', 'infra', 'kontoKontext.js')).inSystemContext(grund, f);
+  require(path.join(__dirname, '..', '..', 'dist', 'src', 'infra', 'accountContext.js')).inSystemContext(grund, f);
 
 // Die Stelligkeit bleibt: An ihr erkennt node:test einen Test mit done-Rückruf.
 const inFrame = f =>

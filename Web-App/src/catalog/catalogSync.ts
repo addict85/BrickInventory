@@ -1,7 +1,7 @@
 /** Alles hier gilt für alle Konten. */
 import { setTimeout as warte } from 'node:timers/promises';
 import { newestInventory } from './rbInventory';
-import { withVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNumber';
 import {
   rememberPart,
   rememberPartColor,
@@ -10,7 +10,7 @@ import {
   rememberMinifigs,
   merkeSetFiguren,
 } from './catalogMaintenance';
-import { logAndContinue, reportError } from '../infra/fehler';
+import { logAndContinue, reportError } from '../infra/error';
 import path from 'node:path';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';

@@ -1,9 +1,9 @@
-import { FEHLER, responseLanguage, errorText, type ErrorCode } from '../../src/infra/fehlerTexte';
+import { FEHLER, responseLanguage, errorText, type ErrorCode } from '../../src/infra/errorTexts';
 import { viewOf, guardFor } from './middleware';
 import { singleValue } from '../../src/infra/validate';
-import { pageFrom } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { pageFrom } from '../../src/infra/page';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 /** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */
 function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(

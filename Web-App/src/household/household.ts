@@ -1,14 +1,14 @@
 // Hier allein: wessen Daten eine Anfrage sieht.
-import { logAndContinue } from '../infra/fehler';
-import { Degradations } from '../infra/ergebnis';
-import { Zwischenspeicher } from '../infra/zwischenspeicher';
-import { processEvent } from '../infra/ereignis';
+import { logAndContinue } from '../infra/error';
+import { Degradations } from '../infra/result';
+import { Zwischenspeicher } from '../infra/cache';
+import { processEvent } from '../infra/event';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import type { HouseholdContext } from './context';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
-import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
-import { inSystemContext, checkRequester } from '../infra/kontoKontext';
+import { fachfehler, type ErrorCode } from '../infra/errorTexts';
+import { inSystemContext, checkRequester } from '../infra/accountContext';
 import {
   HOUSEHOLD_CHANNEL,
   HOUSEHOLD_MAX,

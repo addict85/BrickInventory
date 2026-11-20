@@ -3,7 +3,7 @@
  * Weg, der ein Passwort setzt, sie prüft, zeigt passwort-regel-db.test.js
  * („zu kurze Passwörter werden auf allen fünf Wegen abgewiesen“).
  *
- * Gegenprobe (11.11.2026 gemessen): `passwort_zu_kurz` in src/infra/fehlerTexte.ts
+ * Gegenprobe (11.11.2026 gemessen): `passwort_zu_kurz` in src/infra/errorTexts.ts
  * auf „mindestens 8 Zeichen“ → rot „die Fehlermeldung nennt dieselbe Zahl …“.
  */
 const test = require('node:test');
@@ -46,7 +46,7 @@ test('Server und Webapp nennen dieselbe Zahl', () => {
 test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
   // Die Texte können der Konstante nicht folgen; ein Text, der weniger
   // verspricht, als der Server verlangt, führt den Nutzer in eine Absage.
-  const { errorText } = _req('src/infra/fehlerTexte.js');
+  const { errorText } = _req('src/infra/errorTexts.js');
   for (const sprache of ['de', 'en'])
     assert.match(errorText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), sprache);
   // Die Webapp füllt die Zahl zur Laufzeit ein: dort ein Platzhalter, keine Zahl.

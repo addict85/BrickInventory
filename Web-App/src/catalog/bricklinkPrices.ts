@@ -2,8 +2,8 @@
  * wird; der Katalog merkt sich die Antwort, damit der nächste Abruf gleich
  * richtig fragt. */
 import { asFetchError } from '../externalSources';
-import { withVersion, withoutBricklinkPrice, withoutVersion } from '../infra/setNummer';
-import { fachfehler } from '../infra/fehlerTexte';
+import { withVersion, withoutBricklinkPrice, withoutVersion } from '../infra/setNumber';
+import { fachfehler } from '../infra/errorTexts';
 import type { CatalogEntry } from './repository/catalogCache';
 import type { CatalogContext } from './context';
 

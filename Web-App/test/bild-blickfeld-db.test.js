@@ -8,12 +8,12 @@
  *   A  imageReleased() prüft sets/ wieder gegen das Blickfeld
  *      (`inScope(uid, stamm, 'nummern')`) → rot: „Set-Bilder gehen an jedes
  *      angemeldete Konto“ (404 statt 200)
- *   B  instructionReleased() in routes/datenDateien.ts entfernt → rot:
+ *   B  instructionReleased() in routes/dataFiles.ts entfernt → rot:
  *      „Anleitungen nur zu eigenen Sets“ (200 statt 404)
  *   C  imageReleased() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
  *      „Teilebilder sind Katalog“ (404)
  *   D  scopeIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
- *   E  in setInfoForAccount() (src/sets/inhalt.ts) image_local für Sets ausserhalb
+ *   E  in setInfoForAccount() (src/sets/content.ts) image_local für Sets ausserhalb
  *      des Blickfelds wieder auf null → rot: „die API nennt das lokale Bild jedes Sets“
  *   F  atHouseholdChange() in bildBlickfeld.ts nicht aufgerufen (60 s
  *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)

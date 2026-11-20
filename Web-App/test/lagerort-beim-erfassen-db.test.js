@@ -159,7 +159,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     // Vorrat nicht mehr kennt.
     const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     // Geprüft wird `code`, nicht der Text: fachfehler() legt die deutsche
-    // Fassung in `message` und den Code daneben (src/infra/fehlerTexte.ts). Auf
+    // Fassung in `message` und den Code daneben (src/infra/errorTexts.ts). Auf
     // den Text zu prüfen hiesse, die Regel an eine Übersetzung zu hängen.
     await assert.rejects(
       () => L.loescheOrt(U.ich, parseInt(ort.id, 10)),

@@ -145,7 +145,7 @@ export const SetAggregate = z.looseObject({
   avg_purchase_price: z.number().nullable(),
 });
 
-/** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/ergebnis.ts). */
+/** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/result.ts). */
 export const DEGRADED = z.array(z.string()).optional();
 
 /** Die schlichte Bestätigung; wer mehr sagt, erweitert sie (sonst wurde jedes Feld jeder Route überall freiwillig). */

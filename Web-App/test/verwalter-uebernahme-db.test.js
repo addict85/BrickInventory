@@ -1,6 +1,6 @@
 /**
  * Ein Verwalter setzt Passwort oder zweiten Faktor eines anderen Kontos zurück, deaktiviert es,
- * entzieht die Rolle oder löscht es (routes/auth/benutzer.ts, src/account/adminActions.ts).
+ * entzieht die Rolle oder löscht es (routes/auth/users.ts, src/account/adminActions.ts).
  * Ist das Ziel Verwalter (oder war es eben noch), gilt das erst nach 24 Stunden, im Aufräumlauf;
  * eine Anmeldung des Ziels (Passwort, Passkey, QR-Abholung) oder der Link aus seiner Mail hebt
  * es auf. Über die echten Routen und die Laufzeitrolle.
@@ -42,7 +42,7 @@ const { bis } = require('./helpers/zeit');
 const db = S.testData();
 const { hashePassword, passwordFits } = _req('src/account/passwordHash.js');
 const zf = _req('src/factors/secondFactor.js');
-const { decrypt } = _req('src/infra/geheimnis.js');
+const { decrypt } = _req('src/infra/secret.js');
 /** Ein echter zweiter Faktor; zurück kommen die Wiederherstellungscodes. */
 async function withFactor(uid) {
   await S.asAccount(uid, () => zf.beginSetup(uid));
@@ -89,7 +89,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
 
   // Jede Verwalteraktion verbraucht einen Code; zehn reichen hier nicht, also weitere desselben Satzes.
   const codes = await withFactor(chef);
-  const { searchValue } = _req('src/infra/geheimnis.js');
+  const { searchValue } = _req('src/infra/secret.js');
   for (let i = 0; i < 30; i++) {
     const c = `zusatz${String(i).padStart(4, '0')}abcdef`;
     await db.run('INSERT INTO second_factor_codes (user_id, code_hash) VALUES ($1, $2)', [

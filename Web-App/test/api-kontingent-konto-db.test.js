@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const k = _req('src/externalSources/apiQuota.js');
-const { asRequest } = _req('src/infra/kontoKontext.js');
+const { asRequest } = _req('src/infra/accountContext.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
@@ -72,7 +72,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
       "INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('kontingent_kind','x',false,true,true)",
     );
     const uid = (await db.get("SELECT id FROM users WHERE username = 'kontingent_kind'")).id;
-    const { createWorker } = _req('jobs/auftragsWorker.js');
+    const { createWorker } = _req('jobs/jobWorker.js');
     const { placeJobOne } = Object.assign({}, _req('src/jobQueue/jobs.js'), {
       ..._req('src/jobQueue/service.js'),
       ...require('./helpers/sources').testArea('jobQueue').auftraege,

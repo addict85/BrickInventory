@@ -1,4 +1,4 @@
-import { ereignis } from '../infra/ereignis';
+import { ereignis } from '../infra/event';
 import { prozessweit } from '../infra/prozessweit';
 /** Offene Ströme prüfen ihren Zugang im Takt; endet ein Zugang in diesem
  * Prozess (Widerruf, Abmelden, neue Sitzungsversion, fremder Widerruf per

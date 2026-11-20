@@ -1,10 +1,10 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
-import type { Konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/config';
 import type { MailServices } from '../mail';
 import type { Db } from '../../db/database';
-import { mit, withContract, type Kontext } from '../infra/bereich';
+import { mit, withContract, type Kontext } from '../infra/area';
 import type { FinancesReadContract } from './readContract';
-import type { Faecher } from '../infra/zwischenspeicher';
+import type { Faecher } from '../infra/cache';
 import * as bewertung from './repository/valuation';
 import * as erfassungen from './repository/acquisitions';
 import * as gewinnVerlust from './repository/profitLoss';
@@ -21,7 +21,7 @@ import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
 import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface FinancesDependencies {
   uhr: Uhr;

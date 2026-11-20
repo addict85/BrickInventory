@@ -30,7 +30,7 @@ const { routerServer } = require('./helpers/server');
 const db = testData();
 
 test('pathSegment', () => {
-  const { pathSegment, numbersList } = _req('src/infra/fremdeAdressen.js');
+  const { pathSegment, numbersList } = _req('src/infra/foreignAddresses.js');
   assert.equal(pathSegment('10294-1'), '10294-1');
   assert.equal(pathSegment('x/../y?z'), 'x%2F..%2Fy%3Fz');
   for (const p of ['', '.', '..', '...']) assert.throws(() => pathSegment(p), /Pfadsegment/, `„${p}“ geht durch`);

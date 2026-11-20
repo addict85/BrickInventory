@@ -1,14 +1,14 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
-import { logAndContinue, reportError } from '../../infra/fehler';
+import { logAndContinue, reportError } from '../../infra/error';
 import { type Nutzlast, checkAbort, type JobRun } from '../../jobQueue';
 import { pdfFilePath } from './pdfJobs';
 import { downloadImage, downloadSetImages } from '../partsEnrichment';
 import { drawPdfInThread, type PdfTeil } from './pdfDrawing';
 import { KEINE_FARBE } from '../../infra/validate';
 import { rememberMinifigImageAddress, setMinifigImageLocal, setPartImageLocal } from '../catalogMaintenance';
-import { normalisiereSetNummer, possibleSetNumber } from '../../infra/setNummer';
+import { normalisiereSetNummer, possibleSetNumber } from '../../infra/setNumber';
 import { imagesFromCatalog as readImagesFromCatalog } from '../imageState';
 import type { CatalogContext } from '../context';
 

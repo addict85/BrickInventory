@@ -58,7 +58,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
       [k, v],
     );
   await setze('registration_enabled', '1');
-  await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/zielAdresse.ts)
+  await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/targetAddress.ts)
   await setze('smtp_user', 'versand');
   const emptyCounter = () => db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot)'");
   await emptyCounter();

@@ -1,7 +1,7 @@
 /** Die Kacheln der Verwaltung als Sicht auf auftraege.fortschritt (k.fortschritt()):
  * Ein zweiter Speicher konnte dem ersten widersprechen. */
 
-import { logAndContinue } from '../infra/fehler';
+import { logAndContinue } from '../infra/error';
 import { IMAGE_LOAD_COUNTER } from '../catalog';
 import type { JobKind } from '../jobQueue';
 import type { ManagementContext } from './context';

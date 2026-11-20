@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
-import { AbrufFehler } from '../infra/abruf';
+import { AbrufFehler } from '../infra/fetch';
 import type { ImagesContext } from './context';
 
 /** Bewusst ohne SVG. */

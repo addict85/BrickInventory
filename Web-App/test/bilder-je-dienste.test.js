@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { buildServices } = _req('startup/verdrahtung.js');
+const { buildServices } = _req('startup/wiring.js');
 
 /** Ein Satz Dienste, der mitschreibt, was vorgemerkt wurde. */
 function satz() {

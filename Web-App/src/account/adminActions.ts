@@ -4,7 +4,7 @@
 import crypto from 'node:crypto';
 import { accountDisplayName, setzeAktiv, setForeignPassword, setzeVerwalterRolle, endAccesses } from './accounts';
 import { withAccessEnd, accessTransaction } from './accessEnd';
-import { duplicateAs, fachfehler } from '../infra/fehlerTexte';
+import { duplicateAs, fachfehler } from '../infra/errorTexts';
 import { rememberAdminAction } from './adminLog';
 import { hintInBackground, adminHintInBackground } from './accountNotice';
 import { hashePassword } from './passwordHash';

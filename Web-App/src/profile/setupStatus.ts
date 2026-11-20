@@ -3,7 +3,7 @@
  * complete these are only flags — no names, addresses or keys. Afterwards the
  * page only ever answers "done" and names the certificate, which is public
  * under /ca.crt anyway. */
-import { Degradations } from '../infra/ergebnis';
+import { Degradations } from '../infra/result';
 import { tlsStand } from '../infra/tlsWurzel';
 import type { ProfileContext } from './context';
 

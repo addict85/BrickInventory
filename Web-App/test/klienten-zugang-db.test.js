@@ -29,7 +29,7 @@ const { dataOrSkip } = require('./helpers/db');
 
 /** @type {{ pfad: string, schluessel: string | undefined }[]} */
 const fetches = [];
-// @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+// @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
 https.get = (url, opts, cb) => {
   const u = new URL(url);
   fetches.push({ pfad: u.pathname, schluessel: /** @type {any} */ (opts)?.headers?.Authorization });
@@ -62,7 +62,7 @@ const accessWith = schluessel => {
 
 test('zwei Klienten in einem Prozess fragen jeder mit dem Schlüssel ihres Zugangs', async () => {
   const { createRebrickable } = _req('clients/rebrickable.js');
-  const { RbSet } = _req('clients/antworten.js');
+  const { RbSet } = _req('clients/responses.js');
   const erster = createRebrickable(accessWith('erster'));
   const zweiter = createRebrickable(accessWith('zweiter'));
   fetches.length = 0;

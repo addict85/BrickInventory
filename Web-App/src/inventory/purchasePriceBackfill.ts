@@ -1,5 +1,5 @@
 import { setEstimatedPrice } from './acquisitions';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import { setTimeout as warte } from 'node:timers/promises';
 import type { InventoryContext } from './context';
 

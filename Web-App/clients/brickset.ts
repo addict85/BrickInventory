@@ -1,13 +1,13 @@
 // Ein API-Client, kein Router: Schlüssel, Kontingent und Wiedervorlage kommen über ./zugang.
 
 import type { z } from 'zod';
-import { BsResponse, BsInstructions, BsSets, checkResponse } from './antworten';
-import { holeHttps, excerpt } from '../src/infra/abruf';
-import type { ClientsAccess } from './zugang';
-import { fehlertext, reportError } from '../src/infra/fehler';
-import { asFetchError } from './abrufFehler';
-import { withVersion } from '../src/infra/setNummer';
-import { versuche } from '../src/infra/ergebnis';
+import { BsResponse, BsInstructions, BsSets, checkResponse } from './responses';
+import { holeHttps, excerpt } from '../src/infra/fetch';
+import type { ClientsAccess } from './access';
+import { fehlertext, reportError } from '../src/infra/error';
+import { asFetchError } from './fetchError';
+import { withVersion } from '../src/infra/setNumber';
+import { versuche } from '../src/infra/result';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 

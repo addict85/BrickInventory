@@ -14,14 +14,14 @@
  *      adminConfirmed() → rot: „jede Passwort-Eingabe trägt die Marke"
  *   D  in confirmWithFactor die Prüfung auf die Marke entfernt → rot:
  *      „ohne Marke keine Bestätigung"
- *   E  in routes/api_v1/papierkorb.ts ein eigenes bcrypt.compare( → rot:
+ *   E  in routes/api_v1/trash.ts ein eigenes bcrypt.compare( → rot:
  *      „kein zweiter Weg zum Passwortvergleich"
  *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` statt
  *      `z.null()` → rot: „jede Passwort-Eingabe trägt die Marke"
  *   G  (09.11.2026) DELETE /settings/tokens/:tokenId wieder mit
  *      `eingabe: WITHOUT_BODY` statt bestaetigt() → rot: „die Pflichtrouten
  *      tragen die Marke"
- *   H  (15.11.2026) in routes/api_v1/papierkorb.ts `import { verify } from
+ *   H  (15.11.2026) in routes/api_v1/trash.ts `import { verify } from
  *      '@node-rs/argon2'` → rot: „kein zweiter Weg zum Passwortvergleich"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -42,7 +42,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const zf = _req('src/factors/secondFactor.js');
 const { CONTRACT } = _req('src/contract/index.js');
-const { decrypt } = _req('src/infra/geheimnis.js');
+const { decrypt } = _req('src/infra/secret.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Vertrag-Passwort-1';
 

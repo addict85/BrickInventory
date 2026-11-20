@@ -7,9 +7,9 @@ import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/accounts';
 import { increaseSessionVersion } from './sessionVersion';
 import { emptyTokenCache } from './tokenCache';
-import { reportError } from '../infra/fehler';
-import { fachfehler, notFound } from '../infra/fehlerTexte';
-import { inSystemContext } from '../infra/kontoKontext';
+import { reportError } from '../infra/error';
+import { fachfehler, notFound } from '../infra/errorTexts';
+import { inSystemContext } from '../infra/accountContext';
 import type { AccountContext } from './context';
 
 /** @param durch der Verwalter, der löscht; null, wenn das Konto sich selbst löscht */

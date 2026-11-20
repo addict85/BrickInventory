@@ -42,7 +42,7 @@ class SchrittfreigabeTest {
     private fun signatur(mit: PrivateKey) =
         Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(mit) }
 
-    /** Ein Server, der wie routes/api_v1/geraet.ts prüft: Signatur über genau seine Nachricht. */
+    /** Ein Server, der wie routes/api_v1/device.ts prüft: Signatur über genau seine Nachricht. */
     private class Server(private val schluessel: PublicKey, var challenge: Schrittantwort) : Schrittbindung {
         val freigaben = mutableListOf<String>()
         override suspend fun challenge(aktion: Schrittaktion) = challenge

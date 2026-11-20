@@ -3,7 +3,7 @@
  * angemeldet: Sonst nähme die Warteschlange sie an und kein Worker führte sie je aus.
  *
  * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in startup/verdrahtung.ts `...d.parts.jobKinds(),` gestrichen → rot: buildServices wirft
+ *   A  in startup/wiring.ts `...d.parts.jobKinds(),` gestrichen → rot: buildServices wirft
  *      KindNotSignedIn („Auftragsart ohne Anmeldung: katalog_nachzug“), beide Tests rot
  *   B  in DECLARED_KINDS `brickset` gestrichen → rot in `npm run typecheck` (Property 'brickset'
  *      is missing) und hier: „angemeldet ist genau, was deklariert ist“
@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const { buildAndRequire, testServices } = require('./helpers/sources');
 
 const _req = buildAndRequire();
-const { DECLARED_KINDS } = _req('startup/verdrahtung.js');
+const { DECLARED_KINDS } = _req('startup/wiring.js');
 
 test('angemeldet ist genau, was deklariert ist', () => {
   const angemeldet = testServices()

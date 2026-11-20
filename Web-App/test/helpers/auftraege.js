@@ -10,7 +10,7 @@
  * @param {(pfad: string) => any} _req  buildAndRequire() der Testdatei
  */
 function importWorker(t, _req) {
-  const { startJobWorker } = _req('jobs/auftraegeStarten.js');
+  const { startJobWorker } = _req('jobs/startJobs.js');
   const worker = startJobWorker(require('./sources').testServices(), { arten: ['csv_import'], taktMs: 50 });
   // Auch die LISTEN-Verbindung: Sie hielte den Testprozess sonst am Leben.
   t.after(async () => {

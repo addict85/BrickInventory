@@ -4,7 +4,7 @@
  * oder ein Netzfehler lässt die letzte gute Liste stehen.
  *
  * Gegenproben (14.11.2026 gemessen):
- *   A  in jobs/auftraegeStarten.ts den Bearbeiter `widerrufsliste` umbenannt → rot:
+ *   A  in jobs/startJobs.ts den Bearbeiter `widerrufsliste` umbenannt → rot:
  *      „der geplante Auftrag legt die Liste ab …“ und „eine unlesbare Antwort …“
  *   B  in loadRevocationList() (src/catalog) erst den Rohtext speichern, dann lesen → rot: „eine
  *      unlesbare Antwort …“ (und „der geplante Auftrag …“: keine Seriennummern)
@@ -49,7 +49,7 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
 
   await t.test('der geplante Auftrag legt die Liste ab und plant den nächsten Lauf', async () => {
     await d.jobQueue.pullPlanBefore('widerrufsliste', 0);
-    const worker = _req('jobs/auftraegeStarten.js').startJobWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
+    const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);
     } finally {
@@ -73,9 +73,7 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
   await t.test('eine unlesbare Antwort oder ein Netzfehler lässt die letzte gute Liste stehen', async () => {
     const vorher = await gespeichert();
     const lauf = () =>
-      _req('jobs/auftraegeStarten.js')
-        .editor(d)
-        .widerrufsliste.ausfuehren({}, { signal: new AbortController().signal });
+      _req('jobs/startJobs.js').editor(d).widerrufsliste.ausfuehren({}, { signal: new AbortController().signal });
     for (const kaputt of ['<html>Wartung</html>', '{"entries": {"zz": {"status": "REVOKED"}}}', '{}']) {
       antwort = async () => Buffer.from(kaputt);
       await assert.rejects(lauf(), kaputt);

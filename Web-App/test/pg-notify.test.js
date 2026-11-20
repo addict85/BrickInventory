@@ -9,7 +9,7 @@
  *      „beim Verbinden fragt der Handler einmal von sich aus“
  *   B  quoteIdent() lässt jeden Namen durch → rot: „ein Kanalname mit
  *      Leerzeichen wird abgewiesen“ (danach hängt der Lauf am ungültigen Kanal)
- *   C  `listen('csv_sync_trigger', …)` wieder in startup/jobsProzess.ts →
+ *   C  `listen('csv_sync_trigger', …)` wieder in startup/jobsProcess.ts →
  *      rot: „kein Planer fragt mehr nach Auslösern“
  *
  * @superuser (Ratsche in test/rollen-trennung-db.test.js)

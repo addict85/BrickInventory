@@ -2,13 +2,13 @@
  * antwortet gleich, ob es das Konto gibt oder nicht; die Rückmeldung geht per
  * Mail an die Adresse, nicht an den Anfragenden. */
 import crypto from 'node:crypto';
-import { logAndContinue, reportAndDeliver } from '../infra/fehler';
+import { logAndContinue, reportAndDeliver } from '../infra/error';
 import { mailBasisUrl } from '../infra/basisUrl';
-import { inSystemContext } from '../infra/kontoKontext';
+import { inSystemContext } from '../infra/accountContext';
 import { tokenDigest } from './deviceToken';
 import { computeHowRegistration, register } from './accounts';
 import { targetThrottled } from './targetThrottle';
-import { asDuplicate } from '../infra/fehlerTexte';
+import { asDuplicate } from '../infra/errorTexts';
 import type { AccountContext } from './context';
 
 const HOUR_MS = 60 * 60 * 1000;

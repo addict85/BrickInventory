@@ -35,7 +35,7 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const gestellt = asSession(sitzung);
   const app = _req('startup/app.js').baueApp({
     pool: testAccess().systemWebPool,
-    konfig: _req('src/infra/konfig.js').konfig(),
+    konfig: _req('src/infra/config.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: testServices(),
     sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
@@ -65,7 +65,7 @@ function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
     if (apiNutzer !== undefined) req.apiUser = apiNutzer;
     next();
   });
-  app.use(_req('src/http/kontoMerken.js').rememberRequest);
+  app.use(_req('src/http/rememberAccount.js').rememberRequest);
   for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, require('./sources').routerFrom(_req, modul));
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));

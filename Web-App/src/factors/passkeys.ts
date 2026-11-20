@@ -12,9 +12,9 @@ import {
 } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { basisUrl } from '../infra/basisUrl';
-import { fehlertext } from '../infra/fehler';
-import { fachfehler } from '../infra/fehlerTexte';
-import { searchValue } from '../infra/geheimnis';
+import { fehlertext } from '../infra/error';
+import { fachfehler } from '../infra/errorTexts';
+import { searchValue } from '../infra/secret';
 import type { FactorsContext } from './context';
 import { androidOrigins } from './androidApp';
 

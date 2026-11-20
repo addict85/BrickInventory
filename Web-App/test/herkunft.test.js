@@ -28,7 +28,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { onlyOwnOrigin, onlyOwnHost } = _req('src/http/herkunft.js');
+const { onlyOwnOrigin, onlyOwnHost } = _req('src/http/origin.js');
 const http = require('node:http');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 

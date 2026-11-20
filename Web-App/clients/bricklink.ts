@@ -1,7 +1,7 @@
 // Ein API-Client, kein Router: Schlüssel und Kontingent kommen über ./zugang.
 import crypto from 'node:crypto';
-import { holeHttps, excerpt } from '../src/infra/abruf';
-import type { ClientsAccess, KeyName } from './zugang';
+import { holeHttps, excerpt } from '../src/infra/fetch';
+import type { ClientsAccess, KeyName } from './access';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 

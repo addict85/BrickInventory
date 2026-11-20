@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import { createToken, tokenDigest, ipArea } from './deviceToken';
 import { APP_MAX_DURATION_DAYS, tokenLabel } from './tokenRequest';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import type { AccountContext } from './context';
 
 export type { QrStand } from './repository/qrPairing';

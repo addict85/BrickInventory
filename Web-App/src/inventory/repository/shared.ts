@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
-import { inKontowaehrung, kontowaehrungJoin, teilmengeAus } from '../../../db/bestandsmenge';
+import { inKontowaehrung, kontowaehrungJoin, teilmengeAus } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
-import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
+import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/catalogView';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function entryMetrics(db: DbInterface, l: InventoryReadContract, art: 'part' | 'fig', uids: number[]) {

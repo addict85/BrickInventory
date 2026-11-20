@@ -4,7 +4,7 @@
 import { buildSetsRouter } from './sets';
 import { buildSetsStorageRouter } from './setsLager';
 import { buildSetsImportRouter } from './setsImport';
-import { buildSetsInstructionsRouter } from './setsAnleitungen';
+import { buildSetsInstructionsRouter } from './setsInstructions';
 import { buildPdfRouter } from './pdf';
 import { buildAcquisitionsRouter } from './acquisitions';
 import { buildPartsRouter } from './parts';
@@ -16,11 +16,11 @@ import { buildMiscRouter } from './misc';
 import { buildCatalogRouter } from './catalog';
 import { buildWantedRouter } from './wanted';
 import { buildVouchersRouter } from './vouchers';
-import { buildTrashRouter } from './papierkorb';
-import { buildDeviceRouter } from './geraet';
-import { buildSetupRouter } from './einrichtung';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { buildTrashRouter } from './trash';
+import { buildDeviceRouter } from './device';
+import { buildSetupRouter } from './setup';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 export function buildApiRouter(
   d: Pick<

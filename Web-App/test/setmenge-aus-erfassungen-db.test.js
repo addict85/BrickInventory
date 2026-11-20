@@ -183,7 +183,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // Die Muster oben finden jetzt nichts — das ist der Punkt, sagt aber allein
   // noch nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also einmal an
   // erfundenen Zeilen nachgewiesen, in genau der Form, die vorher im Baum
-  // stand (die Beispiele stehen so in src/sets/dienst.ts, Fassung vor 0036).
+  // stand (die Beispiele stehen so in src/sets/service.ts, Fassung vor 0036).
   const proben = [
     ['UPDATE sets SET quantity = $1 WHERE user_id=$2', setzt],
     ['UPDATE sets SET quantity = quantity + $1 WHERE id=$2', fortschreiben],
@@ -248,7 +248,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   assert.ok(kachel, `Das Set fehlt in der Antwort: ${JSON.stringify(eins.sets).slice(0, 300)}`);
   assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
   // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast in
-  // db/bestandsmenge.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
+  // db/stockQuantity.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
   // hat — genau dieser Fehler ist in src/parts/queries.ts schon aufgeflogen.
   assert.equal(
     typeof kachel.quantity,
@@ -301,7 +301,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   //
   // Eine Bestandszeile ohne Erfassung sollte es nicht geben (Schritt 1 der
   // Migration traegt fuer jede eine nach), aber sie darf die Liste nicht
-  // LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet dann
+  // LEEREN — deshalb LEFT JOIN in db/stockQuantity.ts. Sie bedeutet dann
   // null Stueck.
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [haupt.id, SN]);
   const leer = await H.setsLesen([haupt.id], { page_size: 60 });

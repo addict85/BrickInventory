@@ -7,8 +7,8 @@ import type { PeerCertificate } from 'node:tls';
 import type { MailContext } from './context';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailValid } from '../infra/validate';
-import { fehlertext } from '../infra/fehler';
-import { resolveOn, mailServerAddress } from '../infra/zielAdresse';
+import { fehlertext } from '../infra/error';
+import { resolveOn, mailServerAddress } from '../infra/targetAddress';
 const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
 function normalizeFingerprint(value: unknown): string {

@@ -296,7 +296,7 @@ Schreibzugriff auf die Datenbank in ein anderes Konto oder eine andere Zeile
 kopiert, lässt sich dort nicht mehr lesen.
 
 - **Der erste Start schlüsselt den Bestand um**, bevor er Anfragen annimmt
-  (Migration 0088, dann `startup/datenbank.ts`): API-Schlüssel und
+  (Migration 0088, dann `startup/database.ts`): API-Schlüssel und
   SMTP-Passwort, TOTP-Geheimnisse, Gutscheinnummern und -PINs (auch in den
   Kopien `vor_migration_*`), gespeicherte Antworten der Idempotency-Keys und
   die Gutschein-PDFs unter `data/vouchers/`. Das Protokoll meldet die Zahl.
@@ -1875,7 +1875,7 @@ bisher mit `\restrict` und ohne Besitzerzeilen), richtet danach mit
 Rolle, die das Schema ändern darf, migriert beim Start wie bisher selbst.
 Wer die Trennung auch dort will, ruft `postgres/app-rolle.sh` als Superuser
 mit `DB_MIGRATION_PASSWORD` auf und startet einmal
-`node dist/startup/migrieren.js` als Migrationsrolle, den Server danach als
+`node dist/startup/migrate.js` als Migrationsrolle, den Server danach als
 `brickinventory_app`.
 
 <a id="caddy-image"></a>
@@ -2435,7 +2435,7 @@ Daten, keine Bezeichner, und bleiben unverändert.
   Stufe vorbehalten. **Folge für eigene Integrationen:** Wer diese Endpunkte direkt
   anspricht (nicht über die mitgelieferte Oberfläche oder die Android-App, die beide
   mit diesem Update mitgehen), muss die Feldnamen anpassen.
-- **Was diese Phase bewusst nicht anfasst:** `db/zeilen.ts`, `src/contract/*.ts` und die
+- **Was diese Phase bewusst nicht anfasst:** `db/rows.ts`, `src/contract/*.ts` und die
   übrigen Verzeichnisse mit deutschen Datei- und Verzeichnisnamen (`src/jobQueue/`,
   `src/finances/`, `src/catalog/`, `src/account/`, `src/verwaltung/`, `src/inventory/`, …) bleiben
   in dieser Phase unbenannt; das ist Phase 2 (Web-Server) vorbehalten. Android-seitig ist nur

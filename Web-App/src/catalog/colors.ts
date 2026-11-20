@@ -2,7 +2,7 @@
  * (9999), nie 0, sonst wird aus „keine Angabe" ein schwarzes Teil. */
 
 import { KEINE_FARBE } from '../infra/validate';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
 export { KEINE_FARBE };

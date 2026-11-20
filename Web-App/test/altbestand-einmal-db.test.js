@@ -25,7 +25,7 @@ test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const { legacyStockUpgrade, LEGACY_STOCK_BRAND } = _req('startup/datenbank.js');
+  const { legacyStockUpgrade, LEGACY_STOCK_BRAND } = _req('startup/database.js');
   const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
   await deleteState(LEGACY_STOCK_BRAND);
 

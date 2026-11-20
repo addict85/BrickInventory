@@ -33,7 +33,7 @@ export const PdfPayload = z.object({
   sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })),
   parts: z.array(PdfTeil),
 });
-/** Eingereiht vom Katalog und von den Sets; ausgeführt von den Sets (src/sets/auftragsarten.ts). */
+/** Eingereiht vom Katalog und von den Sets; ausgeführt von den Sets (src/sets/jobTypes.ts). */
 export const ImagesPayload = z.object({ set_number: SETNR, only_images: z.boolean().optional() });
 const InstructionPayload = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
 const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });

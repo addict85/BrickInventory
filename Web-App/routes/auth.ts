@@ -1,7 +1,7 @@
 /** Anmeldung, Token und Profil unter /api/v1/auth; die Teilrouter aus routes/auth/ hängen dahinter. */
 import { guardFor } from './api_v1/middleware';
 import { cookieStaysFrom, sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks';
-import { reportError } from '../src/infra/fehler';
+import { reportError } from '../src/infra/error';
 import {
   anmelden,
   establishSession,
@@ -13,13 +13,13 @@ import {
 } from '../src/account/http/login';
 import type { Request, Response } from 'express';
 import { reportAccessChange } from '../src/account/http/accessWatch';
-import { errorText, responseLanguage, fachfehler, notFound, Fachfehler } from '../src/infra/fehlerTexte';
-import { buildUserRouter } from './auth/benutzer';
-import { buildSecondFactorRouter } from './auth/zweiterFaktor';
-import { buildRegistrationRouter } from './auth/registrierung';
+import { errorText, responseLanguage, fachfehler, notFound, Fachfehler } from '../src/infra/errorTexts';
+import { buildUserRouter } from './auth/users';
+import { buildSecondFactorRouter } from './auth/secondFactor';
+import { buildRegistrationRouter } from './auth/registration';
 import { buildQrRouter } from './auth/qr';
 import { buildPasskeyRouter } from './auth/passkey';
-import { vertragsRouter } from '../src/http/vertragsRouter';
+import { vertragsRouter } from '../src/http/contractRouter';
 import {
   assertLoginAllowed,
   USERNAME_RE,
@@ -33,7 +33,7 @@ import {
   type Angemeldet,
   type TokenWish,
 } from '../src/account';
-import type { Dienste } from '../src/dienste';
+import type { Dienste } from '../src/services';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Derselbe Weg nach Passwort und Passkey. Token ODER Sitzung: Die Sitzung trüge die Rechte am Scope des Tokens
  * vorbei. keks_fehlt immer, auch als false: Dann rät die Oberfläche bei einem 401 nicht auf „ohne HTTPS“. */

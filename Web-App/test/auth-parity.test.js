@@ -173,7 +173,7 @@ test('die Gleitfrist lässt sich nicht abschalten', () => {
   // „Nie“ gibt es seit Migration 0080 nicht mehr: Ohne Ablauf nur je Gerät,
   // über HTTPS und mit Rotation (token-scope-rotation-db). Dass die Frist aus
   // der Konfiguration kommt und das Aufräumen zählt, zeigt token-gleitfrist-db.
-  const { ladeKonfig } = _req('src/infra/konfig.js');
+  const { ladeKonfig } = _req('src/infra/config.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
   assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
   assert.ok(ARGON2_COST.memoryCost >= 19_456 && ARGON2_COST.timeCost >= 2);

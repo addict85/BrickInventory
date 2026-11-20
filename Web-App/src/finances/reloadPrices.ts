@@ -3,7 +3,7 @@
 import { fetchPrice, fetchPartPrice, fetchMinifigPrice } from './calculation/prices';
 import { estimateMinifigsPrice } from './marketPrice';
 import { checkAbort, JobMove, type JobContext, type Nutzlast } from '../jobQueue';
-import { reportError } from '../infra/fehler';
+import { reportError } from '../infra/error';
 import type { FinancesContext } from './context';
 
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];

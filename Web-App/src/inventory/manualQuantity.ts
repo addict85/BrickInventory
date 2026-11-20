@@ -3,8 +3,8 @@
  * überschriebe den anderen Zugang. */
 import { inventoryKey } from '../../db/txLock';
 import { inventoryQuantity } from '../infra/validate';
-import { fachfehler } from '../infra/fehlerTexte';
-import { Degradations } from '../infra/ergebnis';
+import { fachfehler } from '../infra/errorTexts';
+import { Degradations } from '../infra/result';
 import { addPurchaseAtTag } from './acquisitions';
 import * as repo from './repository/manualQuantities';
 import type { ManualKind } from './repository/manualQuantities';

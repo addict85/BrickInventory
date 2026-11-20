@@ -1,6 +1,6 @@
-import { fachfehler } from './fehlerTexte';
+import { fachfehler } from './errorTexts';
 /** Einmal gelesen statt an drei Stellen mit eigener Schreibweise. */
-import { konfig } from './konfig';
+import { konfig } from './config';
 import { prozessweit } from './prozessweit';
 
 export function basisUrl(): string | null {

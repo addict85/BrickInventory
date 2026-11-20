@@ -3,8 +3,8 @@
  * zweiten Faktor: Sie haben keinen Keystore. */
 import type { Request, Response, NextFunction } from 'express';
 import { familyFrom, type Schrittaktion } from '../../devices';
-import { reportError } from '../../infra/fehler';
-import { sendError } from '../../http/httpAntwort';
+import { reportError } from '../../infra/error';
+import { sendError } from '../../http/httpResponse';
 import { istVerwalter } from './login';
 import type { AccountServices } from '../area';
 import { routeForRequest } from '../../contract';

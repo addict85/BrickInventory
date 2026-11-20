@@ -1,10 +1,10 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/collection/acquisitions.ts. */
 import { acquisitionTotals } from '../../src/inventory';
-import { Degradations } from '../../src/infra/ergebnis';
+import { Degradations } from '../../src/infra/result';
 import { viewOf, guardFor } from './middleware';
 import type { ErfassungsArt } from '../../src/collection';
-import { vertragsRouter, type Anfrage } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { vertragsRouter, type Anfrage } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 /** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */
 function withoutClearAmount<T extends { amount: number | null }>(summe: T) {

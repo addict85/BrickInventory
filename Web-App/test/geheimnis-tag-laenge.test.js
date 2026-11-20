@@ -1,5 +1,5 @@
 /**
- * AES-GCM öffnet nur mit vollem 16-Byte-Tag (src/infra/geheimnis.ts): Ein Geheimtext mit
+ * AES-GCM öffnet nur mit vollem 16-Byte-Tag (src/infra/secret.ts): Ein Geheimtext mit
  * gekürztem Tag oder zu kurzer Wert ist unlesbar, ein regulärer bleibt lesbar.
  *
  * Gegenproben (16.11.2026 gemessen):
@@ -15,7 +15,7 @@ const crypto = require('node:crypto');
 process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const g = _req('src/infra/geheimnis.js');
+const g = _req('src/infra/secret.js');
 
 /** Derselbe Teilschlüssel wie v2Key(): Der Test fälscht, was ein Angreifer probieren würde. */
 const v2 = Buffer.from(

@@ -36,7 +36,7 @@ const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const g = _req('src/infra/geheimnis.js');
+const g = _req('src/infra/secret.js');
 const gr = {
   ..._req('src/vouchers/repository/vouchers.js'),
   ...require('./helpers/sources').testArea('vouchers').vouchers,
@@ -207,7 +207,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
 
     // Ein Altbestand trägt die Marke der Umschlüsselung noch nicht (die Testvorlage schon).
     await require('./helpers/sources').testArea('jobQueue').laufzustand.deleteState('altbestand_v2');
-    await _req('startup/datenbank.js').prepareDatabaseBefore(testAccess(), require('./helpers/sources').testServices());
+    await _req('startup/database.js').prepareDatabaseBefore(testAccess(), require('./helpers/sources').testServices());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
     assert.ok(v.number.startsWith('v2:') && v.pin.startsWith('v2:'), JSON.stringify(v));

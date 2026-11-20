@@ -114,7 +114,7 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   assert.match(src.slice(i, i + 900), /deleteSetFor\(viewOf\(req\)/, 'Die Route löscht nicht über den Dienst');
   const dienst = require('./helpers/sources').functionBody(
-    fs.readFileSync(path.join(ROOT, 'src/sets/loeschen.ts'), 'utf8'),
+    fs.readFileSync(path.join(ROOT, 'src/sets/delete.ts'), 'utf8'),
     'deleteSetFor',
   );
   assert.match(

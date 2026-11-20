@@ -23,7 +23,7 @@ const { bis } = require('./helpers/zeit');
 test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testData();
-  const { buildServices } = _req('startup/verdrahtung.js');
+  const { buildServices } = _req('startup/wiring.js');
   // Zwei Zugänge wie zwei Prozesse (Web und Jobs).
   const zugaenge = [createDb(dbKonfigFromEnvironment()), createDb(dbKonfigFromEnvironment())];
   const [a, b] = zugaenge.map(z => buildServices(z));

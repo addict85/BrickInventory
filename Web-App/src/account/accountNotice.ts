@@ -1,8 +1,8 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
 import type { ResetSideEffects, AccountNotice } from '../mail';
-import { logAndContinue, reportAndDeliver } from '../infra/fehler';
-import { inSystemContext } from '../infra/kontoKontext';
+import { logAndContinue, reportAndDeliver } from '../infra/error';
+import { inSystemContext } from '../infra/accountContext';
 import type { AccountContext } from './context';
 
 type Angaben = {

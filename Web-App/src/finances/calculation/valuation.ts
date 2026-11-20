@@ -2,13 +2,13 @@
  * trägt die Gewinnrechnung, nicht umgekehrt. Gelesen wird nur der Preis-Cache:
  * Fehlende Preise holt der Auftrag „preise_nachladen“, nicht die Anfrage. */
 
-import { logAndContinue } from '../../infra/fehler';
+import { logAndContinue } from '../../infra/error';
 import type * as repo from '../repository/valuation';
 import { asIds, type Sicht } from '../../household';
 import { hatPrice, marketPriceFrom } from '../../catalog';
 import { resolveImageLocal, proxyImageUrl } from '../../images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
-import { withVersion } from '../../infra/setNummer';
+import { withVersion } from '../../infra/setNumber';
 import {
   DEFAULT_PRICE_CONDITION,
   parallelLimit,
@@ -27,7 +27,7 @@ import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 import type { Nutzlast } from '../../jobQueue';
 import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../priceItems';
-import { errorText } from '../../infra/fehlerTexte';
+import { errorText } from '../../infra/errorTexts';
 import type { FinancesContext } from '../context';
 
 type Zustand = 'N' | 'U';

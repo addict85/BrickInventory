@@ -1,5 +1,5 @@
 /**
- * Es läuft genau ein Web-Prozess je Datenbank (startup/einzelinstanz.ts): Drossel,
+ * Es läuft genau ein Web-Prozess je Datenbank (startup/singleInstance.ts): Drossel,
  * PDF-Tickets und Zwischenspeicher liegen in seinem Speicher. Ein zweiter wartet
  * auf das Ende des ersten und gibt dann mit klarer Meldung auf; reisst die Sperr-
  * verbindung ab, holt der Prozess die Sperre zurück oder gibt auf.
@@ -37,7 +37,7 @@ const SHORT = { wartenMs: 300, taktMs: 50 };
 test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
-  const { holdWebLock: realLock, SecondWebProcess } = _req('startup/einzelinstanz.js');
+  const { holdWebLock: realLock, SecondWebProcess } = _req('startup/singleInstance.js');
   // Jede gehaltene Sperre wird am Ende freigegeben, auch wenn ein Fall vorher scheitert.
   const offen = new Set();
   const holdWebLock = async (zugang, o) => {

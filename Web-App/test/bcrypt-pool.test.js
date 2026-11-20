@@ -101,7 +101,7 @@ test('ein untätiger Arbeiter endet nach der Leerlaufzeit', async t => {
 
 test('die Zahl der Arbeiter ist gedeckelt', () => {
   const { bcryptArbeiter, quotaCores } = _req('src/account/bcryptLimit.js');
-  const { ladeKonfig } = _req('src/infra/konfig.js');
+  const { ladeKonfig } = _req('src/infra/config.js');
   assert.equal(bcryptArbeiter(null, 64, null), 4, '64 Kerne ohne Kontingent');
   assert.equal(bcryptArbeiter(null, 64, 1), 2, '64 Kerne, Kontingent 1');
   assert.equal(bcryptArbeiter(null, 3, null), 3);

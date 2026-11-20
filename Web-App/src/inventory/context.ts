@@ -1,6 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { mit, withContract, type Kontext } from '../infra/bereich';
+import { mit, withContract, type Kontext } from '../infra/area';
 import type { InventoryReadContract } from './readContract';
 import * as bestandExport from './repository/inventoryExport';
 import * as gemeinsam from './repository/shared';
@@ -15,7 +15,7 @@ import type { HouseholdServices } from '../household';
 import type { AccountServices } from '../account';
 import type { CatalogServices } from '../catalog';
 import type { FinancesServices } from '../finances';
-import type { Uhr } from '../infra/uhr';
+import type { Uhr } from '../infra/clock';
 
 export interface InventoryDependencies {
   uhr: Uhr;

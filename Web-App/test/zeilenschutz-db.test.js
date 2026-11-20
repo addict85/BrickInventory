@@ -74,17 +74,17 @@ const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
 const { testName, cleanRemainder, id } = require('./helpers/testnamen');
 const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
-const { inSystemContext, asRequest } = _req('src/infra/kontoKontext.js');
+const { inSystemContext, asRequest } = _req('src/infra/accountContext.js');
 
 const ROLLE = testName('rows');
 const SYSTEM = testName('zeilsys');
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = rows => [...new Set(rows.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
-/** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut, samt ihren Kontexten. */
+/** Alle Bereiche über einen Zugang, wie startup/wiring.ts sie baut, samt ihren Kontexten. */
 const buildWith = z => {
   const contexts = {};
-  const d = _req('startup/verdrahtung.js').buildServices(z, {
+  const d = _req('startup/wiring.js').buildServices(z, {
     contexts,
   });
   return { d, contexts };
@@ -221,7 +221,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('wechselkurse', 'nacharbeit', 'preise')");
     st.after(leeren);
     const A_ = _req('src/jobQueue/service.js');
-    const { createWorker } = _req('jobs/auftragsWorker.js');
+    const { createWorker } = _req('jobs/jobWorker.js');
     await leeren();
     const gesehen = {};
     const see = name => async () => {

@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
-import { mit, buildArea, type Inspect } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
+import { mit, buildArea, type Inspect } from '../infra/area';
 import * as queries from './queries';
 import * as service from './service';
 import * as manualMinifigs from './manualMinifigs';

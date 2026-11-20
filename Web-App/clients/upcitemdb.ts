@@ -4,7 +4,7 @@
  * src/catalog/productTitle.ts.
  */
 import type { Rebrickable } from './rebrickable';
-import { reportAndDeliver } from '../src/infra/fehler';
+import { reportAndDeliver } from '../src/infra/error';
 
 export async function productTitle(
   httpsGetRobust: Rebrickable['httpsGetRobust'],

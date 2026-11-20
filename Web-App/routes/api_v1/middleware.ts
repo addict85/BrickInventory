@@ -1,6 +1,6 @@
 /** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
  * die Prüfung versehentlich weglässt. */
-import { reportError } from '../../src/infra/fehler';
+import { reportError } from '../../src/infra/error';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { toLargeId } from '../../src/infra/validate';
@@ -12,7 +12,7 @@ import {
   nutzerId,
   zweiterFaktorPflicht,
 } from '../../src/account/http/login';
-import { receiptsAccountSpace, type Schranke } from '../../src/http/kontoSchranke';
+import { receiptsAccountSpace, type Schranke } from '../../src/http/accountLimit';
 import { requireRelease } from '../../src/account/http/stepGuard';
 import type { Sicht } from '../../src/household';
 
@@ -21,9 +21,9 @@ export const viewOf = (req: AuthedRequest & { abfrage: { accounts?: string | und
   nutzer: req.apiUser.user_id,
   konten: req.abfrage.accounts,
 });
-import { sendError } from '../../src/http/httpAntwort';
-import { Fachfehler, fachfehler } from '../../src/infra/fehlerTexte';
-import { guard } from '../../src/http/vertragsRouter';
+import { sendError } from '../../src/http/httpResponse';
+import { Fachfehler, fachfehler } from '../../src/infra/errorTexts';
+import { guard } from '../../src/http/contractRouter';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
   const auth = req.headers.authorization || '';

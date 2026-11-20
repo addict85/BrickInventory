@@ -208,10 +208,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
       assert.ok(z, `${k.nr} kam nicht zurück`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
       assert.equal(
-        _req('src/infra/geheimnis.js').decrypt(
-          z.pin,
-          _req('src/vouchers/repository/vouchers.js').pinContext(MAIN, z.id),
-        ),
+        _req('src/infra/secret.js').decrypt(z.pin, _req('src/vouchers/repository/vouchers.js').pinContext(MAIN, z.id)),
         k.pin,
         `${k.nr}: PIN ${z.pin} statt ${k.pin}`,
       );

@@ -30,7 +30,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const g = _req('src/infra/geheimnis.js');
+const g = _req('src/infra/secret.js');
 
 const NAME = `geheim_${process.pid}`;
 

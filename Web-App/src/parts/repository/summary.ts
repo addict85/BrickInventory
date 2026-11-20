@@ -1,8 +1,8 @@
-import { lagerorte } from '../../../db/bestandSicht';
+import { lagerorte } from '../../../db/inventoryView';
 import type { DbInterface } from '../../../db/database';
-import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
+import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/stockQuantity';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import { teilSichtJoin, TEIL } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
 
 /** State of an account's raw data and whether catalog changes are pending (migration 0079). */

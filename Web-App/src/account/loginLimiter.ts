@@ -1,11 +1,11 @@
 /** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
 import crypto from 'node:crypto';
 import { singleValue } from '../infra/validate';
-import { reportAndDeliver } from '../infra/fehler';
-import { searchValue } from '../infra/geheimnis';
-import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
+import { reportAndDeliver } from '../infra/error';
+import { searchValue } from '../infra/secret';
+import { fachfehler, type ErrorCode } from '../infra/errorTexts';
 import type { AccountContext } from './context';
-import { drosselAdresse } from '../infra/drosselAdresse';
+import { drosselAdresse } from '../infra/throttleAddress';
 
 export const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;

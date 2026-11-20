@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 import type { FinancesReadContract } from '../readContract';
 import { marktpreisSql } from '../../../db/geldSql';
-import type { Tabellen } from '../../../db/zeilen';
+import type { Tabellen } from '../../../db/rows';
 
 export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 

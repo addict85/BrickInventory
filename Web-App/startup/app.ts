@@ -6,9 +6,9 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import type { Pool } from 'pg';
-import type { Konfig } from '../src/infra/konfig';
-import { requestContext, anfrageKennung } from '../src/infra/protokoll';
-import { errorResponse, unknownApiPath } from '../src/http/httpAntwort';
+import type { Konfig } from '../src/infra/config';
+import { requestContext, anfrageKennung } from '../src/infra/log';
+import { errorResponse, unknownApiPath } from '../src/http/httpResponse';
 import { sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks';
 import {
   touchMs,
@@ -21,28 +21,28 @@ import {
 import { startPageStyleHash, type ProfileServices } from '../src/profile';
 import { checkSessionVersion } from '../src/account/http/sessionCheck';
 import type { AccountServices } from '../src/account';
-import { rememberRequest } from '../src/http/kontoMerken';
-import { proxyVertrauen } from '../src/infra/proxyVertrauen';
-import { proxyHinweis } from '../src/http/proxyHinweis';
-import { onlyOwnOrigin, onlyOwnHost } from '../src/http/herkunft';
+import { rememberRequest } from '../src/http/rememberAccount';
+import { proxyVertrauen } from '../src/infra/proxyTrust';
+import { proxyHinweis } from '../src/http/proxyHint';
+import { onlyOwnOrigin, onlyOwnHost } from '../src/http/origin';
 import { API_VERSION, API_MIN_APP, checkAppVersion } from '../src/http/apiVersion';
 import { PUBLIC_DIR } from '../src/infra/appPaths';
 import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
 import { guardFor, readBody } from '../routes/api_v1/middleware';
 import { stepChutzAtInbox } from '../src/account/http/stepGuard';
-import { apiDrossel } from '../src/http/apiDrossel';
+import { apiDrossel } from '../src/http/apiThrottle';
 import { idempotency } from '../src/idempotency/http/middleware';
-import { buildDataFilesRouter } from '../routes/datenDateien';
+import { buildDataFilesRouter } from '../routes/dataFiles';
 import { buildApiRouter } from '../routes/api_v1/index';
 import { buildAuthRouter } from '../routes/auth';
-import { buildCertificateRouter } from '../routes/zertifikat';
-import { buildCspReportRouter } from '../src/http/cspBericht';
+import { buildCertificateRouter } from '../routes/certificate';
+import { buildCspReportRouter } from '../src/http/cspReport';
 import { buildWellKnownRouter } from '../routes/wellKnown';
-import { buildGesundheitRouter } from '../routes/gesundheit';
-import { buildPagesRouter } from '../routes/seiten';
-import { checkContract } from '../src/http/vertragsRouter';
-import type { Dienste } from './verdrahtung';
+import { buildGesundheitRouter } from '../routes/health';
+import { buildPagesRouter } from '../routes/pages';
+import { checkContract } from '../src/http/contractRouter';
+import type { Dienste } from './wiring';
 
 export interface AppIngredients {
   /** Für den Sitzungsspeicher (user_sessions): der Pool der Systemrolle, die Laufzeitrolle liest sie nicht. */
@@ -50,7 +50,7 @@ export interface AppIngredients {
   konfig: Konfig;
   /** Geprüft in server.ts: Ein Platzhalter beendet dort den Start. */
   sitzungsGeheimnis: string;
-  /** Die Routen bekommen ihre Dienste von hier (startup/verdrahtung.ts, buildServices). */
+  /** Die Routen bekommen ihre Dienste von hier (startup/wiring.ts, buildServices). */
   dienste: Dienste;
   /** Setzt req.session; ohne Angabe express-session über user_sessions. Ein Test stellt
    * hier seine Sitzung, die Prüfungen danach (Version, Höchstdauer) bleiben die echten. */
@@ -95,7 +95,7 @@ function baselineProtection(app: express.Express, k: Konfig): void {
   // Das Konto der Anfrage für Zähler tief unten (src/externalSources/apiQuota.ts).
   app.use(rememberRequest);
 
-  // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
+  // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyTrust.ts).
   if (k.operation) {
     app.set('trust proxy', proxyVertrauen(k.trustProxy, k.proxyNetworkConfirmed));
   }
@@ -131,7 +131,7 @@ function baselineProtection(app: express.Express, k: Konfig): void {
     checkAppVersion,
   );
 
-  // Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/protokoll.ts besteht.
+  // Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/log.ts besteht.
   app.use((req, res, next) => {
     const rid = anfrageKennung(req.headers['x-request-id']);
     res.setHeader('X-Request-Id', rid);
@@ -269,7 +269,7 @@ function apiInbox(app: express.Express, d: Dienste): void {
   // bleibt als zweite Linie.
   app.use('/api/v1', guardFor(d.account).loginAtInbox);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
-  // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
+  // ihren Rumpf nicht mehr lesen (src/http/apiThrottle.ts).
   app.use('/api/v1', apiDrossel);
   // Heikle Schritte eines App-Tokens erst nach der Gerätesperre (src/account/http/stepGuard.ts).
   app.use('/api/v1', stepChutzAtInbox(d.account));

@@ -37,7 +37,7 @@ S.replaceServices('mail', {
 });
 const db = S.testData();
 const { hashePassword } = _req('src/account/passwordHash.js');
-const { searchValue } = _req('src/infra/geheimnis.js');
+const { searchValue } = _req('src/infra/secret.js');
 
 test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

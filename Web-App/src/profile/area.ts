@@ -1,6 +1,6 @@
-/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
-import { mit, buildArea, type Inspect } from '../infra/bereich';
-import { Faecher } from '../infra/zwischenspeicher';
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
+import { mit, buildArea, type Inspect } from '../infra/area';
+import { Faecher } from '../infra/cache';
 import * as setupStatus from './setupStatus';
 import * as indexHtml from './indexHtml';
 import { access, type ProfileDependencies, type ProfileContext } from './context';

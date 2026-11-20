@@ -8,7 +8,7 @@
  *   A  in txStand() (db/database.ts) die Zeile `if (freigabe.getStore() !== t) throw …`
  *      gestrichen → rot: „k.db im Rumpf wirft …“, „ein gefangenes k …“, „ein Dienst eines
  *      anderen Bereichs …“ (k.household lief still in der Transaktion)
- *   B  in gebundenAn() (src/infra/bereich.ts) die Abhängigkeiten ungehüllt weitergereicht
+ *   B  in gebundenAn() (src/infra/area.ts) die Abhängigkeiten ungehüllt weitergereicht
  *      (`aus[name] = wert`) → rot: „ein Dienst eines anderen Bereichs über t …“
  *      (UnboundQuery aus dem Haushalt)
  *   C  in transaction() (db/database.ts) den Vorlauf mit lockInventories() gestrichen → rot:
@@ -18,7 +18,7 @@
  *      (die zweite wartete auf die Sperre des grösseren Kontos)
  *   F  in anTransaktion() die Zeile `notification: huelle(…)` gestrichen → rot: „ein Signal
  *      über t …“ (notify() lief über den ungebundenen Zugang und verschluckte UnboundQuery)
- *   E  in imSystemrahmen() (src/infra/bereich.ts) statt zu werfen wieder `return f()`
+ *   E  in imSystemrahmen() (src/infra/area.ts) statt zu werfen wieder `return f()`
  *      → rot: „ein Dienst im Systemrahmen in einer Transaktion ohne ihn wirft“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -33,8 +33,8 @@ const { buildAndRequire, testContext, testAccess, testData } = require('./helper
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const dbModule = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
-const { asRequest, inSystemContext } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'kontoKontext.js'));
-const { SystemrahmenInTransaction } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'bereich.js'));
+const { asRequest, inSystemContext } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'accountContext.js'));
+const { SystemrahmenInTransaction } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'area.js'));
 
 const PID = 'SELECT pg_backend_pid() AS p';
 const { bis } = require('./helpers/zeit');

@@ -1,9 +1,9 @@
 /** /api/v1/sets — Anlegen, Lesen, Ändern und Löschen eines Sets. Lager und Alarme,
  * Import und Anleitungen hängen als eigene Router daneben (index.ts). Die Arbeit liegt in src/sets/. */
 import { viewOf, guardFor } from './middleware';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
 export function buildSetsRouter(d: Pick<Dienste, 'household' | 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);

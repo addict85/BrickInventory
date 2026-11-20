@@ -57,7 +57,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   const gesendet = mailAttrappe();
   t.after(await enterMailServer(db));
   const zf = _req('src/factors/secondFactor.js');
-  const { encrypt } = _req('src/infra/geheimnis.js');
+  const { encrypt } = _req('src/infra/secret.js');
   const P = process.pid;
   const OHNE = `tg_ohne_${P}`,
     MIT = `tg_mit_${P}`,

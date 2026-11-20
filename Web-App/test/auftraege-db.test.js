@@ -1,5 +1,5 @@
 /**
- * Die Auftragstabelle (Migration 0066, src/jobQueue/jobs.ts, jobs/auftragsWorker.ts):
+ * Die Auftragstabelle (Migration 0066, src/jobQueue/jobs.ts, jobs/jobWorker.ts):
  * Ein Auftrag überlebt das Ende seines Prozesses, ein Fehler wird wiederholt
  * und endet nach dem letzten Versuch als 'fehler', und zwei Worker führen
  * nie denselben Auftrag aus.
@@ -45,7 +45,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
     ..._req('src/jobQueue/service.js'),
     ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
-  const { createWorker } = _req('jobs/auftragsWorker.js');
+  const { createWorker } = _req('jobs/jobWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;
   const MARKE = `test-${process.pid}`;
@@ -206,7 +206,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
 
     await t.test('verschieben zählt nur, wenn es soll', async () => {
       await leeren();
-      const { JobMove } = _req('jobs/auftragsWorker.js');
+      const { JobMove } = _req('jobs/jobWorker.js');
       let zaehlt = false;
       const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
@@ -297,7 +297,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
       const pdfA = _req('src/catalog/pdf/pdfJobs.js');
       const jobId = _req('src/catalog/pdf/pdfJobs.js').newJobId(Date.now());
-      const worker = _req('jobs/auftraegeStarten.js').startJobWorker(require('./helpers/sources').testServices(), {
+      const worker = _req('jobs/startJobs.js').startJobWorker(require('./helpers/sources').testServices(), {
         arten: ['pdf'],
         taktMs: 50,
       });

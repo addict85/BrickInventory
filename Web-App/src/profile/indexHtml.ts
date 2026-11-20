@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { DESIGNS } from '../settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { ProfileContext } from './context';
 import { prozessweit } from '../infra/prozessweit';
 

@@ -1,8 +1,8 @@
 /** Die Fabrik der Bilder. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern
  * dieses Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess teilen nichts. */
 import type { Db } from '../../db/database';
-import { mit, buildArea, type Inspect } from '../infra/bereich';
-import { Faecher } from '../infra/zwischenspeicher';
+import { mit, buildArea, type Inspect } from '../infra/area';
+import { Faecher } from '../infra/cache';
 import * as imageDemandService from './imageDemand';
 import * as bildbedarfLauf from './imageDemandRun';
 import { imagesJobTypes } from './jobTypes';
@@ -19,7 +19,7 @@ import { zugang, type ImageWorker, type ImagesDependencies, type ImagesContext }
 
 export type { ImageWorker, ImagesDependencies, ImagesContext } from './context';
 
-/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts buildServices). */
+/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/wiring.ts buildServices). */
 export function createImages(
   a: Omit<ImagesDependencies, 'faecher' | 'bildwerk'> & { bildwerk?: ImageWorker | undefined },
   inspect?: Inspect<ImagesContext>,

@@ -27,7 +27,7 @@ export function passwordToShortText() {
   return tRaw('settings.password.too_short', { n: PASSWORD_MIN_CHARS });
 }
 
-/** Dieselbe Grenze wie PASSWORD_MAX_CHARS im Server (src/infra/passwortRegel.ts). */
+/** Dieselbe Grenze wie PASSWORD_MAX_CHARS im Server (src/infra/passwordRule.ts). */
 export const PASSWORD_MAX_CHARS = 1024;
 
 /**

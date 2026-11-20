@@ -1,6 +1,6 @@
 /**
  * Antworten von Rebrickable und Brickset laufen durch ihre zod-Schemas
- * (clients/antworten.ts): Eine passende Antwort kommt typisiert an, eine
+ * (clients/responses.ts): Eine passende Antwort kommt typisiert an, eine
  * unerwartete Form ist ein Fehler statt leerer Felder. HTTP über eine
  * Attrappe von https.get, Schlüssel und Kontingent über die echte Datenbank.
  *
@@ -26,7 +26,7 @@ const db = testData();
 /** Jede Anfrage bekommt 200 mit `koerper` als JSON. */
 async function withBody(koerper, lauf) {
   const echt = https.get;
-  // @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+  // @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
   https.get = (_u, _o, atResponse) => {
     const r = Object.assign(Readable.from([Buffer.from(JSON.stringify(koerper))]), { statusCode: 200, headers: {} });
     // @ts-expect-error — kein vollständiges IncomingMessage

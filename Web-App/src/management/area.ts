@@ -1,5 +1,5 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
-import { mit, buildArea, type Inspect } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
+import { mit, buildArea, type Inspect } from '../infra/area';
 import { managementJobTypes } from './jobTypes';
 import * as dataExport from './dataExport';
 import * as diagnostics from './diagnostics';

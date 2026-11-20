@@ -1,11 +1,11 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
 import { guardFor } from './middleware';
-import { proxyHintStatus } from '../../src/http/proxyHinweis';
-import { pageFrom } from '../../src/infra/seite';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler } from '../../src/infra/fehlerTexte';
+import { proxyHintStatus } from '../../src/http/proxyHint';
+import { pageFrom } from '../../src/infra/page';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
+import { fachfehler } from '../../src/infra/errorTexts';
 
 export function buildAdminRouter(
   d: Pick<Dienste, 'settings' | 'jobQueue' | 'catalog' | 'account' | 'externalSources' | 'management'>,

@@ -24,7 +24,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { maintainTable } = _req('db/tabellePflegen.js');
+const { maintainTable } = _req('db/maintainTable.js');
 
 /** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
 async function stand(tabelle) {

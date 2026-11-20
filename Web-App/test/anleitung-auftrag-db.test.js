@@ -55,7 +55,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     ..._req('src/jobQueue/service.js'),
     ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
-  const { JobMove } = _req('jobs/auftragsWorker.js');
+  const { JobMove } = _req('jobs/jobWorker.js');
   const pause = () => A.liesPause('anleitung');
   const inSec = async () => {
     const p = await pause();

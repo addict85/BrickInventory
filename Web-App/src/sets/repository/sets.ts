@@ -1,4 +1,4 @@
-import { lagerorte } from '../../../db/bestandSicht';
+import { lagerorte } from '../../../db/inventoryView';
 import {
   quantitySumSql,
   erfassungsTagSql,
@@ -6,11 +6,11 @@ import {
   mengeJoin,
   inKontowaehrung,
   kontowaehrungJoin,
-} from '../../../db/bestandsmenge';
+} from '../../../db/stockQuantity';
 import { fromTable } from '../../infra/validate';
 import type { DbInterface, Zeile } from '../../../db/database';
-import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
-import { setStammJoin, SET } from '../../../db/katalogSicht';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSearch';
+import { setStammJoin, SET } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { lockUntilToEnd } from '../../../db/txLock';
 
@@ -106,7 +106,7 @@ const SETS_CSV_SQL = `
          -- unerwarteten Lage nicht ganz ausfaellt.
          -- COALESCE(..., 0) und nicht NULL: Eine Set-Zeile ohne Erfassung
          -- bedeutet null Exemplare — dieselbe Lesart wie in
-         -- db/bestandsmenge.ts (mengeAus mit 0). Ein leeres Feld im Export
+         -- db/stockQuantity.ts (mengeAus mit 0). Ein leeres Feld im Export
          -- hiesse „keine Angabe", und das ist eine andere Aussage.
          COALESCE(a.quantity, 0) AS quantity,
          a.purchase_price AS purchase_price,
@@ -174,7 +174,7 @@ function setsSource(uids: number[]): string {
                MIN(${SET.teile}) AS pieces, MIN(c.minifigs) AS minifigs,
                -- Die Menge kommt aus den ERFASSUNGEN (Migration 0036 hat
                -- sets.quantity geloescht). Die gruppierte Quelle haengt
-               -- db/bestandsmenge.ts an — hier stand SUM(s.quantity).
+               -- db/stockQuantity.ts an — hier stand SUM(s.quantity).
                SUM(${mengeAus('sm', 0)})::int AS quantity,
                MIN(c.image_url) AS image_url, MIN(c.image_local) AS image_local,
                MIN(s.added_at) AS added_at,

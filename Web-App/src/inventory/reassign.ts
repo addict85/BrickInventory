@@ -1,4 +1,4 @@
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import { addPurchaseAtTag } from './acquisitions';
 import { putRowAn } from './content';
 import * as mengen from './repository/manualQuantities';

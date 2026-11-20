@@ -35,9 +35,9 @@ require('./helpers/sources').replaceServices('mail', {
 });
 const db = S.testData();
 const { dataOrSkip } = require('./helpers/db');
-const protokoll = _req('src/infra/protokoll.js');
+const protokoll = _req('src/infra/log.js');
 const { checkConfirmation } = _req('src/account/passwordConfirmation.js');
-const { STATUS_THE_KIND } = _req('src/http/fehlerArt.js');
+const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Konto-Bremse-Passwort-1',
   FALSCH = 'Falsch-geraten-0815';

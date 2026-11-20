@@ -1,13 +1,13 @@
 /** CSV-Import der Sets: Zeilen lesen, Auftrag starten, Stand melden. */
-import { beforeThe, fehlertext, publicError } from '../infra/fehler';
+import { beforeThe, fehlertext, publicError } from '../infra/error';
 import { buildJobStatus } from '../jobQueue';
-import { normalisiereSetNummer } from '../infra/setNummer';
+import { normalisiereSetNummer } from '../infra/setNumber';
 import { csvReadIn, defusingUndo, csvDatum, rowsList } from '../infra/csvExport';
-import { fachfehler, type Sprache } from '../infra/fehlerTexte';
+import { fachfehler, type Sprache } from '../infra/errorTexts';
 import { randomUUID } from 'node:crypto';
 import * as repo from './repository/setDetail';
-import { versuche } from '../infra/ergebnis';
-import type { SetsContext } from './kontext';
+import { versuche } from '../infra/result';
+import type { SetsContext } from './context';
 
 export interface ImportZeile {
   sn: string;

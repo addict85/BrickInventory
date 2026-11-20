@@ -5,7 +5,7 @@ import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { DAILY_JOBS } from './timesOfDay';
 import { rescheduleJobs } from './service';
 import { jsonOrNull } from '../infra/validate';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import { KonfigExport } from '../contract/settings';
 import type { ManagementContext } from './context';
 

@@ -215,7 +215,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
 
     await t.test('weist schreibende Anfragen fremder Seiten ab', async () => {
       const r = await hole(port, '/api/v1/auth/logout', { methode: 'POST', kopf: { 'sec-fetch-site': 'cross-site' } });
-      assert.equal(r.status, 403, 'src/http/herkunft.ts hängt nicht in server.ts');
+      assert.equal(r.status, 403, 'src/http/origin.ts hängt nicht in server.ts');
     });
 
     await t.test('SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück', async () => {

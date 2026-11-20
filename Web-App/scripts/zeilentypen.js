@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Zeilentypen aus dem Schema: liest db/schema-stand.sql und schreibt db/zeilen.ts. Ein
+ * Zeilentypen aus dem Schema: liest db/schema-stand.sql und schreibt db/rows.ts. Ein
  * Repository bindet seine Zeile daran (`Spalten<'price_cache', 'avg_price'>`), statt die
  * Spaltentypen neu zu raten; NUMERIC kommt als Zahl an (db/database.ts), BIGINT als Text.
  * `node scripts/zeilentypen.js --pruefen` meldet nur, ob die Datei dem Schema entspricht.
@@ -11,7 +11,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SCHEMA = path.join(ROOT, 'db', 'schema-stand.sql');
-const ZIEL = path.join(ROOT, 'db', 'zeilen.ts');
+const ZIEL = path.join(ROOT, 'db', 'rows.ts');
 
 /** Was node-pg (mit dem NUMERIC-Leser aus db/database.ts) für einen PostgreSQL-Typ liefert. */
 /** @type {[RegExp, string][]} */
@@ -85,10 +85,10 @@ if (require.main === module) {
   if (process.argv.includes('--pruefen')) {
     const alt = fs.existsSync(ZIEL) ? fs.readFileSync(ZIEL, 'utf8') : '';
     if (alt !== neu) {
-      console.error('[zeilentypen] db/zeilen.ts passt nicht zum Schema: npm run schema:zeilen');
+      console.error('[zeilentypen] db/rows.ts passt nicht zum Schema: npm run schema:zeilen');
       process.exit(1);
     }
-    console.log('[zeilentypen] db/zeilen.ts passt zum Schema');
+    console.log('[zeilentypen] db/rows.ts passt zum Schema');
   } else {
     fs.writeFileSync(ZIEL, neu);
     console.log(`[zeilentypen] ${path.relative(ROOT, ZIEL)} geschrieben`);

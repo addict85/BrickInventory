@@ -1,6 +1,6 @@
-/** Was der Bestand über Lesebausteine liest; Spalten wie in db/bestandSicht.ts und db/bestandsmenge.ts.
+/** Was der Bestand über Lesebausteine liest; Spalten wie in db/inventoryView.ts und db/stockQuantity.ts.
  * Nur die Anleitungen liegen höher (src/sets), Sets und Käufe gehören ihm. Ohne Import, damit
- * Repositories ihn lesen dürfen (Konten wie db/konten.ts). */
+ * Repositories ihn lesen dürfen (Konten wie db/accounts.ts). */
 type Konten = `= $${number}` | `= ANY($${number})`;
 
 export interface InventoryReadContract {

@@ -25,7 +25,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('CSP-Berichte', async t => {
   const app = express();
   app.set('trust proxy', true);
-  app.use(_req('src/http/cspBericht.js').buildCspReportRouter());
+  app.use(_req('src/http/cspReport.js').buildCspReportRouter());
   const srv = app.listen(0);
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/csp-bericht`;
@@ -114,7 +114,7 @@ test('CSP-Berichte', async t => {
   });
 
   await t.test('was gedrosselt wurde, steht als eine Sammelzeile im Protokoll', () => {
-    const { cspMessageFree } = _req('src/http/cspBericht.js');
+    const { cspMessageFree } = _req('src/http/cspReport.js');
     const morgen = Date.now() + 86_400_000;
     // Ein neues Fenster, frei von den Meldungen der Teiltests davor.
     cspMessageFree('10.1.1.2', morgen);
@@ -128,7 +128,7 @@ test('CSP-Berichte', async t => {
   });
 
   await t.test('verkürzte IPv6-Adressen aus einem /64 zählen als ein Absender', () => {
-    const { cspMessageFree } = _req('src/http/cspBericht.js');
+    const { cspMessageFree } = _req('src/http/cspReport.js');
     const tag = Date.now() + 2 * 86_400_000;
     cspMessageFree('10.1.1.3', tag);
     const frei = [

@@ -1,10 +1,10 @@
-import { encrypt, decrypt, umschluesseln, kontext } from '../infra/geheimnis';
-import { fachfehler, fileError } from '../infra/fehlerTexte';
+import { encrypt, decrypt, umschluesseln, kontext } from '../infra/secret';
+import { fachfehler, fileError } from '../infra/errorTexts';
 import { GLOBAL_RULES, DESIGNS, type GlobalKey } from '../contract/globalRules';
 import * as repo from './repository/values';
 import type { DbInterface } from '../../db/database';
 import type { SettingsContext } from './context';
-import { processEvent } from '../infra/ereignis';
+import { processEvent } from '../infra/event';
 
 /** Stored as text; with a fallback the result is text or the fallback, never `any`. */
 export async function getSetting(k: SettingsContext, userId: number, key: string): Promise<string | null | undefined>;
@@ -30,7 +30,7 @@ export async function settingWithAccess(
   return reveal(key, await repo.globalValue(db, key)) || fallback;
 }
 
-/** Secret values sit encrypted (src/infra/geheimnis.ts). */
+/** Secret values sit encrypted (src/infra/secret.ts). */
 function reveal(key: string, value: string | null | undefined): string | null | undefined {
   return SECRET_KEYS.has(key) ? decrypt(value, globalContext(key)) : value;
 }

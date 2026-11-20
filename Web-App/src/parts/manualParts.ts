@@ -1,15 +1,15 @@
 /** Here and not in a route, because the session route and the v1 factory both
  * reach for it — a route shouldn't import another route. */
 import type { Sicht } from '../household';
-import { publicError } from '../infra/fehler';
-import { Degradations, versuche } from '../infra/ergebnis';
+import { publicError } from '../infra/error';
+import { Degradations, versuche } from '../infra/result';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { mengenwunsch } from '../inventory';
 import { KEINE_FARBE } from '../catalog';
 import type { Quellen } from '../externalSources';
 import * as V0 from '../infra/validate';
 import { moneyInput } from '../infra/geld';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import type { PartsContext } from './context';
 
 // One calculation for adding, editing and CSV import; without a value, price/unit stays empty.

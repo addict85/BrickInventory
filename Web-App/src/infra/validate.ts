@@ -4,7 +4,7 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fachfehler, type ErrorCode } from './fehlerTexte';
+import { fachfehler, type ErrorCode } from './errorTexts';
 import { moneyInput } from './geld';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */

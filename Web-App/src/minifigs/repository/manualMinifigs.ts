@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
-import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { EntryRow } from '../../../db/bestandsmenge';
-import type { Spalten } from '../../../db/zeilen';
+import { blJoin, blNummerSql } from '../../../db/blMappingSql';
+import type { EntryRow } from '../../../db/stockQuantity';
+import type { Spalten } from '../../../db/rows';
 
 /** The BrickLink number sits on the minifig (bl_mapping), not on the instance. */
 

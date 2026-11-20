@@ -1,5 +1,5 @@
-import { logAndContinue } from '../infra/fehler';
-import { withVersion } from '../infra/setNummer';
+import { logAndContinue } from '../infra/error';
+import { withVersion } from '../infra/setNumber';
 import { rememberMinifigs, merkeSetFiguren } from './catalogMaintenance';
 import type { CatalogContext } from './context';
 

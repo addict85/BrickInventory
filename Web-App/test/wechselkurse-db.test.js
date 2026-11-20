@@ -97,7 +97,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   });
 
   await t.test('nur HTTPS auf den Host der EZB', async () => {
-    const { ecbFetch } = _req('clients/ezb.js');
+    const { ecbFetch } = _req('clients/ecb.js');
     await assert.rejects(ecbFetch('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
     await assert.rejects(ecbFetch('https://ecb.example.org/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
   });

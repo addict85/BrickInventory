@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
-import type { Spalten } from '../../../db/zeilen';
+import type { Spalten } from '../../../db/rows';
 
 export async function setEntriesWithoutPrice(
   db: DbInterface,

@@ -2,7 +2,7 @@
 import type { JobKind } from './jobs';
 import { pullBefore, repeat, abortAb, endPause } from './service';
 import { hatSchedule, planeNext, pullPlanBefore } from './schedule';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import type { JobsContext } from './context';
 
 const HEARTBEAT_APPLIES_SEC = 120;

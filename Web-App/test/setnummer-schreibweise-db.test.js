@@ -32,7 +32,7 @@ require.cache[blPath].exports = Object.assign({}, echt, {
 });
 
 test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
-  const { withVersion, withoutVersion } = _req('src/infra/setNummer.js');
+  const { withVersion, withoutVersion } = _req('src/infra/setNumber.js');
   assert.equal(withVersion('10179'), '10179-1');
   assert.equal(withVersion('10179-1'), '10179-1');
   assert.equal(withVersion('75192-2'), '75192-2');
@@ -60,7 +60,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
     const { fetchPrice } = _req('src/finances/financeCalc.js');
 
-    // Gegenprobe: in src/infra/setNummer.ts das withVersion() aus catalogEntry()
+    // Gegenprobe: in src/infra/setNumber.ts das withVersion() aus catalogEntry()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
     for (const nummer of [BLANK, MITV]) {
       fetches = [];
@@ -123,7 +123,7 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   // Keine Ausnahmen: Zwei Stellen, die dieselbe Schreibweise ausrechnen, laufen auseinander.
   assert.deepEqual(
     eigene,
-    ['src/infra/setNummer.ts'],
+    ['src/infra/setNumber.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
       'zwei Stellen auseinander, die dasselbe meinen',
   );

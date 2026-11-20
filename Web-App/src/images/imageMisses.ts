@@ -1,5 +1,5 @@
-import { reportError } from '../infra/fehler';
-import { versuche } from '../infra/ergebnis';
+import { reportError } from '../infra/error';
+import { versuche } from '../infra/result';
 import type { ImagesContext } from './context';
 
 /** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */

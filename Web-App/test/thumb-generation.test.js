@@ -73,7 +73,7 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // ohneKommentare() statt eines //-Filters: Der Filter liess
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
-  // Die Bildroute (routes/seiten.ts) liefert über src/images/http/imageDelivery.ts;
+  // Die Bildroute (routes/pages.ts) liefert über src/images/http/imageDelivery.ts;
   // die Vorschau stösst originalInsteadOfPreview() dort an.
   const src = require('./helpers/sources').ohneKommentare(
     require('node:fs').readFileSync(path.join(__dirname, '..', 'src/images/http/imageDelivery.ts'), 'utf8'),

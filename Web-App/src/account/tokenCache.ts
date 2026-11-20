@@ -3,7 +3,7 @@
  * gelten darf er nur, solange ein Widerruf ihn sicher erreicht. */
 import type { TokenScope } from './repository/accesses';
 import { reportAccessChange } from './accessChange';
-import { processEvent } from '../infra/ereignis';
+import { processEvent } from '../infra/event';
 import type { AccountContext } from './context';
 
 /** Typisiert, weil ein vertippter Feldname `undefined` liefert und das in einer

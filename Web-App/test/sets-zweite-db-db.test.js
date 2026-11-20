@@ -5,17 +5,17 @@
  * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  currencyOf() in src/sets/dienst.ts wieder über getSetting(uid, …) →
+ *   A  currencyOf() in src/sets/service.ts wieder über getSetting(uid, …) →
  *      rot: „Währung aus der zweiten Datenbank“, „Preisalarm …“ (Währung des
  *      Alarms) und „der Prozesszugang blieb unberührt“
- *   B  deleteSetFor() in src/sets/loeschen.ts mit
+ *   B  deleteSetFor() in src/sets/delete.ts mit
  *      haushaltBereich().schreibbereich(s.nutzer) → rot: „der
  *      Prozesszugang blieb unberührt“
  *   C  setLocationOfSets() wieder über bestandBereich().locationService →
  *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   D  setPrice() in src/sets/preise.ts ruft fetchPrice() ohne den Zugang der
+ *   D  setPrice() in src/sets/prices.ts ruft fetchPrice() ohne den Zugang der
  *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
  *      Prozesszugang …“
  *   E  setPriceHistory() ruft priceHistorySet() ohne sk.finances → rot:
@@ -106,8 +106,8 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     `INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare) VALUES (77, '3001', 0, 4, false)`,
   );
 
-  // Wie der Server (startup/verdrahtung.ts), nur über den zweiten Zugang.
-  const { buildServices } = _req('startup/verdrahtung.js');
+  // Wie der Server (startup/wiring.ts), nur über den zweiten Zugang.
+  const { buildServices } = _req('startup/wiring.js');
   // Dienste ohne Schlüssel dafür rufen die Module über den Kontext dieses Zugangs.
   const contexts = {};
   const alle = buildServices(zweite, { contexts });
@@ -116,7 +116,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   t.after(() => prozess.zurueck());
 
   await t.test('Währung aus der zweiten Datenbank', async () => {
-    assert.equal(await require(path.join(ROOT, 'dist/src/sets/preise.js')).currencyOf(contexts.sets, uid), 'CHF');
+    assert.equal(await require(path.join(ROOT, 'dist/src/sets/prices.js')).currencyOf(contexts.sets, uid), 'CHF');
   });
 
   await t.test('Lagerort in der zweiten Datenbank', async () => {
@@ -155,7 +155,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   });
 
   await t.test('Teileliste aus dem Katalog der zweiten Datenbank, Bilderauftrag dort', async () => {
-    const r = await require(path.join(ROOT, 'dist/src/sets/inhalt.js')).partListOfSets(
+    const r = await require(path.join(ROOT, 'dist/src/sets/content.js')).partListOfSets(
       contexts.sets,
       SN,
       async () => {},

@@ -1,5 +1,5 @@
 /**
- * Der Bereich Sets bekommt Datenbank und Katalog übergeben (src/sets/bereich.ts):
+ * Der Bereich Sets bekommt Datenbank und Katalog übergeben (src/sets/area.ts):
  * Seine Dienste nehmen, was der Kontext ihnen gibt, nicht den Zugang des
  * Prozesses oder den Katalog einer anderen Verdrahtung.
  *
@@ -69,7 +69,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     notiz = [],
     processNote = [];
   const zugang = countingAccess(quellen.testAccess(), sql);
-  const { buildServices } = _req('startup/verdrahtung.js');
+  const { buildServices } = _req('startup/wiring.js');
   const alle = buildServices(zugang);
   Object.assign(alle.catalog, recording(notiz));
   const sets = alle.sets;

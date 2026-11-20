@@ -2,7 +2,7 @@
 import { type Nutzlast, checkAbort, type JobRun } from '../jobQueue';
 import type { ManagementContext } from './context';
 
-/** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
+/** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/secret.ts). */
 async function encryptSecrets(k: ManagementContext): Promise<void> {
   const n = (await k.factors.encryptLegacySecrets()) + (await k.vouchers.encryptLegacyFiles());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);

@@ -9,7 +9,7 @@
  *      Schreibweise wird berichtigt …“ ('2-1' fehlt)
  *   B  im UPDATE wanted die Bedingung `w.id = (SELECT min(y.id) …)` entfernt →
  *      rot: die Migration scheitert an wanted_user_id_set_number_condition_key
- *   C  in startup/verdrahtung.ts eine Art 'neu' ohne Migration angemeldet → rot:
+ *   C  in startup/wiring.ts eine Art 'neu' ohne Migration angemeldet → rot:
  *      „job_types kennt genau die angemeldeten Arten“ (15.11.2026)
  *   D  das ALTER TABLE jobs ADD CONSTRAINT auftraege_art_fkey entfernt →
  *      rot: „danach weist das Schema Unbekanntes ab“

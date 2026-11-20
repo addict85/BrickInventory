@@ -6,7 +6,7 @@
  * Gegenproben (12.11.2026 gemessen, je einzeln):
  *   A  in UPGRADE.md `<a id="eigene-datenbankrolle">` umbenannt → rot: „jeder
  *      Verweis auf UPGRADE.md trifft einen Anker“ (datenbank.ts, compose.yaml)
- *   B  in startup/datenbank.ts wieder „UPGRADE.md, Abschnitt 29“ → rot: „keine
+ *   B  in startup/database.ts wieder „UPGRADE.md, Abschnitt 29“ → rot: „keine
  *      Abschnittsnummern mehr“
  */
 const test = require('node:test');
@@ -64,7 +64,7 @@ test('jeder Verweis trifft einen Anker, keine Abschnittsnummern mehr; die Startm
   quellen.buildDist();
   const lauf = spawnSync(
     process.execPath,
-    ['-e', "require('./dist/startup/datenbank.js').warnAtSuperuser({ asSuperuserConnected: async () => true })"],
+    ['-e', "require('./dist/startup/database.js').warnAtSuperuser({ asSuperuserConnected: async () => true })"],
     { cwd: WEB, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DB_SUPERUSER_ERLAUBT: '' } },
   );
   assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);

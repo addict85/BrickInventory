@@ -2,7 +2,7 @@ import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import { newPool } from './bcryptPool';
-import { konfig } from '../infra/konfig';
+import { konfig } from '../infra/config';
 
 /** Jede Passwortprüfung kostet Rechenzeit und Speicher (argon2id, alte bcrypt-Hashes, passwortHash.ts).
  * Die Bremsen je Adresse und Konto helfen nicht gegen viele Adressen; diese Schranke hält die

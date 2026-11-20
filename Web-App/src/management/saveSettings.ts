@@ -1,8 +1,8 @@
 /** POST /settings ohne HTTP. Hier statt in src/settings, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
-import { fachfehler } from '../infra/fehlerTexte';
-import { inSystemContext } from '../infra/kontoKontext';
+import { fachfehler } from '../infra/errorTexts';
+import { inSystemContext } from '../infra/accountContext';
 import { GLOBAL_SETTINGS, ACCOUNT_SETTINGS } from '../contract/settings';
 import type { Eingabe } from '../contract';
 import { isSensitive } from './dataExport';

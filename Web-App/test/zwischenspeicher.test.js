@@ -1,5 +1,5 @@
 /**
- * Zwischenspeicher (src/infra/zwischenspeicher.ts): begrenzt, mit Frist je
+ * Zwischenspeicher (src/infra/cache.ts): begrenzt, mit Frist je
  * Eintrag; Fächer gehören zur Fabrik eines Bereichs, nicht zum Prozess.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { Zwischenspeicher, Faecher } = _req('src/infra/zwischenspeicher.js');
+const { Zwischenspeicher, Faecher } = _req('src/infra/cache.js');
 const { createCatalog } = _req('src/catalog/area.js');
 
 test('der älteste weicht, wenn der Speicher voll ist', () => {

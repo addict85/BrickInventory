@@ -2,7 +2,7 @@
  * Kontext; die Orte selbst (lagerort.ts) nehmen nur einen Zugang. */
 import type { InventoryContext } from './context';
 import * as orte from './repository/storageLocation';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler } from '../infra/errorTexts';
 import { locationsOf, DEFAULT_KEY, type Lagerort } from './storageLocation';
 
 /** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“. */

@@ -1,15 +1,15 @@
 /** Sets in Mengen und im Strom erfassen: CSV-Import samt Fortschritt, Export, Erfassen mit Ergänzung. */
 import type express from 'express';
-import { publicError } from '../../src/infra/fehler';
+import { publicError } from '../../src/infra/error';
 import { kontoSchranke, guardFor } from './middleware';
-import { csvReceive } from '../../src/http/dateiEmpfang';
+import { csvReceive } from '../../src/http/fileUpload';
 import { skippedHint } from '../../src/infra/csvExport';
-import { sendCsv } from '../../src/http/csvAntwort';
-import { responseLanguage, fachfehler } from '../../src/infra/fehlerTexte';
+import { sendCsv } from '../../src/http/csvResponse';
+import { responseLanguage, fachfehler } from '../../src/infra/errorTexts';
 import { openStream, StromGeschlossen, type Strom } from '../../src/account/http/stream';
 import { loginOrTokenGuard, signedInUserId } from '../../src/account/http/login';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 /** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
  * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein

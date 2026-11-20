@@ -1,8 +1,8 @@
-import { reportError } from '../infra/fehler';
+import { reportError } from '../infra/error';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/partColor';
-import { fachfehler } from '../infra/fehlerTexte';
-import { versuche } from '../infra/ergebnis';
+import { fachfehler } from '../infra/errorTexts';
+import { versuche } from '../infra/result';
 import type { PartsContext } from './context';
 
 // Fix a wrong color without re-entering the row.

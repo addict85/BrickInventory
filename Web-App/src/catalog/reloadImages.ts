@@ -1,5 +1,5 @@
 /** Fehlende Bilddateien nachladen: Verweise ohne Datei finden, laden oder leeren. */
-import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/fehler';
+import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/error';
 
 import { checkAbort, type JobRun } from '../jobQueue';
 import * as repo from './repository/partsEnrichment';
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import type { PoolClient } from 'pg';
 import path from 'node:path';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
 // „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare

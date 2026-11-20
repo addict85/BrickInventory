@@ -1,6 +1,6 @@
 import { viewOf, guardFor } from './middleware';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
 export function buildMiscRouter(d: Pick<Dienste, 'account' | 'inventory'>) {
   const { requireToken } = guardFor(d.account);

@@ -1,14 +1,14 @@
 /** What the services get; kept apart from area.ts so no import cycle forms. */
 import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/area';
 import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../account';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { Faecher } from '../infra/zwischenspeicher';
-import type { Uhr } from '../infra/uhr';
+import type { Faecher } from '../infra/cache';
+import type { Uhr } from '../infra/clock';
 
 export interface VoucherDependencies {
   uhr: Uhr;

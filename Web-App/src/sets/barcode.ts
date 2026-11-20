@@ -2,10 +2,10 @@
 import { isGuess, setnummerCandidates } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { RbSet, RbSetMinifig, rbPage } from '../externalSources';
-import { withVersion, normalisiereSetNummer } from '../infra/setNummer';
+import { withVersion, normalisiereSetNummer } from '../infra/setNumber';
 import * as repo from './repository/setDetail';
-import { versuche } from '../infra/ergebnis';
-import type { SetsContext } from './kontext';
+import { versuche } from '../infra/result';
+import type { SetsContext } from './context';
 
 export interface BarcodeHits {
   unsicher: boolean;

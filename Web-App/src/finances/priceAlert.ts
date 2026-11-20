@@ -1,12 +1,12 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
-import { reportError, fehlertext } from '../infra/fehler';
-import { fachfehler } from '../infra/fehlerTexte';
+import { reportError, fehlertext } from '../infra/error';
+import { fachfehler } from '../infra/errorTexts';
 import type { MailServices } from '../mail';
 import { toCsv, csvRowsFromRequest, skippedHint } from '../infra/csvExport';
-import { normalisiereSetNummer } from '../infra/setNummer';
+import { normalisiereSetNummer } from '../infra/setNumber';
 import * as repo from './repository/priceAlerts';
-import { versuche } from '../infra/ergebnis';
+import { versuche } from '../infra/result';
 import type { FinancesContext } from './context';
 
 export type Richtung = 'unter' | 'ueber';
@@ -26,7 +26,7 @@ export interface Preisalarm {
 
 const STATES = new Set(['N', 'U']);
 
-/** Die Zeile wie gelesen (db/zeilen.ts); `direction` hält ein CHECK auf zwei Werte, der Zeitpunkt
+/** Die Zeile wie gelesen (db/rows.ts); `direction` hält ein CHECK auf zwei Werte, der Zeitpunkt
  * geht als ISO-Text hinaus wie in JSON. */
 function alsAlarm<Z extends repo.AlarmRow>(z: Z): Omit<Z, 'direction' | 'last_triggered_at'> & Preisalarm {
   return { ...z, direction: z.direction as Richtung, last_triggered_at: z.last_triggered_at?.toISOString() ?? null };

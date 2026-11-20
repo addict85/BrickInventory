@@ -1,6 +1,6 @@
 /**
  * Eine Antwort aus Ersatzwerten sagt das: `degradiert` nennt die Teile, die
- * nach einem Fehler nur eine 0 oder null tragen (src/infra/ergebnis.ts, Abstriche).
+ * nach einem Fehler nur eine 0 oder null tragen (src/infra/result.ts, Abstriche).
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in cacheStatistics() `...ab.angabe()` gestrichen → rot: „die Cache-Zahlen
